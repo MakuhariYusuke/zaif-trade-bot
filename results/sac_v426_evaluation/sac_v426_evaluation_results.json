@@ -1,0 +1,157 @@
+{
+  "evaluation_results": {
+    "cost_aware": {
+      "mean_action": 0.0,
+      "action_std": 0.0,
+      "sell_bias": 0.5,
+      "correlation_with_market": 0.0,
+      "action_volatility": 0.0,
+      "stage": "cost_aware",
+      "regime_analysis": {
+        "sideways": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "high_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "low_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        }
+      }
+    },
+    "strong_penalty": {
+      "mean_action": 0.0,
+      "action_std": 0.0,
+      "sell_bias": 0.5,
+      "correlation_with_market": 0.0,
+      "action_volatility": 0.0,
+      "stage": "strong_penalty",
+      "regime_analysis": {
+        "sideways": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "high_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "low_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        }
+      }
+    },
+    "correlation_focused": {
+      "mean_action": 0.0,
+      "action_std": 0.0,
+      "sell_bias": 0.5,
+      "correlation_with_market": 0.0,
+      "action_volatility": 0.0,
+      "stage": "correlation_focused",
+      "regime_analysis": {
+        "sideways": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "high_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "moderate_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "low_volatility": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bull": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        },
+        "strong_bear": {
+          "mean_action": NaN,
+          "sell_bias": 0.0,
+          "count": 7142
+        }
+      }
+    }
+  },
+  "summary": {
+    "best_model": "cost_aware",
+    "best_correlation": 0.0,
+    "best_sell_bias_improvement": 0.17000000000000004,
+    "overall_assessment": {
+      "status": "PARTIAL_SUCCESS",
+      "message": "一定の改善が見られますが、目標には達していません",
+      "correlation_achieved": false,
+      "sell_bias_improved": true
+    },
+    "recommendations": [
+      "学習パラメータの再調整",
+      "特徴量の改善または追加",
+      "より長い学習期間の検討",
+      "報酬関数の再設計"
+    ]
+  },
+  "timestamp": "2025-10-18T19:40:53.325014"
+}

@@ -1,0 +1,2931 @@
+{
+  "metrics": {
+    "total_return": "-41.023525",
+    "sharpe_ratio": -1.0687268140144168,
+    "max_drawdown": -54.94033495152806,
+    "win_rate": 48.60681114551084,
+    "total_trades": 323,
+    "avg_trade_return": "-12.700751",
+    "profit_factor": "0.7718005",
+    "final_capital": "5897.6475",
+    "gross_profit": "13874.681",
+    "gross_loss": "17977.03"
+  },
+  "trades": [
+    {
+      "entry_time": 1,
+      "exit_time": 28,
+      "entry_price": "4.9993085e+06",
+      "exit_price": "4.970778e+06",
+      "pnl": "285.01968",
+      "position": -0.01,
+      "duration": 27
+    },
+    {
+      "entry_time": 28,
+      "exit_time": 30,
+      "entry_price": "4.970778e+06",
+      "exit_price": "4.966338e+06",
+      "pnl": "-44.3556",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 30,
+      "exit_time": 31,
+      "entry_price": "4.966338e+06",
+      "exit_price": "4.975537e+06",
+      "pnl": "-91.89801",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 31,
+      "exit_time": 32,
+      "entry_price": "4.975537e+06",
+      "exit_price": "4.97547e+06",
+      "pnl": "-0.66932994",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 32,
+      "exit_time": 35,
+      "entry_price": "4.97547e+06",
+      "exit_price": "4.9682225e+06",
+      "pnl": "72.40253",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 35,
+      "exit_time": 36,
+      "entry_price": "4.9682225e+06",
+      "exit_price": "4.9692605e+06",
+      "pnl": "10.36962",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 36,
+      "exit_time": 42,
+      "entry_price": "4.9692605e+06",
+      "exit_price": "4.9578445e+06",
+      "pnl": "114.04584",
+      "position": -0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 42,
+      "exit_time": 43,
+      "entry_price": "4.9578445e+06",
+      "exit_price": "4.9563515e+06",
+      "pnl": "-14.91507",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 43,
+      "exit_time": 44,
+      "entry_price": "4.9563515e+06",
+      "exit_price": "4.9490235e+06",
+      "pnl": "73.20672",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 44,
+      "exit_time": 45,
+      "entry_price": "4.9490235e+06",
+      "exit_price": "4.945461e+06",
+      "pnl": "-35.589375",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 45,
+      "exit_time": 48,
+      "entry_price": "4.945461e+06",
+      "exit_price": "4.950109e+06",
+      "pnl": "-46.43352",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 48,
+      "exit_time": 49,
+      "entry_price": "4.950109e+06",
+      "exit_price": "4.9413815e+06",
+      "pnl": "-87.18773",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 49,
+      "exit_time": 50,
+      "entry_price": "4.9413815e+06",
+      "exit_price": "4.942983e+06",
+      "pnl": "-15.998984",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 50,
+      "exit_time": 51,
+      "entry_price": "4.942983e+06",
+      "exit_price": "4.9410795e+06",
+      "pnl": "-19.015965",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 51,
+      "exit_time": 56,
+      "entry_price": "4.9410795e+06",
+      "exit_price": "4.9463005e+06",
+      "pnl": "-52.15779",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 56,
+      "exit_time": 62,
+      "entry_price": "4.9463005e+06",
+      "exit_price": "4.942469e+06",
+      "pnl": "-38.276684",
+      "position": 0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 62,
+      "exit_time": 64,
+      "entry_price": "4.942469e+06",
+      "exit_price": "4.940568e+06",
+      "pnl": "18.99099",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 64,
+      "exit_time": 65,
+      "entry_price": "4.940568e+06",
+      "exit_price": "4.9472685e+06",
+      "pnl": "66.937996",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 65,
+      "exit_time": 68,
+      "entry_price": "4.9472685e+06",
+      "exit_price": "4.9536675e+06",
+      "pnl": "-63.92601",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 68,
+      "exit_time": 69,
+      "entry_price": "4.9536675e+06",
+      "exit_price": "4.950472e+06",
+      "pnl": "-31.923046",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 69,
+      "exit_time": 72,
+      "entry_price": "4.950472e+06",
+      "exit_price": "4.9597e+06",
+      "pnl": "-92.18772",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 72,
+      "exit_time": 73,
+      "entry_price": "4.9597e+06",
+      "exit_price": "4.96746e+06",
+      "pnl": "77.5224",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 73,
+      "exit_time": 76,
+      "entry_price": "4.96746e+06",
+      "exit_price": "4.9589505e+06",
+      "pnl": "85.00991",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 76,
+      "exit_time": 77,
+      "entry_price": "4.9589505e+06",
+      "exit_price": "4.9574675e+06",
+      "pnl": "-14.81517",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 77,
+      "exit_time": 82,
+      "entry_price": "4.9574675e+06",
+      "exit_price": "4.956062e+06",
+      "pnl": "14.040944",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 82,
+      "exit_time": 83,
+      "entry_price": "4.956062e+06",
+      "exit_price": "4.953493e+06",
+      "pnl": "-25.664309",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 83,
+      "exit_time": 88,
+      "entry_price": "4.953493e+06",
+      "exit_price": "4.950537e+06",
+      "pnl": "29.53044",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 88,
+      "exit_time": 89,
+      "entry_price": "4.950537e+06",
+      "exit_price": "4.953078e+06",
+      "pnl": "25.38459",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 89,
+      "exit_time": 90,
+      "entry_price": "4.953078e+06",
+      "exit_price": "4.953559e+06",
+      "pnl": "-4.80519",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 90,
+      "exit_time": 91,
+      "entry_price": "4.953559e+06",
+      "exit_price": "4.958357e+06",
+      "pnl": "47.93202",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 91,
+      "exit_time": 102,
+      "entry_price": "4.958357e+06",
+      "exit_price": "4.934915e+06",
+      "pnl": "234.18558",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 102,
+      "exit_time": 104,
+      "entry_price": "4.934915e+06",
+      "exit_price": "4.9301605e+06",
+      "pnl": "-47.497456",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 104,
+      "exit_time": 107,
+      "entry_price": "4.9301605e+06",
+      "exit_price": "4.942318e+06",
+      "pnl": "-121.45342",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 107,
+      "exit_time": 108,
+      "entry_price": "4.942318e+06",
+      "exit_price": "4.943591e+06",
+      "pnl": "12.71727",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 108,
+      "exit_time": 119,
+      "entry_price": "4.943591e+06",
+      "exit_price": "4.9500105e+06",
+      "pnl": "-64.130806",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 119,
+      "exit_time": 120,
+      "entry_price": "4.9500105e+06",
+      "exit_price": "4.953926e+06",
+      "pnl": "39.115845",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 120,
+      "exit_time": 121,
+      "entry_price": "4.953926e+06",
+      "exit_price": "4.949421e+06",
+      "pnl": "45.00495",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 121,
+      "exit_time": 122,
+      "entry_price": "4.949421e+06",
+      "exit_price": "4.956364e+06",
+      "pnl": "69.36057",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 122,
+      "exit_time": 126,
+      "entry_price": "4.956364e+06",
+      "exit_price": "4.9582525e+06",
+      "pnl": "-18.866116",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 126,
+      "exit_time": 128,
+      "entry_price": "4.9582525e+06",
+      "exit_price": "4.9559385e+06",
+      "pnl": "-23.11686",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 128,
+      "exit_time": 130,
+      "entry_price": "4.9559385e+06",
+      "exit_price": "4.945762e+06",
+      "pnl": "101.66324",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 130,
+      "exit_time": 133,
+      "entry_price": "4.945762e+06",
+      "exit_price": "4.9431865e+06",
+      "pnl": "-25.729244",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 133,
+      "exit_time": 134,
+      "entry_price": "4.9431865e+06",
+      "exit_price": "4.938642e+06",
+      "pnl": "45.399555",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 134,
+      "exit_time": 135,
+      "entry_price": "4.938642e+06",
+      "exit_price": "4.9462965e+06",
+      "pnl": "76.46845",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 135,
+      "exit_time": 136,
+      "entry_price": "4.9462965e+06",
+      "exit_price": "4.942422e+06",
+      "pnl": "38.706253",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 136,
+      "exit_time": 137,
+      "entry_price": "4.942422e+06",
+      "exit_price": "4.9408305e+06",
+      "pnl": "-15.899085",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 137,
+      "exit_time": 145,
+      "entry_price": "4.9408305e+06",
+      "exit_price": "4.944451e+06",
+      "pnl": "-36.168793",
+      "position": -0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 145,
+      "exit_time": 146,
+      "entry_price": "4.944451e+06",
+      "exit_price": "4.938335e+06",
+      "pnl": "-61.09884",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 146,
+      "exit_time": 152,
+      "entry_price": "4.938335e+06",
+      "exit_price": "4.935442e+06",
+      "pnl": "28.901072",
+      "position": -0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 152,
+      "exit_time": 154,
+      "entry_price": "4.935442e+06",
+      "exit_price": "4.938035e+06",
+      "pnl": "25.90407",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 154,
+      "exit_time": 155,
+      "entry_price": "4.938035e+06",
+      "exit_price": "4.9345075e+06",
+      "pnl": "35.239723",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 155,
+      "exit_time": 157,
+      "entry_price": "4.9345075e+06",
+      "exit_price": "4.9460565e+06",
+      "pnl": "115.37451",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 157,
+      "exit_time": 160,
+      "entry_price": "4.9460565e+06",
+      "exit_price": "4.9385895e+06",
+      "pnl": "74.59533",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 160,
+      "exit_time": 163,
+      "entry_price": "4.9385895e+06",
+      "exit_price": "4.944142e+06",
+      "pnl": "55.469475",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 163,
+      "exit_time": 166,
+      "entry_price": "4.944142e+06",
+      "exit_price": "4.955018e+06",
+      "pnl": "-108.65124",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 166,
+      "exit_time": 168,
+      "entry_price": "4.955018e+06",
+      "exit_price": "4.9631985e+06",
+      "pnl": "81.7232",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 168,
+      "exit_time": 171,
+      "entry_price": "4.9631985e+06",
+      "exit_price": "4.9510035e+06",
+      "pnl": "121.82805",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 171,
+      "exit_time": 172,
+      "entry_price": "4.9510035e+06",
+      "exit_price": "4.950622e+06",
+      "pnl": "-3.811185",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 172,
+      "exit_time": 174,
+      "entry_price": "4.950622e+06",
+      "exit_price": "4.953681e+06",
+      "pnl": "-30.55941",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 174,
+      "exit_time": 175,
+      "entry_price": "4.953681e+06",
+      "exit_price": "4.9577785e+06",
+      "pnl": "40.934025",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 175,
+      "exit_time": 177,
+      "entry_price": "4.9577785e+06",
+      "exit_price": "4.9650495e+06",
+      "pnl": "-72.63729",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 177,
+      "exit_time": 180,
+      "entry_price": "4.9650495e+06",
+      "exit_price": "4.9803515e+06",
+      "pnl": "152.86697",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 180,
+      "exit_time": 183,
+      "entry_price": "4.9803515e+06",
+      "exit_price": "4.973152e+06",
+      "pnl": "71.923004",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 183,
+      "exit_time": 184,
+      "entry_price": "4.973152e+06",
+      "exit_price": "4.972041e+06",
+      "pnl": "-11.098889",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 184,
+      "exit_time": 189,
+      "entry_price": "4.972041e+06",
+      "exit_price": "4.965834e+06",
+      "pnl": "62.00793",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 189,
+      "exit_time": 190,
+      "entry_price": "4.965834e+06",
+      "exit_price": "4.963617e+06",
+      "pnl": "-22.147831",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 190,
+      "exit_time": 193,
+      "entry_price": "4.963617e+06",
+      "exit_price": "4.9627415e+06",
+      "pnl": "8.746245",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 193,
+      "exit_time": 194,
+      "entry_price": "4.9627415e+06",
+      "exit_price": "4.9636005e+06",
+      "pnl": "8.58141",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 194,
+      "exit_time": 198,
+      "entry_price": "4.9636005e+06",
+      "exit_price": "4.962176e+06",
+      "pnl": "14.230755",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 198,
+      "exit_time": 199,
+      "entry_price": "4.962176e+06",
+      "exit_price": "4.9565045e+06",
+      "pnl": "-56.658287",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 199,
+      "exit_time": 201,
+      "entry_price": "4.9565045e+06",
+      "exit_price": "4.961058e+06",
+      "pnl": "-45.489464",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 201,
+      "exit_time": 203,
+      "entry_price": "4.961058e+06",
+      "exit_price": "4.971665e+06",
+      "pnl": "105.96393",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 203,
+      "exit_time": 205,
+      "entry_price": "4.971665e+06",
+      "exit_price": "4.9601595e+06",
+      "pnl": "114.93995",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 205,
+      "exit_time": 206,
+      "entry_price": "4.9601595e+06",
+      "exit_price": "4.962714e+06",
+      "pnl": "25.519455",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 206,
+      "exit_time": 207,
+      "entry_price": "4.962714e+06",
+      "exit_price": "4.965264e+06",
+      "pnl": "-25.4745",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 207,
+      "exit_time": 211,
+      "entry_price": "4.965264e+06",
+      "exit_price": "4.995474e+06",
+      "pnl": "301.7979",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 211,
+      "exit_time": 233,
+      "entry_price": "4.995474e+06",
+      "exit_price": "4.988461e+06",
+      "pnl": "70.05987",
+      "position": -0.01,
+      "duration": 22
+    },
+    {
+      "entry_time": 233,
+      "exit_time": 235,
+      "entry_price": "4.988461e+06",
+      "exit_price": "5.002325e+06",
+      "pnl": "138.50136",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 235,
+      "exit_time": 269,
+      "entry_price": "5.002325e+06",
+      "exit_price": "4.972533e+06",
+      "pnl": "297.62207",
+      "position": -0.01,
+      "duration": 34
+    },
+    {
+      "entry_time": 269,
+      "exit_time": 271,
+      "entry_price": "4.972533e+06",
+      "exit_price": "4.97255e+06",
+      "pnl": "0.16983001",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 271,
+      "exit_time": 272,
+      "entry_price": "4.97255e+06",
+      "exit_price": "4.9783335e+06",
+      "pnl": "-57.777164",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 272,
+      "exit_time": 273,
+      "entry_price": "4.9783335e+06",
+      "exit_price": "4.9783845e+06",
+      "pnl": "0.50949",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 273,
+      "exit_time": 276,
+      "entry_price": "4.9783845e+06",
+      "exit_price": "4.976787e+06",
+      "pnl": "15.959024",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 276,
+      "exit_time": 277,
+      "entry_price": "4.976787e+06",
+      "exit_price": "4.9738e+06",
+      "pnl": "-29.84013",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 277,
+      "exit_time": 281,
+      "entry_price": "4.9738e+06",
+      "exit_price": "4.9760875e+06",
+      "pnl": "-22.852125",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 281,
+      "exit_time": 286,
+      "entry_price": "4.9760875e+06",
+      "exit_price": "4.977935e+06",
+      "pnl": "18.456526",
+      "position": 0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 286,
+      "exit_time": 287,
+      "entry_price": "4.977935e+06",
+      "exit_price": "4.9808635e+06",
+      "pnl": "-29.255714",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 287,
+      "exit_time": 289,
+      "entry_price": "4.9808635e+06",
+      "exit_price": "4.9791605e+06",
+      "pnl": "-17.012968",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 289,
+      "exit_time": 292,
+      "entry_price": "4.9791605e+06",
+      "exit_price": "4.9727375e+06",
+      "pnl": "64.165764",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 292,
+      "exit_time": 294,
+      "entry_price": "4.9727375e+06",
+      "exit_price": "4.978739e+06",
+      "pnl": "59.954987",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 294,
+      "exit_time": 527,
+      "entry_price": "4.978739e+06",
+      "exit_price": "4.977823e+06",
+      "pnl": "9.15084",
+      "position": -0.01,
+      "duration": 233
+    },
+    {
+      "entry_time": 527,
+      "exit_time": 530,
+      "entry_price": "4.977823e+06",
+      "exit_price": "4.97779e+06",
+      "pnl": "-0.32966998",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 530,
+      "exit_time": 531,
+      "entry_price": "4.97779e+06",
+      "exit_price": "4.969519e+06",
+      "pnl": "82.62729",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 531,
+      "exit_time": 533,
+      "entry_price": "4.969519e+06",
+      "exit_price": "4.963173e+06",
+      "pnl": "-63.39654",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 533,
+      "exit_time": 541,
+      "entry_price": "4.963173e+06",
+      "exit_price": "4.954662e+06",
+      "pnl": "85.024895",
+      "position": -0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 541,
+      "exit_time": 543,
+      "entry_price": "4.954662e+06",
+      "exit_price": "4.964433e+06",
+      "pnl": "97.61229",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 543,
+      "exit_time": 548,
+      "entry_price": "4.964433e+06",
+      "exit_price": "4.951904e+06",
+      "pnl": "125.16471",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 548,
+      "exit_time": 549,
+      "entry_price": "4.951904e+06",
+      "exit_price": "4.948913e+06",
+      "pnl": "-29.88009",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 549,
+      "exit_time": 555,
+      "entry_price": "4.948913e+06",
+      "exit_price": "4.9552415e+06",
+      "pnl": "-63.221714",
+      "position": -0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 555,
+      "exit_time": 557,
+      "entry_price": "4.9552415e+06",
+      "exit_price": "4.950683e+06",
+      "pnl": "-45.539413",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 557,
+      "exit_time": 562,
+      "entry_price": "4.950683e+06",
+      "exit_price": "4.9665855e+06",
+      "pnl": "-158.86597",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 562,
+      "exit_time": 563,
+      "entry_price": "4.9665855e+06",
+      "exit_price": "4.9649665e+06",
+      "pnl": "-16.173811",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 563,
+      "exit_time": 572,
+      "entry_price": "4.9649665e+06",
+      "exit_price": "4.952766e+06",
+      "pnl": "121.882996",
+      "position": -0.01,
+      "duration": 9
+    },
+    {
+      "entry_time": 572,
+      "exit_time": 574,
+      "entry_price": "4.952766e+06",
+      "exit_price": "4.955788e+06",
+      "pnl": "30.18978",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 574,
+      "exit_time": 575,
+      "entry_price": "4.955788e+06",
+      "exit_price": "4.94483e+06",
+      "pnl": "109.47041",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 575,
+      "exit_time": 576,
+      "entry_price": "4.94483e+06",
+      "exit_price": "4.945995e+06",
+      "pnl": "11.63835",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 576,
+      "exit_time": 577,
+      "entry_price": "4.945995e+06",
+      "exit_price": "4.949808e+06",
+      "pnl": "-38.09187",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 577,
+      "exit_time": 578,
+      "entry_price": "4.949808e+06",
+      "exit_price": "4.942489e+06",
+      "pnl": "-73.116806",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 578,
+      "exit_time": 580,
+      "entry_price": "4.942489e+06",
+      "exit_price": "4.949817e+06",
+      "pnl": "-73.20672",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 580,
+      "exit_time": 581,
+      "entry_price": "4.949817e+06",
+      "exit_price": "4.9477615e+06",
+      "pnl": "-20.534445",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 581,
+      "exit_time": 598,
+      "entry_price": "4.9477615e+06",
+      "exit_price": "4.9538715e+06",
+      "pnl": "-61.0389",
+      "position": -0.01,
+      "duration": 17
+    },
+    {
+      "entry_time": 598,
+      "exit_time": 599,
+      "entry_price": "4.9538715e+06",
+      "exit_price": "4.9557405e+06",
+      "pnl": "18.67131",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 599,
+      "exit_time": 603,
+      "entry_price": "4.9557405e+06",
+      "exit_price": "4.9659505e+06",
+      "pnl": "-101.9979",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 603,
+      "exit_time": 604,
+      "entry_price": "4.9659505e+06",
+      "exit_price": "4.9680035e+06",
+      "pnl": "20.50947",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 604,
+      "exit_time": 608,
+      "entry_price": "4.9680035e+06",
+      "exit_price": "4.9584505e+06",
+      "pnl": "95.43447",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 608,
+      "exit_time": 609,
+      "entry_price": "4.9584505e+06",
+      "exit_price": "4.9658685e+06",
+      "pnl": "74.10582",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 609,
+      "exit_time": 621,
+      "entry_price": "4.9658685e+06",
+      "exit_price": "4.9835015e+06",
+      "pnl": "-176.15367",
+      "position": -0.01,
+      "duration": 12
+    },
+    {
+      "entry_time": 621,
+      "exit_time": 622,
+      "entry_price": "4.9835015e+06",
+      "exit_price": "4.9928805e+06",
+      "pnl": "93.69621",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 622,
+      "exit_time": 643,
+      "entry_price": "4.9928805e+06",
+      "exit_price": "4.9775085e+06",
+      "pnl": "153.56628",
+      "position": -0.01,
+      "duration": 21
+    },
+    {
+      "entry_time": 643,
+      "exit_time": 644,
+      "entry_price": "4.9775085e+06",
+      "exit_price": "4.9762855e+06",
+      "pnl": "-12.21777",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 644,
+      "exit_time": 646,
+      "entry_price": "4.9762855e+06",
+      "exit_price": "4.9615115e+06",
+      "pnl": "147.59225",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 646,
+      "exit_time": 649,
+      "entry_price": "4.9615115e+06",
+      "exit_price": "4.9635495e+06",
+      "pnl": "20.35962",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 649,
+      "exit_time": 650,
+      "entry_price": "4.9635495e+06",
+      "exit_price": "4.972727e+06",
+      "pnl": "-91.68323",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 650,
+      "exit_time": 651,
+      "entry_price": "4.972727e+06",
+      "exit_price": "4.978329e+06",
+      "pnl": "55.96398",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 651,
+      "exit_time": 653,
+      "entry_price": "4.978329e+06",
+      "exit_price": "4.9714835e+06",
+      "pnl": "68.38655",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 653,
+      "exit_time": 654,
+      "entry_price": "4.9714835e+06",
+      "exit_price": "4.984277e+06",
+      "pnl": "127.80707",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 654,
+      "exit_time": 664,
+      "entry_price": "4.984277e+06",
+      "exit_price": "4.9727885e+06",
+      "pnl": "114.77011",
+      "position": -0.01,
+      "duration": 10
+    },
+    {
+      "entry_time": 664,
+      "exit_time": 667,
+      "entry_price": "4.9727885e+06",
+      "exit_price": "4.9795275e+06",
+      "pnl": "67.32261",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 667,
+      "exit_time": 682,
+      "entry_price": "4.9795275e+06",
+      "exit_price": "4.962715e+06",
+      "pnl": "167.95688",
+      "position": -0.01,
+      "duration": 15
+    },
+    {
+      "entry_time": 682,
+      "exit_time": 683,
+      "entry_price": "4.962715e+06",
+      "exit_price": "4.9651435e+06",
+      "pnl": "24.260715",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 683,
+      "exit_time": 690,
+      "entry_price": "4.9651435e+06",
+      "exit_price": "4.9634975e+06",
+      "pnl": "16.443539",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 690,
+      "exit_time": 692,
+      "entry_price": "4.9634975e+06",
+      "exit_price": "4.96388e+06",
+      "pnl": "3.8211749",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 692,
+      "exit_time": 695,
+      "entry_price": "4.96388e+06",
+      "exit_price": "4.968345e+06",
+      "pnl": "-44.605347",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 695,
+      "exit_time": 697,
+      "entry_price": "4.968345e+06",
+      "exit_price": "4.963747e+06",
+      "pnl": "-45.93402",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 697,
+      "exit_time": 699,
+      "entry_price": "4.963747e+06",
+      "exit_price": "4.967415e+06",
+      "pnl": "-36.643322",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 699,
+      "exit_time": 700,
+      "entry_price": "4.967415e+06",
+      "exit_price": "4.9648185e+06",
+      "pnl": "-25.939035",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 700,
+      "exit_time": 714,
+      "entry_price": "4.9648185e+06",
+      "exit_price": "4.954879e+06",
+      "pnl": "99.2956",
+      "position": -0.01,
+      "duration": 14
+    },
+    {
+      "entry_time": 714,
+      "exit_time": 715,
+      "entry_price": "4.954879e+06",
+      "exit_price": "4.9603455e+06",
+      "pnl": "54.610332",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 715,
+      "exit_time": 718,
+      "entry_price": "4.9603455e+06",
+      "exit_price": "4.9598535e+06",
+      "pnl": "4.91508",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 718,
+      "exit_time": 719,
+      "entry_price": "4.9598535e+06",
+      "exit_price": "4.9595715e+06",
+      "pnl": "-2.81718",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 719,
+      "exit_time": 723,
+      "entry_price": "4.9595715e+06",
+      "exit_price": "4.9496125e+06",
+      "pnl": "99.49041",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 723,
+      "exit_time": 726,
+      "entry_price": "4.9496125e+06",
+      "exit_price": "4.949639e+06",
+      "pnl": "0.26473498",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 726,
+      "exit_time": 739,
+      "entry_price": "4.949639e+06",
+      "exit_price": "4.9613705e+06",
+      "pnl": "-117.19768",
+      "position": -0.01,
+      "duration": 13
+    },
+    {
+      "entry_time": 739,
+      "exit_time": 740,
+      "entry_price": "4.9613705e+06",
+      "exit_price": "4.952237e+06",
+      "pnl": "-91.24367",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 740,
+      "exit_time": 741,
+      "entry_price": "4.952237e+06",
+      "exit_price": "4.9459005e+06",
+      "pnl": "63.301632",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 741,
+      "exit_time": 742,
+      "entry_price": "4.9459005e+06",
+      "exit_price": "4.94281e+06",
+      "pnl": "-30.874094",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 742,
+      "exit_time": 743,
+      "entry_price": "4.94281e+06",
+      "exit_price": "4.942939e+06",
+      "pnl": "-1.28871",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 743,
+      "exit_time": 744,
+      "entry_price": "4.942939e+06",
+      "exit_price": "4.945498e+06",
+      "pnl": "25.564411",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 744,
+      "exit_time": 748,
+      "entry_price": "4.945498e+06",
+      "exit_price": "4.9360775e+06",
+      "pnl": "94.110794",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 748,
+      "exit_time": 749,
+      "entry_price": "4.9360775e+06",
+      "exit_price": "4.929134e+06",
+      "pnl": "-69.36556",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 749,
+      "exit_time": 760,
+      "entry_price": "4.929134e+06",
+      "exit_price": "4.9262915e+06",
+      "pnl": "28.396574",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 760,
+      "exit_time": 761,
+      "entry_price": "4.9262915e+06",
+      "exit_price": "4.9268925e+06",
+      "pnl": "6.0039897",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 761,
+      "exit_time": 768,
+      "entry_price": "4.9268925e+06",
+      "exit_price": "4.946704e+06",
+      "pnl": "-197.91689",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 768,
+      "exit_time": 770,
+      "entry_price": "4.946704e+06",
+      "exit_price": "4.959177e+06",
+      "pnl": "124.60527",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 770,
+      "exit_time": 775,
+      "entry_price": "4.959177e+06",
+      "exit_price": "4.959632e+06",
+      "pnl": "-4.5454497",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 775,
+      "exit_time": 776,
+      "entry_price": "4.959632e+06",
+      "exit_price": "4.956026e+06",
+      "pnl": "-36.023937",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 776,
+      "exit_time": 780,
+      "entry_price": "4.956026e+06",
+      "exit_price": "4.9583865e+06",
+      "pnl": "-23.581394",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 780,
+      "exit_time": 782,
+      "entry_price": "4.9583865e+06",
+      "exit_price": "4.953648e+06",
+      "pnl": "-47.337612",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 782,
+      "exit_time": 812,
+      "entry_price": "4.953648e+06",
+      "exit_price": "4.9652845e+06",
+      "pnl": "-116.248634",
+      "position": -0.01,
+      "duration": 30
+    },
+    {
+      "entry_time": 812,
+      "exit_time": 813,
+      "entry_price": "4.9652845e+06",
+      "exit_price": "4.96626e+06",
+      "pnl": "9.745245",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 813,
+      "exit_time": 818,
+      "entry_price": "4.96626e+06",
+      "exit_price": "4.970151e+06",
+      "pnl": "-38.87109",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 818,
+      "exit_time": 819,
+      "entry_price": "4.970151e+06",
+      "exit_price": "4.975447e+06",
+      "pnl": "52.90704",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 819,
+      "exit_time": 847,
+      "entry_price": "4.975447e+06",
+      "exit_price": "5.000142e+06",
+      "pnl": "-246.70305",
+      "position": -0.01,
+      "duration": 28
+    },
+    {
+      "entry_time": 847,
+      "exit_time": 850,
+      "entry_price": "5.000142e+06",
+      "exit_price": "4.991188e+06",
+      "pnl": "-89.45046",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 850,
+      "exit_time": 851,
+      "entry_price": "4.991188e+06",
+      "exit_price": "4.9884155e+06",
+      "pnl": "27.697273",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 851,
+      "exit_time": 852,
+      "entry_price": "4.9884155e+06",
+      "exit_price": "4.9852355e+06",
+      "pnl": "-31.7682",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 852,
+      "exit_time": 1137,
+      "entry_price": "4.9852355e+06",
+      "exit_price": "5.237254e+06",
+      "pnl": "-2517.6648",
+      "position": -0.01,
+      "duration": 285
+    },
+    {
+      "entry_time": 1421,
+      "exit_time": 1460,
+      "entry_price": "5.2871685e+06",
+      "exit_price": "5.333495e+06",
+      "pnl": "-462.80173",
+      "position": -0.01,
+      "duration": 39
+    },
+    {
+      "entry_time": 1460,
+      "exit_time": 1461,
+      "entry_price": "5.333495e+06",
+      "exit_price": "5.3269655e+06",
+      "pnl": "-65.229706",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1461,
+      "exit_time": 1468,
+      "entry_price": "5.3269655e+06",
+      "exit_price": "5.325976e+06",
+      "pnl": "9.885104",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 1468,
+      "exit_time": 1469,
+      "entry_price": "5.325976e+06",
+      "exit_price": "5.328344e+06",
+      "pnl": "23.65632",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1469,
+      "exit_time": 1478,
+      "entry_price": "5.328344e+06",
+      "exit_price": "5.3269595e+06",
+      "pnl": "13.831155",
+      "position": -0.01,
+      "duration": 9
+    },
+    {
+      "entry_time": 1478,
+      "exit_time": 1479,
+      "entry_price": "5.3269595e+06",
+      "exit_price": "5.324629e+06",
+      "pnl": "-23.281696",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1479,
+      "exit_time": 1485,
+      "entry_price": "5.324629e+06",
+      "exit_price": "5.3397285e+06",
+      "pnl": "-150.84401",
+      "position": -0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 1485,
+      "exit_time": 1488,
+      "entry_price": "5.3397285e+06",
+      "exit_price": "5.3146455e+06",
+      "pnl": "-250.57918",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 1488,
+      "exit_time": 1495,
+      "entry_price": "5.3146455e+06",
+      "exit_price": "5.3489275e+06",
+      "pnl": "-342.4772",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 1495,
+      "exit_time": 1496,
+      "entry_price": "5.3489275e+06",
+      "exit_price": "5.3599545e+06",
+      "pnl": "110.15973",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1496,
+      "exit_time": 1497,
+      "entry_price": "5.3599545e+06",
+      "exit_price": "5.3664315e+06",
+      "pnl": "-64.70523",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1497,
+      "exit_time": 1590,
+      "entry_price": "5.3664315e+06",
+      "exit_price": "5.337755e+06",
+      "pnl": "-286.4782",
+      "position": 0.01,
+      "duration": 93
+    },
+    {
+      "entry_time": 1590,
+      "exit_time": 1620,
+      "entry_price": "5.337755e+06",
+      "exit_price": "5.334916e+06",
+      "pnl": "28.36161",
+      "position": -0.01,
+      "duration": 30
+    },
+    {
+      "entry_time": 1620,
+      "exit_time": 1622,
+      "entry_price": "5.334916e+06",
+      "exit_price": "5.33214e+06",
+      "pnl": "-27.73224",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 1622,
+      "exit_time": 1626,
+      "entry_price": "5.33214e+06",
+      "exit_price": "5.3419345e+06",
+      "pnl": "-97.84705",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 1626,
+      "exit_time": 1631,
+      "entry_price": "5.3419345e+06",
+      "exit_price": "5.351764e+06",
+      "pnl": "98.1967",
+      "position": 0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 1631,
+      "exit_time": 1632,
+      "entry_price": "5.351764e+06",
+      "exit_price": "5.34832e+06",
+      "pnl": "34.40556",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1632,
+      "exit_time": 1635,
+      "entry_price": "5.34832e+06",
+      "exit_price": "5.349876e+06",
+      "pnl": "15.544439",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 1635,
+      "exit_time": 1636,
+      "entry_price": "5.349876e+06",
+      "exit_price": "5.344766e+06",
+      "pnl": "51.0489",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1636,
+      "exit_time": 1706,
+      "entry_price": "5.344766e+06",
+      "exit_price": "5.4286205e+06",
+      "pnl": "837.7064",
+      "position": 0.01,
+      "duration": 70
+    },
+    {
+      "entry_time": 1706,
+      "exit_time": 1731,
+      "entry_price": "5.4286205e+06",
+      "exit_price": "5.451892e+06",
+      "pnl": "-232.48228",
+      "position": -0.01,
+      "duration": 25
+    },
+    {
+      "entry_time": 1731,
+      "exit_time": 1739,
+      "entry_price": "5.451892e+06",
+      "exit_price": "5.448599e+06",
+      "pnl": "-32.89707",
+      "position": 0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 1739,
+      "exit_time": 1742,
+      "entry_price": "5.448599e+06",
+      "exit_price": "5.4474915e+06",
+      "pnl": "11.063925",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 1742,
+      "exit_time": 1788,
+      "entry_price": "5.4474915e+06",
+      "exit_price": "5.4463735e+06",
+      "pnl": "-11.168819",
+      "position": 0.01,
+      "duration": 46
+    },
+    {
+      "entry_time": 1788,
+      "exit_time": 1790,
+      "entry_price": "5.4463735e+06",
+      "exit_price": "5.4434475e+06",
+      "pnl": "29.230742",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 1790,
+      "exit_time": 1797,
+      "entry_price": "5.4434475e+06",
+      "exit_price": "5.4378515e+06",
+      "pnl": "-55.90404",
+      "position": 0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 1797,
+      "exit_time": 1803,
+      "entry_price": "5.4378515e+06",
+      "exit_price": "5.441724e+06",
+      "pnl": "-38.686275",
+      "position": -0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 1803,
+      "exit_time": 1804,
+      "entry_price": "5.441724e+06",
+      "exit_price": "5.431912e+06",
+      "pnl": "-98.02187",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 1804,
+      "exit_time": 1819,
+      "entry_price": "5.431912e+06",
+      "exit_price": "5.407204e+06",
+      "pnl": "246.83293",
+      "position": -0.01,
+      "duration": 15
+    },
+    {
+      "entry_time": 1819,
+      "exit_time": 1868,
+      "entry_price": "5.407204e+06",
+      "exit_price": "5.4198025e+06",
+      "pnl": "125.85902",
+      "position": 0.01,
+      "duration": 49
+    },
+    {
+      "entry_time": 1868,
+      "exit_time": 1871,
+      "entry_price": "5.4198025e+06",
+      "exit_price": "5.410423e+06",
+      "pnl": "93.7012",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 1871,
+      "exit_time": 1959,
+      "entry_price": "5.410423e+06",
+      "exit_price": "5.4317995e+06",
+      "pnl": "213.55124",
+      "position": 0.01,
+      "duration": 88
+    },
+    {
+      "entry_time": 1959,
+      "exit_time": 1970,
+      "entry_price": "5.4317995e+06",
+      "exit_price": "5.449343e+06",
+      "pnl": "-175.25957",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 1970,
+      "exit_time": 1974,
+      "entry_price": "5.449343e+06",
+      "exit_price": "5.4378405e+06",
+      "pnl": "-114.90997",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 1974,
+      "exit_time": 1979,
+      "entry_price": "5.4378405e+06",
+      "exit_price": "5.445e+06",
+      "pnl": "-71.52341",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 1979,
+      "exit_time": 1985,
+      "entry_price": "5.445e+06",
+      "exit_price": "5.4414515e+06",
+      "pnl": "-35.449516",
+      "position": 0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 1985,
+      "exit_time": 1993,
+      "entry_price": "5.4414515e+06",
+      "exit_price": "5.4658915e+06",
+      "pnl": "-244.1556",
+      "position": -0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 1993,
+      "exit_time": 2006,
+      "entry_price": "5.4658915e+06",
+      "exit_price": "5.444084e+06",
+      "pnl": "-217.85692",
+      "position": 0.01,
+      "duration": 13
+    },
+    {
+      "entry_time": 2006,
+      "exit_time": 2007,
+      "entry_price": "5.444084e+06",
+      "exit_price": "5.4396355e+06",
+      "pnl": "44.440517",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 2007,
+      "exit_time": 2036,
+      "entry_price": "5.4396355e+06",
+      "exit_price": "5.442894e+06",
+      "pnl": "32.552414",
+      "position": 0.01,
+      "duration": 29
+    },
+    {
+      "entry_time": 2036,
+      "exit_time": 2055,
+      "entry_price": "5.442894e+06",
+      "exit_price": "5.405808e+06",
+      "pnl": "370.48914",
+      "position": -0.01,
+      "duration": 19
+    },
+    {
+      "entry_time": 2055,
+      "exit_time": 2313,
+      "entry_price": "5.405808e+06",
+      "exit_price": "5.4398145e+06",
+      "pnl": "339.72495",
+      "position": 0.01,
+      "duration": 258
+    },
+    {
+      "entry_time": 2313,
+      "exit_time": 2316,
+      "entry_price": "5.4398145e+06",
+      "exit_price": "5.4503005e+06",
+      "pnl": "-104.75514",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 2316,
+      "exit_time": 2319,
+      "entry_price": "5.4503005e+06",
+      "exit_price": "5.4379065e+06",
+      "pnl": "-123.816055",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 2319,
+      "exit_time": 2321,
+      "entry_price": "5.4379065e+06",
+      "exit_price": "5.444534e+06",
+      "pnl": "-66.208725",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 2321,
+      "exit_time": 2363,
+      "entry_price": "5.444534e+06",
+      "exit_price": "5.439301e+06",
+      "pnl": "-52.277668",
+      "position": 0.01,
+      "duration": 42
+    },
+    {
+      "entry_time": 2363,
+      "exit_time": 2393,
+      "entry_price": "5.439301e+06",
+      "exit_price": "5.4010815e+06",
+      "pnl": "381.81277",
+      "position": -0.01,
+      "duration": 30
+    },
+    {
+      "entry_time": 2393,
+      "exit_time": 2472,
+      "entry_price": "5.4010815e+06",
+      "exit_price": "5.426189e+06",
+      "pnl": "250.82393",
+      "position": 0.01,
+      "duration": 79
+    },
+    {
+      "entry_time": 2472,
+      "exit_time": 2483,
+      "entry_price": "5.426189e+06",
+      "exit_price": "5.4400595e+06",
+      "pnl": "-138.5663",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 2483,
+      "exit_time": 2484,
+      "entry_price": "5.4400595e+06",
+      "exit_price": "5.43707e+06",
+      "pnl": "-29.865105",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 2484,
+      "exit_time": 2487,
+      "entry_price": "5.43707e+06",
+      "exit_price": "5.43939e+06",
+      "pnl": "-23.1768",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 2487,
+      "exit_time": 2488,
+      "entry_price": "5.43939e+06",
+      "exit_price": "5.439528e+06",
+      "pnl": "1.37862",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 2488,
+      "exit_time": 2508,
+      "entry_price": "5.439528e+06",
+      "exit_price": "5.439367e+06",
+      "pnl": "1.6083901",
+      "position": -0.01,
+      "duration": 20
+    },
+    {
+      "entry_time": 2508,
+      "exit_time": 2512,
+      "entry_price": "5.439367e+06",
+      "exit_price": "5.4407505e+06",
+      "pnl": "13.821165",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 2512,
+      "exit_time": 2514,
+      "entry_price": "5.4407505e+06",
+      "exit_price": "5.438681e+06",
+      "pnl": "20.674305",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 2514,
+      "exit_time": 2516,
+      "entry_price": "5.438681e+06",
+      "exit_price": "5.4409315e+06",
+      "pnl": "22.482494",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 2516,
+      "exit_time": 2524,
+      "entry_price": "5.4409315e+06",
+      "exit_price": "5.4454375e+06",
+      "pnl": "-45.01494",
+      "position": -0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 2524,
+      "exit_time": 2559,
+      "entry_price": "5.4454375e+06",
+      "exit_price": "5.446534e+06",
+      "pnl": "10.954036",
+      "position": 0.01,
+      "duration": 35
+    },
+    {
+      "entry_time": 2559,
+      "exit_time": 2577,
+      "entry_price": "5.446534e+06",
+      "exit_price": "5.444235e+06",
+      "pnl": "22.96701",
+      "position": -0.01,
+      "duration": 18
+    },
+    {
+      "entry_time": 2577,
+      "exit_time": 2607,
+      "entry_price": "5.444235e+06",
+      "exit_price": "5.41735e+06",
+      "pnl": "-268.58115",
+      "position": 0.01,
+      "duration": 30
+    },
+    {
+      "entry_time": 2607,
+      "exit_time": 2622,
+      "entry_price": "5.41735e+06",
+      "exit_price": "5.4476565e+06",
+      "pnl": "-302.76193",
+      "position": -0.01,
+      "duration": 15
+    },
+    {
+      "entry_time": 2622,
+      "exit_time": 2680,
+      "entry_price": "5.4476565e+06",
+      "exit_price": "5.4491975e+06",
+      "pnl": "15.39459",
+      "position": 0.01,
+      "duration": 58
+    },
+    {
+      "entry_time": 2680,
+      "exit_time": 2681,
+      "entry_price": "5.4491975e+06",
+      "exit_price": "5.447552e+06",
+      "pnl": "16.438545",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 2681,
+      "exit_time": 2892,
+      "entry_price": "5.447552e+06",
+      "exit_price": "5.446888e+06",
+      "pnl": "-6.63336",
+      "position": 0.01,
+      "duration": 211
+    },
+    {
+      "entry_time": 2892,
+      "exit_time": 2895,
+      "entry_price": "5.446888e+06",
+      "exit_price": "5.4722315e+06",
+      "pnl": "-253.18156",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 2895,
+      "exit_time": 3031,
+      "entry_price": "5.4722315e+06",
+      "exit_price": "5.429936e+06",
+      "pnl": "-422.53204",
+      "position": 0.01,
+      "duration": 136
+    },
+    {
+      "entry_time": 3031,
+      "exit_time": 3059,
+      "entry_price": "5.429936e+06",
+      "exit_price": "5.4078085e+06",
+      "pnl": "221.05373",
+      "position": -0.01,
+      "duration": 28
+    },
+    {
+      "entry_time": 3059,
+      "exit_time": 3080,
+      "entry_price": "5.4078085e+06",
+      "exit_price": "5.4442545e+06",
+      "pnl": "364.09555",
+      "position": 0.01,
+      "duration": 21
+    },
+    {
+      "entry_time": 3080,
+      "exit_time": 3082,
+      "entry_price": "5.4442545e+06",
+      "exit_price": "5.434308e+06",
+      "pnl": "99.36553",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 3082,
+      "exit_time": 3084,
+      "entry_price": "5.434308e+06",
+      "exit_price": "5.427228e+06",
+      "pnl": "-70.729195",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 3084,
+      "exit_time": 3104,
+      "entry_price": "5.427228e+06",
+      "exit_price": "5.4465425e+06",
+      "pnl": "-192.95184",
+      "position": -0.01,
+      "duration": 20
+    },
+    {
+      "entry_time": 3104,
+      "exit_time": 3108,
+      "entry_price": "5.4465425e+06",
+      "exit_price": "5.447033e+06",
+      "pnl": "4.900095",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 3108,
+      "exit_time": 3109,
+      "entry_price": "5.447033e+06",
+      "exit_price": "5.436848e+06",
+      "pnl": "101.748146",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3109,
+      "exit_time": 3111,
+      "entry_price": "5.436848e+06",
+      "exit_price": "5.428994e+06",
+      "pnl": "-78.461464",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 3111,
+      "exit_time": 3144,
+      "entry_price": "5.428994e+06",
+      "exit_price": "5.4196965e+06",
+      "pnl": "92.88203",
+      "position": -0.01,
+      "duration": 33
+    },
+    {
+      "entry_time": 3144,
+      "exit_time": 3173,
+      "entry_price": "5.4196965e+06",
+      "exit_price": "5.350928e+06",
+      "pnl": "-686.9973",
+      "position": 0.01,
+      "duration": 29
+    },
+    {
+      "entry_time": 3173,
+      "exit_time": 3174,
+      "entry_price": "5.350928e+06",
+      "exit_price": "5.3455655e+06",
+      "pnl": "53.571377",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3174,
+      "exit_time": 3175,
+      "entry_price": "5.3455655e+06",
+      "exit_price": "5.341543e+06",
+      "pnl": "-40.184772",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3175,
+      "exit_time": 3180,
+      "entry_price": "5.341543e+06",
+      "exit_price": "5.3442085e+06",
+      "pnl": "-26.628344",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 3180,
+      "exit_time": 3184,
+      "entry_price": "5.3442085e+06",
+      "exit_price": "5.3351655e+06",
+      "pnl": "-90.33957",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 3184,
+      "exit_time": 3185,
+      "entry_price": "5.3351655e+06",
+      "exit_price": "5.342264e+06",
+      "pnl": "-70.91402",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3185,
+      "exit_time": 3199,
+      "entry_price": "5.342264e+06",
+      "exit_price": "5.341485e+06",
+      "pnl": "-7.78221",
+      "position": 0.01,
+      "duration": 14
+    },
+    {
+      "entry_time": 3199,
+      "exit_time": 3200,
+      "entry_price": "5.341485e+06",
+      "exit_price": "5.342474e+06",
+      "pnl": "-9.88011",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3200,
+      "exit_time": 3202,
+      "entry_price": "5.342474e+06",
+      "exit_price": "5.3459355e+06",
+      "pnl": "34.580383",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 3202,
+      "exit_time": 3203,
+      "entry_price": "5.3459355e+06",
+      "exit_price": "5.352772e+06",
+      "pnl": "-68.29663",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3203,
+      "exit_time": 3204,
+      "entry_price": "5.352772e+06",
+      "exit_price": "5.3476745e+06",
+      "pnl": "-50.924023",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3204,
+      "exit_time": 3205,
+      "entry_price": "5.3476745e+06",
+      "exit_price": "5.344054e+06",
+      "pnl": "36.168793",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3205,
+      "exit_time": 3320,
+      "entry_price": "5.344054e+06",
+      "exit_price": "5.4373235e+06",
+      "pnl": "931.7623",
+      "position": 0.01,
+      "duration": 115
+    },
+    {
+      "entry_time": 3320,
+      "exit_time": 3321,
+      "entry_price": "5.4373235e+06",
+      "exit_price": "5.4324075e+06",
+      "pnl": "49.11084",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3321,
+      "exit_time": 3324,
+      "entry_price": "5.4324075e+06",
+      "exit_price": "5.4313815e+06",
+      "pnl": "-10.249741",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 3324,
+      "exit_time": 3344,
+      "entry_price": "5.4313815e+06",
+      "exit_price": "5.4405755e+06",
+      "pnl": "-91.84805",
+      "position": -0.01,
+      "duration": 20
+    },
+    {
+      "entry_time": 3344,
+      "exit_time": 3390,
+      "entry_price": "5.4405755e+06",
+      "exit_price": "5.4233955e+06",
+      "pnl": "-171.6282",
+      "position": 0.01,
+      "duration": 46
+    },
+    {
+      "entry_time": 3390,
+      "exit_time": 3399,
+      "entry_price": "5.4233955e+06",
+      "exit_price": "5.442349e+06",
+      "pnl": "-189.34546",
+      "position": -0.01,
+      "duration": 9
+    },
+    {
+      "entry_time": 3399,
+      "exit_time": 3400,
+      "entry_price": "5.442349e+06",
+      "exit_price": "5.4450235e+06",
+      "pnl": "26.718254",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3400,
+      "exit_time": 3412,
+      "entry_price": "5.4450235e+06",
+      "exit_price": "5.4565145e+06",
+      "pnl": "-114.79509",
+      "position": -0.01,
+      "duration": 12
+    },
+    {
+      "entry_time": 3412,
+      "exit_time": 3482,
+      "entry_price": "5.4565145e+06",
+      "exit_price": "5.4399985e+06",
+      "pnl": "-164.99484",
+      "position": 0.01,
+      "duration": 70
+    },
+    {
+      "entry_time": 3482,
+      "exit_time": 3501,
+      "entry_price": "5.4399985e+06",
+      "exit_price": "5.443936e+06",
+      "pnl": "-39.335625",
+      "position": -0.01,
+      "duration": 19
+    },
+    {
+      "entry_time": 3501,
+      "exit_time": 3502,
+      "entry_price": "5.443936e+06",
+      "exit_price": "5.4441825e+06",
+      "pnl": "2.462535",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3502,
+      "exit_time": 3519,
+      "entry_price": "5.4441825e+06",
+      "exit_price": "5.4349695e+06",
+      "pnl": "92.037865",
+      "position": -0.01,
+      "duration": 17
+    },
+    {
+      "entry_time": 3519,
+      "exit_time": 3520,
+      "entry_price": "5.4349695e+06",
+      "exit_price": "5.437702e+06",
+      "pnl": "27.297674",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3520,
+      "exit_time": 3530,
+      "entry_price": "5.437702e+06",
+      "exit_price": "5.4208045e+06",
+      "pnl": "168.80602",
+      "position": -0.01,
+      "duration": 10
+    },
+    {
+      "entry_time": 3530,
+      "exit_time": 3885,
+      "entry_price": "5.4208045e+06",
+      "exit_price": "5.349657e+06",
+      "pnl": "-710.7635",
+      "position": 0.01,
+      "duration": 355
+    },
+    {
+      "entry_time": 3885,
+      "exit_time": 3888,
+      "entry_price": "5.349657e+06",
+      "exit_price": "5.3378065e+06",
+      "pnl": "118.3865",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 3888,
+      "exit_time": 3896,
+      "entry_price": "5.3378065e+06",
+      "exit_price": "5.345363e+06",
+      "pnl": "75.48943",
+      "position": 0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 3896,
+      "exit_time": 3897,
+      "entry_price": "5.345363e+06",
+      "exit_price": "5.349161e+06",
+      "pnl": "-37.94202",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3897,
+      "exit_time": 3898,
+      "entry_price": "5.349161e+06",
+      "exit_price": "5.351458e+06",
+      "pnl": "22.94703",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3898,
+      "exit_time": 3899,
+      "entry_price": "5.351458e+06",
+      "exit_price": "5.3534895e+06",
+      "pnl": "-20.294683",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3899,
+      "exit_time": 3916,
+      "entry_price": "5.3534895e+06",
+      "exit_price": "5.3448325e+06",
+      "pnl": "-86.48343",
+      "position": 0.01,
+      "duration": 17
+    },
+    {
+      "entry_time": 3916,
+      "exit_time": 3917,
+      "entry_price": "5.3448325e+06",
+      "exit_price": "5.3477635e+06",
+      "pnl": "-29.28069",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 3917,
+      "exit_time": 3984,
+      "entry_price": "5.3477635e+06",
+      "exit_price": "5.4248695e+06",
+      "pnl": "770.28894",
+      "position": 0.01,
+      "duration": 67
+    },
+    {
+      "entry_time": 3984,
+      "exit_time": 3991,
+      "entry_price": "5.4248695e+06",
+      "exit_price": "5.408106e+06",
+      "pnl": "167.46736",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 3991,
+      "exit_time": 4024,
+      "entry_price": "5.408106e+06",
+      "exit_price": "5.3421925e+06",
+      "pnl": "-658.4759",
+      "position": 0.01,
+      "duration": 33
+    },
+    {
+      "entry_time": 4024,
+      "exit_time": 4025,
+      "entry_price": "5.3421925e+06",
+      "exit_price": "5.3404925e+06",
+      "pnl": "16.983",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4025,
+      "exit_time": 4028,
+      "entry_price": "5.3404925e+06",
+      "exit_price": "5.3434625e+06",
+      "pnl": "29.6703",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 4028,
+      "exit_time": 4029,
+      "entry_price": "5.3434625e+06",
+      "exit_price": "5.3477485e+06",
+      "pnl": "-42.817142",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4029,
+      "exit_time": 4034,
+      "entry_price": "5.3477485e+06",
+      "exit_price": "5.3191615e+06",
+      "pnl": "-285.58414",
+      "position": 0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 4034,
+      "exit_time": 4048,
+      "entry_price": "5.3191615e+06",
+      "exit_price": "5.3411025e+06",
+      "pnl": "-219.19058",
+      "position": -0.01,
+      "duration": 14
+    },
+    {
+      "entry_time": 4048,
+      "exit_time": 4055,
+      "entry_price": "5.3411025e+06",
+      "exit_price": "5.339379e+06",
+      "pnl": "-17.217764",
+      "position": 0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 4055,
+      "exit_time": 4057,
+      "entry_price": "5.339379e+06",
+      "exit_price": "5.349585e+06",
+      "pnl": "-101.95794",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4057,
+      "exit_time": 4073,
+      "entry_price": "5.349585e+06",
+      "exit_price": "5.339048e+06",
+      "pnl": "-105.264626",
+      "position": 0.01,
+      "duration": 16
+    },
+    {
+      "entry_time": 4073,
+      "exit_time": 4074,
+      "entry_price": "5.339048e+06",
+      "exit_price": "5.336667e+06",
+      "pnl": "23.78619",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4074,
+      "exit_time": 4075,
+      "entry_price": "5.336667e+06",
+      "exit_price": "5.337271e+06",
+      "pnl": "6.03396",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4075,
+      "exit_time": 4076,
+      "entry_price": "5.337271e+06",
+      "exit_price": "5.335333e+06",
+      "pnl": "19.360619",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4076,
+      "exit_time": 4078,
+      "entry_price": "5.335333e+06",
+      "exit_price": "5.3225545e+06",
+      "pnl": "-127.65721",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4078,
+      "exit_time": 4089,
+      "entry_price": "5.3225545e+06",
+      "exit_price": "5.334115e+06",
+      "pnl": "-115.489395",
+      "position": -0.01,
+      "duration": 11
+    },
+    {
+      "entry_time": 4089,
+      "exit_time": 4090,
+      "entry_price": "5.334115e+06",
+      "exit_price": "5.328255e+06",
+      "pnl": "-58.5414",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4090,
+      "exit_time": 4094,
+      "entry_price": "5.328255e+06",
+      "exit_price": "5.3429895e+06",
+      "pnl": "-147.19766",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 4094,
+      "exit_time": 4098,
+      "entry_price": "5.3429895e+06",
+      "exit_price": "5.336798e+06",
+      "pnl": "-61.853085",
+      "position": 0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 4098,
+      "exit_time": 4099,
+      "entry_price": "5.336798e+06",
+      "exit_price": "5.337184e+06",
+      "pnl": "-3.85614",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4099,
+      "exit_time": 4100,
+      "entry_price": "5.337184e+06",
+      "exit_price": "5.329177e+06",
+      "pnl": "-79.98993",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4100,
+      "exit_time": 4104,
+      "entry_price": "5.329177e+06",
+      "exit_price": "5.336612e+06",
+      "pnl": "-74.27565",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 4104,
+      "exit_time": 4106,
+      "entry_price": "5.336612e+06",
+      "exit_price": "5.3363385e+06",
+      "pnl": "-2.732265",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4106,
+      "exit_time": 4108,
+      "entry_price": "5.3363385e+06",
+      "exit_price": "5.3425075e+06",
+      "pnl": "-61.62831",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4108,
+      "exit_time": 4111,
+      "entry_price": "5.3425075e+06",
+      "exit_price": "5.345711e+06",
+      "pnl": "32.002964",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 4111,
+      "exit_time": 4112,
+      "entry_price": "5.345711e+06",
+      "exit_price": "5.354044e+06",
+      "pnl": "-83.24667",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4112,
+      "exit_time": 4120,
+      "entry_price": "5.354044e+06",
+      "exit_price": "5.329932e+06",
+      "pnl": "-240.87888",
+      "position": 0.01,
+      "duration": 8
+    },
+    {
+      "entry_time": 4120,
+      "exit_time": 4123,
+      "entry_price": "5.329932e+06",
+      "exit_price": "5.335412e+06",
+      "pnl": "-54.7452",
+      "position": -0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 4123,
+      "exit_time": 4124,
+      "entry_price": "5.335412e+06",
+      "exit_price": "5.3370535e+06",
+      "pnl": "16.398584",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4124,
+      "exit_time": 4125,
+      "entry_price": "5.3370535e+06",
+      "exit_price": "5.3312065e+06",
+      "pnl": "58.41153",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4125,
+      "exit_time": 4126,
+      "entry_price": "5.3312065e+06",
+      "exit_price": "5.326511e+06",
+      "pnl": "-46.908043",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4126,
+      "exit_time": 4130,
+      "entry_price": "5.326511e+06",
+      "exit_price": "5.339702e+06",
+      "pnl": "-131.77809",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 4130,
+      "exit_time": 4133,
+      "entry_price": "5.339702e+06",
+      "exit_price": "5.3522285e+06",
+      "pnl": "125.13973",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 4133,
+      "exit_time": 4134,
+      "entry_price": "5.3522285e+06",
+      "exit_price": "5.3516355e+06",
+      "pnl": "5.92407",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4134,
+      "exit_time": 4135,
+      "entry_price": "5.3516355e+06",
+      "exit_price": "5.3495575e+06",
+      "pnl": "-20.759218",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4135,
+      "exit_time": 4136,
+      "entry_price": "5.3495575e+06",
+      "exit_price": "5.3492585e+06",
+      "pnl": "2.98701",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4136,
+      "exit_time": 4141,
+      "entry_price": "5.3492585e+06",
+      "exit_price": "5.3679535e+06",
+      "pnl": "186.76305",
+      "position": 0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 4141,
+      "exit_time": 4142,
+      "entry_price": "5.3679535e+06",
+      "exit_price": "5.37e+06",
+      "pnl": "-20.444536",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4142,
+      "exit_time": 4170,
+      "entry_price": "5.37e+06",
+      "exit_price": "5.336664e+06",
+      "pnl": "-333.02664",
+      "position": 0.01,
+      "duration": 28
+    },
+    {
+      "entry_time": 4170,
+      "exit_time": 4172,
+      "entry_price": "5.336664e+06",
+      "exit_price": "5.3332235e+06",
+      "pnl": "34.370594",
+      "position": -0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4172,
+      "exit_time": 4174,
+      "entry_price": "5.3332235e+06",
+      "exit_price": "5.327136e+06",
+      "pnl": "-60.814125",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 4174,
+      "exit_time": 4179,
+      "entry_price": "5.327136e+06",
+      "exit_price": "5.3391775e+06",
+      "pnl": "-120.294586",
+      "position": -0.01,
+      "duration": 5
+    },
+    {
+      "entry_time": 4179,
+      "exit_time": 4180,
+      "entry_price": "5.3391775e+06",
+      "exit_price": "5.3406635e+06",
+      "pnl": "14.8451395",
+      "position": 0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4180,
+      "exit_time": 4187,
+      "entry_price": "5.3406635e+06",
+      "exit_price": "5.3383645e+06",
+      "pnl": "22.96701",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 4187,
+      "exit_time": 4190,
+      "entry_price": "5.3383645e+06",
+      "exit_price": "5.3379155e+06",
+      "pnl": "-4.48551",
+      "position": 0.01,
+      "duration": 3
+    },
+    {
+      "entry_time": 4190,
+      "exit_time": 4191,
+      "entry_price": "5.3379155e+06",
+      "exit_price": "5.3393225e+06",
+      "pnl": "-14.05593",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 4191,
+      "exit_time": 4195,
+      "entry_price": "5.3393225e+06",
+      "exit_price": "5.317838e+06",
+      "pnl": "-214.63016",
+      "position": 0.01,
+      "duration": 4
+    }
+  ],
+  "config": {
+    "model_path": "checkpoints/sac_session/sac_v396_retrained_final.zip",
+    "data_path": "btc_jpy_real_dataset.csv",
+    "initial_capital": 10000.0,
+    "transaction_cost": 0.0005,
+    "max_steps": null,
+    "deterministic": true
+  }
+}

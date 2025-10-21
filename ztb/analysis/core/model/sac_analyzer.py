@@ -16,6 +16,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from ztb.types.common import SACLikeModelProtocol
 
 import numpy as np
 
@@ -24,13 +25,14 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict
 from ztb.utils.path_utils import get_project_root
 
 # Import SAC
 try:
     from stable_baselines3 import SAC
 except ImportError:
-    SAC = None  # type: ignore
+    SAC = None
 
 # Get project root using utility
 project_root = get_project_root()
@@ -68,7 +70,7 @@ class SACAnalyzer:
         self.model_path = Path(model_path) if model_path else None
         self.config_path = Path(config_path) if config_path else None
         self.samples = samples
-        self.model: Optional[SAC] = None
+        self.model: Optional[SACLikeModelProtocol] = None
         self.config = None
 
         if self.model_path and self.model_path.exists():
@@ -114,14 +116,16 @@ class SACAnalyzer:
         Returns:
             Action distribution statistics
         """
-        if not self.model:
+        # Narrow and guard model
+        model = self.model
+        if model is None:
             raise ValueError("Model not loaded")
 
         logger.info(f"Analyzing action distribution with {num_samples} samples")
 
         # Create dummy observations
-        assert self.model is not None  # For mypy
-        obs_shape = self.model.observation_space.shape
+        obs_space = getattr(model, 'observation_space', None)
+        obs_shape = getattr(obs_space, 'shape', None)
         if obs_shape is None:
             raise ValueError("Observation space shape is None")
         dummy_obs = np.random.rand(num_samples, obs_shape[0])
@@ -132,16 +136,46 @@ class SACAnalyzer:
 
         actions_continuous = []
 
+        def _normalize_action_value(action: Any) -> float:
+            """Normalize various possible action return types to a float scalar safely."""
+            # action may be array-like, scalar, or tuple (action, state)
+            if isinstance(action, tuple) and len(action) >= 1:
+                action = action[0]
+            # If it's array-like
+            try:
+                if hasattr(action, "__getitem__"):
+                    return float(action[0])
+            except Exception:
+                pass
+            try:
+                return float(action)
+            except Exception:
+                return 0.0
+
         for i in range(num_samples):
-            action, _ = self.model.predict(dummy_obs[i], deterministic=deterministic)
-            actions_continuous.append(action[0])
+            act = model.predict(dummy_obs[i], deterministic=deterministic)
+            if isinstance(act, tuple) and len(act) >= 1:
+                action = act[0]
+            else:
+                action = act
+            val = _normalize_action_value(action)
+            actions_continuous.append(val)
 
         actions = np.array(actions_continuous)
 
-        # Analyze distribution
-        buy_actions = np.sum(actions > 0.3333)
-        sell_actions = np.sum(actions < -0.3333)
-        hold_actions = np.sum((actions >= -0.3333) & (actions <= 0.3333))
+        # Analyze distribution: map continuous actions to discrete using
+        # environment utility to keep thresholds consistent.
+        from ztb.trading.environment.constants import (
+            continuous_to_discrete_action,
+            ACTION_BUY,
+            ACTION_SELL,
+            ACTION_HOLD,
+        )
+
+        mapped = np.array([continuous_to_discrete_action(float(a)) for a in actions])
+        buy_actions = int(np.sum(mapped == ACTION_BUY))
+        sell_actions = int(np.sum(mapped == ACTION_SELL))
+        hold_actions = int(np.sum(mapped == ACTION_HOLD))
 
         total_actions = len(actions)
 
@@ -154,8 +188,8 @@ class SACAnalyzer:
         }
 
         logger.info(
-            f"Action distribution: BUY={distribution['buy_ratio']:.3f}, "
-            f"HOLD={distribution['hold_ratio']:.3f}, SELL={distribution['sell_ratio']:.3f}"
+            "Action distribution: BUY=%.3f, HOLD=%.3f, SELL=%.3f",
+            distribution['buy_ratio'], distribution['hold_ratio'], distribution['sell_ratio']
         )
 
         return distribution
@@ -179,10 +213,11 @@ class SACAnalyzer:
             "buy_bias": buy_ratio > 0.4,
             "balanced_distribution": abs(sell_ratio - buy_ratio) < 0.1,
             "excessive_holding": hold_ratio > 0.6,
+            # use central constant for expected neutral ratio (1/3)
             "bias_severity": max(
-                abs(sell_ratio - 0.3333),
-                abs(buy_ratio - 0.3333),
-                abs(hold_ratio - 0.3333),
+                abs(sell_ratio - (1.0 / 3.0)),
+                abs(buy_ratio - (1.0 / 3.0)),
+                abs(hold_ratio - (1.0 / 3.0)),
             ),
         }
 
@@ -281,56 +316,57 @@ class SACAnalyzer:
         Args:
             result: Analysis results to print
         """
-        print("\n🔬 SAC Model Analysis Results")
-        print("=" * 50)
+        # Use logger for structured output instead of print
+        logger.info("🔬 SAC Model Analysis Results")
+        logger.info("%s", "=" * 50)
 
-        print("\n📊 Action Distribution:")
+        logger.info("📊 Action Distribution:")
         for key, value in result.action_distribution.items():
-            if isinstance(value, float):
-                print(f"  {key}: {value:.4f}")
-            else:
-                print(f"  {key}: {value}")
+            try:
+                logger.info("  %s: %.4f", key, float(value))
+            except Exception:
+                logger.info("  %s: %s", key, value)
 
-        print("\n⚖️  Bias Analysis:")
+        logger.info("⚖️  Bias Analysis:")
         for key, value in result.bias_analysis.items():
-            print(f"  {key}: {value}")
+            logger.info("  %s: %s", key, value)
 
-        print("\n💡 Recommendations:")
+        logger.info("💡 Recommendations:")
         for rec in result.recommendations:
-            print(f"  {rec}")
+            logger.info("  %s", rec)
 
-        print("\n✅ Analysis complete!")
+        logger.info("✅ Analysis complete!")
 
     def print_report(self, result: AnalysisResult) -> None:
         """Print formatted analysis report."""
-        print("\n" + "=" * 60)
-        print("SAC MODEL ANALYSIS REPORT")
-        print("=" * 60)
+        logger.info("%s", "=" * 60)
+        logger.info("SAC MODEL ANALYSIS REPORT")
+        logger.info("%s", "=" * 60)
 
-        print("\n📊 ACTION DISTRIBUTION:")
-        print(f"  BUY:  {result.action_distribution['buy_ratio']:.3f}")
-        print(f"  HOLD: {result.action_distribution['hold_ratio']:.3f}")
-        print(f"  SELL: {result.action_distribution['sell_ratio']:.3f}")
-        print("  → BUY/HOLD/SELLの割合。理想的には33%前後でバランスが取れていること")
+        logger.info("📊 ACTION DISTRIBUTION:")
+        logger.info("  BUY:  %.3f", result.action_distribution["buy_ratio"])
+        logger.info("  HOLD: %.3f", result.action_distribution["hold_ratio"])
+        logger.info("  SELL: %.3f", result.action_distribution["sell_ratio"])
+        logger.info("  → BUY/HOLD/SELLの割合。理想的には33%%前後でバランスが取れていること")
 
-        print("\n🎯 BIAS ANALYSIS:")
+        logger.info("🎯 BIAS ANALYSIS:")
         if result.bias_analysis["sell_bias"]:
-            print("⚠️  SELL bias detected → 売りが40%以上。売られすぎの可能性")
+            logger.warning("⚠️  SELL bias detected → 売りが40%以上。売られすぎの可能性")
         if result.bias_analysis["buy_bias"]:
-            print("⚠️  BUY bias detected → 買いが40%以上。買われすぎの可能性")
+            logger.warning("⚠️  BUY bias detected → 買いが40%以上。買われすぎの可能性")
         if result.bias_analysis["balanced_distribution"]:
-            print("✅ Balanced distribution → 各アクションがバランスよく分布")
+            logger.info("✅ Balanced distribution → 各アクションがバランスよく分布")
         if result.bias_analysis["excessive_holding"]:
-            print("⚠️  Excessive holding → ホールドが60%以上。取引が少ない可能性")
+            logger.warning("⚠️  Excessive holding → ホールドが60%以上。取引が少ない可能性")
 
-        print(f"  Bias Severity: {result.bias_analysis['bias_severity']:.3f}")
-        print("  → 理想分布からの乖離度。低いほどバランスが良い")
+        logger.info("  Bias Severity: %.3f", result.bias_analysis["bias_severity"])
+        logger.info("  → 理想分布からの乖離度。低いほどバランスが良い")
 
-        print("\n💡 RECOMMENDATIONS:")
+        logger.info("💡 RECOMMENDATIONS:")
         for rec in result.recommendations:
-            print(f"  • {rec}")
+            logger.info("  • %s", rec)
 
-        print("\n" + "=" * 60)
+        logger.info("%s", "=" * 60)
 
 
 def main() -> None:

@@ -1,0 +1,135 @@
+{
+  "basic_integrity": {
+    "total_records": 352,
+    "missing_values": {
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0,
+      "volume": 0,
+      "dividends": 0,
+      "stock splits": 0,
+      "returns": 1,
+      "log_returns": 1,
+      "volatility": 20,
+      "sma_20": 19,
+      "sma_50": 49,
+      "rsi": 13
+    },
+    "duplicate_timestamps": 0,
+    "invalid_prices": {
+      "open": 0,
+      "high": 0,
+      "low": 0,
+      "close": 0
+    },
+    "data_types": {
+      "open": "float64",
+      "high": "float64",
+      "low": "float64",
+      "close": "float64",
+      "volume": "int64",
+      "dividends": "float64",
+      "stock splits": "float64",
+      "returns": "float64",
+      "log_returns": "float64",
+      "volatility": "float64",
+      "sma_20": "float64",
+      "sma_50": "float64",
+      "rsi": "float64"
+    },
+    "score": 0.8829545454545454
+  },
+  "statistical_properties": {
+    "price_distribution": {
+      "normality_test": {
+        "statistic": 0.9641660089669397,
+        "p_value": 1.3451111027673343e-07,
+        "is_normal": false
+      },
+      "skewness": -0.540826938134206,
+      "kurtosis": -0.29194944466272954,
+      "reasonable_distribution": true
+    },
+    "volatility_analysis": {
+      "annualized_volatility": 0.40101279853370836,
+      "realistic_volatility": true
+    },
+    "autocorrelation": {
+      "lag_1": -0.06961960222725488,
+      "lag_5": -0.014108702022574117,
+      "weak_autocorr": true
+    },
+    "score": 1.0
+  },
+  "market_realism": {
+    "price_range": {
+      "expected_min": 5000000,
+      "expected_max": 20000000,
+      "actual_min": 10147182.0,
+      "actual_max": 18838562.0,
+      "in_expected_range": true
+    },
+    "volume_analysis": {
+      "average_volume": 8025038722342.125,
+      "volume_variability": 0.4821127518662252,
+      "realistic_volume": true
+    },
+    "market_behavior": {
+      "extreme_changes": 0,
+      "reasonable_volatility": true
+    },
+    "score": 1.0
+  },
+  "temporal_consistency": {
+    "gaps_analysis": {
+      "total_gaps": 0,
+      "max_gap_days": 0,
+      "expected_frequency": "1 days 00:00:00",
+      "significant_gaps": true
+    },
+    "frequency_consistency": {
+      "weekday_distribution": {
+        "4": 52,
+        "5": 52,
+        "0": 50,
+        "3": 50,
+        "6": 50,
+        "2": 49,
+        "1": 49
+      },
+      "consistent_weekly_pattern": true
+    },
+    "business_days": {
+      "weekend_records": 102,
+      "mostly_business_days": true
+    },
+    "score": 1.0
+  },
+  "anomaly_detection": {
+    "outlier_detection": {
+      "outlier_count": 0,
+      "outlier_percentage": 0.0,
+      "acceptable_outliers": true
+    },
+    "sudden_changes": {
+      "sudden_change_count": 0,
+      "acceptable_changes": true
+    },
+    "stale_prices": {
+      "stale_periods": 0,
+      "acceptable_staleness": true
+    },
+    "score": 1.0
+  },
+  "data_completeness": {
+    "expected_records": 352,
+    "actual_records": 352,
+    "completeness_ratio": 1.0,
+    "score": 1.0
+  },
+  "overall_score": 0.9648863636363636,
+  "recommendations": [
+    "欠損値の補完または除去を検討してください"
+  ]
+}

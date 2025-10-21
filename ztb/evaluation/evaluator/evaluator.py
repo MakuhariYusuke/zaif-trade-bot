@@ -53,6 +53,9 @@ class TradingEvaluator:
     writer: Any  # TensorBoard SummaryWriter
     model: Optional[BaseAlgorithm]
     df: Optional[pd.DataFrame]
+    env: HeavyTradingEnv
+    results_dir: Path
+    tensorboard_log_dir: Path
 
     def __init__(
         self, model_path: str, data_path: str, config: Optional[Dict[str, Any]] = None
@@ -118,7 +121,7 @@ class TradingEvaluator:
             df.to_pickle(cache_path)
         return df
 
-    def _load_model(self) -> Optional[PPO]:
+    def _load_model(self) -> Optional[BaseAlgorithm]:
         """モデルの読み込み"""
         if not self.model_path.exists():
             logger.error(f"Model file not found: {self.model_path}")
@@ -277,7 +280,7 @@ class TradingEvaluator:
             "timestamps": timestamps,
         }
 
-    def _normalize_action(self, raw_action) -> int | float:
+    def _normalize_action(self, raw_action: Any) -> int | float:
         """Normalize model output to a scalar or discrete action suitable for env.step.
 
         - If action is a numpy array with shape (n,) and env expects discrete index, map using argmax

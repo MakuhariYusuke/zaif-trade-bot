@@ -1,0 +1,79 @@
+{
+  "experiment_name": "mlreinforcement250k",
+  "timestamp": "2025-10-01T14:54:22.794131",
+  "status": "success",
+  "config": {
+    "strategy": "scalping",
+    "data": {
+      "train_data": "ml-dataset-enhanced.csv",
+      "test_data": "ml-dataset-enhanced.csv",
+      "validation_data": "ml-dataset-enhanced.csv"
+    },
+    "training": {
+      "total_timesteps": 250000,
+      "total_steps": 250000,
+      "eval_freq": 10000,
+      "n_eval_episodes": 10,
+      "batch_size": 64,
+      "n_steps": 2048,
+      "gamma": 0.99,
+      "learning_rate": 0.0003,
+      "ent_coef": 0.0,
+      "clip_range": 0.2,
+      "n_epochs": 10,
+      "gae_lambda": 0.95,
+      "max_grad_norm": 0.5,
+      "vf_coef": 0.5,
+      "verbose": 1,
+      "seed": 42
+    },
+    "environment": {
+      "reward_scaling": 1.0,
+      "transaction_cost": 0.001,
+      "max_position_size": 0.05,
+      "risk_free_rate": 0.0,
+      "reward_type": "generalization",
+      "reward_clip_value": 5.0,
+      "reward_position_penalty_scale": 20.0,
+      "reward_inventory_penalty_scale": 3.0,
+      "reward_trade_frequency_penalty": 3.0
+    },
+    "optimization": {
+      "n_trials": 50,
+      "timeout": 1800,
+      "metric": "mean_reward",
+      "retrain_best": true,
+      "full_timesteps": 100000
+    },
+    "evaluation": {
+      "n_eval_episodes": 20,
+      "n_episodes": 20,
+      "max_steps_per_episode": 10000,
+      "deterministic": true,
+      "plot_style": "default"
+    },
+    "paths": {
+      "log_dir": "logs/",
+      "model_dir": "models/scalping",
+      "results_dir": "results/",
+      "opt_dir": "optimization/",
+      "tensorboard_log": "tensorboard/"
+    },
+    "total_steps": 250000,
+    "dataset": "coingecko",
+    "checkpoint_interval": 5000
+  },
+  "metrics": {
+    "current_step": 250000,
+    "total_steps": 250000,
+    "best_reward": 0.9999997154632401,
+    "memory_usage": 68.9,
+    "cpu_usage": 17.3,
+    "experiment_name": "mlreinforcement250k",
+    "strategy": "scalping",
+    "dataset": "coingecko"
+  },
+  "artifacts": {},
+  "error_message": null,
+  "execution_time_seconds": 3.876139
+}

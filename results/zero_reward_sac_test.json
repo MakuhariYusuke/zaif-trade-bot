@@ -1,0 +1,7 @@
+{
+  "zero_reward_test": {
+    "reward_function_neutral": true,
+    "model_path": "checkpoints\\sac_session\\sac_v408_zero_reward_final.zip",
+    "success": true
+  }
+}

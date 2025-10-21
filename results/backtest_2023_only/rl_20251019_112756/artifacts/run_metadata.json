@@ -1,0 +1,48 @@
+{
+  "correlation_id": "d2b3b43f818543dcaff356cbafaf38d6",
+  "timestamp": "2025-10-19T02:27:57.625144+00:00",
+  "payload": {
+    "random_seed": 42,
+    "metadata": {
+      "correlation_id": "d2b3b43f818543dcaff356cbafaf38d6",
+      "run_id": "backtest_rl_20251019_112756",
+      "type": "backtest",
+      "config": {
+        "policy": "rl",
+        "dataset": "btc_jpy_extended_dataset.csv",
+        "slippage_bps": 5.0,
+        "initial_capital": 10000.0,
+        "enable_risk": false,
+        "risk_profile": "balanced",
+        "target_vol": null,
+        "enable_adaptation": false,
+        "adaptation_interval": null,
+        "adaptation_safety_margin": null
+      },
+      "seeds": {
+        "numpy": 42,
+        "random": null
+      },
+      "package_hashes": {},
+      "environment": {
+        "python_version": "3.11.9",
+        "python_executable": "C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        "platform": "Windows-10-10.0.26200-SP0",
+        "os": "Windows",
+        "os_version": "10.0.26200",
+        "architecture": "AMD64",
+        "cpu_count": 8,
+        "cpu_model": "Windows CPU",
+        "hostname": "computer",
+        "random_seed": 42,
+        "timestamp": "2025-10-19T11:27:57.624109",
+        "timezone": "東京 (標準時)",
+        "working_directory": "C:\\Users\\Admin\\dev\\zaif-trade-bot",
+        "environment_variables": {
+          "PATH": "C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\cv2\\../../x64/vc17/bin;C:\\Users\\Admin\\dev\\zaif-trade-bot\\venv311;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\...",
+          "LANG": "ja_JP.UTF-8"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "config_name": "profit_focused",
+  "total_steps": 4999,
+  "total_reward": 250503.0,
+  "initial_portfolio": 200000.0,
+  "final_portfolio": 115063.37017999985,
+  "trades_executed": 1679,
+  "action_distribution": {
+    "buy": 1714,
+    "hold": 1644,
+    "sell": 1641
+  },
+  "reward_stats": {
+    "mean": 50.110622124424886,
+    "std": 4.090820474607717,
+    "positive_count": 4999
+  },
+  "trade_details": [
+    {
+      "step": 0,
+      "action":

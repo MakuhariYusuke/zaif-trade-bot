@@ -1,0 +1,65 @@
+{
+  "regime_counts": {
+    "range": "100"
+  },
+  "regime_metrics": {
+    "quick_test": {
+      "trend": {
+        "sharpe_ratio": 0,
+        "win_rate": 0,
+        "total_return": 0,
+        "max_drawdown": 0,
+        "volatility": 0,
+        "trade_count": 0,
+        "action_distribution": {
+          "BUY": 0,
+          "SELL": 0,
+          "HOLD": 0
+        },
+        "illegal_actions": 0
+      },
+      "range": {
+        "sharpe_ratio": -0.08627375639656694,
+        "win_rate": 0.33,
+        "total_return": -0.00011765474499558781,
+        "max_drawdown": -0.0004197085542450595,
+        "volatility": 0.0009335395790785494,
+        "trade_count": 100,
+        "action_distribution": {
+          "BUY": 24.0,
+          "SELL": 51.0,
+          "HOLD": 25.0
+        },
+        "illegal_actions": 0
+      },
+      "high_vol": {
+        "sharpe_ratio": 0,
+        "win_rate": 0,
+        "total_return": 0,
+        "max_drawdown": 0,
+        "volatility": 0,
+        "trade_count": 0,
+        "action_distribution": {
+          "BUY": 0,
+          "SELL": 0,
+          "HOLD": 0
+        },
+        "illegal_actions": 0
+      },
+      "low_vol": {
+        "sharpe_ratio": 0,
+        "win_rate": 0,
+        "total_return": 0,
+        "max_drawdown": 0,
+        "volatility": 0,
+        "trade_count": 0,
+        "action_distribution": {
+          "BUY": 0,
+          "SELL": 0,
+          "HOLD": 0
+        },
+        "illegal_actions": 0
+      }
+    }
+  }
+}

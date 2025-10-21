@@ -9,15 +9,33 @@ from ztb.training.core.config_manager import ConfigManager
 @patch("ztb.training.trainers.sac_trainer.AlgorithmFactory")
 def test_sac_trainer_train_creates_and_saves_model(mock_algo_factory, tmp_path):
     # Arrange
-    cm = ConfigManager()
+    cm = ConfigManager({})
     trainer = SACAlgorithmTrainer(config_manager=cm)
 
     # Mock data loader to return a small dataframe-like object
     dummy_df = MagicMock()
     dummy_df.__len__.return_value = 10
 
-    # Patch data loader at its origin module to avoid local-import issues
-    with patch("ztb.utils.data_utils.load_csv_data_optimized", return_value=dummy_df):
+    # Provide a lightweight DummyEnv to avoid HeavyTradingEnv initialization/type checks
+    class DummyObsSpace:
+        def __init__(self):
+            self.shape = (4,)
+
+
+    class DummyEnv:
+        def __init__(self, df=None, config=None):
+            # Accept any df (we mock load_csv to return a MagicMock)
+            self.df = df
+            self.action_space = "Continuous(1)"
+            self.observation_space = DummyObsSpace()
+
+
+    # Patch data loader and HeavyTradingEnv at their origin modules to avoid heavy initialization
+    # Also patch DummyVecEnv used in trainer to avoid stable-baselines3 environment validation
+    with patch("ztb.utils.data_utils.load_csv_data_optimized", return_value=dummy_df), \
+        patch("ztb.training.trainers.sac_trainer.SACAlgorithm.get_default_config", return_value={}), \
+        patch("ztb.training.trainers.sac_trainer.HeavyTradingEnv", new=DummyEnv), \
+        patch("ztb.training.trainers.sac_trainer.DummyVecEnv", new=lambda fns: fns[0]()):
         # Mock SAC algorithm and model
         mock_algo = MagicMock()
         mock_model = MagicMock()

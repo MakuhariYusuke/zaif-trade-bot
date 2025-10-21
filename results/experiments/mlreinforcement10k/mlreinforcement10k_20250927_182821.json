@@ -1,0 +1,55 @@
+{
+  "experiment_name": "mlreinforcement10k",
+  "timestamp": "2025-09-27T18:28:20.722232",
+  "status": "success",
+  "config": {
+    "strategy": "generalization",
+    "total_steps": 100,
+    "name": "run10k_generalization",
+    "dataset": "coingecko",
+    "checkpoint_interval": 1000
+  },
+  "metrics": {
+    "total_steps": 100,
+    "avg_reward": 0.62,
+    "total_pnl": 8680.0,
+    "harmful_ratio": 0.31,
+    "pending_ratio": 0.31,
+    "verified_ratio": 2.22,
+    "strategy": "generalization",
+    "execution_time_seconds": 114.555414,
+    "memory_leak_analysis": {
+      "memory_mb_start": 89.55078125,
+      "memory_mb_end": 89.9140625,
+      "memory_increase_percent": 0.40567066521264294,
+      "gc_collections_start": [
+        517,
+        9,
+        5
+      ],
+      "gc_collections_end": [
+        625,
+        0,
+        0
+      ],
+      "gc_increase": [
+        108,
+        -9,
+        -5
+      ],
+      "objects_start": 73033,
+      "objects_end": 72895,
+      "objects_increase": -138,
+      "potential_leak": false,
+      "measurements_count": 100,
+      "leak_threshold_percent": 50.0,
+      "object_leak_threshold": 10000
+    }
+  },
+  "artifacts": {
+    "checkpoints": "checkpoints\\mlreinforcement10k",
+    "results": "results\\experiments\\mlreinforcement10k"
+  },
+  "error_message": null,
+  "execution_time_seconds": 115.168238
+}

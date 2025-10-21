@@ -1,0 +1,12 @@
+{
+  "phase_1": {
+    "phase": "foundation",
+    "total_timesteps": 10000,
+    "training_time": 214.53177404403687,
+    "results": {
+      "success": true,
+      "training_time": 214.53177404403687
+    },
+    "success": true
+  }
+}

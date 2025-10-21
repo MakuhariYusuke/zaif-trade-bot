@@ -1,0 +1,182 @@
+{
+  "metrics": {
+    "total_return": "54.189754",
+    "annual_return": "54.189754",
+    "sharpe_ratio": 28.405588609926493,
+    "max_drawdown": -37.66666494975457,
+    "win_rate": 60.0,
+    "total_trades": 20,
+    "avg_trade_return": "270.94876",
+    "profit_factor": "1.5558401",
+    "final_capital": "15418.976"
+  },
+  "trades": [
+    {
+      "entry_time": 3,
+      "exit_time": 494,
+      "entry_price": "5.0101655e+06",
+      "exit_price": "5.028236e+06",
+      "pnl": "649.232",
+      "position": 0.03596369268681686
+    },
+    {
+      "entry_time": 494,
+      "exit_time": 496,
+      "entry_price": "5.028236e+06",
+      "exit_price": "5.0257275e+06",
+      "pnl": "90.011246",
+      "position": -0.035918417260062306
+    },
+    {
+      "entry_time": 496,
+      "exit_time": 931,
+      "entry_price": "5.0257275e+06",
+      "exit_price": "5.119299e+06",
+      "pnl": "3341.4321",
+      "position": 0.03574568021791711
+    },
+    {
+      "entry_time": 931,
+      "exit_time": 932,
+      "entry_price": "5.119299e+06",
+      "exit_price": "5.111886e+06",
+      "pnl": "264.0717",
+      "position": -0.03565844058400477
+    },
+    {
+      "entry_time": 932,
+      "exit_time": 941,
+      "entry_price": "5.111886e+06",
+      "exit_price": "5.095011e+06",
+      "pnl": "-598.4502",
+      "position": 0.035499214849900484
+    },
+    {
+      "entry_time": 941,
+      "exit_time": 943,
+      "entry_price": "5.095011e+06",
+      "exit_price": "5.097818e+06",
+      "pnl": "-99.51329",
+      "position": -0.03548731611251216
+    },
+    {
+      "entry_time": 943,
+      "exit_time": 988,
+      "entry_price": "5.097818e+06",
+      "exit_price": "5.1007e+06",
+      "pnl": "101.78516",
+      "position": 0.03535289451974181
+    },
+    {
+      "entry_time": 988,
+      "exit_time": 990,
+      "entry_price": "5.1007e+06",
+      "exit_price": "5.1019e+06",
+      "pnl": "-42.340015",
+      "position": -0.03531866508001199
+    },
+    {
+      "entry_time": 990,
+      "exit_time": 1072,
+      "entry_price": "5.1019e+06",
+      "exit_price": "5.1595095e+06",
+      "pnl": "2031.5767",
+      "position": 0.035299912217818676
+    },
+    {
+      "entry_time": 1072,
+      "exit_time": 1073,
+      "entry_price": "5.1595095e+06",
+      "exit_price": "5.15289e+06",
+      "pnl": "232.96045",
+      "position": -0.035228284310170666
+    },
+    {
+      "entry_time": 1073,
+      "exit_time": 1085,
+      "entry_price": "5.15289e+06",
+      "exit_price": "5.1669875e+06",
+      "pnl": "495.61542",
+      "position": 0.03519145338419991
+    },
+    {
+      "entry_time": 1085,
+      "exit_time": 1086,
+      "entry_price": "5.1669875e+06",
+      "exit_price": "5.1723105e+06",
+      "pnl": "-186.9494",
+      "position": -0.03515621525374976
+    },
+    {
+      "entry_time": 1086,
+      "exit_time": 1569,
+      "entry_price": "5.1723105e+06",
+      "exit_price": "5.356909e+06",
+      "pnl": "6472.1694",
+      "position": 0.03509588537941502
+    },
+    {
+      "entry_time": 1569,
+      "exit_time": 1570,
+      "entry_price": "5.356909e+06",
+      "exit_price": "5.361164e+06",
+      "pnl": "-148.51294",
+      "position": -0.03493809626739177
+    },
+    {
+      "entry_time": 1570,
+      "exit_time": 4223,
+      "entry_price": "5.361164e+06",
+      "exit_price": "5.2527245e+06",
+      "pnl": "-3785.2817",
+      "position": 0.034941794538987034
+    },
+    {
+      "entry_time": 4223,
+      "exit_time": 4224,
+      "entry_price": "5.2527245e+06",
+      "exit_price": "5.24551e+06",
+      "pnl": "252.13872",
+      "position": -0.03498386737334506
+    },
+    {
+      "entry_time": 4224,
+      "exit_time": 4520,
+      "entry_price": "5.24551e+06",
+      "exit_price": "5.110706e+06",
+      "pnl": "-4696.4785",
+      "position": 0.03487418704938714
+    },
+    {
+      "entry_time": 4520,
+      "exit_time": 4521,
+      "entry_price": "5.110706e+06",
+      "exit_price": "5.1161965e+06",
+      "pnl": "-191.63515",
+      "position": -0.03493797757792282
+    },
+    {
+      "entry_time": 4521,
+      "exit_time": 4670,
+      "entry_price": "5.1161965e+06",
+      "exit_price": "5.143263e+06",
+      "pnl": "944.7288",
+      "position": 0.03493892794961503
+    },
+    {
+      "entry_time": 4670,
+      "exit_time": 4671,
+      "entry_price": "5.143263e+06",
+      "exit_price": "5.134873e+06",
+      "pnl": "292.41464",
+      "position": -0.03488764665073881
+    }
+  ],
+  "config": {
+    "model_path": "checkpoints/sac_session/sac_v406_sell_bonus_adjusted_final.zip",
+    "data_path": "btc_jpy_real_dataset.csv",
+    "initial_capital": 10000.0,
+    "transaction_cost": 0.0005,
+    "max_steps": null
+  }
+}

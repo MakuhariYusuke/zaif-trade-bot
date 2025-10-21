@@ -1,0 +1,7 @@
+{
+  "solution": "Switch from SAC to PPO",
+  "reason": "SAC has fundamental bias issues with constant output despite neutral rewards",
+  "ppo_model_path": "models/ppo_v411_final_solution_final.zip",
+  "reward_function": "neutral (symmetric BUY/SELL rewards)",
+  "status": "PPO training completed"
+}

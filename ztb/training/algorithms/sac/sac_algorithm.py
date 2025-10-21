@@ -17,6 +17,7 @@ References:
 
 import logging
 from typing import Any, Callable, Dict, Optional, Union
+# Note: keep heavier algorithm internals untyped for now to avoid broad mypy noise
 
 import torch.nn as nn
 from stable_baselines3 import SAC
@@ -134,7 +135,8 @@ class SACAlgorithm(BaseRLAlgorithm):
 
     def __init__(self) -> None:
         """SACAlgorithmを初期化。"""
-        self._model: Optional[BaseAlgorithm] = None
+        # Use conservative protocol to reduce raw Any in downstream code
+        self._model: Optional[SACLikeModelProtocol] = None
         self.compression_manager: Optional[ModelCompressionManager] = None
         self.explainability_analyzer: Optional[ExplainabilityAnalyzer] = None
         logger.info("SACAlgorithm initialized")

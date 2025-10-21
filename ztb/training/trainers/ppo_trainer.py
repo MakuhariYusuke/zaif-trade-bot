@@ -12,6 +12,7 @@ import gc
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+from ztb.types.common import SACLikeModelProtocol
 
 from ztb.training.core.config_manager import ConfigManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
@@ -112,7 +113,8 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         Returns:
             Trainer instance
         """
-        checkpoint_interval = unified_config.get("checkpoint_interval", 25000)
+        cfg = unified_config if isinstance(unified_config, dict) else {}
+        checkpoint_interval = cfg.get("checkpoint_interval", 25000)
 
         if enable_sell_mitigation:
             # Import SELLMitigationParams
@@ -122,8 +124,8 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             lagrange_params = self._get_lagrange_params(unified_config)
 
             mitigation_params = SELLMitigationParams(
-                data_path=unified_config.get("data_path"),  # type: ignore[arg-type]
-                config=unified_config,  # type: ignore[arg-type]
+                data_path=unified_config.get("data_path"),
+                config=unified_config,
                 checkpoint_dir=unified_config.get("checkpoint_dir", "checkpoints"),
                 checkpoint_interval=checkpoint_interval,
                 progress_bar=self.progress_bar_enabled,
@@ -146,14 +148,21 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 SELLBiasMitigationPPOTrainer,
             )
 
-            return SELLBiasMitigationPPOTrainer(params=mitigation_params)
+            return SELLBiasMitigationPPOTrainer(
+                data_path=mitigation_params.data_path,
+                config=mitigation_params.config,
+                checkpoint_dir=mitigation_params.checkpoint_dir,
+                checkpoint_interval=mitigation_params.checkpoint_interval,
+                eval_gates=mitigation_params.eval_gates,
+                halt_callback=mitigation_params.halt_callback,
+            )
         else:
             # Import TrainerParams for standard PPO
             from ztb.training.config.trainer_params import TrainerParams
 
             trainer_params = TrainerParams(
-                data_path=unified_config.get("data_path"),  # type: ignore[arg-type]
-                config=unified_config,  # type: ignore[arg-type]
+                data_path=unified_config.get("data_path"),
+                config=unified_config,
                 checkpoint_dir=unified_config.get("checkpoint_dir", "checkpoints"),
                 checkpoint_interval=checkpoint_interval,
                 progress_bar=self.progress_bar_enabled,
@@ -161,7 +170,14 @@ class PPOAlgorithmTrainer(EnsembleMixin):
 
             from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
 
-            return PPOTrainer(params=trainer_params)
+            return PPOTrainer(
+                data_path=trainer_params.data_path,
+                config=trainer_params.config,
+                checkpoint_dir=trainer_params.checkpoint_dir,
+                checkpoint_interval=trainer_params.checkpoint_interval,
+                eval_gates=trainer_params.eval_gates,
+                halt_callback=trainer_params.halt_callback,
+            )
 
     def _save_model_and_schema(
         self, model: Any, unified_config: Dict[str, Any]

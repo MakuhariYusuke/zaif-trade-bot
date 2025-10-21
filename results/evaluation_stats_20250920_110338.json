@@ -1,0 +1,37 @@
+{
+  "reward_stats": {
+    "mean_total_reward": "6893723.0",
+    "std_total_reward": "0.5",
+    "min_total_reward": "6893723.5",
+    "max_total_reward": "6893723.5",
+    "mean_step_reward": 689.3759885344743,
+    "total_reward_sum": "137874430.0"
+  },
+  "pnl_stats": {
+    "mean_total_pnl": "6893534.5",
+    "std_total_pnl": "0.5",
+    "min_total_pnl": "6893534.0",
+    "max_total_pnl": "6893534.0",
+    "total_pnl_sum": "137870700.0",
+    "sharpe_ratio": 10.0,
+    "sortino_ratio": Infinity,
+    "max_drawdown": 0.0,
+    "calmar_ratio": Infinity
+  },
+  "trading_stats": {
+    "total_trades": 200,
+    "mean_trades_per_episode": 10.0,
+    "position_change_rate": 0.00010001000100010001,
+    "hold_ratio": 0.999,
+    "buy_ratio": 0.001,
+    "sell_ratio": 0.0,
+    "min_trades_per_episode": 10,
+    "max_trades_per_episode": 10,
+    "hold_ratio_penalty": 0.9899999999999995
+  },
+  "episode_stats": {
+    "num_episodes": 20,
+    "mean_episode_length": 10000.0,
+    "total_steps": 200000
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "analysis_type": "reward_function_deep_analysis",
+  "test_scenarios": [
+    {
+      "pnl": 100.0,
+      "position": 0.01,
+      "old_position": 0.0,
+      "description": "BUY with profit"
+    },
+    {
+      "pnl": 100.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "description": "SELL with profit"
+    },
+    {
+      "pnl": 0.0,
+      "position": 0.01,
+      "old_position": 0.01,
+      "description": "HOLD with no change"
+    },
+    {
+      "pnl": -100.0,
+      "position": 0.01,
+      "old_position": 0.0,
+      "description": "BUY with loss"
+    },
+    {
+      "pnl": -100.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "description": "SELL with loss"
+    },
+    {
+      "pnl": 50.0,
+      "position": 0.02,
+      "old_position": 0.01,
+      "description": "Increase position with profit"
+    },
+    {
+      "pnl": 50.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "description": "Close position with profit"
+    }
+  ],
+  "results": [
+    {
+      "scenario": "BUY with profit",
+      "pnl": 100.0,
+      "position": 0.01,
+      "old_position": 0.0,
+      "buy_reward": 80.0,
+      "sell_reward": 80.0,
+      "hold_reward": 80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "SELL with profit",
+      "pnl": 100.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "buy_reward": 80.0,
+      "sell_reward": 80.0,
+      "hold_reward": 80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "HOLD with no change",
+      "pnl": 0.0,
+      "position": 0.01,
+      "old_position": 0.01,
+      "buy_reward": 5.0,
+      "sell_reward": 5.0,
+      "hold_reward": 5.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "BUY with loss",
+      "pnl": -100.0,
+      "position": 0.01,
+      "old_position": 0.0,
+      "buy_reward": -80.0,
+      "sell_reward": -80.0,
+      "hold_reward": -80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "SELL with loss",
+      "pnl": -100.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "buy_reward": -80.0,
+      "sell_reward": -80.0,
+      "hold_reward": -80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "Increase position with profit",
+      "pnl": 50.0,
+      "position": 0.02,
+      "old_position": 0.01,
+      "buy_reward": 80.0,
+      "sell_reward": 80.0,
+      "hold_reward": 80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    },
+    {
+      "scenario": "Close position with profit",
+      "pnl": 50.0,
+      "position": 0.0,
+      "old_position": 0.01,
+      "buy_reward": 80.0,
+      "sell_reward": 80.0,
+      "hold_reward": 80.0,
+      "buy_sell_diff": 0.0,
+      "sell_buy_diff": 0.0
+    }
+  ],
+  "summary": {
+    "total_scenarios": 7,
+    "biased_scenarios": 0,
+    "total_buy_bias": 0,
+    "total_sell_bias": 0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "correlation_id": "dummy",
+  "system": {
+    "python_version": "3.13.0",
+    "python_executable": "C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "os": "Windows",
+    "os_version": "10.0.26200",
+    "architecture": "AMD64",
+    "cpu_count": 8,
+    "cpu_model": "Windows CPU",
+    "hostname": "computer",
+    "random_seed": 42,
+    "timestamp": "2025-10-13T23:35:26.337831",
+    "timezone": "\u6771\u4eac (\u6a19\u6e96\u6642)",
+    "working_directory": "C:\\Users\\Admin\\dev\\zaif-trade-bot",
+    "environment_variables": {
+      "PATH": "C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\PROGRA~1\\JPKI;C:\\Program Files\\dotnet\\;C:\\Program Files\\nodejs\\;C...",
+      "LANG": "ja_JP.UTF-8"
+    }
+  },
+  "git": {
+    "sha": "dummy"
+  },
+  "run_config": {
+    "random_seed": 42
+  }
+}
