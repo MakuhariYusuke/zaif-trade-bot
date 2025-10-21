@@ -1,83 +1,60 @@
+# Logs, reports, and runtime artifacts
 logs/
-dist/
+reports/
+*.log
+stats*.json
+stats.svg
+price_cache*.json
+report-ml-*.csv
+report-ml-*.json
+
+# Environment and secrets
 .env
 .nonce_store
-/mypy_output*.txt
 
-# Dependencies
+# Python caches and builds
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv*/
+venv311/
+venv313/
+
+# Mypy/pytest/ruff caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend
 node_modules/
+package-lock.json
+pnpm-lock.yaml
 
 # Coverage reports
 coverage/
 coverage-*.json
-vitest-report.json
-vitest-report-*.json
 
-# Temp and cache directories
+# Temporary files
 tmp*/
-tmp-*/
-.tmp-*/
+.tmp*/
 *.tmp
 *.cache
 
-# Local IDE and positions
-.vscode/
-.positions/
+# Notebook checkpoints
+.ipynb_checkpoints/
 
-# Reports
-reports/
-
-# Local runtime artifacts
-*.log
-price_cache*.json
-stats*.json
-stats.svg
-report-ml-*.csv
-report-ml-*.json
-ml-*.csv
-ml-*.json
-trade-state.json
-trade-config.json
-node_modules
-
-# TypeScript legacy files (archived)
-typescript_legacy.zip
-node_modules
-
-# Python cache and build files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Large files and binaries
-*.whl
-*.tar.gz
-*.zip
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Model checkpoints and large data files
+# Model artifacts, checkpoints, and large binary files
 checkpoints/
 models/
+temp_model/
 *.pkl
 *.h5
 *.pb
@@ -85,17 +62,13 @@ models/
 *.pt
 *.pth
 
-# Test artifacts
-test_results/
-multimodal_system_test_results_*.json
+# Tensorboard
+tensorboard/
 
-# Virtual environments
-venv*/
-venv311/
-venv313/
+# Large/archived data
+data/*.csv
+data/*.zip
 
-# Large data files
-data/btc_jpy_extended_dataset.csv
-node_modules
-node_modules
-node_modules
+# Misc
+typescript_legacy.zip
+.positions/

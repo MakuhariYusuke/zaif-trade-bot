@@ -1,8 +1,24 @@
-# SAC v431: Advanced Learning Framework with Unified Analysis Integration
+# SAC v431.1: Enhanced Advanced Learning Framework with Market-Adaptive Rewards
 
 ## 概要
 
-SAC v431は、SAC v430のゼロトレード問題を解決し、v428のスティッキネス問題を克服するための次世代トレーディングAIフレームワークです。報酬関数をpenaltyベースからbonusベースに変更し、advanced learning技術（curriculum learning, multi-stage training, ensemble learning）を統合しています。
+SAC v431.1は、v431の改善版として、市場適応型報酬システムと拡張された学習フレームワークを導入しています。SidewaysおよびLow Volatility市場での性能向上を目的としています。
+
+## 主な改善点 (v431 → v431.1)
+
+### 🎯 市場適応型報酬システム
+- **Sideways市場対応**: HOLD報酬を1.5倍に強化
+- **High Volatility対応**: 取引報酬を1.2倍に強化
+- **Low Volatility対応**: 保守的な報酬設計
+
+### 🚀 拡張学習フレームワーク
+- **5段階カリキュラム**: warmup → foundation → specialization → optimization → refinement
+- **4段階マルチステージ**: exploration → exploitation → specialization → fine-tuning
+- **リスク管理統合**: 最大ドローダウン制限、ポジションサイジング
+
+### 📊 アクション閾値最適化
+- **狭いHOLD範囲**: -0.15〜0.15 (v431の-0.2〜0.2から狭く)
+- **適応型閾値**: 市場条件に応じた動的調整
 
 ## 主な改善点
 
@@ -21,10 +37,10 @@ SAC v431は、SAC v430のゼロトレード問題を解決し、v428のスティ
 
 | パラメータ | v430 | v431 | 変更 |
 |-----------|------|------|--------|
-| sell_bonus | N/A | 0.3524 | 追加 |
+| sell_bonus | N/A | 0.25 | 追加 (調整済み) |
 | hold_bonus | N/A | 0.0053 | 追加 |
 | sell_penalty | -0.3524 | N/A | 削除 |
-| buy_bonus | -0.4273 | N/A | 削除 |
+| buy_bonus | -0.4273 | 0.2 | 変更 (penalty→bonus) |
 | hold_penalty | 0.0053 | N/A | 削除 |
 
 ### アクション閾値

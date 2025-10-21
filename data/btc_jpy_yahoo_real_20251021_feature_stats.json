@@ -1,0 +1,14 @@
+{
+  "total_features": 118,
+  "selected_features": 79,
+  "regime_distribution": {
+    "sideways": 238,
+    "bull": 51,
+    "bear": 33,
+    "volatile": 30
+  },
+  "feature_types": {
+    "numeric": 117,
+    "categorical": 1
+  }
+}

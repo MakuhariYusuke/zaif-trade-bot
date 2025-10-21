@@ -30,8 +30,8 @@ from ztb.evaluation.logging import EvaluationLogger
 from ztb.features.base import CommonPreprocessor
 from ztb.utils.quality import QualityGates
 
-# 年間取引日数（一般的に252日）
-TRADING_DAYS_PER_YEAR = 252
+# 年間取引日数
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR # = 252
 
 
 class ParameterCombinationGenerator:

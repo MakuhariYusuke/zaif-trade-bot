@@ -373,7 +373,7 @@ class SACUtilities:
         return results
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="SAC Utilities Suite")
     parser.add_argument(
