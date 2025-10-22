@@ -7,18 +7,19 @@ V433 Online Learning Engine
 import asyncio
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple, Deque
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from collections import deque
+from pathlib import Path
+from typing import Any, Deque, Dict, List
+
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 from ztb.utils.logging_utils import get_logger
+
 
 # Dummy MarketDataStream for testing
 class MarketDataStream:
@@ -31,14 +32,18 @@ class MarketDataStream:
     async def get_latest_data(self):
         # Return dummy market data
         return None
-from ztb.training.adaptive_sac_core import AdaptiveSACCore, AdaptiveSACConfig
-from ztb.optimization.unified_optimizer import UnifiedOptimizer, OptimizationConfig
+
+
+from ztb.optimization.unified_optimizer import OptimizationConfig, UnifiedOptimizer
+from ztb.training.adaptive_sac_core import AdaptiveSACConfig, AdaptiveSACCore
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class OnlineLearningConfig:
     """オンライン学習設定"""
+
     # データストリーム設定
     stream_buffer_size: int = 10000
     data_update_interval: float = 1.0  # seconds
@@ -73,6 +78,7 @@ class OnlineLearningConfig:
 @dataclass
 class ExperienceTuple:
     """経験タプル"""
+
     observation: np.ndarray
     action: np.ndarray
     reward: float
@@ -85,6 +91,7 @@ class ExperienceTuple:
 @dataclass
 class LearningMetrics:
     """学習指標"""
+
     total_experiences: int = 0
     learning_steps: int = 0
     average_reward: float = 0.0
@@ -109,15 +116,17 @@ class ConceptDriftDetector:
         self.reward_history.append(reward)
 
         if len(self.reward_history) >= self.window_size // 2:
-            current_avg = np.mean(list(self.reward_history)[-self.window_size//2:])
-            baseline_avg = np.mean(list(self.reward_history)[:self.window_size//2])
+            current_avg = np.mean(list(self.reward_history)[-self.window_size // 2 :])
+            baseline_avg = np.mean(list(self.reward_history)[: self.window_size // 2])
 
             if baseline_avg > 0:
                 drift_ratio = abs(current_avg - baseline_avg) / abs(baseline_avg)
 
                 if drift_ratio > self.threshold and not self.drift_detected:
                     self.drift_detected = True
-                    logger.warning(f"Concept drift detected: {drift_ratio:.4f} > {self.threshold}")
+                    logger.warning(
+                        f"Concept drift detected: {drift_ratio:.4f} > {self.threshold}"
+                    )
                     return True
                 elif drift_ratio < self.threshold * 0.5:
                     self.drift_detected = False
@@ -127,7 +136,9 @@ class ConceptDriftDetector:
     def reset_baseline(self):
         """ベースラインをリセット"""
         if len(self.reward_history) >= self.window_size // 2:
-            self.baseline_reward = np.mean(list(self.reward_history)[:self.window_size//2])
+            self.baseline_reward = np.mean(
+                list(self.reward_history)[: self.window_size // 2]
+            )
         self.drift_detected = False
 
 
@@ -170,14 +181,12 @@ class OnlineExperienceBuffer:
                 len(self.buffer),
                 size=min(batch_size, len(self.buffer)),
                 p=probabilities,
-                replace=False
+                replace=False,
             )
         else:
             # ランダムサンプリング
             indices = np.random.choice(
-                len(self.buffer),
-                size=min(batch_size, len(self.buffer)),
-                replace=False
+                len(self.buffer), size=min(batch_size, len(self.buffer)), replace=False
             )
 
         return [self.buffer[i] for i in indices]
@@ -200,7 +209,7 @@ class OnlineExperienceBuffer:
             "min_reward": np.min(rewards),
             "max_reward": np.max(rewards),
             "avg_age_seconds": np.mean(ages),
-            "max_age_seconds": np.max(ages)
+            "max_age_seconds": np.max(ages),
         }
 
 
@@ -218,12 +227,11 @@ class OnlineLearningEngine:
         # コンポーネントの初期化
         self.market_data_stream = MarketDataStream()
         self.experience_buffer = OnlineExperienceBuffer(
-            max_size=config.experience_buffer_size,
-            prioritized=True
+            max_size=config.experience_buffer_size, prioritized=True
         )
         self.concept_drift_detector = ConceptDriftDetector(
             window_size=config.drift_detection_window,
-            threshold=config.concept_drift_threshold
+            threshold=config.concept_drift_threshold,
         )
         self.unified_optimizer = UnifiedOptimizer(OptimizationConfig())
 
@@ -305,7 +313,9 @@ class OnlineLearningEngine:
 
                 if market_data is not None:
                     # 経験を生成
-                    experiences = await self._generate_experiences_from_data(market_data)
+                    experiences = await self._generate_experiences_from_data(
+                        market_data
+                    )
 
                     # 経験をバッファに追加
                     with self.data_lock:
@@ -324,7 +334,9 @@ class OnlineLearningEngine:
                 self.logger.error(f"Data processing error: {e}")
                 await asyncio.sleep(5)
 
-    async def _generate_experiences_from_data(self, market_data: pd.DataFrame) -> List[ExperienceTuple]:
+    async def _generate_experiences_from_data(
+        self, market_data: pd.DataFrame
+    ) -> List[ExperienceTuple]:
         """市場データから経験を生成"""
         experiences = []
 
@@ -341,7 +353,9 @@ class OnlineLearningEngine:
                 current_obs = features.iloc[-1:].values
 
                 # 行動の予測
-                action, _ = self.adaptive_sac.sac_model.predict(current_obs, deterministic=False)
+                action, _ = self.adaptive_sac.sac_model.predict(
+                    current_obs, deterministic=False
+                )
 
                 # 報酬の計算（実際の取引結果に基づく）
                 reward = self._calculate_reward_from_market_data(processed_data, action)
@@ -358,7 +372,7 @@ class OnlineLearningEngine:
                 # 経験タプルの作成
                 experience = ExperienceTuple(
                     observation=current_obs.flatten(),
-                    action=action.flatten() if hasattr(action, 'flatten') else action,
+                    action=action.flatten() if hasattr(action, "flatten") else action,
                     reward=float(reward),
                     next_observation=next_obs.flatten(),
                     done=bool(done),
@@ -366,8 +380,10 @@ class OnlineLearningEngine:
                     metadata={
                         "market_data_shape": processed_data.shape,
                         "features_shape": features.shape,
-                        "data_timestamp": processed_data.index[-1] if len(processed_data) > 0 else None
-                    }
+                        "data_timestamp": processed_data.index[-1]
+                        if len(processed_data) > 0
+                        else None,
+                    },
                 )
 
                 experiences.append(experience)
@@ -383,7 +399,7 @@ class OnlineLearningEngine:
         processed = data.copy()
 
         # 欠損値処理
-        processed = processed.fillna(method='forward').fillna(0)
+        processed = processed.fillna(method="forward").fillna(0)
 
         # 異常値処理
         numeric_columns = processed.select_dtypes(include=[np.number]).columns
@@ -403,43 +419,45 @@ class OnlineLearningEngine:
         features = pd.DataFrame(index=data.index)
 
         # 価格ベースの特徴量
-        if 'close' in data.columns:
+        if "close" in data.columns:
             # 移動平均
-            features['sma_5'] = data['close'].rolling(5).mean()
-            features['sma_20'] = data['close'].rolling(20).mean()
+            features["sma_5"] = data["close"].rolling(5).mean()
+            features["sma_20"] = data["close"].rolling(20).mean()
 
             # RSI
-            delta = data['close'].diff()
+            delta = data["close"].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
             rs = gain / loss
-            features['rsi'] = 100 - (100 / (1 + rs))
+            features["rsi"] = 100 - (100 / (1 + rs))
 
             # MACD
-            ema_12 = data['close'].ewm(span=12).mean()
-            ema_26 = data['close'].ewm(span=26).mean()
-            features['macd'] = ema_12 - ema_26
-            features['macd_signal'] = features['macd'].ewm(span=9).mean()
+            ema_12 = data["close"].ewm(span=12).mean()
+            ema_26 = data["close"].ewm(span=26).mean()
+            features["macd"] = ema_12 - ema_26
+            features["macd_signal"] = features["macd"].ewm(span=9).mean()
 
         # 出来高ベースの特徴量
-        if 'volume' in data.columns:
-            features['volume_sma_5'] = data['volume'].rolling(5).mean()
-            features['volume_ratio'] = data['volume'] / features['volume_sma_5']
+        if "volume" in data.columns:
+            features["volume_sma_5"] = data["volume"].rolling(5).mean()
+            features["volume_ratio"] = data["volume"] / features["volume_sma_5"]
 
         # 欠損値を埋める
         features = features.fillna(0)
 
         return features
 
-    def _calculate_reward_from_market_data(self, data: pd.DataFrame, action: np.ndarray) -> float:
+    def _calculate_reward_from_market_data(
+        self, data: pd.DataFrame, action: np.ndarray
+    ) -> float:
         """市場データと行動から報酬を計算"""
         try:
             if len(data) < 2:
                 return 0.0
 
             # 価格変化に基づく報酬
-            current_price = data['close'].iloc[-1]
-            prev_price = data['close'].iloc[-2]
+            current_price = data["close"].iloc[-1]
+            prev_price = data["close"].iloc[-2]
             price_change = (current_price - prev_price) / prev_price
 
             # 行動の解釈（買い/売り/ホールド）
@@ -468,9 +486,12 @@ class OnlineLearningEngine:
         while not self.stop_event.is_set():
             try:
                 # 学習タイミングのチェック
-                if (len(self.experience_buffer) >= self.config.learning_batch_size and
-                    self.learning_metrics.total_experiences % self.config.learning_interval == 0):
-
+                if (
+                    len(self.experience_buffer) >= self.config.learning_batch_size
+                    and self.learning_metrics.total_experiences
+                    % self.config.learning_interval
+                    == 0
+                ):
                     with self.learning_lock:
                         self._perform_learning_update()
 
@@ -491,7 +512,9 @@ class OnlineLearningEngine:
 
             # ミニバッチ学習
             for _ in range(self.config.mini_batch_updates):
-                mini_batch = np.random.choice(batch, size=min(32, len(batch)), replace=False)
+                mini_batch = np.random.choice(
+                    batch, size=min(32, len(batch)), replace=False
+                )
 
                 # SACのオンライン学習
                 for exp in mini_batch:
@@ -500,7 +523,7 @@ class OnlineLearningEngine:
                         exp.action,
                         exp.reward,
                         exp.next_observation,
-                        exp.done
+                        exp.done,
                     )
 
             self.learning_metrics.learning_steps += 1
@@ -509,8 +532,10 @@ class OnlineLearningEngine:
             rewards = [exp.reward for exp in batch]
             self.learning_metrics.average_reward = np.mean(rewards)
 
-            self.logger.debug(f"Learning update completed: step {self.learning_metrics.learning_steps}, "
-                            f"avg_reward={self.learning_metrics.average_reward:.4f}")
+            self.logger.debug(
+                f"Learning update completed: step {self.learning_metrics.learning_steps}, "
+                f"avg_reward={self.learning_metrics.average_reward:.4f}"
+            )
 
         except Exception as e:
             self.logger.error(f"Learning update failed: {e}")
@@ -525,7 +550,7 @@ class OnlineLearningEngine:
         try:
             adaptation_result = self.unified_optimizer.adaptive_optimize(
                 current_performance={"score": 0.5},
-                market_regime="volatile"  # ドリフト時はvolatileと仮定
+                market_regime="volatile",  # ドリフト時はvolatileと仮定
             )
 
             # ドリフト検知器のリセット
@@ -545,13 +570,15 @@ class OnlineLearningEngine:
 
         try:
             # 大きなバッチで学習
-            emergency_batch_size = min(len(self.experience_buffer), self.config.learning_batch_size * 2)
+            emergency_batch_size = min(
+                len(self.experience_buffer), self.config.learning_batch_size * 2
+            )
             batch = self.experience_buffer.sample_batch(emergency_batch_size)
 
             # 並列学習
             tasks = []
             for i in range(0, len(batch), 32):
-                mini_batch = batch[i:i+32]
+                mini_batch = batch[i : i + 32]
                 task = self.executor.submit(self._process_emergency_batch, mini_batch)
                 tasks.append(task)
 
@@ -559,7 +586,9 @@ class OnlineLearningEngine:
             for task in tasks:
                 task.result(timeout=30)
 
-            self.logger.info(f"Emergency learning completed with {len(batch)} experiences")
+            self.logger.info(
+                f"Emergency learning completed with {len(batch)} experiences"
+            )
 
         except Exception as e:
             self.logger.error(f"Emergency learning failed: {e}")
@@ -568,11 +597,7 @@ class OnlineLearningEngine:
         """緊急バッチ処理"""
         for exp in batch:
             self.adaptive_sac.online_learn(
-                exp.observation,
-                exp.action,
-                exp.reward,
-                exp.next_observation,
-                exp.done
+                exp.observation, exp.action, exp.reward, exp.next_observation, exp.done
             )
 
     def _monitoring_loop(self):
@@ -597,19 +622,27 @@ class OnlineLearningEngine:
         try:
             # 学習効率の計算
             if self.learning_metrics.learning_steps > 0:
-                efficiency = (self.learning_metrics.average_reward /
-                            max(1, self.learning_metrics.learning_steps))
+                efficiency = self.learning_metrics.average_reward / max(
+                    1, self.learning_metrics.learning_steps
+                )
                 self.learning_metrics.learning_efficiency = efficiency
 
             # パフォーマンス履歴に追加
-            self.performance_history.append({
-                "timestamp": datetime.now(),
-                "metrics": self.learning_metrics.__dict__.copy()
-            })
+            self.performance_history.append(
+                {
+                    "timestamp": datetime.now(),
+                    "metrics": self.learning_metrics.__dict__.copy(),
+                }
+            )
 
             # 再訓練トリガーのチェック
-            if self.learning_metrics.learning_efficiency < self.config.emergency_retraining_threshold:
-                self.logger.warning("Emergency retraining triggered due to low efficiency")
+            if (
+                self.learning_metrics.learning_efficiency
+                < self.config.emergency_retraining_threshold
+            ):
+                self.logger.warning(
+                    "Emergency retraining triggered due to low efficiency"
+                )
                 # ここで再訓練をトリガー
 
         except Exception as e:
@@ -619,16 +652,21 @@ class OnlineLearningEngine:
         """リソース使用量チェック"""
         try:
             import psutil
+
             process = psutil.Process()
 
             memory_mb = process.memory_info().rss / 1024 / 1024
             cpu_percent = process.cpu_percent(interval=1)
 
             if memory_mb > self.config.memory_limit_mb:
-                self.logger.warning(f"Memory usage high: {memory_mb:.1f}MB > {self.config.memory_limit_mb}MB")
+                self.logger.warning(
+                    f"Memory usage high: {memory_mb:.1f}MB > {self.config.memory_limit_mb}MB"
+                )
 
             if cpu_percent > self.config.cpu_limit_percent:
-                self.logger.warning(f"CPU usage high: {cpu_percent:.1f}% > {self.config.cpu_limit_percent}%")
+                self.logger.warning(
+                    f"CPU usage high: {cpu_percent:.1f}% > {self.config.cpu_limit_percent}%"
+                )
 
         except ImportError:
             pass  # psutilが利用できない場合
@@ -660,11 +698,14 @@ class OnlineLearningEngine:
 
             # 学習状態のバックアップ
             state_backup = backup_dir / f"learning_state_{timestamp}.pkl"
-            torch.save({
-                "metrics": self.learning_metrics.__dict__,
-                "performance_history": list(self.performance_history),
-                "config": self.config.__dict__
-            }, state_backup)
+            torch.save(
+                {
+                    "metrics": self.learning_metrics.__dict__,
+                    "performance_history": list(self.performance_history),
+                    "config": self.config.__dict__,
+                },
+                state_backup,
+            )
 
             # 古いバックアップの削除
             self._cleanup_old_backups(backup_dir)
@@ -677,6 +718,7 @@ class OnlineLearningEngine:
     def _perform_backup_sync(self):
         """同期バックアップ実行"""
         import asyncio
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -706,12 +748,13 @@ class OnlineLearningEngine:
             "buffer_stats": self.experience_buffer.get_statistics(),
             "performance_history_size": len(self.performance_history),
             "concept_drift_events": self.learning_metrics.concept_drift_events,
-            "adaptation_events": self.learning_metrics.adaptation_events
+            "adaptation_events": self.learning_metrics.adaptation_events,
         }
 
 
-def create_online_learning_engine(config: OnlineLearningConfig = None,
-                                adaptive_sac: AdaptiveSACCore = None) -> OnlineLearningEngine:
+def create_online_learning_engine(
+    config: OnlineLearningConfig = None, adaptive_sac: AdaptiveSACCore = None
+) -> OnlineLearningEngine:
     """OnlineLearningEngineのファクトリ関数"""
     if config is None:
         config = OnlineLearningConfig()
@@ -732,7 +775,7 @@ async def example_usage():
         stream_buffer_size=5000,
         learning_batch_size=32,
         experience_buffer_size=10000,
-        adaptation_threshold=0.15
+        adaptation_threshold=0.15,
     )
 
     # AdaptiveSACの作成

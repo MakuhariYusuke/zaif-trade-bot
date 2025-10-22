@@ -20,6 +20,10 @@ sys.path.insert(0, str(project_root))
 
 from ztb.optimization.diverse_learning_methods import DiverseLearningMethods
 from ztb.trading.backtest.runner import BacktestEngine
+from ztb.trading.environment.constants import (
+    CONTINUOUS_TO_DISCRETE_THRESHOLD,
+    CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG,
+)
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 
@@ -46,10 +50,13 @@ class SACTrainingExecutor:
         # 対称アクション変換の設定
         self.config["action_conversion"] = {
             "symmetric_thresholds": True,
-            "action_threshold": 0.3333,
-            "buy_threshold": 0.3333,
-            "sell_threshold": -0.3333,
-            "hold_range": [-0.3333, 0.3333],
+            "action_threshold": CONTINUOUS_TO_DISCRETE_THRESHOLD,
+            "buy_threshold": CONTINUOUS_TO_DISCRETE_THRESHOLD,
+            "sell_threshold": CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG,
+            "hold_range": [
+                -CONTINUOUS_TO_DISCRETE_THRESHOLD,
+                CONTINUOUS_TO_DISCRETE_THRESHOLD,
+            ],
         }
 
         # 報酬関数の拡張設定

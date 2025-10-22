@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\data\stream_buffer.py
+# hypothesis_version: 6.140.3
+
+[2000, '_compressed', '_df', 'buffer is empty', 'compression', 'gzip', 'lz4', 'rows', 'zlib', 'zstd']

@@ -6,13 +6,15 @@ SAC v431 Ensemble Learning Script
 
 import json
 import sys
-from pathlib import Path
-import numpy as np
 import time
+from pathlib import Path
+
+import numpy as np
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
 
 def train_specialized_model(specialization, base_config):
     """Train a specialized model for specific market conditions"""
@@ -24,39 +26,39 @@ def train_specialized_model(specialization, base_config):
 
     if specialization == "bull":
         # Bull market: favor BUY actions
-        model_config['reward_function']['buy_bonus'] = 0.4
-        model_config['reward_function']['sell_bonus'] = 0.2
-        model_config['reward_function']['hold_bonus'] = 0.001
+        model_config["reward_function"]["buy_bonus"] = 0.4
+        model_config["reward_function"]["sell_bonus"] = 0.2
+        model_config["reward_function"]["hold_bonus"] = 0.001
         print("Bull market specialization: Higher BUY rewards")
     elif specialization == "bear":
         # Bear market: favor SELL actions
-        model_config['reward_function']['sell_bonus'] = 0.4
-        model_config['reward_function']['buy_bonus'] = 0.2
-        model_config['reward_function']['hold_bonus'] = 0.001
+        model_config["reward_function"]["sell_bonus"] = 0.4
+        model_config["reward_function"]["buy_bonus"] = 0.2
+        model_config["reward_function"]["hold_bonus"] = 0.001
         print("Bear market specialization: Higher SELL rewards")
     elif specialization == "sideways":
         # Sideways market: favor HOLD actions
-        model_config['reward_function']['hold_bonus'] = 0.1
-        model_config['reward_function']['buy_bonus'] = 0.15
-        model_config['reward_function']['sell_bonus'] = 0.15
+        model_config["reward_function"]["hold_bonus"] = 0.1
+        model_config["reward_function"]["buy_bonus"] = 0.15
+        model_config["reward_function"]["sell_bonus"] = 0.15
         print("Sideways market specialization: Higher HOLD rewards")
     elif specialization == "high_vol":
         # High volatility: encourage active trading
-        model_config['reward_function']['buy_bonus'] = 0.35
-        model_config['reward_function']['sell_bonus'] = 0.35
-        model_config['reward_function']['hold_bonus'] = 0.001
+        model_config["reward_function"]["buy_bonus"] = 0.35
+        model_config["reward_function"]["sell_bonus"] = 0.35
+        model_config["reward_function"]["hold_bonus"] = 0.001
         # Narrower thresholds for more active trading
-        model_config['action_thresholds']['sell_threshold'] = -0.1
-        model_config['action_thresholds']['buy_threshold'] = 0.1
+        model_config["action_thresholds"]["sell_threshold"] = -0.1
+        model_config["action_thresholds"]["buy_threshold"] = 0.1
         print("High volatility specialization: Active trading, narrow thresholds")
     elif specialization == "low_vol":
         # Low volatility: favor stability
-        model_config['reward_function']['hold_bonus'] = 0.05
-        model_config['reward_function']['buy_bonus'] = 0.2
-        model_config['reward_function']['sell_bonus'] = 0.2
+        model_config["reward_function"]["hold_bonus"] = 0.05
+        model_config["reward_function"]["buy_bonus"] = 0.2
+        model_config["reward_function"]["sell_bonus"] = 0.2
         # Wider thresholds for more conservative trading
-        model_config['action_thresholds']['sell_threshold'] = -0.3
-        model_config['action_thresholds']['buy_threshold'] = 0.3
+        model_config["action_thresholds"]["sell_threshold"] = -0.3
+        model_config["action_thresholds"]["buy_threshold"] = 0.3
         print("Low volatility specialization: Conservative trading, wide thresholds")
 
     # Simulate training for this specialized model
@@ -65,11 +67,11 @@ def train_specialized_model(specialization, base_config):
     total_reward = 0
 
     # Get parameters
-    sell_bonus = model_config['reward_function']['sell_bonus']
-    hold_bonus = model_config['reward_function']['hold_bonus']
-    buy_bonus = model_config['reward_function']['buy_bonus']
-    sell_threshold = model_config['action_thresholds']['sell_threshold']
-    buy_threshold = model_config['action_thresholds']['buy_threshold']
+    sell_bonus = model_config["reward_function"]["sell_bonus"]
+    hold_bonus = model_config["reward_function"]["hold_bonus"]
+    buy_bonus = model_config["reward_function"]["buy_bonus"]
+    sell_threshold = model_config["action_thresholds"]["sell_threshold"]
+    buy_threshold = model_config["action_thresholds"]["buy_threshold"]
 
     print(f"Rewards: BUY={buy_bonus}, SELL={sell_bonus}, HOLD={hold_bonus}")
     print(f"Thresholds: SELL={sell_threshold}, BUY={buy_threshold}")
@@ -121,13 +123,14 @@ def train_specialized_model(specialization, base_config):
         print(".1f")
 
     return {
-        'specialization': specialization,
-        'timesteps': timesteps,
-        'total_reward': total_reward,
-        'avg_reward': total_reward/timesteps,
-        'action_distribution': actions_taken,
-        'config': model_config
+        "specialization": specialization,
+        "timesteps": timesteps,
+        "total_reward": total_reward,
+        "avg_reward": total_reward / timesteps,
+        "action_distribution": actions_taken,
+        "config": model_config,
     }
+
 
 def run_ensemble_training():
     """Run ensemble training with 5 specialized models"""
@@ -157,8 +160,8 @@ def run_ensemble_training():
     print(f"Models Trained: {len(ensemble_results)}")
 
     # Ensemble performance summary
-    total_reward = sum(r['total_reward'] for r in ensemble_results)
-    avg_reward = total_reward / sum(r['timesteps'] for r in ensemble_results)
+    total_reward = sum(r["total_reward"] for r in ensemble_results)
+    avg_reward = total_reward / sum(r["timesteps"] for r in ensemble_results)
 
     print(f"Total Ensemble Reward: {total_reward:.2f}")
     print(".4f")
@@ -166,11 +169,11 @@ def run_ensemble_training():
     # Specialization comparison
     print("\nModel Performance by Specialization:")
     for result in ensemble_results:
-        spec = result['specialization']
-        avg_r = result['avg_reward']
-        buy_pct = (result['action_distribution']['BUY'] / result['timesteps']) * 100
-        sell_pct = (result['action_distribution']['SELL'] / result['timesteps']) * 100
-        hold_pct = (result['action_distribution']['HOLD'] / result['timesteps']) * 100
+        spec = result["specialization"]
+        avg_r = result["avg_reward"]
+        buy_pct = (result["action_distribution"]["BUY"] / result["timesteps"]) * 100
+        sell_pct = (result["action_distribution"]["SELL"] / result["timesteps"]) * 100
+        hold_pct = (result["action_distribution"]["HOLD"] / result["timesteps"]) * 100
         print(".4f")
 
     # Voting mechanism simulation
@@ -185,8 +188,8 @@ def run_ensemble_training():
         # Get predictions from all models
         model_predictions = []
         for result in ensemble_results:
-            spec = result['specialization']
-            config = result['config']
+            spec = result["specialization"]
+            config = result["config"]
 
             # Simulate model prediction based on specialization
             if spec == "bull":
@@ -232,6 +235,7 @@ def run_ensemble_training():
     print("1. Run multi-stage training (exploration → exploitation → fine-tuning)")
     print("2. Perform comprehensive backtesting with ensemble model")
     print("3. Evaluate real-world performance and risk metrics")
+
 
 if __name__ == "__main__":
     run_ensemble_training()

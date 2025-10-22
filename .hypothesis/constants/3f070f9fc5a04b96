@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\observability.py
+# hypothesis_version: 6.140.3
+
+['artifacts', 'correlation_id', 'event', 'exception', 'extra', 'level', 'message', 'name', 'payload', 'timestamp', 'utf-8', 'w']

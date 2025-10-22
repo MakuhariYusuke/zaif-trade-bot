@@ -5,32 +5,31 @@ V433 Phase 5: Emergency Control Layer - Emergency Stop
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
 import threading
 import time
-import signal
-import sys
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 class EmergencyStopLevel(Enum):
     """緊急停止レベル"""
-    WARNING = "warning"      # 警告（一部機能停止）
-    CRITICAL = "critical"    # 重要（主要機能停止）
-    SEVERE = "severe"       # 重大（全機能停止）
+
+    WARNING = "warning"  # 警告（一部機能停止）
+    CRITICAL = "critical"  # 重要（主要機能停止）
+    SEVERE = "severe"  # 重大（全機能停止）
     CATASTROPHIC = "catastrophic"  # 壊滅的（完全停止）
 
 
 class EmergencyStopTrigger(Enum):
     """緊急停止トリガー"""
-    MANUAL = "manual"                    # 手動
-    SYSTEM_FAILURE = "system_failure"    # システム障害
+
+    MANUAL = "manual"  # 手動
+    SYSTEM_FAILURE = "system_failure"  # システム障害
     SECURITY_BREACH = "security_breach"  # セキュリティ侵害
     DATA_CORRUPTION = "data_corruption"  # データ破損
     EXTERNAL_THREAT = "external_threat"  # 外部脅威
@@ -40,19 +39,21 @@ class EmergencyStopTrigger(Enum):
 
 class SystemComponent(Enum):
     """システムコンポーネント"""
-    TRADING_ENGINE = "trading_engine"        # 取引エンジン
-    MARKET_DATA = "market_data"             # 市場データ
-    RISK_MANAGER = "risk_manager"           # リスクマネージャー
-    PORTFOLIO_MANAGER = "portfolio_manager" # ポートフォリオマネージャー
-    ORDER_MANAGER = "order_manager"         # オーダーマネージャー
-    DATABASE = "database"                   # データベース
-    NETWORK = "network"                     # ネットワーク
-    MONITORING = "monitoring"              # 監視システム
+
+    TRADING_ENGINE = "trading_engine"  # 取引エンジン
+    MARKET_DATA = "market_data"  # 市場データ
+    RISK_MANAGER = "risk_manager"  # リスクマネージャー
+    PORTFOLIO_MANAGER = "portfolio_manager"  # ポートフォリオマネージャー
+    ORDER_MANAGER = "order_manager"  # オーダーマネージャー
+    DATABASE = "database"  # データベース
+    NETWORK = "network"  # ネットワーク
+    MONITORING = "monitoring"  # 監視システム
 
 
 @dataclass
 class EmergencyStopAction:
     """緊急停止アクション"""
+
     action_id: str
     component: SystemComponent
     action_type: str  # 'stop', 'pause', 'isolate', 'shutdown'
@@ -64,6 +65,7 @@ class EmergencyStopAction:
 @dataclass
 class EmergencyStopEvent:
     """緊急停止イベント"""
+
     event_id: str
     timestamp: datetime
     trigger: EmergencyStopTrigger
@@ -77,6 +79,7 @@ class EmergencyStopEvent:
 @dataclass
 class EmergencyStopPlan:
     """緊急停止プラン"""
+
     plan_id: str
     level: EmergencyStopLevel
     name: str
@@ -122,7 +125,9 @@ class EmergencyStop:
 
         # コールバック
         self.stop_callbacks: List[Callable[[EmergencyStopEvent], Awaitable[None]]] = []
-        self.recovery_callbacks: List[Callable[[EmergencyStopEvent], Awaitable[None]]] = []
+        self.recovery_callbacks: List[
+            Callable[[EmergencyStopEvent], Awaitable[None]]
+        ] = []
 
         # モニタリング
         self.monitoring_active = False
@@ -142,10 +147,14 @@ class EmergencyStop:
             name="Warning Level Stop",
             description="一部機能の停止",
             actions=[
-                EmergencyStopAction("action_pause_trading", SystemComponent.TRADING_ENGINE, "pause", 1),
-                EmergencyStopAction("action_reduce_market_data", SystemComponent.MARKET_DATA, "pause", 2),
+                EmergencyStopAction(
+                    "action_pause_trading", SystemComponent.TRADING_ENGINE, "pause", 1
+                ),
+                EmergencyStopAction(
+                    "action_reduce_market_data", SystemComponent.MARKET_DATA, "pause", 2
+                ),
             ],
-            estimated_duration_seconds=30
+            estimated_duration_seconds=30,
         )
 
         # 重要レベル
@@ -155,11 +164,20 @@ class EmergencyStop:
             name="Critical Level Stop",
             description="主要機能の停止",
             actions=[
-                EmergencyStopAction("action_stop_trading", SystemComponent.TRADING_ENGINE, "stop", 1),
-                EmergencyStopAction("action_stop_orders", SystemComponent.ORDER_MANAGER, "stop", 2),
-                EmergencyStopAction("action_isolate_portfolio", SystemComponent.PORTFOLIO_MANAGER, "isolate", 3),
+                EmergencyStopAction(
+                    "action_stop_trading", SystemComponent.TRADING_ENGINE, "stop", 1
+                ),
+                EmergencyStopAction(
+                    "action_stop_orders", SystemComponent.ORDER_MANAGER, "stop", 2
+                ),
+                EmergencyStopAction(
+                    "action_isolate_portfolio",
+                    SystemComponent.PORTFOLIO_MANAGER,
+                    "isolate",
+                    3,
+                ),
             ],
-            estimated_duration_seconds=60
+            estimated_duration_seconds=60,
         )
 
         # 重大レベル
@@ -169,14 +187,29 @@ class EmergencyStop:
             name="Severe Level Stop",
             description="全機能の停止",
             actions=[
-                EmergencyStopAction("action_stop_all_trading", SystemComponent.TRADING_ENGINE, "stop", 1),
-                EmergencyStopAction("action_stop_market_data", SystemComponent.MARKET_DATA, "stop", 2),
-                EmergencyStopAction("action_stop_risk_manager", SystemComponent.RISK_MANAGER, "stop", 3),
-                EmergencyStopAction("action_stop_portfolio", SystemComponent.PORTFOLIO_MANAGER, "stop", 4),
-                EmergencyStopAction("action_stop_orders", SystemComponent.ORDER_MANAGER, "stop", 5),
-                EmergencyStopAction("action_isolate_database", SystemComponent.DATABASE, "isolate", 6),
+                EmergencyStopAction(
+                    "action_stop_all_trading", SystemComponent.TRADING_ENGINE, "stop", 1
+                ),
+                EmergencyStopAction(
+                    "action_stop_market_data", SystemComponent.MARKET_DATA, "stop", 2
+                ),
+                EmergencyStopAction(
+                    "action_stop_risk_manager", SystemComponent.RISK_MANAGER, "stop", 3
+                ),
+                EmergencyStopAction(
+                    "action_stop_portfolio",
+                    SystemComponent.PORTFOLIO_MANAGER,
+                    "stop",
+                    4,
+                ),
+                EmergencyStopAction(
+                    "action_stop_orders", SystemComponent.ORDER_MANAGER, "stop", 5
+                ),
+                EmergencyStopAction(
+                    "action_isolate_database", SystemComponent.DATABASE, "isolate", 6
+                ),
             ],
-            estimated_duration_seconds=120
+            estimated_duration_seconds=120,
         )
 
         # 壊滅的レベル
@@ -186,23 +219,51 @@ class EmergencyStop:
             name="Catastrophic Level Stop",
             description="完全システム停止",
             actions=[
-                EmergencyStopAction("action_shutdown_all", SystemComponent.TRADING_ENGINE, "shutdown", 1),
-                EmergencyStopAction("action_shutdown_market_data", SystemComponent.MARKET_DATA, "shutdown", 2),
-                EmergencyStopAction("action_shutdown_risk", SystemComponent.RISK_MANAGER, "shutdown", 3),
-                EmergencyStopAction("action_shutdown_portfolio", SystemComponent.PORTFOLIO_MANAGER, "shutdown", 4),
-                EmergencyStopAction("action_shutdown_orders", SystemComponent.ORDER_MANAGER, "shutdown", 5),
-                EmergencyStopAction("action_shutdown_database", SystemComponent.DATABASE, "shutdown", 6),
-                EmergencyStopAction("action_shutdown_network", SystemComponent.NETWORK, "shutdown", 7),
-                EmergencyStopAction("action_shutdown_monitoring", SystemComponent.MONITORING, "shutdown", 8),
+                EmergencyStopAction(
+                    "action_shutdown_all", SystemComponent.TRADING_ENGINE, "shutdown", 1
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_market_data",
+                    SystemComponent.MARKET_DATA,
+                    "shutdown",
+                    2,
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_risk", SystemComponent.RISK_MANAGER, "shutdown", 3
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_portfolio",
+                    SystemComponent.PORTFOLIO_MANAGER,
+                    "shutdown",
+                    4,
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_orders",
+                    SystemComponent.ORDER_MANAGER,
+                    "shutdown",
+                    5,
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_database", SystemComponent.DATABASE, "shutdown", 6
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_network", SystemComponent.NETWORK, "shutdown", 7
+                ),
+                EmergencyStopAction(
+                    "action_shutdown_monitoring",
+                    SystemComponent.MONITORING,
+                    "shutdown",
+                    8,
+                ),
             ],
-            estimated_duration_seconds=300
+            estimated_duration_seconds=300,
         )
 
         self.stop_plans = {
             EmergencyStopLevel.WARNING: warning_plan,
             EmergencyStopLevel.CRITICAL: critical_plan,
             EmergencyStopLevel.SEVERE: severe_plan,
-            EmergencyStopLevel.CATASTROPHIC: catastrophic_plan
+            EmergencyStopLevel.CATASTROPHIC: catastrophic_plan,
         }
 
     def _initialize_component_states(self) -> None:
@@ -210,8 +271,13 @@ class EmergencyStop:
         for component in SystemComponent:
             self.component_states[component] = "running"
 
-    async def trigger_emergency_stop(self, level: EmergencyStopLevel, trigger: EmergencyStopTrigger,
-                                   reason: str, triggered_by: str = "system") -> EmergencyStopEvent:
+    async def trigger_emergency_stop(
+        self,
+        level: EmergencyStopLevel,
+        trigger: EmergencyStopTrigger,
+        reason: str,
+        triggered_by: str = "system",
+    ) -> EmergencyStopEvent:
         """
         緊急停止トリガー
 
@@ -240,7 +306,7 @@ class EmergencyStop:
             trigger=trigger,
             level=level,
             reason=reason,
-            triggered_by=triggered_by
+            triggered_by=triggered_by,
         )
 
         self.stop_events.append(event)
@@ -320,7 +386,9 @@ class EmergencyStop:
         if overall_success:
             self.logger.critical("Emergency stop plan completed successfully")
         else:
-            self.logger.critical(f"Emergency stop plan completed with failures: {success_count}/{len(sorted_actions)} actions succeeded")
+            self.logger.critical(
+                f"Emergency stop plan completed with failures: {success_count}/{len(sorted_actions)} actions succeeded"
+            )
 
         return overall_success
 
@@ -360,6 +428,7 @@ class EmergencyStop:
 
             # 稀に失敗をシミュレート
             import random
+
             if random.random() < 0.05:  # 5%の確率
                 raise Exception(f"Simulated failure in {action.action_id}")
 
@@ -369,7 +438,9 @@ class EmergencyStop:
             self.logger.error(f"Stop action failed: {action.action_id} - {e}")
             return False
 
-    async def initiate_recovery(self, event_id: str, recovered_by: str = "system") -> bool:
+    async def initiate_recovery(
+        self, event_id: str, recovered_by: str = "system"
+    ) -> bool:
         """
         復旧開始
 
@@ -457,10 +528,14 @@ class EmergencyStop:
                     self.component_states[action.component] = "running"
                     success_count += 1
                 else:
-                    self.logger.error(f"Recovery action failed: {action.rollback_action}")
+                    self.logger.error(
+                        f"Recovery action failed: {action.rollback_action}"
+                    )
 
             except Exception as e:
-                self.logger.error(f"Recovery action error: {action.rollback_action} - {e}")
+                self.logger.error(
+                    f"Recovery action error: {action.rollback_action} - {e}"
+                )
 
         # 全体の成功判定
         success_rate = success_count / len(recovery_actions) if recovery_actions else 1
@@ -489,8 +564,13 @@ class EmergencyStop:
             self.logger.error(f"Recovery action failed: {action.action_id} - {e}")
             return False
 
-    def add_auto_trigger_condition(self, condition_id: str, condition_func: Callable[[], bool],
-                                 trigger_level: EmergencyStopLevel, reason: str) -> None:
+    def add_auto_trigger_condition(
+        self,
+        condition_id: str,
+        condition_func: Callable[[], bool],
+        trigger_level: EmergencyStopLevel,
+        reason: str,
+    ) -> None:
         """
         自動トリガー条件追加
 
@@ -501,9 +581,9 @@ class EmergencyStop:
             reason: 理由
         """
         self.auto_trigger_conditions[condition_id] = {
-            'func': condition_func,
-            'level': trigger_level,
-            'reason': reason
+            "func": condition_func,
+            "level": trigger_level,
+            "reason": reason,
         }
 
         self.logger.info(f"Auto trigger condition added: {condition_id}")
@@ -530,14 +610,18 @@ class EmergencyStop:
 
         for condition_id, condition_data in self.auto_trigger_conditions.items():
             try:
-                if condition_data['func']():
-                    triggered_conditions.append({
-                        'condition_id': condition_id,
-                        'level': condition_data['level'],
-                        'reason': condition_data['reason']
-                    })
+                if condition_data["func"]():
+                    triggered_conditions.append(
+                        {
+                            "condition_id": condition_id,
+                            "level": condition_data["level"],
+                            "reason": condition_data["reason"],
+                        }
+                    )
             except Exception as e:
-                self.logger.error(f"Auto trigger condition check error for {condition_id}: {e}")
+                self.logger.error(
+                    f"Auto trigger condition check error for {condition_id}: {e}"
+                )
 
         return triggered_conditions
 
@@ -549,13 +633,19 @@ class EmergencyStop:
             Dict[str, Any]: システム状態
         """
         return {
-            'system_name': self.system_name,
-            'emergency_stop_active': self.is_emergency_stop_active,
-            'current_stop_level': self.current_stop_level.value if self.current_stop_level else None,
-            'stop_timestamp': self.stop_timestamp.isoformat() if self.stop_timestamp else None,
-            'component_states': {comp.value: state for comp, state in self.component_states.items()},
-            'active_auto_conditions': len(self.auto_trigger_conditions),
-            'total_stop_events': len(self.stop_events)
+            "system_name": self.system_name,
+            "emergency_stop_active": self.is_emergency_stop_active,
+            "current_stop_level": self.current_stop_level.value
+            if self.current_stop_level
+            else None,
+            "stop_timestamp": self.stop_timestamp.isoformat()
+            if self.stop_timestamp
+            else None,
+            "component_states": {
+                comp.value: state for comp, state in self.component_states.items()
+            },
+            "active_auto_conditions": len(self.auto_trigger_conditions),
+            "total_stop_events": len(self.stop_events),
         }
 
     def get_stop_events(self, limit: Optional[int] = None) -> List[EmergencyStopEvent]:
@@ -573,7 +663,9 @@ class EmergencyStop:
             events = events[-limit:]
         return events
 
-    def cancel_emergency_stop(self, event_id: str, cancelled_by: str = "system") -> bool:
+    def cancel_emergency_stop(
+        self, event_id: str, cancelled_by: str = "system"
+    ) -> bool:
         """
         緊急停止キャンセル
 
@@ -587,7 +679,9 @@ class EmergencyStop:
         for event in self.stop_events:
             if event.event_id == event_id and event.status == "active":
                 event.status = "cancelled"
-                event.actions_taken.append(f"CANCELLED by {cancelled_by} at {datetime.now().isoformat()}")
+                event.actions_taken.append(
+                    f"CANCELLED by {cancelled_by} at {datetime.now().isoformat()}"
+                )
 
                 self.is_emergency_stop_active = False
                 self.current_stop_level = None
@@ -604,7 +698,9 @@ class EmergencyStop:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Emergency stop monitoring started")
@@ -625,12 +721,14 @@ class EmergencyStop:
                 triggered_conditions = self.check_auto_trigger_conditions()
 
                 for condition in triggered_conditions:
-                    asyncio.run(self.trigger_emergency_stop(
-                        level=condition['level'],
-                        trigger=EmergencyStopTrigger.SYSTEM_FAILURE,
-                        reason=f"Auto trigger: {condition['condition_id']} - {condition['reason']}",
-                        triggered_by="auto_monitor"
-                    ))
+                    asyncio.run(
+                        self.trigger_emergency_stop(
+                            level=condition["level"],
+                            trigger=EmergencyStopTrigger.SYSTEM_FAILURE,
+                            reason=f"Auto trigger: {condition['condition_id']} - {condition['reason']}",
+                            triggered_by="auto_monitor",
+                        )
+                    )
 
                 time.sleep(10)  # 10秒間隔
 
@@ -638,7 +736,9 @@ class EmergencyStop:
                 self.logger.error(f"Monitoring loop error: {e}")
                 time.sleep(10)
 
-    def add_stop_callback(self, callback: Callable[[EmergencyStopEvent], Awaitable[None]]) -> None:
+    def add_stop_callback(
+        self, callback: Callable[[EmergencyStopEvent], Awaitable[None]]
+    ) -> None:
         """
         停止コールバック追加
 
@@ -647,7 +747,9 @@ class EmergencyStop:
         """
         self.stop_callbacks.append(callback)
 
-    def add_recovery_callback(self, callback: Callable[[EmergencyStopEvent], Awaitable[None]]) -> None:
+    def add_recovery_callback(
+        self, callback: Callable[[EmergencyStopEvent], Awaitable[None]]
+    ) -> None:
         """
         復旧コールバック追加
 
@@ -664,35 +766,41 @@ class EmergencyStop:
             filepath: 保存ファイルパス
         """
         state = {
-            'system_name': self.system_name,
-            'is_emergency_stop_active': self.is_emergency_stop_active,
-            'current_stop_level': self.current_stop_level.value if self.current_stop_level else None,
-            'stop_timestamp': self.stop_timestamp.isoformat() if self.stop_timestamp else None,
-            'component_states': {comp.value: state for comp, state in self.component_states.items()},
-            'stop_events': [
+            "system_name": self.system_name,
+            "is_emergency_stop_active": self.is_emergency_stop_active,
+            "current_stop_level": self.current_stop_level.value
+            if self.current_stop_level
+            else None,
+            "stop_timestamp": self.stop_timestamp.isoformat()
+            if self.stop_timestamp
+            else None,
+            "component_states": {
+                comp.value: state for comp, state in self.component_states.items()
+            },
+            "stop_events": [
                 {
-                    'event_id': e.event_id,
-                    'timestamp': e.timestamp.isoformat(),
-                    'trigger': e.trigger.value,
-                    'level': e.level.value,
-                    'reason': e.reason,
-                    'triggered_by': e.triggered_by,
-                    'actions_taken': e.actions_taken,
-                    'status': e.status
+                    "event_id": e.event_id,
+                    "timestamp": e.timestamp.isoformat(),
+                    "trigger": e.trigger.value,
+                    "level": e.level.value,
+                    "reason": e.reason,
+                    "triggered_by": e.triggered_by,
+                    "actions_taken": e.actions_taken,
+                    "status": e.status,
                 }
                 for e in self.stop_events[-20:]  # 最新20件
             ],
-            'auto_trigger_conditions': {
+            "auto_trigger_conditions": {
                 cond_id: {
-                    'level': cond_data['level'].value,
-                    'reason': cond_data['reason']
+                    "level": cond_data["level"].value,
+                    "reason": cond_data["reason"],
                 }
                 for cond_id, cond_data in self.auto_trigger_conditions.items()
-            }
+            },
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Emergency stop state saved to {filepath}")
@@ -708,42 +816,50 @@ class EmergencyStop:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.system_name = state['system_name']
-            self.is_emergency_stop_active = state['is_emergency_stop_active']
-            self.current_stop_level = EmergencyStopLevel(state['current_stop_level']) if state['current_stop_level'] else None
-            self.stop_timestamp = datetime.fromisoformat(state['stop_timestamp']) if state['stop_timestamp'] else None
+            self.system_name = state["system_name"]
+            self.is_emergency_stop_active = state["is_emergency_stop_active"]
+            self.current_stop_level = (
+                EmergencyStopLevel(state["current_stop_level"])
+                if state["current_stop_level"]
+                else None
+            )
+            self.stop_timestamp = (
+                datetime.fromisoformat(state["stop_timestamp"])
+                if state["stop_timestamp"]
+                else None
+            )
 
             # コンポーネント状態復元
             self.component_states = {}
-            for comp_str, comp_state in state.get('component_states', {}).items():
+            for comp_str, comp_state in state.get("component_states", {}).items():
                 self.component_states[SystemComponent(comp_str)] = comp_state
 
             # 停止イベント復元
             self.stop_events = []
-            for e_data in state.get('stop_events', []):
+            for e_data in state.get("stop_events", []):
                 event = EmergencyStopEvent(
-                    event_id=e_data['event_id'],
-                    timestamp=datetime.fromisoformat(e_data['timestamp']),
-                    trigger=EmergencyStopTrigger(e_data['trigger']),
-                    level=EmergencyStopLevel(e_data['level']),
-                    reason=e_data['reason'],
-                    triggered_by=e_data['triggered_by'],
-                    actions_taken=e_data['actions_taken'],
-                    status=e_data['status']
+                    event_id=e_data["event_id"],
+                    timestamp=datetime.fromisoformat(e_data["timestamp"]),
+                    trigger=EmergencyStopTrigger(e_data["trigger"]),
+                    level=EmergencyStopLevel(e_data["level"]),
+                    reason=e_data["reason"],
+                    triggered_by=e_data["triggered_by"],
+                    actions_taken=e_data["actions_taken"],
+                    status=e_data["status"],
                 )
                 self.stop_events.append(event)
 
             # 自動トリガー条件復元（関数は復元できないのでレベルと理由のみ）
             self.auto_trigger_conditions = {}
-            for cond_id, cond_data in state.get('auto_trigger_conditions', {}).items():
+            for cond_id, cond_data in state.get("auto_trigger_conditions", {}).items():
                 # 実際の運用では条件関数を再登録する必要がある
                 self.auto_trigger_conditions[cond_id] = {
-                    'level': EmergencyStopLevel(cond_data['level']),
-                    'reason': cond_data['reason'],
-                    'func': lambda: False  # ダミー関数
+                    "level": EmergencyStopLevel(cond_data["level"]),
+                    "reason": cond_data["reason"],
+                    "func": lambda: False,  # ダミー関数
                 }
 
             self.logger.info(f"Emergency stop state loaded from {filepath}")

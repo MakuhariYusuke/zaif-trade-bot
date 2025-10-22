@@ -10,8 +10,10 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
+from stable_baselines3.common.type_aliases import GymEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
 
@@ -37,7 +39,7 @@ def create_trading_env(
 
 
 def create_ppo_model(
-    env: Any,
+    env: GymEnv,
     config_override: Optional[Dict[str, Any]] = None,
     tensorboard_log: str = "./tensorboard",
 ) -> PPO:
@@ -53,7 +55,7 @@ def create_ppo_model(
         "MlpPolicy",
         env,
         learning_rate=ppo_config.get("learning_rate", 3e-4),
-        n_steps=ppo_config.get("n_steps", 2048),
+        n_steps=ppo_config.get("n_steps", PPO_DEFAULT_N_STEPS),
         batch_size=ppo_config.get("batch_size", 64),
         n_epochs=ppo_config.get("n_epochs", 10),
         gamma=ppo_config.get("gamma", 0.99),
@@ -80,7 +82,7 @@ def save_model_with_path(model: PPO, model_name: str, base_dir: str = "models") 
 
 
 def evaluate_model(
-    model: PPO, env: Any, max_steps: int = 1000, deterministic: bool = True
+    model: PPO, env: GymEnv, max_steps: int = 1000, deterministic: bool = True
 ) -> Tuple[float, int]:
     """Evaluate a trained model and return episode reward and step count"""
     obs = env.reset()

@@ -16,6 +16,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.normal import Normal
 
+from ztb.trading.environment.constants import EPSILON
+
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -27,7 +29,7 @@ def make_env():
 
     config = EnvironmentConfig(
         max_position_size=0.01,
-        transaction_cost=0.001,  # Small epsilon to avoid division by zero
+        transaction_cost=EPSILON,  # Small epsilon to avoid division by zero
         reward_scaling=1.0,
         reward_clip_value=1.0,
         reward_settings={
@@ -133,7 +135,7 @@ def train_cleanrl_ppo():
 
     # Initialize agent
     agent = Agent(env)
-    optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=EPSILON)
 
     # Storage setup
     obs = torch.zeros((num_steps, num_envs) + env.observation_space.shape).to(

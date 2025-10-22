@@ -1,498 +1,334 @@
-#!/usr/bin/env python3
 """
-SAC Utilities Suite - Comprehensive utility tools for SAC development
+SAC専用のハイパーパラメータ最適化ユーティリティ
 
-This script provides unified utility capabilities for SAC trading models including:
-- Configuration validation and consistency checking
-- Data validation and cleaning
-- File operations and maintenance
-- Code quality checks
-- Project health monitoring
+SACアルゴリズムに特化したパラメータ空間定義と目的関数を提供します。
 """
 
-import argparse
 import json
-import shutil
 import subprocess
 import sys
-from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict
 
-# Add project root to path
-project_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from ztb.utils.path_utils import get_project_root
-
-# Get project root using utility
-project_root = get_project_root()
-
-from ztb.utils.logging_utils import get_logger
-
-logger = get_logger(__name__)
+from ztb.optimization.base import ParameterSpace, ParameterType, TrialResult
 
 
-class SACUtilities:
-    """Comprehensive SAC utility toolkit."""
+def get_sac_parameter_spaces(preset: str = "full") -> Dict[str, ParameterSpace]:
+    """
+    SAC用のパラメータ空間定義
 
-    def __init__(self):
-        """Initialize utilities."""
-        self.project_root = project_root
+    Args:
+        preset: プリセット名
+                - 'full': 全パラメータ（計算コスト大）
+                - 'essential': 重要なパラメータのみ
+                - 'learning': 学習率関連のみ
+                - 'buffer': バッファ関連のみ
 
-    def check_config_consistency(self, config_dir: str = "configs") -> Dict[str, Any]:
-        """
-        Check configuration file consistency across all config files.
+    Returns:
+        Dict[str, ParameterSpace]: パラメータ空間の辞書
+    """
 
-        Args:
-            config_dir: Directory containing config files
+    # 全パラメータ空間
+    all_spaces = {
+        # 学習率
+        "learning_rate": ParameterSpace(
+            name="learning_rate",
+            param_type=ParameterType.LOG_UNIFORM,
+            low=1e-5,
+            high=1e-2,
+            default=3e-4,
+        ),
+        # バッチサイズ
+        "batch_size": ParameterSpace(
+            name="batch_size",
+            param_type=ParameterType.CATEGORICAL,
+            choices=[32, 64, 128, 256, 512],
+            default=128,
+        ),
+        # バッファサイズ
+        "buffer_size": ParameterSpace(
+            name="buffer_size",
+            param_type=ParameterType.CATEGORICAL,
+            choices=[10000, 20000, 50000, 100000],
+            default=20000,
+        ),
+        # 割引率
+        "gamma": ParameterSpace(
+            name="gamma",
+            param_type=ParameterType.CONTINUOUS,
+            low=0.95,
+            high=0.9999,
+            default=0.99,
+        ),
+        # Soft update係数
+        "tau": ParameterSpace(
+            name="tau",
+            param_type=ParameterType.CONTINUOUS,
+            low=0.001,
+            high=0.01,
+            default=0.005,
+        ),
+        # Target Entropy（自動の場合は-action_dim）
+        "target_entropy": ParameterSpace(
+            name="target_entropy",
+            param_type=ParameterType.CONTINUOUS,
+            low=-3.0,
+            high=-0.5,
+            default=-1.0,
+        ),
+        # 学習開始ステップ
+        "learning_starts": ParameterSpace(
+            name="learning_starts",
+            param_type=ParameterType.CATEGORICAL,
+            choices=[100, 500, 1000, 2000],
+            default=500,
+        ),
+        # 訓練頻度
+        "train_freq": ParameterSpace(
+            name="train_freq",
+            param_type=ParameterType.CATEGORICAL,
+            choices=[1, 2, 4],
+            default=1,
+        ),
+        # 勾配ステップ数
+        "gradient_steps": ParameterSpace(
+            name="gradient_steps",
+            param_type=ParameterType.CATEGORICAL,
+            choices=[1, 2, 4],
+            default=1,
+        ),
+    }
 
-        Returns:
-            Consistency analysis results
-        """
-        config_path = self.project_root / config_dir
-        if not config_path.exists():
-            return {"error": f"Config directory not found: {config_path}"}
+    # プリセットごとに返すパラメータを選択
+    if preset == "full":
+        return all_spaces
 
-        logger.info(f"Checking config consistency in: {config_path}")
-
-        all_keys: Dict[str, List[str]] = {}
-        all_values: Dict[str, Dict[str, str]] = defaultdict(dict)
-
-        # Read all config files
-        for config_file in config_path.glob("*.json"):
-            try:
-                with open(config_file, encoding="utf-8") as f:
-                    data = json.load(f)
-
-                all_keys[config_file.name] = list(data.keys())
-
-                # Record types for each key
-                for key, value in data.items():
-                    all_values[key][config_file.name] = str(type(value))
-
-            except Exception as e:
-                logger.warning(f"Error reading {config_file.name}: {e}")
-                continue
-
-        if not all_keys:
-            return {"error": "No config files found"}
-
-        # Calculate common and unique keys
-        key_sets = [set(keys) for keys in all_keys.values()]
-        common_keys = list(set.intersection(*key_sets)) if key_sets else []
-
-        unique_keys = {}
-        for name, keys in all_keys.items():
-            unique = set(keys) - set(common_keys)
-            unique_keys[name] = list(unique)
-
-        # Check type inconsistencies
-        type_inconsistencies = {}
-        for key, type_dict in all_values.items():
-            types = set(type_dict.values())
-            if len(types) > 1:
-                type_inconsistencies[key] = {
-                    "types_found": list(types),
-                    "files": type_dict,
-                }
-
-        results = {
-            "total_files": len(all_keys),
-            "common_keys": common_keys,
-            "unique_keys": unique_keys,
-            "type_inconsistencies": type_inconsistencies,
-            "consistency_score": len(common_keys) / max(len(all_keys), 1),
+    elif preset == "essential":
+        # 最も重要なパラメータのみ
+        return {
+            k: v
+            for k, v in all_spaces.items()
+            if k in ["learning_rate", "batch_size", "gamma", "tau"]
         }
 
-        logger.info(
-            f"Config consistency check completed: {len(common_keys)} common keys found"
-        )
-        return results
-
-    def validate_data_files(self, data_dir: str = "data") -> Dict[str, Any]:
-        """
-        Validate data files for consistency and quality.
-
-        Args:
-            data_dir: Directory containing data files
-
-        Returns:
-            Data validation results
-        """
-        data_path = self.project_root / data_dir
-        if not data_path.exists():
-            return {"error": f"Data directory not found: {data_path}"}
-
-        logger.info(f"Validating data files in: {data_path}")
-
-        validation_results = {
-            "total_files": 0,
-            "valid_files": 0,
-            "invalid_files": 0,
-            "file_details": [],
+    elif preset == "learning":
+        # 学習率関連
+        return {
+            k: v
+            for k, v in all_spaces.items()
+            if k in ["learning_rate", "learning_starts", "train_freq", "gradient_steps"]
         }
 
-        for data_file in data_path.glob("*.csv"):
-            validation_results["total_files"] += 1
+    elif preset == "buffer":
+        # バッファ関連
+        return {
+            k: v
+            for k, v in all_spaces.items()
+            if k in ["buffer_size", "batch_size", "learning_starts"]
+        }
 
-            try:
-                import pandas as pd
+    else:
+        raise ValueError(f"Unknown preset: {preset}")
 
-                df = pd.read_csv(data_file)
 
-                file_info = {
-                    "filename": data_file.name,
-                    "rows": len(df),
-                    "columns": len(df.columns),
-                    "columns_list": list(df.columns),
-                    "missing_values": df.isnull().sum().sum(),
-                    "valid": True,
-                }
+def create_sac_objective_function(
+    base_config_path: Path,
+    total_timesteps: int = 5000,
+    metric: str = "critic_loss",
+    lower_is_better: bool = True,
+) -> Callable[[dict[str, Any]], TrialResult]:
+    """
+    SAC訓練用の目的関数を作成
 
-                # Check for required columns (basic check)
-                required_cols = ["timestamp", "open", "high", "low", "close", "volume"]
-                missing_cols = [col for col in required_cols if col not in df.columns]
-                if missing_cols:
-                    file_info["missing_columns"] = missing_cols
-                    file_info["valid"] = False
+    Args:
+        base_config_path: ベースとなる設定ファイルのパス
+        total_timesteps: 訓練ステップ数
+        metric: 最適化する指標（'critic_loss', 'actor_loss', 'episode_reward'等）
+        lower_is_better: 指標が小さいほど良いか
 
-                if file_info["valid"]:
-                    validation_results["valid_files"] += 1
-                else:
-                    validation_results["invalid_files"] += 1
+    Returns:
+        Callable: パラメータを受け取り、TrialResultを返す目的関数
+    """
 
-                validation_results["file_details"].append(file_info)
+    # ベース設定を読み込み
+    with open(base_config_path, "r", encoding="utf-8") as f:
+        base_config = json.load(f)
 
-            except Exception as e:
-                validation_results["invalid_files"] += 1
-                validation_results["file_details"].append(
-                    {"filename": data_file.name, "error": str(e), "valid": False}
+    def objective_function(parameters: Dict[str, Any]) -> TrialResult:
+        """
+        指定されたパラメータでSACを訓練し、結果を返す
+
+        Args:
+            parameters: ハイパーパラメータの辞書
+
+        Returns:
+            TrialResult: 訓練結果
+        """
+        import tempfile
+        import time
+
+        # 設定をマージ
+        config = base_config.copy()
+        config["total_timesteps"] = total_timesteps
+
+        # SACハイパーパラメータを更新
+        sac_key = "sac_hyperparameters"
+        if sac_key not in config and "sac_params" in config:
+            sac_key = "sac_params"
+        if sac_key not in config:
+            config[sac_key] = {}
+
+        for param_name, param_value in parameters.items():
+            config[sac_key][param_name] = param_value
+
+        # 一時的な設定ファイルを作成
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        ) as f:
+            json.dump(config, f, indent=2)
+            temp_config_path = f.name
+
+        try:
+            # 訓練を実行
+            start_time = time.time()
+
+            # train_v395i.pyを実行（または適切な訓練スクリプト）
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "ztb/training/scripts/train_v395i.py",
+                    "--config",
+                    temp_config_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=3600,  # 1時間でタイムアウト
+            )
+
+            duration = time.time() - start_time
+
+            if result.returncode != 0:
+                return TrialResult(
+                    trial_id=0,  # 後で上書きされる
+                    parameters=parameters,
+                    metrics={},
+                    objective_value=float("inf"),
+                    duration_seconds=duration,
+                    success=False,
+                    error_message=f"訓練失敗: {result.stderr}",
                 )
 
-        logger.info(
-            f"Data validation completed: {validation_results['valid_files']}/{validation_results['total_files']} files valid"
+            # TensorBoardログから指標を読み取り
+            # TODO: 実装を完成させる
+            # ここでは仮の実装
+            metrics = {
+                "critic_loss": 0.1,
+                "actor_loss": -4.0,
+                "ent_coef": 0.5,
+            }  # 実際はログから読み取り
+
+            objective_value = metrics.get(metric, float("inf"))
+            if not lower_is_better:
+                objective_value = -objective_value
+
+            return TrialResult(
+                trial_id=0,
+                parameters=parameters,
+                metrics=metrics,
+                objective_value=objective_value,
+                duration_seconds=duration,
+                success=True,
+            )
+
+        except subprocess.TimeoutExpired:
+            return TrialResult(
+                trial_id=0,
+                parameters=parameters,
+                metrics={},
+                objective_value=float("inf"),
+                duration_seconds=3600,
+                success=False,
+                error_message="訓練タイムアウト",
+            )
+
+        except Exception as e:
+            return TrialResult(
+                trial_id=0,
+                parameters=parameters,
+                metrics={},
+                objective_value=float("inf"),
+                duration_seconds=0,
+                success=False,
+                error_message=str(e),
+            )
+
+        finally:
+            # 一時ファイルを削除
+            Path(temp_config_path).unlink(missing_ok=True)
+
+    return objective_function
+
+
+def create_mock_objective_function(
+    noise_level: float = 0.1,
+) -> Callable[[dict[str, Any]], TrialResult]:
+    """
+    テスト用のモック目的関数
+
+    実際の訓練をせず、パラメータから目的関数値を計算します。
+    最適化手法のテストや動作確認に使用します。
+
+    Args:
+        noise_level: ノイズレベル（0-1）
+
+    Returns:
+        Callable: モック目的関数
+    """
+    import random
+    import time
+
+    def mock_objective(parameters: Dict[str, Any]) -> TrialResult:
+        """
+        仮想的な目的関数
+
+        learning_rate が 3e-4 に近いほど良い、などの簡単な関数を想定
+        """
+        # わずかな遅延を模擬
+        time.sleep(0.1)
+
+        # パラメータから目的関数値を計算（仮想）
+        lr = parameters.get("learning_rate", 3e-4)
+        batch_size = parameters.get("batch_size", 128)
+        gamma = parameters.get("gamma", 0.99)
+
+        # 仮想的な最適値からの距離を計算
+        optimal_lr = 3e-4
+        optimal_batch = 128
+        optimal_gamma = 0.99
+
+        objective = (
+            abs(lr - optimal_lr) / optimal_lr * 100
+            + abs(batch_size - optimal_batch) / optimal_batch * 10
+            + abs(gamma - optimal_gamma) / optimal_gamma * 50
         )
-        return validation_results
 
-    def clean_project_files(self, dry_run: bool = True) -> Dict[str, Any]:
-        """
-        Clean up temporary and unnecessary files in the project.
+        # ノイズを追加
+        objective += random.uniform(-noise_level, noise_level)
 
-        Args:
-            dry_run: If True, only report what would be cleaned
-
-        Returns:
-            Cleanup results
-        """
-        logger.info("Starting project cleanup" + (" (dry run)" if dry_run else ""))
-
-        cleanup_targets = [
-            "**/*.pyc",
-            "**/__pycache__/",
-            "**/.pytest_cache/",
-            "**/*.tmp",
-            "**/*.log",
-            "**/node_modules/",  # If any
-        ]
-
-        total_removed = 0
-        total_size = 0
-        removed_files = []
-
-        for pattern in cleanup_targets:
-            for path in self.project_root.glob(pattern):
-                if path.is_file():
-                    size = path.stat().st_size
-                    total_size += size
-                    removed_files.append(
-                        {"path": str(path.relative_to(self.project_root)), "size": size}
-                    )
-
-                    if not dry_run:
-                        try:
-                            path.unlink()
-                            total_removed += 1
-                        except Exception as e:
-                            logger.warning(f"Failed to remove {path}: {e}")
-
-                elif path.is_dir() and not dry_run:
-                    try:
-                        shutil.rmtree(path)
-                        total_removed += 1
-                    except Exception as e:
-                        logger.warning(f"Failed to remove directory {path}: {e}")
-
-        results = {
-            "dry_run": dry_run,
-            "files_found": len(removed_files),
-            "files_removed": total_removed if not dry_run else 0,
-            "total_size_bytes": total_size,
-            "total_size_mb": total_size / (1024 * 1024),
-            "removed_files": removed_files[:100],  # Limit output
+        # 仮想的なメトリクス
+        metrics = {
+            "critic_loss": objective * 0.01,
+            "actor_loss": -objective * 0.1,
+            "ent_coef": 0.5 + random.uniform(-0.2, 0.2),
         }
 
-        logger.info(
-            f"Cleanup completed: {len(removed_files)} files found, {total_removed if not dry_run else 0} removed"
+        return TrialResult(
+            trial_id=0,
+            parameters=parameters,
+            metrics=metrics,
+            objective_value=objective,
+            duration_seconds=0.1,
+            success=True,
         )
-        return results
 
-    def check_code_quality(self) -> Dict[str, Any]:
-        """
-        Run code quality checks (mypy, flake8, etc.).
-
-        Returns:
-            Code quality check results
-        """
-        logger.info("Running code quality checks")
-
-        results = {
-            "mypy": {"status": "not_run", "errors": 0},
-            "flake8": {"status": "not_run", "errors": 0},
-            "tests": {"status": "not_run", "passed": 0, "failed": 0},
-        }
-
-        # Run mypy
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "mypy", "ztb/", "--ignore-missing-imports"],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-            )
-            results["mypy"]["status"] = "completed"
-            results["mypy"]["errors"] = len(
-                [line for line in result.stdout.split("\n") if "error:" in line]
-            )
-        except Exception as e:
-            results["mypy"]["status"] = f"failed: {e}"
-
-        # Run flake8
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "flake8", "ztb/", "--max-line-length=120"],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-            )
-            results["flake8"]["status"] = "completed"
-            results["flake8"]["errors"] = (
-                len(result.stdout.split("\n")) - 1
-            )  # Subtract empty line
-        except Exception as e:
-            results["flake8"]["status"] = f"failed: {e}"
-
-        # Run tests
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pytest", "tests/", "--tb=no", "-q"],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-            )
-            results["tests"]["status"] = "completed"
-            # Parse pytest output
-            output_lines = result.stdout.split("\n")
-            for line in output_lines:
-                if "passed" in line and "failed" in line:
-                    parts = line.split(",")
-                    for part in parts:
-                        if "passed" in part:
-                            results["tests"]["passed"] = int(part.strip().split()[0])
-                        elif "failed" in part:
-                            results["tests"]["failed"] = int(part.strip().split()[0])
-        except Exception as e:
-            results["tests"]["status"] = f"failed: {e}"
-
-        logger.info("Code quality checks completed")
-        return results
-
-    def fix_common_issues(self) -> Dict[str, Any]:
-        """
-        Fix common code and configuration issues.
-
-        Returns:
-            Fix results
-        """
-        logger.info("Running common issue fixes")
-
-        fixes_applied = []
-
-        # Fix trailing whitespace in Python files
-        python_files = list(self.project_root.glob("**/*.py"))
-        whitespace_fixed = 0
-
-        for py_file in python_files:
-            try:
-                with open(py_file, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-
-                original_lines = len(lines)
-                fixed_lines = [line.rstrip() + "\n" for line in lines]
-
-                if fixed_lines != lines:
-                    with open(py_file, "w", encoding="utf-8") as f:
-                        f.writelines(fixed_lines)
-                    whitespace_fixed += 1
-
-            except Exception as e:
-                logger.warning(f"Failed to fix whitespace in {py_file}: {e}")
-
-        if whitespace_fixed > 0:
-            fixes_applied.append(
-                f"Fixed trailing whitespace in {whitespace_fixed} files"
-            )
-
-        # Fix JSON formatting
-        json_files = list(self.project_root.glob("**/*.json"))
-        json_fixed = 0
-
-        for json_file in json_files:
-            try:
-                with open(json_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-
-                # Rewrite with proper formatting
-                with open(json_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
-
-                json_fixed += 1
-
-            except Exception as e:
-                logger.warning(f"Failed to fix JSON formatting in {json_file}: {e}")
-
-        if json_fixed > 0:
-            fixes_applied.append(f"Fixed JSON formatting in {json_fixed} files")
-
-        results = {
-            "fixes_applied": fixes_applied,
-            "files_processed": whitespace_fixed + json_fixed,
-        }
-
-        logger.info(f"Common fixes applied: {len(fixes_applied)} fixes")
-        return results
-
-
-def main() -> None:
-    """Main entry point."""
-    parser = argparse.ArgumentParser(description="SAC Utilities Suite")
-    parser.add_argument(
-        "command",
-        choices=["config", "data", "clean", "quality", "fix"],
-        help="Utility command to run",
-    )
-    parser.add_argument(
-        "--config-dir", default="config", help="Config directory for consistency check"
-    )
-    parser.add_argument(
-        "--data-dir", default="data", help="Data directory for validation"
-    )
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="Actually apply changes (for clean and fix commands)",
-    )
-
-    args = parser.parse_args()
-
-    utilities = SACUtilities()
-
-    if args.command == "config":
-        results = utilities.check_config_consistency(args.config_dir)
-
-        print("\n" + "=" * 60)
-        print("CONFIG CONSISTENCY CHECK")
-        print("=" * 60)
-
-        if "error" in results:
-            print(f"❌ Error: {results['error']}")
-        else:
-            print(f"📊 Total Files: {results['total_files']}")
-            print(f"🔑 Common Keys: {len(results['common_keys'])}")
-            print(f"📈 Consistency Score: {results['consistency_score']:.2%}")
-
-            if results["type_inconsistencies"]:
-                print(
-                    f"\n⚠️  Type Inconsistencies: {len(results['type_inconsistencies'])}"
-                )
-                for key, info in list(results["type_inconsistencies"].items())[
-                    :5
-                ]:  # Show first 5
-                    print(f"  • {key}: {info['types_found']}")
-
-    elif args.command == "data":
-        results = utilities.validate_data_files(args.data_dir)
-
-        print("\n" + "=" * 60)
-        print("DATA VALIDATION")
-        print("=" * 60)
-
-        if "error" in results:
-            print(f"❌ Error: {results['error']}")
-        else:
-            print(f"📊 Total Files: {results['total_files']}")
-            print(f"✅ Valid Files: {results['valid_files']}")
-            print(f"❌ Invalid Files: {results['invalid_files']}")
-
-            if results["invalid_files"] > 0:
-                print("\n⚠️  Invalid Files:")
-                for file_info in results["file_details"]:
-                    if not file_info["valid"]:
-                        print(
-                            f"  • {file_info['filename']}: {file_info.get('error', 'Missing required columns')}"
-                        )
-
-    elif args.command == "clean":
-        results = utilities.clean_project_files(dry_run=not args.apply)
-
-        print("\n" + "=" * 60)
-        print("PROJECT CLEANUP")
-        print("=" * 60)
-
-        print(f"🔍 Files Found: {results['files_found']}")
-        print(".2f")
-        print(f"🗑️  Files Removed: {results['files_removed']}")
-
-        if not args.apply:
-            print("\n💡 Use --apply to actually remove files")
-
-    elif args.command == "quality":
-        results = utilities.check_code_quality()
-
-        print("\n" + "=" * 60)
-        print("CODE QUALITY CHECK")
-        print("=" * 60)
-
-        for check, info in results.items():
-            status = info["status"]
-            if status == "completed":
-                if check == "mypy":
-                    print(f"🔍 MyPy: ✅ {info['errors']} errors")
-                elif check == "flake8":
-                    print(f"🔍 Flake8: ✅ {info['errors']} issues")
-                elif check == "tests":
-                    print(
-                        f"🧪 Tests: ✅ {info['passed']} passed, ❌ {info['failed']} failed"
-                    )
-            else:
-                print(f"🔍 {check.title()}: ❌ {status}")
-
-    elif args.command == "fix":
-        results = utilities.fix_common_issues()
-
-        print("\n" + "=" * 60)
-        print("COMMON ISSUE FIXES")
-        print("=" * 60)
-
-        print(f"🔧 Files Processed: {results['files_processed']}")
-
-        if results["fixes_applied"]:
-            print("\n✅ Fixes Applied:")
-            for fix in results["fixes_applied"]:
-                print(f"  • {fix}")
-        else:
-            print("\n✅ No fixes needed")
-
-
-if __name__ == "__main__":
-    main()
+    return mock_objective

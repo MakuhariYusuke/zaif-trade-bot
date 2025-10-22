@@ -13,23 +13,35 @@ from typing import Any, Dict, List, Optional
 class TrainingConfig:
     """Configuration for training runs."""
 
+    # Core algorithm settings
     algorithm: str
     learning_rate: float
     batch_size: int
     total_timesteps: int
+
+    # Evaluation settings
     checkpoint_interval: int
     eval_freq: int
     n_eval_episodes: int
+
+    # Reward and scaling
     reward_scaling: float
     max_grad_norm: float
+
+    # Algorithm-specific parameters
     ent_coef: float
     vf_coef: float
     clip_range: float
     n_epochs: int
     gae_lambda: float
     gamma: float
+
+    # Optional advanced settings
     target_kl: Optional[float] = None
     seed: Optional[int] = None
+    buffer_size: Optional[int] = None  # For replay buffer-based algorithms
+    tau: Optional[float] = None  # For soft updates
+    target_update_interval: Optional[int] = None
 
 
 @dataclass

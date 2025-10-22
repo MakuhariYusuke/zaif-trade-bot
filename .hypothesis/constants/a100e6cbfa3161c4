@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\types\common.py
+# hypothesis_version: 6.140.3
+
+['SB3ModelProtocol', 'np.ndarray']
