@@ -400,6 +400,19 @@ class RewardFunctionOptimizer:
             "consistency_weight": ParameterSpace(
                 "consistency_weight", "float", 0.3, 1.0, log_scale=False
             ),
+            # Asymmetric reward scaling parameters (v435 enhancement)
+            "long_position_reward_multiplier": ParameterSpace(
+                "long_position_reward_multiplier", "float", 1.0, 2.0, log_scale=False
+            ),
+            "short_position_reward_multiplier": ParameterSpace(
+                "short_position_reward_multiplier", "float", 0.5, 1.0, log_scale=False
+            ),
+            "long_position_penalty_multiplier": ParameterSpace(
+                "long_position_penalty_multiplier", "float", 0.5, 1.0, log_scale=False
+            ),
+            "short_position_penalty_multiplier": ParameterSpace(
+                "short_position_penalty_multiplier", "float", 1.0, 1.5, log_scale=False
+            ),
         }
 
         # Trading focused stage parameters - Enhanced
@@ -515,6 +528,19 @@ class RewardFunctionOptimizer:
             "win_streak_bonus_weight": ParameterSpace(
                 "win_streak_bonus_weight", "float", 0.001, 0.1, log_scale=True
             ),
+            # Asymmetric reward scaling parameters (v435 enhancement)
+            "long_position_reward_multiplier": ParameterSpace(
+                "long_position_reward_multiplier", "float", 1.0, 3.0, log_scale=False
+            ),
+            "short_position_reward_multiplier": ParameterSpace(
+                "short_position_reward_multiplier", "float", 0.3, 1.0, log_scale=False
+            ),
+            "long_position_penalty_multiplier": ParameterSpace(
+                "long_position_penalty_multiplier", "float", 0.3, 1.0, log_scale=False
+            ),
+            "short_position_penalty_multiplier": ParameterSpace(
+                "short_position_penalty_multiplier", "float", 1.0, 2.0, log_scale=False
+            ),
         }
 
         # Ultra profit stage parameters - Enhanced
@@ -560,6 +586,19 @@ class RewardFunctionOptimizer:
             ),
             "ultra_risk_multiplier": ParameterSpace(
                 "ultra_risk_multiplier", "float", 0.1, 2.0, log_scale=False
+            ),
+            # Asymmetric reward scaling parameters (v435 enhancement)
+            "long_position_reward_multiplier": ParameterSpace(
+                "long_position_reward_multiplier", "float", 1.0, 4.0, log_scale=False
+            ),
+            "short_position_reward_multiplier": ParameterSpace(
+                "short_position_reward_multiplier", "float", 0.2, 1.0, log_scale=False
+            ),
+            "long_position_penalty_multiplier": ParameterSpace(
+                "long_position_penalty_multiplier", "float", 0.2, 1.0, log_scale=False
+            ),
+            "short_position_penalty_multiplier": ParameterSpace(
+                "short_position_penalty_multiplier", "float", 1.0, 3.0, log_scale=False
             ),
         }
 
