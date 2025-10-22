@@ -22,6 +22,8 @@ logger = get_logger(__name__)
 class TrainingLogger:
     """訓練ログの統一インターフェース"""
 
+    start_time: Optional[datetime]
+
     def __init__(self, algorithm: str, model_name: str, verbose: bool = True):
         """
         Args:

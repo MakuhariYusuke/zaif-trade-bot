@@ -8,13 +8,13 @@ bias in trading strategies.
 
 from pathlib import Path
 from typing import Any, Dict, Optional
-from ztb.types.common import SACLikeModelProtocol
 
 import pandas as pd
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
+from ztb.trading.environment.constants import EPSILON
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.callbacks_lib import SELLBiasMitigationCallback
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
@@ -113,7 +113,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             self.weight_calc = ActionWeightCalculator(
                 beta=3.0,
                 ema_alpha=0.1,
-                epsilon=1e-6,
+                epsilon=EPSILON,
                 entropy_min=0.05,
                 target_kl_max=0.03,
                 kl_consecutive_max=3,
@@ -143,7 +143,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         # Use super() to call the base implementation. Explicit class form
         # avoids some static-analysis issues in complex import aliasing.
         # Call the parent class method in a way that is robust to static analysis
-        base_callback = getattr(PPOTrainer, '_create_callback')(self)
+        base_callback = getattr(PPOTrainer, "_create_callback")(self)
 
         # Get components from model (not from self)
         # Lagrange, PAN, and Entropy Controller are managed by CustomPPO
@@ -199,7 +199,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(
             f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}"
         )
-        data_path = getattr(self, 'data_path', None)
+        data_path = getattr(self, "data_path", None)
         logger.info(f"Data: {data_path}")
 
         # Local config dict for static analysis and safety
@@ -209,15 +209,23 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # Create model with CustomPPO
             if self.model is None:
                 # Load data
-                data_path_local = getattr(self, 'data_path', None)
-                df = pd.read_csv(data_path_local) if data_path_local is not None else pd.DataFrame()
+                data_path_local = getattr(self, "data_path", None)
+                df = (
+                    pd.read_csv(data_path_local)
+                    if data_path_local is not None
+                    else pd.DataFrame()
+                )
 
                 # Create environment config (use local cfg to satisfy static analysis)
                 env_config = {
                     "curriculum_stage": cfg.get("curriculum_stage", "full"),
                     "allow_reverse": self.allow_reverse,
-                    "transaction_cost": safe_to_float(cfg.get("transaction_cost", 0.001)),
-                    "max_position_size": safe_to_float(cfg.get("max_position_size", 1.0)),
+                    "transaction_cost": safe_to_float(
+                        cfg.get("transaction_cost", 0.001)
+                    ),
+                    "max_position_size": safe_to_float(
+                        cfg.get("max_position_size", 1.0)
+                    ),
                     "risk_free_rate": safe_to_float(cfg.get("risk_free_rate", 0.0)),
                     "reward_scaling": safe_to_float(cfg.get("reward_scaling", 1.0)),
                     # ★ BUG FIX #48: Pass reward_settings from config to environment
@@ -281,7 +289,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                         )
                     ),
                     # PAN/Entropy/Stratified parameters
-                    pan_epsilon=1e-8,
+                    pan_epsilon=EPSILON,
                     target_entropy_ratio=0.7,
                     lr_temperature=3e-4,
                     initial_temperature=0.01,

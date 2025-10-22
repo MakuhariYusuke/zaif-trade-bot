@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.core.base import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
@@ -30,18 +31,13 @@ project_root = get_project_root()
 logger = get_logger(__name__)
 
 
-class SACTrainer:
+class SACTrainer(BaseTrainer):
     """Unified SAC training interface."""
 
-    def __init__(self, config_path: str):
-        """
-        Initialize SAC trainer.
-
-        Args:
-            config_path: Path to configuration file
-        """
+    def __init__(self, config_path: str, config: Optional[Dict[str, Any]] = None):
+        super().__init__(name="SACTrainer", config=config)
         self.config_path = Path(config_path)
-        self.config = self._load_config()
+        self.config_data = self._load_config()
         self.trainer = None
 
     def _load_config(self) -> Dict[str, Any]:
@@ -196,6 +192,53 @@ class SACTrainer:
         except Exception as e:
             logger.error(f"Model validation failed: {e}")
             return {"model_loaded": False, "validation_error": str(e)}
+
+    def train(self, data: Any) -> Dict[str, Any]:
+        """
+        Train the SAC model. Required by BaseTrainer.
+
+        Args:
+            data: Training configuration/data
+
+        Returns:
+            Training results
+        """
+        # Extract training parameters from data if provided
+        total_timesteps = (
+            data.get("total_timesteps") if isinstance(data, dict) else None
+        )
+        output_dir = data.get("output_dir") if isinstance(data, dict) else None
+
+        return self.run_training(total_timesteps=total_timesteps, output_dir=output_dir)
+
+    def evaluate(self, data: Any) -> Dict[str, Any]:
+        """
+        Evaluate the SAC model. Required by BaseTrainer.
+
+        Args:
+            data: Evaluation configuration/data
+
+        Returns:
+            Evaluation results
+        """
+        # Extract model path from data if provided
+        model_path = data.get("model_path") if isinstance(data, dict) else None
+
+        return self.validate_training(model_path=model_path)
+
+    def _load_model(self, path: str) -> Any:
+        """
+        Load SAC model. Required by BaseTrainer.
+
+        Args:
+            path: Path to model file
+
+        Returns:
+            Loaded model
+        """
+        from stable_baselines3 import SAC
+
+        return SAC.load(path)
 
 
 def main():

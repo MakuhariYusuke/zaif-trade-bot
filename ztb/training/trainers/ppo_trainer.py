@@ -12,7 +12,6 @@ import gc
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-from ztb.types.common import SACLikeModelProtocol
 
 from ztb.training.core.config_manager import ConfigManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin

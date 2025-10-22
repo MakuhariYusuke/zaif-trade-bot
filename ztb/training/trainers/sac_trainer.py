@@ -9,7 +9,6 @@ import csv
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
-from ztb.types.common import SACLikeModelProtocol
 
 import numpy as np
 from stable_baselines3.common.callbacks import (
@@ -32,6 +31,7 @@ from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
 from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.training.utils.training_logger import create_training_logger
+from ztb.types.common import SACLikeModelProtocol
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import ensure_dict, safe_to_float
 
@@ -153,7 +153,7 @@ class SACMetricsCallback(BaseCallback):
 
     def _write_to_tensorboard(self, step: int, metrics: Dict[str, float]) -> None:
         """TensorBoardに直接書き込む"""
-        model = getattr(self, 'model', None)
+        model = getattr(self, "model", None)
         if model is None or not hasattr(model, "logger") or model.logger is None:
             return
 
@@ -192,13 +192,19 @@ class SACMetricsCallback(BaseCallback):
             # メトリクスを収集
             metrics = {}
             # Narrow model reference
-            model_local = getattr(self, 'model', None)
+            model_local = getattr(self, "model", None)
             total_steps = (
-                model_local._total_timesteps if model_local is not None and hasattr(model_local, "_total_timesteps") else 0
+                model_local._total_timesteps
+                if model_local is not None and hasattr(model_local, "_total_timesteps")
+                else 0
             )
 
             # SACモデルの内部メトリクスを確認
-            if model_local is not None and hasattr(model_local, "logger") and model_local.logger is not None:
+            if (
+                model_local is not None
+                and hasattr(model_local, "logger")
+                and model_local.logger is not None
+            ):
                 try:
                     name_to_value = model_local.logger.name_to_value
 
@@ -225,10 +231,22 @@ class SACMetricsCallback(BaseCallback):
                     pass
 
             # エピソード報酬の統計を計算（直近のエピソード）
-            if model_local is not None and hasattr(model_local, "ep_info_buffer") and len(model_local.ep_info_buffer) > 0:
+            if (
+                model_local is not None
+                and hasattr(model_local, "ep_info_buffer")
+                and len(model_local.ep_info_buffer) > 0
+            ):
                 try:
-                    ep_rewards = [ep_info["r"] for ep_info in model_local.ep_info_buffer if "r" in ep_info]
-                    ep_lengths = [ep_info["l"] for ep_info in model_local.ep_info_buffer if "l" in ep_info]
+                    ep_rewards = [
+                        ep_info["r"]
+                        for ep_info in model_local.ep_info_buffer
+                        if "r" in ep_info
+                    ]
+                    ep_lengths = [
+                        ep_info["l"]
+                        for ep_info in model_local.ep_info_buffer
+                        if "l" in ep_info
+                    ]
 
                     if ep_rewards:
                         metrics["episode_reward_mean"] = np.mean(ep_rewards)
@@ -243,7 +261,11 @@ class SACMetricsCallback(BaseCallback):
 
             # Q値統計を取得（可能であれば）
             try:
-                if model_local is not None and hasattr(model_local, "replay_buffer") and model_local.replay_buffer.size() > 128:
+                if (
+                    model_local is not None
+                    and hasattr(model_local, "replay_buffer")
+                    and model_local.replay_buffer.size() > 128
+                ):
                     import torch
 
                     # リプレイバッファから最近のサンプルを取得してQ値を推定
@@ -253,8 +275,12 @@ class SACMetricsCallback(BaseCallback):
                     if model_local is not None and hasattr(model_local, "critic"):
                         with torch.no_grad():  # 勾配計算不要
                             # Observationsとactionsをtensorに変換
-                            obs_tensor = torch.as_tensor(replay_data.observations, device=model_local.device)
-                            act_tensor = torch.as_tensor(replay_data.actions, device=model_local.device)
+                            obs_tensor = torch.as_tensor(
+                                replay_data.observations, device=model_local.device
+                            )
+                            act_tensor = torch.as_tensor(
+                                replay_data.actions, device=model_local.device
+                            )
 
                             # Q値を計算（両方のCriticの平均）
                             q_values_1 = self.model.critic.q1_forward(
@@ -277,12 +303,18 @@ class SACMetricsCallback(BaseCallback):
                     logger.debug("Failed to extract Q-values: %s", e)
 
             # メトリクスが取得できなかった場合、モデルの内部状態から直接取得を試みる
-            if not metrics and model_local is not None and hasattr(model_local, "_last_obs"):
+            if (
+                not metrics
+                and model_local is not None
+                and hasattr(model_local, "_last_obs")
+            ):
                 try:
                     # SAC特有の属性から取得
                     if hasattr(model_local, "ent_coef"):
                         metrics["ent_coef"] = float(model_local.ent_coef)
-                    if hasattr(model_local, "actor") and hasattr(model_local.actor, "optimizer"):
+                    if hasattr(model_local, "actor") and hasattr(
+                        model_local.actor, "optimizer"
+                    ):
                         # Learning rateを取得
                         for param_group in model_local.actor.optimizer.param_groups:
                             metrics["learning_rate"] = param_group["lr"]
@@ -404,7 +436,13 @@ class SACAlgorithmTrainer(EnsembleMixin):
             訓練結果（モデルパス、ログパス等）
         """
         # Local config dict and TrainingLoggerを作成
-        cfg = ensure_dict(getattr(self, "config", unified_config if isinstance(unified_config, dict) else {}))
+        cfg = ensure_dict(
+            getattr(
+                self,
+                "config",
+                unified_config if isinstance(unified_config, dict) else {},
+            )
+        )
         model_name = cfg.get("model_name", "sac_model")
         training_logger = create_training_logger("sac", model_name, verbose=True)
 
@@ -414,9 +452,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         self.initialize_ensemble(unified_config)
 
         # 1. SAC設定を取得
-        sac_config = (
-            cfg.get("sac_hyperparameters") or cfg.get("sac_params") or {}
-        )
+        sac_config = cfg.get("sac_hyperparameters") or cfg.get("sac_params") or {}
         if sac_config:
             # Merge with defaults to ensure required keys are present
             sac_config = {**SACAlgorithm.get_default_config(), **dict(sac_config)}
@@ -522,10 +558,18 @@ class SACAlgorithmTrainer(EnsembleMixin):
             early_stopping_callback = EarlyStoppingCallback(
                 metric_name=early_stopping_config.get("metric", "critic_loss"),
                 min_delta=safe_to_float(early_stopping_config.get("min_delta", 0.0001)),
-                patience=int(safe_to_float(early_stopping_config.get("patience", 5000))),
-                check_interval=int(safe_to_float(early_stopping_config.get("check_interval", 1000))),
-                window_size=int(safe_to_float(early_stopping_config.get("window_size", 1000))),
-                cv_threshold=safe_to_float(early_stopping_config.get("cv_threshold", 0.05)),
+                patience=int(
+                    safe_to_float(early_stopping_config.get("patience", 5000))
+                ),
+                check_interval=int(
+                    safe_to_float(early_stopping_config.get("check_interval", 1000))
+                ),
+                window_size=int(
+                    safe_to_float(early_stopping_config.get("window_size", 1000))
+                ),
+                cv_threshold=safe_to_float(
+                    early_stopping_config.get("cv_threshold", 0.05)
+                ),
                 verbose=int(safe_to_float(early_stopping_config.get("verbose", 1))),
             )
             callbacks.append(early_stopping_callback)
@@ -539,7 +583,9 @@ class SACAlgorithmTrainer(EnsembleMixin):
                 model_name=model_name,
                 metric_name=best_model_config.get("metric", "critic_loss"),
                 mode=best_model_config.get("mode", "min"),
-                check_interval=int(safe_to_float(best_model_config.get("check_interval", 1000))),
+                check_interval=int(
+                    safe_to_float(best_model_config.get("check_interval", 1000))
+                ),
                 verbose=int(safe_to_float(best_model_config.get("verbose", 1))),
             )
             callbacks.append(best_model_callback)

@@ -19,6 +19,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
+from ztb.trading.environment.constants import EPSILON
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
@@ -195,7 +196,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             self.weight_calc = ActionWeightCalculator(
                 beta=3.0,
                 ema_alpha=0.1,
-                epsilon=1e-6,
+                epsilon=EPSILON,
                 entropy_min=0.05,
                 target_kl_max=0.03,
                 kl_consecutive_max=3,
@@ -206,7 +207,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         if params.enable_pan:
             self.pan_normalizer = PerActionAdvantageNormalizer(
                 n_actions=3,
-                epsilon=1e-8,
+                epsilon=EPSILON,
                 min_samples_per_action=1,  # HOLD, BUY, SELL
             )
             logger.info("PAN (Per-Action Advantage Normalization) enabled")
@@ -406,7 +407,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                         )
                     ),
                     # ★ PAN/Entropy/Stratified parameters
-                    pan_epsilon=1e-8,
+                    pan_epsilon=EPSILON,
                     target_entropy_ratio=0.7,
                     lr_temperature=3e-4,
                     initial_temperature=0.01,

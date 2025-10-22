@@ -5,24 +5,29 @@ Refactored Unified Trainer implementation with enhanced UI and modularity.
 
 import copy
 import time
-from typing import Any, Dict, List, Optional, cast, TYPE_CHECKING
-from ztb.types.common import (
-    ConfigDict,
-    OptConfigDict,
-    BaseAlgorithmTrainer,
-    EnsemblePredictor,
-    AnomalyDetectorProtocol,
-    MetaLearnerProtocol,
-    FederatedLearnerProtocol,
-    ContinualLearnerProtocol,
-)
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
-import numpy as np
 import torch
+
+from ztb.trading.environment.constants import (
+    DEFAULT_INITIAL_BALANCE_SMALL,
+    DEFAULT_LEARNING_RATE,
+    DEFAULT_TRANSACTION_COST,
+)
+from ztb.types.common import (
+    AnomalyDetectorProtocol,
+    BaseAlgorithmTrainer,
+    ConfigDict,
+    ContinualLearnerProtocol,
+    EnsemblePredictor,
+    FederatedLearnerProtocol,
+    MetaLearnerProtocol,
+)
 
 # Try to import federated learning and mixed precision dependencies
 try:
     import opacus  # type: ignore[import-untyped]
+
     OPACUS_AVAILABLE = True
 except ImportError:
     OPACUS_AVAILABLE = False
@@ -47,9 +52,6 @@ from ztb.adaptation.continual_learning import (
 from ztb.adaptation.meta_learning import MarketMetaLearner
 from ztb.config.manager import ConfigManager
 from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
-
-# Import system optimizer
-from ztb.optimization.system_optimizer import PerformanceOptimizer, SystemOptimizer
 from ztb.training.distillation.distiller import *
 
 # Import distributed training utilities
@@ -58,6 +60,9 @@ from ztb.training.distributed.distributed_training import (
     setup_distributed_training,
 )
 from ztb.training.federated_learning import FederatedConfig, MarketFederatedLearner
+
+# Import system optimizer
+from ztb.training.system_optimizer import PerformanceOptimizer, SystemOptimizer
 
 # Import quantization and compression utilities
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
@@ -76,16 +81,12 @@ from ztb.utils.performance_profiler import PerformanceProfiler
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
-    from ztb.training.adaptive_sac_core import AdaptiveSACCore, AdaptiveSACConfig
+    from ztb.optimization.unified_optimizer import UnifiedOptimizer
+    from ztb.training.adaptive_sac_core import AdaptiveSACConfig, AdaptiveSACCore
     from ztb.training.online_learning_engine import (
-        OnlineLearningEngine,
         OnlineLearningConfig,
+        OnlineLearningEngine,
     )
-    from ztb.optimization.unified_optimizer import (
-        UnifiedOptimizer,
-        OptimizationConfig,
-    )
-    from ztb.envs.heavy_trading_env import HeavyTradingEnv  # type: ignore[import-untyped]
 
 
 class UnifiedTrainer:
@@ -235,12 +236,16 @@ class UnifiedTrainer:
         # Initialize optimization utilities
         self.memory_tracker = MemoryTracker()
         self.performance_profiler = PerformanceProfiler()
-        self.feature_cache = TTLCache(ttl_seconds=300)  # 5 minute TTL for feature computations
+        self.feature_cache = TTLCache(
+            ttl_seconds=300
+        )  # 5 minute TTL for feature computations
 
         # Initialize system optimizer for comprehensive optimizations
         self.system_optimizer = SystemOptimizer(
             enable_memory_tracking=self.config.get("enable_memory_tracking", True),
-            enable_performance_profiling=self.config.get("enable_performance_profiling", True),
+            enable_performance_profiling=self.config.get(
+                "enable_performance_profiling", True
+            ),
             enable_io_caching=self.config.get("enable_io_caching", True),
             memory_threshold_mb=self.config.get("memory_threshold_mb", 100.0),
             cache_ttl_seconds=self.config.get("cache_ttl_seconds", 300),
@@ -257,7 +262,9 @@ class UnifiedTrainer:
 
         # V433 Adaptive Learning Components
         self.enable_v433_adaptive = (
-            self.config.get("enable_v433_adaptive", False) if isinstance(self.config, dict) else False
+            self.config.get("enable_v433_adaptive", False)
+            if isinstance(self.config, dict)
+            else False
         )
 
         # Adaptive SAC Core
@@ -392,7 +399,7 @@ class UnifiedTrainer:
         """
         try:
             # Display header
-            algorithm = self.config.get("algorithm", "unknown")
+            algorithm = self.config.get("training", {}).get("algorithm", "unknown")
             config_name = self.config.get("model_name", "unnamed")
             self.ui.print_header(algorithm, config_name)
 
@@ -426,20 +433,28 @@ class UnifiedTrainer:
                 if hasattr(alg_trainer_local, "model"):
                     try:
                         model_attr = getattr(alg_trainer_local, "model")
-                        optimized_model = self.system_optimizer.optimize_model_memory(model_attr)
+                        optimized_model = self.system_optimizer.optimize_model_memory(
+                            model_attr
+                        )
                         setattr(alg_trainer_local, "model", optimized_model)
                     except Exception as e:
                         # If optimization fails for the model, continue without crashing
-                        self.logger.debug("Model memory optimization skipped due to error: %s", e)
+                        self.logger.debug(
+                            "Model memory optimization skipped due to error: %s", e
+                        )
 
                 # Dataloader optimization
                 if hasattr(alg_trainer_local, "dataloader"):
                     try:
                         dataloader_attr = getattr(alg_trainer_local, "dataloader")
-                        optimized_dl = self.system_optimizer.optimize_dataloader(dataloader_attr)
+                        optimized_dl = self.system_optimizer.optimize_dataloader(
+                            dataloader_attr
+                        )
                         setattr(alg_trainer_local, "dataloader", optimized_dl)
                     except Exception as e:
-                        self.logger.debug("Dataloader optimization skipped due to error: %s", e)
+                        self.logger.debug(
+                            "Dataloader optimization skipped due to error: %s", e
+                        )
 
             # Enable performance optimizations
             PerformanceOptimizer.enable_torch_optimizations()
@@ -457,7 +472,7 @@ class UnifiedTrainer:
         self.logger.info("Validating configuration...")
 
         # Use the algorithm trainer's validation if available
-        algorithm = self.config.get("algorithm", "").lower()
+        algorithm = self.config.get("training", {}).get("algorithm", "").lower()
 
         try:
             # Create algorithm trainer for validation
@@ -482,7 +497,7 @@ class UnifiedTrainer:
 
     def _execute_training(self) -> bool:
         """Execute the actual training."""
-        algorithm = self.config.get("algorithm", "").lower()
+        algorithm = self.config.get("training", {}).get("algorithm", "").lower()
         self.logger.info(f"Debug: algorithm = {repr(algorithm)}")
         self.logger.info(f"Debug: config keys = {list(self.config.keys())}")
 
@@ -585,8 +600,10 @@ class UnifiedTrainer:
 
             # Get training statistics (narrow local variable to help static analysis)
             alg_trainer = self.algorithm_trainer
-            if success and alg_trainer is not None and hasattr(
-                alg_trainer, "get_training_stats"
+            if (
+                success
+                and alg_trainer is not None
+                and hasattr(alg_trainer, "get_training_stats")
             ):
                 try:
                     self.training_stats = alg_trainer.get_training_stats()
@@ -624,33 +641,45 @@ class UnifiedTrainer:
                         if ensemble is None:
                             raise RuntimeError("Ensemble system unexpectedly missing")
 
-                        ensemble_stats = cast(Dict[str, Any], ensemble.get_ensemble_stats())
+                        ensemble_stats = cast(
+                            Dict[str, Any], ensemble.get_ensemble_stats()
+                        )
                         decision_log = getattr(ensemble, "decision_log", None)
 
                         # Safely call optional reporter methods
-                        gen_fn = getattr(self.reporter, "generate_ensemble_report", None)
+                        gen_fn = getattr(
+                            self.reporter, "generate_ensemble_report", None
+                        )
                         save_fn = getattr(self.reporter, "save_ensemble_report", None)
                         ensemble_report = None
                         if callable(gen_fn):
                             try:
                                 ensemble_report = gen_fn(ensemble_stats, decision_log)
                             except Exception as e:
-                                self.logger.error(f"Failed to generate ensemble report: {e}")
+                                self.logger.error(
+                                    f"Failed to generate ensemble report: {e}"
+                                )
 
                         if ensemble_report is not None and callable(save_fn):
                             try:
                                 ensemble_report_path = save_fn(ensemble_report)
-                                if ensemble_report_path and hasattr(self.ui, "print_success"):
+                                if ensemble_report_path and hasattr(
+                                    self.ui, "print_success"
+                                ):
                                     self.ui.print_success(
                                         f"Ensemble analysis report saved to: {ensemble_report_path}"
                                     )
                             except Exception as e:
-                                self.logger.error(f"Failed to save ensemble report: {e}")
+                                self.logger.error(
+                                    f"Failed to save ensemble report: {e}"
+                                )
 
                         # Display ensemble final status
                         self.ui.print_ensemble_status(ensemble_stats)
 
-                        self.ui.print_info("Ensemble system analysis completed successfully")
+                        self.ui.print_info(
+                            "Ensemble system analysis completed successfully"
+                        )
 
                     except Exception as e:
                         self.logger.error(f"Ensemble report generation failed: {e}")
@@ -748,7 +777,9 @@ class UnifiedTrainer:
 
             # Initialize global model
             if self.algorithm_trainer is None:
-                self.logger.error("No algorithm trainer available for federated training")
+                self.logger.error(
+                    "No algorithm trainer available for federated training"
+                )
                 return False
 
             # Narrow local reference for static checking
@@ -789,7 +820,7 @@ class UnifiedTrainer:
 
                     # Create client trainer with global model state
                     client_trainer = create_algorithm_trainer(
-                        self.config.get("algorithm", "").lower(),
+                        self.config.get("training", {}).get("algorithm", "").lower(),
                         client_config,
                         self.logger,
                     )
@@ -816,11 +847,15 @@ class UnifiedTrainer:
                     self.global_model_state = self._federated_average(client_updates)
 
                     # Update global model
-                    if alg_trainer is not None and hasattr(alg_trainer, "set_model_state"):
+                    if alg_trainer is not None and hasattr(
+                        alg_trainer, "set_model_state"
+                    ):
                         try:
                             alg_trainer.set_model_state(self.global_model_state)
                         except Exception as e:
-                            self.logger.warning("Failed to set global model state: %s", e)
+                            self.logger.warning(
+                                "Failed to set global model state: %s", e
+                            )
 
                 self.ui.print_info(
                     f"Completed federated round {round_num + 1}/{num_rounds}"
@@ -836,8 +871,10 @@ class UnifiedTrainer:
             if self.algorithm_trainer is not None:
                 final_success = self.algorithm_trainer.train()
 
-            if final_success and self.algorithm_trainer is not None and hasattr(
-                self.algorithm_trainer, "get_training_stats"
+            if (
+                final_success
+                and self.algorithm_trainer is not None
+                and hasattr(self.algorithm_trainer, "get_training_stats")
             ):
                 self.training_stats = self.algorithm_trainer.get_training_stats()
 
@@ -975,7 +1012,9 @@ class UnifiedTrainer:
                 self.logger.info("Setting up meta learning...")
                 # Get model dimensions from algorithm trainer
                 alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(alg_trainer_local, "model"):
+                if alg_trainer_local is not None and hasattr(
+                    alg_trainer_local, "model"
+                ):
                     try:
                         state_dim = self._get_model_input_dim()
                         action_dim = self._get_model_output_dim()
@@ -985,7 +1024,9 @@ class UnifiedTrainer:
                     except Exception as e:
                         self.logger.warning("Failed to setup meta learner: %s", e)
                 else:
-                    self.logger.warning("Meta learning requires a model - skipping setup")
+                    self.logger.warning(
+                        "Meta learning requires a model - skipping setup"
+                    )
                 self.ui.print_info("Meta learning enabled")
 
             # Enhanced Federated Learning Setup
@@ -994,22 +1035,30 @@ class UnifiedTrainer:
             ):
                 self.logger.info("Setting up market-based federated learning...")
                 alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(alg_trainer_local, "model"):
+                if alg_trainer_local is not None and hasattr(
+                    alg_trainer_local, "model"
+                ):
                     try:
                         market_configs = self._create_market_federated_configs()
                         model_obj = getattr(alg_trainer_local, "model")
-                        self.federated_learner = MarketFederatedLearner(model_obj, market_configs)
+                        self.federated_learner = MarketFederatedLearner(
+                            model_obj, market_configs
+                        )
                     except Exception as e:
                         self.logger.warning("Failed to setup federated learner: %s", e)
                 else:
-                    self.logger.warning("Federated learning requires a model - skipping setup")
+                    self.logger.warning(
+                        "Federated learning requires a model - skipping setup"
+                    )
                 self.ui.print_info("Market-based federated learning enabled")
 
             # Continual Learning Setup
             if self.config.get("enable_continual_learning", False):
                 self.logger.info("Setting up continual learning...")
                 alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(alg_trainer_local, "model"):
+                if alg_trainer_local is not None and hasattr(
+                    alg_trainer_local, "model"
+                ):
                     try:
                         continual_config = ContinualLearningConfig(
                             method=self.config.get("continual_method", "ewc"),
@@ -1017,15 +1066,21 @@ class UnifiedTrainer:
                             rehearsal_buffer_size=self.config.get(
                                 "continual_buffer_size", 1000
                             ),
-                            max_tasks_in_memory=self.config.get("continual_max_tasks", 5),
+                            max_tasks_in_memory=self.config.get(
+                                "continual_max_tasks", 5
+                            ),
                             enable_memory_tracking=True,
                         )
                         model_obj = getattr(alg_trainer_local, "model")
-                        self.continual_learner = ContinualLearner(model_obj, continual_config)
+                        self.continual_learner = ContinualLearner(
+                            model_obj, continual_config
+                        )
                     except Exception as e:
                         self.logger.warning("Failed to setup continual learner: %s", e)
                 else:
-                    self.logger.warning("Continual learning requires a model - skipping setup")
+                    self.logger.warning(
+                        "Continual learning requires a model - skipping setup"
+                    )
 
         except Exception as e:
             self.logger.error(f"Failed to setup advanced features: {e}")
@@ -1128,16 +1183,24 @@ class UnifiedTrainer:
                 return
 
             # If the implementation nests a meta_learner attribute, guard access
-            if hasattr(meta, "meta_learner") and len(getattr(meta.meta_learner, "task_buffer", [])) > 0:
+            if (
+                hasattr(meta, "meta_learner")
+                and len(getattr(meta.meta_learner, "task_buffer", [])) > 0
+            ):
                 history = meta.train_on_markets(num_epochs=50)
                 self.logger.info("Meta learning adaptation completed")
                 self.training_stats["meta_learning"] = history
-            elif hasattr(meta, "task_buffer") and len(getattr(meta, "task_buffer", [])) > 0:
+            elif (
+                hasattr(meta, "task_buffer")
+                and len(getattr(meta, "task_buffer", [])) > 0
+            ):
                 history = meta.train_on_markets(num_epochs=50)
                 self.logger.info("Meta learning adaptation completed")
                 self.training_stats["meta_learning"] = history
             else:
-                self.logger.info("No meta learning tasks collected - skipping adaptation")
+                self.logger.info(
+                    "No meta learning tasks collected - skipping adaptation"
+                )
 
         except Exception as e:
             self.logger.error(f"Meta learning adaptation failed: {e}")
@@ -1148,12 +1211,16 @@ class UnifiedTrainer:
             self.logger.info("Running federated learning aggregation...")
 
             # Train federated learning across markets
-            def dummy_loss(outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+            def dummy_loss(
+                outputs: torch.Tensor, targets: torch.Tensor
+            ) -> torch.Tensor:
                 return torch.nn.functional.mse_loss(outputs, targets)
 
             fed = self.federated_learner
             if fed is None:
-                self.logger.warning("Federated learner not configured - skipping aggregation")
+                self.logger.warning(
+                    "Federated learner not configured - skipping aggregation"
+                )
                 return
 
             results = fed.train_all_markets(dummy_loss)
@@ -1180,9 +1247,14 @@ class UnifiedTrainer:
                 return
 
             # 継続学習実行
-            from typing import Callable
 
-            def sac_loss(outputs: torch.Tensor, actions: torch.Tensor, rewards: torch.Tensor, next_outputs: torch.Tensor, dones: torch.Tensor) -> torch.Tensor:
+            def sac_loss(
+                outputs: torch.Tensor,
+                actions: torch.Tensor,
+                rewards: torch.Tensor,
+                next_outputs: torch.Tensor,
+                dones: torch.Tensor,
+            ) -> torch.Tensor:
                 # SACの簡易損失関数
                 return torch.nn.functional.mse_loss(outputs, actions)
 
@@ -1194,15 +1266,19 @@ class UnifiedTrainer:
                 return
 
             if alg is None:
-                self.logger.warning("Algorithm trainer not available for continual learning")
+                self.logger.warning(
+                    "Algorithm trainer not available for continual learning"
+                )
                 return
 
             if not hasattr(alg, "model") or getattr(alg, "model") is None:
-                self.logger.warning("Algorithm trainer model not available for continual learning")
+                self.logger.warning(
+                    "Algorithm trainer model not available for continual learning"
+                )
                 return
 
             model = getattr(alg, "model")
-            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+            optimizer = torch.optim.Adam(model.parameters(), lr=DEFAULT_LEARNING_RATE)
 
             learning_stats = cl.learn_task(task_data, sac_loss, optimizer, num_epochs=5)
 
@@ -1217,7 +1293,11 @@ class UnifiedTrainer:
         try:
             # トレーニングデータを取得（簡易版）
             alg = self.algorithm_trainer
-            if alg is not None and hasattr(alg, "dataloader") and getattr(alg, "dataloader"):
+            if (
+                alg is not None
+                and hasattr(alg, "dataloader")
+                and getattr(alg, "dataloader")
+            ):
                 # データローダーからサンプルを取得（安全に）
                 try:
                     data_iter = iter(getattr(alg, "dataloader"))
@@ -1258,7 +1338,11 @@ class UnifiedTrainer:
             self.task_counter += 1
 
             alg = self.algorithm_trainer
-            if alg is not None and hasattr(alg, "model") and getattr(alg, "model") is not None:
+            if (
+                alg is not None
+                and hasattr(alg, "model")
+                and getattr(alg, "model") is not None
+            ):
                 model = getattr(alg, "model")
                 state_dim = int(getattr(model, "input_dim", 10))
                 action_dim = int(getattr(model, "output_dim", 4))
@@ -1292,7 +1376,11 @@ class UnifiedTrainer:
             first_layer = next(params_iter)
             if first_layer is None:
                 return 10
-            return int(first_layer.shape[1] if len(first_layer.shape) > 1 else first_layer.shape[0])
+            return int(
+                first_layer.shape[1]
+                if len(first_layer.shape) > 1
+                else first_layer.shape[0]
+            )
         except Exception:
             return 10
 
@@ -1336,34 +1424,53 @@ class UnifiedTrainer:
     def _initialize_v433_components(self) -> None:
         """V433適応型学習コンポーネントの初期化"""
         try:
-            from ztb.training.adaptive_sac_core import AdaptiveSACCore, AdaptiveSACConfig
-            from ztb.training.online_learning_engine import OnlineLearningEngine, OnlineLearningConfig
-            from ztb.optimization.unified_optimizer import UnifiedOptimizer, OptimizationConfig, OptimizationConfig
+            from ztb.optimization.unified_optimizer import (
+                OptimizationConfig,
+                UnifiedOptimizer,
+            )
+            from ztb.training.adaptive_sac_core import (
+                AdaptiveSACConfig,
+                AdaptiveSACCore,
+            )
+            from ztb.training.online_learning_engine import (
+                OnlineLearningConfig,
+                OnlineLearningEngine,
+            )
 
             self.logger.info("Initializing V433 adaptive learning components")
 
             # Adaptive SAC Config
-            v433_config = self.config.get("v433_adaptive_config", {}) if isinstance(self.config, dict) else {}
+            v433_config = (
+                self.config.get("v433_adaptive_config", {})
+                if isinstance(self.config, dict)
+                else {}
+            )
 
             self.adaptive_sac_config = AdaptiveSACConfig(
-                enable_market_regime_adaptation=v433_config.get("enable_market_regime_adaptation", True),
+                enable_market_regime_adaptation=v433_config.get(
+                    "enable_market_regime_adaptation", True
+                ),
                 enable_online_learning=v433_config.get("enable_online_learning", True),
-                adaptation_interval_steps=v433_config.get("adaptation_interval_steps", 1000),
+                adaptation_interval_steps=v433_config.get(
+                    "adaptation_interval_steps", 1000
+                ),
                 learning_rate=v433_config.get("learning_rate", 3e-4),
                 buffer_size=v433_config.get("buffer_size", 1000000),
-                performance_window_size=v433_config.get("performance_window_size", 100)
+                performance_window_size=v433_config.get("performance_window_size", 100),
             )
 
             # 観測空間と行動空間の次元を取得（環境設定から）
-            env_config = self.config.get("environment", {}) if isinstance(self.config, dict) else {}
+            env_config = (
+                self.config.get("environment", {})
+                if isinstance(self.config, dict)
+                else {}
+            )
             observation_dim = env_config.get("observation_dim", 10)  # デフォルト値
             action_dim = env_config.get("action_dim", 3)  # デフォルト値
 
             # Adaptive SAC Coreの初期化
             self.adaptive_sac_core = AdaptiveSACCore(
-                self.adaptive_sac_config,
-                observation_dim,
-                action_dim
+                self.adaptive_sac_config, observation_dim, action_dim
             )
 
             # Online Learning Config
@@ -1372,27 +1479,36 @@ class UnifiedTrainer:
                 learning_batch_size=v433_config.get("learning_batch_size", 64),
                 experience_buffer_size=v433_config.get("experience_buffer_size", 50000),
                 adaptation_threshold=v433_config.get("adaptation_threshold", 0.1),
-                data_update_interval=v433_config.get("data_update_interval", 1.0)
+                data_update_interval=v433_config.get("data_update_interval", 1.0),
             )
 
             # Online Learning Engineの初期化
             self.online_learning_engine = OnlineLearningEngine(
-                self.online_learning_config,
-                self.adaptive_sac_core
+                self.online_learning_config, self.adaptive_sac_core
             )
 
             # Unified Optimizerの初期化
             optimizer_config = OptimizationConfig(
-                enable_hyperparameter_optimization=v433_config.get("enable_hyperparameter_optimization", True),
-                enable_system_optimization=v433_config.get("enable_system_optimization", True),
-                enable_reward_optimization=v433_config.get("enable_reward_optimization", True),
-                enable_adaptive_optimization=v433_config.get("enable_adaptive_optimization", True),
+                enable_hyperparameter_optimization=v433_config.get(
+                    "enable_hyperparameter_optimization", True
+                ),
+                enable_system_optimization=v433_config.get(
+                    "enable_system_optimization", True
+                ),
+                enable_reward_optimization=v433_config.get(
+                    "enable_reward_optimization", True
+                ),
+                enable_adaptive_optimization=v433_config.get(
+                    "enable_adaptive_optimization", True
+                ),
                 max_trials=v433_config.get("max_trials", 100),
-                max_parallel_trials=v433_config.get("max_parallel_trials", 4)
+                max_parallel_trials=v433_config.get("max_parallel_trials", 4),
             )
             self.unified_optimizer = UnifiedOptimizer(optimizer_config)
 
-            self.logger.info("V433 adaptive learning components initialized successfully")
+            self.logger.info(
+                "V433 adaptive learning components initialized successfully"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to initialize V433 components: {e}")
@@ -1414,16 +1530,28 @@ class UnifiedTrainer:
                 return False
 
             # 環境の初期化確認
-            env_config = self.config.get("environment", {}) if isinstance(self.config, dict) else {}
+            env_config = (
+                self.config.get("environment", {})
+                if isinstance(self.config, dict)
+                else {}
+            )
             if not env_config:
-                self.logger.error("Environment configuration missing for V433 adaptive training")
+                self.logger.error(
+                    "Environment configuration missing for V433 adaptive training"
+                )
                 return False
 
             # 適応型トレーニングのステータス表示
             self.ui.print_info("Setting up V433 adaptive training components:")
-            self.ui.print_info(f"  - Adaptive SAC Core: {'✓' if self.adaptive_sac_core else '✗'}")
-            self.ui.print_info(f"  - Online Learning Engine: {'✓' if self.online_learning_engine else '✗'}")
-            self.ui.print_info(f"  - Unified Optimizer: {'✓' if self.unified_optimizer else '✗'}")
+            self.ui.print_info(
+                f"  - Adaptive SAC Core: {'✓' if self.adaptive_sac_core else '✗'}"
+            )
+            self.ui.print_info(
+                f"  - Online Learning Engine: {'✓' if self.online_learning_engine else '✗'}"
+            )
+            self.ui.print_info(
+                f"  - Unified Optimizer: {'✓' if self.unified_optimizer else '✗'}"
+            )
 
             # 市場レジーム検知の初期化
             adaptive_core = self.adaptive_sac_core
@@ -1461,7 +1589,9 @@ class UnifiedTrainer:
 
             init_fn = getattr(adaptive_core, "initialize_sac_model", None)
             if not callable(init_fn):
-                self.logger.error("Adaptive SAC core missing initialize_sac_model method")
+                self.logger.error(
+                    "Adaptive SAC core missing initialize_sac_model method"
+                )
                 return False
 
             try:
@@ -1487,7 +1617,9 @@ class UnifiedTrainer:
                     self.logger.error(f"Adaptive training failed to start: {e}")
                     return False
             else:
-                self.logger.error("Adaptive SAC core missing start_adaptive_training method")
+                self.logger.error(
+                    "Adaptive SAC core missing start_adaptive_training method"
+                )
                 return False
 
             # オンライン学習エンジンの開始（非同期）
@@ -1499,10 +1631,14 @@ class UnifiedTrainer:
                 asyncio.set_event_loop(loop)
                 try:
                     online_engine = self.online_learning_engine
-                    if online_engine is not None and hasattr(online_engine, "start_online_learning"):
+                    if online_engine is not None and hasattr(
+                        online_engine, "start_online_learning"
+                    ):
                         loop.run_until_complete(online_engine.start_online_learning())
                     else:
-                        self.logger.warning("Online learning engine not available to start")
+                        self.logger.warning(
+                            "Online learning engine not available to start"
+                        )
                 except Exception as e:
                     self.logger.error(f"Online learning failed: {e}")
                 finally:
@@ -1531,15 +1667,25 @@ class UnifiedTrainer:
             except Exception:
                 HeavyTradingEnv = None
 
-            env_config = self.config.get("environment", {}) if isinstance(self.config, dict) else {}
+            env_config = (
+                self.config.get("environment", {})
+                if isinstance(self.config, dict)
+                else {}
+            )
 
             if HeavyTradingEnv is None:
-                self.logger.error("HeavyTradingEnv not available in runtime environment")
+                self.logger.error(
+                    "HeavyTradingEnv not available in runtime environment"
+                )
                 return None
 
             env = HeavyTradingEnv(
-                initial_balance=env_config.get("initial_balance", 10000.0),
-                transaction_cost=env_config.get("transaction_cost", 1e-5),
+                initial_balance=env_config.get(
+                    "initial_balance", DEFAULT_INITIAL_BALANCE_SMALL
+                ),
+                transaction_cost=env_config.get(
+                    "transaction_cost", DEFAULT_TRANSACTION_COST
+                ),
                 max_position_size=env_config.get("max_position_size", 1.0),
                 window_size=env_config.get("window_size", 64),
                 use_continuous_actions=True,

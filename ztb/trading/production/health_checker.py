@@ -5,23 +5,24 @@ V433 Phase 5: Production Monitoring Layer - Health Checker
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
+import subprocess
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
 import psutil
 import requests
-import subprocess
 
 
 class HealthStatus(Enum):
     """ヘルスステータス"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -31,10 +32,11 @@ class HealthStatus(Enum):
 
 class HealthCheckType(Enum):
     """ヘルスチェックタイプ"""
-    SYSTEM = "system"          # システムリソース
+
+    SYSTEM = "system"  # システムリソース
     APPLICATION = "application"  # アプリケーションヘルス
-    DATABASE = "database"      # データベース接続
-    NETWORK = "network"        # ネットワーク接続
+    DATABASE = "database"  # データベース接続
+    NETWORK = "network"  # ネットワーク接続
     EXTERNAL_API = "external_api"  # 外部API
     BUSINESS_LOGIC = "business_logic"  # ビジネスロジック
 
@@ -42,6 +44,7 @@ class HealthCheckType(Enum):
 @dataclass
 class HealthCheck:
     """ヘルスチェック"""
+
     check_id: str
     name: str
     type: HealthCheckType
@@ -63,6 +66,7 @@ class HealthCheck:
 @dataclass
 class HealthReport:
     """ヘルスレポート"""
+
     report_id: str
     timestamp: datetime
     overall_status: HealthStatus
@@ -79,9 +83,9 @@ class HealthChecker:
     自動修復機能も提供。
     """
 
-    def __init__(self,
-                 check_interval_seconds: int = 60,
-                 report_retention_days: int = 7):
+    def __init__(
+        self, check_interval_seconds: int = 60, report_retention_days: int = 7
+    ):
         """
         初期化
 
@@ -100,14 +104,18 @@ class HealthChecker:
 
         # 自動修復設定
         self.auto_remediation_enabled = True
-        self.remediation_actions: Dict[str, Callable[[HealthCheck], Awaitable[bool]]] = {}
+        self.remediation_actions: Dict[
+            str, Callable[[HealthCheck], Awaitable[bool]]
+        ] = {}
 
         # モニタリング
         self.monitoring_active = False
         self.monitoring_thread: Optional[threading.Thread] = None
 
         # コールバック
-        self.status_callbacks: List[Callable[[HealthStatus, HealthStatus], Awaitable[None]]] = []
+        self.status_callbacks: List[
+            Callable[[HealthStatus, HealthStatus], Awaitable[None]]
+        ] = []
         self.report_callbacks: List[Callable[[HealthReport], Awaitable[None]]] = []
 
         # ロギング
@@ -122,28 +130,65 @@ class HealthChecker:
         """デフォルトヘルスチェック初期化"""
         default_checks = [
             # システムチェック
-            HealthCheck("cpu_usage", "CPU Usage Check", HealthCheckType.SYSTEM,
-                       "CPU使用率のチェック", interval_seconds=30),
-            HealthCheck("memory_usage", "Memory Usage Check", HealthCheckType.SYSTEM,
-                       "メモリ使用率のチェック", interval_seconds=30),
-            HealthCheck("disk_usage", "Disk Usage Check", HealthCheckType.SYSTEM,
-                       "ディスク使用率のチェック", interval_seconds=300),
-            HealthCheck("network_connectivity", "Network Connectivity", HealthCheckType.NETWORK,
-                       "ネットワーク接続性のチェック", interval_seconds=60),
-
+            HealthCheck(
+                "cpu_usage",
+                "CPU Usage Check",
+                HealthCheckType.SYSTEM,
+                "CPU使用率のチェック",
+                interval_seconds=30,
+            ),
+            HealthCheck(
+                "memory_usage",
+                "Memory Usage Check",
+                HealthCheckType.SYSTEM,
+                "メモリ使用率のチェック",
+                interval_seconds=30,
+            ),
+            HealthCheck(
+                "disk_usage",
+                "Disk Usage Check",
+                HealthCheckType.SYSTEM,
+                "ディスク使用率のチェック",
+                interval_seconds=300,
+            ),
+            HealthCheck(
+                "network_connectivity",
+                "Network Connectivity",
+                HealthCheckType.NETWORK,
+                "ネットワーク接続性のチェック",
+                interval_seconds=60,
+            ),
             # アプリケーションチェック
-            HealthCheck("application_process", "Application Process", HealthCheckType.APPLICATION,
-                       "アプリケーションプロセスのチェック", interval_seconds=30),
-            HealthCheck("application_response", "Application Response", HealthCheckType.APPLICATION,
-                       "アプリケーション応答性のチェック", interval_seconds=60),
-
+            HealthCheck(
+                "application_process",
+                "Application Process",
+                HealthCheckType.APPLICATION,
+                "アプリケーションプロセスのチェック",
+                interval_seconds=30,
+            ),
+            HealthCheck(
+                "application_response",
+                "Application Response",
+                HealthCheckType.APPLICATION,
+                "アプリケーション応答性のチェック",
+                interval_seconds=60,
+            ),
             # データベースチェック
-            HealthCheck("database_connection", "Database Connection", HealthCheckType.DATABASE,
-                       "データベース接続のチェック", interval_seconds=60),
-
+            HealthCheck(
+                "database_connection",
+                "Database Connection",
+                HealthCheckType.DATABASE,
+                "データベース接続のチェック",
+                interval_seconds=60,
+            ),
             # ビジネスロジックチェック
-            HealthCheck("trading_system", "Trading System Health", HealthCheckType.BUSINESS_LOGIC,
-                       "取引システムのヘルスのチェック", interval_seconds=120),
+            HealthCheck(
+                "trading_system",
+                "Trading System Health",
+                HealthCheckType.BUSINESS_LOGIC,
+                "取引システムのヘルスのチェック",
+                interval_seconds=120,
+            ),
         ]
 
         for check in default_checks:
@@ -291,7 +336,10 @@ class HealthChecker:
             elif check.check_id == "memory_usage":
                 memory = psutil.virtual_memory()
                 memory_percent = memory.percent
-                check.metadata = {"memory_percent": memory_percent, "memory_used_gb": memory.used / (1024**3)}
+                check.metadata = {
+                    "memory_percent": memory_percent,
+                    "memory_used_gb": memory.used / (1024**3),
+                }
 
                 if memory_percent > 95:
                     return HealthStatus.CRITICAL
@@ -303,9 +351,12 @@ class HealthChecker:
                     return HealthStatus.HEALTHY
 
             elif check.check_id == "disk_usage":
-                disk = psutil.disk_usage('/')
+                disk = psutil.disk_usage("/")
                 disk_percent = disk.percent
-                check.metadata = {"disk_percent": disk_percent, "disk_free_gb": disk.free / (1024**3)}
+                check.metadata = {
+                    "disk_percent": disk_percent,
+                    "disk_free_gb": disk.free / (1024**3),
+                }
 
                 if disk_percent > 95:
                     return HealthStatus.CRITICAL
@@ -321,6 +372,7 @@ class HealthChecker:
                 try:
                     # DNS解決チェック
                     import socket
+
                     socket.gethostbyname("google.com")
                     check.metadata = {"dns_resolution": "success"}
                     return HealthStatus.HEALTHY
@@ -350,14 +402,19 @@ class HealthChecker:
                 process_name = check.metadata.get("process_name", "python")
                 processes = []
 
-                for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+                for proc in psutil.process_iter(
+                    ["pid", "name", "cpu_percent", "memory_percent"]
+                ):
                     try:
-                        if process_name.lower() in proc.info['name'].lower():
+                        if process_name.lower() in proc.info["name"].lower():
                             processes.append(proc.info)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
 
-                check.metadata = {"process_count": len(processes), "processes": processes}
+                check.metadata = {
+                    "process_count": len(processes),
+                    "processes": processes,
+                }
 
                 if len(processes) == 0:
                     return HealthStatus.CRITICAL
@@ -374,7 +431,7 @@ class HealthChecker:
                         response = requests.get(health_endpoint, timeout=10)
                         check.metadata = {
                             "status_code": response.status_code,
-                            "response_time_ms": response.elapsed.total_seconds() * 1000
+                            "response_time_ms": response.elapsed.total_seconds() * 1000,
                         }
 
                         if response.status_code == 200:
@@ -426,15 +483,17 @@ class HealthChecker:
                     # Windows環境でのping
                     result = subprocess.run(
                         ["ping", "-n", "1", "-w", "1000", target],
-                        capture_output=True, text=True, timeout=5
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
                     )
 
                     if result.returncode == 0:
                         # 応答時間抽出（簡易）
-                        output_lines = result.stdout.split('\n')
+                        output_lines = result.stdout.split("\n")
                         for line in output_lines:
-                            if 'time=' in line.lower():
-                                time_str = line.split('time=')[1].split('ms')[0].strip()
+                            if "time=" in line.lower():
+                                time_str = line.split("time=")[1].split("ms")[0].strip()
                                 latencies.append(float(time_str))
                                 break
                 except Exception:
@@ -445,7 +504,7 @@ class HealthChecker:
                 check.metadata = {
                     "average_latency_ms": avg_latency,
                     "targets_tested": len(targets),
-                    "successful_pings": len(latencies)
+                    "successful_pings": len(latencies),
                 }
 
                 if avg_latency > 500:
@@ -493,7 +552,7 @@ class HealthChecker:
                 check.metadata = {
                     "orders_pending": 0,  # 保留中注文数
                     "active_positions": 0,  # アクティブポジション数
-                    "last_trade_time": datetime.now().isoformat()
+                    "last_trade_time": datetime.now().isoformat(),
                 }
 
                 # 簡易的なチェック
@@ -530,7 +589,9 @@ class HealthChecker:
         except Exception as e:
             self.logger.error(f"Auto remediation error for {check.check_id}: {e}")
 
-    def add_remediation_action(self, check_id: str, action: Callable[[HealthCheck], Awaitable[bool]]) -> None:
+    def add_remediation_action(
+        self, check_id: str, action: Callable[[HealthCheck], Awaitable[bool]]
+    ) -> None:
         """
         修復アクション追加
 
@@ -551,7 +612,7 @@ class HealthChecker:
         report = HealthReport(
             report_id=f"REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             timestamp=datetime.now(),
-            overall_status=HealthStatus.UNKNOWN
+            overall_status=HealthStatus.UNKNOWN,
         )
 
         # 全チェック実行
@@ -603,10 +664,12 @@ class HealthChecker:
             HealthStatus.UNHEALTHY: 3,
             HealthStatus.DEGRADED: 2,
             HealthStatus.HEALTHY: 1,
-            HealthStatus.UNKNOWN: 0
+            HealthStatus.UNKNOWN: 0,
         }
 
-        max_priority = max((status_priority.get(check.last_status, 0) for check in checks), default=0)
+        max_priority = max(
+            (status_priority.get(check.last_status, 0) for check in checks), default=0
+        )
 
         for status, priority in status_priority.items():
             if priority == max_priority:
@@ -634,16 +697,18 @@ class HealthChecker:
                 status_counts[status] = status_counts.get(status, 0) + 1
 
         avg_response_time = None
-        response_times = [c.response_time_ms for c in checks if c.response_time_ms is not None]
+        response_times = [
+            c.response_time_ms for c in checks if c.response_time_ms is not None
+        ]
         if response_times:
             avg_response_time = sum(response_times) / len(response_times)
 
         return {
-            'total_checks': total_checks,
-            'enabled_checks': enabled_checks,
-            'status_counts': status_counts,
-            'average_response_time_ms': avg_response_time,
-            'last_check_time': datetime.now().isoformat()
+            "total_checks": total_checks,
+            "enabled_checks": enabled_checks,
+            "status_counts": status_counts,
+            "average_response_time_ms": avg_response_time,
+            "last_check_time": datetime.now().isoformat(),
         }
 
     def _generate_recommendations(self, checks: List[HealthCheck]) -> List[str]:
@@ -663,22 +728,30 @@ class HealthChecker:
                 continue
 
             if check.last_status == HealthStatus.CRITICAL:
-                recommendations.append(f"CRITICAL: {check.name} - Immediate attention required")
+                recommendations.append(
+                    f"CRITICAL: {check.name} - Immediate attention required"
+                )
             elif check.last_status == HealthStatus.UNHEALTHY:
-                recommendations.append(f"UNHEALTHY: {check.name} - Investigate and resolve")
+                recommendations.append(
+                    f"UNHEALTHY: {check.name} - Investigate and resolve"
+                )
             elif check.last_status == HealthStatus.DEGRADED:
                 recommendations.append(f"DEGRADED: {check.name} - Monitor closely")
 
             # 連続失敗チェック
             if check.consecutive_failures >= check.failure_threshold:
-                recommendations.append(f"Persistent failures in {check.name} - Consider manual intervention")
+                recommendations.append(
+                    f"Persistent failures in {check.name} - Consider manual intervention"
+                )
 
         if not recommendations:
             recommendations.append("All systems operating normally")
 
         return recommendations
 
-    def get_health_report(self, report_id: Optional[str] = None) -> Optional[HealthReport]:
+    def get_health_report(
+        self, report_id: Optional[str] = None
+    ) -> Optional[HealthReport]:
         """
         ヘルスレポート取得
 
@@ -715,7 +788,9 @@ class HealthChecker:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Health monitoring started")
@@ -741,7 +816,9 @@ class HealthChecker:
                 self.logger.error(f"Monitoring loop error: {e}")
                 time.sleep(10)
 
-    def add_status_callback(self, callback: Callable[[HealthStatus, HealthStatus], Awaitable[None]]) -> None:
+    def add_status_callback(
+        self, callback: Callable[[HealthStatus, HealthStatus], Awaitable[None]]
+    ) -> None:
         """
         ステータスコールバック追加
 
@@ -750,7 +827,9 @@ class HealthChecker:
         """
         self.status_callbacks.append(callback)
 
-    def add_report_callback(self, callback: Callable[[HealthReport], Awaitable[None]]) -> None:
+    def add_report_callback(
+        self, callback: Callable[[HealthReport], Awaitable[None]]
+    ) -> None:
         """
         レポートコールバック追加
 
@@ -767,44 +846,46 @@ class HealthChecker:
             filepath: 保存ファイルパス
         """
         state = {
-            'check_interval_seconds': self.check_interval_seconds,
-            'report_retention_days': self.report_retention_days,
-            'auto_remediation_enabled': self.auto_remediation_enabled,
-            'health_checks': {
+            "check_interval_seconds": self.check_interval_seconds,
+            "report_retention_days": self.report_retention_days,
+            "auto_remediation_enabled": self.auto_remediation_enabled,
+            "health_checks": {
                 check_id: {
-                    'check_id': check.check_id,
-                    'name': check.name,
-                    'type': check.type.value,
-                    'description': check.description,
-                    'enabled': check.enabled,
-                    'timeout_seconds': check.timeout_seconds,
-                    'interval_seconds': check.interval_seconds,
-                    'failure_threshold': check.failure_threshold,
-                    'success_threshold': check.success_threshold,
-                    'last_check': check.last_check.isoformat() if check.last_check else None,
-                    'last_status': check.last_status.value,
-                    'consecutive_failures': check.consecutive_failures,
-                    'consecutive_successes': check.consecutive_successes,
-                    'response_time_ms': check.response_time_ms,
-                    'error_message': check.error_message,
-                    'metadata': check.metadata
+                    "check_id": check.check_id,
+                    "name": check.name,
+                    "type": check.type.value,
+                    "description": check.description,
+                    "enabled": check.enabled,
+                    "timeout_seconds": check.timeout_seconds,
+                    "interval_seconds": check.interval_seconds,
+                    "failure_threshold": check.failure_threshold,
+                    "success_threshold": check.success_threshold,
+                    "last_check": check.last_check.isoformat()
+                    if check.last_check
+                    else None,
+                    "last_status": check.last_status.value,
+                    "consecutive_failures": check.consecutive_failures,
+                    "consecutive_successes": check.consecutive_successes,
+                    "response_time_ms": check.response_time_ms,
+                    "error_message": check.error_message,
+                    "metadata": check.metadata,
                 }
                 for check_id, check in self.health_checks.items()
             },
-            'health_reports': [
+            "health_reports": [
                 {
-                    'report_id': r.report_id,
-                    'timestamp': r.timestamp.isoformat(),
-                    'overall_status': r.overall_status.value,
-                    'summary': r.summary,
-                    'recommendations': r.recommendations
+                    "report_id": r.report_id,
+                    "timestamp": r.timestamp.isoformat(),
+                    "overall_status": r.overall_status.value,
+                    "summary": r.summary,
+                    "recommendations": r.recommendations,
                 }
                 for r in self.health_reports[-20:]  # 最新20件
-            ]
+            ],
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Health checker state saved to {filepath}")
@@ -820,45 +901,47 @@ class HealthChecker:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.check_interval_seconds = state['check_interval_seconds']
-            self.report_retention_days = state['report_retention_days']
-            self.auto_remediation_enabled = state['auto_remediation_enabled']
+            self.check_interval_seconds = state["check_interval_seconds"]
+            self.report_retention_days = state["report_retention_days"]
+            self.auto_remediation_enabled = state["auto_remediation_enabled"]
 
             # ヘルスチェック復元
             self.health_checks = {}
-            for check_id, check_data in state.get('health_checks', {}).items():
+            for check_id, check_data in state.get("health_checks", {}).items():
                 check = HealthCheck(
-                    check_id=check_data['check_id'],
-                    name=check_data['name'],
-                    type=HealthCheckType(check_data['type']),
-                    description=check_data['description'],
-                    enabled=check_data['enabled'],
-                    timeout_seconds=check_data['timeout_seconds'],
-                    interval_seconds=check_data['interval_seconds'],
-                    failure_threshold=check_data['failure_threshold'],
-                    success_threshold=check_data['success_threshold'],
-                    last_check=datetime.fromisoformat(check_data['last_check']) if check_data['last_check'] else None,
-                    last_status=HealthStatus(check_data['last_status']),
-                    consecutive_failures=check_data['consecutive_failures'],
-                    consecutive_successes=check_data['consecutive_successes'],
-                    response_time_ms=check_data['response_time_ms'],
-                    error_message=check_data['error_message'],
-                    metadata=check_data['metadata']
+                    check_id=check_data["check_id"],
+                    name=check_data["name"],
+                    type=HealthCheckType(check_data["type"]),
+                    description=check_data["description"],
+                    enabled=check_data["enabled"],
+                    timeout_seconds=check_data["timeout_seconds"],
+                    interval_seconds=check_data["interval_seconds"],
+                    failure_threshold=check_data["failure_threshold"],
+                    success_threshold=check_data["success_threshold"],
+                    last_check=datetime.fromisoformat(check_data["last_check"])
+                    if check_data["last_check"]
+                    else None,
+                    last_status=HealthStatus(check_data["last_status"]),
+                    consecutive_failures=check_data["consecutive_failures"],
+                    consecutive_successes=check_data["consecutive_successes"],
+                    response_time_ms=check_data["response_time_ms"],
+                    error_message=check_data["error_message"],
+                    metadata=check_data["metadata"],
                 )
                 self.health_checks[check_id] = check
 
             # ヘルスレポート復元
             self.health_reports = []
-            for r_data in state.get('health_reports', []):
+            for r_data in state.get("health_reports", []):
                 report = HealthReport(
-                    report_id=r_data['report_id'],
-                    timestamp=datetime.fromisoformat(r_data['timestamp']),
-                    overall_status=HealthStatus(r_data['overall_status']),
-                    summary=r_data['summary'],
-                    recommendations=r_data['recommendations']
+                    report_id=r_data["report_id"],
+                    timestamp=datetime.fromisoformat(r_data["timestamp"]),
+                    overall_status=HealthStatus(r_data["overall_status"]),
+                    summary=r_data["summary"],
+                    recommendations=r_data["recommendations"],
                 )
                 self.health_reports.append(report)
 

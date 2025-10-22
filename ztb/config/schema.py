@@ -10,6 +10,11 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ztb.trading.environment.constants import (
+    DEFAULT_INITIAL_BALANCE,
+    DEFAULT_TRANSACTION_COST,
+)
+
 # Import path utilities for robust path handling
 from ztb.utils.path_utils import ensure_dir, get_project_root
 
@@ -57,8 +62,8 @@ class RewardSettings(BaseModel):
 class EnvironmentConfig(BaseModel):
     """Trading environment configuration."""
 
-    initial_balance: float = 200000.0
-    transaction_cost: float = 1e-5
+    initial_balance: float = DEFAULT_INITIAL_BALANCE
+    transaction_cost: float = DEFAULT_TRANSACTION_COST
     max_position_size: float = 1.0
     enable_action_masking: bool = True
     use_continuous_actions: bool = True

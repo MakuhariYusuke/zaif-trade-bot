@@ -1,20 +1,18 @@
 """Tests for Performance Optimization System component."""
 
 import time
-from typing import Any, Dict
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
-import numpy as np
 
 from ztb.trading.performance_optimizer import (
-    PerformanceOptimizationSystem,
+    CPUOptimizer,
     LatencyOptimizer,
     MemoryOptimizer,
-    CPUOptimizer,
-    PerformanceTarget,
+    OptimizationResult,
     PerformanceMetrics,
-    OptimizationResult
+    PerformanceOptimizationSystem,
+    PerformanceTarget,
 )
 
 
@@ -40,10 +38,7 @@ def performance_optimizer(mock_integration_manager):
 def sample_performance_target():
     """Sample performance target"""
     return PerformanceTarget(
-        latency_ms=100.0,
-        memory_gb=4.0,
-        cpu_percent=80.0,
-        throughput_ops=1000
+        latency_ms=100.0, memory_gb=4.0, cpu_percent=80.0, throughput_ops=1000
     )
 
 
@@ -57,14 +52,18 @@ def sample_performance_metrics():
         max_latency_ms=95.0,
         memory_usage_gb=2.5,
         cpu_usage_percent=60.0,
-        operations_per_second=800.0
+        operations_per_second=800.0,
     )
 
 
 class TestPerformanceOptimizationSystemInitialization:
     """Initialization tests for Performance Optimization System"""
 
-    def test_initialization(self, performance_optimizer: PerformanceOptimizationSystem, mock_integration_manager):
+    def test_initialization(
+        self,
+        performance_optimizer: PerformanceOptimizationSystem,
+        mock_integration_manager,
+    ):
         """Test successful initialization"""
         assert performance_optimizer.integration_manager == mock_integration_manager
         assert isinstance(performance_optimizer.latency_optimizer, LatencyOptimizer)
@@ -81,21 +80,28 @@ class TestPerformanceOptimizationSystemInitialization:
 class TestPerformanceOptimizationSystemOperations:
     """Operation tests for Performance Optimization System"""
 
-    def test_run_comprehensive_optimization(self, performance_optimizer: PerformanceOptimizationSystem):
+    def test_run_comprehensive_optimization(
+        self, performance_optimizer: PerformanceOptimizationSystem
+    ):
         """Test comprehensive optimization execution"""
-        with patch.object(performance_optimizer.latency_optimizer, 'optimize_data_processing') as mock_latency, \
-             patch.object(performance_optimizer.latency_optimizer, 'optimize_signal_processing') as mock_signal, \
-             patch.object(performance_optimizer.memory_optimizer, 'optimize_memory_allocation') as mock_memory, \
-             patch.object(performance_optimizer.cpu_optimizer, 'optimize_cpu_utilization') as mock_cpu, \
-             patch.object(performance_optimizer.latency_optimizer, 'profile_critical_path') as mock_profile:
-
+        with patch.object(
+            performance_optimizer.latency_optimizer, "optimize_data_processing"
+        ) as mock_latency, patch.object(
+            performance_optimizer.latency_optimizer, "optimize_signal_processing"
+        ) as mock_signal, patch.object(
+            performance_optimizer.memory_optimizer, "optimize_memory_allocation"
+        ) as mock_memory, patch.object(
+            performance_optimizer.cpu_optimizer, "optimize_cpu_utilization"
+        ) as mock_cpu, patch.object(
+            performance_optimizer.latency_optimizer, "profile_critical_path"
+        ) as mock_profile:
             # Mock optimization results
             mock_latency.return_value = OptimizationResult(
                 optimization_type="data_processing",
                 before_metrics=PerformanceMetrics(avg_latency_ms=100.0),
                 after_metrics=PerformanceMetrics(avg_latency_ms=80.0),
                 improvement_percent=20.0,
-                success=True
+                success=True,
             )
 
             mock_signal.return_value = OptimizationResult(
@@ -103,11 +109,17 @@ class TestPerformanceOptimizationSystemOperations:
                 before_metrics=PerformanceMetrics(avg_latency_ms=120.0),
                 after_metrics=PerformanceMetrics(avg_latency_ms=90.0),
                 improvement_percent=25.0,
-                success=True
+                success=True,
             )
 
-            mock_memory.return_value = {"optimizations_applied": ["pool_optimization"], "success": True}
-            mock_cpu.return_value = {"optimizations_applied": ["thread_pool"], "success": True}
+            mock_memory.return_value = {
+                "optimizations_applied": ["pool_optimization"],
+                "success": True,
+            }
+            mock_cpu.return_value = {
+                "optimizations_applied": ["thread_pool"],
+                "success": True,
+            }
             mock_profile.return_value = {"bottlenecks": [], "avg_latency_ms": 85.0}
 
             result = performance_optimizer.run_comprehensive_optimization()
@@ -118,7 +130,9 @@ class TestPerformanceOptimizationSystemOperations:
             assert result["summary"]["total_optimizations"] == 5
             assert len(performance_optimizer.optimization_results) == 2
 
-    def test_start_performance_monitoring(self, performance_optimizer: PerformanceOptimizationSystem):
+    def test_start_performance_monitoring(
+        self, performance_optimizer: PerformanceOptimizationSystem
+    ):
         """Test starting performance monitoring"""
         result = performance_optimizer.start_performance_monitoring()
 
@@ -130,7 +144,9 @@ class TestPerformanceOptimizationSystemOperations:
         # Clean up
         performance_optimizer.stop_performance_monitoring()
 
-    def test_stop_performance_monitoring(self, performance_optimizer: PerformanceOptimizationSystem):
+    def test_stop_performance_monitoring(
+        self, performance_optimizer: PerformanceOptimizationSystem
+    ):
         """Test stopping performance monitoring"""
         performance_optimizer.start_performance_monitoring()
         assert performance_optimizer.is_monitoring is True
@@ -140,7 +156,9 @@ class TestPerformanceOptimizationSystemOperations:
         assert result is True
         assert performance_optimizer.is_monitoring is False
 
-    def test_get_performance_report(self, performance_optimizer: PerformanceOptimizationSystem):
+    def test_get_performance_report(
+        self, performance_optimizer: PerformanceOptimizationSystem
+    ):
         """Test getting performance report"""
         # Add some mock optimization results
         performance_optimizer.optimization_results = [
@@ -149,17 +167,19 @@ class TestPerformanceOptimizationSystemOperations:
                 before_metrics=PerformanceMetrics(avg_latency_ms=100.0),
                 after_metrics=PerformanceMetrics(avg_latency_ms=80.0),
                 improvement_percent=20.0,
-                success=True
+                success=True,
             )
         ]
 
-        with patch.object(performance_optimizer.memory_optimizer, 'analyze_memory_usage', return_value={
-            "current_memory": {"rss_gb": 2.5}
-        }), \
-             patch.object(performance_optimizer.cpu_optimizer, 'analyze_cpu_usage', return_value={
-                 "current_cpu": {"cpu_percent": 60.0}
-             }):
-
+        with patch.object(
+            performance_optimizer.memory_optimizer,
+            "analyze_memory_usage",
+            return_value={"current_memory": {"rss_gb": 2.5}},
+        ), patch.object(
+            performance_optimizer.cpu_optimizer,
+            "analyze_cpu_usage",
+            return_value={"current_cpu": {"cpu_percent": 60.0}},
+        ):
             report = performance_optimizer.get_performance_report()
 
             assert "current_performance" in report
@@ -169,11 +189,15 @@ class TestPerformanceOptimizationSystemOperations:
             assert report["optimization_summary"]["successful_optimizations"] == 1
             assert report["optimization_summary"]["avg_improvement_percent"] == 20.0
 
-    def test_benchmark_system_performance(self, performance_optimizer: PerformanceOptimizationSystem):
+    def test_benchmark_system_performance(
+        self, performance_optimizer: PerformanceOptimizationSystem
+    ):
         """Test system performance benchmarking"""
-        with patch.object(performance_optimizer.latency_optimizer, 'measure_operation_latency') as mock_measure, \
-             patch('time.time', side_effect=[0, 10]):  # 10 second benchmark
-
+        with patch.object(
+            performance_optimizer.latency_optimizer, "measure_operation_latency"
+        ) as mock_measure, patch(
+            "time.time", side_effect=[0, 10]
+        ):  # 10 second benchmark
             mock_measure.return_value = (50.0, None)  # 50ms latency
 
             result = performance_optimizer.benchmark_system_performance()
@@ -189,7 +213,9 @@ class TestPerformanceOptimizationSystemOperations:
             assert result["latency"]["within_target"] is True  # 50ms < 100ms target
 
             # Verify throughput benchmark
-            assert result["throughput"]["throughput_ops_sec"] == 0.1  # 1 operation per 10 seconds
+            assert (
+                result["throughput"]["throughput_ops_sec"] == 0.1
+            )  # 1 operation per 10 seconds
             assert result["throughput"]["within_target"] is False  # 0.1 < 1000 target
 
 
@@ -224,10 +250,9 @@ class TestLatencyOptimizer:
         optimizer = LatencyOptimizer(mock_integration_manager)
 
         # Mock the critical operations
-        with patch.object(optimizer, '_execute_critical_operations'), \
-             patch('io.StringIO') as mock_stringio, \
-             patch('pstats.Stats') as mock_stats:
-
+        with patch.object(optimizer, "_execute_critical_operations"), patch(
+            "io.StringIO"
+        ) as mock_stringio, patch("pstats.Stats") as mock_stats:
             mock_stats_instance = Mock()
             mock_stats_instance.print_stats.return_value = None
             mock_stats.return_value = mock_stats_instance
@@ -246,15 +271,18 @@ class TestLatencyOptimizer:
         """Test data processing optimization"""
         optimizer = LatencyOptimizer(mock_integration_manager)
 
-        with patch.object(optimizer, '_measure_data_processing_performance') as mock_measure, \
-             patch.object(optimizer, '_optimize_async_processing', return_value=True), \
-             patch.object(optimizer, '_optimize_data_structures', return_value=True), \
-             patch.object(optimizer, '_optimize_memory_pool', return_value=True), \
-             patch.object(optimizer, '_optimize_caching', return_value=True):
-
+        with patch.object(
+            optimizer, "_measure_data_processing_performance"
+        ) as mock_measure, patch.object(
+            optimizer, "_optimize_async_processing", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_data_structures", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_memory_pool", return_value=True
+        ), patch.object(optimizer, "_optimize_caching", return_value=True):
             mock_measure.side_effect = [
                 PerformanceMetrics(avg_latency_ms=100.0),  # Before
-                PerformanceMetrics(avg_latency_ms=80.0)    # After
+                PerformanceMetrics(avg_latency_ms=80.0),  # After
             ]
 
             result = optimizer.optimize_data_processing()
@@ -269,14 +297,16 @@ class TestLatencyOptimizer:
         """Test signal processing optimization"""
         optimizer = LatencyOptimizer(mock_integration_manager)
 
-        with patch.object(optimizer, '_measure_signal_processing_performance') as mock_measure, \
-             patch.object(optimizer, '_optimize_parallel_processing', return_value=True), \
-             patch.object(optimizer, '_optimize_algorithms', return_value=True), \
-             patch.object(optimizer, '_optimize_io_operations', return_value=True):
-
+        with patch.object(
+            optimizer, "_measure_signal_processing_performance"
+        ) as mock_measure, patch.object(
+            optimizer, "_optimize_parallel_processing", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_algorithms", return_value=True
+        ), patch.object(optimizer, "_optimize_io_operations", return_value=True):
             mock_measure.side_effect = [
                 PerformanceMetrics(avg_latency_ms=120.0),  # Before
-                PerformanceMetrics(avg_latency_ms=90.0)    # After
+                PerformanceMetrics(avg_latency_ms=90.0),  # After
             ]
 
             result = optimizer.optimize_signal_processing()
@@ -290,13 +320,14 @@ class TestLatencyOptimizer:
         """Test memory usage optimization"""
         optimizer = LatencyOptimizer(mock_integration_manager)
 
-        with patch.object(optimizer, '_measure_memory_performance') as mock_measure, \
-             patch.object(optimizer, '_optimize_garbage_collection', return_value=True), \
-             patch.object(optimizer, '_optimize_memory_structures', return_value=True):
-
+        with patch.object(
+            optimizer, "_measure_memory_performance"
+        ) as mock_measure, patch.object(
+            optimizer, "_optimize_garbage_collection", return_value=True
+        ), patch.object(optimizer, "_optimize_memory_structures", return_value=True):
             mock_measure.side_effect = [
                 PerformanceMetrics(memory_usage_gb=3.0),  # Before
-                PerformanceMetrics(memory_usage_gb=2.5)   # After
+                PerformanceMetrics(memory_usage_gb=2.5),  # After
             ]
 
             result = optimizer.optimize_memory_usage()
@@ -322,9 +353,11 @@ class TestMemoryOptimizer:
         """Test memory usage analysis"""
         optimizer = MemoryOptimizer(mock_integration_manager)
 
-        with patch('psutil.Process') as mock_process:
+        with patch("psutil.Process") as mock_process:
             mock_process_instance = Mock()
-            mock_process_instance.memory_info.return_value = Mock(rss=2 * 1024**3, vms=3 * 1024**3)  # 2GB RSS, 3GB VMS
+            mock_process_instance.memory_info.return_value = Mock(
+                rss=2 * 1024**3, vms=3 * 1024**3
+            )  # 2GB RSS, 3GB VMS
             mock_process_instance.cpu_percent.return_value = 50.0
             mock_process_instance.num_threads.return_value = 8
             mock_process_instance.open_files.return_value = []
@@ -343,11 +376,15 @@ class TestMemoryOptimizer:
         """Test memory allocation optimization"""
         optimizer = MemoryOptimizer(mock_integration_manager)
 
-        with patch.object(optimizer, '_optimize_object_pools', return_value=True), \
-             patch.object(optimizer, '_reduce_memory_fragmentation', return_value=True), \
-             patch.object(optimizer, '_optimize_cache_memory', return_value=True), \
-             patch.object(optimizer, '_optimize_data_structure_memory', return_value=True):
-
+        with patch.object(
+            optimizer, "_optimize_object_pools", return_value=True
+        ), patch.object(
+            optimizer, "_reduce_memory_fragmentation", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_cache_memory", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_data_structure_memory", return_value=True
+        ):
             result = optimizer.optimize_memory_allocation()
 
             assert "optimizations_applied" in result
@@ -379,9 +416,9 @@ class TestCPUOptimizer:
         """Test CPU usage analysis"""
         optimizer = CPUOptimizer(mock_integration_manager)
 
-        with patch('psutil.Process') as mock_process, \
-             patch('psutil.cpu_count', return_value=8):
-
+        with patch("psutil.Process") as mock_process, patch(
+            "psutil.cpu_count", return_value=8
+        ):
             mock_process_instance = Mock()
             mock_process_instance.cpu_percent.return_value = 65.0
             mock_process_instance.cpu_times.return_value = Mock(user=100.0, system=50.0)
@@ -399,11 +436,13 @@ class TestCPUOptimizer:
         """Test CPU utilization optimization"""
         optimizer = CPUOptimizer(mock_integration_manager)
 
-        with patch.object(optimizer, '_optimize_thread_pools', return_value=True), \
-             patch.object(optimizer, '_parallelize_computations', return_value=True), \
-             patch.object(optimizer, '_optimize_cpu_affinity', return_value=True), \
-             patch.object(optimizer, '_reduce_idle_cpu', return_value=True):
-
+        with patch.object(
+            optimizer, "_optimize_thread_pools", return_value=True
+        ), patch.object(
+            optimizer, "_parallelize_computations", return_value=True
+        ), patch.object(
+            optimizer, "_optimize_cpu_affinity", return_value=True
+        ), patch.object(optimizer, "_reduce_idle_cpu", return_value=True):
             result = optimizer.optimize_cpu_utilization()
 
             assert "optimizations_applied" in result
@@ -427,10 +466,7 @@ class TestPerformanceTarget:
     def test_custom_initialization(self):
         """Test PerformanceTarget with custom values"""
         target = PerformanceTarget(
-            latency_ms=50.0,
-            memory_gb=8.0,
-            cpu_percent=90.0,
-            throughput_ops=2000
+            latency_ms=50.0, memory_gb=8.0, cpu_percent=90.0, throughput_ops=2000
         )
 
         assert target.latency_ms == 50.0
@@ -472,7 +508,7 @@ class TestOptimizationResult:
             before_metrics=before,
             after_metrics=after,
             improvement_percent=20.0,
-            success=True
+            success=True,
         )
 
         assert result.optimization_type == "test"
@@ -487,7 +523,7 @@ class TestOptimizationResult:
             before_metrics=PerformanceMetrics(),
             after_metrics=PerformanceMetrics(),
             improvement_percent=15.5,
-            success=True
+            success=True,
         )
 
         assert "Improved by 15.5%" in result.improvement_description
@@ -499,7 +535,7 @@ class TestOptimizationResult:
             before_metrics=PerformanceMetrics(),
             after_metrics=PerformanceMetrics(),
             improvement_percent=-10.0,
-            success=False
+            success=False,
         )
 
         assert "Degraded by 10.0%" in result.improvement_description

@@ -1,12 +1,12 @@
 version: '1.0'
 training:
-  model_name: 'default_model'
-  algorithm: 'ppo'
-  total_timesteps: 10000
+  model_name: 'v433_test_model'
+  algorithm: 'sac'
+  total_timesteps: 100000
   data_config:
     csv_path: null
     use_real_data: true
-    data_path: null
+    data_path: "data/btc_jpy_real_dataset.csv"
     random_start: true
     min_samples: 10000
   environment:
@@ -22,24 +22,34 @@ training:
       use_simple_reward: false
       reward_scale: 100.0
       trading_bonus: 0.01
-      profit_bonuses: {}
-      penalty_coefficients: {}
-      entropy_bonus: 0.0
+      profit_bonuses:
+        small_profit: 0.001
+        medium_profit: 0.005
+        large_profit: 0.01
+      penalty_coefficients:
+        loss_penalty: -0.002
+        large_loss_penalty: -0.01
+        inactivity_penalty: -0.0001
+      entropy_bonus: 0.001
   features:
     features: {}
     feature_set: default
-    adaptive_feature_selection: {}
-  ppo_hyperparameters:
+    adaptive_feature_selection:
+      enabled: true
+      selection_method: 'mutual_info'
+      top_k_features: 20
+      update_frequency: 1000
+  sac_hyperparameters:
     learning_rate: 3.0e-04
-    n_steps: 2048
-    batch_size: 64
-    n_epochs: 10
+    buffer_size: 1000000
+    learning_starts: 1000
+    batch_size: 256
+    tau: 0.005
     gamma: 0.99
-    gae_lambda: 0.95
-    clip_range: 0.2
-    ent_coef: 0.0
-    vf_coef: 0.5
-    max_grad_norm: 0.5
+    ent_coef: 0.1
+    target_update_interval: 1
+    target_entropy: 'auto'
+    train_freq: 1
 evaluation:
   thresholds:
     re_evaluate: 0.05
@@ -53,7 +63,14 @@ evaluation:
   - total_return
   - win_rate
   - profit_factor
-deployment: null
+deployment:
+  mode: 'paper_trading'
+  paper_trading:
+    enabled: true
+    virtual_balance: 200000.0
+    simulate_latency: true
+    simulate_slippage: true
+    market_data_source: 'real'
 logging:
   level: INFO
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -61,4 +78,8 @@ logging:
 features:
   features: {}
   feature_set: default
-  adaptive_feature_selection: {}
+  adaptive_feature_selection:
+    enabled: true
+    selection_method: 'mutual_info'
+    top_k_features: 20
+    update_frequency: 1000

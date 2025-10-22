@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict, Union, cast
 
+import numpy as np
+
 # Add project root to path before importing ztb modules
 current = Path(__file__).resolve()
 for parent in [current] + list(current.parents):
@@ -51,7 +53,11 @@ sys.path.insert(0, str(project_root))
 
 from ztb.inference.decode import InferenceConfig, decode_action
 from ztb.trading.env_config import TradingEnvConfig, get_trading_env_config
-from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.trading.environment.constants import (
+    DEFAULT_INITIAL_BALANCE_SMALL,
+    PPO_DEFAULT_N_STEPS,
+    continuous_to_discrete_action,
+)
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.training.config.ppo_config import get_ppo_config
 from ztb.utils import DiscordNotifier
@@ -206,7 +212,7 @@ class PaperTrader:
 
         # Trading results
         self.trades: List[TradeDict] = []
-        self.portfolio_value: float = 10000.0  # Starting capital
+        self.portfolio_value: float = DEFAULT_INITIAL_BALANCE_SMALL  # Starting capital
         self.position: float = 0.0  # Current position size
 
         # Inference configuration (only for PPO)
@@ -326,7 +332,7 @@ class PaperTrader:
             "MlpPolicy",
             dummy_env,
             learning_rate=ppo_config.get("learning_rate", 3e-4),
-            n_steps=ppo_config.get("n_steps", 2048),
+            n_steps=ppo_config.get("n_steps", PPO_DEFAULT_N_STEPS),
             batch_size=ppo_config.get("batch_size", 64),
             n_epochs=ppo_config.get("n_epochs", 10),
             gamma=ppo_config.get("gamma", 0.99),
@@ -474,7 +480,7 @@ class PaperTrader:
                 "⚠️  Failed to load schema for %s: %s", self.model_path.stem, str(e)
             )
 
-    def _get_ppo_action(self, obs: Any) -> tuple:
+    def _get_ppo_action(self, obs: np.ndarray) -> tuple:
         """Get action from PPO model using inference pipeline."""
         # Get legal actions mask for MaskablePPO
         action_masks = cast(
@@ -504,7 +510,7 @@ class PaperTrader:
 
         return action, decode_info
 
-    def _get_sac_action(self, obs: Any) -> tuple:
+    def _get_sac_action(self, obs: np.ndarray) -> tuple:
         """Get action from SAC model."""
         # SAC uses continuous actions, convert to discrete
         action, _ = self.model.predict(obs, deterministic=True)  # type: ignore[union-attr]

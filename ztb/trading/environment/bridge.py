@@ -16,6 +16,7 @@ import pandas as pd
 import requests
 
 from ztb.ops.monitoring.monitoring import get_exporter
+from ztb.trading.environment.constants import DEFAULT_INITIAL_BALANCE_SMALL
 from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,9 @@ class VirtualTradingBridge:
     """
 
     def __init__(
-        self, initial_balance: float = 10000.0, commission_rate: float = 0.001
+        self,
+        initial_balance: float = DEFAULT_INITIAL_BALANCE_SMALL,
+        commission_rate: float = 0.001,
     ) -> None:
         self.initial_balance = initial_balance
         self.balance = initial_balance
@@ -696,7 +699,7 @@ class LiveTradingBridge:
 
         # For demo purposes, return a simulated balance
         # In real implementation, this would query Zaif API
-        base_balance = 10000.0  # Starting balance
+        base_balance = DEFAULT_INITIAL_BALANCE_SMALL  # Starting balance
 
         # Simulate some P&L based on positions
         simulated_pnl = 0.0
@@ -755,7 +758,11 @@ class BridgeReplay:
     Replays historical orders against market data to analyze slippage impact.
     """
 
-    def __init__(self, market_data: pd.DataFrame, initial_balance: float = 10000.0):
+    def __init__(
+        self,
+        market_data: pd.DataFrame,
+        initial_balance: float = DEFAULT_INITIAL_BALANCE_SMALL,
+    ):
         """
         Initialize bridge replay.
 

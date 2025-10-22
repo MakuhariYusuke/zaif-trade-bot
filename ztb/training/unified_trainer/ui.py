@@ -12,11 +12,11 @@ from ztb.utils.logging_utils import get_logger
 class TrainingUI:
     """Enhanced UI for training progress and statistics display."""
 
-    def __init__(self, logger=None):
+    def __init__(self, logger=None) -> None:
         self.logger = logger or get_logger(__name__)
         self.start_time = None
 
-    def print_header(self, algorithm: str, config_name: str):
+    def print_header(self, algorithm: str, config_name: str) -> None:
         """Print training header."""
         print("\n" + "=" * 80)
         print("🤖 ZAIF TRADE BOT - UNIFIED TRAINER")
@@ -25,7 +25,7 @@ class TrainingUI:
         print(f"Config: {config_name}")
         print("=" * 80)
 
-    def print_config_summary(self, config: Dict[str, Any]):
+    def print_config_summary(self, config: Dict[str, Any]) -> None:
         """Print configuration summary."""
         print("\n📋 CONFIGURATION SUMMARY:")
         print("-" * 40)
@@ -62,14 +62,14 @@ class TrainingUI:
 
         print("-" * 40)
 
-    def start_training(self):
+    def start_training(self) -> None:
         """Initialize training UI."""
         self.start_time = time.time()
         print("\n🚀 Starting training...")
 
     def print_training_complete(
         self, success: bool, stats: Optional[Dict[str, Any]] = None
-    ):
+    ) -> None:
         """Print training completion status."""
         duration = time.time() - self.start_time if self.start_time else 0
 
@@ -121,7 +121,9 @@ class TrainingUI:
             flush=True,
         )
 
-    def update_ensemble_progress(self, step: int, ensemble_stats: Dict[str, Any]):
+    def update_ensemble_progress(
+        self, step: int, ensemble_stats: Dict[str, Any]
+    ) -> None:
         """Update ensemble progress display."""
         avg_confidence = ensemble_stats.get("overall_stats", {}).get(
             "avg_confidence", 0
@@ -132,7 +134,7 @@ class TrainingUI:
             flush=True,
         )
 
-    def print_ensemble_adaptation(self, adaptation_info: Dict[str, Any]):
+    def print_ensemble_adaptation(self, adaptation_info: Dict[str, Any]) -> None:
         """Print ensemble adaptation information."""
         print("\n🔄 ENSEMBLE ADAPTATION:")
         print("-" * 40)
@@ -156,7 +158,7 @@ class TrainingUI:
 
     def print_error_with_suggestions(
         self, error: str, suggestions: Optional[List[str]] = None
-    ):
+    ) -> None:
         """Print error with helpful suggestions."""
         print(f"\n❌ ERROR: {error}")
 
@@ -167,7 +169,7 @@ class TrainingUI:
 
     def print_success_with_metrics(
         self, message: str, metrics: Optional[Dict[str, Any]] = None
-    ):
+    ) -> None:
         """Print success message with key metrics."""
         print(f"\n✅ {message}")
 
@@ -195,19 +197,19 @@ class TrainingUI:
 
         return f"\r{prefix} |{bar}| {percent:.1f}% {suffix}"
 
-    def print_success(self, message: str):
+    def print_success(self, message: str) -> None:
         """Print success message."""
         print(f"✅ {message}")
 
-    def print_error(self, error: str):
+    def print_error(self, error: str) -> None:
         """Print error message."""
         print(f"❌ {error}")
 
-    def print_info(self, message: str):
+    def print_info(self, message: str) -> None:
         """Print info message."""
         print(f"ℹ️ {message}")
 
-    def print_ensemble_status(self, ensemble_stats: Dict[str, Any]):
+    def print_ensemble_status(self, ensemble_stats: Dict[str, Any]) -> None:
         """Print ensemble status information."""
         print("\n🤖 ENSEMBLE STATUS:")
         print("-" * 40)

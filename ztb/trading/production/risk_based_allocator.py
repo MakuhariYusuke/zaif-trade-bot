@@ -4,38 +4,40 @@ V433 Phase 5: Gradual Rollout Layer - Risk-based Allocator
 リスクベースの取引量配分と段階的移行を行う。
 """
 
-import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 class AllocationStrategy(Enum):
     """配分戦略"""
-    LINEAR = "linear"              # 線形増加
-    EXPONENTIAL = "exponential"    # 指数増加
-    STEPWISE = "stepwise"          # 段階的増加
+
+    LINEAR = "linear"  # 線形増加
+    EXPONENTIAL = "exponential"  # 指数増加
+    STEPWISE = "stepwise"  # 段階的増加
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
     RISK_ADJUSTED = "risk_adjusted"  # リスク調整
 
 
 class RiskThreshold(Enum):
     """リスク閾値"""
+
     CONSERVATIVE = "conservative"  # 保守的
-    MODERATE = "moderate"         # 中間
-    AGGRESSIVE = "aggressive"     # 積極的
+    MODERATE = "moderate"  # 中間
+    AGGRESSIVE = "aggressive"  # 積極的
 
 
 @dataclass
 class AllocationRule:
     """配分ルール"""
+
     rule_id: str
     system_id: str
     strategy: AllocationStrategy
@@ -51,6 +53,7 @@ class AllocationRule:
 @dataclass
 class RiskMetrics:
     """リスク指標"""
+
     volatility: float
     max_drawdown: Decimal
     sharpe_ratio: float
@@ -62,6 +65,7 @@ class RiskMetrics:
 @dataclass
 class AllocationDecision:
     """配分決定"""
+
     decision_id: str
     timestamp: datetime
     system_id: str
@@ -76,6 +80,7 @@ class AllocationDecision:
 @dataclass
 class RolloutPhase:
     """移行フェーズ"""
+
     phase_id: str
     name: str
     description: str
@@ -96,10 +101,12 @@ class RiskBasedAllocator:
     安全な移行を実現する。
     """
 
-    def __init__(self,
-                 risk_threshold: RiskThreshold = RiskThreshold.MODERATE,
-                 max_single_system_allocation: float = 0.8,
-                 reallocation_interval_minutes: int = 60):
+    def __init__(
+        self,
+        risk_threshold: RiskThreshold = RiskThreshold.MODERATE,
+        max_single_system_allocation: float = 0.8,
+        reallocation_interval_minutes: int = 60,
+    ):
         """
         初期化
 
@@ -134,7 +141,9 @@ class RiskBasedAllocator:
         self.last_reallocation = datetime.now()
 
         # コールバック
-        self.allocation_callbacks: List[Callable[[AllocationDecision], Awaitable[None]]] = []
+        self.allocation_callbacks: List[
+            Callable[[AllocationDecision], Awaitable[None]]
+        ] = []
         self.phase_callbacks: List[Callable[[RolloutPhase], Awaitable[None]]] = []
 
         # ロギング
@@ -155,7 +164,9 @@ class RiskBasedAllocator:
         if rule.system_id not in self.current_allocations:
             self.current_allocations[rule.system_id] = rule.initial_percentage
 
-        self.logger.info(f"Allocation rule added: {rule.system_id} ({rule.strategy.value})")
+        self.logger.info(
+            f"Allocation rule added: {rule.system_id} ({rule.strategy.value})"
+        )
 
     def define_rollout_phases(self, phases: List[RolloutPhase]) -> None:
         """
@@ -170,7 +181,9 @@ class RiskBasedAllocator:
 
         self.logger.info(f"Rollout phases defined: {len(phases)} phases")
 
-    async def evaluate_allocation(self, system_id: str, risk_metrics: RiskMetrics) -> Optional[AllocationDecision]:
+    async def evaluate_allocation(
+        self, system_id: str, risk_metrics: RiskMetrics
+    ) -> Optional[AllocationDecision]:
         """
         配分評価
 
@@ -192,10 +205,14 @@ class RiskBasedAllocator:
             risk_assessment = self._assess_risk(risk_metrics)
 
             # 新配分率計算
-            proposed_allocation = await self._calculate_proposed_allocation(system_id, rule, risk_assessment)
+            proposed_allocation = await self._calculate_proposed_allocation(
+                system_id, rule, risk_assessment
+            )
 
             # 制約チェック
-            proposed_allocation = self._apply_allocation_constraints(proposed_allocation, system_id)
+            proposed_allocation = self._apply_allocation_constraints(
+                proposed_allocation, system_id
+            )
 
             # 決定作成
             decision = AllocationDecision(
@@ -204,9 +221,13 @@ class RiskBasedAllocator:
                 system_id=system_id,
                 current_percentage=current_allocation,
                 proposed_percentage=proposed_allocation,
-                reason=self._generate_allocation_reason(rule, risk_assessment, proposed_allocation),
+                reason=self._generate_allocation_reason(
+                    rule, risk_assessment, proposed_allocation
+                ),
                 risk_assessment=risk_assessment,
-                approved=self._should_approve_allocation(proposed_allocation, risk_assessment)
+                approved=self._should_approve_allocation(
+                    proposed_allocation, risk_assessment
+                ),
             )
 
             # 決定履歴保存
@@ -240,7 +261,9 @@ class RiskBasedAllocator:
             bool: 実行成功フラグ
         """
         if not decision.approved:
-            self.logger.warning(f"Cannot execute unapproved allocation decision: {decision.decision_id}")
+            self.logger.warning(
+                f"Cannot execute unapproved allocation decision: {decision.decision_id}"
+            )
             return False
 
         try:
@@ -251,7 +274,9 @@ class RiskBasedAllocator:
             # フェーズ進行チェック
             await self._check_phase_progression()
 
-            self.logger.info(f"Allocation executed: {decision.system_id} = {decision.proposed_percentage:.1f}%")
+            self.logger.info(
+                f"Allocation executed: {decision.system_id} = {decision.proposed_percentage:.1f}%"
+            )
 
             return True
 
@@ -270,62 +295,61 @@ class RiskBasedAllocator:
             Dict[str, Any]: リスク評価
         """
         assessment = {
-            'overall_risk_level': 'low',
-            'breaches': [],
-            'warnings': [],
-            'score': 0.0
+            "overall_risk_level": "low",
+            "breaches": [],
+            "warnings": [],
+            "score": 0.0,
         }
 
         # リスクスコア計算
         score = 0.0
 
         # ボラティリティ評価
-        if risk_metrics.volatility > self.risk_limits['max_volatility']:
-            assessment['breaches'].append('volatility')
+        if risk_metrics.volatility > self.risk_limits["max_volatility"]:
+            assessment["breaches"].append("volatility")
             score += 0.3
-        elif risk_metrics.volatility > self.risk_limits['max_volatility'] * 0.8:
-            assessment['warnings'].append('volatility')
+        elif risk_metrics.volatility > self.risk_limits["max_volatility"] * 0.8:
+            assessment["warnings"].append("volatility")
             score += 0.1
 
         # 最大ドローダウン評価
-        if risk_metrics.max_drawdown > self.risk_limits['max_drawdown']:
-            assessment['breaches'].append('max_drawdown')
+        if risk_metrics.max_drawdown > self.risk_limits["max_drawdown"]:
+            assessment["breaches"].append("max_drawdown")
             score += 0.4
-        elif risk_metrics.max_drawdown > self.risk_limits['max_drawdown'] * 0.8:
-            assessment['warnings'].append('max_drawdown')
+        elif risk_metrics.max_drawdown > self.risk_limits["max_drawdown"] * 0.8:
+            assessment["warnings"].append("max_drawdown")
             score += 0.2
 
         # VaR評価
-        if risk_metrics.value_at_risk < self.risk_limits['min_var']:
-            assessment['breaches'].append('value_at_risk')
+        if risk_metrics.value_at_risk < self.risk_limits["min_var"]:
+            assessment["breaches"].append("value_at_risk")
             score += 0.3
 
         # シャープレシオ評価（低いほどリスク）
-        if risk_metrics.sharpe_ratio < self.risk_limits['min_sharpe']:
-            assessment['warnings'].append('sharpe_ratio')
+        if risk_metrics.sharpe_ratio < self.risk_limits["min_sharpe"]:
+            assessment["warnings"].append("sharpe_ratio")
             score += 0.1
 
         # 相関係数評価（高い相関は集中リスク）
-        if risk_metrics.correlation > self.risk_limits['max_correlation']:
-            assessment['warnings'].append('correlation')
+        if risk_metrics.correlation > self.risk_limits["max_correlation"]:
+            assessment["warnings"].append("correlation")
             score += 0.1
 
         # 全体リスクレベル決定
         if score >= 0.5:
-            assessment['overall_risk_level'] = 'high'
+            assessment["overall_risk_level"] = "high"
         elif score >= 0.2:
-            assessment['overall_risk_level'] = 'medium'
+            assessment["overall_risk_level"] = "medium"
         else:
-            assessment['overall_risk_level'] = 'low'
+            assessment["overall_risk_level"] = "low"
 
-        assessment['score'] = score
+        assessment["score"] = score
 
         return assessment
 
-    async def _calculate_proposed_allocation(self,
-                                           system_id: str,
-                                           rule: AllocationRule,
-                                           risk_assessment: Dict[str, Any]) -> float:
+    async def _calculate_proposed_allocation(
+        self, system_id: str, rule: AllocationRule, risk_assessment: Dict[str, Any]
+    ) -> float:
         """
         新配分率計算
 
@@ -338,14 +362,12 @@ class RiskBasedAllocator:
             float: 提案配分率
         """
         current_allocation = self.current_allocations.get(system_id, 0.0)
-        risk_level = risk_assessment['overall_risk_level']
+        risk_level = risk_assessment["overall_risk_level"]
 
         # リスクレベルに基づく増分調整
-        risk_multiplier = {
-            'low': 1.0,
-            'medium': 0.5,
-            'high': 0.0  # 高リスク時は増分なし
-        }.get(risk_level, 0.0)
+        risk_multiplier = {"low": 1.0, "medium": 0.5, "high": 0.0}.get(
+            risk_level, 0.0
+        )  # 高リスク時は増分なし
 
         # 戦略別計算
         if rule.strategy == AllocationStrategy.LINEAR:
@@ -360,18 +382,23 @@ class RiskBasedAllocator:
 
         elif rule.strategy == AllocationStrategy.STEPWISE:
             # 段階的増加
-            if risk_level == 'low' and current_allocation < rule.target_percentage:
-                proposed = min(current_allocation + rule.increment_percentage, rule.target_percentage)
+            if risk_level == "low" and current_allocation < rule.target_percentage:
+                proposed = min(
+                    current_allocation + rule.increment_percentage,
+                    rule.target_percentage,
+                )
             else:
                 proposed = current_allocation
 
         elif rule.strategy == AllocationStrategy.PERFORMANCE_BASED:
             # パフォーマンスベース（簡易実装）
-            proposed = await self._performance_based_allocation(system_id, rule, risk_assessment)
+            proposed = await self._performance_based_allocation(
+                system_id, rule, risk_assessment
+            )
 
         elif rule.strategy == AllocationStrategy.RISK_ADJUSTED:
             # リスク調整
-            risk_adjustment = 1.0 - risk_assessment['score']
+            risk_adjustment = 1.0 - risk_assessment["score"]
             increment = rule.increment_percentage * risk_adjustment
             proposed = min(current_allocation + increment, rule.target_percentage)
 
@@ -380,7 +407,9 @@ class RiskBasedAllocator:
 
         return proposed
 
-    async def _performance_based_allocation(self, system_id: str, rule: AllocationRule, risk_assessment: Dict[str, Any]) -> float:
+    async def _performance_based_allocation(
+        self, system_id: str, rule: AllocationRule, risk_assessment: Dict[str, Any]
+    ) -> float:
         """
         パフォーマンスベース配分
 
@@ -395,9 +424,11 @@ class RiskBasedAllocator:
         # 簡易実装：リスクが低い場合は積極的に増加
         current = self.current_allocations.get(system_id, 0.0)
 
-        if risk_assessment['overall_risk_level'] == 'low':
-            return min(current + rule.increment_percentage * 1.5, rule.target_percentage)
-        elif risk_assessment['overall_risk_level'] == 'medium':
+        if risk_assessment["overall_risk_level"] == "low":
+            return min(
+                current + rule.increment_percentage * 1.5, rule.target_percentage
+            )
+        elif risk_assessment["overall_risk_level"] == "medium":
             return min(current + rule.increment_percentage, rule.target_percentage)
         else:
             return current  # 高リスク時は維持
@@ -417,7 +448,9 @@ class RiskBasedAllocator:
         proposed = min(proposed, self.max_single_system_allocation)
 
         # 全体配分の制約（全システムの合計が100%を超えない）
-        other_allocations = sum(alloc for sid, alloc in self.current_allocations.items() if sid != system_id)
+        other_allocations = sum(
+            alloc for sid, alloc in self.current_allocations.items() if sid != system_id
+        )
         max_for_this_system = 1.0 - other_allocations
         proposed = min(proposed, max_for_this_system)
 
@@ -428,7 +461,9 @@ class RiskBasedAllocator:
 
         return proposed
 
-    def _should_approve_allocation(self, proposed: float, risk_assessment: Dict[str, Any]) -> bool:
+    def _should_approve_allocation(
+        self, proposed: float, risk_assessment: Dict[str, Any]
+    ) -> bool:
         """
         配分承認判定
 
@@ -440,20 +475,22 @@ class RiskBasedAllocator:
             bool: 承認フラグ
         """
         # 高リスク時は配分増加を制限
-        if risk_assessment['overall_risk_level'] == 'high':
+        if risk_assessment["overall_risk_level"] == "high":
             return False
 
         # 重大なリスク違反時は拒否
-        if risk_assessment['breaches']:
+        if risk_assessment["breaches"]:
             return False
 
         # 警告がある場合は慎重に
-        if risk_assessment['warnings'] and risk_assessment['score'] > 0.3:
+        if risk_assessment["warnings"] and risk_assessment["score"] > 0.3:
             return False
 
         return True
 
-    def _generate_allocation_reason(self, rule: AllocationRule, risk_assessment: Dict[str, Any], proposed: float) -> str:
+    def _generate_allocation_reason(
+        self, rule: AllocationRule, risk_assessment: Dict[str, Any], proposed: float
+    ) -> str:
         """
         配分理由生成
 
@@ -466,7 +503,7 @@ class RiskBasedAllocator:
             str: 配分理由
         """
         current = self.current_allocations.get(rule.system_id, 0.0)
-        risk_level = risk_assessment['overall_risk_level']
+        risk_level = risk_assessment["overall_risk_level"]
 
         if proposed > current:
             return f"Increasing allocation due to {risk_level} risk level (strategy: {rule.strategy.value})"
@@ -482,8 +519,9 @@ class RiskBasedAllocator:
 
         # 現在のフェーズ目標達成チェック
         target_allocation = self.current_phase.target_percentage / 100.0
-        current_total_new = sum(alloc for sid, alloc in self.current_allocations.items()
-                              if sid != 'legacy')  # legacy以外を新システムと仮定
+        current_total_new = sum(
+            alloc for sid, alloc in self.current_allocations.items() if sid != "legacy"
+        )  # legacy以外を新システムと仮定
 
         if current_total_new >= target_allocation:
             # フェーズ完了
@@ -504,7 +542,9 @@ class RiskBasedAllocator:
                     except Exception as e:
                         self.logger.error(f"Phase callback error: {e}")
 
-                self.logger.info(f"Rollout phase progressed to: {self.current_phase.name}")
+                self.logger.info(
+                    f"Rollout phase progressed to: {self.current_phase.name}"
+                )
 
     def _get_risk_limits(self, threshold: RiskThreshold) -> Dict[str, Any]:
         """
@@ -518,26 +558,26 @@ class RiskBasedAllocator:
         """
         limits = {
             RiskThreshold.CONSERVATIVE: {
-                'max_volatility': 0.15,
-                'max_drawdown': Decimal('0.05'),
-                'min_var': Decimal('-0.03'),
-                'min_sharpe': 0.5,
-                'max_correlation': 0.7
+                "max_volatility": 0.15,
+                "max_drawdown": Decimal("0.05"),
+                "min_var": Decimal("-0.03"),
+                "min_sharpe": 0.5,
+                "max_correlation": 0.7,
             },
             RiskThreshold.MODERATE: {
-                'max_volatility': 0.25,
-                'max_drawdown': Decimal('0.10'),
-                'min_var': Decimal('-0.05'),
-                'min_sharpe': 0.3,
-                'max_correlation': 0.8
+                "max_volatility": 0.25,
+                "max_drawdown": Decimal("0.10"),
+                "min_var": Decimal("-0.05"),
+                "min_sharpe": 0.3,
+                "max_correlation": 0.8,
             },
             RiskThreshold.AGGRESSIVE: {
-                'max_volatility': 0.35,
-                'max_drawdown': Decimal('0.15'),
-                'min_var': Decimal('-0.08'),
-                'min_sharpe': 0.1,
-                'max_correlation': 0.9
-            }
+                "max_volatility": 0.35,
+                "max_drawdown": Decimal("0.15"),
+                "min_var": Decimal("-0.08"),
+                "min_sharpe": 0.1,
+                "max_correlation": 0.9,
+            },
         }
 
         return limits.get(threshold, limits[RiskThreshold.MODERATE])
@@ -551,7 +591,9 @@ class RiskBasedAllocator:
         """
         return self.current_allocations.copy()
 
-    def get_allocation_history(self, system_id: Optional[str] = None, limit: Optional[int] = None) -> List[AllocationDecision]:
+    def get_allocation_history(
+        self, system_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[AllocationDecision]:
         """
         配分履歴取得
 
@@ -580,25 +622,33 @@ class RiskBasedAllocator:
             Dict[str, Any]: 移行状況
         """
         return {
-            'current_phase': {
-                'phase_id': self.current_phase.phase_id if self.current_phase else None,
-                'name': self.current_phase.name if self.current_phase else None,
-                'target_percentage': self.current_phase.target_percentage if self.current_phase else None,
-                'status': self.current_phase.status if self.current_phase else None,
-                'started_at': self.current_phase.started_at.isoformat() if self.current_phase and self.current_phase.started_at else None
-            } if self.current_phase else None,
-            'all_phases': [
+            "current_phase": {
+                "phase_id": self.current_phase.phase_id if self.current_phase else None,
+                "name": self.current_phase.name if self.current_phase else None,
+                "target_percentage": self.current_phase.target_percentage
+                if self.current_phase
+                else None,
+                "status": self.current_phase.status if self.current_phase else None,
+                "started_at": self.current_phase.started_at.isoformat()
+                if self.current_phase and self.current_phase.started_at
+                else None,
+            }
+            if self.current_phase
+            else None,
+            "all_phases": [
                 {
-                    'phase_id': p.phase_id,
-                    'name': p.name,
-                    'target_percentage': p.target_percentage,
-                    'status': p.status,
-                    'started_at': p.started_at.isoformat() if p.started_at else None,
-                    'completed_at': p.completed_at.isoformat() if p.completed_at else None
+                    "phase_id": p.phase_id,
+                    "name": p.name,
+                    "target_percentage": p.target_percentage,
+                    "status": p.status,
+                    "started_at": p.started_at.isoformat() if p.started_at else None,
+                    "completed_at": p.completed_at.isoformat()
+                    if p.completed_at
+                    else None,
                 }
                 for p in self.rollout_phases
             ],
-            'current_allocations': self.current_allocations
+            "current_allocations": self.current_allocations,
         }
 
     def start_monitoring(self) -> None:
@@ -607,7 +657,9 @@ class RiskBasedAllocator:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Allocation monitoring started")
@@ -627,7 +679,9 @@ class RiskBasedAllocator:
                 now = datetime.now()
 
                 # 定期的な再配分チェック
-                if (now - self.last_reallocation).total_seconds() >= self.reallocation_interval_minutes * 60:
+                if (
+                    now - self.last_reallocation
+                ).total_seconds() >= self.reallocation_interval_minutes * 60:
                     # 実際の実装ではここでリスク指標を取得して評価
                     # asyncio.run(self._perform_reallocation())
                     self.last_reallocation = now
@@ -638,7 +692,9 @@ class RiskBasedAllocator:
                 self.logger.error(f"Monitoring loop error: {e}")
                 time.sleep(10)
 
-    def add_allocation_callback(self, callback: Callable[[AllocationDecision], Awaitable[None]]) -> None:
+    def add_allocation_callback(
+        self, callback: Callable[[AllocationDecision], Awaitable[None]]
+    ) -> None:
         """
         配分コールバック追加
 
@@ -647,7 +703,9 @@ class RiskBasedAllocator:
         """
         self.allocation_callbacks.append(callback)
 
-    def add_phase_callback(self, callback: Callable[[RolloutPhase], Awaitable[None]]) -> None:
+    def add_phase_callback(
+        self, callback: Callable[[RolloutPhase], Awaitable[None]]
+    ) -> None:
         """
         フェーズコールバック追加
 
@@ -664,44 +722,48 @@ class RiskBasedAllocator:
             filepath: 保存ファイルパス
         """
         state = {
-            'risk_threshold': self.risk_threshold.value,
-            'max_single_system_allocation': self.max_single_system_allocation,
-            'reallocation_interval_minutes': self.reallocation_interval_minutes,
-            'current_allocations': self.current_allocations,
-            'allocation_decisions': [
+            "risk_threshold": self.risk_threshold.value,
+            "max_single_system_allocation": self.max_single_system_allocation,
+            "reallocation_interval_minutes": self.reallocation_interval_minutes,
+            "current_allocations": self.current_allocations,
+            "allocation_decisions": [
                 {
-                    'decision_id': d.decision_id,
-                    'timestamp': d.timestamp.isoformat(),
-                    'system_id': d.system_id,
-                    'current_percentage': d.current_percentage,
-                    'proposed_percentage': d.proposed_percentage,
-                    'reason': d.reason,
-                    'approved': d.approved,
-                    'executed_at': d.executed_at.isoformat() if d.executed_at else None
+                    "decision_id": d.decision_id,
+                    "timestamp": d.timestamp.isoformat(),
+                    "system_id": d.system_id,
+                    "current_percentage": d.current_percentage,
+                    "proposed_percentage": d.proposed_percentage,
+                    "reason": d.reason,
+                    "approved": d.approved,
+                    "executed_at": d.executed_at.isoformat() if d.executed_at else None,
                 }
                 for d in self.allocation_decisions[-200:]  # 最新200件
             ],
-            'rollout_phases': [
+            "rollout_phases": [
                 {
-                    'phase_id': p.phase_id,
-                    'name': p.name,
-                    'description': p.description,
-                    'target_percentage': p.target_percentage,
-                    'duration_hours': p.duration_hours,
-                    'success_criteria': p.success_criteria,
-                    'risk_limits': p.risk_limits,
-                    'started_at': p.started_at.isoformat() if p.started_at else None,
-                    'completed_at': p.completed_at.isoformat() if p.completed_at else None,
-                    'status': p.status
+                    "phase_id": p.phase_id,
+                    "name": p.name,
+                    "description": p.description,
+                    "target_percentage": p.target_percentage,
+                    "duration_hours": p.duration_hours,
+                    "success_criteria": p.success_criteria,
+                    "risk_limits": p.risk_limits,
+                    "started_at": p.started_at.isoformat() if p.started_at else None,
+                    "completed_at": p.completed_at.isoformat()
+                    if p.completed_at
+                    else None,
+                    "status": p.status,
                 }
                 for p in self.rollout_phases
             ],
-            'current_phase_id': self.current_phase.phase_id if self.current_phase else None,
-            'last_reallocation': self.last_reallocation.isoformat()
+            "current_phase_id": self.current_phase.phase_id
+            if self.current_phase
+            else None,
+            "last_reallocation": self.last_reallocation.isoformat(),
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Allocator state saved to {filepath}")
@@ -717,55 +779,64 @@ class RiskBasedAllocator:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.risk_threshold = RiskThreshold(state['risk_threshold'])
-            self.max_single_system_allocation = state['max_single_system_allocation']
-            self.reallocation_interval_minutes = state['reallocation_interval_minutes']
-            self.current_allocations = state['current_allocations']
-            self.last_reallocation = datetime.fromisoformat(state['last_reallocation'])
+            self.risk_threshold = RiskThreshold(state["risk_threshold"])
+            self.max_single_system_allocation = state["max_single_system_allocation"]
+            self.reallocation_interval_minutes = state["reallocation_interval_minutes"]
+            self.current_allocations = state["current_allocations"]
+            self.last_reallocation = datetime.fromisoformat(state["last_reallocation"])
 
             # リスク制限再設定
             self.risk_limits = self._get_risk_limits(self.risk_threshold)
 
             # 配分決定履歴復元
             self.allocation_decisions = []
-            for d_data in state.get('allocation_decisions', []):
+            for d_data in state.get("allocation_decisions", []):
                 decision = AllocationDecision(
-                    decision_id=d_data['decision_id'],
-                    timestamp=datetime.fromisoformat(d_data['timestamp']),
-                    system_id=d_data['system_id'],
-                    current_percentage=d_data['current_percentage'],
-                    proposed_percentage=d_data['proposed_percentage'],
-                    reason=d_data['reason'],
+                    decision_id=d_data["decision_id"],
+                    timestamp=datetime.fromisoformat(d_data["timestamp"]),
+                    system_id=d_data["system_id"],
+                    current_percentage=d_data["current_percentage"],
+                    proposed_percentage=d_data["proposed_percentage"],
+                    reason=d_data["reason"],
                     risk_assessment={},  # 簡易復元
-                    approved=d_data['approved'],
-                    executed_at=datetime.fromisoformat(d_data['executed_at']) if d_data['executed_at'] else None
+                    approved=d_data["approved"],
+                    executed_at=datetime.fromisoformat(d_data["executed_at"])
+                    if d_data["executed_at"]
+                    else None,
                 )
                 self.allocation_decisions.append(decision)
 
             # 移行フェーズ復元
             self.rollout_phases = []
-            for p_data in state.get('rollout_phases', []):
+            for p_data in state.get("rollout_phases", []):
                 phase = RolloutPhase(
-                    phase_id=p_data['phase_id'],
-                    name=p_data['name'],
-                    description=p_data['description'],
-                    target_percentage=p_data['target_percentage'],
-                    duration_hours=p_data['duration_hours'],
-                    success_criteria=p_data['success_criteria'],
-                    risk_limits=p_data['risk_limits'],
-                    started_at=datetime.fromisoformat(p_data['started_at']) if p_data['started_at'] else None,
-                    completed_at=datetime.fromisoformat(p_data['completed_at']) if p_data['completed_at'] else None,
-                    status=p_data['status']
+                    phase_id=p_data["phase_id"],
+                    name=p_data["name"],
+                    description=p_data["description"],
+                    target_percentage=p_data["target_percentage"],
+                    duration_hours=p_data["duration_hours"],
+                    success_criteria=p_data["success_criteria"],
+                    risk_limits=p_data["risk_limits"],
+                    started_at=datetime.fromisoformat(p_data["started_at"])
+                    if p_data["started_at"]
+                    else None,
+                    completed_at=datetime.fromisoformat(p_data["completed_at"])
+                    if p_data["completed_at"]
+                    else None,
+                    status=p_data["status"],
                 )
                 self.rollout_phases.append(phase)
 
             # 現在のフェーズ設定
-            current_phase_id = state.get('current_phase_id')
+            current_phase_id = state.get("current_phase_id")
             if current_phase_id:
-                self.current_phase = next((p for p in self.rollout_phases if p.phase_id == current_phase_id), None)
+                self.current_phase = next(
+                    (p for p in self.rollout_phases if p.phase_id == current_phase_id),
+                    None,
+                )
 
             self.logger.info(f"Allocator state loaded from {filepath}")
             return True

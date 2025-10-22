@@ -77,3 +77,23 @@ def _compute_lag_correlations_impl(
     # Sort by absolute correlation, take top 10
     results.sort(key=lambda x: abs(x["correlation"]), reverse=True)  # type: ignore
     return results[:10]
+
+
+def analyze_timeseries(
+    data_path: str = "ml-dataset-enhanced.csv",
+) -> List[Dict[str, Any]]:
+    """Analyze time series lag correlations in dataset.
+
+    Args:
+        data_path: Path to the dataset file
+
+    Returns:
+        List of lag correlation results
+    """
+    try:
+        df = pd.read_csv(data_path)
+        frames = {"dataset": df}
+        return compute_lag_correlations(frames)
+    except Exception as e:
+        print(f"Error analyzing timeseries: {e}")
+        return []

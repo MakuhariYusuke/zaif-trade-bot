@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
+from ztb.core.base import BaseAnalyzer
 from ztb.data.btc_data_augmentation import BTCBiasDetector
 from ztb.metrics.metrics import (
     calculate_all_metrics,
@@ -30,11 +31,16 @@ from ztb.utils.performance_utils import PerformanceMonitor
 logger = get_logger(__name__)
 
 
-class BacktestAnalyzer:
+class BacktestAnalyzer(BaseAnalyzer):
     """汎用バックテスト分析クラス"""
 
-    def __init__(self, results_path: str, training_report_path: Optional[str] = None):
-        """Initialize analyzer with backtest results file."""
+    def __init__(
+        self,
+        results_path: str,
+        training_report_path: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(name="BacktestAnalyzer", config=config)
         self.results_path = Path(results_path)
         self.training_report_path = (
             Path(training_report_path) if training_report_path else None
@@ -82,6 +88,22 @@ class BacktestAnalyzer:
         missing_fields = [field for field in required_fields if field not in self.data]
         if missing_fields:
             raise ValueError(f"Missing required fields in results: {missing_fields}")
+
+    def analyze(self, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Perform comprehensive backtest analysis."""
+        if data:
+            self.data = data
+            self._validate_data()
+
+        results = {
+            "risk_metrics": self.calculate_risk_metrics(),
+            "temporal_patterns": self.analyze_temporal_patterns(),
+            "market_conditions": self.analyze_market_conditions(),
+            "trading_frequency": self.analyze_trading_frequency(),
+        }
+
+        self.results = results
+        return results
 
     def calculate_risk_metrics(self) -> Dict[str, float]:
         """リスク指標を計算"""

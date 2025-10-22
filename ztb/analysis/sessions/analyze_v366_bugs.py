@@ -4,7 +4,7 @@ v3.6.6結果分析 + 包括的バグ診断
 """
 
 import re
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 CONSOLE_OUTPUT = """
 |    pan_action_counts             | [21, 6, 5]                           |
@@ -58,7 +58,7 @@ def main() -> None:
     print("📊 VERSION COMPARISON")
     print("=" * 80)
 
-    versions = {
+    versions: Dict[str, Tuple[float, float, float]] = {
         "v3.6.4": (79.2, 8.3, 12.5),
         "v3.6.5": (73.4, 14.1, 12.5),
         "v3.6.6": (
@@ -69,14 +69,14 @@ def main() -> None:
     }
 
     print("          HOLD%   BUY%   SELL%   Config")
-    for ver, (hold, buy, sell) in versions.items():
+    for ver, (hold_pct, buy_pct, sell_pct) in versions.items():
         if ver == "v3.6.4":
             config = "multipliers [1.0, 3.0, 1.0]"
         elif ver == "v3.6.5":
             config = "multipliers [2.0, 3.0, 0.5]"
         else:
             config = "multipliers [2.0, 3.0, 1.0] + penalties"
-        print(f"  {ver}:  {hold:5.1f}  {buy:5.1f}  {sell:5.1f}   {config}")
+        print(f"  {ver}:  {hold_pct:5.1f}  {buy_pct:5.1f}  {sell_pct:5.1f}   {config}")
 
     print("\n" + "=" * 80)
     print("🔍 CRITICAL FINDINGS")

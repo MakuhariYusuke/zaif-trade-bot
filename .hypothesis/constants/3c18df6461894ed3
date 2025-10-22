@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\base.py
+# hypothesis_version: 6.140.3
+
+[0.0, '-inf', '=', 'OptimizationResult', 'all_trials', 'best_metrics', 'best_objective_value', 'best_parameters', 'categorical', 'choices', 'continuous', 'default', 'duration_seconds', 'error_message', 'high', 'inf', 'integer', 'item', 'log_uniform', 'low', 'metadata', 'metrics', 'n_trials', 'name', 'objective_max', 'objective_mean', 'objective_min', 'objective_std', 'objective_value', 'optimizer_name', 'param_type', 'parameters', 'r', 'random', 'statistics', 'success', 'success_rate', 'trial_id', 'utf-8', 'w', '🎯 ベストパラメータ:', '📈 統計:', '📊 ベストメトリクス:']

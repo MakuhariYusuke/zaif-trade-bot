@@ -11,6 +11,7 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from ztb.features.registry import FeatureRegistry
+from ztb.trading.environment.constants import EPSILON
 
 
 class SimpleKalmanFilter:
@@ -190,8 +191,7 @@ def calculate_kalman_extended(
 
     # Normalized residuals - vectorized
     residual_std = np.asarray(residual_series.rolling(window=residual_window).std())
-    epsilon = 1e-8  # Small value to prevent division by zero
-    features["kalman_residual_normalized"] = residuals / (residual_std + epsilon)
+    features["kalman_residual_normalized"] = residuals / (residual_std + EPSILON)
 
     # Residual autocorrelation - optimized vectorized implementation
     autocorr_lags = [1, 2, 3, 5, 10]

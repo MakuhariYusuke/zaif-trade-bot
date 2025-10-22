@@ -5,9 +5,25 @@ This module defines protocol interfaces that standardize the behavior
 of key components in the trading system.
 """
 
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
 
+import numpy as np
 import pandas as pd
+
+from ztb.types.common import Action, AnalysisData
+
+try:
+    from gymnasium import spaces
+    from gymnasium.core import ActType
+except ImportError:
+    try:
+        import gym as gym_spaces
+
+        spaces = gym_spaces.spaces
+        ActType = Any  # gym doesn't have ActType
+    except ImportError:
+        spaces = Any  # Fallback
+        ActType = Any
 
 
 class TradingEnvironment(Protocol):
@@ -15,11 +31,13 @@ class TradingEnvironment(Protocol):
 
     def reset(
         self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[Any, Dict[str, Any]]:
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset the environment to initial state."""
         ...
 
-    def step(self, action: Any) -> Tuple[Any, float, bool, bool, Dict[str, Any]]:
+    def step(
+        self, action: Action
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Execute one step in the environment."""
         ...
 
@@ -35,11 +53,17 @@ class TradingEnvironment(Protocol):
 class FeatureRegistryProtocol(Protocol):
     """Protocol for feature registries."""
 
-    def register_feature(self, name: str, feature_func: Any) -> None:
+    def register_feature(
+        self,
+        name: str,
+        feature_func: Callable[[pd.DataFrame], Union[np.ndarray, pd.Series, float]],
+    ) -> None:
         """Register a feature function."""
         ...
 
-    def get_feature(self, name: str) -> Any:
+    def get_feature(
+        self, name: str
+    ) -> Callable[[pd.DataFrame], Union[np.ndarray, pd.Series, float]]:
         """Get a registered feature function."""
         ...
 
@@ -47,7 +71,9 @@ class FeatureRegistryProtocol(Protocol):
         """List all registered feature names."""
         ...
 
-    def compute_features(self, data: Any) -> Union[Dict[str, Any], pd.DataFrame]:
+    def compute_features(
+        self, data: AnalysisData
+    ) -> Union[Dict[str, Any], pd.DataFrame]:
         """Compute all registered features for given data."""
         ...
 

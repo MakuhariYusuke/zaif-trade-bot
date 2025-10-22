@@ -4,23 +4,22 @@ V433 Adaptive SAC Core
 市場レジーム適応型SAC実装
 """
 
+import threading
+import time
+from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from typing import Dict, List, Optional, Tuple, Any, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-import threading
-import time
-from collections import deque
-from pathlib import Path
-
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.vec_env import VecEnv
 
 from ztb.utils.logging_utils import get_logger
+
 
 # Dummy MarketRegimeDetector for testing
 class MarketRegimeDetector:
@@ -34,7 +33,7 @@ class MarketRegimeDetector:
             confidence=0.5,
             volatility=0.1,
             trend_strength=0.0,
-            volume_profile="normal"
+            volume_profile="normal",
         )
 
     def get_current_regime(self):
@@ -43,15 +42,19 @@ class MarketRegimeDetector:
             confidence=0.5,
             volatility=0.1,
             trend_strength=0.0,
-            volume_profile="normal"
+            volume_profile="normal",
         )
-from ztb.optimization.unified_optimizer import UnifiedOptimizer, OptimizationConfig
+
+
+from ztb.optimization.unified_optimizer import OptimizationConfig, UnifiedOptimizer
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class AdaptiveSACConfig:
     """適応型SAC設定"""
+
     # 基本SAC設定
     learning_rate: float = 3e-4
     buffer_size: int = 1000000
@@ -93,6 +96,7 @@ class AdaptiveSACConfig:
 @dataclass
 class MarketRegimeState:
     """市場レジーム状態"""
+
     regime: str = "neutral"
     confidence: float = 0.5
     volatility: float = 0.0
@@ -107,13 +111,14 @@ class MarketRegimeState:
             "volatility": self.volatility,
             "trend_strength": self.trend_strength,
             "volume_profile": self.volume_profile,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
 @dataclass
 class PerformanceMetrics:
     """パフォーマンス指標"""
+
     episode_reward: float = 0.0
     win_rate: float = 0.0
     profit_factor: float = 1.0
@@ -127,16 +132,18 @@ class PerformanceMetrics:
 class AdaptiveSACPolicy(nn.Module):
     """適応型SACポリシー"""
 
-    def __init__(self, observation_dim: int, action_dim: int, hidden_dims: List[int] = None):
+    def __init__(
+        self, observation_dim: int, action_dim: int, hidden_dims: List[int] = None
+    ):
         super().__init__()
         if hidden_dims is None:
             hidden_dims = [256, 256]
 
         # 市場レジーム適応層
         self.regime_encoder = nn.Sequential(
-            nn.Linear(4, 32),  # regime features: volatility, trend, volume, confidence
+            nn.Linear(4, 32),
             nn.ReLU(),
-            nn.Linear(32, 16)
+            nn.Linear(32, 16),  # regime features: volatility, trend, volume, confidence
         )
 
         # アダプティブポリシーネットワーク
@@ -144,11 +151,9 @@ class AdaptiveSACPolicy(nn.Module):
         prev_dim = observation_dim + 16  # observation + regime encoding
 
         for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.LayerNorm(hidden_dim)
-            ])
+            layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.LayerNorm(hidden_dim)]
+            )
             prev_dim = hidden_dim
 
         layers.append(nn.Linear(prev_dim, action_dim))
@@ -159,21 +164,25 @@ class AdaptiveSACPolicy(nn.Module):
         prev_dim = observation_dim + 16
 
         for hidden_dim in hidden_dims:
-            value_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.LayerNorm(hidden_dim)
-            ])
+            value_layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.LayerNorm(hidden_dim)]
+            )
             prev_dim = hidden_dim
 
         value_layers.append(nn.Linear(prev_dim, 1))
         self.value_net = nn.Sequential(*value_layers)
 
         # Qネットワーク（双子構造）
-        self.q1_net = nn.Sequential(*value_layers[:-1], nn.Linear(hidden_dims[-1], action_dim))
-        self.q2_net = nn.Sequential(*value_layers[:-1], nn.Linear(hidden_dims[-1], action_dim))
+        self.q1_net = nn.Sequential(
+            *value_layers[:-1], nn.Linear(hidden_dims[-1], action_dim)
+        )
+        self.q2_net = nn.Sequential(
+            *value_layers[:-1], nn.Linear(hidden_dims[-1], action_dim)
+        )
 
-    def forward(self, obs: torch.Tensor, regime_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, obs: torch.Tensor, regime_features: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """順伝播"""
         # レジーム特徴量のエンコーディング
         regime_encoded = self.regime_encoder(regime_features)
@@ -196,7 +205,9 @@ class AdaptiveSACCore:
     市場レジーム検知と動的適応機能を統合
     """
 
-    def __init__(self, config: AdaptiveSACConfig, observation_dim: int, action_dim: int):
+    def __init__(
+        self, config: AdaptiveSACConfig, observation_dim: int, action_dim: int
+    ):
         self.config = config
         self.observation_dim = observation_dim
         self.action_dim = action_dim
@@ -219,7 +230,7 @@ class AdaptiveSACCore:
         self.adaptation_params = {
             "learning_rate": config.learning_rate,
             "tau": config.tau,
-            "gamma": config.gamma
+            "gamma": config.gamma,
         }
 
         # オンライン学習バッファ
@@ -241,8 +252,10 @@ class AdaptiveSACCore:
         # カスタムポリシーを使用したSACモデルの作成
         policy_kwargs = {
             "features_extractor_class": AdaptiveFeatureExtractor,
-            "features_extractor_kwargs": {"regime_detector": self.market_regime_detector},
-            "net_arch": [256, 256]
+            "features_extractor_kwargs": {
+                "regime_detector": self.market_regime_detector
+            },
+            "net_arch": [256, 256],
         }
 
         self.sac_model = SAC(
@@ -257,7 +270,7 @@ class AdaptiveSACCore:
             train_freq=self.config.train_freq,
             gradient_steps=self.config.gradient_steps,
             policy_kwargs=policy_kwargs,
-            verbose=1
+            verbose=1,
         )
 
         return self.sac_model
@@ -267,7 +280,9 @@ class AdaptiveSACCore:
         self.is_running = True
 
         # モニタリングスレッドを開始
-        self.monitoring_thread = threading.Thread(target=self._performance_monitoring_loop)
+        self.monitoring_thread = threading.Thread(
+            target=self._performance_monitoring_loop
+        )
         self.monitoring_thread.daemon = True
         self.monitoring_thread.start()
 
@@ -280,14 +295,12 @@ class AdaptiveSACCore:
         callback = AdaptiveSACCallback(
             regime_detector=self.market_regime_detector,
             adaptation_core=self,
-            check_freq=self.config.adaptation_interval_steps
+            check_freq=self.config.adaptation_interval_steps,
         )
 
         self.logger.info("Starting adaptive SAC training")
         self.sac_model.learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            log_interval=100
+            total_timesteps=total_timesteps, callback=callback, log_interval=100
         )
 
         self.is_running = False
@@ -298,14 +311,18 @@ class AdaptiveSACCore:
             try:
                 # パフォーマンス指標の計算
                 if len(self.episode_rewards) > 0:
-                    recent_rewards = self.episode_rewards[-self.config.performance_window_size:]
+                    recent_rewards = self.episode_rewards[
+                        -self.config.performance_window_size :
+                    ]
                     metrics = self._calculate_performance_metrics(recent_rewards)
 
                     self.performance_history.append(metrics)
 
                     # パフォーマンス低下検知
                     if self._detect_performance_degradation(metrics):
-                        self.logger.warning("Performance degradation detected, triggering adaptation")
+                        self.logger.warning(
+                            "Performance degradation detected, triggering adaptation"
+                        )
                         self._trigger_adaptation()
 
                 time.sleep(10)  # 10秒ごとに監視
@@ -342,8 +359,10 @@ class AdaptiveSACCore:
                 self.current_regime_state = regime_state
                 self.regime_history.append(regime_state)
 
-                self.logger.info(f"Market regime updated: {regime_state.regime} "
-                               f"(confidence: {regime_state.confidence:.2f})")
+                self.logger.info(
+                    f"Market regime updated: {regime_state.regime} "
+                    f"(confidence: {regime_state.confidence:.2f})"
+                )
 
         except Exception as e:
             self.logger.error(f"Market regime update failed: {e}")
@@ -361,23 +380,23 @@ class AdaptiveSACCore:
             "bull": {
                 "learning_rate_multiplier": 1.2,
                 "tau_multiplier": 0.8,
-                "gamma_adjustment": 0.005
+                "gamma_adjustment": 0.005,
             },
             "bear": {
                 "learning_rate_multiplier": 0.8,
                 "tau_multiplier": 1.3,
-                "gamma_adjustment": -0.005
+                "gamma_adjustment": -0.005,
             },
             "volatile": {
                 "learning_rate_multiplier": 0.9,
                 "tau_multiplier": 1.5,
-                "gamma_adjustment": 0.01
+                "gamma_adjustment": 0.01,
             },
             "neutral": {
                 "learning_rate_multiplier": 1.0,
                 "tau_multiplier": 1.0,
-                "gamma_adjustment": 0.0
-            }
+                "gamma_adjustment": 0.0,
+            },
         }
 
         adjustments = regime_adjustments.get(regime, regime_adjustments["neutral"])
@@ -390,21 +409,22 @@ class AdaptiveSACCore:
 
         # パラメータの更新
         new_lr = np.clip(
-            self.adaptation_params["learning_rate"] * adjustments["learning_rate_multiplier"],
+            self.adaptation_params["learning_rate"]
+            * adjustments["learning_rate_multiplier"],
             self.config.dynamic_lr_range[0],
-            self.config.dynamic_lr_range[1]
+            self.config.dynamic_lr_range[1],
         )
 
         new_tau = np.clip(
             self.adaptation_params["tau"] * adjustments["tau_multiplier"],
             self.config.dynamic_tau_range[0],
-            self.config.dynamic_tau_range[1]
+            self.config.dynamic_tau_range[1],
         )
 
         new_gamma = np.clip(
             self.adaptation_params["gamma"] + adjustments["gamma_adjustment"],
             self.config.dynamic_gamma_range[0],
-            self.config.dynamic_gamma_range[1]
+            self.config.dynamic_gamma_range[1],
         )
 
         # SACモデルのパラメータ更新
@@ -413,23 +433,27 @@ class AdaptiveSACCore:
             self.sac_model.tau = new_tau
             self.sac_model.gamma = new_gamma
 
-        self.adaptation_params.update({
-            "learning_rate": new_lr,
-            "tau": new_tau,
-            "gamma": new_gamma
-        })
+        self.adaptation_params.update(
+            {"learning_rate": new_lr, "tau": new_tau, "gamma": new_gamma}
+        )
 
-        self.adaptation_log.append({
-            "timestamp": datetime.now(),
-            "regime": regime,
-            "adjustments": adjustments,
-            "new_params": self.adaptation_params.copy()
-        })
+        self.adaptation_log.append(
+            {
+                "timestamp": datetime.now(),
+                "regime": regime,
+                "adjustments": adjustments,
+                "new_params": self.adaptation_params.copy(),
+            }
+        )
 
-        self.logger.info(f"Adaptive parameters updated for {regime} regime: "
-                        f"LR={new_lr:.6f}, Tau={new_tau:.4f}, Gamma={new_gamma:.4f}")
+        self.logger.info(
+            f"Adaptive parameters updated for {regime} regime: "
+            f"LR={new_lr:.6f}, Tau={new_tau:.4f}, Gamma={new_gamma:.4f}"
+        )
 
-    def _calculate_performance_metrics(self, rewards: List[float]) -> PerformanceMetrics:
+    def _calculate_performance_metrics(
+        self, rewards: List[float]
+    ) -> PerformanceMetrics:
         """パフォーマンス指標の計算"""
         if not rewards:
             return PerformanceMetrics()
@@ -450,7 +474,9 @@ class AdaptiveSACCore:
         if negative_rewards:
             gross_profit = sum(positive_rewards)
             gross_loss = abs(sum(negative_rewards))
-            metrics.profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+            metrics.profit_factor = (
+                gross_profit / gross_loss if gross_loss > 0 else float("inf")
+            )
 
         # ドローダウンの計算
         cumulative = np.cumsum(rewards)
@@ -488,7 +514,7 @@ class AdaptiveSACCore:
         emergency_adjustments = {
             "learning_rate": self.adaptation_params["learning_rate"] * 0.5,
             "tau": self.adaptation_params["tau"] * 1.5,
-            "gamma": max(0.9, self.adaptation_params["gamma"] - 0.05)
+            "gamma": max(0.9, self.adaptation_params["gamma"] - 0.05),
         }
 
         if self.sac_model:
@@ -501,8 +527,8 @@ class AdaptiveSACCore:
         # 最適化のトリガー
         try:
             self.unified_optimizer.adaptive_optimize(
-                current_performance={"score": 0.5},  # 現在の推定スコア
-                market_regime=self.current_regime_state.regime
+                current_performance={"score": 0.5},
+                market_regime=self.current_regime_state.regime,  # 現在の推定スコア
             )
         except Exception as e:
             self.logger.error(f"Emergency optimization failed: {e}")
@@ -512,8 +538,14 @@ class AdaptiveSACCore:
         # ダミー実装 - 実際には市場データフィードから取得
         return None
 
-    def online_learn(self, observation: np.ndarray, action: np.ndarray,
-                    reward: float, next_observation: np.ndarray, done: bool):
+    def online_learn(
+        self,
+        observation: np.ndarray,
+        action: np.ndarray,
+        reward: float,
+        next_observation: np.ndarray,
+        done: bool,
+    ):
         """オンライン学習"""
         if not self.config.enable_online_learning:
             return
@@ -536,7 +568,7 @@ class AdaptiveSACCore:
             batch_indices = np.random.choice(
                 len(self.online_buffer),
                 size=min(self.config.batch_size, len(self.online_buffer)),
-                replace=False
+                replace=False,
             )
 
             batch = [self.online_buffer[i] for i in batch_indices]
@@ -551,7 +583,9 @@ class AdaptiveSACCore:
             # SACの学習ステップ
             self.sac_model.train(batch_size=len(batch))
 
-            self.logger.debug(f"Online learning update completed with {len(batch)} samples")
+            self.logger.debug(
+                f"Online learning update completed with {len(batch)} samples"
+            )
 
         except Exception as e:
             self.logger.error(f"Online learning update failed: {e}")
@@ -561,10 +595,12 @@ class AdaptiveSACCore:
         return {
             "current_regime": self.current_regime_state.to_dict(),
             "adaptation_params": self.adaptation_params.copy(),
-            "performance_metrics": self.performance_history[-1].__dict__ if self.performance_history else None,
+            "performance_metrics": self.performance_history[-1].__dict__
+            if self.performance_history
+            else None,
             "online_buffer_size": len(self.online_buffer),
             "adaptation_log_size": len(self.adaptation_log),
-            "is_adapting": self.is_running
+            "is_adapting": self.is_running,
         }
 
     def save_adaptive_state(self, filepath: str):
@@ -575,7 +611,7 @@ class AdaptiveSACCore:
             "adaptation_params": self.adaptation_params,
             "performance_history": [m.__dict__ for m in self.performance_history],
             "adaptation_log": self.adaptation_log,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         torch.save(state, filepath)
@@ -587,8 +623,10 @@ class AdaptiveSACCore:
 
         self.current_regime_state = MarketRegimeState(**state["current_regime_state"])
         self.adaptation_params = state["adaptation_params"]
-        self.performance_history = deque([PerformanceMetrics(**m) for m in state["performance_history"]],
-                                       maxlen=self.config.performance_window_size)
+        self.performance_history = deque(
+            [PerformanceMetrics(**m) for m in state["performance_history"]],
+            maxlen=self.config.performance_window_size,
+        )
         self.adaptation_log = state["adaptation_log"]
 
         self.logger.info(f"Adaptive state loaded from {filepath}")
@@ -597,7 +635,9 @@ class AdaptiveSACCore:
 class AdaptiveFeatureExtractor(nn.Module):
     """適応型特徴抽出器"""
 
-    def __init__(self, observation_space, features_dim: int = 256, regime_detector=None):
+    def __init__(
+        self, observation_space, features_dim: int = 256, regime_detector=None
+    ):
         super().__init__()
         self.regime_detector = regime_detector
 
@@ -606,7 +646,7 @@ class AdaptiveFeatureExtractor(nn.Module):
             nn.Linear(observation_space.shape[0], 128),
             nn.ReLU(),
             nn.Linear(128, features_dim),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
@@ -619,8 +659,12 @@ class AdaptiveFeatureExtractor(nn.Module):
             regime_features = self._get_regime_features()
             if regime_features is not None:
                 # 特徴量にレジーム情報を統合
-                regime_encoded = torch.tensor(regime_features, device=observations.device)
-                features = features * (1 + regime_encoded.unsqueeze(0).expand(features.shape[0], -1))
+                regime_encoded = torch.tensor(
+                    regime_features, device=observations.device
+                )
+                features = features * (
+                    1 + regime_encoded.unsqueeze(0).expand(features.shape[0], -1)
+                )
 
         return features
 
@@ -633,12 +677,14 @@ class AdaptiveFeatureExtractor(nn.Module):
             # 現在のレジーム状態を取得
             regime_state = self.regime_detector.get_current_regime()
             if regime_state:
-                return np.array([
-                    regime_state.confidence,
-                    regime_state.volatility,
-                    regime_state.trend_strength,
-                    1.0 if regime_state.volume_profile == "high" else 0.0
-                ])
+                return np.array(
+                    [
+                        regime_state.confidence,
+                        regime_state.volatility,
+                        regime_state.trend_strength,
+                        1.0 if regime_state.volume_profile == "high" else 0.0,
+                    ]
+                )
         except Exception:
             pass
 
@@ -648,7 +694,9 @@ class AdaptiveFeatureExtractor(nn.Module):
 class AdaptiveSACCallback(BaseCallback):
     """適応型SACトレーニングコールバック"""
 
-    def __init__(self, regime_detector, adaptation_core: AdaptiveSACCore, check_freq: int = 1000):
+    def __init__(
+        self, regime_detector, adaptation_core: AdaptiveSACCore, check_freq: int = 1000
+    ):
         super().__init__(check_freq)
         self.regime_detector = regime_detector
         self.adaptation_core = adaptation_core
@@ -673,9 +721,11 @@ class AdaptiveSACCallback(BaseCallback):
             self.adaptation_core._adaptive_parameter_tuning()
 
 
-def create_adaptive_sac_core(config: AdaptiveSACConfig = None,
-                           observation_dim: int = None,
-                           action_dim: int = None) -> AdaptiveSACCore:
+def create_adaptive_sac_core(
+    config: AdaptiveSACConfig = None,
+    observation_dim: int = None,
+    action_dim: int = None,
+) -> AdaptiveSACCore:
     """AdaptiveSACCoreのファクトリ関数"""
     if config is None:
         config = AdaptiveSACConfig()
@@ -693,12 +743,12 @@ if __name__ == "__main__":
         enable_market_regime_adaptation=True,
         enable_online_learning=True,
         adaptation_interval_steps=500,
-        performance_window_size=50
+        performance_window_size=50,
     )
 
     # 適応型SACコアの作成
     observation_dim = 10  # 観測空間の次元
-    action_dim = 3       # 行動空間の次元
+    action_dim = 3  # 行動空間の次元
 
     adaptive_sac = create_adaptive_sac_core(config, observation_dim, action_dim)
 

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\config_loader.py
+# hypothesis_version: 6.140.3
+
+['.', '.json', '.toml', '.yaml', '.yml', 'config', 'json', 'r', 'rb', 'toml', 'utf-8', 'w', 'yaml', 'yml']

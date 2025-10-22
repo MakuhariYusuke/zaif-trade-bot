@@ -17,6 +17,8 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy import stats
 
+from ztb.trading.environment.constants import EPSILON
+
 
 class DriftResultDict(TypedDict):
     """Drift detection result dictionary."""
@@ -38,7 +40,7 @@ def calculate_psi(
     expected: NDArray[np.float32],
     actual: NDArray[np.float32],
     bins: int = 10,
-    epsilon: float = 1e-10,
+    epsilon: float = EPSILON,
 ) -> float:
     """
     Calculate Population Stability Index (PSI) between two distributions.

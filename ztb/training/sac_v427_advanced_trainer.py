@@ -8,11 +8,12 @@ for market-adaptive ensemble trading system.
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
 
+from ztb.core.base import BaseTrainer
 from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.sac_v427_market_adaptive_system import SACv427MarketAdaptiveSystem
 from ztb.training.unified_trainer import UnifiedTrainer
@@ -21,7 +22,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class SACv427AdvancedTrainer:
+class SACv427AdvancedTrainer(BaseTrainer):
     """
     Advanced trainer for SAC v427 with integrated ML techniques.
 
@@ -32,9 +33,10 @@ class SACv427AdvancedTrainer:
     - Ensemble methods for diversified strategies
     """
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, config: Optional[Dict[str, Any]] = None):
+        super().__init__(name="SACv427AdvancedTrainer", config=config)
         self.config_path = Path(config_path)
-        self.config = self._load_config()
+        self.config_data = self._load_config()
         self.market_system = SACv427MarketAdaptiveSystem()
         self.feature_engineer = SACv427FeatureEngineer(self.market_system)
 
@@ -284,6 +286,19 @@ class SACv427AdvancedTrainer:
 
         logger.info("SAC v427 training completed successfully")
         return results
+
+    def train(self, data: Any) -> Dict[str, Any]:
+        """Train the SAC v427 system."""
+        return self.train_v427_system()
+
+    def evaluate(self, data: Any) -> Dict[str, Any]:
+        """Evaluate the trained model."""
+        return self._final_evaluation()
+
+    def _load_model(self, path: str) -> Any:
+        """Load model implementation."""
+        # Implement model loading logic
+        pass
 
     def _train_base_sac(self) -> Dict[str, Any]:
         """Train base SAC model with market-adaptive rewards."""

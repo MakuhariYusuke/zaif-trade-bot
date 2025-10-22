@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\data\data_loader.py
+# hypothesis_version: 6.140.3
+
+[0.1, 0.8, 1.0, 10.0, 100.0, 100, 5000, '\n=== データ連続性チェック ===', '\n=== 分布詳細分析 ===', '\n=== 外れ値検出 ===', '\n=== 欠損値分析 ===', '\n=== 特徴量相関チェック ===', '\n高相関の特徴量ペアなし', '-', '--config_path', '--multiplier', '04', '05', '06', '2025', '=', '=== 詳細データ品質チェック ===', 'RL_CONFIG_PATH', '__main__', 'a', 'config', 'data', 'data_quality', 'feature', 'features', 'iqr_outliers', 'iqr_percentage', 'lower_bound', 'macd', 'price', 'rl_config.json', 'rsi_14', 's', 'sample_04.parquet', 'sample_05.parquet', 'sample_06.parquet', 'sma_10', 'sma_5', 'ts', 'upper_bound', 'utf-8', 'volume', 'zscore_outliers', 'zscore_percentage', '✅ 詳細データ品質チェック完了', '❌ データファイルが見つかりません', 'タイムスタンプ間隔の統計:', '主要特徴量がデータに存在しません。', '主要特徴量の相関係数:', '極端変動サンプル:', '欠損値のある列:', '特徴量別外れ値検出結果:', '詳細データ品質チェックスクリプト', '🔍 詳細データ品質チェック開始']

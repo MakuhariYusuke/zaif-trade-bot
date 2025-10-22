@@ -1,6 +1,6 @@
+import json
 from pathlib import Path
 from typing import Any, Dict, Optional
-import json
 
 
 def safe_open_json(path: Optional[Path]) -> Optional[Dict[str, Any]]:

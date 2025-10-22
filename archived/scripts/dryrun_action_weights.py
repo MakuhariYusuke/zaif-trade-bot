@@ -19,6 +19,9 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import EPSILON
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -27,7 +30,7 @@ sys.path.insert(0, str(project_root))
 def compute_action_weights(
     action_counts: Dict[str, int],
     beta: float = 3.0,
-    epsilon: float = 1e-6,
+    epsilon: float = EPSILON,
 ) -> Dict[str, float]:
     """
     Compute inverse frequency weights with beta clipping.
@@ -90,7 +93,7 @@ def extract_legal_action_counts(diagnostics_path: Path) -> Dict[str, int]:
         raise ValueError("Diagnostics CSV must have 'action' column")
 
     # Count actions (0=HOLD, 1=BUY, 2=SELL)
-    action_map = {0: "HOLD", 1: "BUY", 2: "SELL"}
+    action_map = {ACTION_HOLD: "HOLD", ACTION_BUY: "BUY", ACTION_SELL: "SELL"}
 
     counts = {"HOLD": 0, "BUY": 0, "SELL": 0}
 

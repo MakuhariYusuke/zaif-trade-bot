@@ -1,25 +1,24 @@
 """Tests for Comprehensive Backtesting System component."""
 
 import datetime
-from typing import Any, Dict, List, Optional
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from ztb.trading.comprehensive_backtester import (
-    ComprehensiveBacktestingSystem,
     BacktestConfiguration,
-    BacktestResult,
-    PerformanceMetrics,
-    RiskMetrics,
-    TradeRecord,
-    MarketData,
     BacktestEngine,
-    StrategyEvaluator,
+    BacktestResult,
+    ComprehensiveBacktestingSystem,
+    MarketData,
+    PerformanceAnalyzer,
+    PerformanceMetrics,
     RiskManager,
-    PerformanceAnalyzer
+    RiskMetrics,
+    StrategyEvaluator,
+    TradeRecord,
 )
 
 
@@ -54,28 +53,31 @@ def sample_backtest_config():
         risk_per_trade=0.02,
         max_drawdown_limit=0.2,
         benchmark_symbol="BTC/JPY",
-        data_frequency="1H"
+        data_frequency="1H",
     )
 
 
 @pytest.fixture
 def sample_market_data():
     """Sample market data"""
-    dates = pd.date_range('2023-01-01', periods=100, freq='H')
-    data = pd.DataFrame({
-        'open': np.random.uniform(1000000, 2000000, 100),
-        'high': np.random.uniform(1000000, 2000000, 100),
-        'low': np.random.uniform(1000000, 2000000, 100),
-        'close': np.random.uniform(1000000, 2000000, 100),
-        'volume': np.random.uniform(1000, 10000, 100)
-    }, index=dates)
+    dates = pd.date_range("2023-01-01", periods=100, freq="H")
+    data = pd.DataFrame(
+        {
+            "open": np.random.uniform(1000000, 2000000, 100),
+            "high": np.random.uniform(1000000, 2000000, 100),
+            "low": np.random.uniform(1000000, 2000000, 100),
+            "close": np.random.uniform(1000000, 2000000, 100),
+            "volume": np.random.uniform(1000, 10000, 100),
+        },
+        index=dates,
+    )
 
     return MarketData(
         symbol="BTC/JPY",
         timeframe="1H",
         data=data,
         start_date=datetime.datetime(2023, 1, 1),
-        end_date=datetime.datetime(2023, 1, 5)
+        end_date=datetime.datetime(2023, 1, 5),
     )
 
 
@@ -90,7 +92,7 @@ def sample_trade_records():
             side="buy",
             quantity=0.01,
             price=1500000.0,
-            commission=15.0
+            commission=15.0,
         ),
         TradeRecord(
             trade_id="trade_2",
@@ -99,15 +101,19 @@ def sample_trade_records():
             side="sell",
             quantity=0.01,
             price=1550000.0,
-            commission=15.5
-        )
+            commission=15.5,
+        ),
     ]
 
 
 class TestComprehensiveBacktestingSystemInitialization:
     """Initialization tests for Comprehensive Backtesting System"""
 
-    def test_initialization(self, backtesting_system: ComprehensiveBacktestingSystem, mock_integration_manager):
+    def test_initialization(
+        self,
+        backtesting_system: ComprehensiveBacktestingSystem,
+        mock_integration_manager,
+    ):
         """Test successful initialization"""
         assert backtesting_system.integration_manager == mock_integration_manager
         assert isinstance(backtesting_system.backtest_engine, BacktestEngine)
@@ -117,9 +123,13 @@ class TestComprehensiveBacktestingSystemInitialization:
         assert backtesting_system.backtest_results == []
         assert backtesting_system.is_running is False
 
-    def test_initialization_with_config(self, mock_integration_manager, sample_backtest_config):
+    def test_initialization_with_config(
+        self, mock_integration_manager, sample_backtest_config
+    ):
         """Test initialization with configuration"""
-        system = ComprehensiveBacktestingSystem(mock_integration_manager, sample_backtest_config)
+        system = ComprehensiveBacktestingSystem(
+            mock_integration_manager, sample_backtest_config
+        )
 
         assert system.config == sample_backtest_config
         assert system.backtest_engine.config == sample_backtest_config
@@ -128,13 +138,22 @@ class TestComprehensiveBacktestingSystemInitialization:
 class TestComprehensiveBacktestingSystemOperations:
     """Operation tests for Comprehensive Backtesting System"""
 
-    def test_run_comprehensive_backtest(self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config, sample_market_data):
+    def test_run_comprehensive_backtest(
+        self,
+        backtesting_system: ComprehensiveBacktestingSystem,
+        sample_backtest_config,
+        sample_market_data,
+    ):
         """Test comprehensive backtest execution"""
-        with patch.object(backtesting_system.backtest_engine, 'run_backtest') as mock_run, \
-             patch.object(backtesting_system.strategy_evaluator, 'evaluate_strategy') as mock_evaluate, \
-             patch.object(backtesting_system.risk_manager, 'assess_risk') as mock_risk, \
-             patch.object(backtesting_system.performance_analyzer, 'analyze_performance') as mock_analyze:
-
+        with patch.object(
+            backtesting_system.backtest_engine, "run_backtest"
+        ) as mock_run, patch.object(
+            backtesting_system.strategy_evaluator, "evaluate_strategy"
+        ) as mock_evaluate, patch.object(
+            backtesting_system.risk_manager, "assess_risk"
+        ) as mock_risk, patch.object(
+            backtesting_system.performance_analyzer, "analyze_performance"
+        ) as mock_analyze:
             # Mock backtest result
             mock_result = BacktestResult(
                 config=sample_backtest_config,
@@ -142,7 +161,7 @@ class TestComprehensiveBacktestingSystemOperations:
                 performance_metrics=PerformanceMetrics(),
                 risk_metrics=RiskMetrics(),
                 execution_time=10.5,
-                success=True
+                success=True,
             )
             mock_run.return_value = mock_result
 
@@ -150,22 +169,24 @@ class TestComprehensiveBacktestingSystemOperations:
             mock_evaluate.return_value = {
                 "strategy_score": 85.0,
                 "confidence_level": 0.9,
-                "recommendations": ["Good performance"]
+                "recommendations": ["Good performance"],
             }
 
             mock_risk.return_value = {
                 "risk_score": 75.0,
                 "risk_adjusted_return": 1.2,
-                "risk_warnings": []
+                "risk_warnings": [],
             }
 
             mock_analyze.return_value = {
                 "sharpe_ratio": 1.5,
                 "max_drawdown": 0.15,
-                "win_rate": 0.65
+                "win_rate": 0.65,
             }
 
-            result = backtesting_system.run_comprehensive_backtest(sample_backtest_config, sample_market_data)
+            result = backtesting_system.run_comprehensive_backtest(
+                sample_backtest_config, sample_market_data
+            )
 
             assert isinstance(result, BacktestResult)
             assert result.config == sample_backtest_config
@@ -173,37 +194,48 @@ class TestComprehensiveBacktestingSystemOperations:
             assert result.success is True
             assert len(backtesting_system.backtest_results) == 1
 
-    def test_run_multiple_backtests(self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config, sample_market_data):
+    def test_run_multiple_backtests(
+        self,
+        backtesting_system: ComprehensiveBacktestingSystem,
+        sample_backtest_config,
+        sample_market_data,
+    ):
         """Test running multiple backtests"""
         configs = [sample_backtest_config, sample_backtest_config]
 
-        with patch.object(backtesting_system, 'run_comprehensive_backtest') as mock_run:
+        with patch.object(backtesting_system, "run_comprehensive_backtest") as mock_run:
             mock_run.return_value = BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
                 performance_metrics=PerformanceMetrics(),
                 risk_metrics=RiskMetrics(),
                 execution_time=5.0,
-                success=True
+                success=True,
             )
 
-            results = backtesting_system.run_multiple_backtests(configs, sample_market_data)
+            results = backtesting_system.run_multiple_backtests(
+                configs, sample_market_data
+            )
 
             assert len(results) == 2
             assert all(isinstance(r, BacktestResult) for r in results)
             assert mock_run.call_count == 2
 
-    def test_get_backtest_report(self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config):
+    def test_get_backtest_report(
+        self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config
+    ):
         """Test getting backtest report"""
         # Add mock results
         backtesting_system.backtest_results = [
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(total_return=0.15, sharpe_ratio=1.2),
+                performance_metrics=PerformanceMetrics(
+                    total_return=0.15, sharpe_ratio=1.2
+                ),
                 risk_metrics=RiskMetrics(max_drawdown=0.1, value_at_risk=0.05),
                 execution_time=10.0,
-                success=True
+                success=True,
             )
         ]
 
@@ -217,26 +249,32 @@ class TestComprehensiveBacktestingSystemOperations:
         assert report["summary"]["successful_backtests"] == 1
         assert report["performance_overview"]["avg_total_return"] == 0.15
 
-    def test_compare_strategies(self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config):
+    def test_compare_strategies(
+        self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config
+    ):
         """Test strategy comparison"""
         # Add multiple mock results
         backtesting_system.backtest_results = [
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(total_return=0.15, sharpe_ratio=1.2),
+                performance_metrics=PerformanceMetrics(
+                    total_return=0.15, sharpe_ratio=1.2
+                ),
                 risk_metrics=RiskMetrics(max_drawdown=0.1),
                 execution_time=10.0,
-                success=True
+                success=True,
             ),
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(total_return=0.20, sharpe_ratio=1.5),
+                performance_metrics=PerformanceMetrics(
+                    total_return=0.20, sharpe_ratio=1.5
+                ),
                 risk_metrics=RiskMetrics(max_drawdown=0.12),
                 execution_time=12.0,
-                success=True
-            )
+                success=True,
+            ),
         ]
 
         comparison = backtesting_system.compare_strategies()
@@ -247,7 +285,9 @@ class TestComprehensiveBacktestingSystemOperations:
         assert comparison["best_performing"]["total_return"] == 0.20
         assert comparison["best_performing"]["sharpe_ratio"] == 1.5
 
-    def test_validate_backtest_results(self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config):
+    def test_validate_backtest_results(
+        self, backtesting_system: ComprehensiveBacktestingSystem, sample_backtest_config
+    ):
         """Test backtest result validation"""
         valid_result = BacktestResult(
             config=sample_backtest_config,
@@ -255,7 +295,7 @@ class TestComprehensiveBacktestingSystemOperations:
             performance_metrics=PerformanceMetrics(total_return=0.1),
             risk_metrics=RiskMetrics(max_drawdown=0.1),
             execution_time=5.0,
-            success=True
+            success=True,
         )
 
         invalid_result = BacktestResult(
@@ -264,7 +304,7 @@ class TestComprehensiveBacktestingSystemOperations:
             performance_metrics=PerformanceMetrics(total_return=-0.5),  # Bad return
             risk_metrics=RiskMetrics(max_drawdown=0.3),  # High drawdown
             execution_time=5.0,
-            success=True
+            success=True,
         )
 
         assert backtesting_system.validate_backtest_results(valid_result) is True
@@ -283,14 +323,19 @@ class TestBacktestEngine:
         assert engine.current_capital == sample_backtest_config.initial_capital
         assert engine.trades == []
 
-    def test_run_backtest(self, mock_integration_manager, sample_backtest_config, sample_market_data):
+    def test_run_backtest(
+        self, mock_integration_manager, sample_backtest_config, sample_market_data
+    ):
         """Test backtest execution"""
         engine = BacktestEngine(mock_integration_manager, sample_backtest_config)
 
-        with patch.object(engine, '_load_market_data', return_value=sample_market_data), \
-             patch.object(engine, '_execute_trading_strategy') as mock_execute, \
-             patch.object(engine, '_calculate_performance_metrics') as mock_calc:
-
+        with patch.object(
+            engine, "_load_market_data", return_value=sample_market_data
+        ), patch.object(
+            engine, "_execute_trading_strategy"
+        ) as mock_execute, patch.object(
+            engine, "_calculate_performance_metrics"
+        ) as mock_calc:
             mock_execute.return_value = []  # No trades
             mock_calc.return_value = PerformanceMetrics(total_return=0.05)
 
@@ -301,21 +346,47 @@ class TestBacktestEngine:
             assert result.performance_metrics.total_return == 0.05
             assert result.success is True
 
-    def test_execute_trading_strategy(self, mock_integration_manager, sample_backtest_config, sample_market_data):
+    def test_execute_trading_strategy(
+        self, mock_integration_manager, sample_backtest_config, sample_market_data
+    ):
         """Test trading strategy execution"""
         engine = BacktestEngine(mock_integration_manager, sample_backtest_config)
 
-        with patch.object(engine, '_generate_signals') as mock_signals, \
-             patch.object(engine, '_execute_signal') as mock_execute:
-
+        with patch.object(engine, "_generate_signals") as mock_signals, patch.object(
+            engine, "_execute_signal"
+        ) as mock_execute:
             mock_signals.return_value = [
-                {"timestamp": datetime.datetime(2023, 1, 1, 10), "signal": "buy", "price": 1500000.0},
-                {"timestamp": datetime.datetime(2023, 1, 1, 15), "signal": "sell", "price": 1550000.0}
+                {
+                    "timestamp": datetime.datetime(2023, 1, 1, 10),
+                    "signal": "buy",
+                    "price": 1500000.0,
+                },
+                {
+                    "timestamp": datetime.datetime(2023, 1, 1, 15),
+                    "signal": "sell",
+                    "price": 1550000.0,
+                },
             ]
 
             mock_execute.side_effect = [
-                TradeRecord("trade_1", datetime.datetime(2023, 1, 1, 10), "BTC/JPY", "buy", 0.01, 1500000.0, 15.0),
-                TradeRecord("trade_2", datetime.datetime(2023, 1, 1, 15), "BTC/JPY", "sell", 0.01, 1550000.0, 15.5)
+                TradeRecord(
+                    "trade_1",
+                    datetime.datetime(2023, 1, 1, 10),
+                    "BTC/JPY",
+                    "buy",
+                    0.01,
+                    1500000.0,
+                    15.0,
+                ),
+                TradeRecord(
+                    "trade_2",
+                    datetime.datetime(2023, 1, 1, 15),
+                    "BTC/JPY",
+                    "sell",
+                    0.01,
+                    1550000.0,
+                    15.5,
+                ),
             ]
 
             trades = engine._execute_trading_strategy(sample_market_data)
@@ -326,7 +397,9 @@ class TestBacktestEngine:
             assert mock_signals.call_count == 1
             assert mock_execute.call_count == 2
 
-    def test_calculate_performance_metrics(self, mock_integration_manager, sample_backtest_config, sample_trade_records):
+    def test_calculate_performance_metrics(
+        self, mock_integration_manager, sample_backtest_config, sample_trade_records
+    ):
         """Test performance metrics calculation"""
         engine = BacktestEngine(mock_integration_manager, sample_backtest_config)
         engine.trades = sample_trade_records
@@ -337,8 +410,12 @@ class TestBacktestEngine:
         assert isinstance(metrics, PerformanceMetrics)
         assert metrics.total_trades == 2
         # Profit calculation: sell_price - buy_price - commissions
-        expected_profit = (1550000.0 - 1500000.0) - (15.0 + 15.5)  # 50000 - 30.5 = 49969.5
-        assert abs(metrics.total_return - (expected_profit / 100000.0)) < 0.001  # Return percentage
+        expected_profit = (1550000.0 - 1500000.0) - (
+            15.0 + 15.5
+        )  # 50000 - 30.5 = 49969.5
+        assert (
+            abs(metrics.total_return - (expected_profit / 100000.0)) < 0.001
+        )  # Return percentage
 
 
 class TestStrategyEvaluator:
@@ -362,11 +439,11 @@ class TestStrategyEvaluator:
                 total_return=0.15,
                 sharpe_ratio=1.5,
                 win_rate=0.7,
-                max_consecutive_wins=5
+                max_consecutive_wins=5,
             ),
             risk_metrics=RiskMetrics(max_drawdown=0.1),
             execution_time=10.0,
-            success=True
+            success=True,
         )
 
         evaluation = evaluator.evaluate_strategy(result)
@@ -375,9 +452,13 @@ class TestStrategyEvaluator:
         assert "confidence_level" in evaluation
         assert "recommendations" in evaluation
         assert evaluation["strategy_score"] >= 0 and evaluation["strategy_score"] <= 100
-        assert evaluation["confidence_level"] >= 0 and evaluation["confidence_level"] <= 1
+        assert (
+            evaluation["confidence_level"] >= 0 and evaluation["confidence_level"] <= 1
+        )
 
-    def test_evaluate_strategy_weak_performance(self, mock_integration_manager, sample_backtest_config):
+    def test_evaluate_strategy_weak_performance(
+        self, mock_integration_manager, sample_backtest_config
+    ):
         """Test strategy evaluation with weak performance"""
         evaluator = StrategyEvaluator(mock_integration_manager)
 
@@ -385,13 +466,11 @@ class TestStrategyEvaluator:
             config=sample_backtest_config,
             trades=[],
             performance_metrics=PerformanceMetrics(
-                total_return=-0.1,
-                sharpe_ratio=0.3,
-                win_rate=0.4
+                total_return=-0.1, sharpe_ratio=0.3, win_rate=0.4
             ),
             risk_metrics=RiskMetrics(max_drawdown=0.25),
             execution_time=10.0,
-            success=True
+            success=True,
         )
 
         evaluation = evaluator.evaluate_strategy(result)
@@ -420,13 +499,10 @@ class TestRiskManager:
             trades=[],
             performance_metrics=PerformanceMetrics(total_return=0.1),
             risk_metrics=RiskMetrics(
-                max_drawdown=0.15,
-                value_at_risk=0.05,
-                expected_shortfall=0.08,
-                beta=0.8
+                max_drawdown=0.15, value_at_risk=0.05, expected_shortfall=0.08, beta=0.8
             ),
             execution_time=10.0,
-            success=True
+            success=True,
         )
 
         assessment = risk_manager.assess_risk(result)
@@ -437,7 +513,9 @@ class TestRiskManager:
         assert assessment["risk_score"] >= 0 and assessment["risk_score"] <= 100
         assert assessment["risk_adjusted_return"] > 0
 
-    def test_assess_risk_high_risk(self, mock_integration_manager, sample_backtest_config):
+    def test_assess_risk_high_risk(
+        self, mock_integration_manager, sample_backtest_config
+    ):
         """Test risk assessment with high risk"""
         risk_manager = RiskManager(mock_integration_manager)
 
@@ -446,12 +524,12 @@ class TestRiskManager:
             trades=[],
             performance_metrics=PerformanceMetrics(total_return=0.05),
             risk_metrics=RiskMetrics(
-                max_drawdown=0.35,  # High drawdown
-                value_at_risk=0.12,  # High VaR
-                expected_shortfall=0.18
+                max_drawdown=0.35,
+                value_at_risk=0.12,
+                expected_shortfall=0.18,  # High drawdown  # High VaR
             ),
             execution_time=10.0,
-            success=True
+            success=True,
         )
 
         assessment = risk_manager.assess_risk(result)
@@ -469,7 +547,9 @@ class TestPerformanceAnalyzer:
 
         assert analyzer.integration_manager == mock_integration_manager
 
-    def test_analyze_performance(self, mock_integration_manager, sample_backtest_config, sample_trade_records):
+    def test_analyze_performance(
+        self, mock_integration_manager, sample_backtest_config, sample_trade_records
+    ):
         """Test performance analysis"""
         analyzer = PerformanceAnalyzer(mock_integration_manager)
 
@@ -479,7 +559,7 @@ class TestPerformanceAnalyzer:
             performance_metrics=PerformanceMetrics(),
             risk_metrics=RiskMetrics(),
             execution_time=10.0,
-            success=True
+            success=True,
         )
 
         analysis = analyzer.analyze_performance(result)
@@ -491,7 +571,9 @@ class TestPerformanceAnalyzer:
         assert "avg_trade_duration" in analysis
         assert "monthly_returns" in analysis
 
-    def test_calculate_advanced_metrics(self, mock_integration_manager, sample_trade_records):
+    def test_calculate_advanced_metrics(
+        self, mock_integration_manager, sample_trade_records
+    ):
         """Test advanced metrics calculation"""
         analyzer = PerformanceAnalyzer(mock_integration_manager)
 
@@ -536,7 +618,7 @@ class TestBacktestResult:
             performance_metrics=PerformanceMetrics(),
             risk_metrics=RiskMetrics(),
             execution_time=10.5,
-            success=True
+            success=True,
         )
 
         assert result.config == sample_backtest_config
@@ -552,7 +634,7 @@ class TestBacktestResult:
             performance_metrics=PerformanceMetrics(total_return=0.15, total_trades=10),
             risk_metrics=RiskMetrics(max_drawdown=0.1),
             execution_time=10.5,
-            success=True
+            success=True,
         )
 
         summary = result.result_summary
@@ -577,7 +659,7 @@ class TestTradeRecord:
             side="buy",
             quantity=0.01,
             price=1500000.0,
-            commission=15.0
+            commission=15.0,
         )
 
         assert trade.trade_id == "test_trade"
@@ -596,7 +678,7 @@ class TestTradeRecord:
             side="buy",
             quantity=0.01,
             price=1500000.0,
-            commission=15.0
+            commission=15.0,
         )
 
         assert trade.trade_value == 15000.0  # 0.01 * 1500000
@@ -618,19 +700,21 @@ class TestMarketData:
         assert sample_market_data.validate_data() is True
 
         # Test with invalid data
-        invalid_data = pd.DataFrame({
-            'open': [1, 2, 3],
-            'high': [1, 2, 3],  # High should be >= open
-            'low': [1, 2, 3],
-            'close': [1, 2, 3]
-        })
+        invalid_data = pd.DataFrame(
+            {
+                "open": [1, 2, 3],
+                "high": [1, 2, 3],
+                "low": [1, 2, 3],
+                "close": [1, 2, 3],
+            }  # High should be >= open
+        )
 
         invalid_market_data = MarketData(
             symbol="BTC/JPY",
             timeframe="1H",
             data=invalid_data,
             start_date=datetime.datetime(2023, 1, 1),
-            end_date=datetime.datetime(2023, 1, 1)
+            end_date=datetime.datetime(2023, 1, 1),
         )
 
         assert invalid_market_data.validate_data() is False
@@ -651,10 +735,7 @@ class TestPerformanceMetrics:
     def test_calculated_properties(self):
         """Test calculated properties"""
         metrics = PerformanceMetrics(
-            total_return=0.15,
-            total_trades=10,
-            winning_trades=7,
-            losing_trades=3
+            total_return=0.15, total_trades=10, winning_trades=7, losing_trades=3
         )
 
         assert metrics.win_rate == 0.7
@@ -676,9 +757,7 @@ class TestRiskMetrics:
     def test_risk_score_calculation(self):
         """Test risk score calculation"""
         metrics = RiskMetrics(
-            max_drawdown=0.15,
-            value_at_risk=0.05,
-            expected_shortfall=0.08
+            max_drawdown=0.15, value_at_risk=0.05, expected_shortfall=0.08
         )
 
         # Risk score is a composite measure

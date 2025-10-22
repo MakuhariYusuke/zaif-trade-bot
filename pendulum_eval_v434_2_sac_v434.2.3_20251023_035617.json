@@ -1,0 +1,14 @@
+{
+  "model_name": "sac_v434.2.3",
+  "version": "v434.2_pendulum_eval",
+  "timestamp": "2025-10-23T03:56:17.015678",
+  "avg_reward": -1663.0587043225764,
+  "std_reward": 144.00014359446786,
+  "avg_length": 200.0,
+  "std_length": 0.0,
+  "best_reward": -1449.5487671941519,
+  "worst_reward": -1924.5275316238403,
+  "total_episodes": 10,
+  "task_type": "pendulum_control",
+  "evaluation_type": "continuous_control_task"
+}

@@ -67,10 +67,10 @@ except ImportError:
 
 # Import utility modules
 from ztb.utils.cache_utils import TTLCache
-from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
 
 # Import configuration management
 from ztb.utils.config import ZTBConfig
+from ztb.utils.errors import ValidationError, validate_price, validate_quantity
 
 # Import Discord notifier
 from ztb.utils.notify.discord import DiscordNotifier
@@ -715,6 +715,7 @@ class LiveTrader:
         try:
             price = asyncio.run(_async_get_price())
             if price is not None:
+                validate_price(price, "price")
                 return price
         except Exception as e:
             logger = get_logger(__name__)
@@ -1609,6 +1610,11 @@ class LiveTrader:
 
     def _execute_trade(self, side: str, amount: float) -> bool:
         """Execute trade on Coincheck with enhanced error handling and notifications."""
+        # 入力バリデーション
+        validate_quantity(amount, "amount")
+        if side not in ["buy", "sell"]:
+            raise ValidationError(f"Invalid side: {side}, must be 'buy' or 'sell'")
+
         if self.demo_mode:
             logger = get_logger(__name__)
             logger.info(f"DEMO MODE: Would execute {side} {amount} BTC")

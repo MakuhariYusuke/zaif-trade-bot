@@ -5,39 +5,42 @@ V433 Phase 4: パフォーマンス最適化システム
 """
 
 import asyncio
-import time
-import threading
-import psutil
-import gc
-import numpy as np
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-import multiprocessing as mp
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import cProfile
-import pstats
+import gc
 import io
-from functools import lru_cache, wraps
+import multiprocessing as mp
+import pstats
+import threading
+import time
 import weakref
-import sys
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.utils.logging_utils import get_logger
+import numpy as np
+import psutil
+
+from ztb.core.base import BaseComponent
 from ztb.trading.v433_integration_manager import V433IntegrationManager
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class PerformanceTarget:
     """パフォーマンス目標"""
+
     latency_ms: float = 100.0  # 目標レイテンシー (100ms)
-    memory_gb: float = 4.0     # 最大メモリ使用量 (4GB)
+    memory_gb: float = 4.0  # 最大メモリ使用量 (4GB)
     cpu_percent: float = 80.0  # 最大CPU使用率 (80%)
-    throughput_ops: int = 1000 # 1秒あたりの操作数
+    throughput_ops: int = 1000  # 1秒あたりの操作数
+
 
 @dataclass
 class PerformanceMetrics:
     """パフォーマンス指標"""
+
     timestamp: datetime = field(default_factory=datetime.now)
 
     # レイテンシー指標
@@ -59,11 +62,13 @@ class PerformanceMetrics:
 
     # 効率指標
     memory_efficiency: float = 0.0  # 操作あたりのメモリ使用量
-    cpu_efficiency: float = 0.0     # 操作あたりのCPU使用量
+    cpu_efficiency: float = 0.0  # 操作あたりのCPU使用量
+
 
 @dataclass
 class OptimizationResult:
     """最適化結果"""
+
     optimization_type: str
     before_metrics: PerformanceMetrics
     after_metrics: PerformanceMetrics
@@ -92,7 +97,9 @@ class LatencyOptimizer:
         self.profiler = cProfile.Profile()
         self.latency_measurements: List[float] = []
 
-    def measure_operation_latency(self, operation: callable, *args, **kwargs) -> Tuple[float, Any]:
+    def measure_operation_latency(
+        self, operation: callable, *args, **kwargs
+    ) -> Tuple[float, Any]:
         """操作のレイテンシーを測定"""
         start_time = time.perf_counter()
         result = operation(*args, **kwargs)
@@ -119,7 +126,7 @@ class LatencyOptimizer:
 
         # 結果分析
         s = io.StringIO()
-        ps = pstats.Stats(self.profiler, stream=s).sort_stats('cumulative')
+        ps = pstats.Stats(self.profiler, stream=s).sort_stats("cumulative")
         ps.print_stats(20)  # 上位20関数
 
         profile_results = s.getvalue()
@@ -131,8 +138,12 @@ class LatencyOptimizer:
             "profile_output": profile_results,
             "bottlenecks": bottlenecks,
             "total_measurements": len(self.latency_measurements),
-            "avg_latency_ms": np.mean(self.latency_measurements) if self.latency_measurements else 0,
-            "p95_latency_ms": np.percentile(self.latency_measurements, 95) if self.latency_measurements else 0
+            "avg_latency_ms": np.mean(self.latency_measurements)
+            if self.latency_measurements
+            else 0,
+            "p95_latency_ms": np.percentile(self.latency_measurements, 95)
+            if self.latency_measurements
+            else 0,
         }
 
     def optimize_data_processing(self) -> OptimizationResult:
@@ -173,7 +184,7 @@ class LatencyOptimizer:
             after_metrics=after_metrics,
             improvement_percent=improvement,
             success=improvement > 0,
-            details={"optimizations_applied": optimizations_applied}
+            details={"optimizations_applied": optimizations_applied},
         )
 
     def optimize_signal_processing(self) -> OptimizationResult:
@@ -206,7 +217,7 @@ class LatencyOptimizer:
             after_metrics=after_metrics,
             improvement_percent=improvement,
             success=improvement > 0,
-            details={"optimizations_applied": optimizations_applied}
+            details={"optimizations_applied": optimizations_applied},
         )
 
     def optimize_memory_usage(self) -> OptimizationResult:
@@ -243,7 +254,7 @@ class LatencyOptimizer:
             after_metrics=after_metrics,
             improvement_percent=improvement,
             success=improvement > 0,
-            details={"optimizations_applied": optimizations_applied}
+            details={"optimizations_applied": optimizations_applied},
         )
 
     def _execute_critical_operations(self):
@@ -256,6 +267,7 @@ class LatencyOptimizer:
 
         # シグナル処理操作
         from ztb.trading.position_manager import PositionSignal
+
         for _ in range(50):
             signal = PositionSignal(
                 symbol="btc_jpy",
@@ -263,11 +275,13 @@ class LatencyOptimizer:
                 strength=0.7,
                 target_quantity=0.001,
                 confidence=0.8,
-                reason="performance_test"
+                reason="performance_test",
             )
 
             async def send_signal():
-                await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
             asyncio.run(send_signal())
 
@@ -275,23 +289,29 @@ class LatencyOptimizer:
         """ボトルネックの分析"""
         bottlenecks = []
 
-        lines = profile_output.split('\n')
+        lines = profile_output.split("\n")
         for line in lines:
-            if line.strip() and not line.startswith(' '):
+            if line.strip() and not line.startswith(" "):
                 parts = line.split()
                 if len(parts) >= 6:
                     try:
                         cum_time = float(parts[3])
                         if cum_time > 0.01:  # 10ms以上の関数
-                            bottlenecks.append({
-                                "function": parts[5] if len(parts) > 5 else "unknown",
-                                "cumulative_time": cum_time,
-                                "calls": parts[0] if parts[0].isdigit() else 0
-                            })
+                            bottlenecks.append(
+                                {
+                                    "function": parts[5]
+                                    if len(parts) > 5
+                                    else "unknown",
+                                    "cumulative_time": cum_time,
+                                    "calls": parts[0] if parts[0].isdigit() else 0,
+                                }
+                            )
                     except (ValueError, IndexError):
                         continue
 
-        return sorted(bottlenecks, key=lambda x: x["cumulative_time"], reverse=True)[:10]
+        return sorted(bottlenecks, key=lambda x: x["cumulative_time"], reverse=True)[
+            :10
+        ]
 
     def _optimize_async_processing(self) -> bool:
         """非同期処理の最適化"""
@@ -403,7 +423,8 @@ class LatencyOptimizer:
         for _ in range(50):
             latency, _ = self.measure_operation_latency(
                 self.integration_manager.component_manager.v433_system.update_market_data,
-                "btc_jpy", 5000000.0
+                "btc_jpy",
+                5000000.0,
             )
             latencies.append(latency)
 
@@ -411,7 +432,7 @@ class LatencyOptimizer:
             avg_latency_ms=np.mean(latencies),
             p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
-            max_latency_ms=max(latencies)
+            max_latency_ms=max(latencies),
         )
 
     def _measure_signal_processing_performance(self) -> PerformanceMetrics:
@@ -428,11 +449,13 @@ class LatencyOptimizer:
                 strength=0.7,
                 target_quantity=0.001,
                 confidence=0.8,
-                reason="performance_test"
+                reason="performance_test",
             )
 
             async def send_signal():
-                await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
             latency, _ = self.measure_operation_latency(asyncio.run, send_signal)
             latencies.append(latency)
@@ -441,7 +464,7 @@ class LatencyOptimizer:
             avg_latency_ms=np.mean(latencies),
             p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
-            max_latency_ms=max(latencies)
+            max_latency_ms=max(latencies),
         )
 
     def _measure_memory_performance(self) -> PerformanceMetrics:
@@ -449,26 +472,36 @@ class LatencyOptimizer:
         process = psutil.Process()
 
         return PerformanceMetrics(
-            memory_usage_gb=process.memory_info().rss / (1024 ** 3),
-            memory_efficiency=0.0  # 計算が必要
+            memory_usage_gb=process.memory_info().rss / (1024**3),
+            memory_efficiency=0.0,  # 計算が必要
         )
 
-    def _calculate_improvement(self, before: PerformanceMetrics, after: PerformanceMetrics) -> float:
+    def _calculate_improvement(
+        self, before: PerformanceMetrics, after: PerformanceMetrics
+    ) -> float:
         """改善率の計算"""
         if before.avg_latency_ms == 0:
             return 0.0
 
         # レイテンシーの改善（減少が改善）
-        latency_improvement = (before.avg_latency_ms - after.avg_latency_ms) / before.avg_latency_ms * 100
+        latency_improvement = (
+            (before.avg_latency_ms - after.avg_latency_ms) / before.avg_latency_ms * 100
+        )
         return latency_improvement
 
-    def _calculate_memory_improvement(self, before: PerformanceMetrics, after: PerformanceMetrics) -> float:
+    def _calculate_memory_improvement(
+        self, before: PerformanceMetrics, after: PerformanceMetrics
+    ) -> float:
         """メモリ改善率の計算"""
         if before.memory_usage_gb == 0:
             return 0.0
 
         # メモリ使用量の改善（減少が改善）
-        memory_improvement = (before.memory_usage_gb - after.memory_usage_gb) / before.memory_usage_gb * 100
+        memory_improvement = (
+            (before.memory_usage_gb - after.memory_usage_gb)
+            / before.memory_usage_gb
+            * 100
+        )
         return memory_improvement
 
 
@@ -490,19 +523,16 @@ class MemoryOptimizer:
         process = psutil.Process()
 
         memory_info = {
-            "rss_gb": process.memory_info().rss / (1024 ** 3),
-            "vms_gb": process.memory_info().vms / (1024 ** 3),
+            "rss_gb": process.memory_info().rss / (1024**3),
+            "vms_gb": process.memory_info().vms / (1024**3),
             "cpu_percent": process.cpu_percent(),
             "thread_count": process.num_threads(),
             "open_files": len(process.open_files()),
-            "connections": len(process.connections())
+            "connections": len(process.connections()),
         }
 
         # メモリスナップショット保存
-        self.memory_snapshots.append({
-            **memory_info,
-            "timestamp": datetime.now()
-        })
+        self.memory_snapshots.append({**memory_info, "timestamp": datetime.now()})
 
         # 最近のスナップショットのみ保持
         if len(self.memory_snapshots) > 100:
@@ -518,7 +548,7 @@ class MemoryOptimizer:
             "current_memory": memory_info,
             "memory_leaks": memory_leaks,
             "efficiency_analysis": efficiency_analysis,
-            "snapshots_count": len(self.memory_snapshots)
+            "snapshots_count": len(self.memory_snapshots),
         }
 
     def optimize_memory_allocation(self) -> Dict[str, Any]:
@@ -545,7 +575,7 @@ class MemoryOptimizer:
 
         return {
             "optimizations_applied": optimizations,
-            "success": len(optimizations) > 0
+            "success": len(optimizations) > 0,
         }
 
     def implement_memory_monitoring(self) -> bool:
@@ -561,7 +591,9 @@ class MemoryOptimizer:
                         self.logger.error(f"Memory monitoring error: {e}")
                         time.sleep(300)  # エラー時は5分待機
 
-            monitoring_thread = threading.Thread(target=memory_monitoring_loop, daemon=True)
+            monitoring_thread = threading.Thread(
+                target=memory_monitoring_loop, daemon=True
+            )
             monitoring_thread.start()
 
             self.logger.info("Memory monitoring implemented")
@@ -589,12 +621,14 @@ class MemoryOptimizer:
 
             # メモリリークの兆候（増加トレンド）
             if slope > 0.01:  # 1MB/分以上の増加
-                leaks.append({
-                    "type": "memory_leak",
-                    "slope_mb_per_minute": slope * 1024,
-                    "severity": "high" if slope > 0.1 else "medium",
-                    "description": f"Memory leak detected: {slope*1024:.2f} MB/min increase"
-                })
+                leaks.append(
+                    {
+                        "type": "memory_leak",
+                        "slope_mb_per_minute": slope * 1024,
+                        "severity": "high" if slope > 0.1 else "medium",
+                        "description": f"Memory leak detected: {slope*1024:.2f} MB/min increase",
+                    }
+                )
 
         return leaks
 
@@ -608,8 +642,14 @@ class MemoryOptimizer:
         # メモリ効率指標の計算
         efficiency = {
             "memory_per_thread_gb": recent["rss_gb"] / max(recent["thread_count"], 1),
-            "memory_per_connection_gb": recent["rss_gb"] / max(len(self.integration_manager.component_manager.v433_system.current_prices), 1),
-            "cpu_memory_ratio": recent["cpu_percent"] / max(recent["rss_gb"], 0.1)
+            "memory_per_connection_gb": recent["rss_gb"]
+            / max(
+                len(
+                    self.integration_manager.component_manager.v433_system.current_prices
+                ),
+                1,
+            ),
+            "cpu_memory_ratio": recent["cpu_percent"] / max(recent["rss_gb"], 0.1),
         }
 
         return efficiency
@@ -671,8 +711,10 @@ class CPUOptimizer:
         cpu_info = {
             "cpu_percent": process.cpu_percent(interval=1.0),
             "cpu_times": process.cpu_times(),
-            "cpu_affinity": process.cpu_affinity() if hasattr(process, 'cpu_affinity') else None,
-            "num_threads": process.num_threads()
+            "cpu_affinity": process.cpu_affinity()
+            if hasattr(process, "cpu_affinity")
+            else None,
+            "num_threads": process.num_threads(),
         }
 
         # CPU測定値保存
@@ -688,8 +730,12 @@ class CPUOptimizer:
         return {
             "current_cpu": cpu_info,
             "usage_pattern": usage_pattern,
-            "avg_cpu_percent": np.mean(self.cpu_measurements) if self.cpu_measurements else 0,
-            "max_cpu_percent": max(self.cpu_measurements) if self.cpu_measurements else 0
+            "avg_cpu_percent": np.mean(self.cpu_measurements)
+            if self.cpu_measurements
+            else 0,
+            "max_cpu_percent": max(self.cpu_measurements)
+            if self.cpu_measurements
+            else 0,
         }
 
     def optimize_cpu_utilization(self) -> Dict[str, Any]:
@@ -716,7 +762,7 @@ class CPUOptimizer:
 
         return {
             "optimizations_applied": optimizations,
-            "success": len(optimizations) > 0
+            "success": len(optimizations) > 0,
         }
 
     def _analyze_cpu_pattern(self) -> Dict[str, Any]:
@@ -732,8 +778,10 @@ class CPUOptimizer:
             "std": np.std(measurements),
             "min": np.min(measurements),
             "max": np.max(measurements),
-            "trend": "increasing" if measurements[-1] > measurements[0] else "decreasing",
-            "volatility": np.std(measurements) / max(np.mean(measurements), 1) * 100
+            "trend": "increasing"
+            if measurements[-1] > measurements[0]
+            else "decreasing",
+            "volatility": np.std(measurements) / max(np.mean(measurements), 1) * 100,
         }
 
         # パターン分類
@@ -772,7 +820,7 @@ class CPUOptimizer:
         try:
             # プロセスを特定のCPUコアにバインド
             process = psutil.Process()
-            if hasattr(process, 'cpu_affinity'):
+            if hasattr(process, "cpu_affinity"):
                 # 利用可能なCPUコアにバインド
                 available_cpus = list(range(psutil.cpu_count()))
                 process.cpu_affinity(available_cpus)
@@ -792,15 +840,19 @@ class CPUOptimizer:
             return False
 
 
-class PerformanceOptimizationSystem:
+class PerformanceOptimizationSystem(BaseComponent):
     """
     V433 Phase 4: パフォーマンス最適化システム
     低レイテンシー取引実行、メモリ使用量最適化、計算効率化
     """
 
-    def __init__(self, integration_manager: V433IntegrationManager):
+    def __init__(
+        self,
+        integration_manager: V433IntegrationManager,
+        config: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(name="PerformanceOptimizationSystem", config=config)
         self.integration_manager = integration_manager
-        self.logger = get_logger(__name__)
 
         # 最適化コンポーネント
         self.latency_optimizer = LatencyOptimizer(integration_manager)
@@ -848,17 +900,14 @@ class PerformanceOptimizationSystem:
 
         # 結果保存
         for result in optimization_results.values():
-            if hasattr(result, 'optimization_type'):
+            if hasattr(result, "optimization_type"):
                 self.optimization_results.append(result)
 
         # サマリー生成
         summary = self._generate_optimization_summary(optimization_results)
 
         self.logger.info("Comprehensive optimization completed")
-        return {
-            "results": optimization_results,
-            "summary": summary
-        }
+        return {"results": optimization_results, "summary": summary}
 
     def start_performance_monitoring(self) -> bool:
         """パフォーマンス監視を開始"""
@@ -883,7 +932,9 @@ class PerformanceOptimizationSystem:
                         self.logger.error(f"Performance monitoring error: {e}")
                         time.sleep(300)
 
-            self.monitoring_thread = threading.Thread(target=monitoring_loop, daemon=True)
+            self.monitoring_thread = threading.Thread(
+                target=monitoring_loop, daemon=True
+            )
             self.monitoring_thread.start()
 
             # メモリ監視の実装
@@ -913,36 +964,46 @@ class PerformanceOptimizationSystem:
         current_cpu = self.cpu_optimizer.analyze_cpu_usage()
 
         # 最適化結果サマリー
-        successful_optimizations = sum(1 for r in self.optimization_results if r.success)
+        successful_optimizations = sum(
+            1 for r in self.optimization_results if r.success
+        )
         total_optimizations = len(self.optimization_results)
 
-        avg_improvement = np.mean([r.improvement_percent for r in self.optimization_results if hasattr(r, 'improvement_percent')])
+        avg_improvement = np.mean(
+            [
+                r.improvement_percent
+                for r in self.optimization_results
+                if hasattr(r, "improvement_percent")
+            ]
+        )
 
         return {
-            "current_performance": {
-                "memory": current_memory,
-                "cpu": current_cpu
-            },
+            "current_performance": {"memory": current_memory, "cpu": current_cpu},
             "optimization_summary": {
                 "total_optimizations": total_optimizations,
                 "successful_optimizations": successful_optimizations,
-                "success_rate": successful_optimizations / total_optimizations if total_optimizations > 0 else 0,
-                "avg_improvement_percent": avg_improvement if not np.isnan(avg_improvement) else 0
+                "success_rate": successful_optimizations / total_optimizations
+                if total_optimizations > 0
+                else 0,
+                "avg_improvement_percent": avg_improvement
+                if not np.isnan(avg_improvement)
+                else 0,
             },
             "targets": {
                 "latency_ms": self.targets.latency_ms,
                 "memory_gb": self.targets.memory_gb,
                 "cpu_percent": self.targets.cpu_percent,
-                "throughput_ops": self.targets.throughput_ops
+                "throughput_ops": self.targets.throughput_ops,
             },
             "optimization_details": [
                 {
                     "type": r.optimization_type,
                     "success": r.success,
                     "improvement_percent": r.improvement_percent,
-                    "details": r.details
-                } for r in self.optimization_results
-            ]
+                    "details": r.details,
+                }
+                for r in self.optimization_results
+            ],
         }
 
     def _generate_optimization_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
@@ -953,23 +1014,25 @@ class PerformanceOptimizationSystem:
             "failed_optimizations": 0,
             "avg_improvement_percent": 0.0,
             "critical_improvements": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         improvements = []
 
         for key, result in results.items():
-            if hasattr(result, 'success'):
+            if hasattr(result, "success"):
                 if result.success:
                     summary["successful_optimizations"] += 1
                     improvements.append(result.improvement_percent)
 
                     # 重要な改善の特定
                     if result.improvement_percent > 20:  # 20%以上の改善
-                        summary["critical_improvements"].append({
-                            "type": result.optimization_type,
-                            "improvement": result.improvement_percent
-                        })
+                        summary["critical_improvements"].append(
+                            {
+                                "type": result.optimization_type,
+                                "improvement": result.improvement_percent,
+                            }
+                        )
                 else:
                     summary["failed_optimizations"] += 1
 
@@ -981,7 +1044,9 @@ class PerformanceOptimizationSystem:
             summary["recommendations"].append("Consider reviewing failed optimizations")
 
         if summary["avg_improvement_percent"] < 10:
-            summary["recommendations"].append("Performance improvements are minimal, consider architectural changes")
+            summary["recommendations"].append(
+                "Performance improvements are minimal, consider architectural changes"
+            )
 
         return summary
 
@@ -1004,7 +1069,9 @@ class PerformanceOptimizationSystem:
         benchmark_results["cpu"] = self._benchmark_cpu()
 
         # 目標達成度の評価
-        benchmark_results["target_achievement"] = self._evaluate_target_achievement(benchmark_results)
+        benchmark_results["target_achievement"] = self._evaluate_target_achievement(
+            benchmark_results
+        )
 
         self.logger.info("System performance benchmark completed")
         return benchmark_results
@@ -1017,7 +1084,8 @@ class PerformanceOptimizationSystem:
         for _ in range(100):
             latency, _ = self.latency_optimizer.measure_operation_latency(
                 self.integration_manager.component_manager.v433_system.update_market_data,
-                "btc_jpy", 5000000.0
+                "btc_jpy",
+                5000000.0,
             )
             latencies.append(latency)
 
@@ -1027,7 +1095,7 @@ class PerformanceOptimizationSystem:
             "p99_latency_ms": np.percentile(latencies, 99),
             "max_latency_ms": max(latencies),
             "target_ms": self.targets.latency_ms,
-            "within_target": np.mean(latencies) < self.targets.latency_ms
+            "within_target": np.mean(latencies) < self.targets.latency_ms,
         }
 
     def _benchmark_throughput(self) -> Dict[str, Any]:
@@ -1047,7 +1115,7 @@ class PerformanceOptimizationSystem:
         return {
             "throughput_ops_sec": throughput,
             "target_ops": self.targets.throughput_ops,
-            "within_target": throughput >= self.targets.throughput_ops
+            "within_target": throughput >= self.targets.throughput_ops,
         }
 
     def _benchmark_memory(self) -> Dict[str, Any]:
@@ -1057,7 +1125,8 @@ class PerformanceOptimizationSystem:
         return {
             "memory_usage_gb": memory_info["current_memory"]["rss_gb"],
             "target_gb": self.targets.memory_gb,
-            "within_target": memory_info["current_memory"]["rss_gb"] < self.targets.memory_gb
+            "within_target": memory_info["current_memory"]["rss_gb"]
+            < self.targets.memory_gb,
         }
 
     def _benchmark_cpu(self) -> Dict[str, Any]:
@@ -1067,10 +1136,13 @@ class PerformanceOptimizationSystem:
         return {
             "cpu_usage_percent": cpu_info["current_cpu"]["cpu_percent"],
             "target_percent": self.targets.cpu_percent,
-            "within_target": cpu_info["current_cpu"]["cpu_percent"] < self.targets.cpu_percent
+            "within_target": cpu_info["current_cpu"]["cpu_percent"]
+            < self.targets.cpu_percent,
         }
 
-    def _evaluate_target_achievement(self, benchmark_results: Dict[str, Any]) -> Dict[str, Any]:
+    def _evaluate_target_achievement(
+        self, benchmark_results: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """目標達成度の評価"""
         achievements = {}
 
@@ -1083,11 +1155,17 @@ class PerformanceOptimizationSystem:
         return {
             "individual_achievements": achievements,
             "overall_achievement_rate": overall_achievement,
-            "status": "excellent" if overall_achievement > 0.9 else "good" if overall_achievement > 0.7 else "needs_improvement"
+            "status": "excellent"
+            if overall_achievement > 0.9
+            else "good"
+            if overall_achievement > 0.7
+            else "needs_improvement",
         }
 
 
-def create_performance_optimization_system(integration_manager: V433IntegrationManager) -> PerformanceOptimizationSystem:
+def create_performance_optimization_system(
+    integration_manager: V433IntegrationManager,
+) -> PerformanceOptimizationSystem:
     """パフォーマンス最適化システムのファクトリ関数"""
     return PerformanceOptimizationSystem(integration_manager)
 
@@ -1112,18 +1190,24 @@ if __name__ == "__main__":
             print("Running comprehensive performance optimization...")
             optimization_results = perf_optimizer.run_comprehensive_optimization()
 
-            print(f"Optimization completed: {optimization_results['summary']['successful_optimizations']}/"
-                  f"{optimization_results['summary']['total_optimizations']} optimizations successful")
+            print(
+                f"Optimization completed: {optimization_results['summary']['successful_optimizations']}/"
+                f"{optimization_results['summary']['total_optimizations']} optimizations successful"
+            )
 
             # パフォーマンスベンチマーク実行
             print("Running performance benchmark...")
             benchmark_results = perf_optimizer.benchmark_system_performance()
 
-            print(f"Benchmark completed: {benchmark_results['target_achievement']['overall_achievement_rate']:.1%} target achievement")
+            print(
+                f"Benchmark completed: {benchmark_results['target_achievement']['overall_achievement_rate']:.1%} target achievement"
+            )
 
             # パフォーマンスレポート取得
             report = perf_optimizer.get_performance_report()
-            print(f"Performance report: Avg improvement {report['optimization_summary']['avg_improvement_percent']:.1f}%")
+            print(
+                f"Performance report: Avg improvement {report['optimization_summary']['avg_improvement_percent']:.1f}%"
+            )
 
             time.sleep(10)
 

@@ -33,11 +33,12 @@ Examples:
 
 import argparse
 import importlib.util
-import json
 import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+import yaml
 
 from ztb.utils.logging_utils import setup_logging
 
@@ -59,7 +60,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     with open(path, "r") as f:
-        config = json.load(f)
+        config = yaml.safe_load(f)
 
     logger.info(f"Loaded configuration from {config_path}")
     logger.info(f"  Algorithm: {config.get('algorithm', 'ppo')}")

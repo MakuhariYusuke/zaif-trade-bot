@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\heavy_env\mixins\pricing.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1.0, 'ATR', 'ATR_simplified', 'adj_close', 'atr_10', 'atr_14', 'atr_simplified', 'close', 'df_length', 'error', 'max_steps', 'open', 'price', 'size', 'step']

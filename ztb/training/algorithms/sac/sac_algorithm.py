@@ -16,8 +16,7 @@ References:
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Union
-# Note: keep heavier algorithm internals untyped for now to avoid broad mypy noise
+from typing import Any, Callable, Dict, Optional, Protocol, Tuple, Union, cast
 
 import torch.nn as nn
 from stable_baselines3 import SAC
@@ -32,6 +31,30 @@ from ztb.optimization.model_compression import (
 )
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
+
+
+class SACLikeModelProtocol(Protocol):
+    """Minimal protocol describing the parts of a SAC-like model used by the code.
+
+    Keep this narrow to avoid importing stable-baselines3 types at import time in tests.
+    """
+
+    def predict(self, observation: Any, deterministic: bool = False) -> Tuple[Any, Any]:
+        ...
+
+    def save(self, path: str) -> None:  # some code calls save
+        ...
+
+    @staticmethod
+    def load(path: str, env: Optional[Any] = None) -> "SACLikeModelProtocol":
+        ...
+
+    def learn(self, total_timesteps: int, **kwargs: Any) -> None:
+        ...
+
+
+# Note: keep heavier algorithm internals untyped for now to avoid broad mypy noise
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +103,13 @@ DEFAULT_SAC_CONFIG = {
     "fine_tune_learning_rate": None,  # ファインチューニング時の学習率（Noneの場合は通常のlearning_rateを使用）
     "fine_tune_layers_only": False,  # 最後の層のみファインチューニングするか
     # その他
-    "verbose": 1,
-    "tensorboard_log": None,
-    "device": "auto",
-    "target_update_interval": 1,
-    "use_sde": False,
-    "sde_sample_freq": -1,
-    "use_sde_at_warmup": False,
+    "verbose": 1,  # ログレベル
+    "tensorboard_log": None,  # TensorBoardログの保存先
+    "device": "auto",  # 使用デバイス ("auto", "cpu", "cuda")
+    "target_update_interval": 1,  # ターゲットネットワーク更新間隔
+    "use_sde": False,  # 安定した探索のための状態依存探索を使用するか
+    "sde_sample_freq": -1,  # SDEサンプリング頻度
+    "use_sde_at_warmup": False,  # SDEをウォームアップ期間中に使用するか
     # モデル圧縮設定
     "compression_enabled": False,  # モデル圧縮を使用するか
     "compression_techniques": [],  # 使用する圧縮手法のリスト
@@ -160,7 +183,7 @@ class SACAlgorithm(BaseRLAlgorithm):
     @staticmethod
     def _resolve_policy_kwargs(
         raw_kwargs: Optional[Dict[str, Any]],
-        network_type: str = "mlp",
+        network_type: str = "mlp",  # "mlp", "lstm", "transformer", "efficient"
         sequence_length: int = 10,
         lstm_hidden_size: int = 128,
         lstm_layers: int = 2,
@@ -1021,7 +1044,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             )
 
             # 辞書形式に変換して返す
-            return explanation_result.to_dict()
+            return cast(Dict[str, Any], explanation_result.to_dict())
 
         except Exception as e:
             logger.error(f"Failed to explain decision: {e}")
@@ -1069,8 +1092,13 @@ class SACAlgorithm(BaseRLAlgorithm):
                 explanations.append(explanation)
 
             # レポートを生成
-            return self.explainability_analyzer.generate_explanation_report(
-                explanations=explanations, output_path=output_path
+            # explainability_analyzer.generate_explanation_report の戻り型は
+            # 実装によって Any を返す場合があるため、明示的に Optional[str] にキャスト
+            return cast(
+                Optional[str],
+                self.explainability_analyzer.generate_explanation_report(
+                    explanations=explanations, output_path=output_path
+                ),
             )
 
         except Exception as e:

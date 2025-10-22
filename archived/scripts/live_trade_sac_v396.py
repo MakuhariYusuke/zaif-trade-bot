@@ -12,9 +12,10 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
+
+from ztb.utils.errors import validate_price
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -166,6 +167,8 @@ class SACLiveTrader:
 
     def execute_trade(self, action: int, price: float):
         """Execute trade based on action."""
+        validate_price(price, "price")
+
         if action == 0:  # HOLD
             self.logger.info("HOLD - No action taken")
             return
