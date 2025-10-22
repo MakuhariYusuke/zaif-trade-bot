@@ -5,43 +5,46 @@ V433 Phase 5: Parallel Running Layer - System Switcher
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Awaitable, Callable, Dict, List, Optional
 
 
 class SystemType(Enum):
     """システムタイプ"""
+
     LEGACY = "legacy"  # 既存システム
-    V433 = "v433"      # V433システム
+    V433 = "v433"  # V433システム
 
 
 class SwitchMode(Enum):
     """切り替えモード"""
-    MANUAL = "manual"      # 手動切り替え
+
+    MANUAL = "manual"  # 手動切り替え
     AUTOMATIC = "automatic"  # 自動切り替え
-    GRADUAL = "gradual"    # 段階的切り替え
+    GRADUAL = "gradual"  # 段階的切り替え
 
 
 @dataclass
 class SwitchCondition:
     """切り替え条件"""
+
     metric_name: str
     operator: str  # '>', '<', '>=', '<=', '==', '!='
     threshold: float
     consecutive_periods: int = 1  # 連続期間
-    cooldown_minutes: int = 5     # クールダウン時間（分）
+    cooldown_minutes: int = 5  # クールダウン時間（分）
 
 
 @dataclass
 class SwitchRule:
     """切り替えルール"""
+
     rule_id: str
     name: str
     description: str
@@ -55,6 +58,7 @@ class SwitchRule:
 @dataclass
 class SwitchEvent:
     """切り替えイベント"""
+
     event_id: str
     timestamp: datetime
     from_system: SystemType
@@ -69,6 +73,7 @@ class SwitchEvent:
 @dataclass
 class SystemHealth:
     """システム健全性"""
+
     system_type: SystemType
     is_healthy: bool
     last_check: datetime
@@ -85,9 +90,11 @@ class SystemSwitcher:
     自動切り替えルールに基づいて最適なシステムを選択する。
     """
 
-    def __init__(self,
-                 initial_system: SystemType = SystemType.LEGACY,
-                 switch_mode: SwitchMode = SwitchMode.MANUAL):
+    def __init__(
+        self,
+        initial_system: SystemType = SystemType.LEGACY,
+        switch_mode: SwitchMode = SwitchMode.MANUAL,
+    ):
         """
         初期化
 
@@ -109,15 +116,15 @@ class SystemSwitcher:
                 is_healthy=True,
                 last_check=datetime.now(),
                 response_time_ms=0,
-                error_count=0
+                error_count=0,
             ),
             SystemType.V433: SystemHealth(
                 system_type=SystemType.V433,
                 is_healthy=True,
                 last_check=datetime.now(),
                 response_time_ms=0,
-                error_count=0
-            )
+                error_count=0,
+            ),
         }
 
         # 切り替え履歴
@@ -125,7 +132,9 @@ class SystemSwitcher:
 
         # メトリクス監視
         self.metrics_buffer: Dict[str, List[float]] = {}
-        self.condition_states: Dict[str, Dict[str, int]] = {}  # rule_id -> condition_index -> consecutive_count
+        self.condition_states: Dict[
+            str, Dict[str, int]
+        ] = {}  # rule_id -> condition_index -> consecutive_count
 
         # クールダウン管理
         self.last_switch_time: Optional[datetime] = None
@@ -142,7 +151,9 @@ class SystemSwitcher:
         # ロギング
         self.logger = logging.getLogger(__name__)
 
-        self.logger.info(f"System Switcher initialized. Current system: {initial_system.value}, Mode: {switch_mode.value}")
+        self.logger.info(
+            f"System Switcher initialized. Current system: {initial_system.value}, Mode: {switch_mode.value}"
+        )
 
     def add_switch_rule(self, rule: SwitchRule) -> None:
         """
@@ -152,7 +163,9 @@ class SystemSwitcher:
             rule: 切り替えルール
         """
         self.switch_rules[rule.rule_id] = rule
-        self.condition_states[rule.rule_id] = {i: 0 for i in range(len(rule.conditions))}
+        self.condition_states[rule.rule_id] = {
+            i: 0 for i in range(len(rule.conditions))
+        }
 
         # メトリクスバッファ初期化
         for condition in rule.conditions:
@@ -212,10 +225,12 @@ class SystemSwitcher:
             return True
         return False
 
-    async def switch_system(self,
-                           target_system: SystemType,
-                           reason: str = "Manual switch",
-                           force: bool = False) -> bool:
+    async def switch_system(
+        self,
+        target_system: SystemType,
+        reason: str = "Manual switch",
+        force: bool = False,
+    ) -> bool:
         """
         システム切り替え
 
@@ -238,7 +253,9 @@ class SystemSwitcher:
 
         # 健全性チェック
         if not force and not self.system_health[target_system].is_healthy:
-            self.logger.warning(f"Switch request denied: target system {target_system.value} is unhealthy")
+            self.logger.warning(
+                f"Switch request denied: target system {target_system.value} is unhealthy"
+            )
             return False
 
         start_time = time.time()
@@ -258,7 +275,7 @@ class SystemSwitcher:
                 trigger_rule=self.active_rule,
                 reason=reason,
                 success=success,
-                execution_time_ms=execution_time
+                execution_time_ms=execution_time,
             )
 
             self.switch_history.append(event)
@@ -271,8 +288,12 @@ class SystemSwitcher:
                 # クールダウン設定（該当ルールがある場合）
                 if self.active_rule and self.active_rule in self.switch_rules:
                     rule = self.switch_rules[self.active_rule]
-                    max_cooldown = max((c.cooldown_minutes for c in rule.conditions), default=5)
-                    self.cooldown_until = datetime.now() + timedelta(minutes=max_cooldown)
+                    max_cooldown = max(
+                        (c.cooldown_minutes for c in rule.conditions), default=5
+                    )
+                    self.cooldown_until = datetime.now() + timedelta(
+                        minutes=max_cooldown
+                    )
 
             # コールバック実行
             for callback in self.switch_callbacks:
@@ -281,7 +302,9 @@ class SystemSwitcher:
                 except Exception as e:
                     self.logger.error(f"Switch callback error: {e}")
 
-            self.logger.info(f"System switch {'successful' if success else 'failed'}: {self.current_system.value} -> {target_system.value}")
+            self.logger.info(
+                f"System switch {'successful' if success else 'failed'}: {self.current_system.value} -> {target_system.value}"
+            )
 
             return success
 
@@ -354,7 +377,9 @@ class SystemSwitcher:
             # バッファ更新（最新100件保持）
             self.metrics_buffer[metric_name].append(value)
             if len(self.metrics_buffer[metric_name]) > 100:
-                self.metrics_buffer[metric_name] = self.metrics_buffer[metric_name][-100:]
+                self.metrics_buffer[metric_name] = self.metrics_buffer[metric_name][
+                    -100:
+                ]
 
         # 自動切り替えモードの場合、ルール評価
         if self.switch_mode == SwitchMode.AUTOMATIC:
@@ -369,7 +394,7 @@ class SystemSwitcher:
         active_rules = sorted(
             [rule for rule in self.switch_rules.values() if rule.enabled],
             key=lambda r: r.priority,
-            reverse=True
+            reverse=True,
         )
 
         for rule in active_rules:
@@ -378,7 +403,7 @@ class SystemSwitcher:
                 await self.switch_system(
                     target_system=rule.to_system,
                     reason=f"Auto-switch triggered by rule: {rule.name}",
-                    force=False
+                    force=False,
                 )
                 self.active_rule = rule.rule_id
                 break
@@ -405,7 +430,10 @@ class SystemSwitcher:
             else:
                 self.condition_states[rule.rule_id][i] += 1
                 # 連続期間チェック
-                if self.condition_states[rule.rule_id][i] < condition.consecutive_periods:
+                if (
+                    self.condition_states[rule.rule_id][i]
+                    < condition.consecutive_periods
+                ):
                     all_conditions_met = False
 
         return all_conditions_met
@@ -431,23 +459,29 @@ class SystemSwitcher:
         latest_value = buffer[-1]
 
         # 演算子評価
-        if condition.operator == '>':
+        if condition.operator == ">":
             return latest_value > condition.threshold
-        elif condition.operator == '<':
+        elif condition.operator == "<":
             return latest_value < condition.threshold
-        elif condition.operator == '>=':
+        elif condition.operator == ">=":
             return latest_value >= condition.threshold
-        elif condition.operator == '<=':
+        elif condition.operator == "<=":
             return latest_value <= condition.threshold
-        elif condition.operator == '==':
+        elif condition.operator == "==":
             return abs(latest_value - condition.threshold) < 1e-6
-        elif condition.operator == '!=':
+        elif condition.operator == "!=":
             return abs(latest_value - condition.threshold) >= 1e-6
         else:
             self.logger.warning(f"Unknown operator: {condition.operator}")
             return False
 
-    def update_system_health(self, system_type: SystemType, is_healthy: bool, response_time_ms: int, error_count: int = 0) -> None:
+    def update_system_health(
+        self,
+        system_type: SystemType,
+        is_healthy: bool,
+        response_time_ms: int,
+        error_count: int = 0,
+    ) -> None:
         """
         システム健全性更新
 
@@ -475,14 +509,22 @@ class SystemSwitcher:
                     self.logger.error(f"Health callback error: {e}")
 
         # 不健全なシステムが現在使用中の場合、自動切り替え
-        if not is_healthy and system_type == self.current_system and self.switch_mode == SwitchMode.AUTOMATIC:
-            alternative_system = SystemType.LEGACY if system_type == SystemType.V433 else SystemType.V433
+        if (
+            not is_healthy
+            and system_type == self.current_system
+            and self.switch_mode == SwitchMode.AUTOMATIC
+        ):
+            alternative_system = (
+                SystemType.LEGACY if system_type == SystemType.V433 else SystemType.V433
+            )
             if self.system_health[alternative_system].is_healthy:
-                asyncio.create_task(self.switch_system(
-                    target_system=alternative_system,
-                    reason=f"Emergency switch due to {system_type.value} system failure",
-                    force=True
-                ))
+                asyncio.create_task(
+                    self.switch_system(
+                        target_system=alternative_system,
+                        reason=f"Emergency switch due to {system_type.value} system failure",
+                        force=True,
+                    )
+                )
 
     def _is_in_cooldown(self) -> bool:
         """クールダウン中かどうか"""
@@ -494,7 +536,9 @@ class SystemSwitcher:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("System monitoring started")
@@ -535,12 +579,15 @@ class SystemSwitcher:
 
             # シミュレーション：ランダムで不健全になる場合がある
             import random
+
             is_healthy = random.random() > 0.05  # 95%の確率で健全
 
             response_time = int((time.time() - start_time) * 1000)
             error_count = 0 if is_healthy else 1
 
-            self.update_system_health(system_type, is_healthy, response_time, error_count)
+            self.update_system_health(
+                system_type, is_healthy, response_time, error_count
+            )
 
         except Exception as e:
             self.logger.error(f"Health check failed for {system_type.value}: {e}")
@@ -591,7 +638,9 @@ class SystemSwitcher:
         """
         return [rule for rule in self.switch_rules.values() if rule.enabled]
 
-    def add_switch_callback(self, callback: Callable[[SwitchEvent], Awaitable[None]]) -> None:
+    def add_switch_callback(
+        self, callback: Callable[[SwitchEvent], Awaitable[None]]
+    ) -> None:
         """
         切り替えコールバック追加
 
@@ -600,7 +649,9 @@ class SystemSwitcher:
         """
         self.switch_callbacks.append(callback)
 
-    def add_health_callback(self, callback: Callable[[SystemType, bool], Awaitable[None]]) -> None:
+    def add_health_callback(
+        self, callback: Callable[[SystemType, bool], Awaitable[None]]
+    ) -> None:
         """
         健全性コールバック追加
 
@@ -617,51 +668,56 @@ class SystemSwitcher:
             filepath: 保存ファイルパス
         """
         state = {
-            'current_system': self.current_system.value,
-            'switch_mode': self.switch_mode.value,
-            'last_switch_time': self.last_switch_time.isoformat() if self.last_switch_time else None,
-            'cooldown_until': self.cooldown_until.isoformat() if self.cooldown_until else None,
-            'switch_rules': [
+            "current_system": self.current_system.value,
+            "switch_mode": self.switch_mode.value,
+            "last_switch_time": self.last_switch_time.isoformat()
+            if self.last_switch_time
+            else None,
+            "cooldown_until": self.cooldown_until.isoformat()
+            if self.cooldown_until
+            else None,
+            "switch_rules": [
                 {
-                    'rule_id': rule.rule_id,
-                    'name': rule.name,
-                    'description': rule.description,
-                    'from_system': rule.from_system.value,
-                    'to_system': rule.to_system.value,
-                    'conditions': [
+                    "rule_id": rule.rule_id,
+                    "name": rule.name,
+                    "description": rule.description,
+                    "from_system": rule.from_system.value,
+                    "to_system": rule.to_system.value,
+                    "conditions": [
                         {
-                            'metric_name': cond.metric_name,
-                            'operator': cond.operator,
-                            'threshold': cond.threshold,
-                            'consecutive_periods': cond.consecutive_periods,
-                            'cooldown_minutes': cond.cooldown_minutes
+                            "metric_name": cond.metric_name,
+                            "operator": cond.operator,
+                            "threshold": cond.threshold,
+                            "consecutive_periods": cond.consecutive_periods,
+                            "cooldown_minutes": cond.cooldown_minutes,
                         }
                         for cond in rule.conditions
                     ],
-                    'priority': rule.priority,
-                    'enabled': rule.enabled
+                    "priority": rule.priority,
+                    "enabled": rule.enabled,
                 }
                 for rule in self.switch_rules.values()
             ],
-            'switch_history': [
+            "switch_history": [
                 {
-                    'event_id': event.event_id,
-                    'timestamp': event.timestamp.isoformat(),
-                    'from_system': event.from_system.value,
-                    'to_system': event.to_system.value,
-                    'trigger_rule': event.trigger_rule,
-                    'reason': event.reason,
-                    'success': event.success,
-                    'execution_time_ms': event.execution_time_ms,
-                    'rollback_time_ms': event.rollback_time_ms
+                    "event_id": event.event_id,
+                    "timestamp": event.timestamp.isoformat(),
+                    "from_system": event.from_system.value,
+                    "to_system": event.to_system.value,
+                    "trigger_rule": event.trigger_rule,
+                    "reason": event.reason,
+                    "success": event.success,
+                    "execution_time_ms": event.execution_time_ms,
+                    "rollback_time_ms": event.rollback_time_ms,
                 }
                 for event in self.switch_history[-100:]  # 最新100件
-            ]
+            ],
         }
 
         import os
+
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Switcher state saved to {filepath}")
@@ -677,55 +733,65 @@ class SystemSwitcher:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.current_system = SystemType(state['current_system'])
-            self.switch_mode = SwitchMode(state['switch_mode'])
-            self.last_switch_time = datetime.fromisoformat(state['last_switch_time']) if state['last_switch_time'] else None
-            self.cooldown_until = datetime.fromisoformat(state['cooldown_until']) if state['cooldown_until'] else None
+            self.current_system = SystemType(state["current_system"])
+            self.switch_mode = SwitchMode(state["switch_mode"])
+            self.last_switch_time = (
+                datetime.fromisoformat(state["last_switch_time"])
+                if state["last_switch_time"]
+                else None
+            )
+            self.cooldown_until = (
+                datetime.fromisoformat(state["cooldown_until"])
+                if state["cooldown_until"]
+                else None
+            )
 
             # ルール復元
             self.switch_rules = {}
-            for rule_data in state.get('switch_rules', []):
+            for rule_data in state.get("switch_rules", []):
                 conditions = [
                     SwitchCondition(
-                        metric_name=cond['metric_name'],
-                        operator=cond['operator'],
-                        threshold=cond['threshold'],
-                        consecutive_periods=cond.get('consecutive_periods', 1),
-                        cooldown_minutes=cond.get('cooldown_minutes', 5)
+                        metric_name=cond["metric_name"],
+                        operator=cond["operator"],
+                        threshold=cond["threshold"],
+                        consecutive_periods=cond.get("consecutive_periods", 1),
+                        cooldown_minutes=cond.get("cooldown_minutes", 5),
                     )
-                    for cond in rule_data['conditions']
+                    for cond in rule_data["conditions"]
                 ]
 
                 rule = SwitchRule(
-                    rule_id=rule_data['rule_id'],
-                    name=rule_data['name'],
-                    description=rule_data['description'],
-                    from_system=SystemType(rule_data['from_system']),
-                    to_system=SystemType(rule_data['to_system']),
+                    rule_id=rule_data["rule_id"],
+                    name=rule_data["name"],
+                    description=rule_data["description"],
+                    from_system=SystemType(rule_data["from_system"]),
+                    to_system=SystemType(rule_data["to_system"]),
                     conditions=conditions,
-                    priority=rule_data.get('priority', 1),
-                    enabled=rule_data.get('enabled', True)
+                    priority=rule_data.get("priority", 1),
+                    enabled=rule_data.get("enabled", True),
                 )
 
                 self.switch_rules[rule.rule_id] = rule
-                self.condition_states[rule.rule_id] = {i: 0 for i in range(len(conditions))}
+                self.condition_states[rule.rule_id] = {
+                    i: 0 for i in range(len(conditions))
+                }
 
             # 履歴復元
             self.switch_history = []
-            for event_data in state.get('switch_history', []):
+            for event_data in state.get("switch_history", []):
                 event = SwitchEvent(
-                    event_id=event_data['event_id'],
-                    timestamp=datetime.fromisoformat(event_data['timestamp']),
-                    from_system=SystemType(event_data['from_system']),
-                    to_system=SystemType(event_data['to_system']),
-                    trigger_rule=event_data['trigger_rule'],
-                    reason=event_data['reason'],
-                    success=event_data['success'],
-                    execution_time_ms=event_data['execution_time_ms'],
-                    rollback_time_ms=event_data.get('rollback_time_ms')
+                    event_id=event_data["event_id"],
+                    timestamp=datetime.fromisoformat(event_data["timestamp"]),
+                    from_system=SystemType(event_data["from_system"]),
+                    to_system=SystemType(event_data["to_system"]),
+                    trigger_rule=event_data["trigger_rule"],
+                    reason=event_data["reason"],
+                    success=event_data["success"],
+                    execution_time_ms=event_data["execution_time_ms"],
+                    rollback_time_ms=event_data.get("rollback_time_ms"),
                 )
                 self.switch_history.append(event)
 

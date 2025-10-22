@@ -36,8 +36,19 @@ from ztb.utils.data_utils import load_csv_data
 class EnhancedFeatureAnalyzer:
     """拡張特徴量分析システム"""
 
-    def __init__(self, df: pd.DataFrame, target_column: str = "win"):
-        self.df = df
+    def __init__(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        target_column: str = "win",
+        data_path: Optional[str] = None,
+    ):
+        if df is not None:
+            self.df = df
+        elif data_path is not None:
+            self.df = pd.read_csv(data_path)
+        else:
+            raise ValueError("Either df or data_path must be provided")
+
         self.target_column = target_column
         self.features = self._identify_features()
         self.analysis_results: Dict[str, Any] = {}

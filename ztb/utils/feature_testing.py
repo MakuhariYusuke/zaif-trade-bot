@@ -10,7 +10,8 @@ from typing import Any, Dict
 import numpy as np
 import pandas as pd
 
-TRADING_DAYS_PER_YEAR = 252
+# 年間取引日数
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
 
 def calculate_trading_metrics(

@@ -170,6 +170,48 @@ def _simulate_transaction_costs_impl(
     return results
 
 
+def analyze_transaction_costs(
+    backtest_results: Optional[str] = None,
+    cost_structure: Optional[List[float]] = None,
+    output_path: Optional[str] = None,
+) -> Dict[float, TransactionCostResult]:
+    """Analyze transaction costs impact on trading performance.
+
+    Args:
+        backtest_results: Path to backtest results file
+        cost_structure: List of transaction costs to analyze
+        output_path: Path to save analysis results
+
+    Returns:
+        Dictionary with transaction cost analysis results
+    """
+    if cost_structure is None:
+        cost_structure = [0.001, 0.002, 0.005, 0.01]
+
+    if backtest_results is None:
+        backtest_results = "data/ml-dataset-enhanced-balanced.csv"
+
+    # For now, return a placeholder result since we need model path
+    # This would need to be enhanced to work with actual backtest results
+    LOGGER.warning(
+        "Transaction cost analysis requires model path - returning placeholder"
+    )
+    return {
+        cost: {
+            "cost": cost,
+            "total_return": 0.0,
+            "sharpe_ratio": 0.0,
+            "max_drawdown": 0.0,
+            "win_rate": 0.0,
+            "total_trades": 0,
+            "final_portfolio_value": 100000.0,
+            "evaluation_timestamp": "",
+            "model_config": {},
+        }
+        for cost in cost_structure
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Analyze transaction cost impact on trading performance"

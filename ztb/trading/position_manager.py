@@ -5,22 +5,27 @@ V433 Phase 3: ポジション管理システム
 """
 
 import asyncio
-import time
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal, ROUND_DOWN, ROUND_UP
 import threading
-import numpy as np
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from typing import Any, Dict, Optional, Tuple
 
+from ztb.core.base import BaseComponent
+from ztb.trading.environment.constants import DEFAULT_FEE_RATE, DEFAULT_TOTAL_CAPITAL
+from ztb.trading.trade_execution_engine import Position, TradeExecutionEngine
+from ztb.types.common import ConfigDict
+from ztb.utils.errors import validate_price
 from ztb.utils.logging_utils import get_logger
-from ztb.trading.trade_execution_engine import TradeExecutionEngine, Position
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class PositionManagementConfig:
     """ポジション管理設定"""
+
     # 資本利用設定
     full_capital_utilization: bool = True  # 100%資本利用
     capital_buffer_pct: float = 0.05  # 資本バッファ (5%)
@@ -38,30 +43,31 @@ class PositionManagementConfig:
 
     # 再バランス設定
     enable_rebalancing: bool = True
-    rebalance_interval_hours: int = 24
+    rebalance_interval_hours: int = 24  # 再バランス間隔 (24時間)
     rebalance_threshold_pct: float = 0.10  # 再バランス閾値 (10%)
 
     # 最小取引単位管理
     strict_min_unit_enforcement: bool = True
-    round_to_min_unit: bool = True
-    min_unit_buffer_pct: float = 0.001  # 最小単位バッファ (0.1%)
+    round_to_min_unit: bool = True  # 最小単位への丸め
+    min_unit_buffer_pct: float = DEFAULT_FEE_RATE  # 最小単位バッファ (0.1%)
 
     # ダイナミックサイジング
     enable_dynamic_sizing: bool = True
     sizing_update_interval: int = 300  # 5分ごと
-    market_condition_adjustment: bool = True
+    market_condition_adjustment: bool = True  # 市場状況に応じた調整
 
 
 @dataclass
 class PortfolioState:
     """ポートフォリオ状態"""
-    total_capital: float
-    available_capital: float
-    used_capital: float
-    total_value: float
-    unrealized_pnl: float
-    realized_pnl: float
-    total_risk: float
+
+    total_capital: float  # 総資本
+    available_capital: float  # 利用可能資本
+    used_capital: float  # 使用資本
+    total_value: float  # 総資産価値
+    unrealized_pnl: float  # 未実現損益
+    realized_pnl: float  # 実現損益
+    total_risk: float  # 総リスク
     positions: Dict[str, Position] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -88,12 +94,13 @@ class PortfolioState:
 @dataclass
 class PositionSignal:
     """ポジションシグナル"""
-    symbol: str
+
+    symbol: str  # シンボル名
     action: str  # "open_long", "open_short", "close_long", "close_short", "adjust"
     strength: float  # シグナル強度 (0-1)
-    target_quantity: float
-    confidence: float
-    reason: str
+    target_quantity: float  # 目標数量
+    confidence: float  # シグナル信頼度 (0-1)
+    reason: str  # シグナル理由
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -104,29 +111,31 @@ class MinimumUnitManager:
         # 取引所別最小取引単位
         self.min_units = {
             "zaif": {
-                "btc_jpy": Decimal('0.0001'),
-                "eth_jpy": Decimal('0.001'),
-                "xrp_jpy": Decimal('1'),
-                "mona_jpy": Decimal('1'),
-                "bcc_jpy": Decimal('0.0001'),
+                "btc_jpy": Decimal("0.0001"),
+                "eth_jpy": Decimal("0.001"),
+                "xrp_jpy": Decimal("1"),
+                "mona_jpy": Decimal("1"),
+                "bcc_jpy": Decimal("0.0001"),
             },
             "bitflyer": {
-                "btc_jpy": Decimal('0.001'),
-                "eth_jpy": Decimal('0.01'),
-                "xrp_jpy": Decimal('1'),
+                "btc_jpy": Decimal("0.001"),
+                "eth_jpy": Decimal("0.01"),
+                "xrp_jpy": Decimal("1"),
             },
             "coincheck": {
-                "btc_jpy": Decimal('0.001'),
-                "eth_jpy": Decimal('0.01'),
-                "xrp_jpy": Decimal('1'),
-            }
+                "btc_jpy": Decimal("0.001"),
+                "eth_jpy": Decimal("0.01"),
+                "xrp_jpy": Decimal("1"),
+            },
         }
 
     def get_min_unit(self, exchange: str, symbol: str) -> Decimal:
         """最小取引単位を取得"""
-        return self.min_units.get(exchange, {}).get(symbol, Decimal('0.0001'))
+        return self.min_units.get(exchange, {}).get(symbol, Decimal("0.0001"))
 
-    def validate_quantity(self, exchange: str, symbol: str, quantity: float) -> Tuple[bool, float]:
+    def validate_quantity(
+        self, exchange: str, symbol: str, quantity: float
+    ) -> Tuple[bool, float]:
         """数量を最小単位で検証・調整"""
         min_unit = self.get_min_unit(exchange, symbol)
         quantity_dec = Decimal(str(quantity))
@@ -144,8 +153,9 @@ class MinimumUnitManager:
 
         return is_valid, adjusted_quantity
 
-    def round_to_min_unit(self, exchange: str, symbol: str, quantity: float,
-                         round_mode: str = "down") -> float:
+    def round_to_min_unit(
+        self, exchange: str, symbol: str, quantity: float, round_mode: str = "down"
+    ) -> float:
         """最小単位に丸める"""
         min_unit = self.get_min_unit(exchange, symbol)
         quantity_dec = Decimal(str(quantity))
@@ -163,7 +173,9 @@ class MinimumUnitManager:
 
         return rounded_quantity
 
-    def calculate_min_trade_value(self, exchange: str, symbol: str, price: float) -> float:
+    def calculate_min_trade_value(
+        self, exchange: str, symbol: str, price: float
+    ) -> float:
         """最小取引金額を計算"""
         min_unit = self.get_min_unit(exchange, symbol)
         return float(min_unit * Decimal(str(price)))
@@ -180,8 +192,9 @@ class RiskManager:
         self.portfolio_risk = 0.0
         self.position_risks: Dict[str, float] = {}
 
-    def calculate_portfolio_risk(self, positions: Dict[str, Position],
-                               volatilities: Dict[str, float]) -> float:
+    def calculate_portfolio_risk(
+        self, positions: Dict[str, Position], volatilities: Dict[str, float]
+    ) -> float:
         """ポートフォリオリスクを計算"""
         if not positions:
             return 0.0
@@ -215,35 +228,52 @@ class RiskManager:
         checks = {
             "portfolio_risk_ok": True,
             "single_position_risk_ok": True,
-            "capital_buffer_ok": True
+            "capital_buffer_ok": True,
         }
 
         # ポートフォリオリスクチェック
-        if portfolio_state.total_risk > portfolio_state.total_capital * self.config.max_portfolio_risk_pct:
+        if (
+            portfolio_state.total_risk
+            > portfolio_state.total_capital * self.config.max_portfolio_risk_pct
+        ):
             checks["portfolio_risk_ok"] = False
-            self.logger.warning(f"Portfolio risk limit exceeded: "
-                              f"{portfolio_state.total_risk:.2f} > "
-                              f"{portfolio_state.total_capital * self.config.max_portfolio_risk_pct:.2f}")
+            self.logger.warning(
+                f"Portfolio risk limit exceeded: "
+                f"{portfolio_state.total_risk:.2f} > "
+                f"{portfolio_state.total_capital * self.config.max_portfolio_risk_pct:.2f}"
+            )
 
         # 単一ポジションリスクチェック
         for symbol, risk in self.position_risks.items():
-            if risk > portfolio_state.total_capital * self.config.max_single_position_risk_pct:
+            if (
+                risk
+                > portfolio_state.total_capital
+                * self.config.max_single_position_risk_pct
+            ):
                 checks["single_position_risk_ok"] = False
-                self.logger.warning(f"Single position risk limit exceeded for {symbol}: "
-                                  f"{risk:.2f} > "
-                                  f"{portfolio_state.total_capital * self.config.max_single_position_risk_pct:.2f}")
+                self.logger.warning(
+                    f"Single position risk limit exceeded for {symbol}: "
+                    f"{risk:.2f} > "
+                    f"{portfolio_state.total_capital * self.config.max_single_position_risk_pct:.2f}"
+                )
 
         # 資本バッファチェック
         capital_buffer = portfolio_state.total_capital * self.config.capital_buffer_pct
         if portfolio_state.available_capital < capital_buffer:
             checks["capital_buffer_ok"] = False
-            self.logger.warning(f"Capital buffer insufficient: "
-                              f"{portfolio_state.available_capital:.2f} < {capital_buffer:.2f}")
+            self.logger.warning(
+                f"Capital buffer insufficient: "
+                f"{portfolio_state.available_capital:.2f} < {capital_buffer:.2f}"
+            )
 
         return checks
 
-    def calculate_stop_loss_price(self, position: Position, current_price: float) -> float:
+    def calculate_stop_loss_price(
+        self, position: Position, current_price: float
+    ) -> float:
         """ストップロス価格を計算"""
+        validate_price(current_price, "current_price")
+
         if position.quantity > 0:  # ロングポジション
             stop_price = current_price * (1 - self.config.stop_loss_pct)
         else:  # ショートポジション
@@ -251,8 +281,12 @@ class RiskManager:
 
         return stop_price
 
-    def calculate_take_profit_price(self, position: Position, current_price: float) -> float:
+    def calculate_take_profit_price(
+        self, position: Position, current_price: float
+    ) -> float:
         """テイクプロフィット価格を計算"""
+        validate_price(current_price, "current_price")
+
         if position.quantity > 0:  # ロングポジション
             take_price = current_price * (1 + self.config.take_profit_pct)
         else:  # ショートポジション
@@ -279,31 +313,36 @@ class RiskManager:
             return current_price <= take_price
 
 
-class PositionManager:
+class PositionManager(BaseComponent):
     """
     V433 Phase 3: ポジション管理システム
     100%資本利用と最小取引単位を考慮した高度なポジション管理
     """
 
-    def __init__(self, execution_engine: TradeExecutionEngine, exchange: str = "zaif"):
+    def __init__(
+        self,
+        execution_engine: TradeExecutionEngine,
+        exchange: str = "coincheck",
+        config: Optional[ConfigDict] = None,
+    ) -> None:
+        super().__init__(name="PositionManager", config=config)
         self.execution_engine = execution_engine
         self.exchange = exchange
-        self.logger = get_logger(__name__)
 
         # 設定の初期化
-        self.config = PositionManagementConfig()
+        self.config_obj = PositionManagementConfig()
         self.min_unit_manager = MinimumUnitManager()
-        self.risk_manager = RiskManager(self.config)
+        self.risk_manager = RiskManager(self.config_obj)
 
         # 状態管理
         self.portfolio_state = PortfolioState(
-            total_capital=100000.0,  # 初期値
-            available_capital=100000.0,
+            total_capital=DEFAULT_TOTAL_CAPITAL,  # 初期値
+            available_capital=DEFAULT_TOTAL_CAPITAL,
             used_capital=0.0,
-            total_value=100000.0,
+            total_value=DEFAULT_TOTAL_CAPITAL,
             unrealized_pnl=0.0,
             realized_pnl=0.0,
-            total_risk=0.0
+            total_risk=0.0,
         )
 
         # シグナルキュー
@@ -326,12 +365,16 @@ class PositionManager:
         self.is_running = True
 
         # モニタリングスレッド開始
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         # 再バランススレッド開始
-        if self.config.enable_rebalancing:
-            self.rebalancing_thread = threading.Thread(target=self._rebalancing_loop, daemon=True)
+        if self.config_obj.enable_rebalancing:
+            self.rebalancing_thread = threading.Thread(
+                target=self._rebalancing_loop, daemon=True
+            )
             self.rebalancing_thread.start()
 
         self.logger.info("Position management started")
@@ -351,8 +394,10 @@ class PositionManager:
     async def submit_signal(self, signal: PositionSignal):
         """ポジションシグナルを送信"""
         await self.signal_queue.put(signal)
-        self.logger.info(f"Signal submitted: {signal.symbol} {signal.action} "
-                        f"(strength: {signal.strength:.2f})")
+        self.logger.info(
+            f"Signal submitted: {signal.symbol} {signal.action} "
+            f"(strength: {signal.strength:.2f})"
+        )
 
     def process_signals_sync(self):
         """シグナルを同期的に処理（メインループ用）"""
@@ -368,17 +413,21 @@ class PositionManager:
         try:
             # 最小取引単位の検証
             if not self._validate_signal_quantity(signal):
-                self.logger.warning(f"Signal rejected: invalid quantity for {signal.symbol}")
+                self.logger.warning(
+                    f"Signal rejected: invalid quantity for {signal.symbol}"
+                )
                 return
 
             # リスクチェック
             if not self._check_signal_risk(signal):
-                self.logger.warning(f"Signal rejected: risk limits exceeded for {signal.symbol}")
+                self.logger.warning(
+                    f"Signal rejected: risk limits exceeded for {signal.symbol}"
+                )
                 return
 
             # ポジション数のチェック
             if not self._check_position_limits(signal):
-                self.logger.warning(f"Signal rejected: position limits exceeded")
+                self.logger.warning("Signal rejected: position limits exceeded")
                 return
 
             # シグナル実行
@@ -398,8 +447,10 @@ class PositionManager:
         )
 
         if not is_valid:
-            self.logger.warning(f"Quantity {signal.target_quantity} too small for {signal.symbol}, "
-                              f"minimum required: {adjusted_quantity}")
+            self.logger.warning(
+                f"Quantity {signal.target_quantity} too small for {signal.symbol}, "
+                f"minimum required: {adjusted_quantity}"
+            )
             return False
 
         # 数量を調整
@@ -422,19 +473,22 @@ class PositionManager:
         current_positions = len(self.portfolio_state.positions)
 
         # 総ポジション数チェック
-        if current_positions >= self.config.max_total_positions:
+        if current_positions >= self.config_obj.max_total_positions:
             return False
 
         # シンボル別ポジション数チェック
-        symbol_positions = sum(1 for pos in self.portfolio_state.positions.values()
-                             if pos.symbol == signal.symbol)
-        if symbol_positions >= self.config.max_positions_per_symbol:
+        symbol_positions = sum(
+            1
+            for pos in self.portfolio_state.positions.values()
+            if pos.symbol == signal.symbol
+        )
+        if symbol_positions >= self.config_obj.max_positions_per_symbol:
             return False
 
         # 相関ポジション数チェック（簡易版）
         # 実際には相関係数行列を使って計算
         correlated_positions = current_positions  # 簡易的に全て相関ありと仮定
-        if correlated_positions >= self.config.max_correlation_positions:
+        if correlated_positions >= self.config_obj.max_correlation_positions:
             return False
 
         return True
@@ -463,12 +517,14 @@ class PositionManager:
             signal_strength=signal.strength,
             current_price=self._get_current_price(signal.symbol),
             volatility=self.volatilities.get(signal.symbol, 0.02),
-            win_rate=0.5  # 仮定値
+            win_rate=0.5,  # 仮定値
         )
 
         if order_id:
-            self.logger.info(f"Position opened: {signal.symbol} {signal.action} "
-                           f"quantity: {signal.target_quantity:.6f}")
+            self.logger.info(
+                f"Position opened: {signal.symbol} {signal.action} "
+                f"quantity: {signal.target_quantity:.6f}"
+            )
         else:
             self.logger.warning(f"Position open failed: {signal.symbol}")
 
@@ -482,7 +538,9 @@ class PositionManager:
         quantity = abs(position.quantity)
 
         # 数量を最小単位に合わせる
-        quantity = self.min_unit_manager.round_to_min_unit(self.exchange, signal.symbol, quantity)
+        quantity = self.min_unit_manager.round_to_min_unit(
+            self.exchange, signal.symbol, quantity
+        )
 
         if quantity > 0:
             # 市場注文でクローズ
@@ -492,12 +550,13 @@ class PositionManager:
                 signal_strength=1.0,  # クローズ時は最大強度
                 current_price=self._get_current_price(signal.symbol),
                 volatility=self.volatilities.get(signal.symbol, 0.02),
-                win_rate=0.5
+                win_rate=0.5,
             )
 
             if order_id:
-                self.logger.info(f"Position closed: {signal.symbol} "
-                               f"quantity: {quantity:.6f}")
+                self.logger.info(
+                    f"Position closed: {signal.symbol} " f"quantity: {quantity:.6f}"
+                )
             else:
                 self.logger.warning(f"Position close failed: {signal.symbol}")
 
@@ -551,7 +610,7 @@ class PositionManager:
         """再バランスループ"""
         while self.is_running:
             try:
-                time.sleep(self.config.rebalance_interval_hours * 3600)
+                time.sleep(self.config_obj.rebalance_interval_hours * 3600)
 
                 # 再バランス実行
                 self._perform_rebalancing()
@@ -571,7 +630,10 @@ class PositionManager:
             self.portfolio_state.total_value = engine_status["total_value"]
             self.portfolio_state.unrealized_pnl = engine_status["unrealized_pnl"]
             self.portfolio_state.realized_pnl = engine_status["realized_pnl"]
-            self.portfolio_state.used_capital = self.portfolio_state.total_value - self.portfolio_state.available_capital
+            self.portfolio_state.used_capital = (
+                self.portfolio_state.total_value
+                - self.portfolio_state.available_capital
+            )
 
             # ポジション情報を更新
             self.portfolio_state.positions = {}
@@ -580,8 +642,10 @@ class PositionManager:
                 self.portfolio_state.positions[symbol] = position
 
             # リスク計算
-            self.portfolio_state.total_risk = self.risk_manager.calculate_portfolio_risk(
-                self.portfolio_state.positions, self.volatilities
+            self.portfolio_state.total_risk = (
+                self.risk_manager.calculate_portfolio_risk(
+                    self.portfolio_state.positions, self.volatilities
+                )
             )
 
             self.portfolio_state.timestamp = datetime.now()
@@ -600,7 +664,7 @@ class PositionManager:
             # 緊急時のポジション削減など
             # 実際の実装ではより詳細なロジックが必要
 
-    def _check_stop_conditions(self):
+    def _check_stop_conditions(self) -> None:
         """ストップ条件をチェック"""
         for symbol, position in self.portfolio_state.positions.items():
             current_price = self._get_current_price(symbol)
@@ -614,7 +678,7 @@ class PositionManager:
                     strength=1.0,
                     target_quantity=abs(position.quantity),
                     confidence=1.0,
-                    reason="stop_loss"
+                    reason="stop_loss",
                 )
                 asyncio.create_task(self.submit_signal(signal))
 
@@ -627,11 +691,11 @@ class PositionManager:
                     strength=1.0,
                     target_quantity=abs(position.quantity),
                     confidence=1.0,
-                    reason="take_profit"
+                    reason="take_profit",
                 )
                 asyncio.create_task(self.submit_signal(signal))
 
-    def _perform_rebalancing(self):
+    def _perform_rebalancing(self) -> None:
         """再バランスを実行"""
         self.logger.info("Performing portfolio rebalancing")
 
@@ -639,14 +703,20 @@ class PositionManager:
         # 実際の実装ではより詳細なアルゴリズムが必要
 
         total_value = self.portfolio_state.total_value
-        target_allocation = 1.0 / len(self.portfolio_state.positions) if self.portfolio_state.positions else 0
+        target_allocation = (
+            1.0 / len(self.portfolio_state.positions)
+            if self.portfolio_state.positions
+            else 0
+        )
 
         for symbol, position in self.portfolio_state.positions.items():
             current_allocation = position.market_value / total_value
             deviation = abs(current_allocation - target_allocation)
 
-            if deviation > self.config.rebalance_threshold_pct:
-                self.logger.info(f"Rebalancing {symbol}: {current_allocation:.2%} -> {target_allocation:.2%}")
+            if deviation > self.config_obj.rebalance_threshold_pct:
+                self.logger.info(
+                    f"Rebalancing {symbol}: {current_allocation:.2%} -> {target_allocation:.2%}"
+                )
 
                 # 再バランスシグナルの生成
                 target_value = total_value * target_allocation
@@ -658,15 +728,14 @@ class PositionManager:
                     strength=0.8,
                     target_quantity=target_quantity,
                     confidence=0.7,
-                    reason="rebalancing"
+                    reason="rebalancing",
                 )
 
                 asyncio.create_task(self.submit_signal(signal))
 
     def _get_current_price(self, symbol: str) -> float:
         """現在の価格を取得"""
-        # 実行エンジンから価格を取得
-        # 実際の実装ではより効率的な方法が必要
+        # 実際には市場データフィードから取得
         return 1000.0  # 仮定値
 
     def get_portfolio_summary(self) -> Dict[str, Any]:
@@ -678,13 +747,14 @@ class PositionManager:
             "total_exposure": self.portfolio_state.used_capital,
             "risk_metrics": {
                 "portfolio_risk": self.portfolio_state.total_risk,
-                "risk_adjusted_return": self.portfolio_state.risk_adjusted_return
-            }
+                "risk_adjusted_return": self.portfolio_state.risk_adjusted_return,
+            },
         }
 
 
-def create_position_manager(execution_engine: TradeExecutionEngine,
-                          exchange: str = "zaif") -> PositionManager:
+def create_position_manager(
+    execution_engine: TradeExecutionEngine, exchange: str = "zaif"
+) -> PositionManager:
     """PositionManagerのファクトリ関数"""
     return PositionManager(execution_engine, exchange)
 
@@ -709,7 +779,7 @@ if __name__ == "__main__":
             strength=0.8,
             target_quantity=0.001,  # 最小単位以上
             confidence=0.7,
-            reason="test_signal"
+            reason="test_signal",
         )
 
         # 非同期でシグナルを送信

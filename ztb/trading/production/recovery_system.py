@@ -5,53 +5,55 @@ V433 Phase 5: Emergency Control Layer - Recovery System
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
+import shutil
 import threading
 import time
-import shutil
-import subprocess
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 class RecoveryPhase(Enum):
     """復旧フェーズ"""
-    ASSESSMENT = "assessment"      # 評価
-    BACKUP = "backup"             # バックアップ
-    CLEANUP = "cleanup"           # クリーンアップ
-    RESTORE = "restore"           # 復元
-    VALIDATION = "validation"     # 検証
-    RECOVERY = "recovery"         # 復旧
-    MONITORING = "monitoring"     # 監視
+
+    ASSESSMENT = "assessment"  # 評価
+    BACKUP = "backup"  # バックアップ
+    CLEANUP = "cleanup"  # クリーンアップ
+    RESTORE = "restore"  # 復元
+    VALIDATION = "validation"  # 検証
+    RECOVERY = "recovery"  # 復旧
+    MONITORING = "monitoring"  # 監視
 
 
 class RecoveryStrategy(Enum):
     """復旧戦略"""
-    ROLLING_BACK = "rolling_back"        # ロールバック
-    FAILOVER = "failover"               # フェイルオーバー
-    RESTART = "restart"                 # 再起動
-    SCALE_UP = "scale_up"               # スケールアップ
-    DATA_RESTORE = "data_restore"       # データ復元
-    SERVICE_RESTART = "service_restart" # サービス再起動
+
+    ROLLING_BACK = "rolling_back"  # ロールバック
+    FAILOVER = "failover"  # フェイルオーバー
+    RESTART = "restart"  # 再起動
+    SCALE_UP = "scale_up"  # スケールアップ
+    DATA_RESTORE = "data_restore"  # データ復元
+    SERVICE_RESTART = "service_restart"  # サービス再起動
 
 
 class RecoveryStatus(Enum):
     """復旧ステータス"""
-    PENDING = "pending"         # 待機中
-    IN_PROGRESS = "in_progress" # 実行中
-    COMPLETED = "completed"     # 完了
-    FAILED = "failed"          # 失敗
-    ROLLED_BACK = "rolled_back" # ロールバック済み
+
+    PENDING = "pending"  # 待機中
+    IN_PROGRESS = "in_progress"  # 実行中
+    COMPLETED = "completed"  # 完了
+    FAILED = "failed"  # 失敗
+    ROLLED_BACK = "rolled_back"  # ロールバック済み
 
 
 @dataclass
 class RecoveryCheckpoint:
     """復旧チェックポイント"""
+
     checkpoint_id: str
     timestamp: datetime
     phase: RecoveryPhase
@@ -64,6 +66,7 @@ class RecoveryCheckpoint:
 @dataclass
 class RecoveryPlan:
     """復旧プラン"""
+
     plan_id: str
     failure_type: str
     strategy: RecoveryStrategy
@@ -77,6 +80,7 @@ class RecoveryPlan:
 @dataclass
 class RecoveryExecution:
     """復旧実行"""
+
     execution_id: str
     plan_id: str
     failure_description: str
@@ -97,7 +101,11 @@ class RecoverySystem:
     段階的な復旧プロセスとロールバック機能を備える。
     """
 
-    def __init__(self, system_name: str = "V433 Trading System", max_concurrent_recoveries: int = 3):
+    def __init__(
+        self,
+        system_name: str = "V433 Trading System",
+        max_concurrent_recoveries: int = 3,
+    ):
         """
         初期化
 
@@ -124,7 +132,9 @@ class RecoverySystem:
         self.health_checks: Dict[str, Callable[[], bool]] = {}
 
         # コールバック
-        self.recovery_callbacks: List[Callable[[RecoveryExecution], Awaitable[None]]] = []
+        self.recovery_callbacks: List[
+            Callable[[RecoveryExecution], Awaitable[None]]
+        ] = []
         self.phase_callbacks: List[Callable[[RecoveryCheckpoint], Awaitable[None]]] = []
 
         # モニタリング
@@ -150,18 +160,18 @@ class RecoverySystem:
                 RecoveryPhase.CLEANUP,
                 RecoveryPhase.RECOVERY,
                 RecoveryPhase.VALIDATION,
-                RecoveryPhase.MONITORING
+                RecoveryPhase.MONITORING,
             ],
             preconditions=[
                 "Service process is not running",
                 "No active transactions",
-                "Backup data is available"
+                "Backup data is available",
             ],
             success_criteria=[
                 "Service starts successfully",
                 "Health checks pass",
-                "No error logs in first 5 minutes"
-            ]
+                "No error logs in first 5 minutes",
+            ],
         )
 
         # データ復元プラン
@@ -177,18 +187,18 @@ class RecoverySystem:
                 RecoveryPhase.RESTORE,
                 RecoveryPhase.VALIDATION,
                 RecoveryPhase.RECOVERY,
-                RecoveryPhase.MONITORING
+                RecoveryPhase.MONITORING,
             ],
             preconditions=[
                 "Valid backup exists",
                 "Corruption is confirmed",
-                "System is isolated"
+                "System is isolated",
             ],
             success_criteria=[
                 "Data integrity verified",
                 "All services restart successfully",
-                "Business logic validation passes"
-            ]
+                "Business logic validation passes",
+            ],
         )
 
         # フェイルオーバープラン
@@ -202,18 +212,18 @@ class RecoverySystem:
                 RecoveryPhase.ASSESSMENT,
                 RecoveryPhase.RECOVERY,
                 RecoveryPhase.VALIDATION,
-                RecoveryPhase.MONITORING
+                RecoveryPhase.MONITORING,
             ],
             preconditions=[
                 "Secondary node is healthy",
                 "Data synchronization is current",
-                "Load balancer is responsive"
+                "Load balancer is responsive",
             ],
             success_criteria=[
                 "Traffic successfully routed to secondary",
                 "All services operational",
-                "Data consistency maintained"
-            ]
+                "Data consistency maintained",
+            ],
         )
 
         # ロールバックプラン
@@ -229,29 +239,33 @@ class RecoverySystem:
                 RecoveryPhase.RESTORE,
                 RecoveryPhase.RECOVERY,
                 RecoveryPhase.VALIDATION,
-                RecoveryPhase.MONITORING
+                RecoveryPhase.MONITORING,
             ],
             preconditions=[
                 "Previous version backup exists",
                 "Deployment can be rolled back",
-                "No data migration issues"
+                "No data migration issues",
             ],
             success_criteria=[
                 "Previous version restored",
                 "All services functional",
-                "No data loss"
-            ]
+                "No data loss",
+            ],
         )
 
         self.recovery_plans = {
             "service_restart": service_restart_plan,
             "data_restore": data_restore_plan,
             "failover": failover_plan,
-            "rollback": rollback_plan
+            "rollback": rollback_plan,
         }
 
-    async def initiate_recovery(self, failure_description: str, plan_id: Optional[str] = None,
-                              triggered_by: str = "system") -> Optional[RecoveryExecution]:
+    async def initiate_recovery(
+        self,
+        failure_description: str,
+        plan_id: Optional[str] = None,
+        triggered_by: str = "system",
+    ) -> Optional[RecoveryExecution]:
         """
         復旧開始
 
@@ -265,7 +279,9 @@ class RecoverySystem:
         """
         # 同時実行数チェック
         if len(self.active_recoveries) >= self.max_concurrent_recoveries:
-            self.logger.warning("Maximum concurrent recoveries reached, queuing request")
+            self.logger.warning(
+                "Maximum concurrent recoveries reached, queuing request"
+            )
             return None
 
         # プラン選択
@@ -284,12 +300,14 @@ class RecoverySystem:
             plan_id=plan_id,
             failure_description=failure_description,
             start_time=datetime.now(),
-            status=RecoveryStatus.IN_PROGRESS
+            status=RecoveryStatus.IN_PROGRESS,
         )
 
         self.active_recoveries[execution.execution_id] = execution
 
-        self.logger.warning(f"Recovery initiated: {execution.execution_id} using plan {plan_id}")
+        self.logger.warning(
+            f"Recovery initiated: {execution.execution_id} using plan {plan_id}"
+        )
 
         # 非同期実行開始
         asyncio.create_task(self._execute_recovery_async(execution))
@@ -333,8 +351,12 @@ class RecoverySystem:
             # 前提条件チェック
             if not await self._check_preconditions(plan):
                 execution.status = RecoveryStatus.FAILED
-                await self._add_checkpoint(execution, RecoveryPhase.ASSESSMENT, RecoveryStatus.FAILED,
-                                         "Preconditions not met")
+                await self._add_checkpoint(
+                    execution,
+                    RecoveryPhase.ASSESSMENT,
+                    RecoveryStatus.FAILED,
+                    "Preconditions not met",
+                )
                 await self._notify_recovery_update(execution)
                 return
 
@@ -342,17 +364,29 @@ class RecoverySystem:
             for phase in plan.phases:
                 execution.current_phase = phase
 
-                await self._add_checkpoint(execution, phase, RecoveryStatus.IN_PROGRESS,
-                                         f"Starting {phase.value} phase")
+                await self._add_checkpoint(
+                    execution,
+                    phase,
+                    RecoveryStatus.IN_PROGRESS,
+                    f"Starting {phase.value} phase",
+                )
 
                 success = await self._execute_recovery_phase(execution, phase)
 
                 if success:
-                    await self._add_checkpoint(execution, phase, RecoveryStatus.COMPLETED,
-                                             f"Completed {phase.value} phase")
+                    await self._add_checkpoint(
+                        execution,
+                        phase,
+                        RecoveryStatus.COMPLETED,
+                        f"Completed {phase.value} phase",
+                    )
                 else:
-                    await self._add_checkpoint(execution, phase, RecoveryStatus.FAILED,
-                                             f"Failed {phase.value} phase")
+                    await self._add_checkpoint(
+                        execution,
+                        phase,
+                        RecoveryStatus.FAILED,
+                        f"Failed {phase.value} phase",
+                    )
                     await self._handle_recovery_failure(execution)
                     return
 
@@ -360,16 +394,24 @@ class RecoverySystem:
             if await self._check_success_criteria(plan):
                 execution.status = RecoveryStatus.COMPLETED
                 execution.end_time = datetime.now()
-                await self._add_checkpoint(execution, RecoveryPhase.MONITORING, RecoveryStatus.COMPLETED,
-                                         "Recovery completed successfully")
+                await self._add_checkpoint(
+                    execution,
+                    RecoveryPhase.MONITORING,
+                    RecoveryStatus.COMPLETED,
+                    "Recovery completed successfully",
+                )
             else:
                 execution.status = RecoveryStatus.FAILED
                 await self._handle_recovery_failure(execution)
 
         except Exception as e:
             execution.status = RecoveryStatus.FAILED
-            await self._add_checkpoint(execution, execution.current_phase or RecoveryPhase.ASSESSMENT,
-                                     RecoveryStatus.FAILED, f"Recovery error: {str(e)}")
+            await self._add_checkpoint(
+                execution,
+                execution.current_phase or RecoveryPhase.ASSESSMENT,
+                RecoveryStatus.FAILED,
+                f"Recovery error: {str(e)}",
+            )
             await self._handle_recovery_failure(execution)
 
         finally:
@@ -401,7 +443,9 @@ class RecoverySystem:
         await asyncio.sleep(0.1)
         return True
 
-    async def _execute_recovery_phase(self, execution: RecoveryExecution, phase: RecoveryPhase) -> bool:
+    async def _execute_recovery_phase(
+        self, execution: RecoveryExecution, phase: RecoveryPhase
+    ) -> bool:
         """
         復旧フェーズ実行
 
@@ -438,28 +482,28 @@ class RecoverySystem:
         """評価フェーズ実行"""
         # 障害の評価と影響範囲の特定
         await asyncio.sleep(1.0)
-        execution.metrics['assessment_duration'] = 1.0
+        execution.metrics["assessment_duration"] = 1.0
         return True
 
     async def _execute_backup_phase(self, execution: RecoveryExecution) -> bool:
         """バックアップフェーズ実行"""
         # 現在の状態のバックアップ
         await asyncio.sleep(2.0)
-        execution.metrics['backup_size_mb'] = 150.5  # シミュレーション
+        execution.metrics["backup_size_mb"] = 150.5  # シミュレーション
         return True
 
     async def _execute_cleanup_phase(self, execution: RecoveryExecution) -> bool:
         """クリーンアップフェーズ実行"""
         # 障害状態のクリーンアップ
         await asyncio.sleep(1.5)
-        execution.metrics['cleanup_duration'] = 1.5
+        execution.metrics["cleanup_duration"] = 1.5
         return True
 
     async def _execute_restore_phase(self, execution: RecoveryExecution) -> bool:
         """復元フェーズ実行"""
         # データや設定の復元
         await asyncio.sleep(3.0)
-        execution.metrics['restore_duration'] = 3.0
+        execution.metrics["restore_duration"] = 3.0
         return True
 
     async def _execute_validation_phase(self, execution: RecoveryExecution) -> bool:
@@ -479,14 +523,14 @@ class RecoverySystem:
                 validation_passed = False
                 break
 
-        execution.metrics['validation_passed'] = validation_passed
+        execution.metrics["validation_passed"] = validation_passed
         return validation_passed
 
     async def _execute_recovery_phase_core(self, execution: RecoveryExecution) -> bool:
         """復旧フェーズ実行（コア）"""
         # サービスの再起動や設定の適用
         await asyncio.sleep(2.5)
-        execution.metrics['recovery_duration'] = 2.5
+        execution.metrics["recovery_duration"] = 2.5
         return True
 
     async def _execute_monitoring_phase(self, execution: RecoveryExecution) -> bool:
@@ -496,7 +540,7 @@ class RecoverySystem:
 
         # 簡易的な安定性チェック
         stable = True
-        execution.metrics['monitoring_stable'] = stable
+        execution.metrics["monitoring_stable"] = stable
         return stable
 
     async def _check_success_criteria(self, plan: RecoveryPlan) -> bool:
@@ -524,7 +568,7 @@ class RecoverySystem:
 
         # 自動ロールバック判定
         plan = self.recovery_plans[execution.plan_id]
-        if plan.risk_level in ['high', 'critical']:
+        if plan.risk_level in ["high", "critical"]:
             await self._trigger_rollback(execution)
 
     async def _trigger_rollback(self, execution: RecoveryExecution) -> None:
@@ -535,15 +579,26 @@ class RecoverySystem:
             execution: 復旧実行
         """
         execution.rollback_triggered = True
-        await self._add_checkpoint(execution, RecoveryPhase.RECOVERY, RecoveryStatus.ROLLED_BACK,
-                                 "Automatic rollback triggered due to recovery failure")
+        await self._add_checkpoint(
+            execution,
+            RecoveryPhase.RECOVERY,
+            RecoveryStatus.ROLLED_BACK,
+            "Automatic rollback triggered due to recovery failure",
+        )
 
-        self.logger.warning(f"Automatic rollback triggered for recovery: {execution.execution_id}")
+        self.logger.warning(
+            f"Automatic rollback triggered for recovery: {execution.execution_id}"
+        )
 
-    async def _add_checkpoint(self, execution: RecoveryExecution, phase: RecoveryPhase,
-                            status: RecoveryStatus, description: str,
-                            metadata: Optional[Dict[str, Any]] = None,
-                            error_message: Optional[str] = None) -> None:
+    async def _add_checkpoint(
+        self,
+        execution: RecoveryExecution,
+        phase: RecoveryPhase,
+        status: RecoveryStatus,
+        description: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        error_message: Optional[str] = None,
+    ) -> None:
         """
         チェックポイント追加
 
@@ -562,7 +617,7 @@ class RecoverySystem:
             status=status,
             description=description,
             metadata=metadata or {},
-            error_message=error_message
+            error_message=error_message,
         )
 
         execution.checkpoints.append(checkpoint)
@@ -624,7 +679,9 @@ class RecoverySystem:
         """
         return list(self.active_recoveries.values())
 
-    def get_recovery_history(self, limit: Optional[int] = None) -> List[RecoveryExecution]:
+    def get_recovery_history(
+        self, limit: Optional[int] = None
+    ) -> List[RecoveryExecution]:
         """
         復旧履歴取得
 
@@ -700,8 +757,8 @@ class RecoverySystem:
 
         try:
             # 実際の実装では具体的なバックアップロジック
-            source_path = config.get('source_path')
-            backup_path = config.get('backup_path')
+            source_path = config.get("source_path")
+            backup_path = config.get("backup_path")
 
             if source_path and backup_path:
                 # ディレクトリコピー
@@ -728,24 +785,37 @@ class RecoverySystem:
             Dict[str, Any]: メトリクス
         """
         total_recoveries = len(self.recovery_history)
-        successful_recoveries = len([r for r in self.recovery_history if r.status == RecoveryStatus.COMPLETED])
-        failed_recoveries = len([r for r in self.recovery_history if r.status == RecoveryStatus.FAILED])
+        successful_recoveries = len(
+            [r for r in self.recovery_history if r.status == RecoveryStatus.COMPLETED]
+        )
+        failed_recoveries = len(
+            [r for r in self.recovery_history if r.status == RecoveryStatus.FAILED]
+        )
 
-        success_rate = (successful_recoveries / total_recoveries * 100) if total_recoveries > 0 else 0
+        success_rate = (
+            (successful_recoveries / total_recoveries * 100)
+            if total_recoveries > 0
+            else 0
+        )
 
         avg_duration = None
-        durations = [r.end_time - r.start_time for r in self.recovery_history
-                    if r.end_time and r.status == RecoveryStatus.COMPLETED]
+        durations = [
+            r.end_time - r.start_time
+            for r in self.recovery_history
+            if r.end_time and r.status == RecoveryStatus.COMPLETED
+        ]
         if durations:
-            avg_duration = sum((d.total_seconds() for d in durations), 0) / len(durations)
+            avg_duration = sum((d.total_seconds() for d in durations), 0) / len(
+                durations
+            )
 
         return {
-            'total_recoveries': total_recoveries,
-            'successful_recoveries': successful_recoveries,
-            'failed_recoveries': failed_recoveries,
-            'success_rate_percent': success_rate,
-            'active_recoveries': len(self.active_recoveries),
-            'average_recovery_duration_seconds': avg_duration
+            "total_recoveries": total_recoveries,
+            "successful_recoveries": successful_recoveries,
+            "failed_recoveries": failed_recoveries,
+            "success_rate_percent": success_rate,
+            "active_recoveries": len(self.active_recoveries),
+            "average_recovery_duration_seconds": avg_duration,
         }
 
     def start_monitoring(self) -> None:
@@ -754,7 +824,9 @@ class RecoverySystem:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Recovery monitoring started")
@@ -804,7 +876,9 @@ class RecoverySystem:
         except Exception as e:
             self.logger.error(f"Scheduled backup error: {backup_id} - {e}")
 
-    def add_recovery_callback(self, callback: Callable[[RecoveryExecution], Awaitable[None]]) -> None:
+    def add_recovery_callback(
+        self, callback: Callable[[RecoveryExecution], Awaitable[None]]
+    ) -> None:
         """
         復旧コールバック追加
 
@@ -813,7 +887,9 @@ class RecoverySystem:
         """
         self.recovery_callbacks.append(callback)
 
-    def add_phase_callback(self, callback: Callable[[RecoveryCheckpoint], Awaitable[None]]) -> None:
+    def add_phase_callback(
+        self, callback: Callable[[RecoveryCheckpoint], Awaitable[None]]
+    ) -> None:
         """
         フェーズコールバック追加
 
@@ -830,40 +906,40 @@ class RecoverySystem:
             filepath: 保存ファイルパス
         """
         state = {
-            'system_name': self.system_name,
-            'max_concurrent_recoveries': self.max_concurrent_recoveries,
-            'recovery_history': [
+            "system_name": self.system_name,
+            "max_concurrent_recoveries": self.max_concurrent_recoveries,
+            "recovery_history": [
                 {
-                    'execution_id': r.execution_id,
-                    'plan_id': r.plan_id,
-                    'failure_description': r.failure_description,
-                    'start_time': r.start_time.isoformat(),
-                    'end_time': r.end_time.isoformat() if r.end_time else None,
-                    'status': r.status.value,
-                    'current_phase': r.current_phase.value if r.current_phase else None,
-                    'metrics': r.metrics,
-                    'rollback_triggered': r.rollback_triggered,
-                    'checkpoints': [
+                    "execution_id": r.execution_id,
+                    "plan_id": r.plan_id,
+                    "failure_description": r.failure_description,
+                    "start_time": r.start_time.isoformat(),
+                    "end_time": r.end_time.isoformat() if r.end_time else None,
+                    "status": r.status.value,
+                    "current_phase": r.current_phase.value if r.current_phase else None,
+                    "metrics": r.metrics,
+                    "rollback_triggered": r.rollback_triggered,
+                    "checkpoints": [
                         {
-                            'checkpoint_id': cp.checkpoint_id,
-                            'timestamp': cp.timestamp.isoformat(),
-                            'phase': cp.phase.value,
-                            'status': cp.status.value,
-                            'description': cp.description,
-                            'metadata': cp.metadata,
-                            'error_message': cp.error_message
+                            "checkpoint_id": cp.checkpoint_id,
+                            "timestamp": cp.timestamp.isoformat(),
+                            "phase": cp.phase.value,
+                            "status": cp.status.value,
+                            "description": cp.description,
+                            "metadata": cp.metadata,
+                            "error_message": cp.error_message,
                         }
                         for cp in r.checkpoints
-                    ]
+                    ],
                 }
                 for r in self.recovery_history[-50:]  # 最新50件
             ],
-            'backup_configs': self.backup_configs,
-            'backup_schedule': self.backup_schedule
+            "backup_configs": self.backup_configs,
+            "backup_schedule": self.backup_schedule,
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Recovery system state saved to {filepath}")
@@ -879,45 +955,49 @@ class RecoverySystem:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.system_name = state['system_name']
-            self.max_concurrent_recoveries = state['max_concurrent_recoveries']
+            self.system_name = state["system_name"]
+            self.max_concurrent_recoveries = state["max_concurrent_recoveries"]
 
             # 復旧履歴復元
             self.recovery_history = []
-            for r_data in state.get('recovery_history', []):
+            for r_data in state.get("recovery_history", []):
                 execution = RecoveryExecution(
-                    execution_id=r_data['execution_id'],
-                    plan_id=r_data['plan_id'],
-                    failure_description=r_data['failure_description'],
-                    start_time=datetime.fromisoformat(r_data['start_time']),
-                    end_time=datetime.fromisoformat(r_data['end_time']) if r_data['end_time'] else None,
-                    status=RecoveryStatus(r_data['status']),
-                    current_phase=RecoveryPhase(r_data['current_phase']) if r_data['current_phase'] else None,
-                    metrics=r_data['metrics'],
-                    rollback_triggered=r_data['rollback_triggered']
+                    execution_id=r_data["execution_id"],
+                    plan_id=r_data["plan_id"],
+                    failure_description=r_data["failure_description"],
+                    start_time=datetime.fromisoformat(r_data["start_time"]),
+                    end_time=datetime.fromisoformat(r_data["end_time"])
+                    if r_data["end_time"]
+                    else None,
+                    status=RecoveryStatus(r_data["status"]),
+                    current_phase=RecoveryPhase(r_data["current_phase"])
+                    if r_data["current_phase"]
+                    else None,
+                    metrics=r_data["metrics"],
+                    rollback_triggered=r_data["rollback_triggered"],
                 )
 
                 # チェックポイント復元
-                for cp_data in r_data.get('checkpoints', []):
+                for cp_data in r_data.get("checkpoints", []):
                     checkpoint = RecoveryCheckpoint(
-                        checkpoint_id=cp_data['checkpoint_id'],
-                        timestamp=datetime.fromisoformat(cp_data['timestamp']),
-                        phase=RecoveryPhase(cp_data['phase']),
-                        status=RecoveryStatus(cp_data['status']),
-                        description=cp_data['description'],
-                        metadata=cp_data['metadata'],
-                        error_message=cp_data['error_message']
+                        checkpoint_id=cp_data["checkpoint_id"],
+                        timestamp=datetime.fromisoformat(cp_data["timestamp"]),
+                        phase=RecoveryPhase(cp_data["phase"]),
+                        status=RecoveryStatus(cp_data["status"]),
+                        description=cp_data["description"],
+                        metadata=cp_data["metadata"],
+                        error_message=cp_data["error_message"],
                     )
                     execution.checkpoints.append(checkpoint)
 
                 self.recovery_history.append(execution)
 
             # バックアップ設定復元
-            self.backup_configs = state.get('backup_configs', {})
-            self.backup_schedule = state.get('backup_schedule', {})
+            self.backup_configs = state.get("backup_configs", {})
+            self.backup_schedule = state.get("backup_schedule", {})
 
             self.logger.info(f"Recovery system state loaded from {filepath}")
             return True

@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ztb.trading.environment.constants import DEFAULT_FEE_RATE
 from ztb.utils.file_utils import safe_json_load
 
 
@@ -43,7 +44,11 @@ class FeeModel(ABC):
 class FixedFeeModel(FeeModel):
     """Fixed fee model with constant rates"""
 
-    def __init__(self, buy_fee_rate: float = 0.001, sell_fee_rate: float = 0.001):
+    def __init__(
+        self,
+        buy_fee_rate: float = DEFAULT_FEE_RATE,
+        sell_fee_rate: float = DEFAULT_FEE_RATE,
+    ):
         """
         Initialize fixed fee model
 
@@ -142,7 +147,8 @@ class ExchangeFeeModel(FeeModel):
             }
 
         self.exchange_fees = exchange_fees
-        self.current_exchange = "binance"  # Default
+        # Default exchange: coincheck (primary), fallback to bitflyer
+        self.current_exchange = "coincheck"
 
     def set_exchange(self, exchange: str) -> None:
         """Set current exchange"""
@@ -186,8 +192,8 @@ class FeeModelFactory:
 
         if model_type.lower() == "fixed":
             return FixedFeeModel(
-                buy_fee_rate=config.get("buy_fee_rate", 0.001),
-                sell_fee_rate=config.get("sell_fee_rate", 0.001),
+                buy_fee_rate=config.get("buy_fee_rate", DEFAULT_FEE_RATE),
+                sell_fee_rate=config.get("sell_fee_rate", DEFAULT_FEE_RATE),
             )
 
         elif model_type.lower() == "tiered":

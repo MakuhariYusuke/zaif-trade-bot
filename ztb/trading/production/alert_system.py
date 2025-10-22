@@ -5,24 +5,25 @@ V433 Phase 5: Production Monitoring Layer - Alert System
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
+import smtplib
 import threading
 import time
-import smtplib
-from email.mime.text import MIMEText
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
 import requests
 
 
 class AlertLevel(Enum):
     """アラートレベル"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -31,6 +32,7 @@ class AlertLevel(Enum):
 
 class AlertStatus(Enum):
     """アラートステータス"""
+
     ACTIVE = "active"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
@@ -39,6 +41,7 @@ class AlertStatus(Enum):
 
 class NotificationChannel(Enum):
     """通知チャネル"""
+
     EMAIL = "email"
     SLACK = "slack"
     WEBHOOK = "webhook"
@@ -49,6 +52,7 @@ class NotificationChannel(Enum):
 @dataclass
 class AlertRule:
     """アラートルール"""
+
     rule_id: str
     name: str
     description: str
@@ -65,6 +69,7 @@ class AlertRule:
 @dataclass
 class Alert:
     """アラート"""
+
     alert_id: str
     rule_id: str
     level: AlertLevel
@@ -85,6 +90,7 @@ class Alert:
 @dataclass
 class NotificationConfig:
     """通知設定"""
+
     channel: NotificationChannel
     enabled: bool = True
     config: Dict[str, Any] = field(default_factory=dict)
@@ -98,9 +104,9 @@ class AlertSystem:
     複数の通知チャネルをサポート。
     """
 
-    def __init__(self,
-                 alert_history_size: int = 1000,
-                 default_cooldown_minutes: int = 5):
+    def __init__(
+        self, alert_history_size: int = 1000, default_cooldown_minutes: int = 5
+    ):
         """
         初期化
 
@@ -143,24 +149,87 @@ class AlertSystem:
     def _initialize_default_rules(self) -> None:
         """デフォルトアラートルール初期化"""
         default_rules = [
-            AlertRule("cpu_high", "High CPU Usage", "CPU使用率が高くなっています",
-                     "cpu_usage_percent", ">", 85.0, AlertLevel.WARNING),
-            AlertRule("cpu_critical", "Critical CPU Usage", "CPU使用率が危険なレベルです",
-                     "cpu_usage_percent", ">", 95.0, AlertLevel.CRITICAL),
-            AlertRule("memory_high", "High Memory Usage", "メモリ使用率が高くなっています",
-                     "memory_usage_percent", ">", 90.0, AlertLevel.WARNING),
-            AlertRule("memory_critical", "Critical Memory Usage", "メモリ使用率が危険なレベルです",
-                     "memory_usage_percent", ">", 95.0, AlertLevel.CRITICAL),
-            AlertRule("disk_high", "High Disk Usage", "ディスク使用率が高くなっています",
-                     "disk_usage_percent", ">", 85.0, AlertLevel.WARNING),
-            AlertRule("error_rate_high", "High Error Rate", "エラーレートが高くなっています",
-                     "error_rate", ">", 5.0, AlertLevel.ERROR),
-            AlertRule("response_time_high", "High Response Time", "レスポンスタイムが高くなっています",
-                     "response_time_avg", ">", 5000.0, AlertLevel.WARNING),
-            AlertRule("win_rate_low", "Low Win Rate", "勝率が低下しています",
-                     "win_rate", "<", 40.0, AlertLevel.WARNING),
-            AlertRule("sharpe_ratio_low", "Low Sharpe Ratio", "シャープレシオが低下しています",
-                     "sharpe_ratio", "<", 0.1, AlertLevel.ERROR),
+            AlertRule(
+                "cpu_high",
+                "High CPU Usage",
+                "CPU使用率が高くなっています",
+                "cpu_usage_percent",
+                ">",
+                85.0,
+                AlertLevel.WARNING,
+            ),
+            AlertRule(
+                "cpu_critical",
+                "Critical CPU Usage",
+                "CPU使用率が危険なレベルです",
+                "cpu_usage_percent",
+                ">",
+                95.0,
+                AlertLevel.CRITICAL,
+            ),
+            AlertRule(
+                "memory_high",
+                "High Memory Usage",
+                "メモリ使用率が高くなっています",
+                "memory_usage_percent",
+                ">",
+                90.0,
+                AlertLevel.WARNING,
+            ),
+            AlertRule(
+                "memory_critical",
+                "Critical Memory Usage",
+                "メモリ使用率が危険なレベルです",
+                "memory_usage_percent",
+                ">",
+                95.0,
+                AlertLevel.CRITICAL,
+            ),
+            AlertRule(
+                "disk_high",
+                "High Disk Usage",
+                "ディスク使用率が高くなっています",
+                "disk_usage_percent",
+                ">",
+                85.0,
+                AlertLevel.WARNING,
+            ),
+            AlertRule(
+                "error_rate_high",
+                "High Error Rate",
+                "エラーレートが高くなっています",
+                "error_rate",
+                ">",
+                5.0,
+                AlertLevel.ERROR,
+            ),
+            AlertRule(
+                "response_time_high",
+                "High Response Time",
+                "レスポンスタイムが高くなっています",
+                "response_time_avg",
+                ">",
+                5000.0,
+                AlertLevel.WARNING,
+            ),
+            AlertRule(
+                "win_rate_low",
+                "Low Win Rate",
+                "勝率が低下しています",
+                "win_rate",
+                "<",
+                40.0,
+                AlertLevel.WARNING,
+            ),
+            AlertRule(
+                "sharpe_ratio_low",
+                "Low Sharpe Ratio",
+                "シャープレシオが低下しています",
+                "sharpe_ratio",
+                "<",
+                0.1,
+                AlertLevel.ERROR,
+            ),
         ]
 
         for rule in default_rules:
@@ -170,8 +239,7 @@ class AlertSystem:
         """デフォルト通知設定初期化"""
         # ログ通知（常に有効）
         self.notification_configs[NotificationChannel.LOG] = NotificationConfig(
-            channel=NotificationChannel.LOG,
-            enabled=True
+            channel=NotificationChannel.LOG, enabled=True
         )
 
     def add_alert_rule(self, rule: AlertRule) -> None:
@@ -228,8 +296,12 @@ class AlertSystem:
             self.alert_rules[rule_id].enabled = False
             self.logger.info(f"Alert rule disabled: {rule_id}")
 
-    def check_metric_against_rules(self, metric_name: str, metric_value: float,
-                                 labels: Optional[Dict[str, str]] = None) -> List[Alert]:
+    def check_metric_against_rules(
+        self,
+        metric_name: str,
+        metric_value: float,
+        labels: Optional[Dict[str, str]] = None,
+    ) -> List[Alert]:
         """
         指標値に対するルールチェック
 
@@ -260,11 +332,15 @@ class AlertSystem:
                 alerts.append(alert)
 
                 # クールダウン設定
-                self.alert_cooldowns[cooldown_key] = datetime.now() + timedelta(minutes=rule.cooldown_minutes)
+                self.alert_cooldowns[cooldown_key] = datetime.now() + timedelta(
+                    minutes=rule.cooldown_minutes
+                )
 
         return alerts
 
-    def _evaluate_condition(self, value: float, condition: str, threshold: float) -> bool:
+    def _evaluate_condition(
+        self, value: float, condition: str, threshold: float
+    ) -> bool:
         """
         条件評価
 
@@ -291,7 +367,9 @@ class AlertSystem:
         else:
             return False
 
-    def _create_alert(self, rule: AlertRule, metric_value: float, labels: Dict[str, str]) -> Alert:
+    def _create_alert(
+        self, rule: AlertRule, metric_value: float, labels: Dict[str, str]
+    ) -> Alert:
         """
         アラート作成
 
@@ -319,7 +397,7 @@ class AlertSystem:
             metric_value=metric_value,
             threshold=rule.threshold,
             timestamp=datetime.now(),
-            labels={**rule.labels, **labels}
+            labels={**rule.labels, **labels},
         )
 
         return alert
@@ -341,13 +419,15 @@ class AlertSystem:
             ">=": "at or above",
             "<=": "at or below",
             "==": "equal to",
-            "!=": "not equal to"
+            "!=": "not equal to",
         }.get(rule.condition, rule.condition)
 
-        return (f"{rule.description}\n"
-                f"Metric: {rule.metric_name}\n"
-                f"Current Value: {metric_value:.2f}\n"
-                f"Threshold: {rule.threshold:.2f} ({condition_desc})")
+        return (
+            f"{rule.description}\n"
+            f"Metric: {rule.metric_name}\n"
+            f"Current Value: {metric_value:.2f}\n"
+            f"Threshold: {rule.threshold:.2f} ({condition_desc})"
+        )
 
     def process_alerts(self, alerts: List[Alert]) -> None:
         """
@@ -362,7 +442,7 @@ class AlertSystem:
 
             # 履歴サイズ制限
             if len(self.alert_history) > self.alert_history_size:
-                self.alert_history = self.alert_history[-self.alert_history_size:]
+                self.alert_history = self.alert_history[-self.alert_history_size :]
 
             # アクティブアラート管理
             alert_key = f"{alert.rule_id}:{alert.metric_name}"
@@ -418,7 +498,10 @@ class AlertSystem:
             bool: 解決成功フラグ
         """
         for alert in self.alert_history:
-            if alert.alert_id == alert_id and alert.status in [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED]:
+            if alert.alert_id == alert_id and alert.status in [
+                AlertStatus.ACTIVE,
+                AlertStatus.ACKNOWLEDGED,
+            ]:
                 alert.status = AlertStatus.RESOLVED
                 alert.resolved_at = datetime.now()
 
@@ -470,10 +553,14 @@ class AlertSystem:
         Args:
             alert: アラート
         """
-        log_message = f"ALERT {alert.level.value.upper()}: {alert.title} - {alert.message}"
+        log_message = (
+            f"ALERT {alert.level.value.upper()}: {alert.title} - {alert.message}"
+        )
         self.logger.warning(log_message)
 
-    async def _send_email_notification(self, alert: Alert, config: NotificationConfig) -> None:
+    async def _send_email_notification(
+        self, alert: Alert, config: NotificationConfig
+    ) -> None:
         """
         メール通知送信
 
@@ -481,21 +568,21 @@ class AlertSystem:
             alert: アラート
             config: 通知設定
         """
-        smtp_server = config.config.get('smtp_server')
-        smtp_port = config.config.get('smtp_port', 587)
-        username = config.config.get('username')
-        password = config.config.get('password')
-        from_addr = config.config.get('from_addr')
-        to_addrs = config.config.get('to_addrs', [])
+        smtp_server = config.config.get("smtp_server")
+        smtp_port = config.config.get("smtp_port", 587)
+        username = config.config.get("username")
+        password = config.config.get("password")
+        from_addr = config.config.get("from_addr")
+        to_addrs = config.config.get("to_addrs", [])
 
         if not all([smtp_server, username, password, from_addr, to_addrs]):
             self.logger.warning("Email notification not configured properly")
             return
 
         msg = MIMEMultipart()
-        msg['From'] = from_addr
-        msg['To'] = ', '.join(to_addrs)
-        msg['Subject'] = alert.title
+        msg["From"] = from_addr
+        msg["To"] = ", ".join(to_addrs)
+        msg["Subject"] = alert.title
 
         body = f"""
 {alert.message}
@@ -508,7 +595,7 @@ Status: {alert.status.value}
 Labels: {json.dumps(alert.labels, indent=2)}
         """
 
-        msg.attach(MIMEText(body, 'plain'))
+        msg.attach(MIMEText(body, "plain"))
 
         try:
             server = smtplib.SMTP(smtp_server, smtp_port)
@@ -523,7 +610,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
         except Exception as e:
             self.logger.error(f"Email notification failed: {e}")
 
-    async def _send_slack_notification(self, alert: Alert, config: NotificationConfig) -> None:
+    async def _send_slack_notification(
+        self, alert: Alert, config: NotificationConfig
+    ) -> None:
         """
         Slack通知送信
 
@@ -531,7 +620,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             alert: アラート
             config: 通知設定
         """
-        webhook_url = config.config.get('webhook_url')
+        webhook_url = config.config.get("webhook_url")
         if not webhook_url:
             self.logger.warning("Slack webhook URL not configured")
             return
@@ -540,7 +629,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             AlertLevel.INFO: "good",
             AlertLevel.WARNING: "warning",
             AlertLevel.ERROR: "danger",
-            AlertLevel.CRITICAL: "#ff0000"
+            AlertLevel.CRITICAL: "#ff0000",
         }
 
         payload = {
@@ -550,22 +639,14 @@ Labels: {json.dumps(alert.labels, indent=2)}
                     "title": alert.title,
                     "text": alert.message,
                     "fields": [
-                        {
-                            "title": "Alert ID",
-                            "value": alert.alert_id,
-                            "short": True
-                        },
+                        {"title": "Alert ID", "value": alert.alert_id, "short": True},
                         {
                             "title": "Timestamp",
                             "value": alert.timestamp.isoformat(),
-                            "short": True
+                            "short": True,
                         },
-                        {
-                            "title": "Status",
-                            "value": alert.status.value,
-                            "short": True
-                        }
-                    ]
+                        {"title": "Status", "value": alert.status.value, "short": True},
+                    ],
                 }
             ]
         }
@@ -578,7 +659,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
         except Exception as e:
             self.logger.error(f"Slack notification failed: {e}")
 
-    async def _send_webhook_notification(self, alert: Alert, config: NotificationConfig) -> None:
+    async def _send_webhook_notification(
+        self, alert: Alert, config: NotificationConfig
+    ) -> None:
         """
         Webhook通知送信
 
@@ -586,7 +669,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             alert: アラート
             config: 通知設定
         """
-        webhook_url = config.config.get('webhook_url')
+        webhook_url = config.config.get("webhook_url")
         if not webhook_url:
             self.logger.warning("Webhook URL not configured")
             return
@@ -602,7 +685,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             "metric_value": alert.metric_value,
             "threshold": alert.threshold,
             "timestamp": alert.timestamp.isoformat(),
-            "labels": alert.labels
+            "labels": alert.labels,
         }
 
         try:
@@ -613,7 +696,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
         except Exception as e:
             self.logger.error(f"Webhook notification failed: {e}")
 
-    async def _send_sms_notification(self, alert: Alert, config: NotificationConfig) -> None:
+    async def _send_sms_notification(
+        self, alert: Alert, config: NotificationConfig
+    ) -> None:
         """
         SMS通知送信
 
@@ -622,10 +707,16 @@ Labels: {json.dumps(alert.labels, indent=2)}
             config: 通知設定
         """
         # SMS通知の実装（実際のSMSサービスと連携）
-        self.logger.info(f"SMS notification for alert {alert.alert_id} (not implemented)")
+        self.logger.info(
+            f"SMS notification for alert {alert.alert_id} (not implemented)"
+        )
 
-    def configure_notification(self, channel: NotificationChannel, enabled: bool = True,
-                             config: Optional[Dict[str, Any]] = None) -> None:
+    def configure_notification(
+        self,
+        channel: NotificationChannel,
+        enabled: bool = True,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         通知設定
 
@@ -635,12 +726,12 @@ Labels: {json.dumps(alert.labels, indent=2)}
             config: 設定
         """
         self.notification_configs[channel] = NotificationConfig(
-            channel=channel,
-            enabled=enabled,
-            config=config or {}
+            channel=channel, enabled=enabled, config=config or {}
         )
 
-        self.logger.info(f"Notification configured: {channel.value} ({'enabled' if enabled else 'disabled'})")
+        self.logger.info(
+            f"Notification configured: {channel.value} ({'enabled' if enabled else 'disabled'})"
+        )
 
     def get_active_alerts(self, level: Optional[AlertLevel] = None) -> List[Alert]:
         """
@@ -659,11 +750,14 @@ Labels: {json.dumps(alert.labels, indent=2)}
 
         return alerts
 
-    def get_alert_history(self, start_time: Optional[datetime] = None,
-                         end_time: Optional[datetime] = None,
-                         level: Optional[AlertLevel] = None,
-                         status: Optional[AlertStatus] = None,
-                         limit: Optional[int] = None) -> List[Alert]:
+    def get_alert_history(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        level: Optional[AlertLevel] = None,
+        status: Optional[AlertStatus] = None,
+        limit: Optional[int] = None,
+    ) -> List[Alert]:
         """
         アラート履歴取得
 
@@ -710,21 +804,33 @@ Labels: {json.dumps(alert.labels, indent=2)}
         recent_alerts = [a for a in self.alert_history if a.timestamp >= period_start]
 
         summary = {
-            'period_hours': hours,
-            'total_alerts': len(recent_alerts),
-            'active_alerts': len(self.active_alerts),
-            'by_level': {
-                'info': len([a for a in recent_alerts if a.level == AlertLevel.INFO]),
-                'warning': len([a for a in recent_alerts if a.level == AlertLevel.WARNING]),
-                'error': len([a for a in recent_alerts if a.level == AlertLevel.ERROR]),
-                'critical': len([a for a in recent_alerts if a.level == AlertLevel.CRITICAL])
+            "period_hours": hours,
+            "total_alerts": len(recent_alerts),
+            "active_alerts": len(self.active_alerts),
+            "by_level": {
+                "info": len([a for a in recent_alerts if a.level == AlertLevel.INFO]),
+                "warning": len(
+                    [a for a in recent_alerts if a.level == AlertLevel.WARNING]
+                ),
+                "error": len([a for a in recent_alerts if a.level == AlertLevel.ERROR]),
+                "critical": len(
+                    [a for a in recent_alerts if a.level == AlertLevel.CRITICAL]
+                ),
             },
-            'by_status': {
-                'active': len([a for a in recent_alerts if a.status == AlertStatus.ACTIVE]),
-                'acknowledged': len([a for a in recent_alerts if a.status == AlertStatus.ACKNOWLEDGED]),
-                'resolved': len([a for a in recent_alerts if a.status == AlertStatus.RESOLVED]),
-                'expired': len([a for a in recent_alerts if a.status == AlertStatus.EXPIRED])
-            }
+            "by_status": {
+                "active": len(
+                    [a for a in recent_alerts if a.status == AlertStatus.ACTIVE]
+                ),
+                "acknowledged": len(
+                    [a for a in recent_alerts if a.status == AlertStatus.ACKNOWLEDGED]
+                ),
+                "resolved": len(
+                    [a for a in recent_alerts if a.status == AlertStatus.RESOLVED]
+                ),
+                "expired": len(
+                    [a for a in recent_alerts if a.status == AlertStatus.EXPIRED]
+                ),
+            },
         }
 
         return summary
@@ -735,7 +841,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Alert monitoring started")
@@ -802,56 +910,58 @@ Labels: {json.dumps(alert.labels, indent=2)}
             filepath: 保存ファイルパス
         """
         state = {
-            'alert_history_size': self.alert_history_size,
-            'default_cooldown_minutes': self.default_cooldown_minutes,
-            'alert_rules': {
+            "alert_history_size": self.alert_history_size,
+            "default_cooldown_minutes": self.default_cooldown_minutes,
+            "alert_rules": {
                 rule_id: {
-                    'rule_id': rule.rule_id,
-                    'name': rule.name,
-                    'description': rule.description,
-                    'metric_name': rule.metric_name,
-                    'condition': rule.condition,
-                    'threshold': rule.threshold,
-                    'level': rule.level.value,
-                    'enabled': rule.enabled,
-                    'cooldown_minutes': rule.cooldown_minutes,
-                    'auto_resolve': rule.auto_resolve,
-                    'labels': rule.labels
+                    "rule_id": rule.rule_id,
+                    "name": rule.name,
+                    "description": rule.description,
+                    "metric_name": rule.metric_name,
+                    "condition": rule.condition,
+                    "threshold": rule.threshold,
+                    "level": rule.level.value,
+                    "enabled": rule.enabled,
+                    "cooldown_minutes": rule.cooldown_minutes,
+                    "auto_resolve": rule.auto_resolve,
+                    "labels": rule.labels,
                 }
                 for rule_id, rule in self.alert_rules.items()
             },
-            'alert_history': [
+            "alert_history": [
                 {
-                    'alert_id': a.alert_id,
-                    'rule_id': a.rule_id,
-                    'level': a.level.value,
-                    'status': a.status.value,
-                    'title': a.title,
-                    'message': a.message,
-                    'metric_name': a.metric_name,
-                    'metric_value': a.metric_value,
-                    'threshold': a.threshold,
-                    'timestamp': a.timestamp.isoformat(),
-                    'resolved_at': a.resolved_at.isoformat() if a.resolved_at else None,
-                    'acknowledged_at': a.acknowledged_at.isoformat() if a.acknowledged_at else None,
-                    'acknowledged_by': a.acknowledged_by,
-                    'labels': a.labels,
-                    'notification_sent': a.notification_sent
+                    "alert_id": a.alert_id,
+                    "rule_id": a.rule_id,
+                    "level": a.level.value,
+                    "status": a.status.value,
+                    "title": a.title,
+                    "message": a.message,
+                    "metric_name": a.metric_name,
+                    "metric_value": a.metric_value,
+                    "threshold": a.threshold,
+                    "timestamp": a.timestamp.isoformat(),
+                    "resolved_at": a.resolved_at.isoformat() if a.resolved_at else None,
+                    "acknowledged_at": a.acknowledged_at.isoformat()
+                    if a.acknowledged_at
+                    else None,
+                    "acknowledged_by": a.acknowledged_by,
+                    "labels": a.labels,
+                    "notification_sent": a.notification_sent,
                 }
                 for a in self.alert_history[-500:]  # 最新500件
             ],
-            'notification_configs': {
+            "notification_configs": {
                 channel.value: {
-                    'channel': config.channel.value,
-                    'enabled': config.enabled,
-                    'config': config.config
+                    "channel": config.channel.value,
+                    "enabled": config.enabled,
+                    "config": config.config,
                 }
                 for channel, config in self.notification_configs.items()
-            }
+            },
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Alert system state saved to {filepath}")
@@ -867,49 +977,53 @@ Labels: {json.dumps(alert.labels, indent=2)}
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.alert_history_size = state['alert_history_size']
-            self.default_cooldown_minutes = state['default_cooldown_minutes']
+            self.alert_history_size = state["alert_history_size"]
+            self.default_cooldown_minutes = state["default_cooldown_minutes"]
 
             # アラートルール復元
             self.alert_rules = {}
-            for rule_id, rule_data in state.get('alert_rules', {}).items():
+            for rule_id, rule_data in state.get("alert_rules", {}).items():
                 rule = AlertRule(
-                    rule_id=rule_data['rule_id'],
-                    name=rule_data['name'],
-                    description=rule_data['description'],
-                    metric_name=rule_data['metric_name'],
-                    condition=rule_data['condition'],
-                    threshold=rule_data['threshold'],
-                    level=AlertLevel(rule_data['level']),
-                    enabled=rule_data['enabled'],
-                    cooldown_minutes=rule_data['cooldown_minutes'],
-                    auto_resolve=rule_data['auto_resolve'],
-                    labels=rule_data['labels']
+                    rule_id=rule_data["rule_id"],
+                    name=rule_data["name"],
+                    description=rule_data["description"],
+                    metric_name=rule_data["metric_name"],
+                    condition=rule_data["condition"],
+                    threshold=rule_data["threshold"],
+                    level=AlertLevel(rule_data["level"]),
+                    enabled=rule_data["enabled"],
+                    cooldown_minutes=rule_data["cooldown_minutes"],
+                    auto_resolve=rule_data["auto_resolve"],
+                    labels=rule_data["labels"],
                 )
                 self.alert_rules[rule_id] = rule
 
             # アラート履歴復元
             self.alert_history = []
-            for a_data in state.get('alert_history', []):
+            for a_data in state.get("alert_history", []):
                 alert = Alert(
-                    alert_id=a_data['alert_id'],
-                    rule_id=a_data['rule_id'],
-                    level=AlertLevel(a_data['level']),
-                    status=AlertStatus(a_data['status']),
-                    title=a_data['title'],
-                    message=a_data['message'],
-                    metric_name=a_data['metric_name'],
-                    metric_value=a_data['metric_value'],
-                    threshold=a_data['threshold'],
-                    timestamp=datetime.fromisoformat(a_data['timestamp']),
-                    resolved_at=datetime.fromisoformat(a_data['resolved_at']) if a_data['resolved_at'] else None,
-                    acknowledged_at=datetime.fromisoformat(a_data['acknowledged_at']) if a_data['acknowledged_at'] else None,
-                    acknowledged_by=a_data['acknowledged_by'],
-                    labels=a_data['labels'],
-                    notification_sent=a_data['notification_sent']
+                    alert_id=a_data["alert_id"],
+                    rule_id=a_data["rule_id"],
+                    level=AlertLevel(a_data["level"]),
+                    status=AlertStatus(a_data["status"]),
+                    title=a_data["title"],
+                    message=a_data["message"],
+                    metric_name=a_data["metric_name"],
+                    metric_value=a_data["metric_value"],
+                    threshold=a_data["threshold"],
+                    timestamp=datetime.fromisoformat(a_data["timestamp"]),
+                    resolved_at=datetime.fromisoformat(a_data["resolved_at"])
+                    if a_data["resolved_at"]
+                    else None,
+                    acknowledged_at=datetime.fromisoformat(a_data["acknowledged_at"])
+                    if a_data["acknowledged_at"]
+                    else None,
+                    acknowledged_by=a_data["acknowledged_by"],
+                    labels=a_data["labels"],
+                    notification_sent=a_data["notification_sent"],
                 )
                 self.alert_history.append(alert)
 
@@ -922,12 +1036,14 @@ Labels: {json.dumps(alert.labels, indent=2)}
 
             # 通知設定復元
             self.notification_configs = {}
-            for channel_str, config_data in state.get('notification_configs', {}).items():
+            for channel_str, config_data in state.get(
+                "notification_configs", {}
+            ).items():
                 channel = NotificationChannel(channel_str)
                 config = NotificationConfig(
                     channel=channel,
-                    enabled=config_data['enabled'],
-                    config=config_data['config']
+                    enabled=config_data["enabled"],
+                    config=config_data["config"],
                 )
                 self.notification_configs[channel] = config
 

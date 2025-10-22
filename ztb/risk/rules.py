@@ -5,14 +5,41 @@ Implements hard stops, trailing stops, and cooldown rules.
 """
 
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .profiles import RiskLimits
+from ztb.utils.errors import (
+    validate_portfolio_value,
+    validate_price,
+    validate_volatility,
+)
+
+
+@dataclass
+class RiskLimits:
+    """Risk limits configuration."""
+
+    max_daily_loss_pct: float = 0.05  # Maximum daily loss (5%)
+    max_single_trade_risk_pct: float = 0.02  # Maximum risk per trade (2%)
+    max_portfolio_risk_pct: float = 0.10  # Maximum portfolio risk (10%)
+    max_correlation_risk_pct: float = 0.05  # Maximum correlation risk (5%)
+    min_liquidity_threshold: float = 1000.0  # Minimum liquidity threshold
+    max_volatility_threshold: float = 0.05  # Maximum volatility threshold (5%)
+    cooldown_period_seconds: int = 300  # Cooldown period after stop (5 minutes)
+    max_trades_per_hour: int = 10  # Maximum trades per hour
+    max_trades_per_day: int = 50  # Maximum trades per day
 
 
 class RiskRuleEngine:
     """Engine for evaluating and enforcing risk rules."""
+
+    # Constants for position sides
+    POSITION_LONG: str = "long"
+    POSITION_SHORT: str = "short"
+
+    # Valid position sides
+    VALID_POSITION_SIDES: Tuple[str, ...] = (POSITION_LONG, POSITION_SHORT)
 
     def __init__(self, limits: RiskLimits):
         """Initialize with risk limits."""
@@ -50,6 +77,9 @@ class RiskRuleEngine:
 
     def update_portfolio_state(self, current_value: float, volatility: float) -> None:
         """Update current portfolio state."""
+        validate_portfolio_value(current_value, "current_value")
+        validate_volatility(volatility, "volatility")
+
         self.portfolio_value = current_value
         self.portfolio_volatility = volatility
 
@@ -77,10 +107,10 @@ class RiskRuleEngine:
             return True, ""
 
         drawdown = (peak_value - self.portfolio_value) / peak_value
-        if drawdown >= self.limits.max_drawdown_pct:
+        if drawdown > self.limits.max_drawdown_pct:
             return (
                 False,
-                f"Max drawdown exceeded: {drawdown:.1%} >= {self.limits.max_drawdown_pct:.1%}",
+                f"Max drawdown exceeded: {drawdown:.1%} > {self.limits.max_drawdown_pct:.1%}",
             )
 
         return True, ""
@@ -104,7 +134,7 @@ class RiskRuleEngine:
         if trade_pct > self.limits.max_single_trade_pct:
             return (
                 False,
-                f"Trade size exceeds limit: {trade_pct:.1%} > {self.limits.max_single_trade_pct:.1%}",
+                f"Single trade size exceeds limit: {trade_pct:.1%} > {self.limits.max_single_trade_pct:.1%}",
             )
 
         return True, ""
@@ -155,12 +185,15 @@ class RiskRuleEngine:
 
     def update_trailing_stop(self, current_price: float, position_side: str) -> None:
         """Update trailing stop level."""
-        if position_side not in ["long", "short"]:
-            return
+        if position_side not in self.VALID_POSITION_SIDES:
+            raise ValueError(
+                f"Invalid position side: {position_side}. Must be '{self.POSITION_LONG}' or '{self.POSITION_SHORT}'"
+            )
+        validate_price(current_price, "current_price")
 
         # Initialize trailing stop
         if self.trailing_stop_level is None:
-            if position_side == "long":
+            if position_side == self.POSITION_LONG:
                 self.trailing_stop_level = current_price * (
                     1 - self.limits.stop_loss_pct
                 )
@@ -171,7 +204,7 @@ class RiskRuleEngine:
             return
 
         # Update trailing stop
-        if position_side == "long":
+        if position_side == self.POSITION_LONG:
             # For long positions, trail below the highest price
             new_stop = current_price * (1 - self.limits.stop_loss_pct)
             if new_stop > self.trailing_stop_level:
@@ -190,9 +223,15 @@ class RiskRuleEngine:
             return True, ""
 
         stop_hit = False
-        if position_side == "long" and current_price <= self.trailing_stop_level:
+        if (
+            position_side == self.POSITION_LONG
+            and current_price <= self.trailing_stop_level
+        ):
             stop_hit = True
-        elif position_side == "short" and current_price >= self.trailing_stop_level:
+        elif (
+            position_side == self.POSITION_SHORT
+            and current_price >= self.trailing_stop_level
+        ):
             stop_hit = True
 
         if stop_hit:
@@ -204,7 +243,7 @@ class RiskRuleEngine:
         self, entry_price: float, current_price: float, position_side: str
     ) -> Tuple[bool, str]:
         """Check if take profit target is reached."""
-        if position_side == "long":
+        if position_side == self.POSITION_LONG:
             profit_pct = (current_price - entry_price) / entry_price
         else:  # short
             profit_pct = (entry_price - current_price) / entry_price

@@ -5,26 +5,29 @@ V433 Phase 5: Parallel Running Layer - Traffic Distributor
 """
 
 import asyncio
+import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
+import os
 import random
 import threading
 import time
-import json
-import os
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
 
 # Mock classes for testing
 class OrderSide(Enum):
     BUY = "buy"
     SELL = "sell"
 
+
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
+
 
 @dataclass
 class Order:
@@ -39,23 +42,26 @@ class Order:
 
 class DistributionMode(Enum):
     """分散モード"""
-    FIXED = "fixed"          # 固定割合
-    DYNAMIC = "dynamic"      # 動的調整
+
+    FIXED = "fixed"  # 固定割合
+    DYNAMIC = "dynamic"  # 動的調整
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
-    GRADUAL = "gradual"      # 段階的移行
+    GRADUAL = "gradual"  # 段階的移行
 
 
 class DistributionRule(Enum):
     """分散ルール"""
-    ROUND_ROBIN = "round_robin"      # ラウンドロビン
+
+    ROUND_ROBIN = "round_robin"  # ラウンドロビン
     WEIGHTED_RANDOM = "weighted_random"  # 加重ランダム
     PERFORMANCE_WEIGHTED = "performance_weighted"  # パフォーマンス加重
-    VOLUME_BASED = "volume_based"     # 出来高ベース
+    VOLUME_BASED = "volume_based"  # 出来高ベース
 
 
 @dataclass
 class SystemEndpoint:
     """システムエンドポイント"""
+
     system_id: str
     name: str
     capacity: int  # 1秒あたりの最大注文数
@@ -68,18 +74,20 @@ class SystemEndpoint:
 @dataclass
 class DistributionConfig:
     """分散設定"""
+
     mode: DistributionMode = DistributionMode.FIXED
     rule: DistributionRule = DistributionRule.WEIGHTED_RANDOM
     total_weight: int = 100  # 総重量
     rebalance_interval_seconds: int = 300  # リバランス間隔
     max_single_system_weight: int = 80  # 単一システム最大重量
-    min_single_system_weight: int = 5   # 単一システム最小重量
+    min_single_system_weight: int = 5  # 単一システム最小重量
     emergency_switch_threshold: float = 0.8  # 緊急切り替え閾値
 
 
 @dataclass
 class TrafficAllocation:
     """トラフィック配分"""
+
     system_id: str
     weight: int  # 配分重量
     percentage: float  # 配分割合（%）
@@ -91,6 +99,7 @@ class TrafficAllocation:
 @dataclass
 class DistributionEvent:
     """分散イベント"""
+
     event_id: str
     timestamp: datetime
     order_id: str
@@ -139,8 +148,12 @@ class TrafficDistributor:
         self.monitoring_thread: Optional[threading.Thread] = None
 
         # コールバック
-        self.distribution_callbacks: List[Callable[[DistributionEvent], Awaitable[None]]] = []
-        self.rebalance_callbacks: List[Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]] = []
+        self.distribution_callbacks: List[
+            Callable[[DistributionEvent], Awaitable[None]]
+        ] = []
+        self.rebalance_callbacks: List[
+            Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]
+        ] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -200,7 +213,10 @@ class TrafficDistributor:
             return False
 
         # 重量制約チェック
-        if weight < self.config.min_single_system_weight or weight > self.config.max_single_system_weight:
+        if (
+            weight < self.config.min_single_system_weight
+            or weight > self.config.max_single_system_weight
+        ):
             self.logger.warning(f"Weight {weight} out of range for {system_id}")
             return False
 
@@ -210,7 +226,9 @@ class TrafficDistributor:
         self.logger.info(f"Endpoint weight updated: {system_id} = {weight}")
         return True
 
-    def update_endpoint_performance(self, system_id: str, performance_score: float, latency_ms: int) -> None:
+    def update_endpoint_performance(
+        self, system_id: str, performance_score: float, latency_ms: int
+    ) -> None:
         """
         エンドポイントパフォーマンス更新
 
@@ -220,7 +238,9 @@ class TrafficDistributor:
             latency_ms: 平均遅延時間
         """
         if system_id in self.endpoints:
-            self.endpoints[system_id].performance_score = max(0.0, min(1.0, performance_score))
+            self.endpoints[system_id].performance_score = max(
+                0.0, min(1.0, performance_score)
+            )
 
             # アロケーション更新
             if system_id in self.allocations:
@@ -247,11 +267,15 @@ class TrafficDistributor:
 
         try:
             # 有効なエンドポイント取得
-            active_endpoints = {sid: ep for sid, ep in self.endpoints.items() if ep.is_active}
+            active_endpoints = {
+                sid: ep for sid, ep in self.endpoints.items() if ep.is_active
+            }
 
             if not active_endpoints:
                 self.logger.error("No active endpoints available")
-                await self._record_event(order_id, None, "No active endpoints", False, "No active endpoints")
+                await self._record_event(
+                    order_id, None, "No active endpoints", False, "No active endpoints"
+                )
                 return None
 
             # 分散アルゴリズム選択
@@ -267,21 +291,39 @@ class TrafficDistributor:
                     self.allocations[assigned_system].current_orders += 1
 
                 execution_time = int((time.time() - start_time) * 1000)
-                await self._record_event(order_id, assigned_system, self.config.rule.value, True, None, execution_time)
+                await self._record_event(
+                    order_id,
+                    assigned_system,
+                    self.config.rule.value,
+                    True,
+                    None,
+                    execution_time,
+                )
 
                 return assigned_system
             else:
                 execution_time = int((time.time() - start_time) * 1000)
-                await self._record_event(order_id, None, self.config.rule.value, False, "Distribution failed", execution_time)
+                await self._record_event(
+                    order_id,
+                    None,
+                    self.config.rule.value,
+                    False,
+                    "Distribution failed",
+                    execution_time,
+                )
                 return None
 
         except Exception as e:
             execution_time = int((time.time() - start_time) * 1000)
-            await self._record_event(order_id, None, self.config.rule.value, False, str(e), execution_time)
+            await self._record_event(
+                order_id, None, self.config.rule.value, False, str(e), execution_time
+            )
             self.logger.error(f"Order distribution failed: {e}")
             return None
 
-    async def _select_system(self, order: Order, active_endpoints: Dict[str, SystemEndpoint]) -> Optional[str]:
+    async def _select_system(
+        self, order: Order, active_endpoints: Dict[str, SystemEndpoint]
+    ) -> Optional[str]:
         """
         システム選択
 
@@ -308,7 +350,9 @@ class TrafficDistributor:
             # デフォルトは加重ランダム
             return self._weighted_random_selection(active_endpoints)
 
-    def _round_robin_selection(self, active_endpoints: Dict[str, SystemEndpoint]) -> Optional[str]:
+    def _round_robin_selection(
+        self, active_endpoints: Dict[str, SystemEndpoint]
+    ) -> Optional[str]:
         """
         ラウンドロビン選択
 
@@ -326,7 +370,9 @@ class TrafficDistributor:
         selected_index = self.order_counter % len(endpoint_ids)
         return endpoint_ids[selected_index]
 
-    def _weighted_random_selection(self, active_endpoints: Dict[str, SystemEndpoint]) -> Optional[str]:
+    def _weighted_random_selection(
+        self, active_endpoints: Dict[str, SystemEndpoint]
+    ) -> Optional[str]:
         """
         加重ランダム選択
 
@@ -337,7 +383,9 @@ class TrafficDistributor:
             Optional[str]: 選択されたシステムID
         """
         # 重量に基づく選択
-        total_weight = sum(self.endpoint_weights.get(sid, 1) for sid in active_endpoints.keys())
+        total_weight = sum(
+            self.endpoint_weights.get(sid, 1) for sid in active_endpoints.keys()
+        )
         if total_weight == 0:
             return None
 
@@ -352,7 +400,9 @@ class TrafficDistributor:
 
         return None
 
-    def _performance_weighted_selection(self, active_endpoints: Dict[str, SystemEndpoint]) -> Optional[str]:
+    def _performance_weighted_selection(
+        self, active_endpoints: Dict[str, SystemEndpoint]
+    ) -> Optional[str]:
         """
         パフォーマンス加重選択
 
@@ -377,7 +427,9 @@ class TrafficDistributor:
 
         return None
 
-    def _volume_based_selection(self, order: Order, active_endpoints: Dict[str, SystemEndpoint]) -> Optional[str]:
+    def _volume_based_selection(
+        self, order: Order, active_endpoints: Dict[str, SystemEndpoint]
+    ) -> Optional[str]:
         """
         出来高ベース選択
 
@@ -392,10 +444,13 @@ class TrafficDistributor:
         order_value = order.quantity * order.price
 
         # 大口注文の場合、容量の大きいシステムを選択
-        if order_value > Decimal('10000'):  # 閾値は設定可能にすべき
-            candidates = sorted(active_endpoints.items(),
-                              key=lambda x: (x[1].capacity - x[1].current_load) * x[1].performance_score,
-                              reverse=True)
+        if order_value > Decimal("10000"):  # 閾値は設定可能にすべき
+            candidates = sorted(
+                active_endpoints.items(),
+                key=lambda x: (x[1].capacity - x[1].current_load)
+                * x[1].performance_score,
+                reverse=True,
+            )
             return candidates[0][0] if candidates else None
         else:
             # 小口注文は通常の加重ランダム
@@ -407,21 +462,27 @@ class TrafficDistributor:
 
         for system_id, endpoint in self.endpoints.items():
             weight = self.endpoint_weights.get(system_id, 0)
-            percentage = (weight / self.total_weight * 100) if self.total_weight > 0 else 0
+            percentage = (
+                (weight / self.total_weight * 100) if self.total_weight > 0 else 0
+            )
 
             if system_id not in self.allocations:
                 self.allocations[system_id] = TrafficAllocation(
-                    system_id=system_id,
-                    weight=weight,
-                    percentage=percentage
+                    system_id=system_id, weight=weight, percentage=percentage
                 )
             else:
                 self.allocations[system_id].weight = weight
                 self.allocations[system_id].percentage = percentage
 
-    async def _record_event(self, order_id: str, assigned_system: Optional[str],
-                           rule: str, success: bool, reason: Optional[str] = None,
-                           execution_time_ms: int = 0) -> None:
+    async def _record_event(
+        self,
+        order_id: str,
+        assigned_system: Optional[str],
+        rule: str,
+        success: bool,
+        reason: Optional[str] = None,
+        execution_time_ms: int = 0,
+    ) -> None:
         """
         イベント記録
 
@@ -441,7 +502,7 @@ class TrafficDistributor:
             distribution_rule=rule,
             execution_time_ms=execution_time_ms,
             success=success,
-            reason=reason
+            reason=reason,
         )
 
         self.distribution_events.append(event)
@@ -460,7 +521,9 @@ class TrafficDistributor:
     def _trigger_rebalance(self) -> None:
         """リバランストリガー"""
         now = datetime.now()
-        if (now - self.last_rebalance).total_seconds() >= self.config.rebalance_interval_seconds:
+        if (
+            now - self.last_rebalance
+        ).total_seconds() >= self.config.rebalance_interval_seconds:
             asyncio.create_task(self._perform_rebalance())
 
     async def _perform_rebalance(self) -> None:
@@ -498,7 +561,9 @@ class TrafficDistributor:
     async def _performance_based_rebalance(self) -> None:
         """パフォーマンスベースリバランス"""
         # パフォーマンススコアに基づいて重量を調整
-        total_score = sum(ep.performance_score for ep in self.endpoints.values() if ep.is_active)
+        total_score = sum(
+            ep.performance_score for ep in self.endpoints.values() if ep.is_active
+        )
 
         if total_score == 0:
             return
@@ -512,8 +577,10 @@ class TrafficDistributor:
             new_weight = int(performance_ratio * self.config.total_weight)
 
             # 制約適用
-            new_weight = max(self.config.min_single_system_weight,
-                           min(self.config.max_single_system_weight, new_weight))
+            new_weight = max(
+                self.config.min_single_system_weight,
+                min(self.config.max_single_system_weight, new_weight),
+            )
 
             self.endpoint_weights[system_id] = new_weight
 
@@ -531,7 +598,9 @@ class TrafficDistributor:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Traffic monitoring started")
@@ -549,13 +618,20 @@ class TrafficDistributor:
         while self.monitoring_active:
             try:
                 # 定期リバランスチェック
-                if self.config.mode in [DistributionMode.DYNAMIC, DistributionMode.PERFORMANCE_BASED]:
-                    if (datetime.now() - self.last_rebalance).total_seconds() >= self.config.rebalance_interval_seconds:
+                if self.config.mode in [
+                    DistributionMode.DYNAMIC,
+                    DistributionMode.PERFORMANCE_BASED,
+                ]:
+                    if (
+                        datetime.now() - self.last_rebalance
+                    ).total_seconds() >= self.config.rebalance_interval_seconds:
                         asyncio.run(self._perform_rebalance())
 
                 # 負荷リセット（1秒ごと）
                 for endpoint in self.endpoints.values():
-                    endpoint.current_load = max(0, endpoint.current_load - endpoint.capacity // 60)  # 1分平均
+                    endpoint.current_load = max(
+                        0, endpoint.current_load - endpoint.capacity // 60
+                    )  # 1分平均
 
                 time.sleep(1)
 
@@ -586,27 +662,35 @@ class TrafficDistributor:
         recent_events = self.distribution_events[-100:]  # 最新100件
 
         success_rate = sum(1 for e in recent_events if e.success) / len(recent_events)
-        avg_latency = sum(e.execution_time_ms for e in recent_events) / len(recent_events)
+        avg_latency = sum(e.execution_time_ms for e in recent_events) / len(
+            recent_events
+        )
 
         system_stats = {}
         for system_id in self.endpoints.keys():
             system_events = [e for e in recent_events if e.assigned_system == system_id]
             if system_events:
                 system_stats[system_id] = {
-                    'orders': len(system_events),
-                    'success_rate': sum(1 for e in system_events if e.success) / len(system_events),
-                    'avg_latency': sum(e.execution_time_ms for e in system_events) / len(system_events)
+                    "orders": len(system_events),
+                    "success_rate": sum(1 for e in system_events if e.success)
+                    / len(system_events),
+                    "avg_latency": sum(e.execution_time_ms for e in system_events)
+                    / len(system_events),
                 }
 
         return {
-            'total_orders': self.order_counter,
-            'success_rate': success_rate,
-            'avg_latency_ms': avg_latency,
-            'system_stats': system_stats,
-            'active_endpoints': len([ep for ep in self.endpoints.values() if ep.is_active])
+            "total_orders": self.order_counter,
+            "success_rate": success_rate,
+            "avg_latency_ms": avg_latency,
+            "system_stats": system_stats,
+            "active_endpoints": len(
+                [ep for ep in self.endpoints.values() if ep.is_active]
+            ),
         }
 
-    def add_distribution_callback(self, callback: Callable[[DistributionEvent], Awaitable[None]]) -> None:
+    def add_distribution_callback(
+        self, callback: Callable[[DistributionEvent], Awaitable[None]]
+    ) -> None:
         """
         分散コールバック追加
 
@@ -615,7 +699,9 @@ class TrafficDistributor:
         """
         self.distribution_callbacks.append(callback)
 
-    def add_rebalance_callback(self, callback: Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]) -> None:
+    def add_rebalance_callback(
+        self, callback: Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]
+    ) -> None:
         """
         リバランスコールバック追加
 
@@ -632,34 +718,34 @@ class TrafficDistributor:
             filepath: 保存ファイルパス
         """
         state = {
-            'config': {
-                'mode': self.config.mode.value,
-                'rule': self.config.rule.value,
-                'total_weight': self.config.total_weight,
-                'rebalance_interval_seconds': self.config.rebalance_interval_seconds,
-                'max_single_system_weight': self.config.max_single_system_weight,
-                'min_single_system_weight': self.config.min_single_system_weight,
-                'emergency_switch_threshold': self.config.emergency_switch_threshold
+            "config": {
+                "mode": self.config.mode.value,
+                "rule": self.config.rule.value,
+                "total_weight": self.config.total_weight,
+                "rebalance_interval_seconds": self.config.rebalance_interval_seconds,
+                "max_single_system_weight": self.config.max_single_system_weight,
+                "min_single_system_weight": self.config.min_single_system_weight,
+                "emergency_switch_threshold": self.config.emergency_switch_threshold,
             },
-            'endpoints': [
+            "endpoints": [
                 {
-                    'system_id': ep.system_id,
-                    'name': ep.name,
-                    'capacity': ep.capacity,
-                    'current_load': ep.current_load,
-                    'is_active': ep.is_active,
-                    'last_health_check': ep.last_health_check.isoformat(),
-                    'performance_score': ep.performance_score
+                    "system_id": ep.system_id,
+                    "name": ep.name,
+                    "capacity": ep.capacity,
+                    "current_load": ep.current_load,
+                    "is_active": ep.is_active,
+                    "last_health_check": ep.last_health_check.isoformat(),
+                    "performance_score": ep.performance_score,
                 }
                 for ep in self.endpoints.values()
             ],
-            'endpoint_weights': self.endpoint_weights,
-            'last_rebalance': self.last_rebalance.isoformat(),
-            'order_counter': self.order_counter
+            "endpoint_weights": self.endpoint_weights,
+            "last_rebalance": self.last_rebalance.isoformat(),
+            "order_counter": self.order_counter,
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Distributor state saved to {filepath}")
@@ -675,41 +761,43 @@ class TrafficDistributor:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
             # 設定復元
-            config_data = state['config']
+            config_data = state["config"]
             self.config = DistributionConfig(
-                mode=DistributionMode(config_data['mode']),
-                rule=DistributionRule(config_data['rule']),
-                total_weight=config_data['total_weight'],
-                rebalance_interval_seconds=config_data['rebalance_interval_seconds'],
-                max_single_system_weight=config_data['max_single_system_weight'],
-                min_single_system_weight=config_data['min_single_system_weight'],
-                emergency_switch_threshold=config_data['emergency_switch_threshold']
+                mode=DistributionMode(config_data["mode"]),
+                rule=DistributionRule(config_data["rule"]),
+                total_weight=config_data["total_weight"],
+                rebalance_interval_seconds=config_data["rebalance_interval_seconds"],
+                max_single_system_weight=config_data["max_single_system_weight"],
+                min_single_system_weight=config_data["min_single_system_weight"],
+                emergency_switch_threshold=config_data["emergency_switch_threshold"],
             )
 
             # エンドポイント復元
             self.endpoints = {}
-            for ep_data in state.get('endpoints', []):
+            for ep_data in state.get("endpoints", []):
                 endpoint = SystemEndpoint(
-                    system_id=ep_data['system_id'],
-                    name=ep_data['name'],
-                    capacity=ep_data['capacity'],
-                    current_load=ep_data.get('current_load', 0),
-                    is_active=ep_data.get('is_active', True),
-                    performance_score=ep_data.get('performance_score', 1.0)
+                    system_id=ep_data["system_id"],
+                    name=ep_data["name"],
+                    capacity=ep_data["capacity"],
+                    current_load=ep_data.get("current_load", 0),
+                    is_active=ep_data.get("is_active", True),
+                    performance_score=ep_data.get("performance_score", 1.0),
                 )
-                endpoint.last_health_check = datetime.fromisoformat(ep_data['last_health_check'])
+                endpoint.last_health_check = datetime.fromisoformat(
+                    ep_data["last_health_check"]
+                )
                 self.endpoints[endpoint.system_id] = endpoint
 
             # 重量復元
-            self.endpoint_weights = state.get('endpoint_weights', {})
+            self.endpoint_weights = state.get("endpoint_weights", {})
 
             # その他
-            self.last_rebalance = datetime.fromisoformat(state['last_rebalance'])
-            self.order_counter = state.get('order_counter', 0)
+            self.last_rebalance = datetime.fromisoformat(state["last_rebalance"])
+            self.order_counter = state.get("order_counter", 0)
 
             self._update_allocations()
 

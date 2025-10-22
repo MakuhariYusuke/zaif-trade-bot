@@ -16,16 +16,18 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from ztb.types.common import SACLikeModelProtocol
 
 import numpy as np
+
+from ztb.core.base import BaseAnalyzer
+from ztb.trading.environment.constants import DEFAULT_ANALYSIS_SAMPLES
+from ztb.types.common import AnalysisData, SACLikeModelProtocol
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.safety import ensure_dict
 from ztb.utils.path_utils import get_project_root
 
 # Import SAC
@@ -50,14 +52,14 @@ class AnalysisResult:
     recommendations: List[str]
 
 
-class SACAnalyzer:
+class SACAnalyzer(BaseAnalyzer):
     """Comprehensive SAC model analyzer."""
 
     def __init__(
         self,
         model_path: Optional[str] = None,
         config_path: Optional[str] = None,
-        samples: int = 10000,
+        samples: int = DEFAULT_ANALYSIS_SAMPLES,
     ):
         """
         Initialize SAC analyzer.
@@ -67,6 +69,7 @@ class SACAnalyzer:
             config_path: Path to configuration file
             samples: Number of samples for analysis
         """
+        super().__init__(name="SACAnalyzer", config={"samples": samples})
         self.model_path = Path(model_path) if model_path else None
         self.config_path = Path(config_path) if config_path else None
         self.samples = samples
@@ -104,7 +107,7 @@ class SACAnalyzer:
             return False
 
     def analyze_action_distribution(
-        self, num_samples: int = 10000, deterministic: bool = True
+        self, num_samples: int = DEFAULT_ANALYSIS_SAMPLES, deterministic: bool = True
     ) -> Dict[str, float]:
         """
         Analyze action distribution of the SAC model.
@@ -124,8 +127,8 @@ class SACAnalyzer:
         logger.info(f"Analyzing action distribution with {num_samples} samples")
 
         # Create dummy observations
-        obs_space = getattr(model, 'observation_space', None)
-        obs_shape = getattr(obs_space, 'shape', None)
+        obs_space = getattr(model, "observation_space", None)
+        obs_shape = getattr(obs_space, "shape", None)
         if obs_shape is None:
             raise ValueError("Observation space shape is None")
         dummy_obs = np.random.rand(num_samples, obs_shape[0])
@@ -166,10 +169,10 @@ class SACAnalyzer:
         # Analyze distribution: map continuous actions to discrete using
         # environment utility to keep thresholds consistent.
         from ztb.trading.environment.constants import (
-            continuous_to_discrete_action,
             ACTION_BUY,
-            ACTION_SELL,
             ACTION_HOLD,
+            ACTION_SELL,
+            continuous_to_discrete_action,
         )
 
         mapped = np.array([continuous_to_discrete_action(float(a)) for a in actions])
@@ -189,7 +192,9 @@ class SACAnalyzer:
 
         logger.info(
             "Action distribution: BUY=%.3f, HOLD=%.3f, SELL=%.3f",
-            distribution['buy_ratio'], distribution['hold_ratio'], distribution['sell_ratio']
+            distribution["buy_ratio"],
+            distribution["hold_ratio"],
+            distribution["sell_ratio"],
         )
 
         return distribution
@@ -272,6 +277,36 @@ class SACAnalyzer:
 
         return recommendations
 
+    def analyze(self, data: AnalysisData) -> Dict[str, Any]:
+        """
+        Analyze SAC model. Required by BaseAnalyzer.
+
+        Args:
+            data: Optional analysis configuration/data
+
+        Returns:
+            Analysis results
+        """
+        # Extract analysis parameters from data if provided
+        num_samples = (
+            data.get("samples", self.samples)
+            if isinstance(data, dict)
+            else self.samples
+        )
+
+        # Run full analysis
+        result = self.run_full_analysis()
+
+        # Convert AnalysisResult to dict
+        return {
+            "action_distribution": result.action_distribution,
+            "performance_metrics": result.performance_metrics,
+            "bias_analysis": result.bias_analysis,
+            "recommendations": result.recommendations,
+            "analysis_type": "sac_model_analysis",
+            "samples_used": num_samples,
+        }
+
     def run_full_analysis(self) -> AnalysisResult:
         """
         Run complete analysis suite.
@@ -347,7 +382,9 @@ class SACAnalyzer:
         logger.info("  BUY:  %.3f", result.action_distribution["buy_ratio"])
         logger.info("  HOLD: %.3f", result.action_distribution["hold_ratio"])
         logger.info("  SELL: %.3f", result.action_distribution["sell_ratio"])
-        logger.info("  → BUY/HOLD/SELLの割合。理想的には33%%前後でバランスが取れていること")
+        logger.info(
+            "  → BUY/HOLD/SELLの割合。理想的には33%%前後でバランスが取れていること"
+        )
 
         logger.info("🎯 BIAS ANALYSIS:")
         if result.bias_analysis["sell_bias"]:
@@ -357,7 +394,9 @@ class SACAnalyzer:
         if result.bias_analysis["balanced_distribution"]:
             logger.info("✅ Balanced distribution → 各アクションがバランスよく分布")
         if result.bias_analysis["excessive_holding"]:
-            logger.warning("⚠️  Excessive holding → ホールドが60%以上。取引が少ない可能性")
+            logger.warning(
+                "⚠️  Excessive holding → ホールドが60%以上。取引が少ない可能性"
+            )
 
         logger.info("  Bias Severity: %.3f", result.bias_analysis["bias_severity"])
         logger.info("  → 理想分布からの乖離度。低いほどバランスが良い")

@@ -103,11 +103,25 @@ def create_env_from_schema(
 def create_env_from_model_path(
     model_path: str, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None
 ) -> HeavyTradingEnv:
-    model_name = Path(model_path).stem
     model_path_obj = Path(model_path)
-    if model_path_obj.parent.name == "models":
-        models_dir = model_path_obj.parent
-    else:
-        models_dir = Path("models")
+    model_name = model_path_obj.stem
+    models_dir = Path("models")
 
-    return create_env_from_schema(model_name, df, config, models_dir)
+    # まず直接のモデル名でスキーマを探す
+    try:
+        return create_env_from_schema(model_name, df, config, models_dir)
+    except FileNotFoundError:
+        # 見つからない場合は、schemasディレクトリをスキャンして
+        # 最新のスキーマディレクトリを探す（バックテスト用フォールバック）
+        schemas_dir = models_dir / "schemas"
+        if schemas_dir.exists():
+            schema_dirs = [d for d in schemas_dir.iterdir() if d.is_dir()]
+            if schema_dirs:
+                # 最新のスキーマディレクトリを使用（名前順で最後）
+                latest_schema_dir = sorted(schema_dirs, key=lambda x: x.name)[-1]
+                model_name = latest_schema_dir.name
+                logger.info(f"Using fallback schema: {model_name}")
+                return create_env_from_schema(model_name, df, config, models_dir)
+
+        # それでも見つからない場合は元のエラーを投げる
+        raise

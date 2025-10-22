@@ -10,6 +10,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -21,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_memory_usage():
+def get_memory_usage() -> Optional[float]:
     """Get current memory usage in MB."""
     try:
         import psutil
@@ -33,7 +34,7 @@ def get_memory_usage():
         return None
 
 
-def monitor_memory(interval: int = 10):
+def monitor_memory(interval: int = 10) -> None:
     """Monitor memory usage periodically."""
     import threading
 
@@ -51,7 +52,9 @@ def monitor_memory(interval: int = 10):
     thread.start()
 
 
-def run_training_with_memory_optimization(config_path: str, force: bool = False):
+def run_training_with_memory_optimization(
+    config_path: str, force: bool = False
+) -> Optional[int]:
     """Run training with memory optimization."""
     logger.info("=" * 80)
     logger.info("MEMORY-OPTIMIZED TRAINING RUNNER")
@@ -107,7 +110,7 @@ def run_training_with_memory_optimization(config_path: str, force: bool = False)
         gc.collect()
 
 
-def main():
+def main() -> Optional[int]:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Run training with memory optimization and monitoring"

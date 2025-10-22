@@ -147,9 +147,22 @@ def validate_model(model_path: str, data_path: str, num_episodes: int = 3) -> No
     if balance_score < 0.2:
         print("⚠️  Very imbalanced action distribution")
         print("   Consider retraining with:")
-        print("   - Action diversity penalty")
-        print("   - Forced balance curriculum stage")
-        print("   - Different reward structure")
+
+
+def validate_model_behavior(
+    model_path: str, data_path: Optional[str] = None, num_episodes: int = 3
+) -> dict:
+    """Validate model behavior on sample data.
+
+    Args:
+        model_path: Path to the model file
+        data_path: Path to the data file
+        num_episodes: Number of episodes to run for validation
+
+    Returns:
+        Dictionary with validation results
+    """
+    return validate_model(model_path, data_path, num_episodes)
 
 
 def main() -> None:

@@ -5,29 +5,30 @@ V433 Phase 5: Gradual Rollout Layer - Performance Monitor
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
+import statistics
 import threading
 import time
-import statistics
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 class MonitorFrequency(Enum):
     """監視頻度"""
-    REALTIME = "realtime"      # リアルタイム
-    HIGH = "high"             # 高頻度（1分）
-    MEDIUM = "medium"         # 中頻度（5分）
-    LOW = "low"              # 低頻度（15分）
+
+    REALTIME = "realtime"  # リアルタイム
+    HIGH = "high"  # 高頻度（1分）
+    MEDIUM = "medium"  # 中頻度（5分）
+    LOW = "low"  # 低頻度（15分）
 
 
 class AlertSeverity(Enum):
     """アラート重要度"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -37,6 +38,7 @@ class AlertSeverity(Enum):
 @dataclass
 class PerformanceThreshold:
     """パフォーマンス閾値"""
+
     metric_name: str
     warning_threshold: float
     error_threshold: float
@@ -47,6 +49,7 @@ class PerformanceThreshold:
 @dataclass
 class PerformanceAlert:
     """パフォーマンスアラート"""
+
     alert_id: str
     timestamp: datetime
     severity: AlertSeverity
@@ -62,6 +65,7 @@ class PerformanceAlert:
 @dataclass
 class PerformanceSnapshot:
     """パフォーマンススナップショット"""
+
     snapshot_id: str
     timestamp: datetime
     system_id: str
@@ -73,6 +77,7 @@ class PerformanceSnapshot:
 @dataclass
 class HealthCheck:
     """ヘルスチェック"""
+
     check_id: str
     timestamp: datetime
     system_id: str
@@ -90,10 +95,12 @@ class PerformanceMonitor:
     問題を早期検知してアラートを発行する。
     """
 
-    def __init__(self,
-                 monitor_frequency: MonitorFrequency = MonitorFrequency.MEDIUM,
-                 alert_cooldown_minutes: int = 5,
-                 max_alerts_history: int = 1000):
+    def __init__(
+        self,
+        monitor_frequency: MonitorFrequency = MonitorFrequency.MEDIUM,
+        alert_cooldown_minutes: int = 5,
+        max_alerts_history: int = 1000,
+    ):
         """
         初期化
 
@@ -131,7 +138,9 @@ class PerformanceMonitor:
 
         # コールバック
         self.alert_callbacks: List[Callable[[PerformanceAlert], Awaitable[None]]] = []
-        self.snapshot_callbacks: List[Callable[[PerformanceSnapshot], Awaitable[None]]] = []
+        self.snapshot_callbacks: List[
+            Callable[[PerformanceSnapshot], Awaitable[None]]
+        ] = []
         self.health_callbacks: List[Callable[[HealthCheck], Awaitable[None]]] = []
 
         # ロギング
@@ -189,7 +198,9 @@ class PerformanceMonitor:
         self.performance_thresholds[threshold.metric_name] = threshold
         self.logger.info(f"Performance threshold added: {threshold.metric_name}")
 
-    def update_performance_metrics(self, system_id: str, metrics: Dict[str, float]) -> None:
+    def update_performance_metrics(
+        self, system_id: str, metrics: Dict[str, float]
+    ) -> None:
         """
         パフォーマンス指標更新
 
@@ -205,7 +216,7 @@ class PerformanceMonitor:
             snapshot_id=f"SNAP_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             timestamp=datetime.now(),
             system_id=system_id,
-            metrics=metrics.copy()
+            metrics=metrics.copy(),
         )
 
         # アラートチェック
@@ -220,7 +231,9 @@ class PerformanceMonitor:
 
         # 履歴サイズ制限（最新1000件）
         if len(self.performance_history[system_id]) > 1000:
-            self.performance_history[system_id] = self.performance_history[system_id][-1000:]
+            self.performance_history[system_id] = self.performance_history[system_id][
+                -1000:
+            ]
 
         # アラート処理
         for alert in alerts:
@@ -233,7 +246,9 @@ class PerformanceMonitor:
             except Exception as e:
                 self.logger.error(f"Snapshot callback error: {e}")
 
-    def _check_thresholds(self, system_id: str, metrics: Dict[str, float]) -> List[PerformanceAlert]:
+    def _check_thresholds(
+        self, system_id: str, metrics: Dict[str, float]
+    ) -> List[PerformanceAlert]:
         """
         閾値チェック
 
@@ -269,17 +284,21 @@ class PerformanceMonitor:
                     current_value=value,
                     threshold_value=self._get_threshold_value(threshold, severity),
                     message=self._generate_alert_message(threshold, value, severity),
-                    system_id=system_id
+                    system_id=system_id,
                 )
 
                 alerts.append(alert)
 
                 # クールダウン設定
-                self.alert_cooldowns[alert_key] = datetime.now() + timedelta(minutes=self.alert_cooldown_minutes)
+                self.alert_cooldowns[alert_key] = datetime.now() + timedelta(
+                    minutes=self.alert_cooldown_minutes
+                )
 
         return alerts
 
-    def _evaluate_threshold(self, threshold: PerformanceThreshold, value: float) -> Optional[AlertSeverity]:
+    def _evaluate_threshold(
+        self, threshold: PerformanceThreshold, value: float
+    ) -> Optional[AlertSeverity]:
         """
         閾値評価
 
@@ -321,7 +340,9 @@ class PerformanceMonitor:
 
         return None
 
-    def _get_threshold_value(self, threshold: PerformanceThreshold, severity: AlertSeverity) -> float:
+    def _get_threshold_value(
+        self, threshold: PerformanceThreshold, severity: AlertSeverity
+    ) -> float:
         """
         閾値取得
 
@@ -339,7 +360,9 @@ class PerformanceMonitor:
         else:
             return threshold.warning_threshold
 
-    def _generate_alert_message(self, threshold: PerformanceThreshold, value: float, severity: AlertSeverity) -> str:
+    def _generate_alert_message(
+        self, threshold: PerformanceThreshold, value: float, severity: AlertSeverity
+    ) -> str:
         """
         アラートメッセージ生成
 
@@ -387,7 +410,7 @@ class PerformanceMonitor:
 
         # 履歴サイズ制限
         if len(self.alerts_history) > self.max_alerts_history:
-            self.alerts_history = self.alerts_history[-self.max_alerts_history:]
+            self.alerts_history = self.alerts_history[-self.max_alerts_history :]
 
         # アクティブアラート管理
         alert_key = f"{alert.system_id}:{alert.metric_name}"
@@ -400,7 +423,9 @@ class PerformanceMonitor:
             except Exception as e:
                 self.logger.error(f"Alert callback error: {e}")
 
-        self.logger.warning(f"Performance alert: {alert.message} (severity: {alert.severity.value})")
+        self.logger.warning(
+            f"Performance alert: {alert.message} (severity: {alert.severity.value})"
+        )
 
     def resolve_alert(self, alert_id: str) -> bool:
         """
@@ -427,7 +452,13 @@ class PerformanceMonitor:
 
         return False
 
-    def perform_health_check(self, system_id: str, component: str, response_time_ms: float, error_message: Optional[str] = None) -> None:
+    def perform_health_check(
+        self,
+        system_id: str,
+        component: str,
+        response_time_ms: float,
+        error_message: Optional[str] = None,
+    ) -> None:
         """
         ヘルスチェック実行
 
@@ -450,7 +481,7 @@ class PerformanceMonitor:
             component=component,
             status=status,
             response_time_ms=response_time_ms,
-            error_message=error_message
+            error_message=error_message,
         )
 
         self.health_checks.append(health_check)
@@ -466,7 +497,9 @@ class PerformanceMonitor:
             except Exception as e:
                 self.logger.error(f"Health callback error: {e}")
 
-    def get_performance_summary(self, system_id: str, hours: int = 24) -> Optional[Dict[str, Any]]:
+    def get_performance_summary(
+        self, system_id: str, hours: int = 24
+    ) -> Optional[Dict[str, Any]]:
         """
         パフォーマンス要約取得
 
@@ -481,7 +514,11 @@ class PerformanceMonitor:
             return None
 
         period_start = datetime.now() - timedelta(hours=hours)
-        recent_snapshots = [s for s in self.performance_history[system_id] if s.timestamp >= period_start]
+        recent_snapshots = [
+            s
+            for s in self.performance_history[system_id]
+            if s.timestamp >= period_start
+        ]
 
         if not recent_snapshots:
             return None
@@ -493,51 +530,72 @@ class PerformanceMonitor:
             all_metrics.update(snapshot.metrics.keys())
 
         for metric_name in all_metrics:
-            values = [s.metrics.get(metric_name, 0) for s in recent_snapshots if metric_name in s.metrics]
+            values = [
+                s.metrics.get(metric_name, 0)
+                for s in recent_snapshots
+                if metric_name in s.metrics
+            ]
             if values:
                 metrics_summary[metric_name] = {
-                    'mean': statistics.mean(values),
-                    'std': statistics.stdev(values) if len(values) > 1 else 0,
-                    'min': min(values),
-                    'max': max(values),
-                    'count': len(values)
+                    "mean": statistics.mean(values),
+                    "std": statistics.stdev(values) if len(values) > 1 else 0,
+                    "min": min(values),
+                    "max": max(values),
+                    "count": len(values),
                 }
 
         # アラート統計
-        recent_alerts = [alert for snapshot in recent_snapshots for alert in snapshot.alerts]
+        recent_alerts = [
+            alert for snapshot in recent_snapshots for alert in snapshot.alerts
+        ]
 
         alert_stats = {
-            'total': len(recent_alerts),
-            'by_severity': {
-                'info': len([a for a in recent_alerts if a.severity == AlertSeverity.INFO]),
-                'warning': len([a for a in recent_alerts if a.severity == AlertSeverity.WARNING]),
-                'error': len([a for a in recent_alerts if a.severity == AlertSeverity.ERROR]),
-                'critical': len([a for a in recent_alerts if a.severity == AlertSeverity.CRITICAL])
-            }
+            "total": len(recent_alerts),
+            "by_severity": {
+                "info": len(
+                    [a for a in recent_alerts if a.severity == AlertSeverity.INFO]
+                ),
+                "warning": len(
+                    [a for a in recent_alerts if a.severity == AlertSeverity.WARNING]
+                ),
+                "error": len(
+                    [a for a in recent_alerts if a.severity == AlertSeverity.ERROR]
+                ),
+                "critical": len(
+                    [a for a in recent_alerts if a.severity == AlertSeverity.CRITICAL]
+                ),
+            },
         }
 
         # ヘルス統計
-        recent_health = [hc for hc in self.health_checks
-                        if hc.system_id == system_id and hc.timestamp >= period_start]
+        recent_health = [
+            hc
+            for hc in self.health_checks
+            if hc.system_id == system_id and hc.timestamp >= period_start
+        ]
 
         health_stats = {
-            'total_checks': len(recent_health),
-            'healthy': len([hc for hc in recent_health if hc.status == 'healthy']),
-            'degraded': len([hc for hc in recent_health if hc.status == 'degraded']),
-            'unhealthy': len([hc for hc in recent_health if hc.status == 'unhealthy'])
+            "total_checks": len(recent_health),
+            "healthy": len([hc for hc in recent_health if hc.status == "healthy"]),
+            "degraded": len([hc for hc in recent_health if hc.status == "degraded"]),
+            "unhealthy": len([hc for hc in recent_health if hc.status == "unhealthy"]),
         }
 
         return {
-            'system_id': system_id,
-            'period_hours': hours,
-            'total_snapshots': len(recent_snapshots),
-            'metrics_summary': metrics_summary,
-            'alert_stats': alert_stats,
-            'health_stats': health_stats,
-            'overall_health': recent_snapshots[-1].overall_health if recent_snapshots else 'unknown'
+            "system_id": system_id,
+            "period_hours": hours,
+            "total_snapshots": len(recent_snapshots),
+            "metrics_summary": metrics_summary,
+            "alert_stats": alert_stats,
+            "health_stats": health_stats,
+            "overall_health": recent_snapshots[-1].overall_health
+            if recent_snapshots
+            else "unknown",
         }
 
-    def get_active_alerts(self, system_id: Optional[str] = None) -> List[PerformanceAlert]:
+    def get_active_alerts(
+        self, system_id: Optional[str] = None
+    ) -> List[PerformanceAlert]:
         """
         アクティブアラート取得
 
@@ -554,7 +612,9 @@ class PerformanceMonitor:
 
         return alerts
 
-    def get_alert_history(self, system_id: Optional[str] = None, limit: Optional[int] = None) -> List[PerformanceAlert]:
+    def get_alert_history(
+        self, system_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[PerformanceAlert]:
         """
         アラート履歴取得
 
@@ -581,7 +641,9 @@ class PerformanceMonitor:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Performance monitoring started")
@@ -622,9 +684,9 @@ class PerformanceMonitor:
         """
         intervals = {
             MonitorFrequency.REALTIME: 10,  # 10秒
-            MonitorFrequency.HIGH: 60,      # 1分
-            MonitorFrequency.MEDIUM: 300,   # 5分
-            MonitorFrequency.LOW: 900       # 15分
+            MonitorFrequency.HIGH: 60,  # 1分
+            MonitorFrequency.MEDIUM: 300,  # 5分
+            MonitorFrequency.LOW: 900,  # 15分
         }
 
         return intervals.get(self.monitor_frequency, 300)
@@ -643,6 +705,7 @@ class PerformanceMonitor:
         try:
             # シミュレーション：ランダムでレスポンスタイムを生成
             import random
+
             response_time = random.uniform(50, 2000)  # 50ms - 2秒
             error_message = None
 
@@ -656,7 +719,9 @@ class PerformanceMonitor:
 
         response_time = (time.time() - start_time) * 1000
 
-        self.perform_health_check(system_id, "system_core", response_time, error_message)
+        self.perform_health_check(
+            system_id, "system_core", response_time, error_message
+        )
 
     def _cleanup_resolved_alerts(self) -> None:
         """解決済みアラートクリーンアップ"""
@@ -664,11 +729,16 @@ class PerformanceMonitor:
         cutoff_time = datetime.now() - timedelta(hours=24)
 
         self.alerts_history = [
-            alert for alert in self.alerts_history
-            if not (alert.resolved and alert.resolved_at and alert.resolved_at < cutoff_time)
+            alert
+            for alert in self.alerts_history
+            if not (
+                alert.resolved and alert.resolved_at and alert.resolved_at < cutoff_time
+            )
         ]
 
-    def add_alert_callback(self, callback: Callable[[PerformanceAlert], Awaitable[None]]) -> None:
+    def add_alert_callback(
+        self, callback: Callable[[PerformanceAlert], Awaitable[None]]
+    ) -> None:
         """
         アラートコールバック追加
 
@@ -677,7 +747,9 @@ class PerformanceMonitor:
         """
         self.alert_callbacks.append(callback)
 
-    def add_snapshot_callback(self, callback: Callable[[PerformanceSnapshot], Awaitable[None]]) -> None:
+    def add_snapshot_callback(
+        self, callback: Callable[[PerformanceSnapshot], Awaitable[None]]
+    ) -> None:
         """
         スナップショットコールバック追加
 
@@ -686,7 +758,9 @@ class PerformanceMonitor:
         """
         self.snapshot_callbacks.append(callback)
 
-    def add_health_callback(self, callback: Callable[[HealthCheck], Awaitable[None]]) -> None:
+    def add_health_callback(
+        self, callback: Callable[[HealthCheck], Awaitable[None]]
+    ) -> None:
         """
         ヘルスチェックコールバック追加
 
@@ -703,40 +777,40 @@ class PerformanceMonitor:
             filepath: 保存ファイルパス
         """
         state = {
-            'monitor_frequency': self.monitor_frequency.value,
-            'alert_cooldown_minutes': self.alert_cooldown_minutes,
-            'max_alerts_history': self.max_alerts_history,
-            'monitored_systems': list(self.monitored_systems),
-            'performance_thresholds': [
+            "monitor_frequency": self.monitor_frequency.value,
+            "alert_cooldown_minutes": self.alert_cooldown_minutes,
+            "max_alerts_history": self.max_alerts_history,
+            "monitored_systems": list(self.monitored_systems),
+            "performance_thresholds": [
                 {
-                    'metric_name': t.metric_name,
-                    'warning_threshold': t.warning_threshold,
-                    'error_threshold': t.error_threshold,
-                    'critical_threshold': t.critical_threshold,
-                    'comparison': t.comparison
+                    "metric_name": t.metric_name,
+                    "warning_threshold": t.warning_threshold,
+                    "error_threshold": t.error_threshold,
+                    "critical_threshold": t.critical_threshold,
+                    "comparison": t.comparison,
                 }
                 for t in self.performance_thresholds.values()
             ],
-            'alerts_history': [
+            "alerts_history": [
                 {
-                    'alert_id': a.alert_id,
-                    'timestamp': a.timestamp.isoformat(),
-                    'severity': a.severity.value,
-                    'metric_name': a.metric_name,
-                    'current_value': a.current_value,
-                    'threshold_value': a.threshold_value,
-                    'message': a.message,
-                    'system_id': a.system_id,
-                    'resolved': a.resolved,
-                    'resolved_at': a.resolved_at.isoformat() if a.resolved_at else None
+                    "alert_id": a.alert_id,
+                    "timestamp": a.timestamp.isoformat(),
+                    "severity": a.severity.value,
+                    "metric_name": a.metric_name,
+                    "current_value": a.current_value,
+                    "threshold_value": a.threshold_value,
+                    "message": a.message,
+                    "system_id": a.system_id,
+                    "resolved": a.resolved,
+                    "resolved_at": a.resolved_at.isoformat() if a.resolved_at else None,
                 }
                 for a in self.alerts_history[-200:]  # 最新200件
             ],
-            'last_monitoring': self.last_monitoring.isoformat()
+            "last_monitoring": self.last_monitoring.isoformat(),
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Monitor state saved to {filepath}")
@@ -752,46 +826,50 @@ class PerformanceMonitor:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.monitor_frequency = MonitorFrequency(state['monitor_frequency'])
-            self.alert_cooldown_minutes = state['alert_cooldown_minutes']
-            self.max_alerts_history = state['max_alerts_history']
-            self.monitored_systems = set(state['monitored_systems'])
-            self.last_monitoring = datetime.fromisoformat(state['last_monitoring'])
+            self.monitor_frequency = MonitorFrequency(state["monitor_frequency"])
+            self.alert_cooldown_minutes = state["alert_cooldown_minutes"]
+            self.max_alerts_history = state["max_alerts_history"]
+            self.monitored_systems = set(state["monitored_systems"])
+            self.last_monitoring = datetime.fromisoformat(state["last_monitoring"])
 
             # 閾値復元
             self.performance_thresholds = {}
-            for t_data in state.get('performance_thresholds', []):
+            for t_data in state.get("performance_thresholds", []):
                 threshold = PerformanceThreshold(
-                    metric_name=t_data['metric_name'],
-                    warning_threshold=t_data['warning_threshold'],
-                    error_threshold=t_data['error_threshold'],
-                    critical_threshold=t_data['critical_threshold'],
-                    comparison=t_data['comparison']
+                    metric_name=t_data["metric_name"],
+                    warning_threshold=t_data["warning_threshold"],
+                    error_threshold=t_data["error_threshold"],
+                    critical_threshold=t_data["critical_threshold"],
+                    comparison=t_data["comparison"],
                 )
                 self.performance_thresholds[threshold.metric_name] = threshold
 
             # アラート履歴復元
             self.alerts_history = []
-            for a_data in state.get('alerts_history', []):
+            for a_data in state.get("alerts_history", []):
                 alert = PerformanceAlert(
-                    alert_id=a_data['alert_id'],
-                    timestamp=datetime.fromisoformat(a_data['timestamp']),
-                    severity=AlertSeverity(a_data['severity']),
-                    metric_name=a_data['metric_name'],
-                    current_value=a_data['current_value'],
-                    threshold_value=a_data['threshold_value'],
-                    message=a_data['message'],
-                    system_id=a_data['system_id'],
-                    resolved=a_data['resolved'],
-                    resolved_at=datetime.fromisoformat(a_data['resolved_at']) if a_data['resolved_at'] else None
+                    alert_id=a_data["alert_id"],
+                    timestamp=datetime.fromisoformat(a_data["timestamp"]),
+                    severity=AlertSeverity(a_data["severity"]),
+                    metric_name=a_data["metric_name"],
+                    current_value=a_data["current_value"],
+                    threshold_value=a_data["threshold_value"],
+                    message=a_data["message"],
+                    system_id=a_data["system_id"],
+                    resolved=a_data["resolved"],
+                    resolved_at=datetime.fromisoformat(a_data["resolved_at"])
+                    if a_data["resolved_at"]
+                    else None,
                 )
                 self.alerts_history.append(alert)
 
             # パフォーマンス履歴初期化（再構築が必要）
-            self.performance_history = {system_id: [] for system_id in self.monitored_systems}
+            self.performance_history = {
+                system_id: [] for system_id in self.monitored_systems
+            }
 
             self.logger.info(f"Monitor state loaded from {filepath}")
             return True

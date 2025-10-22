@@ -39,21 +39,46 @@ def log_memory(step_name: str) -> float:
     return mem
 
 
-def main() -> bool:
+def profile_memory_usage(
+    code_path: Optional[str] = None, output_path: Optional[str] = None
+) -> dict:
+    """Profile memory usage during training setup.
+
+    Args:
+        code_path: Path to the data file
+        output_path: Path to save profiling results
+
+    Returns:
+        Dictionary with memory profiling results
+    """
     logger.info("=" * 80)
     logger.info("Bug #52 Memory Profiling")
     logger.info("=" * 80)
 
     start_mem = log_memory("Script start")
 
+    memory_profile = {
+        "start_memory": start_mem,
+        "steps": [],
+        "final_memory": 0,
+        "total_increase": 0,
+    }
+
     try:
         # Step 1: Load data
         logger.info("Step 1: Loading data...")
         import pandas as pd
 
-        df = pd.read_csv("ml-dataset-enhanced-balanced.csv")
+        df = pd.read_csv(code_path)
         logger.info(f"  Loaded {len(df)} rows, {len(df.columns)} columns")
         mem_after_data = log_memory("After data load")
+        memory_profile["steps"].append(
+            {
+                "step": "data_load",
+                "memory": mem_after_data,
+                "increase": mem_after_data - start_mem,
+            }
+        )
         logger.info(f"  Memory increase: {mem_after_data - start_mem:.1f} MB")
 
         # Step 2: Create environment (THIS IS SLOW - 8 seconds!)
@@ -76,6 +101,13 @@ def main() -> bool:
 
         env = HeavyTradingEnv(df=df, config=env_config)
         mem_after_env = log_memory("After environment creation")
+        memory_profile["steps"].append(
+            {
+                "step": "environment_creation",
+                "memory": mem_after_env,
+                "increase": mem_after_env - mem_after_data,
+            }
+        )
         logger.info(f"  Memory increase: {mem_after_env - mem_after_data:.1f} MB")
 
         def mask_fn(env: Any) -> Any:
@@ -83,6 +115,13 @@ def main() -> bool:
 
         env = ActionMasker(env, mask_fn)
         mem_after_wrapper = log_memory("After ActionMasker wrapper")
+        memory_profile["steps"].append(
+            {
+                "step": "action_masker",
+                "memory": mem_after_wrapper,
+                "increase": mem_after_wrapper - mem_after_env,
+            }
+        )
 
         # Step 3: Create model
         logger.info("\nStep 3: Creating MaskablePPO model...")
@@ -151,6 +190,14 @@ def main() -> bool:
         elapsed = time.time() - start_time
         mem_after_train = log_memory("After training")
 
+        memory_profile["steps"].append(
+            {
+                "step": "training",
+                "memory": mem_after_train,
+                "increase": mem_after_train - mem_before_train,
+            }
+        )
+
         logger.info("=" * 80)
         logger.info("✅ TRAINING COMPLETED")
         logger.info(f"  Time: {elapsed:.2f}s")
@@ -164,21 +211,21 @@ def main() -> bool:
         # Memory summary
         logger.info("\n📊 MEMORY SUMMARY:")
         logger.info(f"  Initial:              {start_mem:.1f} MB")
-        logger.info(
-            f"  After data load:      {mem_after_data:.1f} MB (+{mem_after_data - start_mem:.1f} MB)"
-        )
-        logger.info(
-            f"  After environment:    {mem_after_env:.1f} MB (+{mem_after_env - mem_after_data:.1f} MB)"
-        )
-        logger.info(
-            f"  After model:          {mem_after_model:.1f} MB (+{mem_after_model - mem_after_env:.1f} MB)"
-        )
-        logger.info(
-            f"  After training:       {mem_after_train:.1f} MB (+{mem_after_train - mem_after_model:.1f} MB)"
-        )
-        logger.info(f"  Total increase:       {mem_after_train - start_mem:.1f} MB")
+        for step in memory_profile["steps"]:
+            logger.info(
+                f"  After {step['step']}:      {step['memory']:.1f} MB (+{step['increase']:.1f} MB)"
+            )
 
-        return True
+        memory_profile["final_memory"] = mem_after_train
+        memory_profile["total_increase"] = mem_after_train - start_mem
+
+        if output_path:
+            import json
+
+            with open(output_path, "w") as f:
+                json.dump(memory_profile, f, indent=2)
+
+        return memory_profile
 
     except MemoryError as e:
         logger.error("=" * 80)
@@ -189,7 +236,8 @@ def main() -> bool:
             f"  System memory available: {psutil.virtual_memory().available / 1024 / 1024:.1f} MB"
         )
         logger.error("=" * 80)
-        return False
+        memory_profile["error"] = str(e)
+        return memory_profile
 
     except Exception as e:
         logger.error("=" * 80)
@@ -199,14 +247,16 @@ def main() -> bool:
         import traceback
 
         traceback.print_exc()
-        return False
+        memory_profile["error"] = str(e)
+        return memory_profile
 
 
-if __name__ == "__main__":
+def main() -> bool:
+    """Main entry point for memory profiling."""
     try:
-        success = main()
-        sys.exit(0 if success else 1)
+        result = profile_memory_usage()
+        return "error" not in result
     except KeyboardInterrupt:
         logger.warning("\n⚠️  Interrupted by user")
         logger.warning(f"  Final memory: {get_memory_usage():.1f} MB")
-        sys.exit(1)
+        return False

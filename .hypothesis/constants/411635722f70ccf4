@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\circuit_breakers.py
+# hypothesis_version: 6.140.3
+
+[0.0, 5.0, 10.0, 15.0, 30.0, 60.0, 'Emergency shutdown', 'closed', 'global', 'half_open', 'open']

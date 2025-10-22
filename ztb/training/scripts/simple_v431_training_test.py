@@ -7,11 +7,13 @@ Simple SAC v431 Training Test Script
 import json
 import sys
 from pathlib import Path
+
 import numpy as np
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
 
 def test_v431_training():
     """Test v431 training with 1000 steps"""
@@ -33,12 +35,12 @@ def test_v431_training():
     total_reward = 0
 
     # Reward parameters
-    sell_bonus = config['reward_function']['sell_bonus']
-    hold_bonus = config['reward_function']['hold_bonus']
-    buy_bonus = config['reward_function']['buy_bonus']
+    sell_bonus = config["reward_function"]["sell_bonus"]
+    hold_bonus = config["reward_function"]["hold_bonus"]
+    buy_bonus = config["reward_function"]["buy_bonus"]
 
-    sell_threshold = config['action_thresholds']['sell_threshold']
-    buy_threshold = config['action_thresholds']['buy_threshold']
+    sell_threshold = config["action_thresholds"]["sell_threshold"]
+    buy_threshold = config["action_thresholds"]["buy_threshold"]
 
     print(f"Sell Threshold: {sell_threshold}, Buy Threshold: {buy_threshold}")
     print(f"Sell Bonus: {sell_bonus}, Hold Bonus: {hold_bonus}, Buy Bonus: {buy_bonus}")
@@ -65,7 +67,9 @@ def test_v431_training():
         total_reward += reward
 
         if step % 100 == 0:
-            print(f"Step {step}: Action = {action_value:.3f} ({action_type}), Reward = {reward:.4f}")
+            print(
+                f"Step {step}: Action = {action_value:.3f} ({action_type}), Reward = {reward:.4f}"
+            )
 
     # Results
     print("\n=== Training Results ===")
@@ -93,6 +97,7 @@ def test_v431_training():
     print("1. Run full curriculum learning (20000+ timesteps)")
     print("2. Execute ensemble training with multiple models")
     print("3. Perform multi-stage training (exploration → exploitation → fine-tuning)")
+
 
 if __name__ == "__main__":
     test_v431_training()

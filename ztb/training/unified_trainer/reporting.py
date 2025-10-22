@@ -4,14 +4,14 @@ Training reporting and logging utilities.
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import logging
-from ztb.types.common import ConfigDict
 
 import numpy as np
 
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 # Magic number constants for reporting
@@ -200,7 +200,9 @@ class TrainingLogger:
             },
         )
 
-    def log_training_progress(self, step: int, total_steps: int, stats: Dict[str, Any]) -> None:
+    def log_training_progress(
+        self, step: int, total_steps: int, stats: Dict[str, Any]
+    ) -> None:
         """Log training progress."""
         progress = step / total_steps if total_steps > 0 else 0
         self.log_event(
@@ -433,8 +435,8 @@ class TrainingLogger:
         specializations = [
             stats.get("specialization", "unknown") for stats in member_stats.values()
         ]
-        specialization_diversity: float = (
-            len(set(specializations)) / len(specializations)
+        specialization_diversity: float = len(set(specializations)) / len(
+            specializations
         )
 
         # パフォーマンスの多様性

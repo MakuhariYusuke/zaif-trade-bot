@@ -5,19 +5,18 @@ Phase 2適応学習システムとPhase 3取引実行・リスク管理の統合
 """
 
 import asyncio
-import time
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
 import threading
-import numpy as np
-import pandas as pd
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.utils.logging_utils import get_logger
-from ztb.trading.trade_execution_engine import TradeExecutionEngine
+import numpy as np
+
 from ztb.trading.position_manager import PositionManager, PositionSignal
 from ztb.trading.risk_overlay import RiskOverlay
+from ztb.trading.trade_execution_engine import TradeExecutionEngine
+from ztb.utils.logging_utils import get_logger
 
 # Phase 2適応学習システムのインポート（仮定）
 try:
@@ -26,17 +25,24 @@ try:
 except ImportError:
     # モッククラス（実際の実装では適切なインポート）
     class AdaptiveSAC:
-        def get_action(self, state): return {"action": 0.5, "confidence": 0.7}
-        def update(self, state, action, reward): pass
+        def get_action(self, state):
+            return {"action": 0.5, "confidence": 0.7}
+
+        def update(self, state, action, reward):
+            pass
 
     class UnifiedOptimizer:
-        def optimize(self, params): return params
+        def optimize(self, params):
+            return params
+
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class V433Config:
     """V433統合設定"""
+
     # Phase 2設定
     phase2_enabled: bool = True
     adaptive_learning_interval: int = 300  # 5分ごと
@@ -70,8 +76,11 @@ class V433Config:
 @dataclass
 class SystemState:
     """システム状態"""
+
     # 市場状態
-    market_regime: str = "normal"  # "normal", "high_volatility", "low_volatility", "trending"
+    market_regime: str = (
+        "normal"  # "normal", "high_volatility", "low_volatility", "trending"
+    )
     volatility_level: float = 0.0
     trend_strength: float = 0.0
 
@@ -96,6 +105,7 @@ class SystemState:
 @dataclass
 class TradingDecision:
     """トレーディング決定"""
+
     symbol: str
     action: str
     strength: float
@@ -168,35 +178,46 @@ class DecisionFusionEngine:
         self.config = config
         self.logger = get_logger(__name__)
 
-    def fuse_decisions(self, phase2_decision: Optional[Dict[str, Any]],
-                      phase3_signals: List[PositionSignal],
-                      market_regime: str,
-                      system_state: SystemState) -> List[TradingDecision]:
+    def fuse_decisions(
+        self,
+        phase2_decision: Optional[Dict[str, Any]],
+        phase3_signals: List[PositionSignal],
+        market_regime: str,
+        system_state: SystemState,
+    ) -> List[TradingDecision]:
         """決定を融合"""
         decisions = []
 
         if self.config.decision_fusion_method == "weighted":
-            decisions = self._weighted_fusion(phase2_decision, phase3_signals,
-                                            market_regime, system_state)
+            decisions = self._weighted_fusion(
+                phase2_decision, phase3_signals, market_regime, system_state
+            )
         elif self.config.decision_fusion_method == "hierarchical":
-            decisions = self._hierarchical_fusion(phase2_decision, phase3_signals,
-                                                market_regime, system_state)
+            decisions = self._hierarchical_fusion(
+                phase2_decision, phase3_signals, market_regime, system_state
+            )
         elif self.config.decision_fusion_method == "ensemble":
-            decisions = self._ensemble_fusion(phase2_decision, phase3_signals,
-                                            market_regime, system_state)
+            decisions = self._ensemble_fusion(
+                phase2_decision, phase3_signals, market_regime, system_state
+            )
 
         return decisions
 
-    def _weighted_fusion(self, phase2_decision: Optional[Dict[str, Any]],
-                        phase3_signals: List[PositionSignal],
-                        market_regime: str,
-                        system_state: SystemState) -> List[TradingDecision]:
+    def _weighted_fusion(
+        self,
+        phase2_decision: Optional[Dict[str, Any]],
+        phase3_signals: List[PositionSignal],
+        market_regime: str,
+        system_state: SystemState,
+    ) -> List[TradingDecision]:
         """重み付き融合"""
         decisions = []
 
         # Phase 2決定の処理
         if phase2_decision and system_state.phase2_active:
-            phase2_weight = self._adjust_weight_by_regime(self.config.phase2_weight, market_regime, "phase2")
+            phase2_weight = self._adjust_weight_by_regime(
+                self.config.phase2_weight, market_regime, "phase2"
+            )
             phase2_decision["confidence"] *= phase2_weight
 
             decision = TradingDecision(
@@ -205,13 +226,15 @@ class DecisionFusionEngine:
                 strength=phase2_decision.get("strength", 0.5),
                 confidence=phase2_decision["confidence"],
                 source="phase2",
-                reasoning=f"Phase 2 decision with {phase2_weight:.2f} weight in {market_regime} regime"
+                reasoning=f"Phase 2 decision with {phase2_weight:.2f} weight in {market_regime} regime",
             )
             decisions.append(decision)
 
         # Phase 3シグナルの処理
         for signal in phase3_signals:
-            phase3_weight = self._adjust_weight_by_regime(self.config.phase3_weight, market_regime, "phase3")
+            phase3_weight = self._adjust_weight_by_regime(
+                self.config.phase3_weight, market_regime, "phase3"
+            )
             signal.confidence *= phase3_weight
 
             decision = TradingDecision(
@@ -220,28 +243,35 @@ class DecisionFusionEngine:
                 strength=signal.strength,
                 confidence=signal.confidence,
                 source="phase3",
-                reasoning=f"Phase 3 signal with {phase3_weight:.2f} weight in {market_regime} regime"
+                reasoning=f"Phase 3 signal with {phase3_weight:.2f} weight in {market_regime} regime",
             )
             decisions.append(decision)
 
         return decisions
 
-    def _hierarchical_fusion(self, phase2_decision: Optional[Dict[str, Any]],
-                           phase3_signals: List[PositionSignal],
-                           market_regime: str,
-                           system_state: SystemState) -> List[TradingDecision]:
+    def _hierarchical_fusion(
+        self,
+        phase2_decision: Optional[Dict[str, Any]],
+        phase3_signals: List[PositionSignal],
+        market_regime: str,
+        system_state: SystemState,
+    ) -> List[TradingDecision]:
         """階層的融合（Phase 2が優先）"""
         decisions = []
 
         # 高ボラティリティ時はPhase 2を優先
-        if market_regime == "high_volatility" and phase2_decision and system_state.phase2_active:
+        if (
+            market_regime == "high_volatility"
+            and phase2_decision
+            and system_state.phase2_active
+        ):
             decision = TradingDecision(
                 symbol=phase2_decision.get("symbol", "unknown"),
                 action=phase2_decision.get("action", "hold"),
                 strength=phase2_decision.get("strength", 0.5),
                 confidence=phase2_decision.get("confidence", 0.8),
                 source="integrated",
-                reasoning="Phase 2 prioritized in high volatility regime"
+                reasoning="Phase 2 prioritized in high volatility regime",
             )
             decisions.append(decision)
         else:
@@ -253,16 +283,19 @@ class DecisionFusionEngine:
                     strength=signal.strength,
                     confidence=signal.confidence,
                     source="integrated",
-                    reasoning="Phase 3 signals used in normal regime"
+                    reasoning="Phase 3 signals used in normal regime",
                 )
                 decisions.append(decision)
 
         return decisions
 
-    def _ensemble_fusion(self, phase2_decision: Optional[Dict[str, Any]],
-                        phase3_signals: List[PositionSignal],
-                        market_regime: str,
-                        system_state: SystemState) -> List[TradingDecision]:
+    def _ensemble_fusion(
+        self,
+        phase2_decision: Optional[Dict[str, Any]],
+        phase3_signals: List[PositionSignal],
+        market_regime: str,
+        system_state: SystemState,
+    ) -> List[TradingDecision]:
         """アンサンブル融合"""
         decisions = []
 
@@ -278,7 +311,9 @@ class DecisionFusionEngine:
                     action_match = self._calculate_action_similarity(
                         phase2_decision.get("action"), signal.action
                     )
-                    confidence_avg = (phase2_decision.get("confidence", 0.5) + signal.confidence) / 2
+                    confidence_avg = (
+                        phase2_decision.get("confidence", 0.5) + signal.confidence
+                    ) / 2
                     score = action_match * confidence_avg
 
                     if score > best_score:
@@ -289,16 +324,21 @@ class DecisionFusionEngine:
                 decision = TradingDecision(
                     symbol=best_match.symbol,
                     action=best_match.action,
-                    strength=(phase2_decision.get("strength", 0.5) + best_match.strength) / 2,
+                    strength=(
+                        phase2_decision.get("strength", 0.5) + best_match.strength
+                    )
+                    / 2,
                     confidence=best_score,
                     source="integrated",
-                    reasoning=f"Ensemble decision with score {best_score:.2f}"
+                    reasoning=f"Ensemble decision with score {best_score:.2f}",
                 )
                 decisions.append(decision)
 
         return decisions
 
-    def _adjust_weight_by_regime(self, base_weight: float, regime: str, source: str) -> float:
+    def _adjust_weight_by_regime(
+        self, base_weight: float, regime: str, source: str
+    ) -> float:
         """レジームによる重み調整"""
         if source == "phase2":
             # 高ボラティリティ時はPhase 2を重視
@@ -331,7 +371,7 @@ class DecisionFusionEngine:
             "open_long": "open_short",
             "open_short": "open_long",
             "close_long": "open_long",
-            "close_short": "open_short"
+            "close_short": "open_short",
         }
         return opposites.get(action1) == action2
 
@@ -356,13 +396,15 @@ class PerformanceMonitor:
         if len(self.decision_history) > 1000:
             self.decision_history = self.decision_history[-1000:]
 
-    def record_outcome(self, decision: TradingDecision, pnl: float, execution_time: float):
+    def record_outcome(
+        self, decision: TradingDecision, pnl: float, execution_time: float
+    ):
         """結果を記録"""
         outcome = {
             "decision": decision.__dict__,
             "pnl": pnl,
             "execution_time": execution_time,
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
         self.outcome_history.append(outcome)
 
@@ -403,7 +445,7 @@ class PerformanceMonitor:
             source_performance[source] = {
                 "total_pnl": sum(source_pnls),
                 "win_rate": sum(1 for p in source_pnls if p > 0) / len(source_pnls),
-                "avg_pnl": np.mean(source_pnls)
+                "avg_pnl": np.mean(source_pnls),
             }
 
         return {
@@ -414,7 +456,7 @@ class PerformanceMonitor:
             "avg_execution_time": avg_execution_time,
             "max_execution_time": max_execution_time,
             "source_performance": source_performance,
-            "sample_size": len(outcomes)
+            "sample_size": len(outcomes),
         }
 
 
@@ -472,7 +514,9 @@ class V433IntegratedSystem:
         self.risk_overlay.start_overlay()
 
         # モニタリングスレッド開始
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         # 決定生成スレッド開始
@@ -522,7 +566,9 @@ class V433IntegratedSystem:
             "regime": self.system_state.market_regime,
             "volatility": self.system_state.volatility_level,
             "positions": self.position_manager.portfolio_state.positions.copy(),
-            "risk_metrics": self.risk_overlay.risk_metrics.__dict__ if self.risk_overlay.risk_metrics else {}
+            "risk_metrics": self.risk_overlay.risk_metrics.__dict__
+            if self.risk_overlay.risk_metrics
+            else {},
         }
 
     def _monitoring_loop(self):
@@ -553,23 +599,31 @@ class V433IntegratedSystem:
 
                 # Phase 2決定生成
                 phase2_decision = None
-                if (self.config.phase2_enabled and
-                    (current_time - self.last_phase2_update).seconds >= self.config.adaptive_learning_interval):
+                if (
+                    self.config.phase2_enabled
+                    and (current_time - self.last_phase2_update).seconds
+                    >= self.config.adaptive_learning_interval
+                ):
                     phase2_decision = self._generate_phase2_decision()
                     self.last_phase2_update = current_time
 
                 # Phase 3シグナル生成
                 phase3_signals = []
-                if (self.config.phase3_enabled and
-                    (current_time - self.last_signal_generation).seconds >= self.config.signal_generation_interval):
+                if (
+                    self.config.phase3_enabled
+                    and (current_time - self.last_signal_generation).seconds
+                    >= self.config.signal_generation_interval
+                ):
                     phase3_signals = self._generate_phase3_signals()
                     self.last_signal_generation = current_time
 
                 # 決定融合
                 if phase2_decision or phase3_signals:
                     decisions = self.decision_fusion.fuse_decisions(
-                        phase2_decision, phase3_signals,
-                        self.system_state.market_regime, self.system_state
+                        phase2_decision,
+                        phase3_signals,
+                        self.system_state.market_regime,
+                        self.system_state,
                     )
 
                     # 決定実行
@@ -598,7 +652,7 @@ class V433IntegratedSystem:
                 "symbol": "btc_jpy",  # デフォルトシンボル（実際は動的）
                 "action": self._convert_phase2_action(action["action"]),
                 "strength": abs(action["action"]),
-                "confidence": action["confidence"]
+                "confidence": action["confidence"],
             }
 
             self.system_state.phase2_active = True
@@ -624,7 +678,9 @@ class V433IntegratedSystem:
 
                 # ランダムシグナル（実際はテクニカル分析やMLベース）
                 if np.random.random() > 0.95:  # 5%の確率でシグナル
-                    action = np.random.choice(["open_long", "open_short", "close_long", "close_short"])
+                    action = np.random.choice(
+                        ["open_long", "open_short", "close_long", "close_short"]
+                    )
                     strength = np.random.uniform(0.3, 0.8)
                     confidence = np.random.uniform(0.4, 0.9)
 
@@ -634,7 +690,7 @@ class V433IntegratedSystem:
                         strength=strength,
                         target_quantity=0.001,  # 最小数量
                         confidence=confidence,
-                        reason="technical_analysis"
+                        reason="technical_analysis",
                     )
                     signals.append(signal)
 
@@ -663,7 +719,7 @@ class V433IntegratedSystem:
                     strength=decision.strength,
                     target_quantity=0.001,  # 実際は動的計算
                     confidence=decision.confidence,
-                    reason=f"Integrated decision: {decision.reasoning}"
+                    reason=f"Integrated decision: {decision.reasoning}",
                 )
 
                 asyncio.create_task(self.position_manager.submit_signal(signal))
@@ -679,8 +735,10 @@ class V433IntegratedSystem:
             self.system_state.last_decision_timestamp = datetime.now()
             self.system_state.decision_count += 1
 
-            self.logger.info(f"Executed decision: {decision.symbol} {decision.action} "
-                           f"(confidence: {decision.confidence:.2f})")
+            self.logger.info(
+                f"Executed decision: {decision.symbol} {decision.action} "
+                f"(confidence: {decision.confidence:.2f})"
+            )
 
         except Exception as e:
             self.logger.error(f"Decision execution failed: {e}")
@@ -689,14 +747,18 @@ class V433IntegratedSystem:
         """システム状態を更新"""
         try:
             # 市場レジーム検知
-            regime, volatility, trend = self.regime_detector.detect_regime(self.active_symbols)
+            regime, volatility, trend = self.regime_detector.detect_regime(
+                self.active_symbols
+            )
             self.system_state.market_regime = regime
             self.system_state.volatility_level = volatility
             self.system_state.trend_strength = trend
 
             # Phase 3リスク状態
             emergency_status = self.risk_overlay.emergency_stop.get_emergency_status()
-            self.system_state.phase3_risk_status = "emergency" if emergency_status["triggered"] else "normal"
+            self.system_state.phase3_risk_status = (
+                "emergency" if emergency_status["triggered"] else "normal"
+            )
 
             # システムヘルス判定
             health_issues = []
@@ -704,13 +766,22 @@ class V433IntegratedSystem:
             if emergency_status["triggered"]:
                 health_issues.append("emergency_stop_triggered")
 
-            if self.system_state.phase2_active and self.system_state.phase2_confidence < 0.3:
+            if (
+                self.system_state.phase2_active
+                and self.system_state.phase2_confidence < 0.3
+            ):
                 health_issues.append("low_phase2_confidence")
 
             if len(self.position_manager.portfolio_state.positions) > 10:
                 health_issues.append("too_many_positions")
 
-            self.system_state.system_health = "critical" if len(health_issues) > 1 else "warning" if health_issues else "healthy"
+            self.system_state.system_health = (
+                "critical"
+                if len(health_issues) > 1
+                else "warning"
+                if health_issues
+                else "healthy"
+            )
 
             self.system_state.timestamp = datetime.now()
 
@@ -726,14 +797,14 @@ class V433IntegratedSystem:
             "emergency_stop": self.risk_overlay.emergency_stop.get_emergency_status(),
             "position_count": len(self.position_manager.portfolio_state.positions),
             "total_pnl": self.position_manager.portfolio_state.total_pnl,
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         # ヘルスレポート
         if self.system_state.system_health != "healthy":
             self.logger.warning(f"System health check: {health_status}")
         else:
-            self.logger.debug(f"System health: OK")
+            self.logger.debug("System health: OK")
 
     def _generate_performance_report(self):
         """パフォーマンスレポートを生成"""
@@ -741,14 +812,18 @@ class V433IntegratedSystem:
             metrics = self.performance_monitor.calculate_performance_metrics()
 
             if metrics:
-                self.logger.info(f"Performance Report: PnL={metrics['total_pnl']:.2f}, "
-                               f"Win Rate={metrics['win_rate']:.2%}, "
-                               f"Sharpe={metrics['sharpe_ratio']:.2f}")
+                self.logger.info(
+                    f"Performance Report: PnL={metrics['total_pnl']:.2f}, "
+                    f"Win Rate={metrics['win_rate']:.2%}, "
+                    f"Sharpe={metrics['sharpe_ratio']:.2f}"
+                )
 
                 # ソース別パフォーマンス
                 for source, perf in metrics.get("source_performance", {}).items():
-                    self.logger.info(f"  {source}: PnL={perf['total_pnl']:.2f}, "
-                                   f"Win Rate={perf['win_rate']:.2%}")
+                    self.logger.info(
+                        f"  {source}: PnL={perf['total_pnl']:.2f}, "
+                        f"Win Rate={perf['win_rate']:.2%}"
+                    )
 
         except Exception as e:
             self.logger.error(f"Performance report generation failed: {e}")
@@ -772,15 +847,15 @@ class V433IntegratedSystem:
             "performance_metrics": self.performance_monitor.calculate_performance_metrics(),
             "market_data": {
                 "current_prices": self.current_prices.copy(),
-                "active_symbols": self.active_symbols.copy()
+                "active_symbols": self.active_symbols.copy(),
             },
             "component_status": {
                 "phase2_enabled": self.config.phase2_enabled,
                 "phase3_enabled": self.config.phase3_enabled,
                 "execution_engine_running": self.execution_engine.is_running,
                 "position_manager_running": self.position_manager.is_running,
-                "risk_overlay_running": self.is_running
-            }
+                "risk_overlay_running": self.is_running,
+            },
         }
 
 
@@ -806,7 +881,9 @@ if __name__ == "__main__":
         # システム状態確認
         status = v433_system.get_system_status()
         print(f"System status: {status['system_state']['system_health']}")
-        print(f"Portfolio PnL: {status['portfolio_status']['portfolio_state']['total_pnl']:.2f}")
+        print(
+            f"Portfolio PnL: {status['portfolio_status']['portfolio_state']['total_pnl']:.2f}"
+        )
 
         # しばらく実行
         time.sleep(60)

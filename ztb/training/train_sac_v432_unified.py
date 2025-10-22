@@ -12,13 +12,14 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.utils.path_utils import get_project_root
+from ztb.training.unified_trainer.config import get_training_config, load_config
+from ztb.training.unified_trainer.ensemble_system import EnsembleConfig
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
-from ztb.training.unified_trainer.config import load_config, get_training_config
-from ztb.training.unified_trainer.ensemble_system import EnsembleConfig, EnsembleSpecialization
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.path_utils import get_project_root
 
 logger = get_logger(__name__)
+
 
 def create_v432_ensemble_config() -> EnsembleConfig:
     """Create optimized ensemble configuration for v432"""
@@ -31,9 +32,10 @@ def create_v432_ensemble_config() -> EnsembleConfig:
         consensus_requirement={
             "enabled": True,
             "min_agreement": 0.7,
-            "max_confidence_gap": 0.3
-        }
+            "max_confidence_gap": 0.3,
+        },
     )
+
 
 def train_sac_v432():
     """Train SAC v432 using Unified Trainer"""
@@ -43,7 +45,9 @@ def train_sac_v432():
 
     # Get project root using path_utils
     project_root = get_project_root()
-    config_path = project_root / "ztb" / "configs" / "v432" / "sac_v432_0_ensemble_optimized.json"
+    config_path = (
+        project_root / "ztb" / "configs" / "v432" / "sac_v432_0_ensemble_optimized.json"
+    )
 
     # Load configuration
     logger.info(f"Loading configuration from {config_path}")
@@ -67,7 +71,7 @@ def train_sac_v432():
         results_dir.mkdir(parents=True, exist_ok=True)
 
         results_file = results_dir / "training_results.json"
-        with open(results_file, 'w') as f:
+        with open(results_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
 
         print("✅ Training completed successfully!")
@@ -79,6 +83,7 @@ def train_sac_v432():
         logger.error(f"Training failed: {e}")
         raise
 
+
 def main():
     """Main function"""
     try:
@@ -88,6 +93,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Training failed: {e}")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

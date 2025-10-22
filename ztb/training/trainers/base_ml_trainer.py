@@ -5,7 +5,7 @@ Base ML Algorithm Trainer for Unified Training.
 Handles base ML reinforcement experiments.
 """
 
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from ztb.utils.logging_utils import get_logger
 
@@ -46,7 +46,11 @@ class BaseMLAlgorithmTrainer:
 
         # Local narrowing: prefer passed unified_config (dict), otherwise fall back to
         # self.config if available. This avoids attribute-defined type issues.
-        cfg = unified_config if isinstance(unified_config, dict) else getattr(self, "config", {})
+        cfg = (
+            unified_config
+            if isinstance(unified_config, dict)
+            else getattr(self, "config", {})
+        )
 
         experiment = MLReinforcementExperiment(
             cfg, total_steps=cfg.get("total_steps", 1000)

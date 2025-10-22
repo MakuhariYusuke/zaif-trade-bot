@@ -9,11 +9,12 @@ import hmac
 import json
 import os
 import sys
-import time
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
+
+from ztb.utils.errors import validate_price, validate_quantity
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent
@@ -48,20 +49,27 @@ def get_current_price(exchange: str) -> float:
         response = requests.get("https://coincheck.com/api/ticker", timeout=10)
         response.raise_for_status()
         data = response.json()
-        return float(data["last"])
+        price = float(data["last"])
+        validate_price(price, f"price from {exchange}")
+        return price
     elif exchange.lower() == "bitflyer":
         response = requests.get(
             "https://api.bitflyer.com/v1/ticker?product_code=BTC_JPY", timeout=10
         )
         response.raise_for_status()
         data = response.json()
-        return float(data["ltp"])
+        price = float(data["ltp"])
+        validate_price(price, f"price from {exchange}")
+        return price
     else:
         raise ValueError(f"Unsupported exchange: {exchange}")
 
 
 def place_buy_order(api_key: str, api_secret: str, price: float, amount: float) -> dict:
     """Place a buy order on Coincheck."""
+    validate_price(price, "price")
+    validate_quantity(amount, "amount")
+
     url = "https://coincheck.com/api/exchange/orders"
 
     # Prepare order data

@@ -5,7 +5,6 @@ and calls ztb.utils.redact.is_safe_content for each file passed by pre-commit.
 Exits with 0 if all files are safe, 1 otherwise.
 """
 import sys
-import os
 from pathlib import Path
 
 # Ensure the repo root is importable
@@ -21,14 +20,15 @@ except Exception as e:
 
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', nargs='*')
+    parser.add_argument("filenames", nargs="*")
     args = parser.parse_args()
     exit_code = 0
     for fname in args.filenames:
         try:
-            with open(fname, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(fname, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
         except Exception as e:
             print(f"Could not read {fname}: {e}")
@@ -46,5 +46,6 @@ def main():
             exit_code = 1
     sys.exit(exit_code)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
