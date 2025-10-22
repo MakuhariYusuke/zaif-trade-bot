@@ -14,6 +14,87 @@ from ztb.trading.constants import (
 )
 
 # ============================================================================
+# Common Numeric Constants
+# ============================================================================
+
+# Standard fee rates and percentages
+DEFAULT_FEE_RATE = 0.001  # 0.1% - Standard transaction fee
+MINIMUM_UNIT_BUFFER = 0.001  # 0.1% - Minimum unit buffer for position sizing
+MAXIMUM_FEE_RATE = 0.01  # 1% - Maximum allowable fee rate
+
+# BTC and trading unit constants
+BTC_MIN_UNIT = 0.0001  # Minimum BTC trading unit
+EPSILON = (
+    1e-5  # Small epsilon value for numerical stability (prevents division by zero)
+)
+
+# Position and balance constants
+DEFAULT_INITIAL_BALANCE = 200000  # JPY - Default starting balance
+DEFAULT_INITIAL_BALANCE_SMALL = 10000.0  # JPY - Small balance for testing
+DEFAULT_TOTAL_CAPITAL = 100000.0  # JPY - Default total capital
+DEFAULT_MAX_TRADE_SIZE_JPY = 100000.0  # JPY - Maximum trade size
+
+# Action history sizes
+DEFAULT_MAX_ACTION_HISTORY = 256  # Standard action history buffer
+MAX_ACTION_HISTORY_LARGE = 512  # Large action history buffer for complex strategies
+
+# Common batch sizes for training
+BATCH_SIZE_SMALL = 32
+BATCH_SIZE_MEDIUM = 64
+BATCH_SIZE_STANDARD = 128
+BATCH_SIZE_LARGE = 256
+BATCH_SIZE_XLARGE = 512
+
+# Common buffer/replay buffer sizes
+BUFFER_SIZE_SMALL = 50000
+BUFFER_SIZE_MEDIUM = 100000
+BUFFER_SIZE_LARGE = 200000
+BUFFER_SIZE_XLARGE = 500000
+
+# Training and evaluation constants
+DEFAULT_CHECKPOINT_INTERVAL = 10000  # Default checkpoint interval
+DEFAULT_MAX_STEPS_PER_EPISODE = 10000  # Default max steps per episode
+DEFAULT_ANALYSIS_SAMPLES = 10000  # Default number of analysis samples
+DEFAULT_MIN_SAMPLES = 10000  # Default minimum samples for metrics
+PPO_DEFAULT_N_STEPS = 2048  # Default n_steps for PPO training
+
+# Volume and data generation constants
+DEFAULT_VOLUME_RANGE_MIN = 1000  # Minimum volume range
+DEFAULT_VOLUME_RANGE_MAX = 10000  # Maximum volume range
+
+# Memory conversion constants
+BYTES_PER_KB = 1024
+BYTES_PER_MB = 1024 * 1024
+BYTES_PER_GB = 1024**3
+
+# Statistical thresholds
+DEFAULT_VOLATILITY_THRESHOLD = 0.001  # 0.1% volatility threshold
+DEFAULT_CORRELATION_THRESHOLD = 0.95  # 95% correlation threshold
+STATISTICAL_SIGNIFICANCE_THRESHOLD = 0.01  # 1% significance level
+MINIMUM_STANDARD_DEVIATION = 0.01  # 1% minimum std dev
+
+# Transaction costs and fees
+DEFAULT_TRANSACTION_COST = 1e-5  # Default transaction cost for training
+BASIS_POINTS = 10000  # Basis points conversion factor (1% = 100 basis points)
+
+# Learning rates and optimization parameters
+DEFAULT_LEARNING_RATE = 0.001  # 0.1% learning rate
+DEFAULT_LAGRANGE_ETA_MIN = 0.001  # Minimum Lagrange multiplier
+DEFAULT_LAGRANGE_ETA_LR = 0.001  # Lagrange learning rate
+
+# Performance thresholds
+GRADIENT_NORM_THRESHOLD = 1e-6
+ADVANTAGE_THRESHOLD = 0.0
+TIME_THRESHOLD_MS = 1.0  # 1ms
+MEMORY_THRESHOLD_MB = 10.0  # 10MB
+
+# Memory optimization
+MEMORY_LEAK_THRESHOLD_PERCENT = 50.0
+OBJECT_LEAK_THRESHOLD = 10000
+PYTORCH_CUDA_ALLOC_MB = 512  # 512MB for CUDA allocation
+PYTORCH_CUDA_ALLOC_MB = 512  # 512MB for CUDA allocation
+
+# ============================================================================
 # Action Space Constants
 # ============================================================================
 
@@ -38,55 +119,13 @@ CONTINUOUS_ACTION_DIM = 1  # Single continuous value
 CONTINUOUS_TO_DISCRETE_THRESHOLD = SAC_CONTINUOUS_THRESHOLD
 CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG = SAC_CONTINUOUS_THRESHOLD_NEG
 
-
-# ============================================================================
-# Transaction Cost Constants (in basis points, 0.0001 = 0.01%)
-# ============================================================================
-
-# Default transaction costs
-DEFAULT_TRANSACTION_COST = 0.001  # 0.1% (10 basis points)
-DEFAULT_BUY_FEE_RATE = 0.001  # 0.1%
-DEFAULT_SELL_FEE_RATE = 0.001  # 0.1%
-
-# Exchange-specific transaction costs
-EXCHANGE_FEES = {
-    "coincheck": {
-        "buy": 0.0,  # 0% taker fee
-        "sell": 0.0,  # 0% taker fee
-    },
-    "bitflyer": {
-        "buy": 0.001,  # 0.1%
-        "sell": 0.001,  # 0.1%
-    },
-    "binance": {
-        "buy": 0.001,  # 0.1%
-        "sell": 0.001,  # 0.1%
-    },
-}
-
-# High-frequency trading
-HFT_TRANSACTION_COST = 0.002  # 0.2% for aggressive strategies
-
-
-# ============================================================================
-# Environment Configuration Constants
-# ============================================================================
-
-# Default balance and position limits
-DEFAULT_INITIAL_BALANCE = 200000  # JPY
-DEFAULT_MAX_POSITION_SIZE = 0.01  # 1% of balance per trade
-
-# Action history tracking
-DEFAULT_MAX_ACTION_HISTORY = 256
-MAX_ACTION_HISTORY_LARGE = 512
-
 # Holding period constraints
 DEFAULT_MIN_HOLDING_PERIOD = 0  # No restriction
 RECOMMENDED_MIN_HOLDING_PERIOD = 3  # Prevent rapid flip-flopping
 
 # Volatility and correlation thresholds
-DEFAULT_CORRELATION_THRESHOLD = 0.95
-DEFAULT_VOLATILITY_THRESHOLD = 0.001
+DEFAULT_CORRELATION_THRESHOLD = DEFAULT_CORRELATION_THRESHOLD
+DEFAULT_VOLATILITY_THRESHOLD = DEFAULT_VOLATILITY_THRESHOLD
 
 
 # ============================================================================
@@ -138,9 +177,9 @@ MIN_SELL_RATE = 0.15  # Minimum 15% SELL actions
 # Lagrange multiplier parameters
 DEFAULT_LAGRANGE_TOLERANCE = 0.042625
 DEFAULT_LAGRANGE_ETA = 0.062875
-DEFAULT_LAGRANGE_ETA_MIN = 0.001
+DEFAULT_LAGRANGE_ETA_MIN = DEFAULT_LAGRANGE_ETA_MIN
 DEFAULT_LAGRANGE_ETA_MAX = 100.0
-DEFAULT_LAGRANGE_ETA_LR = 0.001
+DEFAULT_LAGRANGE_ETA_LR = DEFAULT_LAGRANGE_ETA_LR
 
 
 # ============================================================================
@@ -179,7 +218,7 @@ ADVANTAGE_THRESHOLD = 0.0
 MIN_SAMPLES_PER_ACTION = 1
 
 # Regime detection
-REGIME_THRESHOLD = 0.001
+REGIME_THRESHOLD = DEFAULT_VOLATILITY_THRESHOLD
 
 # Evaluation gates
 DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 0.15

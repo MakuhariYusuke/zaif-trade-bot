@@ -7,7 +7,7 @@ across different components to ensure consistent typing patterns.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,7 @@ import pandas as pd
 # Generic type variables
 TConfig = TypeVar("TConfig")
 TState = TypeVar("TState")
+TValue = TypeVar("TValue")
 
 
 class ConfigurableMixin(Generic[TConfig]):
@@ -26,12 +27,12 @@ class ConfigurableMixin(Generic[TConfig]):
     """
 
     def __init__(self, config: Optional[TConfig] = None) -> None:
-        self._config = config or {}  # type: ignore
+        self._config: TConfig = config if config is not None else cast(TConfig, {})
 
     @property
     def config(self) -> TConfig:
         """Get current configuration."""
-        return self._config  # type: ignore
+        return self._config
 
     @config.setter
     def config(self, value: TConfig) -> None:
@@ -43,7 +44,9 @@ class ConfigurableMixin(Generic[TConfig]):
         if hasattr(self._config, "update") and isinstance(self._config, dict):
             self._config.update(updates)
 
-    def get_config_value(self, key: str, default: Any = None) -> Any:
+    def get_config_value(
+        self, key: str, default: Optional[TValue] = None
+    ) -> Optional[TValue]:
         """Get configuration value with optional default."""
         if isinstance(self._config, dict):
             return self._config.get(key, default)
@@ -59,14 +62,16 @@ class StatisticsTracker(Generic[TState]):
     """
 
     def __init__(self) -> None:
-        self._statistics: Dict[str, Any] = {}
+        self._statistics: Dict[str, Union[int, float, str, bool, None]] = {}
         self._state_history: list[TState] = []
 
-    def update_statistics(self, key: str, value: Any) -> None:
+    def update_statistics(
+        self, key: str, value: Union[int, float, str, bool, None]
+    ) -> None:
         """Update a specific statistic."""
         self._statistics[key] = value
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> Dict[str, Union[int, float, str, bool, None]]:
         """Get all current statistics."""
         return self._statistics.copy()
 

@@ -1059,6 +1059,9 @@ class RewardCalculator:
         self._action_counts = [0, 0, 0]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
+        self._win_count = 0
+        self._loss_count = 0
+        self._recent_actions = []
 
     def _convert_continuous_to_discrete_action(self, action: Any) -> int:
         """

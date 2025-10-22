@@ -54,6 +54,189 @@ class ValidationError(ZTBError):
     """Data validation errors."""
 
 
+# Validation utility functions
+def validate_positive(value: float, name: str = "value") -> None:
+    """Validate that a value is positive.
+
+    Args:
+        value: The value to validate
+        name: Name of the value for error messages
+
+    Raises:
+        ValidationError: If value is not positive
+    """
+    if value <= 0:
+        raise ValidationError(f"{name} must be positive, got {value}")
+
+
+def validate_non_negative(value: float, name: str = "value") -> None:
+    """Validate that a value is non-negative.
+
+    Args:
+        value: The value to validate
+        name: Name of the value for error messages
+
+    Raises:
+        ValidationError: If value is negative
+    """
+    if value < 0:
+        raise ValidationError(f"{name} must be non-negative, got {value}")
+
+
+def validate_price(price: float, name: str = "price") -> None:
+    """Validate that a price is positive.
+
+    Args:
+        price: The price to validate
+        name: Name of the price for error messages
+
+    Raises:
+        ValidationError: If price is not positive
+    """
+    validate_positive(price, name)
+
+
+def validate_quantity(quantity: float, name: str = "quantity") -> None:
+    """Validate that a quantity is positive.
+
+    Args:
+        quantity: The quantity to validate
+        name: Name of the quantity for error messages
+
+    Raises:
+        ValidationError: If quantity is not positive
+    """
+    validate_positive(quantity, name)
+
+
+def validate_portfolio_value(value: float, name: str = "portfolio_value") -> None:
+    """Validate that a portfolio value is non-negative.
+
+    Args:
+        value: The portfolio value to validate
+        name: Name of the value for error messages
+
+    Raises:
+        ValidationError: If value is negative
+    """
+    validate_non_negative(value, name)
+
+
+def validate_volatility(volatility: float, name: str = "volatility") -> None:
+    """Validate that volatility is non-negative.
+
+    Args:
+        volatility: The volatility to validate
+        name: Name of the volatility for error messages
+
+    Raises:
+        ValidationError: If volatility is negative
+    """
+    validate_non_negative(volatility, name)
+
+
+def validate_range(
+    value: float,
+    min_val: Optional[float] = None,
+    max_val: Optional[float] = None,
+    name: str = "value",
+) -> None:
+    """Validate that a value is within a specified range.
+
+    Args:
+        value: The value to validate
+        min_val: Minimum allowed value (inclusive), None for no minimum
+        max_val: Maximum allowed value (inclusive), None for no maximum
+        name: Name of the value for error messages
+
+    Raises:
+        ValidationError: If value is outside the allowed range
+    """
+    if min_val is not None and value < min_val:
+        raise ValidationError(f"{name} must be >= {min_val}, got {value}")
+    if max_val is not None and value > max_val:
+        raise ValidationError(f"{name} must be <= {max_val}, got {value}")
+
+
+def validate_type(value: Any, expected_type: type, name: str = "value") -> None:
+    """Validate that a value is of the expected type.
+
+    Args:
+        value: The value to validate
+        expected_type: Expected type
+        name: Name of the value for error messages
+
+    Raises:
+        ValidationError: If value is not of the expected type
+    """
+    if not isinstance(value, expected_type):
+        raise ValidationError(
+            f"{name} must be of type {expected_type.__name__}, got {type(value).__name__}"
+        )
+
+
+def validate_price_range(
+    price: float,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    name: str = "price",
+) -> None:
+    """Validate that a price is within reasonable bounds.
+
+    Args:
+        price: The price to validate
+        min_price: Minimum allowed price, defaults to 1 (to avoid division by zero)
+        max_price: Maximum allowed price, defaults to 100000000 (100M)
+        name: Name of the price for error messages
+
+    Raises:
+        ValidationError: If price is outside reasonable bounds
+    """
+    validate_positive(price, name)
+    validate_range(price, min_price or 1.0, max_price or 100000000.0, name)
+
+
+def validate_quantity_range(
+    quantity: float,
+    min_quantity: Optional[float] = None,
+    max_quantity: Optional[float] = None,
+    name: str = "quantity",
+) -> None:
+    """Validate that a quantity is within reasonable bounds.
+
+    Args:
+        quantity: The quantity to validate
+        min_quantity: Minimum allowed quantity, defaults to 0.000001
+        max_quantity: Maximum allowed quantity, defaults to 1000
+        name: Name of the quantity for error messages
+
+    Raises:
+        ValidationError: If quantity is outside reasonable bounds
+    """
+    validate_positive(quantity, name)
+    validate_range(quantity, min_quantity or 0.000001, max_quantity or 1000.0, name)
+
+
+def validate_batch(
+    values: Dict[str, Any], validators: Dict[str, Callable[[Any], None]]
+) -> None:
+    """Validate multiple values using specified validators.
+
+    Args:
+        values: Dictionary of values to validate
+        validators: Dictionary mapping value names to validator functions
+
+    Raises:
+        ValidationError: If any validation fails
+    """
+    for name, validator in validators.items():
+        if name in values:
+            try:
+                validator(values[name])
+            except ValidationError as e:
+                raise ValidationError(f"Validation failed for {name}: {e}") from e
+
+
 class ConfigurationError(ZTBError):
     """Configuration-related errors."""
 

@@ -85,6 +85,27 @@ def _compute_correlations_impl(
     if filtered_df.empty or len(filtered_df.columns) < 2:
         return {"pearson": None, "spearman": None}
 
-    pearson = filtered_df.corr(method="pearson")
-    spearman = filtered_df.corr(method="spearman")
+    pearson = filtered_df.corr(method="pearson", numeric_only=True)
+    spearman = filtered_df.corr(method="spearman", numeric_only=True)
     return {"pearson": pearson, "spearman": spearman}
+
+
+def analyze_correlations(
+    data_path: str = "ml-dataset-enhanced.csv", nan_strategy: str = "drop"
+) -> Dict[str, Optional[pd.DataFrame]]:
+    """Analyze correlations in dataset.
+
+    Args:
+        data_path: Path to the dataset file
+        nan_strategy: Strategy for handling NaN values
+
+    Returns:
+        Dictionary with correlation matrices
+    """
+    try:
+        df = pd.read_csv(data_path)
+        frames = {"dataset": df}
+        return compute_correlations(frames, nan_strategy)
+    except Exception as e:
+        print(f"Error analyzing correlations: {e}")
+        return {"pearson": None, "spearman": None}

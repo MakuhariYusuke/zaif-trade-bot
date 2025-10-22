@@ -4,17 +4,17 @@ V433 Phase 5: Paper Trading Layer - Market Data Simulator
 実市場データとの同期と取引遅延のシミュレーションを行う。
 """
 
-import asyncio
 import logging
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable, Tuple
-from enum import Enum
+import queue
 import random
 import threading
-import queue
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+
 
 # Mock classes for testing
 @dataclass
@@ -23,6 +23,7 @@ class Symbol:
     base_currency: str
     quote_currency: str
 
+
 @dataclass
 class TickData:
     symbol: str
@@ -30,6 +31,7 @@ class TickData:
     ask: Decimal
     timestamp: datetime
     volume: Optional[Decimal] = None
+
 
 @dataclass
 class BarData:
@@ -41,6 +43,7 @@ class BarData:
     volume: Decimal
     timestamp: datetime
 
+
 @dataclass
 class OrderBook:
     symbol: str
@@ -48,8 +51,10 @@ class OrderBook:
     asks: List[tuple[Decimal, Decimal]]  # (price, quantity)
     timestamp: datetime
 
+
 class MarketData:
     pass
+
 
 class MarketDataProvider:
     pass
@@ -57,6 +62,7 @@ class MarketDataProvider:
 
 class SimulationMode(Enum):
     """シミュレーションモード"""
+
     REALTIME = "realtime"  # リアルタイム同期
     HISTORICAL = "historical"  # 過去データ再生
     ACCELERATED = "accelerated"  # 高速再生
@@ -65,6 +71,7 @@ class SimulationMode(Enum):
 @dataclass
 class LatencyConfig:
     """遅延設定"""
+
     base_latency_ms: int = 50  # 基本遅延（ミリ秒）
     jitter_range_ms: int = 20  # ジッター範囲
     network_latency_ms: int = 10  # ネットワーク遅延
@@ -75,15 +82,17 @@ class LatencyConfig:
 @dataclass
 class SlippageConfig:
     """スリッページ設定"""
+
     base_slippage_bps: int = 5  # 基本スリッページ（bps）
     volatility_multiplier: float = 2.0  # ボラティリティ乗数
     volume_impact_bps: int = 2  # 出来高インパクト
-    market_impact_threshold: Decimal = Decimal('0.01')  # 市場影響閾値
+    market_impact_threshold: Decimal = Decimal("0.01")  # 市場影響閾値
 
 
 @dataclass
 class SimulatedTick:
     """シミュレートティック"""
+
     symbol: str
     price: Decimal
     volume: Decimal
@@ -104,11 +113,13 @@ class MarketDataSimulator:
     現実的にシミュレートする。
     """
 
-    def __init__(self,
-                 market_data_provider: MarketDataProvider,
-                 latency_config: Optional[LatencyConfig] = None,
-                 slippage_config: Optional[SlippageConfig] = None,
-                 simulation_mode: SimulationMode = SimulationMode.REALTIME):
+    def __init__(
+        self,
+        market_data_provider: MarketDataProvider,
+        latency_config: Optional[LatencyConfig] = None,
+        slippage_config: Optional[SlippageConfig] = None,
+        simulation_mode: SimulationMode = SimulationMode.REALTIME,
+    ):
         """
         初期化
 
@@ -155,7 +166,9 @@ class MarketDataSimulator:
             return
 
         self.is_running = True
-        self.simulation_thread = threading.Thread(target=self._simulation_loop, daemon=True)
+        self.simulation_thread = threading.Thread(
+            target=self._simulation_loop, daemon=True
+        )
         self.simulation_thread.start()
 
         self.logger.info("Market Data Simulator started")
@@ -203,7 +216,9 @@ class MarketDataSimulator:
         """
         return self.latest_prices.get(symbol)
 
-    def get_price_history(self, symbol: str, limit: Optional[int] = None) -> List[SimulatedTick]:
+    def get_price_history(
+        self, symbol: str, limit: Optional[int] = None
+    ) -> List[SimulatedTick]:
         """
         価格履歴取得
 
@@ -219,7 +234,13 @@ class MarketDataSimulator:
             history = history[-limit:]
         return history.copy()
 
-    def simulate_order_execution(self, symbol: str, side: str, quantity: Decimal, limit_price: Optional[Decimal] = None) -> Tuple[Decimal, int, int]:
+    def simulate_order_execution(
+        self,
+        symbol: str,
+        side: str,
+        quantity: Decimal,
+        limit_price: Optional[Decimal] = None,
+    ) -> Tuple[Decimal, int, int]:
         """
         注文実行シミュレーション
 
@@ -247,13 +268,13 @@ class MarketDataSimulator:
         base_price = latest_tick.price
         if limit_price:
             # 指値注文の場合
-            if side == 'buy' and limit_price >= base_price:
+            if side == "buy" and limit_price >= base_price:
                 execution_price = base_price
-            elif side == 'sell' and limit_price <= base_price:
+            elif side == "sell" and limit_price <= base_price:
                 execution_price = base_price
             else:
                 # 指値未達
-                return Decimal('0'), latency_ms, 0
+                return Decimal("0"), latency_ms, 0
         else:
             # 成行注文の場合
             execution_price = self._apply_slippage(base_price, slippage_bps, side)
@@ -311,7 +332,7 @@ class MarketDataSimulator:
                 ask=tick_data.ask,
                 bid_volume=tick_data.bid_volume,
                 ask_volume=tick_data.ask_volume,
-                latency_ms=latency_ms
+                latency_ms=latency_ms,
             )
 
             # データ更新
@@ -366,7 +387,9 @@ class MarketDataSimulator:
         # 負の遅延を防ぐ
         return max(0, latency)
 
-    def _calculate_slippage(self, symbol: str, side: str, quantity: Decimal, latest_tick: SimulatedTick) -> int:
+    def _calculate_slippage(
+        self, symbol: str, side: str, quantity: Decimal, latest_tick: SimulatedTick
+    ) -> int:
         """
         スリッページ計算
 
@@ -412,7 +435,7 @@ class MarketDataSimulator:
         prices = [float(tick.price) for tick in history]
         returns = []
         for i in range(1, len(prices)):
-            ret = (prices[i] - prices[i-1]) / prices[i-1]
+            ret = (prices[i] - prices[i - 1]) / prices[i - 1]
             returns.append(ret)
 
         if not returns:
@@ -420,12 +443,14 @@ class MarketDataSimulator:
 
         mean_return = sum(returns) / len(returns)
         variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-        volatility = variance ** 0.5
+        volatility = variance**0.5
 
         # 0-1の範囲に正規化
         return min(1.0, volatility * 10)  # スケーリング調整
 
-    def _calculate_volume_impact(self, symbol: str, quantity: Decimal, latest_tick: SimulatedTick) -> int:
+    def _calculate_volume_impact(
+        self, symbol: str, quantity: Decimal, latest_tick: SimulatedTick
+    ) -> int:
         """
         出来高インパクト計算
 
@@ -450,7 +475,9 @@ class MarketDataSimulator:
         else:
             return config.volume_impact_bps
 
-    def _apply_slippage(self, base_price: Decimal, slippage_bps: int, side: str) -> Decimal:
+    def _apply_slippage(
+        self, base_price: Decimal, slippage_bps: int, side: str
+    ) -> Decimal:
         """
         スリッページ適用
 
@@ -462,14 +489,14 @@ class MarketDataSimulator:
         Returns:
             Decimal: 適用後価格
         """
-        slippage_ratio = Decimal(slippage_bps) / Decimal('10000')  # bps to decimal
+        slippage_ratio = Decimal(slippage_bps) / Decimal("10000")  # bps to decimal
 
-        if side == 'buy':
+        if side == "buy":
             # 買いの場合は価格が上がる
-            return base_price * (Decimal('1') + slippage_ratio)
+            return base_price * (Decimal("1") + slippage_ratio)
         else:
             # 売りの場合は価格が下がる
-            return base_price * (Decimal('1') - slippage_ratio)
+            return base_price * (Decimal("1") - slippage_ratio)
 
     async def _notify_tick_callbacks(self, tick: SimulatedTick) -> None:
         """
@@ -484,7 +511,9 @@ class MarketDataSimulator:
             except Exception as e:
                 self.logger.error(f"Tick callback error: {e}")
 
-    def add_tick_callback(self, callback: Callable[[SimulatedTick], Awaitable[None]]) -> None:
+    def add_tick_callback(
+        self, callback: Callable[[SimulatedTick], Awaitable[None]]
+    ) -> None:
         """
         ティックコールバック追加
 
@@ -509,15 +538,23 @@ class MarketDataSimulator:
         Returns:
             Dict[str, Any]: パフォーマンス統計
         """
-        avg_latency = self.total_latency_ms / self.latency_samples if self.latency_samples > 0 else 0
-        avg_slippage = self.total_slippage_bps / self.slippage_samples if self.slippage_samples > 0 else 0
+        avg_latency = (
+            self.total_latency_ms / self.latency_samples
+            if self.latency_samples > 0
+            else 0
+        )
+        avg_slippage = (
+            self.total_slippage_bps / self.slippage_samples
+            if self.slippage_samples > 0
+            else 0
+        )
 
         return {
-            'average_latency_ms': avg_latency,
-            'average_slippage_bps': avg_slippage,
-            'total_samples': self.latency_samples,
-            'subscribed_symbols': len(self.subscribed_symbols),
-            'is_running': self.is_running
+            "average_latency_ms": avg_latency,
+            "average_slippage_bps": avg_slippage,
+            "total_samples": self.latency_samples,
+            "subscribed_symbols": len(self.subscribed_symbols),
+            "is_running": self.is_running,
         }
 
     def reset_performance_stats(self) -> None:

@@ -5,32 +5,31 @@ V433 Phase 4: 統合システムマネージャー
 """
 
 import asyncio
-import time
 import threading
-from typing import Dict, List, Optional, Any, Tuple, Union
+import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-import numpy as np
-import pandas as pd
-import psutil
-import os
-from concurrent.futures import ThreadPoolExecutor
-import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.utils.logging_utils import get_logger
-from ztb.trading.v433_integrated_system import V433IntegratedSystem
-from ztb.trading.trade_execution_engine import TradeExecutionEngine
+import numpy as np
+import psutil
+
 from ztb.trading.position_manager import PositionManager
 from ztb.trading.risk_overlay import RiskOverlay
+from ztb.trading.trade_execution_engine import TradeExecutionEngine
+from ztb.trading.v433_integrated_system import V433IntegratedSystem
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class SystemIntegrationConfig:
     """システム統合設定"""
+
     # パフォーマンス設定
     target_latency_ms: float = 100.0  # 目標レイテンシー (100ms)
-    max_memory_usage_gb: float = 4.0   # 最大メモリ使用量 (4GB)
+    max_memory_usage_gb: float = 4.0  # 最大メモリ使用量 (4GB)
     max_cpu_usage_percent: float = 80.0  # 最大CPU使用率 (80%)
 
     # 統合設定
@@ -57,6 +56,7 @@ class SystemIntegrationConfig:
 @dataclass
 class SystemHealthMetrics:
     """システムヘルス指標"""
+
     timestamp: datetime = field(default_factory=datetime.now)
 
     # パフォーマンス指標
@@ -83,6 +83,7 @@ class SystemHealthMetrics:
 @dataclass
 class IntegrationTestResult:
     """統合テスト結果"""
+
     test_name: str
     success: bool
     execution_time: float
@@ -105,7 +106,9 @@ class PerformanceMonitor:
         # プロセス監視
         self.process = psutil.Process()
 
-    def measure_latency(self, operation: callable, *args, **kwargs) -> Tuple[float, Any]:
+    def measure_latency(
+        self, operation: callable, *args, **kwargs
+    ) -> Tuple[float, Any]:
         """操作のレイテンシーを測定"""
         start_time = time.time()
         result = operation(*args, **kwargs)
@@ -118,7 +121,7 @@ class PerformanceMonitor:
         metrics = SystemHealthMetrics()
 
         # パフォーマンス指標
-        metrics.memory_usage_gb = self.process.memory_info().rss / (1024 ** 3)  # GB
+        metrics.memory_usage_gb = self.process.memory_info().rss / (1024**3)  # GB
         metrics.cpu_usage_percent = self.process.cpu_percent(interval=0.1)
         metrics.thread_count = self.process.num_threads()
 
@@ -130,9 +133,11 @@ class PerformanceMonitor:
     def update_baseline(self):
         """ベースラインパフォーマンスを更新"""
         self.baseline_metrics = self.get_current_metrics()
-        self.logger.info(f"Performance baseline updated: "
-                        f"Memory={self.baseline_metrics.memory_usage_gb:.2f}GB, "
-                        f"CPU={self.baseline_metrics.cpu_usage_percent:.1f}%")
+        self.logger.info(
+            f"Performance baseline updated: "
+            f"Memory={self.baseline_metrics.memory_usage_gb:.2f}GB, "
+            f"CPU={self.baseline_metrics.cpu_usage_percent:.1f}%"
+        )
 
     def check_performance_degradation(self, current: SystemHealthMetrics) -> bool:
         """パフォーマンス低下をチェック"""
@@ -140,18 +145,26 @@ class PerformanceMonitor:
             return False
 
         # メモリ使用量の増加チェック
-        memory_increase = (current.memory_usage_gb - self.baseline_metrics.memory_usage_gb) / self.baseline_metrics.memory_usage_gb
+        memory_increase = (
+            current.memory_usage_gb - self.baseline_metrics.memory_usage_gb
+        ) / self.baseline_metrics.memory_usage_gb
 
         # CPU使用率の増加チェック
-        cpu_increase = (current.cpu_usage_percent - self.baseline_metrics.cpu_usage_percent) / max(self.baseline_metrics.cpu_usage_percent, 1)
+        cpu_increase = (
+            current.cpu_usage_percent - self.baseline_metrics.cpu_usage_percent
+        ) / max(self.baseline_metrics.cpu_usage_percent, 1)
 
         # レイテンシーの増加チェック
-        latency_increase = (current.latency_ms - self.baseline_metrics.latency_ms) / max(self.baseline_metrics.latency_ms, 1)
+        latency_increase = (
+            current.latency_ms - self.baseline_metrics.latency_ms
+        ) / max(self.baseline_metrics.latency_ms, 1)
 
         # 閾値超過チェック
-        if (memory_increase > self.config.performance_degradation_threshold or
-            cpu_increase > self.config.performance_degradation_threshold or
-            latency_increase > self.config.performance_degradation_threshold):
+        if (
+            memory_increase > self.config.performance_degradation_threshold
+            or cpu_increase > self.config.performance_degradation_threshold
+            or latency_increase > self.config.performance_degradation_threshold
+        ):
             return True
 
         return False
@@ -166,9 +179,11 @@ class PerformanceMonitor:
 
         # 定期ログ
         if len(self.metrics_history) % 10 == 0:  # 10回に1回
-            self.logger.info(f"Performance: Memory={metrics.memory_usage_gb:.2f}GB, "
-                           f"CPU={metrics.cpu_usage_percent:.1f}%, "
-                           f"Threads={metrics.thread_count}")
+            self.logger.info(
+                f"Performance: Memory={metrics.memory_usage_gb:.2f}GB, "
+                f"CPU={metrics.cpu_usage_percent:.1f}%, "
+                f"Threads={metrics.thread_count}"
+            )
 
 
 class ComponentManager:
@@ -197,15 +212,17 @@ class ComponentManager:
             self.components["execution_engine"] = {
                 "instance": self.execution_engine,
                 "status": "initialized",
-                "start_time": datetime.now()
+                "start_time": datetime.now(),
             }
 
             # ポジション管理システムの初期化
-            self.position_manager = PositionManager(self.execution_engine, self.exchange)
+            self.position_manager = PositionManager(
+                self.execution_engine, self.exchange
+            )
             self.components["position_manager"] = {
                 "instance": self.position_manager,
                 "status": "initialized",
-                "start_time": datetime.now()
+                "start_time": datetime.now(),
             }
 
             # リスクオーバーレイの初期化
@@ -213,7 +230,7 @@ class ComponentManager:
             self.components["risk_overlay"] = {
                 "instance": self.risk_overlay,
                 "status": "initialized",
-                "start_time": datetime.now()
+                "start_time": datetime.now(),
             }
 
             # V433統合システムの初期化
@@ -221,7 +238,7 @@ class ComponentManager:
             self.components["v433_system"] = {
                 "instance": self.v433_system,
                 "status": "initialized",
-                "start_time": datetime.now()
+                "start_time": datetime.now(),
             }
 
             self.logger.info("All components initialized successfully")
@@ -269,28 +286,40 @@ class ComponentManager:
         # 停止順序: V433システム → リスクオーバーレイ → ポジション管理 → 実行エンジン
 
         try:
-            if self.v433_system and self.components["v433_system"]["status"] == "running":
+            if (
+                self.v433_system
+                and self.components["v433_system"]["status"] == "running"
+            ):
                 self.v433_system.stop_system()
                 self.components["v433_system"]["status"] = "stopped"
         except Exception as e:
             self.logger.error(f"V433 system stop failed: {e}")
 
         try:
-            if self.risk_overlay and self.components["risk_overlay"]["status"] == "running":
+            if (
+                self.risk_overlay
+                and self.components["risk_overlay"]["status"] == "running"
+            ):
                 self.risk_overlay.stop_overlay()
                 self.components["risk_overlay"]["status"] = "stopped"
         except Exception as e:
             self.logger.error(f"Risk overlay stop failed: {e}")
 
         try:
-            if self.position_manager and self.components["position_manager"]["status"] == "running":
+            if (
+                self.position_manager
+                and self.components["position_manager"]["status"] == "running"
+            ):
                 self.position_manager.stop_management()
                 self.components["position_manager"]["status"] = "stopped"
         except Exception as e:
             self.logger.error(f"Position manager stop failed: {e}")
 
         try:
-            if self.execution_engine and self.components["execution_engine"]["status"] == "running":
+            if (
+                self.execution_engine
+                and self.components["execution_engine"]["status"] == "running"
+            ):
                 self.execution_engine.stop_execution()
                 self.components["execution_engine"]["status"] = "stopped"
         except Exception as e:
@@ -304,8 +333,10 @@ class ComponentManager:
         for name, component in self.components.items():
             status[name] = {
                 "status": component["status"],
-                "uptime": (datetime.now() - component["start_time"]).total_seconds() if "start_time" in component else 0,
-                "healthy": component["status"] in ["running", "initialized"]
+                "uptime": (datetime.now() - component["start_time"]).total_seconds()
+                if "start_time" in component
+                else 0,
+                "healthy": component["status"] in ["running", "initialized"],
             }
         return status
 
@@ -386,7 +417,9 @@ class IntegrationTester:
         # サマリーログ
         success_count = sum(1 for r in test_results if r.success)
         total_count = len(test_results)
-        self.logger.info(f"Integration test completed: {success_count}/{total_count} tests passed")
+        self.logger.info(
+            f"Integration test completed: {success_count}/{total_count} tests passed"
+        )
 
         return test_results
 
@@ -417,7 +450,7 @@ class IntegrationTester:
                 test_name="component_startup",
                 success=True,
                 execution_time=execution_time,
-                details={"component_status": status}
+                details={"component_status": status},
             )
 
         except Exception as e:
@@ -426,7 +459,7 @@ class IntegrationTester:
                 test_name="component_startup",
                 success=False,
                 execution_time=execution_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _test_data_flow_integration(self) -> IntegrationTestResult:
@@ -456,7 +489,10 @@ class IntegrationTester:
                 test_name="data_flow_integration",
                 success=True,
                 execution_time=execution_time,
-                details={"test_price": test_price, "verified_components": ["v433_system", "risk_overlay"]}
+                details={
+                    "test_price": test_price,
+                    "verified_components": ["v433_system", "risk_overlay"],
+                },
             )
 
         except Exception as e:
@@ -465,7 +501,7 @@ class IntegrationTester:
                 test_name="data_flow_integration",
                 success=False,
                 execution_time=execution_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _test_trading_workflow_integration(self) -> IntegrationTestResult:
@@ -482,7 +518,7 @@ class IntegrationTester:
                 strength=0.7,
                 target_quantity=0.001,
                 confidence=0.8,
-                reason="integration_test"
+                reason="integration_test",
             )
 
             # 非同期シグナル送信
@@ -503,7 +539,7 @@ class IntegrationTester:
                 test_name="trading_workflow_integration",
                 success=True,
                 execution_time=execution_time,
-                details={"signal_sent": True, "position_created": has_position}
+                details={"signal_sent": True, "position_created": has_position},
             )
 
         except Exception as e:
@@ -512,7 +548,7 @@ class IntegrationTester:
                 test_name="trading_workflow_integration",
                 success=False,
                 execution_time=execution_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _test_performance_integration(self) -> IntegrationTestResult:
@@ -546,8 +582,8 @@ class IntegrationTester:
                     "avg_latency_ms": avg_latency,
                     "target_latency_ms": 100.0,
                     "within_target": within_target,
-                    "operations_tested": len(operations)
-                }
+                    "operations_tested": len(operations),
+                },
             )
 
         except Exception as e:
@@ -556,7 +592,7 @@ class IntegrationTester:
                 test_name="performance_integration",
                 success=False,
                 execution_time=execution_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _test_error_handling_integration(self) -> IntegrationTestResult:
@@ -582,11 +618,13 @@ class IntegrationTester:
                     strength=0.5,
                     target_quantity=-1,  # 無効な数量
                     confidence=0.5,
-                    reason="error_test"
+                    reason="error_test",
                 )
 
                 async def send_invalid_signal():
-                    await self.component_manager.position_manager.submit_signal(invalid_signal)
+                    await self.component_manager.position_manager.submit_signal(
+                        invalid_signal
+                    )
 
                 asyncio.run(send_invalid_signal())
                 signal_error_handled = True  # 正常に処理された場合
@@ -601,8 +639,8 @@ class IntegrationTester:
                 execution_time=execution_time,
                 details={
                     "invalid_price_handled": error_handled,
-                    "invalid_signal_handled": signal_error_handled
-                }
+                    "invalid_signal_handled": signal_error_handled,
+                },
             )
 
         except Exception as e:
@@ -611,7 +649,7 @@ class IntegrationTester:
                 test_name="error_handling_integration",
                 success=False,
                 execution_time=execution_time,
-                error_message=str(e)
+                error_message=str(e),
             )
 
 
@@ -682,12 +720,16 @@ class V433IntegrationManager:
             self.system_health = "running"
 
             # モニタリングスレッド開始
-            self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+            self.monitoring_thread = threading.Thread(
+                target=self._monitoring_loop, daemon=True
+            )
             self.monitoring_thread.start()
 
             # パフォーマンス監視スレッド開始
             if self.config.enable_performance_monitoring:
-                self.performance_thread = threading.Thread(target=self._performance_monitoring_loop, daemon=True)
+                self.performance_thread = threading.Thread(
+                    target=self._performance_monitoring_loop, daemon=True
+                )
                 self.performance_thread.start()
 
             self.logger.info("V433 integrated system started successfully")
@@ -739,12 +781,16 @@ class V433IntegrationManager:
         success_count = sum(1 for r in test_results if r.success)
         total_count = len(test_results)
 
-        self.logger.info(f"Integration tests completed: {success_count}/{total_count} passed")
+        self.logger.info(
+            f"Integration tests completed: {success_count}/{total_count} passed"
+        )
 
         if success_count < total_count:
             failed_tests = [r for r in test_results if not r.success]
             for test in failed_tests:
-                self.logger.error(f"Test failed: {test.test_name} - {test.error_message}")
+                self.logger.error(
+                    f"Test failed: {test.test_name} - {test.error_message}"
+                )
 
         return test_results
 
@@ -756,7 +802,7 @@ class V433IntegrationManager:
             "memory_optimization": self._optimize_memory_usage(),
             "cpu_optimization": self._optimize_cpu_usage(),
             "latency_optimization": self._optimize_latency(),
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
         }
 
         # 最適化結果ログ
@@ -771,21 +817,28 @@ class V433IntegrationManager:
         try:
             # ガベージコレクション実行
             import gc
+
             gc.collect()
 
             # メモリ使用量測定
-            before_memory = self.performance_monitor.get_current_metrics().memory_usage_gb
-            after_memory = self.performance_monitor.get_current_metrics().memory_usage_gb
+            before_memory = (
+                self.performance_monitor.get_current_metrics().memory_usage_gb
+            )
+            after_memory = (
+                self.performance_monitor.get_current_metrics().memory_usage_gb
+            )
 
             memory_reduction = before_memory - after_memory
-            reduction_percent = (memory_reduction / before_memory) * 100 if before_memory > 0 else 0
+            reduction_percent = (
+                (memory_reduction / before_memory) * 100 if before_memory > 0 else 0
+            )
 
             return {
                 "success": True,
                 "memory_before_gb": before_memory,
                 "memory_after_gb": after_memory,
                 "reduction_gb": memory_reduction,
-                "reduction_percent": reduction_percent
+                "reduction_percent": reduction_percent,
             }
 
         except Exception as e:
@@ -807,7 +860,7 @@ class V433IntegrationManager:
             return {
                 "success": True,
                 "cpu_usage_percent": cpu_usage,
-                "within_limits": cpu_usage <= self.config.max_cpu_usage_percent
+                "within_limits": cpu_usage <= self.config.max_cpu_usage_percent,
             }
 
         except Exception as e:
@@ -823,7 +876,8 @@ class V433IntegrationManager:
             for _ in range(5):
                 latency, _ = self.performance_monitor.measure_latency(
                     self.component_manager.v433_system.update_market_data,
-                    "btc_jpy", 5000000.0
+                    "btc_jpy",
+                    5000000.0,
                 )
                 latencies.append(latency)
 
@@ -835,7 +889,7 @@ class V433IntegrationManager:
                 "avg_latency_ms": avg_latency,
                 "target_latency_ms": self.config.target_latency_ms,
                 "within_target": within_target,
-                "latency_samples": latencies
+                "latency_samples": latencies,
             }
 
         except Exception as e:
@@ -849,16 +903,24 @@ class V433IntegrationManager:
                 current_time = datetime.now()
 
                 # ヘルスチェック
-                if (current_time - self.last_health_check).seconds >= self.config.system_health_check_interval:
+                if (
+                    current_time - self.last_health_check
+                ).seconds >= self.config.system_health_check_interval:
                     self._perform_health_check()
                     self.last_health_check = current_time
 
                 # コンポーネント状態確認
                 component_status = self.component_manager.get_component_status()
-                unhealthy_components = [name for name, status in component_status.items() if not status["healthy"]]
+                unhealthy_components = [
+                    name
+                    for name, status in component_status.items()
+                    if not status["healthy"]
+                ]
 
                 if unhealthy_components:
-                    self.logger.warning(f"Unhealthy components detected: {unhealthy_components}")
+                    self.logger.warning(
+                        f"Unhealthy components detected: {unhealthy_components}"
+                    )
 
                     # 自動回復が有効な場合
                     if self.config.enable_auto_recovery:
@@ -880,10 +942,18 @@ class V433IntegrationManager:
 
                 # ビジネス指標更新
                 if self.component_manager.v433_system:
-                    system_status = self.component_manager.v433_system.get_system_status()
-                    metrics.active_positions = system_status["portfolio_status"]["position_count"]
-                    metrics.total_pnl = system_status["portfolio_status"]["portfolio_state"]["total_pnl"]
-                    metrics.win_rate = system_status["performance_metrics"].get("win_rate", 0.0)
+                    system_status = (
+                        self.component_manager.v433_system.get_system_status()
+                    )
+                    metrics.active_positions = system_status["portfolio_status"][
+                        "position_count"
+                    ]
+                    metrics.total_pnl = system_status["portfolio_status"][
+                        "portfolio_state"
+                    ]["total_pnl"]
+                    metrics.win_rate = system_status["performance_metrics"].get(
+                        "win_rate", 0.0
+                    )
 
                 # パフォーマンス低下チェック
                 if self.performance_monitor.check_performance_degradation(metrics):
@@ -911,7 +981,9 @@ class V433IntegrationManager:
             data_flow_status = self._check_data_flow()
 
             # 全体ヘルス判定
-            all_components_healthy = all(s["healthy"] for s in component_status.values())
+            all_components_healthy = all(
+                s["healthy"] for s in component_status.values()
+            )
             data_flow_healthy = all(data_flow_status.values())
 
             if all_components_healthy and data_flow_healthy:
@@ -922,7 +994,9 @@ class V433IntegrationManager:
                 new_health = "critical"
 
             if new_health != self.system_health:
-                self.logger.info(f"System health changed: {self.system_health} -> {new_health}")
+                self.logger.info(
+                    f"System health changed: {self.system_health} -> {new_health}"
+                )
                 self.system_health = new_health
 
         except Exception as e:
@@ -941,8 +1015,12 @@ class V433IntegrationManager:
             time.sleep(0.1)  # 伝播待機
 
             # 各コンポーネントでのデータ確認
-            v433_price = self.component_manager.v433_system.current_prices.get("btc_jpy")
-            risk_price = self.component_manager.risk_overlay.current_prices.get("btc_jpy")
+            v433_price = self.component_manager.v433_system.current_prices.get(
+                "btc_jpy"
+            )
+            risk_price = self.component_manager.risk_overlay.current_prices.get(
+                "btc_jpy"
+            )
 
             data_flow_status["v433_system"] = v433_price == test_price
             data_flow_status["risk_overlay"] = risk_price == test_price
@@ -970,10 +1048,12 @@ class V433IntegrationManager:
 
     def _send_performance_alert(self, metrics: SystemHealthMetrics):
         """パフォーマンスアラートを送信"""
-        self.logger.warning(f"PERFORMANCE ALERT: "
-                          f"Memory={metrics.memory_usage_gb:.2f}GB, "
-                          f"CPU={metrics.cpu_usage_percent:.1f}%, "
-                          f"Latency={metrics.latency_ms:.2f}ms")
+        self.logger.warning(
+            f"PERFORMANCE ALERT: "
+            f"Memory={metrics.memory_usage_gb:.2f}GB, "
+            f"CPU={metrics.cpu_usage_percent:.1f}%, "
+            f"Latency={metrics.latency_ms:.2f}ms"
+        )
 
     def get_system_status(self) -> Dict[str, Any]:
         """システム全体の状態を取得"""
@@ -982,9 +1062,11 @@ class V433IntegrationManager:
             "is_running": self.is_running,
             "component_status": self.component_manager.get_component_status(),
             "performance_metrics": self.performance_monitor.get_current_metrics().__dict__,
-            "integration_test_results": [r.__dict__ for r in self.integration_test_results[-10:]],  # 最新10件
+            "integration_test_results": [
+                r.__dict__ for r in self.integration_test_results[-10:]
+            ],  # 最新10件
             "last_health_check": self.last_health_check,
-            "config": self.config.__dict__
+            "config": self.config.__dict__,
         }
 
 

@@ -6,13 +6,15 @@ SAC v431 Curriculum Learning Script
 
 import json
 import sys
-from pathlib import Path
-import numpy as np
 import time
+from pathlib import Path
+
+import numpy as np
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
 
 def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
     """Run a single curriculum stage"""
@@ -22,20 +24,20 @@ def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
 
     # Update config for this stage
     stage_config = base_config.copy()
-    stage_config['training']['total_timesteps'] = timesteps
-    stage_config['training']['learning_rate'] = learning_rate
+    stage_config["training"]["total_timesteps"] = timesteps
+    stage_config["training"]["learning_rate"] = learning_rate
 
     # Simulate training for this stage
     actions_taken = {"BUY": 0, "SELL": 0, "HOLD": 0}
     total_reward = 0
 
     # Reward parameters
-    sell_bonus = stage_config['reward_function']['sell_bonus']
-    hold_bonus = stage_config['reward_function']['hold_bonus']
-    buy_bonus = stage_config['reward_function']['buy_bonus']
+    sell_bonus = stage_config["reward_function"]["sell_bonus"]
+    hold_bonus = stage_config["reward_function"]["hold_bonus"]
+    buy_bonus = stage_config["reward_function"]["buy_bonus"]
 
-    sell_threshold = stage_config['action_thresholds']['sell_threshold']
-    buy_threshold = stage_config['action_thresholds']['buy_threshold']
+    sell_threshold = stage_config["action_thresholds"]["sell_threshold"]
+    buy_threshold = stage_config["action_thresholds"]["buy_threshold"]
 
     print(f"Action thresholds: Sell={sell_threshold}, Buy={buy_threshold}")
     print(f"Rewards: Sell={sell_bonus}, Hold={hold_bonus}, Buy={buy_bonus}")
@@ -89,13 +91,14 @@ def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
         print(".1f")
 
     return {
-        'stage': stage_name,
-        'timesteps': timesteps,
-        'total_reward': total_reward,
-        'avg_reward': total_reward/timesteps,
-        'action_distribution': actions_taken,
-        'elapsed_time': elapsed_time
+        "stage": stage_name,
+        "timesteps": timesteps,
+        "total_reward": total_reward,
+        "avg_reward": total_reward / timesteps,
+        "action_distribution": actions_taken,
+        "elapsed_time": elapsed_time,
     }
+
 
 def run_curriculum_learning():
     """Run complete curriculum learning"""
@@ -112,7 +115,7 @@ def run_curriculum_learning():
         {"name": "warmup", "timesteps": 20000, "lr": 0.001},
         {"name": "foundation", "timesteps": 30000, "lr": 0.0005},
         {"name": "optimization", "timesteps": 30000, "lr": 0.000161},
-        {"name": "refinement", "timesteps": 20000, "lr": 0.00008}
+        {"name": "refinement", "timesteps": 20000, "lr": 0.00008},
     ]
 
     total_start_time = time.time()
@@ -120,16 +123,13 @@ def run_curriculum_learning():
 
     for stage in stages:
         result = run_curriculum_stage(
-            stage["name"],
-            stage["timesteps"],
-            stage["lr"],
-            base_config
+            stage["name"], stage["timesteps"], stage["lr"], base_config
         )
         curriculum_results.append(result)
 
     total_elapsed = time.time() - total_start_time
-    total_timesteps = sum(r['timesteps'] for r in curriculum_results)
-    total_reward = sum(r['total_reward'] for r in curriculum_results)
+    total_timesteps = sum(r["timesteps"] for r in curriculum_results)
+    total_reward = sum(r["total_reward"] for r in curriculum_results)
 
     print("\n=== Curriculum Learning Complete ===")
     print(f"Total Time: {total_elapsed:.2f}s")
@@ -140,7 +140,7 @@ def run_curriculum_learning():
     # Overall action distribution
     overall_actions = {"BUY": 0, "SELL": 0, "HOLD": 0}
     for result in curriculum_results:
-        for action, count in result['action_distribution'].items():
+        for action, count in result["action_distribution"].items():
             overall_actions[action] += count
 
     print("\nOverall Action Distribution:")
@@ -153,8 +153,8 @@ def run_curriculum_learning():
     for i, result in enumerate(curriculum_results):
         improvement = ""
         if i > 0:
-            prev_avg = curriculum_results[i-1]['avg_reward']
-            curr_avg = result['avg_reward']
+            prev_avg = curriculum_results[i - 1]["avg_reward"]
+            curr_avg = result["avg_reward"]
             improvement = ".4f" if curr_avg > prev_avg else ".4f"
         print(".4f")
 
@@ -162,6 +162,7 @@ def run_curriculum_learning():
     print("1. Execute ensemble training with specialized models")
     print("2. Run multi-stage training (exploration → exploitation → fine-tuning)")
     print("3. Perform comprehensive backtesting and evaluation")
+
 
 if __name__ == "__main__":
     run_curriculum_learning()

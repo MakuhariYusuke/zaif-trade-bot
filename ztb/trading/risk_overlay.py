@@ -4,26 +4,26 @@ V433 Phase 3: リスクオーバーレイシステム
 VaR計算、緊急停止機能、リアルタイムリスク監視
 """
 
-import asyncio
-import time
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
 import threading
-import numpy as np
-import pandas as pd
-from scipy import stats
+import time
 from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+from scipy import stats
+
+from ztb.trading.position_manager import PortfolioState, PositionManager
 from ztb.utils.logging_utils import get_logger
-from ztb.trading.position_manager import PositionManager, PortfolioState
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class RiskOverlayConfig:
     """リスクオーバーレイ設定"""
+
     # VaR設定
     var_confidence_level: float = 0.95  # 95%信頼区間
     var_time_horizon_days: int = 1  # 1日VaR
@@ -43,9 +43,14 @@ class RiskOverlayConfig:
 
     # ストレステスト設定
     stress_test_enabled: bool = True
-    stress_test_scenarios: List[str] = field(default_factory=lambda: [
-        "market_crash", "flash_crash", "high_volatility", "liquidity_crisis"
-    ])
+    stress_test_scenarios: List[str] = field(
+        default_factory=lambda: [
+            "market_crash",
+            "flash_crash",
+            "high_volatility",
+            "liquidity_crisis",
+        ]
+    )
     stress_test_frequency_hours: int = 24  # 24時間ごと
 
     # アラート設定
@@ -61,6 +66,7 @@ class RiskOverlayConfig:
 @dataclass
 class VaRCalculation:
     """VaR計算結果"""
+
     portfolio_var: float
     portfolio_var_pct: float
     expected_shortfall: float
@@ -79,6 +85,7 @@ class VaRCalculation:
 @dataclass
 class RiskMetrics:
     """リスク指標"""
+
     # VaR指標
     value_at_risk: float
     expected_shortfall: float
@@ -106,6 +113,7 @@ class RiskMetrics:
 @dataclass
 class RiskAlert:
     """リスクアラート"""
+
     alert_type: str
     severity: str  # "low", "medium", "high", "critical"
     message: str
@@ -132,8 +140,12 @@ class VaRCalculator:
     def update_price_data(self, symbol: str, price: float):
         """価格データを更新"""
         if symbol not in self.price_history:
-            self.price_history[symbol] = deque(maxlen=self.config.var_calculation_window_days * 24)  # 1時間足
-            self.return_history[symbol] = deque(maxlen=self.config.var_calculation_window_days * 24 - 1)
+            self.price_history[symbol] = deque(
+                maxlen=self.config.var_calculation_window_days * 24
+            )  # 1時間足
+            self.return_history[symbol] = deque(
+                maxlen=self.config.var_calculation_window_days * 24 - 1
+            )
 
         # 価格を追加
         self.price_history[symbol].append(price)
@@ -144,9 +156,12 @@ class VaRCalculator:
             returns = np.diff(prices) / prices[:-1]
             self.return_history[symbol] = deque(returns, maxlen=len(returns))
 
-    def calculate_portfolio_var(self, positions: Dict[str, Any],
-                              volatilities: Dict[str, float],
-                              correlations: Dict[Tuple[str, str], float]) -> VaRCalculation:
+    def calculate_portfolio_var(
+        self,
+        positions: Dict[str, Any],
+        volatilities: Dict[str, float],
+        correlations: Dict[Tuple[str, str], float],
+    ) -> VaRCalculation:
         """ポートフォリオVaRを計算"""
         try:
             if not positions:
@@ -157,15 +172,19 @@ class VaRCalculator:
                     expected_shortfall_pct=0.0,
                     calculation_method="empty_portfolio",
                     confidence_level=self.config.var_confidence_level,
-                    time_horizon=self.config.var_time_horizon_days
+                    time_horizon=self.config.var_time_horizon_days,
                 )
 
             # ヒストリカルVaR計算
-            portfolio_returns = self._calculate_portfolio_returns(positions, correlations)
+            portfolio_returns = self._calculate_portfolio_returns(
+                positions, correlations
+            )
 
             if len(portfolio_returns) < 10:
                 # データ不足時はパラメトリックVaR
-                return self._calculate_parametric_var(positions, volatilities, correlations)
+                return self._calculate_parametric_var(
+                    positions, volatilities, correlations
+                )
 
             # ヒストリカルVaR
             return self._calculate_historical_var(portfolio_returns, positions)
@@ -179,11 +198,12 @@ class VaRCalculator:
                 expected_shortfall_pct=0.0,
                 calculation_method="error",
                 confidence_level=self.config.var_confidence_level,
-                time_horizon=self.config.var_time_horizon_days
+                time_horizon=self.config.var_time_horizon_days,
             )
 
-    def _calculate_portfolio_returns(self, positions: Dict[str, Any],
-                                   correlations: Dict[Tuple[str, str], float]) -> np.ndarray:
+    def _calculate_portfolio_returns(
+        self, positions: Dict[str, Any], correlations: Dict[Tuple[str, str], float]
+    ) -> np.ndarray:
         """ポートフォリオリターンを計算"""
         symbols = list(positions.keys())
         if not symbols:
@@ -203,7 +223,7 @@ class VaRCalculator:
         corr_matrix = np.eye(n_symbols)
 
         for i in range(n_symbols):
-            for j in range(i+1, n_symbols):
+            for j in range(i + 1, n_symbols):
                 symbol_i, symbol_j = symbols[i], symbols[j]
                 corr = correlations.get((symbol_i, symbol_j), 0.5)  # デフォルト相関0.5
                 corr_matrix[i, j] = corr
@@ -211,15 +231,19 @@ class VaRCalculator:
 
         # ポートフォリオウェイトを計算
         total_value = sum(pos.market_value for pos in positions.values())
-        weights = np.array([pos.market_value / total_value for pos in positions.values()])
+        weights = np.array(
+            [pos.market_value / total_value for pos in positions.values()]
+        )
 
         # 共分散行列を計算
         cov_matrix = np.zeros((n_symbols, n_symbols))
         for i in range(n_symbols):
             vol_i = np.std(symbol_returns[i]) if len(symbol_returns[i]) > 0 else 0.02
-            cov_matrix[i, i] = vol_i ** 2
-            for j in range(i+1, n_symbols):
-                vol_j = np.std(symbol_returns[j]) if len(symbol_returns[j]) > 0 else 0.02
+            cov_matrix[i, i] = vol_i**2
+            for j in range(i + 1, n_symbols):
+                vol_j = (
+                    np.std(symbol_returns[j]) if len(symbol_returns[j]) > 0 else 0.02
+                )
                 cov = corr_matrix[i, j] * vol_i * vol_j
                 cov_matrix[i, j] = cov
                 cov_matrix[j, i] = cov
@@ -233,9 +257,12 @@ class VaRCalculator:
 
         return portfolio_returns
 
-    def _calculate_parametric_var(self, positions: Dict[str, Any],
-                                volatilities: Dict[str, float],
-                                correlations: Dict[Tuple[str, str], float]) -> VaRCalculation:
+    def _calculate_parametric_var(
+        self,
+        positions: Dict[str, Any],
+        volatilities: Dict[str, float],
+        correlations: Dict[Tuple[str, str], float],
+    ) -> VaRCalculation:
         """パラメトリックVaRを計算"""
         total_value = sum(pos.market_value for pos in positions.values())
 
@@ -247,12 +274,14 @@ class VaRCalculator:
                 expected_shortfall_pct=0.0,
                 calculation_method="parametric",
                 confidence_level=self.config.var_confidence_level,
-                time_horizon=self.config.var_time_horizon_days
+                time_horizon=self.config.var_time_horizon_days,
             )
 
         # ポートフォリオボラティリティを計算
         symbols = list(positions.keys())
-        weights = np.array([pos.market_value / total_value for pos in positions.values()])
+        weights = np.array(
+            [pos.market_value / total_value for pos in positions.values()]
+        )
 
         # 共分散行列
         n_symbols = len(symbols)
@@ -260,8 +289,8 @@ class VaRCalculator:
 
         for i in range(n_symbols):
             vol_i = volatilities.get(symbols[i], 0.02)
-            cov_matrix[i, i] = vol_i ** 2
-            for j in range(i+1, n_symbols):
+            cov_matrix[i, i] = vol_i**2
+            for j in range(i + 1, n_symbols):
                 vol_j = volatilities.get(symbols[j], 0.02)
                 corr = correlations.get((symbols[i], symbols[j]), 0.5)
                 cov = corr * vol_i * vol_j
@@ -272,11 +301,20 @@ class VaRCalculator:
 
         # 正規分布VaR
         z_score = stats.norm.ppf(1 - self.config.var_confidence_level)
-        portfolio_var = abs(z_score) * portfolio_vol * total_value * np.sqrt(self.config.var_time_horizon_days)
+        portfolio_var = (
+            abs(z_score)
+            * portfolio_vol
+            * total_value
+            * np.sqrt(self.config.var_time_horizon_days)
+        )
 
         # Expected Shortfall (CVaR)
-        expected_shortfall = portfolio_vol * total_value * np.sqrt(self.config.var_time_horizon_days) * \
-                           (stats.norm.pdf(z_score) / (1 - self.config.var_confidence_level))
+        expected_shortfall = (
+            portfolio_vol
+            * total_value
+            * np.sqrt(self.config.var_time_horizon_days)
+            * (stats.norm.pdf(z_score) / (1 - self.config.var_confidence_level))
+        )
 
         return VaRCalculation(
             portfolio_var=portfolio_var,
@@ -285,11 +323,12 @@ class VaRCalculator:
             expected_shortfall_pct=expected_shortfall / total_value,
             calculation_method="parametric",
             confidence_level=self.config.var_confidence_level,
-            time_horizon=self.config.var_time_horizon_days
+            time_horizon=self.config.var_time_horizon_days,
         )
 
-    def _calculate_historical_var(self, portfolio_returns: np.ndarray,
-                                positions: Dict[str, Any]) -> VaRCalculation:
+    def _calculate_historical_var(
+        self, portfolio_returns: np.ndarray, positions: Dict[str, Any]
+    ) -> VaRCalculation:
         """ヒストリカルVaRを計算"""
         total_value = sum(pos.market_value for pos in positions.values())
 
@@ -301,7 +340,7 @@ class VaRCalculator:
                 expected_shortfall_pct=0.0,
                 calculation_method="historical",
                 confidence_level=self.config.var_confidence_level,
-                time_horizon=self.config.var_time_horizon_days
+                time_horizon=self.config.var_time_horizon_days,
             )
 
         # VaRを計算
@@ -315,7 +354,9 @@ class VaRCalculator:
 
         # Expected Shortfall
         tail_returns = portfolio_returns[portfolio_returns <= portfolio_var_pct]
-        expected_shortfall_pct = np.mean(tail_returns) if len(tail_returns) > 0 else portfolio_var_pct
+        expected_shortfall_pct = (
+            np.mean(tail_returns) if len(tail_returns) > 0 else portfolio_var_pct
+        )
         expected_shortfall_pct *= np.sqrt(self.config.var_time_horizon_days)
         expected_shortfall = abs(expected_shortfall_pct) * total_value
 
@@ -326,7 +367,7 @@ class VaRCalculator:
             expected_shortfall_pct=abs(expected_shortfall_pct),
             calculation_method="historical",
             confidence_level=self.config.var_confidence_level,
-            time_horizon=self.config.var_time_horizon_days
+            time_horizon=self.config.var_time_horizon_days,
         )
 
 
@@ -342,28 +383,29 @@ class StressTester:
             "market_crash": {
                 "description": "市場暴落シナリオ",
                 "shock_returns": {"btc_jpy": -0.15, "eth_jpy": -0.20, "xrp_jpy": -0.10},
-                "volatility_multiplier": 2.0
+                "volatility_multiplier": 2.0,
             },
             "flash_crash": {
                 "description": "瞬間暴落シナリオ",
                 "shock_returns": {"btc_jpy": -0.30, "eth_jpy": -0.35, "xrp_jpy": -0.25},
-                "volatility_multiplier": 3.0
+                "volatility_multiplier": 3.0,
             },
             "high_volatility": {
                 "description": "高ボラティリティシナリオ",
                 "shock_returns": {},
-                "volatility_multiplier": 2.5
+                "volatility_multiplier": 2.5,
             },
             "liquidity_crisis": {
                 "description": "流動性危機シナリオ",
                 "shock_returns": {"btc_jpy": -0.05, "eth_jpy": -0.08, "xrp_jpy": -0.03},
                 "volatility_multiplier": 1.8,
-                "spread_multiplier": 5.0
-            }
+                "spread_multiplier": 5.0,
+            },
         }
 
-    def run_stress_test(self, portfolio_state: PortfolioState,
-                       current_prices: Dict[str, float]) -> Dict[str, Dict[str, float]]:
+    def run_stress_test(
+        self, portfolio_state: PortfolioState, current_prices: Dict[str, float]
+    ) -> Dict[str, Dict[str, float]]:
         """ストレステストを実行"""
         results = {}
 
@@ -379,9 +421,12 @@ class StressTester:
 
         return results
 
-    def _run_single_scenario(self, scenario: Dict[str, Any],
-                           portfolio_state: PortfolioState,
-                           current_prices: Dict[str, float]) -> Dict[str, float]:
+    def _run_single_scenario(
+        self,
+        scenario: Dict[str, Any],
+        portfolio_state: PortfolioState,
+        current_prices: Dict[str, float],
+    ) -> Dict[str, float]:
         """単一シナリオを実行"""
         # ショック後の価格を計算
         shocked_prices = {}
@@ -401,7 +446,11 @@ class StressTester:
             total_loss += loss
 
         # 損失率を計算
-        loss_pct = total_loss / portfolio_state.total_value if portfolio_state.total_value > 0 else 0
+        loss_pct = (
+            total_loss / portfolio_state.total_value
+            if portfolio_state.total_value > 0
+            else 0
+        )
 
         # ボラティリティ調整
         vol_multiplier = scenario.get("volatility_multiplier", 1.0)
@@ -411,7 +460,7 @@ class StressTester:
             "loss_amount": total_loss,
             "loss_percentage": loss_pct,
             "adjusted_volatility": adjusted_volatility,
-            "breach_threshold": loss_pct > 0.20  # 20%損失で重大
+            "breach_threshold": loss_pct > 0.20,  # 20%損失で重大
         }
 
 
@@ -431,27 +480,36 @@ class EmergencyStopSystem:
         self.peak_value = 0.0
         self.current_drawdown = 0.0
 
-    def check_emergency_conditions(self, portfolio_state: PortfolioState,
-                                 var_calculation: VaRCalculation,
-                                 volatility: float) -> bool:
+    def check_emergency_conditions(
+        self,
+        portfolio_state: PortfolioState,
+        var_calculation: VaRCalculation,
+        volatility: float,
+    ) -> bool:
         """緊急停止条件をチェック"""
         if not self.config.emergency_stop_enabled:
             return False
 
         # VaR閾値チェック
         if var_calculation.portfolio_var_pct > self.config.emergency_stop_var_threshold:
-            self._trigger_emergency_stop(f"VaR threshold exceeded: {var_calculation.portfolio_var_pct:.2%}")
+            self._trigger_emergency_stop(
+                f"VaR threshold exceeded: {var_calculation.portfolio_var_pct:.2%}"
+            )
             return True
 
         # ドローダウンチェック
         self._update_drawdown(portfolio_state.total_value)
         if self.current_drawdown > self.config.emergency_stop_drawdown_threshold:
-            self._trigger_emergency_stop(f"Drawdown threshold exceeded: {self.current_drawdown:.2%}")
+            self._trigger_emergency_stop(
+                f"Drawdown threshold exceeded: {self.current_drawdown:.2%}"
+            )
             return True
 
         # ボラティリティチェック
         if volatility > self.config.emergency_stop_volatility_threshold:
-            self._trigger_emergency_stop(f"Volatility threshold exceeded: {volatility:.2%}")
+            self._trigger_emergency_stop(
+                f"Volatility threshold exceeded: {volatility:.2%}"
+            )
             return True
 
         return False
@@ -486,7 +544,7 @@ class EmergencyStopSystem:
             "triggered": self.emergency_stop_triggered,
             "reason": self.emergency_stop_reason,
             "timestamp": self.emergency_stop_timestamp,
-            "current_drawdown": self.current_drawdown
+            "current_drawdown": self.current_drawdown,
         }
 
 
@@ -529,7 +587,9 @@ class RiskOverlay:
         self.is_running = True
 
         # モニタリングスレッド開始
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Risk overlay started")
@@ -560,16 +620,24 @@ class RiskOverlay:
             var_calc = self.var_calculator.calculate_portfolio_var(
                 portfolio_state.positions,
                 self.position_manager.volatilities,
-                self.position_manager.correlations
+                self.position_manager.correlations,
             )
             self.last_var_calculation = var_calc
 
             # ボラティリティ指標
-            portfolio_volatility = np.sqrt(
-                sum(vol**2 * (pos.market_value / portfolio_state.total_value)**2
-                    for pos in portfolio_state.positions.values()
-                    for vol in [self.position_manager.volatilities.get(pos.symbol, 0.02)])
-            ) if portfolio_state.positions else 0.0
+            portfolio_volatility = (
+                np.sqrt(
+                    sum(
+                        vol**2 * (pos.market_value / portfolio_state.total_value) ** 2
+                        for pos in portfolio_state.positions.values()
+                        for vol in [
+                            self.position_manager.volatilities.get(pos.symbol, 0.02)
+                        ]
+                    )
+                )
+                if portfolio_state.positions
+                else 0.0
+            )
 
             # ドローダウン計算
             max_drawdown = self._calculate_max_drawdown()
@@ -579,11 +647,13 @@ class RiskOverlay:
             avg_correlation, max_correlation = self._calculate_correlation_metrics()
 
             # 集中度指標
-            herfindahl_index, largest_weight = self._calculate_concentration_metrics(portfolio_state)
+            herfindahl_index, largest_weight = self._calculate_concentration_metrics(
+                portfolio_state
+            )
 
             # 流動性指標（簡易版）
             avg_spread = 0.001  # 仮定値
-            volume_risk = 0.01   # 仮定値
+            volume_risk = 0.01  # 仮定値
 
             self.risk_metrics = RiskMetrics(
                 value_at_risk=var_calc.portfolio_var,
@@ -596,7 +666,7 @@ class RiskOverlay:
                 herfindahl_index=herfindahl_index,
                 largest_position_weight=largest_weight,
                 average_spread=avg_spread,
-                volume_risk=volume_risk
+                volume_risk=volume_risk,
             )
 
             return self.risk_metrics
@@ -622,14 +692,18 @@ class RiskOverlay:
 
         return avg_correlation, max_correlation
 
-    def _calculate_concentration_metrics(self, portfolio_state: PortfolioState) -> Tuple[float, float]:
+    def _calculate_concentration_metrics(
+        self, portfolio_state: PortfolioState
+    ) -> Tuple[float, float]:
         """集中度指標を計算"""
         if not portfolio_state.positions:
             return 0.0, 0.0
 
         # Herfindahl-Hirschman Index
-        weights = [pos.market_value / portfolio_state.total_value
-                  for pos in portfolio_state.positions.values()]
+        weights = [
+            pos.market_value / portfolio_state.total_value
+            for pos in portfolio_state.positions.values()
+        ]
         herfindahl = sum(w**2 for w in weights)
 
         largest_weight = max(weights) if weights else 0.0
@@ -649,7 +723,7 @@ class RiskOverlay:
             herfindahl_index=0.0,
             largest_position_weight=0.0,
             average_spread=0.0,
-            volume_risk=0.0
+            volume_risk=0.0,
         )
 
     def run_stress_tests(self) -> Dict[str, Dict[str, float]]:
@@ -662,12 +736,14 @@ class RiskOverlay:
         if not self.last_var_calculation:
             return False
 
-        portfolio_volatility = self.risk_metrics.portfolio_volatility if self.risk_metrics else 0.0
+        portfolio_volatility = (
+            self.risk_metrics.portfolio_volatility if self.risk_metrics else 0.0
+        )
 
         return self.emergency_stop.check_emergency_conditions(
             self.position_manager.portfolio_state,
             self.last_var_calculation,
-            portfolio_volatility
+            portfolio_volatility,
         )
 
     def generate_risk_alerts(self) -> List[RiskAlert]:
@@ -681,36 +757,42 @@ class RiskOverlay:
         var_pct = self.last_var_calculation.portfolio_var_pct
         for threshold in self.config.risk_alert_levels:
             if var_pct > threshold:
-                alerts.append(RiskAlert(
-                    alert_type="var_breach",
-                    severity=self._get_severity(threshold),
-                    message=f"Portfolio VaR exceeded {threshold:.0%}: {var_pct:.2%}",
-                    threshold=threshold,
-                    current_value=var_pct
-                ))
+                alerts.append(
+                    RiskAlert(
+                        alert_type="var_breach",
+                        severity=self._get_severity(threshold),
+                        message=f"Portfolio VaR exceeded {threshold:.0%}: {var_pct:.2%}",
+                        threshold=threshold,
+                        current_value=var_pct,
+                    )
+                )
                 break
 
         # ドローダウンアラート
         drawdown = self.risk_metrics.current_drawdown
         if drawdown > 0.05:  # 5%ドローダウン
             severity = "high" if drawdown > 0.10 else "medium"
-            alerts.append(RiskAlert(
-                alert_type="drawdown",
-                severity=severity,
-                message=f"Portfolio drawdown: {drawdown:.2%}",
-                threshold=0.05,
-                current_value=drawdown
-            ))
+            alerts.append(
+                RiskAlert(
+                    alert_type="drawdown",
+                    severity=severity,
+                    message=f"Portfolio drawdown: {drawdown:.2%}",
+                    threshold=0.05,
+                    current_value=drawdown,
+                )
+            )
 
         # 集中度アラート
         if self.risk_metrics.largest_position_weight > 0.5:  # 50%集中
-            alerts.append(RiskAlert(
-                alert_type="concentration",
-                severity="medium",
-                message=f"High position concentration: {self.risk_metrics.largest_position_weight:.2%}",
-                threshold=0.5,
-                current_value=self.risk_metrics.largest_position_weight
-            ))
+            alerts.append(
+                RiskAlert(
+                    alert_type="concentration",
+                    severity="medium",
+                    message=f"High position concentration: {self.risk_metrics.largest_position_weight:.2%}",
+                    threshold=0.5,
+                    current_value=self.risk_metrics.largest_position_weight,
+                )
+            )
 
         self.alerts.extend(alerts)
         return alerts
@@ -735,7 +817,9 @@ class RiskOverlay:
                 current_time = datetime.now()
 
                 # VaR更新チェック
-                if (current_time - last_update).seconds >= self.config.var_update_interval_seconds:
+                if (
+                    current_time - last_update
+                ).seconds >= self.config.var_update_interval_seconds:
                     # リスク指標計算
                     self.calculate_risk_metrics()
 
@@ -746,14 +830,22 @@ class RiskOverlay:
                     if self.config.risk_alert_enabled:
                         alerts = self.generate_risk_alerts()
                         for alert in alerts:
-                            self.logger.warning(f"RISK ALERT: {alert.alert_type} - {alert.message}")
+                            self.logger.warning(
+                                f"RISK ALERT: {alert.alert_type} - {alert.message}"
+                            )
 
                     # ストレステスト（定期実行）
                     if self.config.stress_test_enabled:
                         stress_results = self.run_stress_tests()
-                        critical_scenarios = [s for s, r in stress_results.items() if r.get("breach_threshold", False)]
+                        critical_scenarios = [
+                            s
+                            for s, r in stress_results.items()
+                            if r.get("breach_threshold", False)
+                        ]
                         if critical_scenarios:
-                            self.logger.warning(f"Critical stress test scenarios: {critical_scenarios}")
+                            self.logger.warning(
+                                f"Critical stress test scenarios: {critical_scenarios}"
+                            )
 
                     last_update = current_time
 
@@ -767,16 +859,20 @@ class RiskOverlay:
         """リスクレポートを取得"""
         return {
             "risk_metrics": self.risk_metrics.__dict__ if self.risk_metrics else None,
-            "var_calculation": self.last_var_calculation.__dict__ if self.last_var_calculation else None,
+            "var_calculation": self.last_var_calculation.__dict__
+            if self.last_var_calculation
+            else None,
             "emergency_status": self.emergency_stop.get_emergency_status(),
-            "active_alerts": [alert.__dict__ for alert in self.alerts[-10:]],  # 最新10件
+            "active_alerts": [
+                alert.__dict__ for alert in self.alerts[-10:]
+            ],  # 最新10件
             "stress_test_results": self.run_stress_tests(),
             "portfolio_exposure": self.position_manager.portfolio_state.used_capital,
             "risk_limits": {
                 "max_var_pct": self.config.max_portfolio_var_pct,
                 "max_single_var_pct": self.config.max_single_position_var_pct,
-                "emergency_var_threshold": self.config.emergency_stop_var_threshold
-            }
+                "emergency_var_threshold": self.config.emergency_stop_var_threshold,
+            },
         }
 
 
@@ -810,7 +906,9 @@ if __name__ == "__main__":
 
         # リスク指標計算
         metrics = risk_overlay.calculate_risk_metrics()
-        print(f"Risk metrics: VaR={metrics.value_at_risk:.2f}, Volatility={metrics.portfolio_volatility:.2%}")
+        print(
+            f"Risk metrics: VaR={metrics.value_at_risk:.2f}, Volatility={metrics.portfolio_volatility:.2%}"
+        )
 
         # ストレステスト実行
         stress_results = risk_overlay.run_stress_tests()

@@ -52,7 +52,22 @@ def timeout_handler(signum: int, frame: Optional[FrameType]) -> None:
     raise TimeoutException("Operation timed out")
 
 
-def main() -> None:
+def profile_training(
+    data_path: str = "ml-dataset-enhanced-balanced.csv",
+    config: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """Profile training execution time.
+
+    Args:
+        data_path: Path to the training data
+        config: Environment configuration
+
+    Returns:
+        True if profiling completed successfully, False otherwise
+    """
+    if config is None:
+        config = {}
+
     logger.info("=" * 80)
     logger.info("Bug #52 Profiling - Detailed Execution Time Analysis")
     logger.info("=" * 80)
@@ -67,7 +82,7 @@ def main() -> None:
         with Timer("Step 1: Load data"):
             import pandas as pd
 
-            df = pd.read_csv("ml-dataset-enhanced-balanced.csv")
+            df = pd.read_csv(data_path)
             logger.info(f"  Loaded {len(df)} rows")
 
         # Step 2: Create environment
@@ -76,7 +91,7 @@ def main() -> None:
 
             from ztb.trading.environment.environment import HeavyTradingEnv
 
-            env_config: Dict[str, Any] = {}  # Minimal config
+            env_config: Dict[str, Any] = config  # Use provided config
             env = HeavyTradingEnv(df=df, config=env_config)
 
             def mask_fn(env: Any) -> Any:
@@ -168,9 +183,10 @@ def main() -> None:
         return False
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main entry point for profiling."""
     try:
-        success = main()
+        success = profile_training()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         logger.warning("\n⚠️  Interrupted by user")

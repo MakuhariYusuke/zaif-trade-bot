@@ -4,30 +4,45 @@ TensorBoardログから詳細なメトリクスを抽出・分析
 """
 import json
 import os
-from pathlib import Path
 from typing import Any, Optional
 
 from tensorboard.backend.event_processing import event_accumulator
 
 
-def analyze_sac_logs(log_dir: str | Path) -> Optional[dict[str, Any]]:
+def analyze_sac_logs(
+    log_path: Optional[str] = None,
+    session_id: Optional[str] = None,
+    output_path: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
     """
     TensorBoardログを分析
+
+    Args:
+        log_path: Path to log directory
+        session_id: Session ID to analyze
+        output_path: Path to save results
+
+    Returns:
+        Analysis results dictionary
     """
-    print(f"📊 Analyzing logs in: {log_dir}")
+    if log_path is None:
+        log_path = "logs"
+
+    print(f"📊 Analyzing logs in: {log_path}")
     print("=" * 80)
 
-    if not os.path.exists(log_dir):
-        print(f"❌ Log directory not found: {log_dir}")
-        return
+    if not os.path.exists(log_path):
+        print(f"❌ Log directory not found: {log_path}")
+        return None
 
-    # Find the latest SAC session
-    sac_sessions = sorted([d for d in os.listdir(log_dir) if d.startswith("SAC_")])
+    # Find SAC sessions
+    sac_sessions = sorted([d for d in os.listdir(log_path) if d.startswith("SAC_")])
     if not sac_sessions:
         print("❌ No SAC sessions found")
-        return
+        return None
 
-    latest_session = sac_sessions[-1]
+    # Use specified session or latest
+    target_session = session_id if session_id else sac_sessions[-1]
     session_path = os.path.join(log_dir, latest_session)
 
     print(f"📁 Latest session: {latest_session}")

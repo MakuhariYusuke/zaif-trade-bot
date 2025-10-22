@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\streaming_handler.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.01, 256, 'StreamingPipeline', 'episode_id', 'exchange', 'pair', 'timestamp', 'ts']

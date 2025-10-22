@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\causal_inference.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 1.0, 1000, 5000, 'causal_effects', 'causal_model_update', 'close', 'confidence', 'effect', 'error', 'feature_importance', 'high', 'low', 'max_features', 'min_samples', 'n_candidates', 'n_samples', 'n_selected', 'p_value', 'price', 'reward', 'selected_features', 'treatment_threshold', 'volume']

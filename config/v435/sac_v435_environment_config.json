@@ -1,0 +1,77 @@
+{
+  "_description": "SAC v435 Enhanced Environment Configuration",
+  "_improvements": [
+    "適応型特徴量選択",
+    "マルチタイムフレーム統合",
+    "市場レジーム検知",
+    "動的ポジションサイジング",
+    "相関リスク管理",
+    "リアルタイム特徴量更新"
+  ],
+
+  "transaction_cost": 0.0015,
+  "max_position_size": 0.1,
+  "initial_portfolio_value": 100000,
+  "random_start": true,
+
+  "feature_engineering": {
+    "enabled": true,
+    "adaptive_selection": true,
+    "correlation_reduction": true,
+    "correlation_threshold": 0.85,
+    "max_features": 100,
+    "importance_weighting": true,
+    "feature_stability_check": true
+  },
+
+  "market_regime_detection": {
+    "enabled": true,
+    "regime_window": 50,
+    "trend_threshold": 0.02,
+    "volatility_threshold": 0.15,
+    "regime_types": ["bull", "bear", "sideways"],
+    "regime_adaptation": true
+  },
+
+  "risk_management": {
+    "dynamic_position_sizing": true,
+    "position_size_min": 0.01,
+    "position_size_max": 0.2,
+    "volatility_adjustment": true,
+    "drawdown_control": true,
+    "max_drawdown_limit": 0.1,
+    "correlation_risk_control": true,
+    "max_correlation_exposure": 0.7
+  },
+
+  "multi_timeframe_integration": {
+    "enabled": true,
+    "timeframes": ["5m", "15m", "1h", "4h", "1d"],
+    "primary_timeframe": "1h",
+    "higher_tf_weight": 0.3,
+    "lower_tf_weight": 0.2
+  },
+
+  "data_processing": {
+    "scaler_type": "robust",
+    "outlier_detection": true,
+    "missing_value_handling": "interpolate",
+    "feature_normalization": true,
+    "temporal_smoothing": true
+  },
+
+  "performance_monitoring": {
+    "realized_pnl_tracking": true,
+    "unrealized_pnl_tracking": true,
+    "position_duration_tracking": true,
+    "entry_exit_timing_analysis": true,
+    "risk_metrics_calculation": true
+  },
+
+  "training_optimization": {
+    "curriculum_learning": true,
+    "difficulty_progression": true,
+    "adaptive_curriculum": true,
+    "performance_based_progression": true
+  }
+}

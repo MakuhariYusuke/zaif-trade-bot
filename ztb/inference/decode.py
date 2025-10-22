@@ -23,6 +23,7 @@ import torch
 from numpy.typing import NDArray
 
 from ztb.trading.constants import ACTION_HOLD
+from ztb.trading.environment.constants import EPSILON
 
 
 @dataclass
@@ -42,7 +43,7 @@ class InferenceConfig:
 
     # Advantage-aware tiebreaker
     enable_advantage_tiebreaker: bool = True  # Use advantage sign for tiebreaker
-    advantage_epsilon: float = 1e-6  # Threshold for advantage comparison
+    advantage_epsilon: float = EPSILON  # Threshold for advantage comparison
 
     # Cost-aware decode gate
     enable_cost_gate: bool = True  # Enable cost-based filtering

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\fee_model.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.0003, 0.0005, 0.0008, 0.001, 10000.0, 50000.0, 100000.0, 'binance', 'bitflyer', 'buy', 'buy_fee_rate', 'buy_tiers', 'coincheck', 'exchange', 'exchange_fees', 'fee_model', 'fixed', 'sell', 'sell_fee_rate', 'sell_tiers', 'tiered', 'tiers', 'type']

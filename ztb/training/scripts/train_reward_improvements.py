@@ -4,6 +4,7 @@ Run all three reward configurations with full 30k timesteps
 """
 import json
 import sys
+from typing import Any, Dict
 
 from ztb.utils.path_utils import get_file_dir
 
@@ -30,7 +31,7 @@ CONFIGS = [
 ]
 
 
-def run_training(config_info):
+def run_training(config_info: Dict[str, Any]) -> None:
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
@@ -72,7 +73,7 @@ def run_training(config_info):
     print("=" * 80 + "\n")
 
 
-def main():
+def main() -> None:
     print("=" * 80)
     print("Reward Function Improvements Training")
     print("=" * 80)

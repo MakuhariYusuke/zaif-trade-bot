@@ -9,6 +9,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+from ztb.trading.environment.constants import EPSILON
+
 
 class ActionWeightCalculator:
     """
@@ -25,7 +27,7 @@ class ActionWeightCalculator:
         self,
         beta: float = 3.0,
         ema_alpha: float = 0.1,
-        epsilon: float = 1e-6,
+        epsilon: float = EPSILON,
         entropy_min: float = 0.05,
         target_kl_max: float = 0.03,
         kl_consecutive_max: int = 3,
@@ -208,7 +210,7 @@ class ActionWeightCalculator:
 def compute_action_weights(
     action_counts: Dict[str, int],
     beta: float = 3.0,
-    epsilon: float = 1e-6,
+    epsilon: float = EPSILON,
 ) -> Dict[str, float]:
     """
     Compute inverse frequency weights (stateless version).

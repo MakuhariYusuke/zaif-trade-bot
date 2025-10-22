@@ -1,0 +1,174 @@
+{
+  "win_rate_stats": {
+    "total_trades": 563,
+    "winning_trades": 277,
+    "losing_trades": 286,
+    "win_rate": 49.200710479573715,
+    "avg_win": 104.1944651083027,
+    "avg_loss": -241.3961872202797,
+    "profit_factor": 0.4180497607118682,
+    "total_pnl": -40177.44271000015,
+    "max_drawdown": 44769.83375500026
+  },
+  "profitability": {
+    "1h": {
+      "avg_return_pct": 0.02221952668007852,
+      "max_return_pct": 0.3781557607079253,
+      "min_return_pct": -0.23167286981589358,
+      "volatility_pct": 0.17982532509658805,
+      "periods_analyzed": 9
+    },
+    "6h": {
+      "avg_return_pct": -1.5337723981560767,
+      "max_return_pct": 0.2059592242545858,
+      "min_return_pct": -2.9297698456510655,
+      "volatility_pct": 1.1523887476121324,
+      "periods_analyzed": 9
+    },
+    "12h": {
+      "avg_return_pct": -3.281670586750121,
+      "max_return_pct": 0.19453431678959346,
+      "min_return_pct": -6.180845873848201,
+      "volatility_pct": 2.016840860830951,
+      "periods_analyzed": 6
+    },
+    "1d": {
+      "avg_return_pct": -6.478287990353024,
+      "max_return_pct": -3.943697214651831,
+      "min_return_pct": -8.224507340893044,
+      "volatility_pct": 1.8343901733710348,
+      "periods_analyzed": 3
+    },
+    "3d": {
+      "avg_return_pct": -18.24986170771346,
+      "max_return_pct": -18.24986170771346,
+      "min_return_pct": -18.24986170771346,
+      "volatility_pct": 0.0,
+      "periods_analyzed": 1
+    },
+    "total": {
+      "avg_return_pct": 0.012501562695336917,
+      "max_return_pct": 0.012501562695336917,
+      "min_return_pct": 0.012501562695336917,
+      "volatility_pct": 0.0,
+      "periods_analyzed": 1
+    },
+    "overall": {
+      "initial_value": 199975.0,
+      "final_value": 200000.0,
+      "total_return_pct": 0.012501562695336917,
+      "total_steps": 4998,
+      "avg_return_per_step": 2.5013130642931006e-06
+    }
+  },
+  "win_rate_causes": {
+    "long_vs_short_performance": {
+      "long_trades": 281,
+      "short_trades": 282,
+      "long_win_rate": 16.014234875444842,
+      "short_win_rate": 82.26950354609929
+    },
+    "trade_duration_analysis": {
+      "avg_winning_trade_duration": 7.317689530685921,
+      "avg_losing_trade_duration": 6.79020979020979,
+      "duration_ratio": 1.077682392263735
+    },
+    "action_pattern_analysis": {
+      "total_action_changes": 4982,
+      "action_change_rate_pct": 99.65993198639728,
+      "assessment": "High action change rate may indicate overtrading"
+    }
+  },
+  "trades": [
+    {
+      "entry_step": 0,
+      "exit_step": 1029,
+      "position_type": "short",
+      "entry_price": 199975.0,
+      "exit_price": 198349.190765,
+      "pnl": 1625.8092349999934,
+      "duration": 0
+    },
+    {
+      "entry_step": 1029,
+      "exit_step": 1030,
+      "position_type": "long",
+      "entry_price": 198349.190765,
+      "exit_price": 198284.354805,
+      "pnl": -64.8359599999967,
+      "duration": 1
+    },
+    {
+      "entry_step": 1030,
+      "exit_step": 1032,
+      "position_type": "short",
+      "entry_price": 198284.354805,
+      "exit_price": 198298.34433,
+      "pnl": -13.989524999982677,
+      "duration": 2
+    },
+    {
+      "entry_step": 1032,
+      "exit_step": 1037,
+      "position_type": "long",
+      "entry_price": 198298.34433,
+      "exit_price": 198197.718035,
+      "pnl": -100.62629499999457,
+      "duration": 5
+    },
+    {
+      "entry_step": 1037,
+      "exit_step": 1043,
+      "position_type": "short",
+      "entry_price": 198197.718035,
+      "exit_price": 197963.954605,
+      "pnl": 233.76342999999179,
+      "duration": 6
+    },
+    {
+      "entry_step": 1043,
+      "exit_step": 1046,
+      "position_type": "long",
+      "entry_price": 197963.954605,
+      "exit_price": 197982.66077,
+      "pnl": 18.70616499998141,
+      "duration": 3
+    },
+    {
+      "entry_step": 1046,
+      "exit_step": 1051,
+      "position_type": "short",
+      "entry_price": 197982.66077,
+      "exit_price": 197876.75278,
+      "pnl": 105.90798999997787,
+      "duration": 5
+    },
+    {
+      "entry_step": 1051,
+      "exit_step": 1058,
+      "position_type": "long",
+      "entry_price": 197876.75278,
+      "exit_price": 197888.2265,
+      "pnl": 11.473719999979949,
+      "duration": 7
+    },
+    {
+      "entry_step": 1058,
+      "exit_step": 1062,
+      "position_type": "short",
+      "entry_price": 197888.2265,
+      "exit_price": 197903.992735,
+      "pnl": -15.766235000017332,
+      "duration": 4
+    },
+    {
+      "entry_step": 1062,
+      "exit_step": 1073,
+      "position_type": "long",
+      "entry_price": 197903.992735,
+      "exit_price": 197632.598835,
+      "pnl": -271.3938999999955,
+      "duration": 11
+    }
+  ]
+}

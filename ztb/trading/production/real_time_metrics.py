@@ -5,40 +5,42 @@ V433 Phase 5: Production Monitoring Layer - Real-time Metrics
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
+import statistics
 import threading
 import time
-import statistics
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
 import psutil
-import platform
 
 
 class MetricType(Enum):
     """指標タイプ"""
-    GAUGE = "gauge"          # ゲージ（現在の値）
-    COUNTER = "counter"      # カウンター（累積値）
+
+    GAUGE = "gauge"  # ゲージ（現在の値）
+    COUNTER = "counter"  # カウンター（累積値）
     HISTOGRAM = "histogram"  # ヒストグラム（分布）
-    SUMMARY = "summary"      # サマリー（統計量）
+    SUMMARY = "summary"  # サマリー（統計量）
 
 
 class MetricSource(Enum):
     """指標ソース"""
-    SYSTEM = "system"        # システム指標
+
+    SYSTEM = "system"  # システム指標
     APPLICATION = "application"  # アプリケーションメトリクス
-    BUSINESS = "business"    # ビジネス指標
-    EXTERNAL = "external"    # 外部サービス
+    BUSINESS = "business"  # ビジネス指標
+    EXTERNAL = "external"  # 外部サービス
 
 
 @dataclass
 class MetricValue:
     """指標値"""
+
     name: str
     value: float
     timestamp: datetime
@@ -49,6 +51,7 @@ class MetricValue:
 @dataclass
 class MetricSeries:
     """指標時系列"""
+
     name: str
     metric_type: MetricType
     source: MetricSource
@@ -61,6 +64,7 @@ class MetricSeries:
 @dataclass
 class MetricAggregation:
     """指標集計"""
+
     name: str
     count: int
     sum: float
@@ -83,10 +87,12 @@ class RealTimeMetrics:
     集計・分析を行う。
     """
 
-    def __init__(self,
-                 collection_interval_seconds: int = 10,
-                 retention_period_hours: int = 24,
-                 max_series_per_metric: int = 1000):
+    def __init__(
+        self,
+        collection_interval_seconds: int = 10,
+        retention_period_hours: int = 24,
+        max_series_per_metric: int = 1000,
+    ):
         """
         初期化
 
@@ -114,7 +120,9 @@ class RealTimeMetrics:
 
         # コールバック
         self.metric_callbacks: List[Callable[[MetricValue], Awaitable[None]]] = []
-        self.aggregation_callbacks: List[Callable[[MetricAggregation], Awaitable[None]]] = []
+        self.aggregation_callbacks: List[
+            Callable[[MetricAggregation], Awaitable[None]]
+        ] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -128,30 +136,106 @@ class RealTimeMetrics:
         """デフォルト指標初期化"""
         default_metrics = [
             # システム指標
-            ("cpu_usage_percent", MetricType.GAUGE, MetricSource.SYSTEM, "CPU使用率", "%"),
-            ("memory_usage_percent", MetricType.GAUGE, MetricSource.SYSTEM, "メモリ使用率", "%"),
-            ("disk_usage_percent", MetricType.GAUGE, MetricSource.SYSTEM, "ディスク使用率", "%"),
-            ("network_bytes_sent", MetricType.COUNTER, MetricSource.SYSTEM, "ネットワーク送信バイト", "bytes"),
-            ("network_bytes_recv", MetricType.COUNTER, MetricSource.SYSTEM, "ネットワーク受信バイト", "bytes"),
-
+            (
+                "cpu_usage_percent",
+                MetricType.GAUGE,
+                MetricSource.SYSTEM,
+                "CPU使用率",
+                "%",
+            ),
+            (
+                "memory_usage_percent",
+                MetricType.GAUGE,
+                MetricSource.SYSTEM,
+                "メモリ使用率",
+                "%",
+            ),
+            (
+                "disk_usage_percent",
+                MetricType.GAUGE,
+                MetricSource.SYSTEM,
+                "ディスク使用率",
+                "%",
+            ),
+            (
+                "network_bytes_sent",
+                MetricType.COUNTER,
+                MetricSource.SYSTEM,
+                "ネットワーク送信バイト",
+                "bytes",
+            ),
+            (
+                "network_bytes_recv",
+                MetricType.COUNTER,
+                MetricSource.SYSTEM,
+                "ネットワーク受信バイト",
+                "bytes",
+            ),
             # アプリケーション指標
-            ("active_connections", MetricType.GAUGE, MetricSource.APPLICATION, "アクティブ接続数", "count"),
-            ("request_rate", MetricType.GAUGE, MetricSource.APPLICATION, "リクエストレート", "req/s"),
-            ("response_time_avg", MetricType.GAUGE, MetricSource.APPLICATION, "平均レスポンスタイム", "ms"),
-            ("error_rate", MetricType.GAUGE, MetricSource.APPLICATION, "エラーレート", "%"),
-
+            (
+                "active_connections",
+                MetricType.GAUGE,
+                MetricSource.APPLICATION,
+                "アクティブ接続数",
+                "count",
+            ),
+            (
+                "request_rate",
+                MetricType.GAUGE,
+                MetricSource.APPLICATION,
+                "リクエストレート",
+                "req/s",
+            ),
+            (
+                "response_time_avg",
+                MetricType.GAUGE,
+                MetricSource.APPLICATION,
+                "平均レスポンスタイム",
+                "ms",
+            ),
+            (
+                "error_rate",
+                MetricType.GAUGE,
+                MetricSource.APPLICATION,
+                "エラーレート",
+                "%",
+            ),
             # ビジネス指標
-            ("orders_processed", MetricType.COUNTER, MetricSource.BUSINESS, "処理済み注文数", "count"),
-            ("profit_loss", MetricType.GAUGE, MetricSource.BUSINESS, "損益", "currency"),
+            (
+                "orders_processed",
+                MetricType.COUNTER,
+                MetricSource.BUSINESS,
+                "処理済み注文数",
+                "count",
+            ),
+            (
+                "profit_loss",
+                MetricType.GAUGE,
+                MetricSource.BUSINESS,
+                "損益",
+                "currency",
+            ),
             ("win_rate", MetricType.GAUGE, MetricSource.BUSINESS, "勝率", "%"),
-            ("sharpe_ratio", MetricType.GAUGE, MetricSource.BUSINESS, "シャープレシオ", "ratio"),
+            (
+                "sharpe_ratio",
+                MetricType.GAUGE,
+                MetricSource.BUSINESS,
+                "シャープレシオ",
+                "ratio",
+            ),
         ]
 
         for name, mtype, source, desc, unit in default_metrics:
             self.register_metric(name, mtype, source, desc, unit)
 
-    def register_metric(self, name: str, metric_type: MetricType, source: MetricSource,
-                       description: str, unit: str) -> None:
+    def register_metric(
+        self,
+        name: str,
+        metric_type: MetricType,
+        source: MetricSource,
+        description: str,
+        unit: str,
+    ) -> None:
         """
         指標登録
 
@@ -171,7 +255,7 @@ class RealTimeMetrics:
             metric_type=metric_type,
             source=source,
             description=description,
-            unit=unit
+            unit=unit,
         )
 
         self.metric_series[name] = series
@@ -191,7 +275,9 @@ class RealTimeMetrics:
             del self.metric_aggregations[name]
             self.logger.info(f"Metric unregistered: {name}")
 
-    def record_metric(self, name: str, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def record_metric(
+        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+    ) -> None:
         """
         指標値記録
 
@@ -212,7 +298,7 @@ class RealTimeMetrics:
             value=value,
             timestamp=datetime.now(),
             labels=labels,
-            metric_type=series.metric_type
+            metric_type=series.metric_type,
         )
 
         series.values.append(metric_value)
@@ -220,7 +306,7 @@ class RealTimeMetrics:
 
         # 系列サイズ制限
         if len(series.values) > self.max_series_per_metric:
-            series.values = series.values[-self.max_series_per_metric:]
+            series.values = series.values[-self.max_series_per_metric :]
 
         # コールバック実行
         for callback in self.metric_callbacks:
@@ -229,7 +315,9 @@ class RealTimeMetrics:
             except Exception as e:
                 self.logger.error(f"Metric callback error: {e}")
 
-    def add_custom_collector(self, collector_name: str, collector_func: Callable[[], List[MetricValue]]) -> None:
+    def add_custom_collector(
+        self, collector_name: str, collector_func: Callable[[], List[MetricValue]]
+    ) -> None:
         """
         カスタムコレクター追加
 
@@ -263,20 +351,30 @@ class RealTimeMetrics:
         try:
             # CPU使用率
             cpu_percent = psutil.cpu_percent(interval=1)
-            metrics.append(MetricValue("cpu_usage_percent", cpu_percent, datetime.now()))
+            metrics.append(
+                MetricValue("cpu_usage_percent", cpu_percent, datetime.now())
+            )
 
             # メモリ使用率
             memory = psutil.virtual_memory()
-            metrics.append(MetricValue("memory_usage_percent", memory.percent, datetime.now()))
+            metrics.append(
+                MetricValue("memory_usage_percent", memory.percent, datetime.now())
+            )
 
             # ディスク使用率
-            disk = psutil.disk_usage('/')
-            metrics.append(MetricValue("disk_usage_percent", disk.percent, datetime.now()))
+            disk = psutil.disk_usage("/")
+            metrics.append(
+                MetricValue("disk_usage_percent", disk.percent, datetime.now())
+            )
 
             # ネットワークI/O
             net = psutil.net_io_counters()
-            metrics.append(MetricValue("network_bytes_sent", net.bytes_sent, datetime.now()))
-            metrics.append(MetricValue("network_bytes_recv", net.bytes_recv, datetime.now()))
+            metrics.append(
+                MetricValue("network_bytes_sent", net.bytes_sent, datetime.now())
+            )
+            metrics.append(
+                MetricValue("network_bytes_recv", net.bytes_recv, datetime.now())
+            )
 
         except Exception as e:
             self.logger.error(f"System metrics collection error: {e}")
@@ -298,8 +396,14 @@ class RealTimeMetrics:
             cpu_percent = process.cpu_percent()
             memory_info = process.memory_info()
 
-            metrics.append(MetricValue("process_cpu_percent", cpu_percent, datetime.now()))
-            metrics.append(MetricValue("process_memory_mb", memory_info.rss / 1024 / 1024, datetime.now()))
+            metrics.append(
+                MetricValue("process_cpu_percent", cpu_percent, datetime.now())
+            )
+            metrics.append(
+                MetricValue(
+                    "process_memory_mb", memory_info.rss / 1024 / 1024, datetime.now()
+                )
+            )
 
             # スレッド数
             thread_count = process.num_threads()
@@ -324,12 +428,15 @@ class RealTimeMetrics:
         try:
             # シミュレーション指標
             import random
+
             orders_processed = random.randint(10, 100)
             profit_loss = random.uniform(-1000, 1000)
             win_rate = random.uniform(45, 55)
             sharpe_ratio = random.uniform(0.1, 0.5)
 
-            metrics.append(MetricValue("orders_processed", orders_processed, datetime.now()))
+            metrics.append(
+                MetricValue("orders_processed", orders_processed, datetime.now())
+            )
             metrics.append(MetricValue("profit_loss", profit_loss, datetime.now()))
             metrics.append(MetricValue("win_rate", win_rate, datetime.now()))
             metrics.append(MetricValue("sharpe_ratio", sharpe_ratio, datetime.now()))
@@ -369,8 +476,13 @@ class RealTimeMetrics:
 
         self.last_collection = datetime.now()
 
-    def get_metric_values(self, name: str, start_time: Optional[datetime] = None,
-                         end_time: Optional[datetime] = None, limit: Optional[int] = None) -> List[MetricValue]:
+    def get_metric_values(
+        self,
+        name: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: Optional[int] = None,
+    ) -> List[MetricValue]:
         """
         指標値取得
 
@@ -402,7 +514,9 @@ class RealTimeMetrics:
 
         return values
 
-    def get_metric_aggregation(self, name: str, period_minutes: int = 60) -> Optional[MetricAggregation]:
+    def get_metric_aggregation(
+        self, name: str, period_minutes: int = 60
+    ) -> Optional[MetricAggregation]:
         """
         指標集計取得
 
@@ -438,7 +552,7 @@ class RealTimeMetrics:
                 p95=self._percentile(numeric_values, 95),
                 p99=self._percentile(numeric_values, 99),
                 period_start=start_time,
-                period_end=end_time
+                period_end=end_time,
             )
 
             # 集計履歴保存
@@ -493,24 +607,28 @@ class RealTimeMetrics:
             Dict[str, Any]: 指標要約
         """
         summary = {
-            'total_metrics': len(self.metric_series),
-            'last_collection': self.last_collection.isoformat(),
-            'collection_active': self.collection_active,
-            'metrics': {}
+            "total_metrics": len(self.metric_series),
+            "last_collection": self.last_collection.isoformat(),
+            "collection_active": self.collection_active,
+            "metrics": {},
         }
 
         for name, series in self.metric_series.items():
             latest_value = series.values[-1] if series.values else None
 
-            summary['metrics'][name] = {
-                'type': series.metric_type.value,
-                'source': series.source.value,
-                'description': series.description,
-                'unit': series.unit,
-                'last_updated': series.last_updated.isoformat() if series.last_updated else None,
-                'total_values': len(series.values),
-                'latest_value': latest_value.value if latest_value else None,
-                'latest_timestamp': latest_value.timestamp.isoformat() if latest_value else None
+            summary["metrics"][name] = {
+                "type": series.metric_type.value,
+                "source": series.source.value,
+                "description": series.description,
+                "unit": series.unit,
+                "last_updated": series.last_updated.isoformat()
+                if series.last_updated
+                else None,
+                "total_values": len(series.values),
+                "latest_value": latest_value.value if latest_value else None,
+                "latest_timestamp": latest_value.timestamp.isoformat()
+                if latest_value
+                else None,
             }
 
         return summary
@@ -524,29 +642,26 @@ class RealTimeMetrics:
             format: エクスポート形式
         """
         if format == "json":
-            data = {
-                'export_time': datetime.now().isoformat(),
-                'metrics': {}
-            }
+            data = {"export_time": datetime.now().isoformat(), "metrics": {}}
 
             for name, series in self.metric_series.items():
-                data['metrics'][name] = {
-                    'type': series.metric_type.value,
-                    'source': series.source.value,
-                    'description': series.description,
-                    'unit': series.unit,
-                    'values': [
+                data["metrics"][name] = {
+                    "type": series.metric_type.value,
+                    "source": series.source.value,
+                    "description": series.description,
+                    "unit": series.unit,
+                    "values": [
                         {
-                            'value': v.value,
-                            'timestamp': v.timestamp.isoformat(),
-                            'labels': v.labels
+                            "value": v.value,
+                            "timestamp": v.timestamp.isoformat(),
+                            "labels": v.labels,
                         }
                         for v in series.values[-1000:]  # 最新1000件
-                    ]
+                    ],
                 }
 
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Metrics exported to {filepath}")
@@ -557,7 +672,9 @@ class RealTimeMetrics:
             return
 
         self.collection_active = True
-        self.collection_thread = threading.Thread(target=self._collection_loop, daemon=True)
+        self.collection_thread = threading.Thread(
+            target=self._collection_loop, daemon=True
+        )
         self.collection_thread.start()
 
         self.logger.info("Metrics collection started")
@@ -595,13 +712,16 @@ class RealTimeMetrics:
 
         for name in self.metric_aggregations:
             self.metric_aggregations[name] = [
-                agg for agg in self.metric_aggregations[name]
+                agg
+                for agg in self.metric_aggregations[name]
                 if agg.period_end >= cutoff_time
             ]
 
         self.logger.info("Old metrics data cleaned up")
 
-    def add_metric_callback(self, callback: Callable[[MetricValue], Awaitable[None]]) -> None:
+    def add_metric_callback(
+        self, callback: Callable[[MetricValue], Awaitable[None]]
+    ) -> None:
         """
         指標コールバック追加
 
@@ -610,7 +730,9 @@ class RealTimeMetrics:
         """
         self.metric_callbacks.append(callback)
 
-    def add_aggregation_callback(self, callback: Callable[[MetricAggregation], Awaitable[None]]) -> None:
+    def add_aggregation_callback(
+        self, callback: Callable[[MetricAggregation], Awaitable[None]]
+    ) -> None:
         """
         集計コールバック追加
 
@@ -627,36 +749,38 @@ class RealTimeMetrics:
             filepath: 保存ファイルパス
         """
         state = {
-            'collection_interval_seconds': self.collection_interval_seconds,
-            'retention_period_hours': self.retention_period_hours,
-            'max_series_per_metric': self.max_series_per_metric,
-            'enabled_sources': [s.value for s in self.enabled_sources],
-            'last_collection': self.last_collection.isoformat(),
-            'metric_series': {
+            "collection_interval_seconds": self.collection_interval_seconds,
+            "retention_period_hours": self.retention_period_hours,
+            "max_series_per_metric": self.max_series_per_metric,
+            "enabled_sources": [s.value for s in self.enabled_sources],
+            "last_collection": self.last_collection.isoformat(),
+            "metric_series": {
                 name: {
-                    'name': series.name,
-                    'metric_type': series.metric_type.value,
-                    'source': series.source.value,
-                    'description': series.description,
-                    'unit': series.unit,
-                    'last_updated': series.last_updated.isoformat() if series.last_updated else None,
-                    'values': [
+                    "name": series.name,
+                    "metric_type": series.metric_type.value,
+                    "source": series.source.value,
+                    "description": series.description,
+                    "unit": series.unit,
+                    "last_updated": series.last_updated.isoformat()
+                    if series.last_updated
+                    else None,
+                    "values": [
                         {
-                            'name': v.name,
-                            'value': v.value,
-                            'timestamp': v.timestamp.isoformat(),
-                            'labels': v.labels,
-                            'metric_type': v.metric_type.value
+                            "name": v.name,
+                            "value": v.value,
+                            "timestamp": v.timestamp.isoformat(),
+                            "labels": v.labels,
+                            "metric_type": v.metric_type.value,
                         }
                         for v in series.values[-500:]  # 最新500件
-                    ]
+                    ],
                 }
                 for name, series in self.metric_series.items()
-            }
+            },
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Metrics state saved to {filepath}")
@@ -672,37 +796,41 @@ class RealTimeMetrics:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.collection_interval_seconds = state['collection_interval_seconds']
-            self.retention_period_hours = state['retention_period_hours']
-            self.max_series_per_metric = state['max_series_per_metric']
-            self.enabled_sources = set(MetricSource(s) for s in state['enabled_sources'])
-            self.last_collection = datetime.fromisoformat(state['last_collection'])
+            self.collection_interval_seconds = state["collection_interval_seconds"]
+            self.retention_period_hours = state["retention_period_hours"]
+            self.max_series_per_metric = state["max_series_per_metric"]
+            self.enabled_sources = set(
+                MetricSource(s) for s in state["enabled_sources"]
+            )
+            self.last_collection = datetime.fromisoformat(state["last_collection"])
 
             # 指標系列復元
             self.metric_series = {}
             self.metric_aggregations = {}
 
-            for name, series_data in state.get('metric_series', {}).items():
+            for name, series_data in state.get("metric_series", {}).items():
                 series = MetricSeries(
-                    name=series_data['name'],
-                    metric_type=MetricType(series_data['metric_type']),
-                    source=MetricSource(series_data['source']),
-                    description=series_data['description'],
-                    unit=series_data['unit'],
-                    last_updated=datetime.fromisoformat(series_data['last_updated']) if series_data['last_updated'] else None
+                    name=series_data["name"],
+                    metric_type=MetricType(series_data["metric_type"]),
+                    source=MetricSource(series_data["source"]),
+                    description=series_data["description"],
+                    unit=series_data["unit"],
+                    last_updated=datetime.fromisoformat(series_data["last_updated"])
+                    if series_data["last_updated"]
+                    else None,
                 )
 
                 # 値復元
-                for v_data in series_data.get('values', []):
+                for v_data in series_data.get("values", []):
                     value = MetricValue(
-                        name=v_data['name'],
-                        value=v_data['value'],
-                        timestamp=datetime.fromisoformat(v_data['timestamp']),
-                        labels=v_data['labels'],
-                        metric_type=MetricType(v_data['metric_type'])
+                        name=v_data["name"],
+                        value=v_data["value"],
+                        timestamp=datetime.fromisoformat(v_data["timestamp"]),
+                        labels=v_data["labels"],
+                        metric_type=MetricType(v_data["metric_type"]),
                     )
                     series.values.append(value)
 

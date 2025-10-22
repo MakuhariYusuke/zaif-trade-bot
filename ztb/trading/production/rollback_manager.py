@@ -5,41 +5,42 @@ V433 Phase 5: Gradual Rollout Layer - Rollback Manager
 """
 
 import asyncio
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Callable, Any, Awaitable
-from enum import Enum
 import json
+import logging
 import os
 import threading
 import time
-import hashlib
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 class RollbackTrigger(Enum):
     """ロールバックトリガー"""
-    MANUAL = "manual"              # 手動
-    AUTOMATIC = "automatic"        # 自動
-    PERFORMANCE = "performance"    # パフォーマンス
+
+    MANUAL = "manual"  # 手動
+    AUTOMATIC = "automatic"  # 自動
+    PERFORMANCE = "performance"  # パフォーマンス
     SYSTEM_FAILURE = "system_failure"  # システム障害
     EXTERNAL_SIGNAL = "external_signal"  # 外部シグナル
 
 
 class RollbackState(Enum):
     """ロールバック状態"""
-    IDLE = "idle"                  # 待機中
-    PREPARING = "preparing"        # 準備中
-    EXECUTING = "executing"        # 実行中
-    COMPLETED = "completed"        # 完了
-    FAILED = "failed"             # 失敗
-    CANCELLED = "cancelled"       # キャンセル
+
+    IDLE = "idle"  # 待機中
+    PREPARING = "preparing"  # 準備中
+    EXECUTING = "executing"  # 実行中
+    COMPLETED = "completed"  # 完了
+    FAILED = "failed"  # 失敗
+    CANCELLED = "cancelled"  # キャンセル
 
 
 @dataclass
 class RollbackCheckpoint:
     """ロールバックチェックポイント"""
+
     checkpoint_id: str
     timestamp: datetime
     system_id: str
@@ -53,6 +54,7 @@ class RollbackCheckpoint:
 @dataclass
 class RollbackPlan:
     """ロールバックプラン"""
+
     plan_id: str
     timestamp: datetime
     trigger: RollbackTrigger
@@ -67,6 +69,7 @@ class RollbackPlan:
 @dataclass
 class RollbackExecution:
     """ロールバック実行"""
+
     execution_id: str
     plan_id: str
     start_time: datetime
@@ -86,10 +89,12 @@ class RollbackManager:
     自動および手動のロールバックをサポート。
     """
 
-    def __init__(self,
-                 max_checkpoints_per_system: int = 10,
-                 auto_rollback_threshold: float = 0.8,
-                 rollback_timeout_minutes: int = 30):
+    def __init__(
+        self,
+        max_checkpoints_per_system: int = 10,
+        auto_rollback_threshold: float = 0.8,
+        rollback_timeout_minutes: int = 30,
+    ):
         """
         初期化
 
@@ -117,8 +122,12 @@ class RollbackManager:
         self.auto_rollback_conditions: Dict[str, Callable[[], bool]] = {}
 
         # コールバック
-        self.rollback_callbacks: List[Callable[[RollbackExecution], Awaitable[None]]] = []
-        self.checkpoint_callbacks: List[Callable[[RollbackCheckpoint], Awaitable[None]]] = []
+        self.rollback_callbacks: List[
+            Callable[[RollbackExecution], Awaitable[None]]
+        ] = []
+        self.checkpoint_callbacks: List[
+            Callable[[RollbackCheckpoint], Awaitable[None]]
+        ] = []
 
         # モニタリング
         self.monitoring_active = False
@@ -129,9 +138,14 @@ class RollbackManager:
 
         self.logger.info("Rollback Manager initialized")
 
-    def create_checkpoint(self, system_id: str, allocation_percentage: float,
-                         performance_metrics: Dict[str, float], system_state: Dict[str, Any],
-                         description: str = "") -> RollbackCheckpoint:
+    def create_checkpoint(
+        self,
+        system_id: str,
+        allocation_percentage: float,
+        performance_metrics: Dict[str, float],
+        system_state: Dict[str, Any],
+        description: str = "",
+    ) -> RollbackCheckpoint:
         """
         チェックポイント作成
 
@@ -152,7 +166,7 @@ class RollbackManager:
             allocation_percentage=allocation_percentage,
             performance_metrics=performance_metrics.copy(),
             system_state=system_state.copy(),
-            description=description
+            description=description,
         )
 
         # チェックポイント保存
@@ -163,7 +177,9 @@ class RollbackManager:
 
         # 古いチェックポイント削除
         if len(self.checkpoints[system_id]) > self.max_checkpoints_per_system:
-            self.checkpoints[system_id] = self.checkpoints[system_id][-self.max_checkpoints_per_system:]
+            self.checkpoints[system_id] = self.checkpoints[system_id][
+                -self.max_checkpoints_per_system :
+            ]
 
         # コールバック実行
         for callback in self.checkpoint_callbacks:
@@ -172,10 +188,14 @@ class RollbackManager:
             except Exception as e:
                 self.logger.error(f"Checkpoint callback error: {e}")
 
-        self.logger.info(f"Checkpoint created: {checkpoint.checkpoint_id} for system {system_id}")
+        self.logger.info(
+            f"Checkpoint created: {checkpoint.checkpoint_id} for system {system_id}"
+        )
         return checkpoint
 
-    def get_latest_stable_checkpoint(self, system_id: str) -> Optional[RollbackCheckpoint]:
+    def get_latest_stable_checkpoint(
+        self, system_id: str
+    ) -> Optional[RollbackCheckpoint]:
         """
         最新の安定チェックポイント取得
 
@@ -189,7 +209,11 @@ class RollbackManager:
             return None
 
         stable_checkpoints = [cp for cp in self.checkpoints[system_id] if cp.is_stable]
-        return max(stable_checkpoints, key=lambda cp: cp.timestamp) if stable_checkpoints else None
+        return (
+            max(stable_checkpoints, key=lambda cp: cp.timestamp)
+            if stable_checkpoints
+            else None
+        )
 
     def mark_checkpoint_unstable(self, checkpoint_id: str) -> bool:
         """
@@ -205,13 +229,20 @@ class RollbackManager:
             for checkpoint in system_checkpoints:
                 if checkpoint.checkpoint_id == checkpoint_id:
                     checkpoint.is_stable = False
-                    self.logger.warning(f"Checkpoint marked as unstable: {checkpoint_id}")
+                    self.logger.warning(
+                        f"Checkpoint marked as unstable: {checkpoint_id}"
+                    )
                     return True
 
         return False
 
-    def initiate_rollback(self, system_id: str, trigger: RollbackTrigger, reason: str,
-                         target_allocation: Optional[float] = None) -> Optional[RollbackExecution]:
+    def initiate_rollback(
+        self,
+        system_id: str,
+        trigger: RollbackTrigger,
+        reason: str,
+        target_allocation: Optional[float] = None,
+    ) -> Optional[RollbackExecution]:
         """
         ロールバック開始
 
@@ -240,8 +271,10 @@ class RollbackManager:
             trigger=trigger,
             reason=reason,
             target_allocation=target_allocation,
-            estimated_duration_minutes=self._estimate_rollback_duration(target_allocation),
-            risk_assessment=self._assess_rollback_risk(system_id, target_allocation)
+            estimated_duration_minutes=self._estimate_rollback_duration(
+                target_allocation
+            ),
+            risk_assessment=self._assess_rollback_risk(system_id, target_allocation),
         )
 
         if target_checkpoint:
@@ -254,7 +287,7 @@ class RollbackManager:
             execution_id=f"EXEC_{plan.plan_id}",
             plan_id=plan.plan_id,
             start_time=datetime.now(),
-            state=RollbackState.PREPARING
+            state=RollbackState.PREPARING,
         )
 
         self.active_executions[system_id] = execution
@@ -305,7 +338,9 @@ class RollbackManager:
         else:
             return "CRITICAL"
 
-    async def _execute_rollback_async(self, execution: RollbackExecution, plan: RollbackPlan) -> None:
+    async def _execute_rollback_async(
+        self, execution: RollbackExecution, plan: RollbackPlan
+    ) -> None:
         """
         ロールバック非同期実行
 
@@ -375,7 +410,9 @@ class RollbackManager:
             return False
 
         # タイムアウトチェック
-        if datetime.now() - plan.timestamp > timedelta(minutes=self.rollback_timeout_minutes):
+        if datetime.now() - plan.timestamp > timedelta(
+            minutes=self.rollback_timeout_minutes
+        ):
             self.logger.error("Rollback plan expired")
             return False
 
@@ -384,7 +421,9 @@ class RollbackManager:
 
         return True
 
-    async def _perform_rollback_steps(self, plan: RollbackPlan, execution: RollbackExecution) -> bool:
+    async def _perform_rollback_steps(
+        self, plan: RollbackPlan, execution: RollbackExecution
+    ) -> bool:
         """
         ロールバックステップ実行
 
@@ -399,7 +438,7 @@ class RollbackManager:
             "Stopping new traffic allocation",
             "Gradually reducing allocation",
             "Validating system stability",
-            "Confirming rollback completion"
+            "Confirming rollback completion",
         ]
 
         total_steps = len(steps)
@@ -455,6 +494,7 @@ class RollbackManager:
 
             # 稀に失敗をシミュレート
             import random
+
             if random.random() < 0.05:  # 5%の確率
                 raise Exception(f"Simulated failure in step: {step}")
 
@@ -517,7 +557,9 @@ class RollbackManager:
         """
         return self.active_executions.get(system_id)
 
-    def get_rollback_history(self, system_id: Optional[str] = None, limit: Optional[int] = None) -> List[RollbackExecution]:
+    def get_rollback_history(
+        self, system_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[RollbackExecution]:
         """
         ロールバック履歴取得
 
@@ -531,14 +573,18 @@ class RollbackManager:
         history = self.execution_history
 
         if system_id:
-            history = [exec for exec in history if exec.plan_id.startswith(f"PLAN_{system_id}")]
+            history = [
+                exec for exec in history if exec.plan_id.startswith(f"PLAN_{system_id}")
+            ]
 
         if limit:
             history = history[-limit:]
 
         return history
 
-    def add_auto_rollback_condition(self, condition_id: str, condition_func: Callable[[], bool]) -> None:
+    def add_auto_rollback_condition(
+        self, condition_id: str, condition_func: Callable[[], bool]
+    ) -> None:
         """
         自動ロールバック条件追加
 
@@ -577,11 +623,15 @@ class RollbackManager:
                 if condition_func():
                     triggered_conditions.append(condition_id)
             except Exception as e:
-                self.logger.error(f"Auto rollback condition check error for {condition_id}: {e}")
+                self.logger.error(
+                    f"Auto rollback condition check error for {condition_id}: {e}"
+                )
 
         return triggered_conditions
 
-    def trigger_auto_rollback(self, system_id: str, triggered_conditions: List[str]) -> Optional[RollbackExecution]:
+    def trigger_auto_rollback(
+        self, system_id: str, triggered_conditions: List[str]
+    ) -> Optional[RollbackExecution]:
         """
         自動ロールバックトリガー
 
@@ -595,12 +645,16 @@ class RollbackManager:
         if not self.auto_rollback_enabled:
             return None
 
-        reason = f"Auto rollback triggered by conditions: {', '.join(triggered_conditions)}"
+        reason = (
+            f"Auto rollback triggered by conditions: {', '.join(triggered_conditions)}"
+        )
 
         # 自動ロールバックではアロケーションを安全なレベルに設定
         target_allocation = min(self.auto_rollback_threshold, 0.5)  # 最大50%まで
 
-        return self.initiate_rollback(system_id, RollbackTrigger.AUTOMATIC, reason, target_allocation)
+        return self.initiate_rollback(
+            system_id, RollbackTrigger.AUTOMATIC, reason, target_allocation
+        )
 
     def start_monitoring(self) -> None:
         """モニタリング開始"""
@@ -608,7 +662,9 @@ class RollbackManager:
             return
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
 
         self.logger.info("Rollback monitoring started")
@@ -627,7 +683,9 @@ class RollbackManager:
             try:
                 # 自動ロールバック条件チェック
                 for system_id in self.checkpoints.keys():
-                    triggered_conditions = self.check_auto_rollback_conditions(system_id)
+                    triggered_conditions = self.check_auto_rollback_conditions(
+                        system_id
+                    )
                     if triggered_conditions:
                         self.trigger_auto_rollback(system_id, triggered_conditions)
 
@@ -656,7 +714,9 @@ class RollbackManager:
                 self.execution_history.append(execution)
                 del self.active_executions[system_id]
 
-    def add_rollback_callback(self, callback: Callable[[RollbackExecution], Awaitable[None]]) -> None:
+    def add_rollback_callback(
+        self, callback: Callable[[RollbackExecution], Awaitable[None]]
+    ) -> None:
         """
         ロールバックコールバック追加
 
@@ -665,7 +725,9 @@ class RollbackManager:
         """
         self.rollback_callbacks.append(callback)
 
-    def add_checkpoint_callback(self, callback: Callable[[RollbackCheckpoint], Awaitable[None]]) -> None:
+    def add_checkpoint_callback(
+        self, callback: Callable[[RollbackCheckpoint], Awaitable[None]]
+    ) -> None:
         """
         チェックポイントコールバック追加
 
@@ -682,57 +744,59 @@ class RollbackManager:
             filepath: 保存ファイルパス
         """
         state = {
-            'max_checkpoints_per_system': self.max_checkpoints_per_system,
-            'auto_rollback_threshold': self.auto_rollback_threshold,
-            'rollback_timeout_minutes': self.rollback_timeout_minutes,
-            'auto_rollback_enabled': self.auto_rollback_enabled,
-            'checkpoints': {
+            "max_checkpoints_per_system": self.max_checkpoints_per_system,
+            "auto_rollback_threshold": self.auto_rollback_threshold,
+            "rollback_timeout_minutes": self.rollback_timeout_minutes,
+            "auto_rollback_enabled": self.auto_rollback_enabled,
+            "checkpoints": {
                 system_id: [
                     {
-                        'checkpoint_id': cp.checkpoint_id,
-                        'timestamp': cp.timestamp.isoformat(),
-                        'system_id': cp.system_id,
-                        'allocation_percentage': cp.allocation_percentage,
-                        'performance_metrics': cp.performance_metrics,
-                        'system_state': cp.system_state,
-                        'is_stable': cp.is_stable,
-                        'description': cp.description
+                        "checkpoint_id": cp.checkpoint_id,
+                        "timestamp": cp.timestamp.isoformat(),
+                        "system_id": cp.system_id,
+                        "allocation_percentage": cp.allocation_percentage,
+                        "performance_metrics": cp.performance_metrics,
+                        "system_state": cp.system_state,
+                        "is_stable": cp.is_stable,
+                        "description": cp.description,
                     }
-                    for cp in checkpoints[-self.max_checkpoints_per_system:]  # 最新のみ
+                    for cp in checkpoints[
+                        -self.max_checkpoints_per_system :
+                    ]  # 最新のみ
                 ]
                 for system_id, checkpoints in self.checkpoints.items()
             },
-            'execution_history': [
+            "execution_history": [
                 {
-                    'execution_id': exec.execution_id,
-                    'plan_id': exec.plan_id,
-                    'start_time': exec.start_time.isoformat(),
-                    'end_time': exec.end_time.isoformat() if exec.end_time else None,
-                    'state': exec.state.value,
-                    'progress_percentage': exec.progress_percentage,
-                    'current_step': exec.current_step,
-                    'error_message': exec.error_message,
-                    'rollback_metrics': exec.rollback_metrics
+                    "execution_id": exec.execution_id,
+                    "plan_id": exec.plan_id,
+                    "start_time": exec.start_time.isoformat(),
+                    "end_time": exec.end_time.isoformat() if exec.end_time else None,
+                    "state": exec.state.value,
+                    "progress_percentage": exec.progress_percentage,
+                    "current_step": exec.current_step,
+                    "error_message": exec.error_message,
+                    "rollback_metrics": exec.rollback_metrics,
                 }
                 for exec in self.execution_history[-50:]  # 最新50件
             ],
-            'rollback_plans': {
+            "rollback_plans": {
                 plan_id: {
-                    'plan_id': plan.plan_id,
-                    'timestamp': plan.timestamp.isoformat(),
-                    'trigger': plan.trigger.value,
-                    'reason': plan.reason,
-                    'target_allocation': plan.target_allocation,
-                    'estimated_duration_minutes': plan.estimated_duration_minutes,
-                    'risk_assessment': plan.risk_assessment,
-                    'executed_steps': plan.executed_steps
+                    "plan_id": plan.plan_id,
+                    "timestamp": plan.timestamp.isoformat(),
+                    "trigger": plan.trigger.value,
+                    "reason": plan.reason,
+                    "target_allocation": plan.target_allocation,
+                    "estimated_duration_minutes": plan.estimated_duration_minutes,
+                    "risk_assessment": plan.risk_assessment,
+                    "executed_steps": plan.executed_steps,
                 }
                 for plan_id, plan in self.rollback_plans.items()
-            }
+            },
         }
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Rollback manager state saved to {filepath}")
@@ -748,59 +812,61 @@ class RollbackManager:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 state = json.load(f)
 
-            self.max_checkpoints_per_system = state['max_checkpoints_per_system']
-            self.auto_rollback_threshold = state['auto_rollback_threshold']
-            self.rollback_timeout_minutes = state['rollback_timeout_minutes']
-            self.auto_rollback_enabled = state['auto_rollback_enabled']
+            self.max_checkpoints_per_system = state["max_checkpoints_per_system"]
+            self.auto_rollback_threshold = state["auto_rollback_threshold"]
+            self.rollback_timeout_minutes = state["rollback_timeout_minutes"]
+            self.auto_rollback_enabled = state["auto_rollback_enabled"]
 
             # チェックポイント復元
             self.checkpoints = {}
-            for system_id, cp_list in state.get('checkpoints', {}).items():
+            for system_id, cp_list in state.get("checkpoints", {}).items():
                 self.checkpoints[system_id] = []
                 for cp_data in cp_list:
                     checkpoint = RollbackCheckpoint(
-                        checkpoint_id=cp_data['checkpoint_id'],
-                        timestamp=datetime.fromisoformat(cp_data['timestamp']),
-                        system_id=cp_data['system_id'],
-                        allocation_percentage=cp_data['allocation_percentage'],
-                        performance_metrics=cp_data['performance_metrics'],
-                        system_state=cp_data['system_state'],
-                        is_stable=cp_data['is_stable'],
-                        description=cp_data['description']
+                        checkpoint_id=cp_data["checkpoint_id"],
+                        timestamp=datetime.fromisoformat(cp_data["timestamp"]),
+                        system_id=cp_data["system_id"],
+                        allocation_percentage=cp_data["allocation_percentage"],
+                        performance_metrics=cp_data["performance_metrics"],
+                        system_state=cp_data["system_state"],
+                        is_stable=cp_data["is_stable"],
+                        description=cp_data["description"],
                     )
                     self.checkpoints[system_id].append(checkpoint)
 
             # 実行履歴復元
             self.execution_history = []
-            for exec_data in state.get('execution_history', []):
+            for exec_data in state.get("execution_history", []):
                 execution = RollbackExecution(
-                    execution_id=exec_data['execution_id'],
-                    plan_id=exec_data['plan_id'],
-                    start_time=datetime.fromisoformat(exec_data['start_time']),
-                    end_time=datetime.fromisoformat(exec_data['end_time']) if exec_data['end_time'] else None,
-                    state=RollbackState(exec_data['state']),
-                    progress_percentage=exec_data['progress_percentage'],
-                    current_step=exec_data['current_step'],
-                    error_message=exec_data['error_message'],
-                    rollback_metrics=exec_data['rollback_metrics']
+                    execution_id=exec_data["execution_id"],
+                    plan_id=exec_data["plan_id"],
+                    start_time=datetime.fromisoformat(exec_data["start_time"]),
+                    end_time=datetime.fromisoformat(exec_data["end_time"])
+                    if exec_data["end_time"]
+                    else None,
+                    state=RollbackState(exec_data["state"]),
+                    progress_percentage=exec_data["progress_percentage"],
+                    current_step=exec_data["current_step"],
+                    error_message=exec_data["error_message"],
+                    rollback_metrics=exec_data["rollback_metrics"],
                 )
                 self.execution_history.append(execution)
 
             # ロールバックプラン復元
             self.rollback_plans = {}
-            for plan_id, plan_data in state.get('rollback_plans', {}).items():
+            for plan_id, plan_data in state.get("rollback_plans", {}).items():
                 plan = RollbackPlan(
-                    plan_id=plan_data['plan_id'],
-                    timestamp=datetime.fromisoformat(plan_data['timestamp']),
-                    trigger=RollbackTrigger(plan_data['trigger']),
-                    reason=plan_data['reason'],
-                    target_allocation=plan_data['target_allocation'],
-                    estimated_duration_minutes=plan_data['estimated_duration_minutes'],
-                    risk_assessment=plan_data['risk_assessment'],
-                    executed_steps=plan_data['executed_steps']
+                    plan_id=plan_data["plan_id"],
+                    timestamp=datetime.fromisoformat(plan_data["timestamp"]),
+                    trigger=RollbackTrigger(plan_data["trigger"]),
+                    reason=plan_data["reason"],
+                    target_allocation=plan_data["target_allocation"],
+                    estimated_duration_minutes=plan_data["estimated_duration_minutes"],
+                    risk_assessment=plan_data["risk_assessment"],
+                    executed_steps=plan_data["executed_steps"],
                 )
                 self.rollback_plans[plan_id] = plan
 

@@ -119,5 +119,55 @@ def main() -> None:
     print(f"\nSaved metric summary to {output_path}")
 
 
+def compare_training_metrics(
+    logdirs: List[str] = None,
+    metrics: Optional[List[str]] = None,
+    output_path: Optional[str] = None,
+) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Compare training metrics across different runs.
+
+    Args:
+        logdirs: List of log directories to compare
+        metrics: List of metrics to compare
+        output_path: Path to save results
+
+    Returns:
+        Dictionary with comparison results
+    """
+    if logdirs is None:
+        logdirs = [str(path) for path in RUNS.values()]
+
+    if metrics is None:
+        metrics = SCALARS_OF_INTEREST
+
+    comparison = {}
+    for logdir in logdirs:
+        path = Path(logdir)
+        if not path.exists():
+            continue
+
+        print(f"\n--- {path.name} ---")
+        metrics_data = load_metrics(path)
+        run_summary = {}
+        for tag in metrics:
+            if tag not in metrics_data:
+                continue
+            stats = metrics_data[tag]
+            run_summary[tag] = stats.to_dict()
+            print(
+                f"{tag:<28} final={stats.final_value:8.3f}  max={stats.max_value:8.3f}  "
+                f"min={stats.min_value:8.3f}  mean={stats.mean_value:8.3f}  std={stats.std_value:7.3f}"
+            )
+        comparison[path.name] = run_summary
+
+    if output_path:
+        output_file = Path(output_path)
+        with output_file.open("w", encoding="utf-8") as f:
+            json.dump(comparison, f, indent=2, ensure_ascii=False)
+        print(f"\nSaved metric summary to {output_file}")
+
+    return comparison
+
+
 if __name__ == "__main__":
     main()

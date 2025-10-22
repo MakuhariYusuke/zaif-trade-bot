@@ -1,0 +1,26 @@
+{
+  "experiment_name": "v435.1_asymmetric_reward_baseline",
+  "description": "Baseline experiment for v435 with asymmetric reward functions",
+  "config_files": {
+    "sac_config": "sac_v435_config.json",
+    "environment_config": "sac_v435_environment_config.json",
+    "reward_config": "sac_v435_reward_config.json"
+  },
+  "training_params": {
+    "total_timesteps": 1000000,
+    "eval_freq": 10000,
+    "save_freq": 50000
+  },
+  "backtest_params": {
+    "test_periods": ["2023-01-01", "2024-01-01"],
+    "initial_balance": 10000,
+    "fee_rate": 0.001
+  },
+  "metrics": [
+    "total_return",
+    "sharpe_ratio",
+    "max_drawdown",
+    "win_rate",
+    "profit_factor"
+  ]
+}

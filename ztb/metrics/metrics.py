@@ -4,18 +4,17 @@ metrics.py
 Robust implementation of trading performance metrics
 """
 
-from typing import Any, TypedDict, Union, cast, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict, Union, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from scipy import stats
 
+# 年間取引日数
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 from ztb.utils.errors import safe_operation
 from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
-
-# 年間取引日数
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR # = 252
 
 
 class MetricsResult(TypedDict):
@@ -458,7 +457,9 @@ def rolling_analysis(
         pd.DataFrame,
         safe_operation(
             logger=None,  # Use default logger
-            operation=lambda: _rolling_analysis_impl(returns, window, step, rf, period_per_year),
+            operation=lambda: _rolling_analysis_impl(
+                returns, window, step, rf, period_per_year
+            ),
             context="rolling_analysis_calculation",
             default_result=pd.DataFrame(),  # Return empty DataFrame on failure
         ),
@@ -489,17 +490,15 @@ def _rolling_analysis_impl(
 
         # Add window information
         metrics_dict = dict(metrics)
-        metrics_dict['window_start'] = start_idx
-        metrics_dict['window_end'] = end_idx - 1
+        metrics_dict["window_start"] = start_idx
+        metrics_dict["window_end"] = end_idx - 1
 
         rolling_metrics.append(metrics_dict)
 
     return pd.DataFrame(rolling_metrics)
 
 
-def drawdown_analysis(
-    equity_curve: Union[pd.Series, NDArray[Any]]
-) -> Dict[str, Any]:
+def drawdown_analysis(equity_curve: Union[pd.Series, NDArray[Any]]) -> Dict[str, Any]:
     """
     Comprehensive drawdown analysis including duration, depth, and recovery time
 
@@ -520,21 +519,23 @@ def drawdown_analysis(
     )
 
 
-def _drawdown_analysis_impl(equity_curve: Union[pd.Series, NDArray[Any]]) -> Dict[str, Any]:
+def _drawdown_analysis_impl(
+    equity_curve: Union[pd.Series, NDArray[Any]],
+) -> Dict[str, Any]:
     """Implementation of comprehensive drawdown analysis."""
     equity_curve = np.asarray(equity_curve)
 
     if len(equity_curve) == 0:
         return {
-            'max_drawdown': 0.0,
-            'avg_drawdown': 0.0,
-            'median_drawdown': 0.0,
-            'max_drawdown_duration': 0,
-            'avg_drawdown_duration': 0.0,
-            'max_recovery_time': 0,
-            'avg_recovery_time': 0.0,
-            'num_drawdowns': 0,
-            'drawdown_periods': [],
+            "max_drawdown": 0.0,
+            "avg_drawdown": 0.0,
+            "median_drawdown": 0.0,
+            "max_drawdown_duration": 0,
+            "avg_drawdown_duration": 0.0,
+            "max_recovery_time": 0,
+            "avg_recovery_time": 0.0,
+            "num_drawdowns": 0,
+            "drawdown_periods": [],
         }
 
     # Calculate running maximum (peaks)
@@ -558,68 +559,78 @@ def _drawdown_analysis_impl(equity_curve: Union[pd.Series, NDArray[Any]]) -> Dic
         elif dd >= 0 and in_drawdown:
             # End of drawdown (recovery)
             in_drawdown = False
-            trough_idx = np.argmin(drawdown_series[drawdown_start:i+1]) + drawdown_start
+            trough_idx = (
+                np.argmin(drawdown_series[drawdown_start : i + 1]) + drawdown_start
+            )
             recovery_idx = i
 
-            drawdown_periods.append({
-                'start_idx': drawdown_start,
-                'peak_idx': np.argmax(running_max[:drawdown_start+1]) if drawdown_start > 0 else 0,
-                'trough_idx': trough_idx,
-                'recovery_idx': recovery_idx,
-                'duration': recovery_idx - drawdown_start,
-                'depth': drawdown_series[trough_idx],
-                'peak_value': peak_value,
-                'trough_value': equity_curve[trough_idx],
-                'recovery_value': equity,
-                'recovery_time': recovery_idx - trough_idx,
-            })
+            drawdown_periods.append(
+                {
+                    "start_idx": drawdown_start,
+                    "peak_idx": np.argmax(running_max[: drawdown_start + 1])
+                    if drawdown_start > 0
+                    else 0,
+                    "trough_idx": trough_idx,
+                    "recovery_idx": recovery_idx,
+                    "duration": recovery_idx - drawdown_start,
+                    "depth": drawdown_series[trough_idx],
+                    "peak_value": peak_value,
+                    "trough_value": equity_curve[trough_idx],
+                    "recovery_value": equity,
+                    "recovery_time": recovery_idx - trough_idx,
+                }
+            )
 
     # Handle case where drawdown continues to the end
     if in_drawdown:
         trough_idx = np.argmin(drawdown_series[drawdown_start:]) + drawdown_start
         recovery_idx = len(equity_curve) - 1  # No recovery yet
 
-        drawdown_periods.append({
-            'start_idx': drawdown_start,
-            'peak_idx': np.argmax(running_max[:drawdown_start+1]) if drawdown_start > 0 else 0,
-            'trough_idx': trough_idx,
-            'recovery_idx': recovery_idx,  # No recovery
-            'duration': recovery_idx - drawdown_start + 1,  # Include current period
-            'depth': drawdown_series[trough_idx],
-            'peak_value': peak_value,
-            'trough_value': equity_curve[trough_idx],
-            'recovery_value': equity_curve[recovery_idx],  # Current value
-            'recovery_time': 0,  # No recovery yet
-        })
+        drawdown_periods.append(
+            {
+                "start_idx": drawdown_start,
+                "peak_idx": np.argmax(running_max[: drawdown_start + 1])
+                if drawdown_start > 0
+                else 0,
+                "trough_idx": trough_idx,
+                "recovery_idx": recovery_idx,  # No recovery
+                "duration": recovery_idx - drawdown_start + 1,  # Include current period
+                "depth": drawdown_series[trough_idx],
+                "peak_value": peak_value,
+                "trough_value": equity_curve[trough_idx],
+                "recovery_value": equity_curve[recovery_idx],  # Current value
+                "recovery_time": 0,  # No recovery yet
+            }
+        )
 
     # Calculate summary statistics
     if drawdown_periods:
-        depths = [dd['depth'] for dd in drawdown_periods]
-        durations = [dd['duration'] for dd in drawdown_periods]
-        recovery_times = [dd['recovery_time'] for dd in drawdown_periods]
+        depths = [dd["depth"] for dd in drawdown_periods]
+        durations = [dd["duration"] for dd in drawdown_periods]
+        recovery_times = [dd["recovery_time"] for dd in drawdown_periods]
 
         return {
-            'max_drawdown': float(np.min(depths)),
-            'avg_drawdown': float(np.mean(depths)),
-            'median_drawdown': float(np.median(depths)),
-            'max_drawdown_duration': int(np.max(durations)),
-            'avg_drawdown_duration': float(np.mean(durations)),
-            'max_recovery_time': int(np.max(recovery_times)),
-            'avg_recovery_time': float(np.mean(recovery_times)),
-            'num_drawdowns': len(drawdown_periods),
-            'drawdown_periods': drawdown_periods,
+            "max_drawdown": float(np.min(depths)),
+            "avg_drawdown": float(np.mean(depths)),
+            "median_drawdown": float(np.median(depths)),
+            "max_drawdown_duration": int(np.max(durations)),
+            "avg_drawdown_duration": float(np.mean(durations)),
+            "max_recovery_time": int(np.max(recovery_times)),
+            "avg_recovery_time": float(np.mean(recovery_times)),
+            "num_drawdowns": len(drawdown_periods),
+            "drawdown_periods": drawdown_periods,
         }
     else:
         return {
-            'max_drawdown': 0.0,
-            'avg_drawdown': 0.0,
-            'median_drawdown': 0.0,
-            'max_drawdown_duration': 0,
-            'avg_drawdown_duration': 0.0,
-            'max_recovery_time': 0,
-            'avg_recovery_time': 0.0,
-            'num_drawdowns': 0,
-            'drawdown_periods': [],
+            "max_drawdown": 0.0,
+            "avg_drawdown": 0.0,
+            "median_drawdown": 0.0,
+            "max_drawdown_duration": 0,
+            "avg_drawdown_duration": 0.0,
+            "max_recovery_time": 0,
+            "avg_recovery_time": 0.0,
+            "num_drawdowns": 0,
+            "drawdown_periods": [],
         }
 
 
@@ -663,33 +674,30 @@ def _seasonality_analysis_impl(
     # If dates are not provided, create synthetic dates
     if dates is None:
         # Assume daily returns starting from a reference date
-        dates = pd.date_range(start='2020-01-01', periods=len(returns), freq='D')
+        dates = pd.date_range(start="2020-01-01", periods=len(returns), freq="D")
     else:
         dates = pd.to_datetime(dates)
 
     # Create DataFrame for analysis
-    df = pd.DataFrame({
-        'returns': returns,
-        'dates': dates
-    })
+    df = pd.DataFrame({"returns": returns, "dates": dates})
 
     # Extract seasonal components
-    df['month'] = df['dates'].dt.month
-    df['quarter'] = df['dates'].dt.quarter
-    df['year'] = df['dates'].dt.year
-    df['day_of_year'] = df['dates'].dt.dayofyear
+    df["month"] = df["dates"].dt.month
+    df["quarter"] = df["dates"].dt.quarter
+    df["year"] = df["dates"].dt.year
+    df["day_of_year"] = df["dates"].dt.dayofyear
 
     results = {}
 
     # Monthly analysis
-    monthly_stats = df.groupby('month')['returns'].agg([
-        'mean', 'std', 'count', 'sum'
-    ]).round(6)
+    monthly_stats = (
+        df.groupby("month")["returns"].agg(["mean", "std", "count", "sum"]).round(6)
+    )
 
     # Calculate monthly Sharpe ratios (annualized)
     monthly_sharpe = {}
     for month in range(1, 13):
-        month_returns = df[df['month'] == month]['returns']
+        month_returns = df[df["month"] == month]["returns"]
         if len(month_returns) > 1:
             mean_ret = month_returns.mean()
             std_ret = month_returns.std()
@@ -701,23 +709,23 @@ def _seasonality_analysis_impl(
         else:
             monthly_sharpe[month] = 0.0
 
-    results['monthly_analysis'] = {
-        'stats': monthly_stats.to_dict(),
-        'sharpe_ratios': monthly_sharpe,
-        'best_month': monthly_stats['mean'].idxmax(),
-        'worst_month': monthly_stats['mean'].idxmin(),
-        'best_month_return': monthly_stats['mean'].max(),
-        'worst_month_return': monthly_stats['mean'].min(),
+    results["monthly_analysis"] = {
+        "stats": monthly_stats.to_dict(),
+        "sharpe_ratios": monthly_sharpe,
+        "best_month": monthly_stats["mean"].idxmax(),
+        "worst_month": monthly_stats["mean"].idxmin(),
+        "best_month_return": monthly_stats["mean"].max(),
+        "worst_month_return": monthly_stats["mean"].min(),
     }
 
     # Quarterly analysis
-    quarterly_stats = df.groupby('quarter')['returns'].agg([
-        'mean', 'std', 'count', 'sum'
-    ]).round(6)
+    quarterly_stats = (
+        df.groupby("quarter")["returns"].agg(["mean", "std", "count", "sum"]).round(6)
+    )
 
     quarterly_sharpe = {}
     for quarter in range(1, 5):
-        quarter_returns = df[df['quarter'] == quarter]['returns']
+        quarter_returns = df[df["quarter"] == quarter]["returns"]
         if len(quarter_returns) > 1:
             mean_ret = quarter_returns.mean()
             std_ret = quarter_returns.std()
@@ -729,39 +737,43 @@ def _seasonality_analysis_impl(
         else:
             quarterly_sharpe[quarter] = 0.0
 
-    results['quarterly_analysis'] = {
-        'stats': quarterly_stats.to_dict(),
-        'sharpe_ratios': quarterly_sharpe,
-        'best_quarter': quarterly_stats['mean'].idxmax(),
-        'worst_quarter': quarterly_stats['mean'].idxmin(),
-        'best_quarter_return': quarterly_stats['mean'].max(),
-        'worst_quarter_return': quarterly_stats['mean'].min(),
+    results["quarterly_analysis"] = {
+        "stats": quarterly_stats.to_dict(),
+        "sharpe_ratios": quarterly_sharpe,
+        "best_quarter": quarterly_stats["mean"].idxmax(),
+        "worst_quarter": quarterly_stats["mean"].idxmin(),
+        "best_quarter_return": quarterly_stats["mean"].max(),
+        "worst_quarter_return": quarterly_stats["mean"].min(),
     }
 
     # Yearly analysis (if multiple years available)
-    if len(df['year'].unique()) > 1:
-        yearly_stats = df.groupby('year')['returns'].agg([
-            'mean', 'std', 'count', 'sum'
-        ]).round(6)
+    if len(df["year"].unique()) > 1:
+        yearly_stats = (
+            df.groupby("year")["returns"].agg(["mean", "std", "count", "sum"]).round(6)
+        )
 
-        results['yearly_analysis'] = {
-            'stats': yearly_stats.to_dict(),
-            'best_year': yearly_stats['mean'].idxmax(),
-            'worst_year': yearly_stats['mean'].idxmin(),
-            'best_year_return': yearly_stats['mean'].max(),
-            'worst_year_return': yearly_stats['mean'].min(),
+        results["yearly_analysis"] = {
+            "stats": yearly_stats.to_dict(),
+            "best_year": yearly_stats["mean"].idxmax(),
+            "worst_year": yearly_stats["mean"].idxmin(),
+            "best_year_return": yearly_stats["mean"].max(),
+            "worst_year_return": yearly_stats["mean"].min(),
         }
     else:
-        results['yearly_analysis'] = None
+        results["yearly_analysis"] = None
 
     # Overall seasonality assessment
-    monthly_means = monthly_stats['mean']
-    seasonal_strength = monthly_means.std() / monthly_means.abs().mean() if monthly_means.abs().mean() > 0 else 0.0
+    monthly_means = monthly_stats["mean"]
+    seasonal_strength = (
+        monthly_means.std() / monthly_means.abs().mean()
+        if monthly_means.abs().mean() > 0
+        else 0.0
+    )
 
-    results['seasonality_assessment'] = {
-        'seasonal_strength': seasonal_strength,
-        'has_strong_seasonality': seasonal_strength > 0.5,  # Arbitrary threshold
-        'monthly_variation_coefficient': seasonal_strength,
+    results["seasonality_assessment"] = {
+        "seasonal_strength": seasonal_strength,
+        "has_strong_seasonality": seasonal_strength > 0.5,  # Arbitrary threshold
+        "monthly_variation_coefficient": seasonal_strength,
     }
 
     return results
@@ -802,7 +814,7 @@ def classify_market_regime(
 
     for i in range(len(prices)):
         if i < window - 1:
-            regimes.append('unknown')
+            regimes.append("unknown")
             continue
 
         trend = rolling_trend.iloc[i]
@@ -812,17 +824,17 @@ def classify_market_regime(
         # Classification logic
         if abs(trend) < 0.02:  # Less than 2% change
             if volatility > returns.std() * 1.5:  # High volatility
-                regime = 'volatile_sideways'
+                regime = "volatile_sideways"
             else:
-                regime = 'sideways'
+                regime = "sideways"
         elif trend > 0.05:  # Strong uptrend (>5%)
-            regime = 'bull'
+            regime = "bull"
         elif trend < -0.05:  # Strong downtrend (<-5%)
-            regime = 'bear'
+            regime = "bear"
         elif trend > 0:  # Moderate uptrend
-            regime = 'weak_bull'
+            regime = "weak_bull"
         else:  # Moderate downtrend
-            regime = 'weak_bear'
+            regime = "weak_bear"
 
         regimes.append(regime)
 
@@ -856,7 +868,7 @@ def multi_market_backtest_analysis(
 
     unique_regimes = regimes.unique()
     for regime in unique_regimes:
-        if regime == 'unknown':
+        if regime == "unknown":
             continue
 
         regime_mask = regimes == regime
@@ -865,15 +877,15 @@ def multi_market_backtest_analysis(
         if len(regime_returns) > 0:
             metrics = calculate_all_metrics(regime_returns.values)
             regime_performance[regime] = {
-                'metrics': metrics,
-                'periods': len(regime_returns),
-                'total_return': regime_returns.sum(),
+                "metrics": metrics,
+                "periods": len(regime_returns),
+                "total_return": regime_returns.sum(),
             }
 
     # Perform statistical tests between regimes if we have multiple regimes with sufficient data
     statistical_tests_results = {}
-    regime_list = [regime for regime in unique_regimes if regime != 'unknown']
-    
+    regime_list = [regime for regime in unique_regimes if regime != "unknown"]
+
     if len(regime_list) >= 2:
         # Compare each pair of regimes
         for i, regime_a in enumerate(regime_list):
@@ -883,26 +895,38 @@ def multi_market_backtest_analysis(
                     mask_b = regimes == regime_b
                     returns_a = returns[mask_a]
                     returns_b = returns[mask_b]
-                    
+
                     if len(returns_a) >= 2 and len(returns_b) >= 2:
-                        test_result = perform_statistical_tests(returns_a.values, returns_b.values)
-                        statistical_tests_results[f"{regime_a}_vs_{regime_b}"] = test_result
+                        test_result = perform_statistical_tests(
+                            returns_a.values, returns_b.values
+                        )
+                        statistical_tests_results[
+                            f"{regime_a}_vs_{regime_b}"
+                        ] = test_result
 
         # Apply p-mean method if we have multiple test results
         if len(statistical_tests_results) > 1:
-            p_values = [result['p_value'] for result in statistical_tests_results.values()]
-            statistical_tests_results['p_mean_arithmetic'] = p_mean_method(p_values, 'arithmetic')
-            statistical_tests_results['p_mean_geometric'] = p_mean_method(p_values, 'geometric')
-            statistical_tests_results['overall_significant'] = statistical_tests_results['p_mean_geometric'] < 0.05
+            p_values = [
+                result["p_value"] for result in statistical_tests_results.values()
+            ]
+            statistical_tests_results["p_mean_arithmetic"] = p_mean_method(
+                p_values, "arithmetic"
+            )
+            statistical_tests_results["p_mean_geometric"] = p_mean_method(
+                p_values, "geometric"
+            )
+            statistical_tests_results["overall_significant"] = (
+                statistical_tests_results["p_mean_geometric"] < 0.05
+            )
 
     # Overall regime distribution
     regime_distribution = regimes.value_counts(normalize=True).to_dict()
 
     return {
-        'regime_performance': regime_performance,
-        'regime_distribution': regime_distribution,
-        'regime_transitions': _analyze_regime_transitions(regimes),
-        'statistical_tests': statistical_tests_results,
+        "regime_performance": regime_performance,
+        "regime_distribution": regime_distribution,
+        "regime_transitions": _analyze_regime_transitions(regimes),
+        "statistical_tests": statistical_tests_results,
     }
 
 
@@ -1060,7 +1084,9 @@ if __name__ == "__main__":
     print("All tests completed successfully!")
 
 
-def p_mean_method(p_values: Union[list[float], NDArray[Any]], method: str = 'arithmetic') -> float:
+def p_mean_method(
+    p_values: Union[list[float], NDArray[Any]], method: str = "arithmetic"
+) -> float:
     """
     p平均法による総合p値の計算
 
@@ -1102,10 +1128,10 @@ def p_mean_method(p_values: Union[list[float], NDArray[Any]], method: str = 'ari
 
     p_array = np.array(p_values)
 
-    if method == 'arithmetic':
+    if method == "arithmetic":
         # 算術平均
         return float(np.mean(p_array))
-    elif method == 'geometric':
+    elif method == "geometric":
         # 幾何平均 (0を避けるため小さな値を加算)
         p_array = np.clip(p_array, 1e-10, 1.0)
         return float(np.exp(np.mean(np.log(p_array))))
@@ -1116,7 +1142,7 @@ def p_mean_method(p_values: Union[list[float], NDArray[Any]], method: str = 'ari
 def perform_statistical_tests(
     data_a: Union[pd.Series, NDArray[Any], list[float]],
     data_b: Union[pd.Series, NDArray[Any], list[float]],
-    alpha: float = 0.05
+    alpha: float = 0.05,
 ) -> Dict[str, Any]:
     """
     2つのデータセット間の統計的検定を実行
@@ -1157,12 +1183,12 @@ def perform_statistical_tests(
             operation=lambda: _perform_statistical_tests_impl(data_a, data_b, alpha),
             context="statistical_tests_calculation",
             default_result={
-                't_statistic': 0.0,
-                'p_value': 1.0,
-                'significant': False,
-                'mean_a': 0.0,
-                'mean_b': 0.0,
-                'effect_size': 0.0
+                "t_statistic": 0.0,
+                "p_value": 1.0,
+                "significant": False,
+                "mean_a": 0.0,
+                "mean_b": 0.0,
+                "effect_size": 0.0,
             },
         ),
     )
@@ -1171,14 +1197,16 @@ def perform_statistical_tests(
 def _perform_statistical_tests_impl(
     data_a: Union[pd.Series, NDArray[Any], list[float]],
     data_b: Union[pd.Series, NDArray[Any], list[float]],
-    alpha: float = 0.05
+    alpha: float = 0.05,
 ) -> Dict[str, Any]:
     """統計的検定の実装"""
     values_a = np.asarray(data_a)
     values_b = np.asarray(data_b)
 
     if len(values_a) < 2 or len(values_b) < 2:
-        raise ValueError("Insufficient data for statistical test (need at least 2 samples each)")
+        raise ValueError(
+            "Insufficient data for statistical test (need at least 2 samples each)"
+        )
 
     # t検定実行 (Welch's t-test: 等分散を仮定しない)
     t_stat, p_value = stats.ttest_ind(values_a, values_b, equal_var=False)
@@ -1195,10 +1223,10 @@ def _perform_statistical_tests_impl(
     effect_size = abs(mean_a - mean_b) / pooled_std if pooled_std > 0 else 0.0
 
     return {
-        't_statistic': float(t_stat),
-        'p_value': float(p_value),
-        'significant': bool(significant),
-        'mean_a': float(mean_a),
-        'mean_b': float(mean_b),
-        'effect_size': float(effect_size)
+        "t_statistic": float(t_stat),
+        "p_value": float(p_value),
+        "significant": bool(significant),
+        "mean_a": float(mean_a),
+        "mean_b": float(mean_b),
+        "effect_size": float(effect_size),
     }

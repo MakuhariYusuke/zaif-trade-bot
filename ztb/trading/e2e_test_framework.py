@@ -6,30 +6,24 @@ V433 Phase 4: エンドツーエンドテストフレームワーク
 
 import asyncio
 import time
-import unittest
-import threading
-from typing import Dict, List, Optional, Any, Tuple, Union, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-import numpy as np
-import pandas as pd
-import tempfile
-import shutil
-import json
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from ztb.utils.logging_utils import get_logger
+import numpy as np
+
+from ztb.trading.position_manager import PositionSignal
 from ztb.trading.v433_integration_manager import V433IntegrationManager
-from ztb.trading.trade_execution_engine import TradeExecutionEngine
-from ztb.trading.position_manager import PositionManager, PositionSignal
-from ztb.trading.risk_overlay import RiskOverlay
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
 
 @dataclass
 class TestScenario:
     """テストシナリオ定義"""
+
     name: str
     description: str
     test_type: str  # "unit", "integration", "system", "performance", "stress"
@@ -45,6 +39,7 @@ class TestScenario:
 @dataclass
 class TestExecutionResult:
     """テスト実行結果"""
+
     scenario_name: str
     success: bool
     execution_time: float
@@ -58,6 +53,7 @@ class TestExecutionResult:
 @dataclass
 class TestSuiteResult:
     """テストスイート結果"""
+
     suite_name: str
     total_tests: int
     passed_tests: int
@@ -84,18 +80,19 @@ class TestDataGenerator:
             "btc_jpy": 5000000.0,
             "eth_jpy": 300000.0,
             "xrp_jpy": 100.0,
-            "mona_jpy": 50.0
+            "mona_jpy": 50.0,
         }
 
         self.volatilities = {
             "btc_jpy": 0.02,  # 2%
             "eth_jpy": 0.03,  # 3%
             "xrp_jpy": 0.05,  # 5%
-            "mona_jpy": 0.04   # 4%
+            "mona_jpy": 0.04,  # 4%
         }
 
-    def generate_price_series(self, symbol: str, periods: int = 1000,
-                            trend: str = "random") -> List[float]:
+    def generate_price_series(
+        self, symbol: str, periods: int = 1000, trend: str = "random"
+    ) -> List[float]:
         """価格系列を生成"""
         base_price = self.base_prices.get(symbol, 1000.0)
         volatility = self.volatilities.get(symbol, 0.02)
@@ -118,13 +115,19 @@ class TestDataGenerator:
 
         return prices
 
-    def generate_market_data_stream(self, symbols: List[str], duration_seconds: int = 60,
-                                  update_interval: float = 1.0) -> List[Tuple[str, float, float]]:
+    def generate_market_data_stream(
+        self,
+        symbols: List[str],
+        duration_seconds: int = 60,
+        update_interval: float = 1.0,
+    ) -> List[Tuple[str, float, float]]:
         """市場データストリームを生成"""
         data_stream = []
 
         for symbol in symbols:
-            prices = self.generate_price_series(symbol, int(duration_seconds / update_interval))
+            prices = self.generate_price_series(
+                symbol, int(duration_seconds / update_interval)
+            )
 
             for i, price in enumerate(prices):
                 timestamp = i * update_interval
@@ -142,7 +145,9 @@ class TestDataGenerator:
 
         for i in range(count):
             symbol = np.random.choice(symbols)
-            action = np.random.choice(["open_long", "open_short", "close_long", "close_short"])
+            action = np.random.choice(
+                ["open_long", "open_short", "close_long", "close_short"]
+            )
             strength = np.random.uniform(0.3, 0.9)
             quantity = np.random.uniform(0.0001, 0.01)
             confidence = np.random.uniform(0.4, 0.95)
@@ -153,7 +158,7 @@ class TestDataGenerator:
                 strength=strength,
                 target_quantity=quantity,
                 confidence=confidence,
-                reason=f"test_signal_{i}"
+                reason=f"test_signal_{i}",
             )
             signals.append(signal)
 
@@ -166,27 +171,27 @@ class TestDataGenerator:
                 "description": "瞬間暴落シナリオ",
                 "price_shocks": {"btc_jpy": -0.3, "eth_jpy": -0.35, "xrp_jpy": -0.25},
                 "duration_seconds": 10,
-                "recovery_time": 30
+                "recovery_time": 30,
             }
         elif scenario_type == "high_volatility":
             return {
                 "description": "高ボラティリティシナリオ",
                 "volatility_multiplier": 3.0,
                 "duration_seconds": 300,
-                "price_changes": {}
+                "price_changes": {},
             }
         elif scenario_type == "liquidity_crisis":
             return {
                 "description": "流動性危機シナリオ",
                 "spread_multiplier": 5.0,
                 "volume_reduction": 0.8,
-                "duration_seconds": 180
+                "duration_seconds": 180,
             }
         else:
             return {
                 "description": "通常シナリオ",
                 "price_changes": {},
-                "duration_seconds": 60
+                "duration_seconds": 60,
             }
 
 
@@ -234,14 +239,20 @@ class EndToEndTestRunner:
                 step_time = time.time() - step_start
 
                 # 結果保存
-                step_name = test_step.__name__ if hasattr(test_step, '__name__') else str(test_step)
+                step_name = (
+                    test_step.__name__
+                    if hasattr(test_step, "__name__")
+                    else str(test_step)
+                )
                 actual_results[step_name] = result
                 performance_metrics[f"{step_name}_time"] = step_time
 
                 log_message(f"Step {step_name} completed in {step_time:.2f}s")
 
             # 結果検証
-            success = self._validate_test_results(scenario.expected_results, actual_results)
+            success = self._validate_test_results(
+                scenario.expected_results, actual_results
+            )
 
             if success:
                 log_message("Test scenario PASSED")
@@ -275,7 +286,7 @@ class EndToEndTestRunner:
             execution_time=execution_time,
             actual_results=actual_results,
             performance_metrics=performance_metrics,
-            logs=logs
+            logs=logs,
         )
 
     def run_test_suite(self, scenarios: List[TestScenario]) -> TestSuiteResult:
@@ -283,7 +294,9 @@ class EndToEndTestRunner:
         start_time = time.time()
         suite_name = f"e2e_test_suite_{int(start_time)}"
 
-        self.logger.info(f"Starting test suite: {suite_name} with {len(scenarios)} scenarios")
+        self.logger.info(
+            f"Starting test suite: {suite_name} with {len(scenarios)} scenarios"
+        )
 
         results = []
 
@@ -303,12 +316,14 @@ class EndToEndTestRunner:
                     except Exception as e:
                         self.logger.error(f"Test scenario {scenario.name} failed: {e}")
                         # エラーの場合の結果作成
-                        results.append(TestExecutionResult(
-                            scenario_name=scenario.name,
-                            success=False,
-                            execution_time=0.0,
-                            error_message=str(e)
-                        ))
+                        results.append(
+                            TestExecutionResult(
+                                scenario_name=scenario.name,
+                                success=False,
+                                execution_time=0.0,
+                                error_message=str(e),
+                            )
+                        )
         else:
             # 順次実行
             for scenario in scenarios:
@@ -329,19 +344,25 @@ class EndToEndTestRunner:
             failed_tests=failed_tests,
             skipped_tests=skipped_tests,
             execution_time=execution_time,
-            results=results
+            results=results,
         )
 
-        self.logger.info(f"Test suite completed: {passed_tests}/{len(scenarios)} passed "
-                        f"in {execution_time:.2f}s")
+        self.logger.info(
+            f"Test suite completed: {passed_tests}/{len(scenarios)} passed "
+            f"in {execution_time:.2f}s"
+        )
 
         return suite_result
 
-    def _validate_test_results(self, expected: Dict[str, Any], actual: Dict[str, Any]) -> bool:
+    def _validate_test_results(
+        self, expected: Dict[str, Any], actual: Dict[str, Any]
+    ) -> bool:
         """テスト結果を検証"""
         for key, expected_value in expected.items():
             if key not in actual:
-                self.logger.warning(f"Expected result key '{key}' not found in actual results")
+                self.logger.warning(
+                    f"Expected result key '{key}' not found in actual results"
+                )
                 return False
 
             actual_value = actual[key]
@@ -351,26 +372,34 @@ class EndToEndTestRunner:
                 # 数値比較（許容誤差あり）
                 tolerance = expected_value * 0.1  # 10%許容
                 if abs(actual_value - expected_value) > tolerance:
-                    self.logger.warning(f"Value mismatch for {key}: expected {expected_value}, "
-                                      f"got {actual_value}")
+                    self.logger.warning(
+                        f"Value mismatch for {key}: expected {expected_value}, "
+                        f"got {actual_value}"
+                    )
                     return False
             elif isinstance(expected_value, str):
                 # 文字列比較
                 if actual_value != expected_value:
-                    self.logger.warning(f"String mismatch for {key}: expected '{expected_value}', "
-                                      f"got '{actual_value}'")
+                    self.logger.warning(
+                        f"String mismatch for {key}: expected '{expected_value}', "
+                        f"got '{actual_value}'"
+                    )
                     return False
             elif isinstance(expected_value, bool):
                 # ブール比較
                 if actual_value != expected_value:
-                    self.logger.warning(f"Boolean mismatch for {key}: expected {expected_value}, "
-                                      f"got {actual_value}")
+                    self.logger.warning(
+                        f"Boolean mismatch for {key}: expected {expected_value}, "
+                        f"got {actual_value}"
+                    )
                     return False
             elif isinstance(expected_value, (list, tuple)):
                 # リスト比較（簡易版）
                 if len(actual_value) != len(expected_value):
-                    self.logger.warning(f"List length mismatch for {key}: expected {len(expected_value)}, "
-                                      f"got {len(actual_value)}")
+                    self.logger.warning(
+                        f"List length mismatch for {key}: expected {len(expected_value)}, "
+                        f"got {len(actual_value)}"
+                    )
                     return False
 
         return True
@@ -398,15 +427,15 @@ class ComprehensiveTestSuite:
             test_steps=[
                 self._test_component_initialization,
                 self._test_component_startup,
-                self._test_component_interaction
+                self._test_component_interaction,
             ],
             teardown_steps=[self._teardown_system],
             expected_results={
                 "components_initialized": True,
                 "components_started": True,
-                "interaction_success": True
+                "interaction_success": True,
             },
-            tags=["integration", "startup", "critical"]
+            tags=["integration", "startup", "critical"],
         )
         scenarios.append(scenario)
 
@@ -420,15 +449,15 @@ class ComprehensiveTestSuite:
             test_steps=[
                 self._test_market_data_ingestion,
                 self._test_data_propagation,
-                self._test_data_consistency
+                self._test_data_consistency,
             ],
             teardown_steps=[self._teardown_system],
             expected_results={
                 "data_ingested": True,
                 "data_propagated": True,
-                "data_consistent": True
+                "data_consistent": True,
             },
-            tags=["integration", "data", "critical"]
+            tags=["integration", "data", "critical"],
         )
         scenarios.append(scenario)
 
@@ -443,16 +472,16 @@ class ComprehensiveTestSuite:
                 self._test_signal_generation,
                 self._test_order_execution,
                 self._test_position_management,
-                self._test_risk_management
+                self._test_risk_management,
             ],
             teardown_steps=[self._teardown_system],
             expected_results={
                 "signal_generated": True,
                 "order_executed": True,
                 "position_managed": True,
-                "risk_managed": True
+                "risk_managed": True,
             },
-            tags=["integration", "trading", "critical"]
+            tags=["integration", "trading", "critical"],
         )
         scenarios.append(scenario)
 
@@ -472,15 +501,15 @@ class ComprehensiveTestSuite:
             test_steps=[
                 self._test_data_processing_latency,
                 self._test_signal_processing_latency,
-                self._test_execution_latency
+                self._test_execution_latency,
             ],
             teardown_steps=[self._teardown_performance_test],
             expected_results={
                 "data_latency_ms": lambda x: x < 100,
                 "signal_latency_ms": lambda x: x < 200,
-                "execution_latency_ms": lambda x: x < 500
+                "execution_latency_ms": lambda x: x < 500,
             },
-            tags=["performance", "latency", "high"]
+            tags=["performance", "latency", "high"],
         )
         scenarios.append(scenario)
 
@@ -494,15 +523,15 @@ class ComprehensiveTestSuite:
             test_steps=[
                 self._test_data_ingestion_rate,
                 self._test_signal_processing_rate,
-                self._test_concurrent_operations
+                self._test_concurrent_operations,
             ],
             teardown_steps=[self._teardown_throughput_test],
             expected_results={
                 "data_ingestion_rate": lambda x: x > 100,  # 100 updates/sec
                 "signal_processing_rate": lambda x: x > 50,  # 50 signals/sec
-                "concurrent_operations": lambda x: x > 10   # 10 concurrent ops
+                "concurrent_operations": lambda x: x > 10,  # 10 concurrent ops
             },
-            tags=["performance", "throughput", "high"]
+            tags=["performance", "throughput", "high"],
         )
         scenarios.append(scenario)
 
@@ -524,16 +553,16 @@ class ComprehensiveTestSuite:
                 self._test_high_frequency_data,
                 self._test_burst_signals,
                 self._test_memory_pressure,
-                self._test_recovery_capability
+                self._test_recovery_capability,
             ],
             teardown_steps=[self._teardown_stress_test],
             expected_results={
                 "system_stable": True,
                 "no_crashes": True,
                 "recovery_success": True,
-                "performance_degradation": lambda x: x < 0.5  # 50%以内の性能低下
+                "performance_degradation": lambda x: x < 0.5,  # 50%以内の性能低下
             },
-            tags=["stress", "load", "high"]
+            tags=["stress", "load", "high"],
         )
         scenarios.append(scenario)
 
@@ -549,16 +578,16 @@ class ComprehensiveTestSuite:
                 self._test_flash_crash_scenario,
                 self._test_high_volatility_scenario,
                 self._test_liquidity_crisis_scenario,
-                self._test_emergency_procedures
+                self._test_emergency_procedures,
             ],
             teardown_steps=[self._teardown_market_stress_test],
             expected_results={
                 "flash_crash_handled": True,
                 "volatility_handled": True,
                 "liquidity_handled": True,
-                "emergency_procedures": True
+                "emergency_procedures": True,
             },
-            tags=["stress", "market", "high"]
+            tags=["stress", "market", "high"],
         )
         scenarios.append(scenario)
 
@@ -572,7 +601,9 @@ class ComprehensiveTestSuite:
 
         # システム統合テスト
         integration_scenarios = self.create_system_integration_tests()
-        results["system_integration"] = self.test_runner.run_test_suite(integration_scenarios)
+        results["system_integration"] = self.test_runner.run_test_suite(
+            integration_scenarios
+        )
 
         # パフォーマンステスト
         performance_scenarios = self.create_performance_tests()
@@ -586,7 +617,9 @@ class ComprehensiveTestSuite:
         total_passed = sum(r.passed_tests for r in results.values())
         total_tests = sum(r.total_tests for r in results.values())
 
-        self.logger.info(f"Comprehensive test suite completed: {total_passed}/{total_tests} tests passed")
+        self.logger.info(
+            f"Comprehensive test suite completed: {total_passed}/{total_tests} tests passed"
+        )
 
         return results
 
@@ -603,7 +636,9 @@ class ComprehensiveTestSuite:
         self.integration_manager.start_system()
 
         # サンプルデータ投入
-        self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", 5000000.0)
+        self.integration_manager.component_manager.v433_system.update_market_data(
+            "btc_jpy", 5000000.0
+        )
         time.sleep(0.1)
 
     def _setup_system_with_trading(self):
@@ -674,10 +709,14 @@ class ComprehensiveTestSuite:
         try:
             # テストデータ投入
             test_price = 5100000.0
-            self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", test_price)
+            self.integration_manager.component_manager.v433_system.update_market_data(
+                "btc_jpy", test_price
+            )
 
             # データ確認
-            current_prices = self.integration_manager.component_manager.v433_system.current_prices
+            current_prices = (
+                self.integration_manager.component_manager.v433_system.current_prices
+            )
             success = current_prices.get("btc_jpy") == test_price
             return {"data_ingested": success}
         except Exception:
@@ -689,10 +728,18 @@ class ComprehensiveTestSuite:
             time.sleep(0.1)  # 伝播待機
 
             # 各コンポーネントでのデータ確認
-            v433_price = self.integration_manager.component_manager.v433_system.current_prices.get("btc_jpy")
-            risk_price = self.integration_manager.component_manager.risk_overlay.current_prices.get("btc_jpy")
+            v433_price = self.integration_manager.component_manager.v433_system.current_prices.get(
+                "btc_jpy"
+            )
+            risk_price = self.integration_manager.component_manager.risk_overlay.current_prices.get(
+                "btc_jpy"
+            )
 
-            success = v433_price is not None and risk_price is not None and v433_price == risk_price
+            success = (
+                v433_price is not None
+                and risk_price is not None
+                and v433_price == risk_price
+            )
             return {"data_propagated": success}
         except Exception:
             return {"data_propagated": False}
@@ -701,8 +748,12 @@ class ComprehensiveTestSuite:
         """データ整合性テスト"""
         try:
             # 複数データの整合性確認
-            prices = self.integration_manager.component_manager.v433_system.current_prices
-            success = len(prices) > 0 and all(isinstance(p, (int, float)) and p > 0 for p in prices.values())
+            prices = (
+                self.integration_manager.component_manager.v433_system.current_prices
+            )
+            success = len(prices) > 0 and all(
+                isinstance(p, (int, float)) and p > 0 for p in prices.values()
+            )
             return {"data_consistent": success}
         except Exception:
             return {"data_consistent": False}
@@ -716,7 +767,9 @@ class ComprehensiveTestSuite:
 
             # シグナル送信
             async def send_signal():
-                await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
             asyncio.run(send_signal())
             return {"signal_generated": True}
@@ -737,7 +790,7 @@ class ComprehensiveTestSuite:
         try:
             # ポジション状態確認
             portfolio_state = self.integration_manager.component_manager.position_manager.portfolio_state
-            success = hasattr(portfolio_state, 'positions')
+            success = hasattr(portfolio_state, "positions")
             return {"position_managed": success}
         except Exception:
             return {"position_managed": False}
@@ -746,7 +799,9 @@ class ComprehensiveTestSuite:
         """リスク管理テスト"""
         try:
             # リスク指標確認
-            risk_metrics = self.integration_manager.component_manager.risk_overlay.risk_metrics
+            risk_metrics = (
+                self.integration_manager.component_manager.risk_overlay.risk_metrics
+            )
             success = risk_metrics is not None
             return {"risk_managed": success}
         except Exception:
@@ -756,7 +811,9 @@ class ComprehensiveTestSuite:
         """データ処理レイテンシーテスト"""
         start_time = time.time()
         for _ in range(10):
-            self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", 5000000.0)
+            self.integration_manager.component_manager.v433_system.update_market_data(
+                "btc_jpy", 5000000.0
+            )
         end_time = time.time()
         return (end_time - start_time) / 10 * 1000  # ms
 
@@ -767,7 +824,9 @@ class ComprehensiveTestSuite:
 
         async def send_signals():
             for signal in signals:
-                await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
         asyncio.run(send_signals())
         end_time = time.time()
@@ -787,7 +846,9 @@ class ComprehensiveTestSuite:
         start_time = time.time()
         count = 0
         while time.time() - start_time < 10:  # 10秒間
-            self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", 5000000.0)
+            self.integration_manager.component_manager.v433_system.update_market_data(
+                "btc_jpy", 5000000.0
+            )
             count += 1
         return count / 10  # per second
 
@@ -798,7 +859,9 @@ class ComprehensiveTestSuite:
 
         async def send_signals():
             for signal in signals:
-                await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
         asyncio.run(send_signals())
         end_time = time.time()
@@ -815,7 +878,9 @@ class ComprehensiveTestSuite:
             # 高頻度データ投入
             for i in range(100):
                 price = 5000000 + i * 100
-                self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", price)
+                self.integration_manager.component_manager.v433_system.update_market_data(
+                    "btc_jpy", price
+                )
 
             # システム安定性確認
             status = self.integration_manager.get_system_status()
@@ -832,7 +897,9 @@ class ComprehensiveTestSuite:
 
             async def send_burst_signals():
                 for signal in signals:
-                    await self.integration_manager.component_manager.position_manager.submit_signal(signal)
+                    await self.integration_manager.component_manager.position_manager.submit_signal(
+                        signal
+                    )
 
             asyncio.run(send_burst_signals())
 
@@ -849,7 +916,9 @@ class ComprehensiveTestSuite:
 
             # 負荷をかける
             for _ in range(1000):
-                self.integration_manager.component_manager.v433_system.update_market_data("btc_jpy", 5000000.0)
+                self.integration_manager.component_manager.v433_system.update_market_data(
+                    "btc_jpy", 5000000.0
+                )
 
             final_memory = self.integration_manager.performance_monitor.get_current_metrics().memory_usage_gb
             memory_increase = (final_memory - initial_memory) / initial_memory
@@ -880,7 +949,9 @@ class ComprehensiveTestSuite:
             for symbol, shock in scenario["price_shocks"].items():
                 base_price = self.test_data_generator.base_prices.get(symbol, 1000.0)
                 crash_price = base_price * (1 + shock)
-                self.integration_manager.component_manager.v433_system.update_market_data(symbol, crash_price)
+                self.integration_manager.component_manager.v433_system.update_market_data(
+                    symbol, crash_price
+                )
 
             # システム安定性確認
             time.sleep(1)
@@ -895,11 +966,17 @@ class ComprehensiveTestSuite:
             # 高ボラティリティデータ生成
             for _ in range(60):  # 1分間
                 for symbol in ["btc_jpy", "eth_jpy"]:
-                    volatility = self.test_data_generator.volatilities.get(symbol, 0.02) * 3  # 3倍
-                    base_price = self.test_data_generator.base_prices.get(symbol, 1000.0)
+                    volatility = (
+                        self.test_data_generator.volatilities.get(symbol, 0.02) * 3
+                    )  # 3倍
+                    base_price = self.test_data_generator.base_prices.get(
+                        symbol, 1000.0
+                    )
                     shock = np.random.normal(0, volatility)
                     price = base_price * (1 + shock)
-                    self.integration_manager.component_manager.v433_system.update_market_data(symbol, price)
+                    self.integration_manager.component_manager.v433_system.update_market_data(
+                        symbol, price
+                    )
                 time.sleep(1)
 
             status = self.integration_manager.get_system_status()
@@ -914,10 +991,14 @@ class ComprehensiveTestSuite:
             for _ in range(30):  # 30秒間
                 for symbol in ["btc_jpy", "eth_jpy"]:
                     # 小さな価格変動
-                    base_price = self.test_data_generator.base_prices.get(symbol, 1000.0)
+                    base_price = self.test_data_generator.base_prices.get(
+                        symbol, 1000.0
+                    )
                     shock = np.random.normal(0, 0.001)  # 非常に小さな変動
                     price = base_price * (1 + shock)
-                    self.integration_manager.component_manager.v433_system.update_market_data(symbol, price)
+                    self.integration_manager.component_manager.v433_system.update_market_data(
+                        symbol, price
+                    )
                 time.sleep(1)
 
             status = self.integration_manager.get_system_status()
@@ -936,7 +1017,9 @@ class ComprehensiveTestSuite:
             return False
 
 
-def create_end_to_end_test_framework(integration_manager: V433IntegrationManager) -> ComprehensiveTestSuite:
+def create_end_to_end_test_framework(
+    integration_manager: V433IntegrationManager,
+) -> ComprehensiveTestSuite:
     """エンドツーエンドテストフレームワークのファクトリ関数"""
     return ComprehensiveTestSuite(integration_manager)
 
