@@ -63,6 +63,77 @@ class RewardCalculator:
             int
         ] = []  # Track recent actions for frequency penalty
 
+        # Asymmetric reward scaling factors (v435 enhancement)
+        self.long_position_reward_multiplier = self.get_setting_float(
+            "long_position_reward_multiplier", 1.5
+        )
+        self.short_position_reward_multiplier = self.get_setting_float(
+            "short_position_reward_multiplier", 0.7
+        )
+        self.long_position_penalty_multiplier = self.get_setting_float(
+            "long_position_penalty_multiplier", 0.8
+        )
+        self.short_position_penalty_multiplier = self.get_setting_float(
+            "short_position_penalty_multiplier", 1.2
+        )
+
+    def _get_position_direction(self, position: float) -> str:
+        """
+        Determine position direction for asymmetric reward scaling.
+
+        Args:
+            position: Current position size
+
+        Returns:
+            'long', 'short', or 'neutral'
+        """
+        if position > 0.01:  # Long position threshold
+            return 'long'
+        elif position < -0.01:  # Short position threshold
+            return 'short'
+        else:
+            return 'neutral'
+
+    def _apply_asymmetric_scaling(self, reward: float, position: float, pnl: float) -> float:
+        """
+        Apply asymmetric reward scaling based on position direction.
+
+        This addresses v430's 16% long position win rate issue by:
+        - Boosting rewards for long positions to encourage more balanced trading
+        - Reducing rewards for short positions to prevent over-reliance on short trades
+        - Applying different penalty multipliers for losses in different directions
+
+        Args:
+            reward: Base reward value
+            position: Current position
+            pnl: Profit/Loss from action
+
+        Returns:
+            Scaled reward value
+        """
+        position_direction = self._get_position_direction(position)
+
+        if position_direction == 'neutral':
+            return reward  # No scaling for neutral positions
+
+        # Apply asymmetric scaling based on profit/loss and position direction
+        if pnl > 0:  # Profitable trade
+            if position_direction == 'long':
+                reward *= self.long_position_reward_multiplier
+                self.logger.debug(f"Applied long position reward boost: {self.long_position_reward_multiplier}x")
+            elif position_direction == 'short':
+                reward *= self.short_position_reward_multiplier
+                self.logger.debug(f"Applied short position reward reduction: {self.short_position_reward_multiplier}x")
+        else:  # Loss trade
+            if position_direction == 'long':
+                reward *= self.long_position_penalty_multiplier
+                self.logger.debug(f"Applied long position penalty reduction: {self.long_position_penalty_multiplier}x")
+            elif position_direction == 'short':
+                reward *= self.short_position_penalty_multiplier
+                self.logger.debug(f"Applied short position penalty boost: {self.short_position_penalty_multiplier}x")
+
+        return reward
+
     def get_setting_int(self, key: str, default: int) -> int:
         """Get integer reward setting with fallback."""
         if self.reward_settings and key in self.reward_settings:
@@ -197,6 +268,8 @@ class RewardCalculator:
                 "forced_balance_scaling", 1.0
             )
             reward *= forced_balance_scaling
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -218,6 +291,8 @@ class RewardCalculator:
                 pnl,
                 reward_scaling,
             )
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -235,6 +310,8 @@ class RewardCalculator:
                 pnl,
                 reward_scaling,
             )
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -253,6 +330,8 @@ class RewardCalculator:
                 reward_scaling,
                 observation,
             )
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -270,6 +349,8 @@ class RewardCalculator:
                 pnl,
                 reward_scaling,
             )
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -288,6 +369,8 @@ class RewardCalculator:
                 observation,
             )
             reward *= reward_scaling
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
@@ -306,6 +389,8 @@ class RewardCalculator:
                 pnl,
             )
             reward *= reward_scaling
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self._apply_asymmetric_scaling(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
