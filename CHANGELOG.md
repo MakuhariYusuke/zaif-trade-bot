@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-10-25
+
+### Action Signal Guide: Type Safety and Inheritance Improvements 🔧
+
+#### Type Safety Enhancements
+- **Method Signature Standardization**: すべてのパターン認識クラスの`recognize`メソッドを統一 (`index: int = -1`)
+- **Base Class Type Annotations**: `is_bullish_candle`/`is_bearish_candle`メソッドの`Optional[int]`型修正
+- **Return Type Annotations**: ActionSignalGuideクラスの主要メソッドに適切なリターンタイプ追加
+- **Import Cleanup**: 存在しないクラスのインポート削除とインスタンス化修正
+
+#### Implementation Details
+- **ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py**: 基底クラスの型アノテーション修正
+- **ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py**: メソッドシグネチャ統一
+- **ztb/trading/strategies/action_signal_guide/pattern_recognition/fibonacci_patterns.py**: メソッドシグネチャ統一
+- **ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py**: メソッドシグネチャ統一
+- **ztb/trading/strategies/action_signal_guide/action_signal_guide.py**: リターンタイプ追加とインポート修正
+
+#### Quality Improvements
+- **MyPy Error Reduction**: 333→327エラー削減 (6エラー解決)
+- **Inheritance Consistency**: すべてのパターン認識クラスが統一されたインターフェースを実装
+- **Type Safety**: Optionalタイプの適切な使用と明示的なリターンタイプ
+
+### Feature Set Management System 🎯
+
+#### New Features
+- **Configurable Feature Sets**: 4つのプリセット特徴量セット (minimal, no_harmful, high_quality, full)
+- **Dynamic Feature Filtering**: 実行時に特徴量セットを切り替え可能
+- **Harmful Feature Removal**: dividends, stock splits 等のクリティカル有害特徴量の自動除外
+- **JSON Configuration**: 宣言的な特徴量設定管理
+
+#### Implementation
+- **ztb/features/feature_set_config.py**: 特徴量セット設定管理クラス
+- **ztb/features/sac_v427_feature_engineering.py**: コンフィグ可能な特徴量生成エンジン
+- **config/feature_sets/**: プリセット設定ファイルディレクトリ
+- **docs/features/feature_set_management.md**: 包括的な使用ドキュメント
+
+#### Configuration Files
+- **config/feature_sets/default.json**: デフォルト設定 (no_harmful)
+- **config/feature_sets/minimal.json**: 最小特徴量セット
+- **config/feature_sets/high_quality.json**: 高品質特徴量セット
+
+#### Testing
+- **test_feature_sets.py**: 特徴量セット切り替え機能のテスト
+- **Real Data Validation**: BTC/JPYデータでの動作確認
+- **Performance Benchmarking**: 各セットの特徴量数と処理時間測定
+
+## [4.5.5] - 2025-10-23
+
+### SAC v435: Enhanced SAC with Risk Management Integration 完了 🚀
+
+#### Phase 4: Risk Management Integration
+- **Dynamic Position Sizing**: ボラティリティベースのポジション調整、ATR分析、サイズ制限
+- **Drawdown Control**: 緊急停止メカニズム、5%/10%/15%の段階的介入、回復閾値
+- **Market Adaptation**: 市場レジーム検知 (bull/bear/sideways/volatile)、適応パラメータ調整
+- **RiskManager**: 統合リスク管理システム、相関リスク制御、ポートフォリオ保護
+
+#### Phase 5: Training and Evaluation
+- **Risk-Aware Training**: トレーニング中のリスク調整ポジション計算、指標監視
+- **Evaluation Framework**: リスク管理考慮バックテスト、包括的パフォーマンスメトリクス
+- **Risk Metrics**: 最大ドローダウン、シャープレシオ、リスク調整ポジション削減率
+- **Unified Integration**: トレーニングパイプラインへの完全統合
+
+#### 実装コンポーネント
+- **ztb/risk/risk_manager.py**: 統合リスク管理マネージャー
+- **ztb/risk/dynamic_position_sizer.py**: 動的ポジションサイザー
+- **ztb/risk/drawdown_controller.py**: ドローダウン制御システム
+- **ztb/risk/market_adaptation_manager.py**: 市場適応マネージャー
+- **ztb/training/v435/train_sac_v435.py**: リスク統合トレーニングスクリプト
+- **ztb/training/v435/evaluate_sac_v435.py**: リスク考慮評価システム
+
+#### テスト結果
+- **Risk Integration Tests**: 3/3 テスト成功 ✅
+- **Position Sizing**: リスク調整後 0.0013 (ベース 0.1 から大幅削減)
+- **Drawdown Control**: 5.2% および 7.3% ドローダウンで警告発動
+- **Market Adaptation**: 強気→変動相場へのレジーム変更検知
+- **Training Setup**: リスク管理統合トレーニング準備完了
+
+#### 設定ファイル
+- **config/v435/sac_v435_config.json**: メイン設定 (リスク管理有効)
+- **config/v435/sac_v435_environment_config.json**: 環境設定
+- **config/v435/sac_v435_reward_config.json**: 報酬設定
+
 ## [4.5.4] - 2025-10-21
 
 ### V433 Phase 5: Production Migration System 完了 🚀
