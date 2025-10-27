@@ -7,6 +7,7 @@ import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 
@@ -18,7 +19,7 @@ class ConfigValidator:
         self.errors: List[str] = []
         self.warnings: List[str] = []
 
-    def validate(self, config: Dict[str, Any]) -> Tuple[bool, List[str], List[str]]:
+    def validate(self, config: ConfigDict) -> Tuple[bool, List[str], List[str]]:
         """
         Validate configuration comprehensively.
 
@@ -48,7 +49,7 @@ class ConfigValidator:
 
         return len(self.errors) == 0, self.errors, self.warnings
 
-    def _validate_basic_structure(self, config: Dict[str, Any]) -> bool:
+    def _validate_basic_structure(self, config: ConfigDict) -> bool:
         """Validate basic configuration structure."""
         required_keys = ["algorithm"]
         for key in required_keys:
@@ -70,7 +71,7 @@ class ConfigValidator:
 
         return True
 
-    def _validate_sac_config(self, config: Dict[str, Any]):
+    def _validate_sac_config(self, config: ConfigDict):
         """Validate SAC-specific configuration."""
         sac_config = config.get("sac_hyperparameters", {})
 
@@ -179,7 +180,7 @@ class ConfigValidator:
     def _validate_training_config(self, config: Dict[str, Any]):
         """Validate training configuration."""
         # Total timesteps
-        total_timesteps = config.get("total_timesteps", 50000)
+        total_timesteps = config["training"]["total_timesteps"]
         if not isinstance(total_timesteps, int) or total_timesteps <= 0:
             self.errors.append(
                 f"total_timesteps must be positive integer, got {total_timesteps}"

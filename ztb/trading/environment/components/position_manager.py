@@ -7,6 +7,7 @@ including execution of trades, trade accounting, and position state tracking.
 
 from typing import Any, Callable, Optional
 
+from ztb.risk.risk_manager import RiskManager
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.logging_utils import get_logger
 
@@ -52,8 +53,17 @@ class PositionManager:
         self._last_trade_step: int = -1
         self._consecutive_trade_steps: int = 0
 
+        # Risk management (v435 enhancement)
+        risk_config = getattr(config, "risk_management", {})
+        self.risk_manager = RiskManager(risk_config)
+
     def execute_action(
-        self, action: int, current_step: int, min_holding_period: int = 0
+        self,
+        action: int,
+        current_step: int,
+        min_holding_period: int = 0,
+        df: Optional[Any] = None,
+        atr: float = 0.0,
     ) -> float:
         """
         Execute trading action.
@@ -101,11 +111,11 @@ class PositionManager:
                 if self.config.allow_reverse and (
                     not enforce_reverse_cooldown or not within_min_holding
                 ):
-                    entry_cost = self.open_position(1, current_step)
+                    entry_cost = self.open_position(1, current_step, df, atr)
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
 
             elif self.position == 0:  # Flat
-                entry_cost = self.open_position(1, current_step)
+                entry_cost = self.open_position(1, current_step, df, atr)
                 trade_pnl -= entry_cost  # Entry fee is negative PnL
                 self._consecutive_trade_steps += 1
             # position > 0 (already Long): do nothing
@@ -120,18 +130,24 @@ class PositionManager:
                 if self.config.allow_reverse and (
                     not enforce_reverse_cooldown or not within_min_holding
                 ):
-                    entry_cost = self.open_position(-1, current_step)
+                    entry_cost = self.open_position(-1, current_step, df, atr)
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
 
             elif self.position == 0:  # Flat
-                entry_cost = self.open_position(-1, current_step)
+                entry_cost = self.open_position(-1, current_step, df, atr)
                 trade_pnl -= entry_cost  # Entry fee is negative PnL
                 self._consecutive_trade_steps += 1
             # position < 0 (already Short): do nothing
 
         return trade_pnl
 
-    def open_position(self, direction: int, current_step: int) -> float:
+    def open_position(
+        self,
+        direction: int,
+        current_step: int,
+        df: Optional[Any] = None,
+        atr: float = 0.0,
+    ) -> float:
         """
         Open position (entry cost immediately reflected).
 
@@ -155,8 +171,29 @@ class PositionManager:
         available_funds = initial_portfolio + self.realized_pnl
         transaction_cost = float(self.config.transaction_cost)
 
-        # 理想的なコスト（max_position_size フル購入）
-        ideal_cost = max_position_size * current_price * (1 + transaction_cost)
+        # 基本ポジションサイズ
+        base_position_size = getattr(self.config, "max_position_size", 1.0)
+
+        # リスク管理適用 (v435 enhancement)
+        current_price = self._get_price()
+        portfolio_value = initial_portfolio + self.realized_pnl
+
+        risk_adjusted = self.risk_manager.calculate_risk_adjusted_position(
+            base_position=base_position_size,
+            current_price=current_price,
+            portfolio_value=portfolio_value,
+            atr=atr,
+            df=df,
+            step=current_step,
+        )
+
+        actual_position_size = risk_adjusted["adjusted_position"]
+
+        # ログ出力
+        if risk_adjusted["control_active"]:
+            logger.info(f"Risk control applied: {risk_adjusted['reasons']}")
+
+        # 理想的なコスト（リスク調整済みサイズ））
 
         # 実際に購入可能なサイズ（利用可能資金の90%まで）
         affordable_funds = available_funds * 0.9

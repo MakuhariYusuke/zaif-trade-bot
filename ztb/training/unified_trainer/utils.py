@@ -6,6 +6,7 @@ Utility functions for Unified Trainer.
 import logging
 from typing import Any, Dict, Optional
 
+from ztb.types.common import ConfigDict, ConfigValue
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -20,7 +21,7 @@ except ImportError:
 
 
 def configure_progress_bar(
-    config: Dict[str, Any],
+    config: ConfigDict,
     cli_override: Optional[bool] = None,
     log: Optional[logging.Logger] = None,
 ) -> bool:

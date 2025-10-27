@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional, Protocol, Set, TypeVar
 
 import pandas as pd
 
+from ztb.types.common import ConfigDict
+
 T = TypeVar("T", covariant=True)
 
 
@@ -23,7 +25,7 @@ class Feature(Protocol[T]):
         """Dependencies (common preprocessing etc)"""
         ...
 
-    def compute(self, df: pd.DataFrame, **params: Any) -> T:
+    def compute(self, df: pd.DataFrame, **params: ConfigDict) -> T:
         """Compute feature with generic return type"""
         ...
 
@@ -91,13 +93,13 @@ class ParameterizedFeature(BaseFeature):
         self._default_params = default_params or {}
         self.default_params = default_params or {}
 
-    def compute(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
+    def compute(self, df: pd.DataFrame, **params: ConfigDict) -> pd.DataFrame:
         # Merge default params with provided params
         merged_params = {**self._default_params, **params}
         return self._compute_with_params(df, **merged_params)
 
     @abstractmethod
-    def _compute_with_params(self, df: pd.DataFrame, **params: Any) -> pd.DataFrame:
+    def _compute_with_params(self, df: pd.DataFrame, **params: ConfigDict) -> pd.DataFrame:
         """Actual computation with parameters"""
 
 

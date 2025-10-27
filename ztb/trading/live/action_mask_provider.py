@@ -2,7 +2,7 @@
 Action Mask Provider for Live Trading
 
 Provides action masking functionality for MaskablePPO models in live trading
-without requiring a full gym environment instance.
+without requiring a full Gymnasium environment instance.
 
 This module addresses Bug #27 by allowing proper action masking in production.
 """
@@ -37,7 +37,7 @@ class ActionMaskProvider:
     """
     Lightweight action mask provider for MaskablePPO in live trading.
 
-    This class provides the same action masking logic as the gym environment
+    This class provides the same action masking logic as the Gymnasium environment
     but without requiring a full environment instance.
 
     Bug #27 Fix: Enables proper MaskablePPO usage in live trading with

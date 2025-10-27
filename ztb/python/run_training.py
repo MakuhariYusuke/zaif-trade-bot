@@ -67,7 +67,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
     logger.info(f"  Session ID: {config.get('session_id', 'N/A')}")
 
     # Format timesteps with proper handling of None/N/A
-    total_timesteps = config.get("total_timesteps")
+    total_timesteps = config.get("training", {}).get("total_timesteps")
     if total_timesteps is not None:
         logger.info(f"  Total timesteps: {total_timesteps:,}")
     else:

@@ -175,6 +175,11 @@ class BacktestEngine:
         adaptation_history = [] if self.enable_adaptation else None
 
         for i, (timestamp, row) in enumerate(data.iterrows()):
+            # Progress reporting
+            if i % 100 == 0 and i > 0:
+                progress = (i / len(data)) * 100
+                print(f"Backtest progress: {progress:.1f}% ({i}/{len(data)} steps)")
+
             current_data = data.iloc[: i + 1]  # All data up to current point
 
             # Hyperparameter adaptation step

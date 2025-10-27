@@ -244,14 +244,16 @@ class SACv423Analyzer:
         print("\n📊 トレーニング概要:")
         print(f"   モデル名: {config.get('model_name', 'Unknown')}")
         print(f"   アルゴリズム: {config.get('algorithm', 'Unknown')}")
-        print(f"   総タイムステップ: {config.get('total_timesteps', 'Unknown'):,}")
+        print(
+            f"   総タイムステップ: {config.get('training', {}).get('total_timesteps', 'Unknown'):,}"
+        )
         print(f"   最終エピソード報酬: {metrics.get('final_episode_reward', 'N/A')}")
         print(f"   最高エピソード報酬: {metrics.get('best_episode_reward', 'N/A')}")
         print(f"   トレーニング時間: {metrics.get('training_time_seconds', 'N/A')} 秒")
 
         # Performance interpretation
         training_time = metrics.get("training_time_seconds", 0)
-        total_timesteps = config.get("total_timesteps", 0)
+        total_timesteps = config.get("training", {}).get("total_timesteps", 0)
         if training_time > 0 and total_timesteps > 0:
             steps_per_sec = total_timesteps / training_time
             print(f"   ステップ/秒: {steps_per_sec:.2f}")

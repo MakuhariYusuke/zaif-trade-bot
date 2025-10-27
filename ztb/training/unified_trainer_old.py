@@ -534,7 +534,7 @@ class UnifiedTrainer:
                 extra={
                     "algorithm": "ppo",
                     "session_id": self.config.get("session_id", "ppo_session"),
-                    "total_timesteps": unified_config.get("total_timesteps"),
+                    "total_timesteps": unified_config["training"]["total_timesteps"],
                     "enable_sell_mitigation": enable_sell_mitigation,
                     "memory_optimization": memory_opt,
                 },
@@ -656,7 +656,7 @@ class UnifiedTrainer:
                 unified_config.setdefault(key, value)
 
         # Long-running operation confirmation
-        total_timesteps = unified_config.get("total_timesteps", 100000)
+        total_timesteps = unified_config["training"]["total_timesteps"]
         if total_timesteps >= 100_000 and not self.force:
             from ztb.utils.long_running_confirm import confirm_long_running_operation
 

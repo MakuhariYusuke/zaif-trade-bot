@@ -4,6 +4,7 @@ Refactored Unified Trainer implementation with enhanced UI and modularity.
 """
 
 import copy
+import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
@@ -22,7 +23,11 @@ from ztb.types.common import (
     EnsemblePredictor,
     FederatedLearnerProtocol,
     MetaLearnerProtocol,
+    TrainingStats,
 )
+from ztb.utils.exceptions.custom_exceptions import TrainingError
+from ztb.utils.memory_utils import cleanup_training_memory
+from ztb.utils.performance_profiler import MemoryProfiler
 
 # Try to import federated learning and mixed precision dependencies
 try:
@@ -70,7 +75,7 @@ from ztb.training.unified_trainer.ensemble_system import (
     EnsembleConfig,
     EnsemblePredictor,
 )
-from ztb.training.unified_trainer.reporting import TrainingReporter
+from ztb.training.unified_trainer import reporting
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.logging_utils import get_logger
@@ -78,6 +83,11 @@ from ztb.utils.logging_utils import get_logger
 # Import optimization utilities
 from ztb.utils.memory_utils import MemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
+
+# Import extracted components
+from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
+from ztb.training.unified_trainer.components.reporter import TrainingReporter
+from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
@@ -130,68 +140,23 @@ class UnifiedTrainer:
             world_size: Number of processes for distributed training
             distributed_backend: Backend for distributed training ('gloo' or 'nccl')
         """
-        # Handle ZaifTradeBotConfig
-        if (
-            hasattr(config, "training") and config.training is not None
-        ):  # It's a ZaifTradeBotConfig
-            from ztb.config.schema import ZaifTradeBotConfig
-
-            if isinstance(config, ZaifTradeBotConfig):
-                # Extract training config for backward compatibility
-                training_config = config.training
-                config_dict = {
-                    "algorithm": training_config.algorithm,
-                    "total_timesteps": training_config.total_timesteps,
-                    "model_name": training_config.model_name,
-                    "data_config": training_config.data_config.dict()
-                    if training_config.data_config
-                    else {},
-                    "environment": training_config.environment.dict()
-                    if training_config.environment
-                    else {},
-                    "features": training_config.features.dict()
-                    if training_config.features
-                    else {},
-                }
-                # Add algorithm-specific hyperparameters
-                if (
-                    training_config.algorithm == "sac"
-                    and training_config.sac_hyperparameters
-                ):
-                    config_dict[
-                        "sac_hyperparameters"
-                    ] = training_config.sac_hyperparameters.dict()
-                elif (
-                    training_config.algorithm == "ppo"
-                    and training_config.ppo_hyperparameters
-                ):
-                    config_dict[
-                        "ppo_hyperparameters"
-                    ] = training_config.ppo_hyperparameters.dict()
-
-                self.config = config_dict
-                self.global_config = config  # Store the full global config
-            else:
-                self.config = config
-                self.global_config = None
-        else:
-            self.config = config
-            self.global_config = None
-        self.force = force
-        self.dry_run = dry_run
-        self.enable_streaming = enable_streaming
-        self.stream_batch_size = stream_batch_size
-        self.max_features = max_features
-        self.total_timesteps = total_timesteps
-        self.gradient_accumulation_steps = gradient_accumulation_steps
-        self.enable_distributed = enable_distributed
-        self.world_size = world_size
-        self.distributed_backend = distributed_backend
-
-        # Initialize components
+        # Initialize components first
         self.logger = get_logger(__name__)
+        self.config_manager = TrainingConfigManager()
+        self.ui_manager = TrainingUIManager(self.logger)
+        self.reporter = reporting.TrainingReporter(self.logger)
+
+        # Process configuration using TrainingConfigManager
+        try:
+            self.config = self.config_manager.process_config(config)
+            self.global_config = None  # Not used in current implementation
+        except Exception as e:
+            self.logger.error(f"Configuration processing failed: {e}")
+            raise
+
+        # Initialize legacy UI for backward compatibility
         self.ui = TrainingUI(self.logger)
-        self.config_manager = ConfigManager.get_instance()
+        self.ui_manager.initialize_ui(self.ui)
         self.reporter = TrainingReporter(self.logger)
         # Algorithm trainer (created during run)
         self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
@@ -235,6 +200,9 @@ class UnifiedTrainer:
 
         # Initialize optimization utilities
         self.memory_tracker = MemoryTracker()
+        self.memory_profiler = MemoryProfiler()
+        self.memory_monitor_thread = None
+        self.memory_monitor_stop_event = threading.Event()
         self.performance_profiler = PerformanceProfiler()
         self.feature_cache = TTLCache(
             ttl_seconds=300
@@ -253,12 +221,24 @@ class UnifiedTrainer:
         )
 
         # Parallel config will be initialized when needed for parallel experiments
-        self.parallel_config: Optional[Dict[str, Any]] = None
+        self.parallel_config: Optional[ConfigDict] = None
 
         # Training results
         self.training_success: bool = False
-        self.training_stats: Dict[str, Any] = {}
+        self.training_stats: TrainingStats = {}
         self.training_report: Dict[str, Any] = {}
+
+        # Store initialization parameters
+        self.force = force
+        self.dry_run = dry_run
+        self.enable_streaming = enable_streaming
+        self.stream_batch_size = stream_batch_size
+        self.max_features = max_features
+        self.total_timesteps = total_timesteps
+        self.gradient_accumulation_steps = gradient_accumulation_steps
+        self.enable_distributed = enable_distributed
+        self.world_size = world_size
+        self.distributed_backend = distributed_backend
 
         # V433 Adaptive Learning Components
         self.enable_v433_adaptive = (
@@ -281,7 +261,7 @@ class UnifiedTrainer:
         if self.enable_v433_adaptive:
             self._initialize_v433_components()
 
-    def _initialize_ensemble_system(self, config: Dict[str, Any]) -> None:
+    def _initialize_ensemble_system(self, config: ConfigDict) -> None:
         """Initialize ensemble system for SAC v428 Phase 3."""
         try:
             ensemble_config_dict = config.get("v427_advanced_features", {}).get(
@@ -344,7 +324,7 @@ class UnifiedTrainer:
         # ensemble_system may return a non-typed mapping; cast to expected return type
         return cast(Dict[str, Any], self.ensemble_system.get_ensemble_stats())
 
-    def adapt_ensemble_to_market(self, market_conditions: Dict[str, Any]) -> None:
+    def adapt_ensemble_to_market(self, market_conditions: ConfigDict) -> None:
         """Adapt ensemble system to current market conditions."""
         if self.ensemble_system is None:
             return
@@ -401,6 +381,7 @@ class UnifiedTrainer:
             # Display header
             algorithm = self.config.get("training", {}).get("algorithm", "unknown")
             config_name = self.config.get("model_name", "unnamed")
+            total_timesteps = self.config.get("training", {}).get("total_timesteps", 0)
             self.ui.print_header(algorithm, config_name)
 
             # Display configuration summary
@@ -416,7 +397,12 @@ class UnifiedTrainer:
                 return True
 
             # Execute training
-            return self._execute_training()
+            success = self._execute_training()
+
+            # Memory cleanup after training
+            self._cleanup_memory()
+
+            return success
 
         except Exception as e:
             self.ui.print_error(f"Training execution failed: {e}")
@@ -495,16 +481,114 @@ class UnifiedTrainer:
             self.ui.print_error(f"Configuration validation error: {e}")
             return False
 
+    def _cleanup_memory(self) -> None:
+        """
+        Perform memory cleanup after training to prevent memory leaks.
+
+        Uses the centralized memory cleanup utility.
+        """
+        cleanup_training_memory(
+            env=getattr(self, 'env', None),
+            model=getattr(self, 'model', None),
+            data_cache=getattr(self, '_data_cache', None),
+            force_gc=True
+        )
+
+    def _monitor_training_memory(self, step: int, total_steps: int) -> None:
+        """Monitor memory usage during training at regular intervals.
+
+        Args:
+            step: Current training step
+            total_steps: Total training steps
+        """
+        # Monitor memory every 10% of training progress or every 10000 steps
+        progress_percent = (step / total_steps) * 100
+        should_monitor = (
+            step % 10000 == 0 or
+            progress_percent % 10 == 0 or
+            step == total_steps
+        )
+
+        if should_monitor:
+            memory_stats = self.memory_profiler.get_memory_stats()
+            self.logger.info(
+                f"Memory at step {step:,}/{total_steps:,} ({progress_percent:.1f}%): {memory_stats}"
+            )
+
+            # Check for memory warnings
+            if memory_stats.get("memory_percent", 0) > 90:
+                self.logger.warning(f"High memory usage detected: {memory_stats.get('memory_percent', 0):.1f}%")
+            elif memory_stats.get("memory_percent", 0) > 95:
+                self.logger.error(f"Critical memory usage: {memory_stats.get('memory_percent', 0):.1f}%")
+
+    def _start_memory_monitoring(self) -> None:
+        """Start background memory monitoring thread."""
+        if self.memory_monitor_thread is not None:
+            return
+
+        self.memory_monitor_stop_event.clear()
+
+        def memory_monitor_worker():
+            """Background worker for memory monitoring."""
+            monitor_interval = 60  # Monitor every 60 seconds
+            while not self.memory_monitor_stop_event.is_set():
+                try:
+                    memory_stats = self.memory_profiler.get_memory_stats()
+                    self.logger.info(f"Background memory check: {memory_stats}")
+
+                    # Alert on high memory usage
+                    memory_percent = memory_stats.get("memory_percent", 0)
+                    if memory_percent > 90:
+                        self.logger.warning(f"High memory usage in background monitor: {memory_percent:.1f}%")
+                    elif memory_percent > 95:
+                        self.logger.error(f"Critical memory usage in background monitor: {memory_percent:.1f}%")
+
+                except Exception as e:
+                    self.logger.error(f"Error in memory monitoring thread: {e}")
+
+                # Wait for next check or stop event
+                self.memory_monitor_stop_event.wait(timeout=monitor_interval)
+
+        self.memory_monitor_thread = threading.Thread(
+            target=memory_monitor_worker,
+            daemon=True,
+            name="MemoryMonitor"
+        )
+        self.memory_monitor_thread.start()
+        self.logger.info("Started background memory monitoring")
+
+    def _stop_memory_monitoring(self) -> None:
+        """Stop background memory monitoring thread."""
+        if self.memory_monitor_thread is None:
+            return
+
+        self.memory_monitor_stop_event.set()
+        self.memory_monitor_thread.join(timeout=5.0)
+        if self.memory_monitor_thread.is_alive():
+            self.logger.warning("Memory monitoring thread did not stop gracefully")
+        else:
+            self.logger.info("Stopped background memory monitoring")
+
+        self.memory_monitor_thread = None
+
     def _execute_training(self) -> bool:
         """Execute the actual training."""
         algorithm = self.config.get("training", {}).get("algorithm", "").lower()
         self.logger.info(f"Debug: algorithm = {repr(algorithm)}")
         self.logger.info(f"Debug: config keys = {list(self.config.keys())}")
 
+        # Get initial memory stats
+        initial_memory = self.memory_profiler.get_memory_stats()
+        self.logger.info(f"Initial memory stats: {initial_memory}")
+
         try:
             # Override total_timesteps from command line if provided
             if self.total_timesteps is not None:
-                self.config["total_timesteps"] = self.total_timesteps
+                # Handle different config structures
+                if "training" in self.config and "total_timesteps" in self.config["training"]:
+                    self.config["training"]["total_timesteps"] = self.total_timesteps
+                else:
+                    self.config["total_timesteps"] = self.total_timesteps
                 self.logger.info(
                     f"Overriding total_timesteps from command line: {self.total_timesteps:,}"
                 )
@@ -565,6 +649,9 @@ class UnifiedTrainer:
             # Start training UI
             self.ui.start_training()
 
+            # Start background memory monitoring
+            self._start_memory_monitoring()
+
             # Initialize optimization tracking
             self.logger.info("Initializing performance optimization tracking...")
             self.memory_tracker.__enter__()
@@ -579,13 +666,31 @@ class UnifiedTrainer:
             else:
                 success = False
                 if self.algorithm_trainer is not None:
-                    success = self.algorithm_trainer.train()
+                    # Get total_timesteps from config
+                    total_timesteps = self.config.get("training", {}).get("total_timesteps", 100000)
+                    if isinstance(total_timesteps, str):
+                        total_timesteps = int(total_timesteps)
+                    success = self.algorithm_trainer.train(total_timesteps=total_timesteps)
+
+            # Check for memory leaks after training
+            final_memory = self.memory_profiler.get_memory_stats()
+            memory_leaks = self.memory_profiler.detect_memory_leaks(initial_memory, final_memory)
+            if memory_leaks:
+                self.logger.warning(f"Memory leaks detected: {memory_leaks}")
+                # Log detailed leak information
+                for leak_type, details in memory_leaks.items():
+                    self.logger.warning(f"Leak type {leak_type}: {details}")
+            else:
+                self.logger.info("No memory leaks detected")
 
             # Stop optimization tracking and collect metrics
             training_time = time.time() - start_time
             self.memory_tracker.__exit__(None, None, None)
             memory_stats = f"Training completed in {training_time:.2f} seconds"
             perf_report = f"Total training time: {training_time:.2f}s"
+
+            # Stop background memory monitoring
+            self._stop_memory_monitoring()
 
             # Log optimization metrics
             self.logger.info("Training performance metrics:")
@@ -619,8 +724,8 @@ class UnifiedTrainer:
                     else 0,
                     "data_optimization_applied": True,
                 }  # Display completion
-            self.ui.print_training_complete(
-                success, self.training_stats if success else None
+            self.ui_manager.display_training_complete(
+                self.training_stats if success else {}, training_time
             )
 
             # Generate and save training report
@@ -639,7 +744,7 @@ class UnifiedTrainer:
                     try:
                         ensemble = self.ensemble_system
                         if ensemble is None:
-                            raise RuntimeError("Ensemble system unexpectedly missing")
+                            raise TrainingError("Ensemble system unexpectedly missing")
 
                         ensemble_stats = cast(
                             Dict[str, Any], ensemble.get_ensemble_stats()
@@ -693,7 +798,7 @@ class UnifiedTrainer:
             self.logger.error(f"Training execution failed: {e}", exc_info=True)
             return False
 
-    def get_training_stats(self) -> Dict[str, Any]:
+    def get_training_stats(self) -> TrainingStats:
         """Get training statistics."""
         return self.training_stats.copy()
 
@@ -1662,7 +1767,7 @@ class UnifiedTrainer:
             import importlib
 
             try:
-                mod = importlib.import_module("ztb.envs.heavy_trading_env")
+                mod = importlib.import_module("ztb.trading.environment.heavy_env.core")
                 HeavyTradingEnv = getattr(mod, "HeavyTradingEnv", None)
             except Exception:
                 HeavyTradingEnv = None
@@ -1679,18 +1784,30 @@ class UnifiedTrainer:
                 )
                 return None
 
+            # Create EnvironmentConfig from the features_config
+            from ztb.trading.environment.utils.config import EnvironmentConfig
+
+            env_config_dict = env_config.copy()
+            features_config = self.config.get("features", {})
+
+            # Add feature_set from features_config if available
+            if "feature_set" in features_config:
+                env_config_dict["feature_set"] = features_config["feature_set"]
+
+            # Add data_config for data loading
+            data_config = self.config.get("data_config", {})
+            if data_config:
+                env_config_dict.update(data_config)
+            
+            # Ensure csv_path is set from data_path if available
+            if "data_path" in self.config and self.config["data_path"]:
+                env_config_dict["csv_path"] = self.config["data_path"]
+
+            env_config_obj = EnvironmentConfig.from_dict(env_config_dict)
+
             env = HeavyTradingEnv(
-                initial_balance=env_config.get(
-                    "initial_balance", DEFAULT_INITIAL_BALANCE_SMALL
-                ),
-                transaction_cost=env_config.get(
-                    "transaction_cost", DEFAULT_TRANSACTION_COST
-                ),
-                max_position_size=env_config.get("max_position_size", 1.0),
-                window_size=env_config.get("window_size", 64),
-                use_continuous_actions=True,
-                data_config=self.config.get("data_config", {}),
-                features_config=self.config.get("features", {}),
+                config=env_config_obj,
+                max_features=self.max_features,
             )
 
             self.logger.info("V433 training environment created successfully")

@@ -12,6 +12,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
+from ztb.types.common import ConfigDict
+
 logger = logging.getLogger(__name__)
 
 
@@ -116,7 +118,7 @@ def validate_numeric_array(
 
 
 def validate_config_dict(
-    config: Dict[str, Any],
+    config: ConfigDict,
     required_keys: List[str],
     validators: Optional[Dict[str, Callable[[Any], bool]]] = None,
 ) -> bool:

@@ -4,7 +4,7 @@
 統計計算に関するユーティリティ関数を提供します。
 """
 
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 
@@ -60,3 +60,155 @@ def p_mean_method(p_values: List[float], method: str = "arithmetic") -> float:
         return float(np.exp(np.mean(np.log(p_array))))
     else:
         raise ValueError(f"Unknown method: {method}")
+
+
+def rolling_statistics(data: List[float], window: int) -> Dict[str, List[float]]:
+    """
+    Calculate rolling statistics for time series data.
+
+    Args:
+        data: Time series data
+        window: Rolling window size
+
+    Returns:
+        Dictionary with rolling mean, std, min, max
+    """
+    if len(data) < window:
+        return {"mean": [], "std": [], "min": [], "max": []}
+
+    means = []
+    stds = []
+    mins = []
+    maxs = []
+
+    for i in range(window - 1, len(data)):
+        window_data = data[i - window + 1 : i + 1]
+        means.append(float(np.mean(window_data)))
+        stds.append(float(np.std(window_data)))
+        mins.append(float(np.min(window_data)))
+        maxs.append(float(np.max(window_data)))
+
+    return {
+        "mean": means,
+        "std": stds,
+        "min": mins,
+        "max": maxs,
+    }
+
+
+def calculate_volatility(data: List[float], window: int = 20) -> List[float]:
+    """
+    Calculate rolling volatility (standard deviation).
+
+    Args:
+        data: Time series data (typically returns)
+        window: Rolling window size
+
+    Returns:
+        Rolling volatility values
+    """
+    stats = rolling_statistics(data, window)
+    return stats["std"]
+
+
+def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.0) -> float:
+    """
+    Calculate Sharpe ratio.
+
+    Args:
+        returns: List of returns
+        risk_free_rate: Risk-free rate (annualized)
+
+    Returns:
+        Sharpe ratio
+    """
+    if not returns:
+        return 0.0
+
+    excess_returns = [r - risk_free_rate / 252 for r in returns]  # Daily risk-free rate
+    mean_excess = np.mean(excess_returns)
+    std_excess = np.std(excess_returns)
+
+    if std_excess == 0:
+        return 0.0
+
+    return float(mean_excess / std_excess * np.sqrt(252))  # Annualized
+
+
+def calculate_max_drawdown(data: List[float]) -> Dict[str, float]:
+    """
+    Calculate maximum drawdown statistics.
+
+    Args:
+        data: Time series data (typically portfolio values)
+
+    Returns:
+        Dictionary with max drawdown, peak, trough
+    """
+    if not data:
+        return {"max_drawdown": 0.0, "peak": 0.0, "trough": 0.0}
+
+    peak = data[0]
+    max_drawdown = 0.0
+    peak_idx = 0
+    trough_idx = 0
+
+    for i, value in enumerate(data):
+        if value > peak:
+            peak = value
+            peak_idx = i
+
+        drawdown = (peak - value) / peak
+        if drawdown > max_drawdown:
+            max_drawdown = drawdown
+            trough_idx = i
+
+    return {
+        "max_drawdown": max_drawdown,
+        "peak": peak,
+        "trough": data[trough_idx] if data else 0.0,
+        "peak_idx": peak_idx,
+        "trough_idx": trough_idx,
+    }
+
+
+def calculate_autocorrelation(data: List[float], lag: int = 1) -> float:
+    """
+    Calculate autocorrelation at specified lag.
+
+    Args:
+        data: Time series data
+        lag: Lag for autocorrelation
+
+    Returns:
+        Autocorrelation coefficient
+    """
+    if len(data) <= lag:
+        return 0.0
+
+    data_array = np.array(data)
+    return float(np.corrcoef(data_array[:-lag], data_array[lag:])[0, 1])
+
+
+def detect_outliers_iqr(data: List[float], multiplier: float = 1.5) -> List[bool]:
+    """
+    Detect outliers using IQR method.
+
+    Args:
+        data: Data points
+        multiplier: IQR multiplier for outlier detection
+
+    Returns:
+        Boolean list indicating outliers
+    """
+    if not data:
+        return []
+
+    q1 = np.percentile(data, 25)
+    q3 = np.percentile(data, 75)
+    iqr = q3 - q1
+
+    lower_bound = q1 - multiplier * iqr
+    upper_bound = q3 + multiplier * iqr
+
+    return [x < lower_bound or x > upper_bound for x in data]

@@ -20,6 +20,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from ztb.trading.environment.constants import PYTORCH_CUDA_ALLOC_MB
+from ztb.types.common import ConfigDict
 
 
 class GradientAccumulator:
@@ -70,7 +71,7 @@ class DynamicLRScheduler:
 
     def __init__(
         self,
-        optimizer: torch.optim.Optimizer,
+        optimizer: Optional[torch.optim.Optimizer],
         patience: int = 10,
         factor: float = 0.5,
         min_lr: float = 1e-6,
@@ -85,10 +86,14 @@ class DynamicLRScheduler:
 
     def _get_lr(self) -> float:
         """Get current learning rate."""
+        if self.optimizer is None:
+            return 0.0
         return self.optimizer.param_groups[0]["lr"]
 
     def _set_lr(self, lr: float):
         """Set learning rate for all parameter groups."""
+        if self.optimizer is None:
+            return
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
@@ -267,7 +272,7 @@ class SACv430Optimizer:
         self.memory_loader = MemoryEfficientLoader()
         self.parallel_evaluator = ParallelEvaluator(n_envs=4)
 
-    def optimize_training_loop(self, trainer, config: Dict[str, Any]) -> Dict[str, Any]:
+    def optimize_training_loop(self, trainer, config: ConfigDict) -> Dict[str, Any]:
         """
         Optimize the training loop with advanced techniques.
 
@@ -362,7 +367,7 @@ def setup_efficient_training():
     os.environ["MKL_NUM_THREADS"] = "1"
 
 
-def create_optimized_config(base_config: Dict[str, Any]) -> Dict[str, Any]:
+def create_optimized_config(base_config: ConfigDict) -> Dict[str, Any]:
     """Create optimized configuration for efficient training."""
     config = copy.deepcopy(base_config)
 

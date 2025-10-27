@@ -196,7 +196,9 @@ class ProgressTrainingCallback(BaseCallback):
             # Get total timesteps from trainer config if available
             total_timesteps = 100000  # Default
             if hasattr(self.trainer, "config"):
-                total_timesteps = self.trainer.config.get("total_timesteps", 100000)
+                total_timesteps = self.trainer.config.get("training", {}).get(
+                    "total_timesteps", 100000
+                )
 
             self.task_id = self.progress.add_task(
                 "[green]Training...", total=total_timesteps, completed=0
@@ -440,7 +442,9 @@ class CompositeTrainingCallback(BaseCallback):
         """Initialize progress bar and entropy schedule."""
         # Get total timesteps from trainer config
         if hasattr(self.trainer, "config"):
-            self.total_timesteps = self.trainer.config.get("total_timesteps", 100000)
+            self.total_timesteps = self.trainer.config.get("training", {}).get(
+                "total_timesteps", 100000
+            )
 
         # Initialize progress bar
         if self.enable_progress_bar:

@@ -104,7 +104,7 @@ class IterativeAlgorithmTrainer:
             "--correlation-id",
             unified_config.get("session_id", "iterative_session"),
             "--total-timesteps",
-            str(unified_config.get("total_timesteps", 100000)),
+            str(unified_config["training"]["total_timesteps"]),
             "--iterations",
             str(unified_config.get("iterations", 10)),
             "--steps-per-iteration",
@@ -184,7 +184,7 @@ class IterativeAlgorithmTrainer:
         unified_config = self._apply_trading_mode_presets(unified_config)
 
         # Long-running operation confirmation
-        total_timesteps = unified_config.get("total_timesteps", 100000)
+        total_timesteps = unified_config["training"]["total_timesteps"]
         if total_timesteps >= 100_000 and not unified_config.get("force", False):
             from ztb.utils.long_running_confirm import confirm_long_running_operation
 

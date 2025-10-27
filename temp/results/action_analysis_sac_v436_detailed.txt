@@ -1,0 +1,49 @@
+=== Detailed Action Analysis for SAC v436 Signal Guided ===
+Sample size: 4881
+
+RAW ACTION VALUES (-1 to 1 range):
+  Min: -1.000000
+  Max: -1.000000
+  Mean: -1.000000
+  Std: 0.000000
+  Median: -1.000000
+
+FINAL ACTION VALUES (clipped -0.99 to 0.99):
+  Min: -0.990000
+  Max: -0.990000
+  Mean: -0.990000
+  Std: 0.000000
+  Median: -0.990000
+
+VALUE CLAMPING ANALYSIS:
+  Extreme high (≥0.99): 0 (0.00%)
+  Extreme low (≤-0.99): 4881 (100.00%)
+  Near zero (±0.1): 0 (0.00%)
+
+HISTOGRAM DISTRIBUTION:
+  [-1.0, -0.8): 4881 (100.0%)
+  [-0.8, -0.6): 0 (0.0%)
+  [-0.6, -0.4): 0 (0.0%)
+  [-0.4, -0.2): 0 (0.0%)
+  [-0.2, 0.0): 0 (0.0%)
+  [0.0, 0.2): 0 (0.0%)
+  [0.2, 0.4): 0 (0.0%)
+  [0.4, 0.6): 0 (0.0%)
+  [0.6, 0.8): 0 (0.0%)
+  [0.8, 1.0): 0 (0.0%)
+
+ACTION DISTRIBUTION:
+  BUY: 0 (0.0%)
+  HOLD: 0 (0.0%)
+  SELL: 4881 (100.0%)
+  Buy threshold: 0.1
+  Sell threshold: -0.1
+
+FEATURE INFORMATION:
+  Total features used: 5
+  Features list:
+     1. open
+     2. high
+     3. low
+     4. close
+     5. volume

@@ -16,7 +16,10 @@ class Timeframe(Enum):
     D1 = "1day"  # 1-day equivalent
 
 
-def get_timeframe_params(timeframe: Timeframe) -> dict:
+from typing import Any, Dict
+
+
+def get_timeframe_params(timeframe: Timeframe) -> Dict[str, Any]:
     """
     Get common timeframe parameters for various calculations.
 

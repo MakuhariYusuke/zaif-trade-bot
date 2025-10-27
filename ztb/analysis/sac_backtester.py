@@ -121,6 +121,7 @@ class SACBacktester:
                 max_position_size=cfg.get("max_position_size", 1.0),
                 transaction_cost=cfg.get("transaction_cost", 0.0),
                 reward_scaling=cfg.get("reward_scaling", 1.0),
+                feature_names=cfg.get("feature_names"),
             )
 
             # Create environment (use same signature as other code paths)
@@ -168,27 +169,38 @@ class SACBacktester:
                 raise ValueError("Environment not initialized for backtest")
 
             obs = env.reset()
+            # Handle Gym API vs SB3 VecEnv API
+            if isinstance(obs, tuple):
+                obs = obs[0]
             done = False
             episode_trades = []
             step_count = 0
 
-            while not done and step_count < len(env.data) - 1:
+            while not done and step_count < env.n_steps - 1:
                 # Get action from model
                 # Use local model reference
                 action, _ = model.predict(obs, deterministic=deterministic)
 
                 # Step environment (use local env)
                 step_result = env.step(action)
-                # Expect common signature (obs, reward, done, info)
+                # Expect common signature (obs, reward, done, info) or (obs, reward, terminated, truncated, info)
                 try:
-                    next_obs, reward, done, info = step_result
+                    if len(step_result) == 5:
+                        # SB3 VecEnv API: (obs, reward, done, done, info)
+                        next_obs, reward, terminated, truncated, info = step_result
+                        done = terminated or truncated
+                    else:
+                        # Gym API: (obs, reward, done, info)
+                        next_obs, reward, done, info = step_result
                 except Exception:
                     logger.warning(
                         "Unexpected env.step() return signature; aborting episode"
                     )
                     break
 
-                # Record trade if any; normalize info to dict for safe access
+                # Handle Gym API vs SB3 VecEnv API for next_obs
+                if isinstance(next_obs, tuple):
+                    next_obs = next_obs[0]
                 if not isinstance(info, dict):
                     try:
                         info = dict(info)

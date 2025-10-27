@@ -1,0 +1,53 @@
+{
+  "v435": {
+    "total_return": -0.0033128035756967438,
+    "final_balance": 99668.71964243033,
+    "total_trades": 1,
+    "win_rate": 0.0,
+    "sharpe_ratio": 0.0,
+    "max_drawdown": 0.00015,
+    "trades": [
+      {
+        "step": 0,
+        "price": 4980380.522728588,
+        "position": -0.1,
+        "balance": 99985.0,
+        "cost": 15.0
+      }
+    ]
+  },
+  "v435_1": {
+    "total_return": -0.00165160090835765,
+    "final_balance": 99834.83990916423,
+    "total_trades": 1,
+    "win_rate": 0.0,
+    "sharpe_ratio": 0.0,
+    "max_drawdown": 7.5e-05,
+    "trades": [
+      {
+        "step": 0,
+        "price": 4980380.522728588,
+        "position": -0.05,
+        "balance": 99992.5,
+        "cost": 7.5
+      }
+    ]
+  },
+  "v435_2": {
+    "total_return": 0.006006150922037486,
+    "final_balance": 100600.61509220375,
+    "total_trades": 1,
+    "win_rate": 0.0,
+    "sharpe_ratio": 0.0,
+    "max_drawdown": 0.0002,
+    "trades": [
+      {
+        "step": 0,
+        "price": 4980380.522728588,
+        "position": 0.2,
+        "balance": 99980.0,
+        "cost": 20.0
+      }
+    ]
+  }
+}

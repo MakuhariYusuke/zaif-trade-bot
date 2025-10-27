@@ -70,6 +70,8 @@ class EnvironmentConfig(BaseModel):
     use_standardized_observations: bool = True
     curriculum_stage: str = "balanced_trading"
     continuous_to_discrete_threshold: float = 0.1
+    feature_set: str = "default"
+    csv_path: Optional[str] = None
     reward_settings: RewardSettings = Field(default_factory=RewardSettings)
 
 
@@ -82,9 +84,9 @@ class SACHyperparameters(BaseModel):
     batch_size: int = 256
     tau: float = 0.005
     gamma: float = 0.99
-    ent_coef: float = 0.01
+    ent_coef: Union[str, float] = 0.01
     target_update_interval: int = 1
-    target_entropy: float = -2.0
+    target_entropy: Union[str, float] = -2.0
 
 
 class PPOHyperparameters(BaseModel):

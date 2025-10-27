@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "training": {
+    "model_name": "sac_v436_1_full_guidance",
+    "algorithm": "sac",
+    "total_timesteps": 10000,
+    "data_config": {
+      "data_path": "data/btc_jpy_real_dataset.csv",
+      "use_real_data": true
+    },
+    "environment": {
+      "initial_balance": 100000.0,
+      "transaction_cost": 0.0015,
+      "max_position_size": 0.1,
+      "enable_action_masking": true,
+      "use_continuous_actions": true,
+      "continuous_to_discrete_threshold": 0.3333,
+      "continuous_to_discrete_threshold_neg": -0.3333,
+      "use_standardized_observations": true,
+      "random_start": true,
+      "curriculum_stage": "profit_optimized",
+      "feature_set": "v435_risk_managed",
+      "adaptive_feature_selection": {
+        "enabled": true,
+        "regime_classifier": {
+          "adx_threshold": 25.0,
+          "volatility_percentile": 70.0
+        },
+        "attention_layer": {
+          "enabled": true,
+          "hidden_dim": 128
+        },
+        "min_weight_threshold": 0.3
+      },
+      "reward_settings": {
+        "use_simple_reward": false,
+        "reward_scale": 1.0,
+        "base_action_reward": 0.01,
+        "performance_multiplier": 1.0,
+        "balance_penalty_multiplier": 0.1,
+        "position_size_penalty": 0.05,
+        "volatility_penalty": 0.02,
+        "trading_bonus": 0.0001,
+        "hold_penalty_rate": 0.5,
+        "profit_bonuses": {
+          "trading_bonus": 0.01,
+          "profit_multiplier": 2.0,
+          "loss_penalty": -2.0
+        },
+        "risk_penalties": {
+          "volatility_penalty": 0.02,
+          "correlation_penalty": 0.01
+        },
+        "signal_guidance": {
+          "enabled": true,
+          "signal_bonus_weight": 0.1,
+          "signal_penalty_weight": 0.01,
+          "guidance_mode": "full_guidance",
+          "guidance_decay": 0.95
+        }
+      },
+      "risk_management": {
+        "enabled": true,
+        "dynamic_position_sizing": true,
+        "drawdown_control": true,
+        "max_drawdown_limit": 0.1,
+        "volatility_adjustment": true,
+        "correlation_risk": true,
+        "market_adaptation": true
+      }
+    },
+    "features": {
+      "features": {
+        "rsi_14": {"enabled": true},
+        "macd": {"enabled": true},
+        "macd_signal": {"enabled": true},
+        "macd_hist": {"enabled": true},
+        "bb_upper": {"enabled": true},
+        "bb_middle": {"enabled": true},
+        "bb_lower": {"enabled": true},
+        "bb_width": {"enabled": true},
+        "stoch_k": {"enabled": true},
+        "stoch_d": {"enabled": true},
+        "williams_r": {"enabled": true},
+        "ichimoku_tenkan": {"enabled": true},
+        "ichimoku_kijun": {"enabled": true},
+        "ichimoku_senkou_a": {"enabled": true},
+        "ichimoku_senkou_b": {"enabled": true},
+        "atr_14": {"enabled": true},
+        "cci_14": {"enabled": true},
+        "mfi_14": {"enabled": true},
+        "roc_12": {"enabled": true},
+        "mom_10": {"enabled": true}
+      },
+      "feature_set": "v435_risk_managed",
+      "adaptive_feature_selection": {
+        "enabled": true,
+        "regime_classifier": {
+          "adx_threshold": 25.0,
+          "volatility_percentile": 70.0
+        },
+        "attention_layer": {
+          "enabled": true,
+          "hidden_dim": 128
+        },
+        "min_weight_threshold": 0.3
+      }
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 1000000,
+      "learning_starts": 1000,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": 0.2,
+      "target_update_interval": 1,
+      "target_entropy": -2.0
+    }
+  },
+  "evaluation": {
+    "thresholds": {
+      "re_evaluate": 0.05,
+      "monitor": 0.01
+    },
+    "min_samples": 10000,
+    "risk_metrics": ["sharpe", "sortino", "max_drawdown"],
+    "performance_metrics": ["total_return", "win_rate", "profit_factor"]
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

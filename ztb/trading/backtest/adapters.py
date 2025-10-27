@@ -109,9 +109,11 @@ class RLPolicyAdapter:
                             data
                         )
                         self.feature_cache[cache_key] = enhanced_data
-                        print(
-                            f"Generated 150+ dimensional features: {len(enhanced_data.columns)} total columns"
-                        )
+                        # Only print feature generation info once per cache miss
+                        if len(self.feature_cache) <= 10:  # Limit verbose logging
+                            print(
+                                f"Generated 150+ dimensional features: {len(enhanced_data.columns)} total columns"
+                            )
                     except Exception as feat_e:
                         print(
                             f"Feature engineering failed: {feat_e}, falling back to basic features"
@@ -193,9 +195,11 @@ class RLPolicyAdapter:
                     print(f"NaN handling failed: {nan_e}, using zeros")
                     obs = np.nan_to_num(obs, nan=0.0)
 
-            print(
-                f"Using {len(obs)}/{len(selected_features)} features for RL model (150d enabled: {self.enable_150d_features})"
-            )
+            # Only print feature usage info occasionally to reduce log spam
+            if len(self.feature_cache) % 100 == 0:  # Print every 100 cache entries
+                print(
+                    f"Using {len(obs)}/{len(selected_features)} features for RL model (150d enabled: {self.enable_150d_features})"
+                )
 
             # Adjust to model's expected observation space
             expected_features = self.observation_space_shape or 13

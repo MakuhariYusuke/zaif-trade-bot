@@ -8,7 +8,7 @@ import dataclasses
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from ztb.features.curated_features import get_feature_set
-from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
+from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG
 from ztb.training.config.ppo_config import (
     DEFAULT_MAX_CONSECUTIVE_TRADES,
     DEFAULT_MIN_HOLDING_PERIOD,
@@ -146,8 +146,20 @@ class EnvironmentConfig:
     continuous_to_discrete_threshold: float = (
         SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
     )
+    continuous_to_discrete_threshold_neg: float = (
+        SAC_CONTINUOUS_THRESHOLD_NEG  # Negative threshold for SELL conversion
+    )
 
-    # Trading behavior settings
+    # Signal guidance settings (v436 enhancement)
+    signal_guidance_enabled: bool = False
+    signal_guidance_mode: str = "partial"
+    signal_bonus_weight: float = 0.1
+    signal_penalty_weight: float = 0.05
+    signal_weight: float = 1.0
+    guidance_decay: float = 0.95
+
+    # Adaptive feature selection settings
+    adaptive_feature_selection: Optional[Dict[str, Any]] = None
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
     enforce_reverse_cooldown: bool = (
         False  # If True, min_holding_period also applies to reversal entries
@@ -169,6 +181,7 @@ class EnvironmentConfig:
 
         # Convert dictionary to config, handling type conversions
         config_kwargs = {}
+        known_fields = {field.name for field in dataclasses.fields(cls)}
         for field in dataclasses.fields(cls):
             if field.name in config_dict:
                 value = config_dict[field.name]
@@ -182,6 +195,20 @@ class EnvironmentConfig:
                     "enable_action_masking",
                     "use_standardized_observations",
                     "correlation_reduction",
+                    "signal_guidance_enabled",
+                ] and not isinstance(value, bool):
+                    value = cls._as_bool(value)  # type: ignore[arg-type]
+                # Basic type conversion for common cases
+                if field.name in [
+                    "enable_forced_diversity",
+                    "allow_reverse",
+                    "enforce_reverse_cooldown",
+                    "random_start",
+                    "use_continuous_actions",
+                    "enable_action_masking",
+                    "use_standardized_observations",
+                    "correlation_reduction",
+                    "signal_guidance_enabled",
                 ] and not isinstance(value, bool):
                     value = cls._as_bool(value)  # type: ignore[arg-type]
                 elif field.name in [
@@ -216,6 +243,11 @@ class EnvironmentConfig:
                     "reward_clip_value",
                     "initial_portfolio_value",
                     "continuous_to_discrete_threshold",
+                    "continuous_to_discrete_threshold_neg",
+                    "signal_bonus_weight",
+                    "signal_penalty_weight",
+                    "signal_weight",
+                    "guidance_decay",
                 ] and isinstance(value, str):
                     try:
                         value = float(value)
@@ -223,6 +255,120 @@ class EnvironmentConfig:
                         pass  # Keep original value
                 config_kwargs[field.name] = value
             # Field will use default if not in config_dict
+
+        # Also process any known fields that might be in nested structures
+        for key, value in config_dict.items():
+            if key in known_fields and key not in config_kwargs:
+                # Basic type conversion for known fields
+                if key in [
+                    "enable_forced_diversity",
+                    "allow_reverse",
+                    "enforce_reverse_cooldown",
+                    "random_start",
+                    "use_continuous_actions",
+                    "enable_action_masking",
+                    "use_standardized_observations",
+                    "correlation_reduction",
+                    "signal_guidance_enabled",
+                ] and not isinstance(value, bool):
+                    value = cls._as_bool(value)  # type: ignore[arg-type]
+                elif key in [
+                    "max_consecutive_trades",
+                    "min_holding_period",
+                    "reward_inventory_window",
+                    "reward_trade_cooldown_steps",
+                    "reward_max_consecutive_trades",
+                    "reward_volatility_window",
+                    "target_feature_count",
+                ] and isinstance(value, (float, str)):
+                    try:
+                        value = int(float(value))
+                    except (ValueError, TypeError):
+                        pass  # Keep original value
+                elif key in [
+                    "reward_scaling",
+                    "transaction_cost",
+                    "max_position_size",
+                    "risk_free_rate",
+                    "stop_loss_threshold",
+                    "reward_position_soft_cap",
+                    "reward_position_penalty_scale",
+                    "reward_position_penalty_exponent",
+                    "reward_inventory_penalty_scale",
+                    "reward_trade_frequency_penalty",
+                    "reward_trade_frequency_halflife",
+                    "reward_trade_cooldown_penalty",
+                    "reward_consecutive_trade_penalty",
+                    "reward_volatility_penalty_scale",
+                    "reward_sharpe_bonus_scale",
+                    "reward_clip_value",
+                    "initial_portfolio_value",
+                    "continuous_to_discrete_threshold",
+                    "continuous_to_discrete_threshold_neg",
+                    "signal_bonus_weight",
+                    "signal_penalty_weight",
+                    "signal_weight",
+                    "guidance_decay",
+                ] and isinstance(value, str):
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        pass  # Keep original value
+                config_kwargs[key] = value
+
+        # Handle nested training.environment section
+        if "training" in config_dict and isinstance(config_dict["training"], dict):
+            training_config = config_dict["training"]
+            if "environment" in training_config and isinstance(
+                training_config["environment"], dict
+            ):
+                env_config = training_config["environment"]
+                # Copy environment config values to top level for processing
+                for key, value in env_config.items():
+                    if (
+                        key in known_fields and key not in config_kwargs
+                    ):  # Don't override if already set
+                        config_kwargs[key] = value
+                    elif key == "signal_guidance" and isinstance(
+                        value, dict
+                    ):  # Special handling for signal_guidance
+                        config_kwargs[key] = value
+
+        # Handle field name mappings
+        if (
+            "initial_balance" in config_kwargs
+            and "initial_portfolio_value" not in config_kwargs
+        ):
+            config_kwargs["initial_portfolio_value"] = float(
+                config_kwargs["initial_balance"]
+            )
+        # Remove deprecated field names
+        config_kwargs.pop("initial_balance", None)
+        signal_guidance_config = None
+        if "signal_guidance" in config_kwargs and isinstance(
+            config_kwargs["signal_guidance"], dict
+        ):
+            signal_guidance_config = config_kwargs["signal_guidance"]
+        elif "signal_guidance" in config_dict and isinstance(
+            config_dict["signal_guidance"], dict
+        ):
+            signal_guidance_config = config_dict["signal_guidance"]
+
+        if signal_guidance_config:
+            enabled = cls._as_bool(signal_guidance_config.get("enabled", False))
+            config_kwargs["signal_guidance_enabled"] = enabled
+            config_kwargs["signal_guidance_mode"] = signal_guidance_config.get(
+                "guidance_mode", "partial"
+            )
+            config_kwargs["signal_bonus_weight"] = float(
+                signal_guidance_config.get("signal_bonus_weight", 0.1)
+            )
+            config_kwargs["signal_penalty_weight"] = float(
+                signal_guidance_config.get("signal_penalty_weight", 0.05)
+            )
+            config_kwargs["guidance_decay"] = float(
+                signal_guidance_config.get("guidance_decay", 0.95)
+            )
 
         # Apply curated feature set if specified
         feature_set = config_dict.get("feature_set", "full")
