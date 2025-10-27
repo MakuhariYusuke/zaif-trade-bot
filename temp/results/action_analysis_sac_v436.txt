@@ -1,0 +1,8 @@
+=== Action Analysis for SAC v436 Signal Guided ===
+Sample size: 1000
+Raw actions - Mean: 1.0000, Std: 0.0000, Min: 1.0000, Max: 1.0000
+Mapped actions - Mean: 1.0000, Std: 0.0000, Min: 1.0000, Max: 1.0000
+Action distribution - BUY: 1000, HOLD: 0, SELL: 0
+Buy threshold: 0.1, Sell threshold: -0.1
+Unique raw values: 1
+Unique mapped values: 1

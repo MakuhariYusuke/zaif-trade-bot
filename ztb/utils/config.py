@@ -15,6 +15,7 @@ except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import safe_to_bool, safe_to_int, safe_to_float, validate_range
 
 logger = get_logger(__name__)
 
@@ -51,35 +52,17 @@ class ZTBConfig:
     def get_bool(self, key: str, default: bool = False) -> bool:
         """Get boolean configuration value"""
         value = os.getenv(key)
-        if value is None:
-            return default
-        return value.lower() in ("true", "1", "yes", "on")
+        return safe_to_bool(value, default)
 
     def get_int(self, key: str, default: int = 0) -> int:
         """Get integer configuration value"""
         value = os.getenv(key)
-        if value is None:
-            return default
-        try:
-            return int(value)
-        except ValueError:
-            logger.warning(
-                f"Invalid integer value for {key}: {value}, using default {default}"
-            )
-            return default
+        return safe_to_int(value, default)
 
     def get_float(self, key: str, default: float = 0.0) -> float:
         """Get float configuration value with type validation"""
         value = os.getenv(key)
-        if value is None:
-            return default
-        try:
-            return float(value)
-        except ValueError:
-            logger.warning(
-                f"Invalid float value for {key}: {value}, using default {default}"
-            )
-            return default
+        return safe_to_float(value, default)
 
     def log_config(self) -> None:
         """Log current configuration for debugging"""

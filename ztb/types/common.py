@@ -17,12 +17,7 @@ from stable_baselines3.common.logger import Logger
 try:
     from gymnasium import spaces
 except ImportError:
-    try:
-        import gym as gym_spaces
-
-        spaces = gym_spaces.spaces
-    except ImportError:
-        spaces = Any  # Fallback
+    spaces = Any  # Fallback - gymnasium is required
 
 try:
     from torch.utils.data import DataLoader
@@ -63,9 +58,85 @@ class SB3ModelProtocol(Protocol):
 
 
 JSONSerializable = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
-ConfigDict = Dict[
-    str, Any
-]  # Keep for backward compatibility - consider using more specific types
+
+
+# More specific config types
+ConfigValue = Union[
+    str, int, float, bool,
+    List[Any],
+    Dict[str, Any],
+    None
+]
+
+class BaseConfigDict(TypedDict, total=False):
+    """Base configuration dictionary with common fields."""
+
+    # Top-level structure
+    version: str
+    training: Dict[str, ConfigValue]
+    environment: Dict[str, ConfigValue]
+    features: List[str]
+    model: Dict[str, ConfigValue]
+    evaluation: Dict[str, ConfigValue]
+
+    # Core settings (flattened for convenience)
+    algorithm: str
+    learning_rate: ConfigValue
+    batch_size: ConfigValue
+    total_timesteps: ConfigValue
+
+    # Environment settings
+    pair: str
+    timeframe: str
+    initial_balance: ConfigValue
+    max_position_size: ConfigValue
+    transaction_cost: ConfigValue
+    reward_scaling: ConfigValue
+
+    # Feature settings
+    feature_set: str
+    cache_enabled: bool
+
+    # Model settings
+    policy: str
+    n_steps: ConfigValue
+    n_epochs: ConfigValue
+    gamma: ConfigValue
+    gae_lambda: ConfigValue
+    clip_range: ConfigValue
+    ent_coef: ConfigValue
+    vf_coef: ConfigValue
+    max_grad_norm: ConfigValue
+
+    # Evaluation settings
+    checkpoint_interval: ConfigValue
+    eval_freq: ConfigValue
+    n_eval_episodes: ConfigValue
+
+    # Advanced settings
+    seed: Optional[int]
+    target_kl: Optional[ConfigValue]
+    buffer_size: Optional[ConfigValue]
+    tau: Optional[ConfigValue]
+    target_update_interval: Optional[ConfigValue]
+    curriculum_stage: str
+    stop_loss_threshold: ConfigValue
+    max_consecutive_trades: ConfigValue
+    min_holding_period: ConfigValue
+    feature_storage_dtype: str
+    precision_columns: List[str]
+    parallel_enabled: bool
+
+    # Dynamic fields for extensibility
+    v427_advanced_features: Dict[str, ConfigValue]
+    v433_adaptive: Dict[str, ConfigValue]
+    ensemble_system: Dict[str, ConfigValue]
+
+
+ConfigDict = Union[
+    BaseConfigDict,
+    Dict[str, ConfigValue]  # Fallback for dynamic or legacy configs
+]
 OptConfigDict = Optional[ConfigDict]
 PathLike = Union[str, Path]
 
@@ -83,6 +154,21 @@ class TrainingStats(TypedDict, total=False):
     epsilon: Optional[float]
     training_time_seconds: Optional[float]
     convergence_achieved: Optional[bool]
+    total_timesteps: int
+    training_time: float
+    steps_per_second: float
+    model_path: str
+    final_reward: float
+    action_distribution: Dict[str, float]
+    curriculum_learning: bool
+    stages_completed: int
+    status: str
+    # Extended fields for advanced training features
+    optimization: Dict[str, Any]
+    anomaly_detection: Dict[str, Any]
+    meta_learning: Dict[str, Any]
+    federated_learning: Dict[str, Any]
+    continual_learning: Dict[str, Any]
 
 
 class ActionDistribution(TypedDict):

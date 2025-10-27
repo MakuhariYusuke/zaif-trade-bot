@@ -39,13 +39,19 @@ class ChaikinAD(BaseFeature):
         df columns must include: ['high', 'low', 'close', 'volume'].
         Returns a DataFrame with Chaikin AD values.
         """
-        # Calculate Chaikin AD using Ta-Lib wrapper
-        chaikin_ad_values = TaLibWrapper.ad(
-            df["high"].values.astype(np.float64),
-            df["low"].values.astype(np.float64),
-            df["close"].values.astype(np.float64),
-            df["volume"].values.astype(np.float64),
-        )
+        # Calculate Money Flow Multiplier
+        # MFM = [(Close - Low) - (High - Close)] / (High - Low)
+        money_flow_multiplier = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"])
 
-        result_df = pd.DataFrame({"chaikin_ad": chaikin_ad_values}, index=df.index)
+        # Handle division by zero
+        money_flow_multiplier = money_flow_multiplier.replace([np.inf, -np.inf], 0).fillna(0)
+
+        # Calculate Money Flow Volume
+        # MFV = MFM * Volume
+        money_flow_volume = money_flow_multiplier * df["volume"]
+
+        # Calculate Chaikin AD (cumulative sum of MFV)
+        chaikin_ad = money_flow_volume.cumsum()
+
+        return pd.DataFrame({"chaikin_ad": chaikin_ad}, index=df.index)
         return result_df

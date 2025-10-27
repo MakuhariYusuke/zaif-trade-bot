@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-10-28
+
+### Action Signal Guide: Performance Optimization and Strength Analysis 📊
+
+#### Optimization Results
+- **Strength Analysis**: 1,563シグナル生成、7つのパターンタイプの性能評価
+- **Top Performers**: ADX (利益相関0.106), Wave (安定性), Oscillator/Granville (強度0.72)
+- **Optimized Weights**: ADX: 0.54, Wave: 0.63, Fibonacci: 0.59, Gann: 0.59, Oscillator: 0.72, Granville: 0.72, Bollinger: 0.40
+- **Disabled Patterns**: candlestick, harmonic, volume, heikin_ashi, dow_theory (シグナル生成なし)
+
+#### Configuration Optimization
+- **ztb/tests/unit/trading/strategies/action_signal_guide/__init__.py**: 最適化設定提供モジュール
+- **Performance-based Settings**: 並列処理有効化、キャッシュ有効化、シグナル数制限 (5/バー)
+- **Pattern Enablement**: 高性能パターンの優先有効化、低性能パターンの無効化
+
+#### Code Quality Improvements
+- **Generic Module Design**: フッター削除による汎用性向上
+- **Syntax Error Resolution**: f-stringフォーマット修正
+- **Import Stability**: 循環インポート問題の回避
+
+#### Testing Framework
+- **ztb/tests/unit/trading/strategies/action_signal_guide/test_strength_analysis.py**: 包括的強度分析テスト
+- **Signal Generation Validation**: 各パターンのシグナル生成と強度評価
+- **Correlation Analysis**: 利益相関と勝率相関の統計分析
+
 ## [Unreleased] - 2025-10-25
 
 ### Action Signal Guide: Type Safety and Inheritance Improvements 🔧

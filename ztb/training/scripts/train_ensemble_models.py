@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
 

@@ -7,6 +7,7 @@ This section contains documentation for implemented features and functionality.
    :maxdepth: 1
    :caption: Feature Documentation:
 
+   feature_set_management.md
    FEATURE_IMPLEMENTATION_SUMMARY.md
    FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.md
    FEATURE_SCHEMA_MANAGEMENT_REFORM.md

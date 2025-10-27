@@ -16,14 +16,8 @@ try:
     from gymnasium import spaces
     from gymnasium.core import ActType
 except ImportError:
-    try:
-        import gym as gym_spaces
-
-        spaces = gym_spaces.spaces
-        ActType = Any  # gym doesn't have ActType
-    except ImportError:
-        spaces = Any  # Fallback
-        ActType = Any
+    spaces = Any  # Fallback - gymnasium is required
+    ActType = Any
 
 
 class TradingEnvironment(Protocol):

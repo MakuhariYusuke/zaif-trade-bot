@@ -13,10 +13,11 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ztb.training.core.config_manager import ConfigManager
+from ztb.training.constants import SAVE_INTERVAL
+from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
+from ztb.training.unified_trainer.components.reporter import TrainingReporter
+from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
-from ztb.training.unified_trainer.reporting import TrainingReporter
-from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -28,7 +29,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
     """
 
     def __init__(
-        self, config_manager: ConfigManager, progress_bar_enabled: bool = False
+        self, config_manager: TrainingConfigManager, progress_bar_enabled: bool = False
     ) -> None:
         """
         Initialize PPO trainer.
@@ -41,6 +42,8 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         self.config_manager = config_manager
         self.progress_bar_enabled = progress_bar_enabled
         self.logger = get_logger(__name__)
+        self.ui_manager = TrainingUIManager(self.logger)
+        self.reporter = TrainingReporter(self.logger)
 
     def _setup_memory_optimization(self, unified_config: Dict[str, Any]) -> None:
         """
@@ -113,7 +116,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             Trainer instance
         """
         cfg = unified_config if isinstance(unified_config, dict) else {}
-        checkpoint_interval = cfg.get("checkpoint_interval", 25000)
+        checkpoint_interval = cfg.get("checkpoint_interval", SAVE_INTERVAL)
 
         if enable_sell_mitigation:
             # Import SELLMitigationParams
@@ -334,7 +337,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 extra={
                     "algorithm": "ppo",
                     "session_id": unified_config.get("session_id", "ppo_session"),
-                    "total_timesteps": unified_config.get("total_timesteps"),
+                    "total_timesteps": unified_config["training"]["total_timesteps"],
                     "enable_sell_mitigation": enable_sell_mitigation,
                     "memory_optimization": self.config_manager.get_memory_optimization_config(),
                 },
@@ -347,14 +350,12 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             # Generate ensemble report if enabled
             if self.ensemble_enabled:
                 try:
-                    reporter = TrainingReporter()
-                    ui = TrainingUI()
-                    ensemble_report_path = self.generate_ensemble_report(reporter, ui)
+                    ensemble_report_path = self.generate_ensemble_report(self.reporter, self.ui_manager)
                     if ensemble_report_path:
                         self.logger.info(
                             f"Ensemble report generated: {ensemble_report_path}"
                         )
-                        self.print_ensemble_status(ui)
+                        self.print_ensemble_status(self.ui_manager)
                 except Exception as e:
                     self.logger.error(f"Ensemble report generation failed: {e}")
 

@@ -11,6 +11,8 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 
 - **Reinforcement Learning**: PPO and SAC algorithms for trading strategies
 - **Multi-Modal Learning**: Integrated price, news sentiment, and economic indicators
+- **Risk Management Integration**: SAC v435 with dynamic position sizing, drawdown control, and market adaptation
+- **Configurable Feature Sets**: Flexible feature engineering with preset configurations (minimal, high-quality, full)
 - **Production Ready**: Comprehensive type checking, security scanning, and CI/CD
 - **Modular Architecture**: Clean separation of concerns with well-defined interfaces
 - **Extensive Testing**: Unit tests with coverage reporting and integration tests
@@ -139,6 +141,40 @@ optimizer.enable_onnx_optimization()
 pipeline = create_data_pipeline()
 ```
 
+## 🎯 Action Signal Guide
+
+Advanced technical analysis pattern recognition system with performance-optimized configuration.
+
+### Pattern Recognition Capabilities
+- **Fibonacci Patterns**: Retracement, Extension, Projection with deviation-based strength
+- **Harmonic Patterns**: Gartley, Butterfly, Bat, Crab with ratio tolerance
+- **Wave Patterns**: Elliott Wave counting with multi-timeframe validation
+- **Candlestick Patterns**: 11 traditional Japanese patterns
+- **Oscillator Patterns**: RSI, Stochastic, MACD with adaptive thresholds
+- **ADX Patterns**: Trend strength with correlation optimization
+- **Bollinger Bands**: Volatility-based signals with dynamic width
+
+### Performance Optimization Results
+- **Signal Generation**: 1,563 signals analyzed across 7 pattern types
+- **Top Performers**: ADX (0.54), Wave (0.63), Oscillator (0.72)
+- **Correlation Analysis**: Profit correlation up to 0.106 (ADX)
+- **Optimization**: Parallel processing, caching, signal limits (5/bar)
+
+### Usage Example
+```python
+from ztb.trading.strategies.action_signal_guide import ActionSignalGuide
+from ztb.tests.unit.trading.strategies.action_signal_guide import get_optimized_config
+
+# 最適化設定の取得
+config = get_optimized_config()
+
+# Action Signal Guideの初期化
+guide = ActionSignalGuide(config)
+
+# シグナル生成
+signals = guide.generate_signals(market_data)
+```
+
 ## 📁 Project Structure
 
 ```
@@ -182,6 +218,30 @@ docs/                         # Documentation
 config/                       # Configuration files
 scripts/                      # Utility scripts
 ```
+
+## 🎯 Feature Set Management
+
+The bot includes a sophisticated feature set management system that allows flexible configuration of trading features:
+
+### Available Feature Sets
+- **minimal**: Core features only (30-50 dimensions) - fastest processing
+- **no_harmful** (default): Full features with critical harmful features removed
+- **high_quality**: Only correlation-filtered high-quality features
+- **full**: Complete feature set (150+ dimensions) - maximum information
+
+### Usage
+```python
+from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
+
+# Use default (no_harmful) set
+engineer = SACv427FeatureEngineer()
+features = engineer.generate_v427_features(data)
+
+# Use specific set
+features = engineer.generate_v427_features(data, feature_set='high_quality')
+```
+
+📖 **[Complete Documentation](docs/features/feature_set_management.md)**
 
 ## 🛠️ Installation
 

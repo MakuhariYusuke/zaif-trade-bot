@@ -1,0 +1,21 @@
+{
+  "environment": {
+    "type": "HeavyTradingEnv",
+    "observation_space": "continuous_3d",
+    "action_space": "continuous",
+    "initial_balance": 10000,
+    "transaction_cost": 0.0,
+    "max_position_size": 1.0,
+    "random_start": true,
+    "enable_correlation_reduction": true,
+    "correlation_threshold": 0.85,
+    "max_features": 100,
+    "feature_adaptation": true,
+    "market_regime_detection": true,
+    "symmetric_thresholds": true,
+    "action_threshold_buy": -0.3333,
+    "action_threshold_sell": 0.3333,
+    "reward_function": "v435_enhanced",
+    "feature_engineering": "comprehensive"
+  }
+}

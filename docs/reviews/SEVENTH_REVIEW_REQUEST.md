@@ -379,7 +379,7 @@ live_trade.py:880-1000 (_update_state_after_action)
 - **最小取引量:** 0.001 BTC
 - **強化学習アルゴリズム:** PPO (Proximal Policy Optimization)
 - **Python:** 3.11+
-- **主要ライブラリ:** stable-baselines3, sb3-contrib, gym
+- **主要ライブラリ:** stable-baselines3, sb3-contrib, gymnasium
 
 ---
 

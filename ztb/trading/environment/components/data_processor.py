@@ -80,9 +80,8 @@ class DataProcessor:
 
         numeric_cols = optimized.select_dtypes(include=[np.number]).columns
         if len(numeric_cols) > 0:
-            optimized[numeric_cols] = optimized[numeric_cols].astype(
-                np.float32, copy=False
-            )
+            for col in numeric_cols:
+                optimized[col] = optimized[col].astype(np.float32, copy=False)
 
         bool_cols = optimized.select_dtypes(include=["bool"]).columns
         if len(bool_cols) > 0:

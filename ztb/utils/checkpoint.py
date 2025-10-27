@@ -12,6 +12,7 @@ Usage:
 
 import logging
 import pickle
+import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +21,11 @@ from pathlib import Path
 from queue import Queue
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
 
+import numpy as np
+import torch
+from stable_baselines3.common.base_class import BaseAlgorithm
+
+from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
@@ -50,6 +56,33 @@ class CheckpointData(TypedDict):
     step: int
     metadata: Dict[str, Any]
     timestamp: float
+    training_context: Dict[str, Any]  # Enhanced metadata for training context
+
+
+class TrainingStateCheckpointData(TypedDict):
+    """Extended checkpoint data structure for complete training state"""
+
+    # Model and training state
+    model_state: Dict[str, Any]
+    optimizer_state: Dict[str, Any]
+    replay_buffer_state: Optional[Dict[str, Any]]
+
+    # Training progress
+    total_timesteps: int
+    episode_count: int
+    episode_rewards: List[float]
+    episode_lengths: List[int]
+
+    # Random state for reproducibility
+    random_state: Tuple[Any, Any, Any]  # (random, numpy, torch) states
+
+    # Training configuration
+    config: ConfigDict
+
+    # Metadata
+    timestamp: float
+    training_time: float
+    version: str
 
 
 class CheckpointManager:
@@ -90,7 +123,11 @@ class CheckpointManager:
         }
 
     def save_async(
-        self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None
+        self,
+        obj: Any,
+        step: int,
+        metadata: Optional[Dict[str, Any]] = None,
+        training_context: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Save checkpoint asynchronously"""
         if self.save_queue.full():
@@ -103,14 +140,19 @@ class CheckpointManager:
                 "step": step,
                 "metadata": metadata or {},
                 "timestamp": time.time(),
+                "training_context": training_context or {},
             }
         )
 
     def save_sync(
-        self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None
+        self,
+        obj: Any,
+        step: int,
+        metadata: Optional[Dict[str, Any]] = None,
+        training_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Save checkpoint synchronously (blocking)"""
-        return self._save_checkpoint(obj, step, metadata or {})
+        return self._save_checkpoint(obj, step, metadata or {}, training_context or {})
 
     def load_latest(self) -> Tuple[CheckpointData, int, Dict[str, Any]]:
         """Load the latest checkpoint with differential support"""
@@ -244,13 +286,20 @@ class CheckpointManager:
                             color="error",
                         )
 
-    def _save_checkpoint(self, obj: Any, step: int, metadata: Dict[str, Any]) -> str:
+    def _save_checkpoint(
+        self,
+        obj: Any,
+        step: int,
+        metadata: Dict[str, Any],
+        training_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Internal save method with differential support"""
         checkpoint_data: CheckpointData = {
             "obj": obj,
             "step": step,
             "metadata": metadata,
             "timestamp": time.time(),
+            "training_context": training_context or {},
         }
 
         # Check if we should save differentially
@@ -776,3 +825,280 @@ class HierarchicalCheckpointManager:
         """Shutdown the manager"""
         if self.executor:
             self.executor.shutdown(wait=True)
+
+
+class TrainingStateManager:
+    """Manager for saving and loading complete training state for resume functionality"""
+
+    def __init__(
+        self, save_dir: str = "models/training_states", compress: str = "zstd"
+    ):
+        self.save_dir = Path(save_dir)
+        ensure_dir(self.save_dir)
+        self.compress = compress
+
+    def save_training_state(
+        self,
+        model: BaseAlgorithm,
+        total_timesteps: int,
+        episode_count: int = 0,
+        episode_rewards: Optional[List[float]] = None,
+        episode_lengths: Optional[List[int]] = None,
+        config: Optional[Dict[str, Any]] = None,
+        training_time: float = 0.0,
+        filename: Optional[str] = None,
+    ) -> str:
+        """Save complete training state for later resumption"""
+
+        # Capture random states for reproducibility
+        random_state = (
+            random.getstate(),
+            np.random.get_state(),
+            torch.get_rng_state()
+            if torch.cuda.is_available()
+            else torch.random.get_rng_state(),
+        )
+
+        # Extract model state
+        model_state = {
+            "policy": model.policy.state_dict(),
+            "policy_kwargs": getattr(model, "policy_kwargs", {}),
+        }
+
+        # Extract optimizer state if available
+        optimizer_state = {}
+        if hasattr(model, "policy") and hasattr(model.policy, "optimizer"):
+            optimizer_state = model.policy.optimizer.state_dict()
+
+        # Extract replay buffer state if available
+        replay_buffer_state = None
+        if hasattr(model, "replay_buffer") and model.replay_buffer is not None:
+            try:
+                replay_buffer_state = model.replay_buffer.__dict__.copy()
+            except:
+                logger.warning("Could not save replay buffer state")
+
+        # Prepare training state data
+        training_state: TrainingStateCheckpointData = {
+            "model_state": model_state,
+            "optimizer_state": optimizer_state,
+            "replay_buffer_state": replay_buffer_state,
+            "total_timesteps": total_timesteps,
+            "episode_count": episode_count,
+            "episode_rewards": episode_rewards or [],
+            "episode_lengths": episode_lengths or [],
+            "random_state": random_state,
+            "config": config or {},
+            "timestamp": time.time(),
+            "training_time": training_time,
+            "version": "1.0",
+        }
+
+        # Generate filename
+        if filename is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"training_state_{total_timesteps}_{timestamp}.pkl"
+
+        filepath = self.save_dir / filename
+
+        # Compress and save
+        compressed_data = self._compress_data(training_state)
+        with open(filepath, "wb") as f:
+            f.write(compressed_data)
+
+        logger.info(f"Saved training state to {filepath}")
+        return str(filepath)
+
+    def load_training_state(self, filepath: str) -> TrainingStateCheckpointData:
+        """Load complete training state for resumption"""
+
+        if not Path(filepath).exists():
+            raise FileNotFoundError(f"Training state file not found: {filepath}")
+
+        # Load and decompress
+        with open(filepath, "rb") as f:
+            compressed_data = f.read()
+
+        training_state = self._decompress_data(compressed_data)
+        logger.info(f"Loaded training state from {filepath}")
+        return training_state
+
+    def restore_training_state(
+        self, model: BaseAlgorithm, training_state: TrainingStateCheckpointData
+    ) -> None:
+        """Restore training state to model"""
+
+        # Restore model state
+        if "policy" in training_state["model_state"]:
+            model.policy.load_state_dict(training_state["model_state"]["policy"])
+
+        # Restore optimizer state
+        if training_state["optimizer_state"] and hasattr(model.policy, "optimizer"):
+            model.policy.optimizer.load_state_dict(training_state["optimizer_state"])
+
+        # Restore replay buffer state (limited support)
+        if (
+            training_state["replay_buffer_state"]
+            and hasattr(model, "replay_buffer")
+            and model.replay_buffer is not None
+        ):
+            try:
+                # This is a simplified restoration - full restoration would require
+                # more complex buffer state management
+                for key, value in training_state["replay_buffer_state"].items():
+                    if hasattr(model.replay_buffer, key):
+                        setattr(model.replay_buffer, key, value)
+                logger.info("Restored replay buffer state")
+            except Exception as e:
+                logger.warning(f"Could not restore replay buffer state: {e}")
+
+        # Restore random states
+        random_state = training_state["random_state"]
+        random.setstate(random_state[0])
+        np.random.set_state(random_state[1])
+        if torch.cuda.is_available():
+            torch.set_rng_state(random_state[2])
+        else:
+            torch.random.set_rng_state(random_state[2])
+
+        logger.info("Restored training state to model")
+
+    def _compress_data(self, data: TrainingStateCheckpointData) -> bytes:
+        """Compress training state data"""
+        pickled_data = pickle.dumps(data)
+
+        if self.compress == "zstd" and HAS_ZSTD:
+            compressor = zstd.ZstdCompressor()
+            return compressor.compress(pickled_data)
+        elif self.compress == "lz4" and HAS_LZ4:
+            return lz4_frame.compress(pickled_data)
+        else:
+            return zlib.compress(pickled_data)
+
+    def _decompress_data(self, compressed_data: bytes) -> TrainingStateCheckpointData:
+        """Decompress training state data"""
+        if self.compress == "zstd" and HAS_ZSTD:
+            decompressor = zstd.ZstdDecompressor()
+            data = decompressor.decompress(compressed_data)
+        elif self.compress == "lz4" and HAS_LZ4:
+            data = lz4_frame.decompress(compressed_data)
+        else:
+            data = zlib.decompress(compressed_data)
+
+        return pickle.loads(data)
+
+    def list_training_states(self) -> List[Dict[str, Any]]:
+        """List all saved training states with metadata"""
+        states = []
+        for filepath in self.save_dir.glob("training_state_*.pkl*"):
+            try:
+                # Quick load just metadata without full decompression
+                with open(filepath, "rb") as f:
+                    compressed_data = f.read()
+                training_state = self._decompress_data(compressed_data)
+
+                states.append(
+                    {
+                        "filepath": str(filepath),
+                        "total_timesteps": training_state["total_timesteps"],
+                        "episode_count": training_state["episode_count"],
+                        "timestamp": training_state["timestamp"],
+                        "training_time": training_state["training_time"],
+                        "version": training_state["version"],
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Could not read training state {filepath}: {e}")
+
+        return sorted(states, key=lambda x: x["timestamp"], reverse=True)
+
+    def validate_resume_compatibility(
+        self,
+        training_state: TrainingStateCheckpointData,
+        current_config: Dict[str, Any],
+        data_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Validate compatibility between saved training state and current setup"""
+
+        validation_results = {"compatible": True, "warnings": [], "errors": []}
+
+        # Check version compatibility
+        saved_version = training_state.get("version", "0.0")
+        if saved_version != "1.0":
+            validation_results["warnings"].append(
+                f"Version mismatch: saved={saved_version}, current=1.0"
+            )
+
+        # Check configuration compatibility
+        saved_config = training_state.get("config", {})
+
+        # Check critical hyperparameters
+        critical_params = ["learning_rate", "batch_size", "buffer_size", "gamma", "tau"]
+        for param in critical_params:
+            saved_val = self._get_nested_value(
+                saved_config, f"training.sac_hyperparameters.{param}"
+            )
+            current_val = self._get_nested_value(
+                current_config, f"training.sac_hyperparameters.{param}"
+            )
+
+            if (
+                saved_val is not None
+                and current_val is not None
+                and saved_val != current_val
+            ):
+                validation_results["warnings"].append(
+                    f"Hyperparameter mismatch for {param}: saved={saved_val}, current={current_val}"
+                )
+
+        # Check environment configuration
+        saved_env = self._get_nested_value(saved_config, "training.environment_config")
+        current_env = self._get_nested_value(
+            current_config, "training.environment_config"
+        )
+
+        if saved_env and current_env:
+            # Check critical environment parameters
+            env_params = ["window_size", "fee", "leverage"]
+            for param in env_params:
+                if saved_env.get(param) != current_env.get(param):
+                    validation_results["errors"].append(
+                        f"Environment parameter mismatch for {param}: saved={saved_env.get(param)}, current={current_env.get(param)}"
+                    )
+
+        # Check data compatibility (if data_path provided)
+        if data_path and os.path.exists(data_path):
+            try:
+                # This would require loading a small sample of data to check compatibility
+                # For now, just check if data file exists and is readable
+                with open(data_path, "r") as f:
+                    # Try to read first few lines
+                    lines = []
+                    for i, line in enumerate(f):
+                        if i >= 5:  # Check first 5 lines
+                            break
+                        lines.append(line.strip())
+
+                if not lines:
+                    validation_results["errors"].append("Data file appears to be empty")
+
+            except Exception as e:
+                validation_results["errors"].append(f"Cannot read data file: {e}")
+
+        # Determine overall compatibility
+        if validation_results["errors"]:
+            validation_results["compatible"] = False
+
+        return validation_results
+
+    def _get_nested_value(self, config: ConfigDict, path: str) -> Any:
+        """Get nested value from config using dot notation"""
+        keys = path.split(".")
+        value = config
+
+        try:
+            for key in keys:
+                value = value[key]
+            return value
+        except (KeyError, TypeError):
+            return None

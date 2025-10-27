@@ -130,7 +130,7 @@ trainer = PPOTrainer(
 ### HeavyTradingEnvの基本的な使用例
 
 ```python
-import gym
+import gymnasium as gym
 from ztb.trading.environment import HeavyTradingEnv
 import pandas as pd
 

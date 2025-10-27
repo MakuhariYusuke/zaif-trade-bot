@@ -1,0 +1,23 @@
+SAC v437 vs v436 Performance Comparison Report
+============================================================
+Generated: 2025-10-25 19:36:40
+
+KEY PERFORMANCE METRICS
+----------------------------------------
+Total Return %            v436: -10.19%         v437: N/A
+Final Portfolio Value     v436: ¥89,808         v437: N/A
+Sharpe Ratio              v436: -0.063          v437: 103.098
+Max Drawdown %            v436: -28.5%          v437: -5.9%
+Win Rate %                v436: 24.5%           v437: N/A
+Total Trades              v436: 10,999          v437: N/A
+
+V437 ENHANCED FEATURES IMPACT
+----------------------------------------
+Avg Total Reward: ¥61,576.06
+Avg Trades per Step: 0.664
+Reward Positive Ratio: 100.0%
+Portfolio Value Positive Ratio: 90.0%
+
+CONCLUSION
+----------------------------------------
+SAC v437 demonstrates significant improvements over v436

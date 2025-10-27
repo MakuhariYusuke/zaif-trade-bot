@@ -73,6 +73,12 @@ class TradingLoop:
                     # Reset consecutive error counter on successful price fetch
                     consecutive_errors = 0
 
+                    # Check risk limits before proceeding with trading
+                    if not self.live_trader.risk_manager.can_trade(current_price):
+                        logger.warning("Risk limits violated, skipping trading iteration")
+                        time.sleep(60)  # Wait before next check
+                        continue
+
                     # Update price history (skip in dry-run mode)
                     if not self.live_trader.dry_run:
                         try:
@@ -116,6 +122,11 @@ class TradingLoop:
                     try:
                         pnl = self.live_trader._execute_action(action)
                         logger.debug(f"Action executed, PnL: {pnl}")
+
+                        # Record trade if action was not HOLD
+                        if action != ACTION_HOLD:
+                            self.live_trader.risk_manager.record_trade()
+
                     except Exception as e:
                         logger.error(f"Failed to execute action: {e}")
                         pnl = 0.0

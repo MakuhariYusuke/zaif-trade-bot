@@ -453,14 +453,22 @@ class SACAlgorithmTrainer(EnsembleMixin):
 
         # 1. SAC設定を取得
         sac_config = cfg.get("sac_hyperparameters") or cfg.get("sac_params") or {}
-        if sac_config:
-            # Merge with defaults to ensure required keys are present
-            sac_config = {**SACAlgorithm.get_default_config(), **dict(sac_config)}
-        else:
+        if not sac_config:
+            # Use default SAC hyperparameters
+            sac_config = {
+                "learning_rate": 3e-4,
+                "buffer_size": 1000000,
+                "learning_starts": 1000,
+                "batch_size": 256,
+                "tau": 0.005,
+                "gamma": 0.99,
+                "ent_coef": 0.01,
+                "target_update_interval": 1,
+                "target_entropy": -2.0
+            }
             self.logger.warning(
                 "No SAC hyperparameters found in config, using defaults"
             )
-            sac_config = SACAlgorithm.get_default_config()
 
         # Expose resolved config for logging/debugging (update cfg if it's the unified_config)
         if isinstance(unified_config, dict):
@@ -490,7 +498,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         # ConfigManagerからデータを取得
         from ztb.utils.data_utils import load_csv_data_optimized
 
-        data_path = cfg.get("data_path", "btc_jpy_real_dataset.csv")
+        data_path = cfg.get("data_path") or cfg.get("training", {}).get("data_path", "btc_jpy_real_dataset.csv")
 
         df = load_csv_data_optimized(data_path)
 
@@ -603,7 +611,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         callback_list = CallbackList(callbacks)
 
         # 6. 訓練実行
-        total_timesteps = unified_config.get("total_timesteps", 100000)
+        total_timesteps = unified_config["training"]["total_timesteps"]
         self.logger.info(f"🏃 Training for {total_timesteps} timesteps...")
 
         trained_model = sac_algo.train(

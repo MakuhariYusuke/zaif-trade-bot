@@ -32,7 +32,7 @@ class ActionMaskProvider:
     """
     Lightweight action mask provider for MaskablePPO in live trading.
 
-    Provides the same action masking logic as the gym environment
+    Provides the same action masking logic as the Gymnasium environment
     but without requiring a full environment instance.
     """
 

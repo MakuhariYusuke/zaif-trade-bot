@@ -26,6 +26,7 @@ from ztb.trading.environment.constants import EPSILON
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import get_file_dir
+from ztb.utils.statistics import calculate_autocorrelation, detect_outliers_iqr, rolling_statistics
 
 warnings.filterwarnings("ignore")
 
@@ -196,6 +197,13 @@ class TradingEvaluator(BaseAnalyzer):
         stats = self._calculate_statistics(
             all_rewards, all_positions, all_pnls, all_actions
         )
+
+        # リターンの統計分析を追加
+        if all_pnls:
+            # 全エピソードのPnLをフラット化して統計分析
+            flat_pnls = [pnl for episode_pnls in all_pnls for pnl in episode_pnls]
+            if flat_pnls:
+                stats["returns_statistics"] = self._analyze_returns_statistics(flat_pnls)
 
         # 結果の保存
         self._save_evaluation_results(
@@ -1175,6 +1183,31 @@ class TradingEvaluator(BaseAnalyzer):
             max_duration = max(max_duration, current_duration)
 
         return max_duration
+
+    def _analyze_returns_statistics(self, returns: List[float]) -> Dict[str, Any]:
+        """リターンの統計分析を実行"""
+        if not returns:
+            return {}
+
+        # 移動統計量の計算
+        rolling_stats = rolling_statistics(returns, window=min(20, len(returns)))
+
+        # 自己相関係数の計算
+        autocorr_1 = calculate_autocorrelation(returns, lag=1)
+        autocorr_5 = calculate_autocorrelation(returns, lag=5) if len(returns) > 5 else 0.0
+
+        # 外れ値検出
+        outliers = detect_outliers_iqr(returns)
+        outlier_rate = sum(outliers) / len(outliers) if outliers else 0.0
+
+        return {
+            "rolling_mean": rolling_stats.get("mean", []),
+            "rolling_std": rolling_stats.get("std", []),
+            "autocorrelation_lag1": autocorr_1,
+            "autocorrelation_lag5": autocorr_5,
+            "outlier_rate": outlier_rate,
+            "outlier_indices": [i for i, is_outlier in enumerate(outliers) if is_outlier],
+        }
 
     def close(self) -> None:
         """Clean up resources to prevent memory leaks."""

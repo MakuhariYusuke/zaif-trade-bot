@@ -40,9 +40,11 @@ class IchimokuWaveTheory(BaseFeature):
         """
         # Get Ichimoku components
         ichimoku_data = calculate_ichimoku_extended(df)
-        senkou_a = ichimoku_data["ichimoku_senkou_a"]
-        senkou_b = ichimoku_data["ichimoku_senkou_b"]
-        cloud_thickness = ichimoku_data["ichimoku_cloud_thickness"]
+        # Ensure all data is aligned with df length
+        ichimoku_data = ichimoku_data.iloc[:len(df)]
+        senkou_a = ichimoku_data["ichimoku_senkou_a"].iloc[:len(df)]
+        senkou_b = ichimoku_data["ichimoku_senkou_b"].iloc[:len(df)]
+        cloud_thickness = ichimoku_data["ichimoku_cloud_thickness"].iloc[:len(df)]
 
         # 1. Cloud wave momentum (rate of change of cloud edges)
         senkou_a_momentum = senkou_a.pct_change(5)  # 5-period momentum
@@ -80,6 +82,7 @@ class IchimokuWaveTheory(BaseFeature):
 
         # Apply frequency damping (higher frequency = weaker signal)
         wave_damping = 1 / (1 + frequency_norm)
+        wave_damping = pd.Series(wave_damping.values, index=df.index)  # Ensure same index as df
 
         # Final wave theory score
         wave_theory_score = wave_strength * wave_damping
@@ -88,6 +91,8 @@ class IchimokuWaveTheory(BaseFeature):
         convergence_factor = np.where(
             span_divergence > 0.5, 0.2, np.where(span_divergence < -0.5, -0.2, 0)
         )
+        # Ensure convergence_factor has the same length as df
+        convergence_factor = convergence_factor[:len(df)]
         wave_theory_score += convergence_factor
 
         result_df = pd.DataFrame(

@@ -12,6 +12,7 @@ import pandas as pd
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+from ztb.utils.statistics import calculate_autocorrelation, detect_outliers_iqr
 
 
 @dataclass
@@ -317,3 +318,17 @@ class MetricsCalculator:
         p_value = np.mean(np.abs(bootstrap_array) >= np.abs(observed_diff))
 
         return cast(float, p_value)
+
+    @staticmethod
+    def calculate_returns_autocorrelation(returns: pd.Series, lag: int = 1) -> float:
+        """Calculate autocorrelation of returns at specified lag."""
+        returns_list = returns.dropna().tolist()
+        if len(returns_list) <= lag:
+            return 0.0
+        return calculate_autocorrelation(returns_list, lag)
+
+    @staticmethod
+    def detect_return_outliers(returns: pd.Series, multiplier: float = 1.5) -> List[bool]:
+        """Detect outliers in returns using IQR method."""
+        returns_list = returns.dropna().tolist()
+        return detect_outliers_iqr(returns_list, multiplier)

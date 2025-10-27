@@ -1,0 +1,108 @@
+{
+  "analysis_timestamp": "2025-10-23T06:08:10.703561",
+  "variants_analyzed": [
+    "v435",
+    "v435_1",
+    "v435_2"
+  ],
+  "p_average_returns": {
+    "v435": -0.0033128035756967438,
+    "v435_1": -0.00165160090835765,
+    "v435_2": 0.006006150922037486
+  },
+  "trading_interval_analysis": {
+    "v435": {
+      "total_trades": 1,
+      "avg_trade_interval": 0,
+      "min_trade_interval": 0,
+      "max_trade_interval": 0,
+      "trading_frequency": 0,
+      "analysis_note": "Insufficient trades for interval analysis"
+    },
+    "v435_1": {
+      "total_trades": 1,
+      "avg_trade_interval": 0,
+      "min_trade_interval": 0,
+      "max_trade_interval": 0,
+      "trading_frequency": 0,
+      "analysis_note": "Insufficient trades for interval analysis"
+    },
+    "v435_2": {
+      "total_trades": 1,
+      "avg_trade_interval": 0,
+      "min_trade_interval": 0,
+      "max_trade_interval": 0,
+      "trading_frequency": 0,
+      "analysis_note": "Insufficient trades for interval analysis"
+    }
+  },
+  "risk_metrics": {
+    "v435": {
+      "total_return": -0.0033128035756967438,
+      "max_drawdown": 0.00015,
+      "win_rate": 0.0,
+      "total_trades": 1,
+      "volatility": 0.0033128035756967438,
+      "sharpe_ratio": 0.0,
+      "risk_adjusted_return": -1.0
+    },
+    "v435_1": {
+      "total_return": -0.00165160090835765,
+      "max_drawdown": 7.5e-05,
+      "win_rate": 0.0,
+      "total_trades": 1,
+      "volatility": 0.00165160090835765,
+      "sharpe_ratio": 0.0,
+      "risk_adjusted_return": -1.0
+    },
+    "v435_2": {
+      "total_return": 0.006006150922037486,
+      "max_drawdown": 0.0002,
+      "win_rate": 0.0,
+      "total_trades": 1,
+      "volatility": 0.006006150922037486,
+      "sharpe_ratio": 0.0,
+      "risk_adjusted_return": 1.0
+    }
+  },
+  "statistical_comparison": {
+    "best_variant": "v435_2",
+    "returns_comparison": {
+      "values": {
+        "v435": -0.0033128035756967438,
+        "v435_1": -0.00165160090835765,
+        "v435_2": 0.006006150922037486
+      },
+      "combined_p_geometric": 0.046415888336127795,
+      "statistically_significant": true
+    },
+    "win_rates_comparison": {
+      "values": {
+        "v435": 0.0,
+        "v435_1": 0.0,
+        "v435_2": 0.0
+      },
+      "geometric_mean_win_rate": 9.999999999999996e-11
+    },
+    "max_drawdowns": {
+      "v435": 0.00015,
+      "v435_1": 7.5e-05,
+      "v435_2": 0.0002
+    }
+  },
+  "key_insights": [
+    "Best performing variant: v435_2 with 0.0060 total return",
+    "Lowest risk variant: v435_1 with 0.0001 max drawdown",
+    "v435: 1 trades, frequency: 0.0000",
+    "v435_1: 1 trades, frequency: 0.0000",
+    "v435_2: 1 trades, frequency: 0.0000",
+    "Returns differences are statistically significant (p < 0.05)"
+  ],
+  "recommendations": [
+    "Recommend using v435_2 for production deployment",
+    "Further optimize v435_2 with additional training data",
+    "Monitor trading frequency and adjust position sizing accordingly",
+    "Consider implementing more sophisticated risk management",
+    "Validate results with longer backtest periods"
+  ]
+}

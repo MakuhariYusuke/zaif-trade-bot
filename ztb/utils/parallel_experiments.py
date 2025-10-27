@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
 
+from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 
 # Type definitions for better type safety
@@ -180,7 +181,7 @@ class ParallelExperimentRunner:
         """設定を優先順位に基づいてソート"""
         priority_order = {"high": 0, "normal": 1, "low": 2}
 
-        def get_priority(config: Dict[str, Any]) -> int:
+        def get_priority(config: ConfigDict) -> int:
             model_type = config.get("model_type", "generalization")
             if self.config.priority_configs:
                 priority_level = self.config.priority_configs.get(model_type, "normal")
@@ -429,7 +430,7 @@ class ParallelExperimentRunner:
         return gpu_stats
 
     def _run_single_experiment(
-        self, config: Dict[str, Any], index: int
+        self, config: ConfigDict, index: int
     ) -> ExperimentResult:
         """Run single experiment in subprocess（効率化）"""
         try:

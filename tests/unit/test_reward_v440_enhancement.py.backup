@@ -1,0 +1,258 @@
+#!/usr/bin/env python3#!/usr/bin/env python3
+
+""""""
+
+Test for v440 reward function enhancements.Test script for v440 enhanced reward function with v431 elements.
+
+Tests dynamic reward shaping functionality.Tests HOLD penalty, trade frequency bonus, reward scaling, and clipping.
+
+""""""
+
+
+
+import pytestimport sys
+
+import numpy as npimport os
+
+from unittest.mock import Mocksys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELLimport numpy as np
+
+from ztb.trading.environment.components.reward_calculator import RewardCalculatorfrom ztb.trading.environment.components.reward_calculator import RewardCalculator
+
+from ztb.trading.environment.utils.config import RewardSettingsfrom ztb.trading.environment.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+
+
+
+def test_v440_reward_function():
+
+def test_v440_dynamic_reward_shaping():    """Test the enhanced v440 reward function with v431 elements."""
+
+    """Test dynamic reward shaping functionality in v440.1."""
+
+    # Mock config for testing
+
+    # Mock config    class MockConfig:
+
+    class MockConfig:        def __init__(self):
+
+        def __init__(self):            self.reward_scaling = 1000.0
+
+            self.curriculum_stage = "basic"            self.reward_clip_value = 10.0
+
+            self.max_position_size = 1.0            self.continuous_to_discrete_threshold = 0.3333
+
+            self.continuous_to_discrete_threshold_neg = -0.3333
+
+    config = MockConfig()
+
+    # Reward settings matching v440 config
+
+    # Create reward settings with dynamic reward shaping enabled    reward_settings = {
+
+    reward_settings = RewardSettings(        "use_simple_reward": True,
+
+        # Basic parameters        "hold_penalty_multiplier": 1.01,
+
+        profit_weight=1.0,        "trade_frequency_bonus": 0.001,
+
+        risk_weight=0.1,        "reward_scaling": 1000.0,
+
+        consistency_weight=0.1,        "reward_clip_value": 10.0
+
+        reward_scale=1.0,    }
+
+        reward_clip_min=-40.0,
+
+        reward_clip_max=40.0,    # Initialize reward calculator
+
+        use_simple_reward=True,    config = MockConfig()
+
+    calculator = RewardCalculator(config, reward_settings, 10000.0)
+
+        # v431 enhancements
+
+        hold_penalty_multiplier=1.01,    print("Testing v440 Enhanced Reward Function")
+
+        trade_frequency_bonus=0.001,    print("=" * 50)
+
+        reward_scaling=1.0,
+
+        reward_clip_value=10.0,    # Test cases
+
+    test_cases = [
+
+        # Dynamic reward shaping enabled        # (pnl, position, old_position, action, description)
+
+        dynamic_reward_shaping_enabled=True,        (10.0, 0.0, 0.0, ACTION_HOLD, "HOLD with small profit"),
+
+        market_regime_awareness=True,        (10.0, 0.0, 0.0, ACTION_BUY, "BUY with small profit"),
+
+        volatility_adjusted_rewards=True,        (10.0, 0.0, 0.0, ACTION_SELL, "SELL with small profit"),
+
+        trend_strength_bonus=True,        (-10.0, 0.0, 0.0, ACTION_HOLD, "HOLD with small loss"),
+
+        (-10.0, 0.0, 0.0, ACTION_BUY, "BUY with small loss"),
+
+        # Required defaults        (-10.0, 0.0, 0.0, ACTION_SELL, "SELL with small loss"),
+
+        profit_multiplier=0.01,        (100.0, 0.0, 0.0, ACTION_BUY, "BUY with large profit (clipped)"),
+
+        loss_penalty_multiplier=0.01,        (-100.0, 0.0, 0.0, ACTION_SELL, "SELL with large loss (clipped)"),
+
+        hold_penalty_rate=0.01,        (0.0, 0.0, 0.0, ACTION_HOLD, "HOLD with no PnL"),
+
+        balance_penalty_tolerance=0.15,        (0.0, 0.0, 0.0, ACTION_BUY, "BUY with no PnL"),
+
+        balance_penalty=1.0,    ]
+
+        trading_bonus_multiplier=2.0,
+
+        trading_bonus=0.01,    for pnl, position, old_position, action, description in test_cases:
+
+    )        reward = calculator.calculate_reward_simple(
+
+            pnl=pnl,
+
+    calculator = RewardCalculator(            portfolio_value=10000.0,
+
+        config=config,            position=position,
+
+        reward_settings=reward_settings,            old_position=old_position,
+
+        initial_portfolio_value=10000.0            action=action,
+
+    )            reward_history=[],
+
+            portfolio_value_history=[]
+
+    # Test that dynamic reward shaping is enabled        )
+
+    assert calculator.dynamic_reward_shaping_enabled == True
+
+    assert calculator.market_regime_awareness == True        print(f"{description:30} | PnL: {pnl:8.2f} | Reward: {reward:8.3f}")
+
+    assert calculator.volatility_adjusted_rewards == True    print("\nReward Function Analysis:")
+
+    assert calculator.trend_strength_bonus == True    print("- HOLD penalty multiplier: 1.01 (1% penalty for HOLD actions)")
+
+    print("- Trade frequency bonus: 0.001 (small bonus for BUY/SELL)")
+
+    # Test market regime detection    print("- Reward scaling: 1000.0 (0.1% PnL = 1.0 reward)")
+
+    regime = calculator._detect_market_regime(50000.0, 100)    print("- Reward clipping: ±10.0 (prevents extreme values)")
+
+    assert regime in ["bull", "bear", "sideways", "volatile"]    print("- Action thresholds: ±0.3333 (symmetric for balanced actions)")
+
+
+
+    # Test dynamic reward shaping application    # Test action distribution simulation
+
+    base_reward = 1.0    print("\nSimulating Action Distribution (100 random actions):")
+
+    shaped_reward = calculator._apply_dynamic_reward_shaping(    np.random.seed(42)
+
+        base_reward, 50000.0, 100, 100.0    actions = []
+
+    )    rewards = []
+
+    # Shaped reward should be different from base (market regime effects)
+
+    assert isinstance(shaped_reward, float)    for _ in range(100):
+
+        # Simulate random but realistic PnL
+
+        pnl = np.random.normal(0, 5)  # Mean 0, std 5
+
+def test_v440_reward_enhancements():        action = np.random.choice([ACTION_HOLD, ACTION_BUY, ACTION_SELL])
+
+    """Test various reward enhancements in v440."""
+
+        reward = calculator.calculate_reward_simple(
+
+    # Mock config            pnl=pnl,
+
+    class MockConfig:            portfolio_value=10000.0,
+
+        def __init__(self):            position=0.0,
+
+            self.curriculum_stage = "basic"            old_position=0.0,
+
+            self.max_position_size = 1.0            action=action,
+
+            reward_history=[],
+
+    config = MockConfig()            portfolio_value_history=[]
+
+        )
+
+    reward_settings = RewardSettings(
+
+        profit_weight=1.0,        actions.append(action)
+
+        risk_weight=0.1,        rewards.append(reward)
+
+        consistency_weight=0.1,
+
+        reward_scale=1.0,    hold_count = actions.count(ACTION_HOLD)
+
+        reward_clip_min=-40.0,    buy_count = actions.count(ACTION_BUY)
+
+        reward_clip_max=40.0,    sell_count = actions.count(ACTION_SELL)
+
+        use_simple_reward=True,
+
+        hold_penalty_multiplier=1.01,    print(f"HOLD: {hold_count} ({hold_count/100:.1%})")
+
+        trade_frequency_bonus=0.001,    print(f"BUY: {buy_count} ({buy_count/100:.1%})")
+
+        reward_scaling=1.0,    print(f"SELL: {sell_count} ({sell_count/100:.1%})")
+
+        reward_clip_value=10.0,    print(".3f")
+
+        dynamic_reward_shaping_enabled=False,  # Disable for basic test    print(".3f")
+
+        market_regime_awareness=False,
+
+        volatility_adjusted_rewards=False,if __name__ == "__main__":
+
+        trend_strength_bonus=False,    test_v440_reward_function()
+        profit_multiplier=0.01,
+        loss_penalty_multiplier=0.01,
+        hold_penalty_rate=0.01,
+        balance_penalty_tolerance=0.15,
+        balance_penalty=1.0,
+        trading_bonus_multiplier=2.0,
+        trading_bonus=0.01,
+    )
+
+    calculator = RewardCalculator(
+        config=config,
+        reward_settings=reward_settings,
+        initial_portfolio_value=10000.0
+    )
+
+    # Test reward clipping
+    large_reward = calculator.calculate_reward_simple(
+        pnl=1000.0,
+        portfolio_value=10000.0,
+        position=0.1,
+        old_position=0.0,
+        action=ACTION_BUY,
+        reward_history=[],
+        portfolio_value_history=[10000.0]
+    )
+    assert large_reward <= 40.0, "Large rewards should be clipped"
+
+    large_penalty = calculator.calculate_reward_simple(
+        pnl=-1000.0,
+        portfolio_value=10000.0,
+        position=0.1,
+        old_position=0.0,
+        action=ACTION_SELL,
+        reward_history=[],
+        portfolio_value_history=[10000.0]
+    )
+    assert large_penalty >= -40.0, "Large penalties should be clipped"

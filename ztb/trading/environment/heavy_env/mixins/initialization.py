@@ -122,23 +122,40 @@ def _initialize_data_structures(self: Any) -> None:
     self._nonfinite_rows = set()
     self._nonfinite_warned_rows = set()
 
+    # Initialize action counts for state management
+    from ztb.trading.environment.constants import NUM_DISCRETE_ACTIONS
+    self.ACTION_COUNTS_INITIAL = [0] * NUM_DISCRETE_ACTIONS
+
 
 def _initialize_data(self: Any, df: Optional[pd.DataFrame]) -> None:
-    """Load baseline market data either from dataframe or streaming snapshot."""
+    """Load baseline market data either from dataframe, CSV file, or streaming snapshot."""
     if df is not None:
         base_df = df
     else:
-        base_df = self._fetch_streaming_snapshot(
-            required_rows=self.streaming_handler.stream_batch_size
-        )
-        if base_df.empty:
-            raise ValidationError(
-                "Streaming pipeline did not provide initial data",
-                details={
-                    "pipeline": str(type(self.streaming_handler.streaming_pipeline)),
-                    "df_empty": True,
-                },
+        # Check if csv_path is specified in config
+        csv_path = getattr(self.config, "csv_path", None)
+        if csv_path is not None:
+            logger.info(f"Loading data from CSV: {csv_path}")
+            try:
+                base_df = pd.read_csv(csv_path)
+                logger.info(f"Loaded {len(base_df)} rows from CSV")
+            except Exception as e:
+                raise ValidationError(
+                    f"Failed to load data from CSV path: {csv_path}",
+                    details={"csv_path": csv_path, "error": str(e)},
+                )
+        else:
+            base_df = self._fetch_streaming_snapshot(
+                required_rows=self.streaming_handler.stream_batch_size
             )
+            if base_df.empty:
+                raise ValidationError(
+                    "Streaming pipeline did not provide initial data",
+                    details={
+                        "pipeline": str(type(self.streaming_handler.streaming_pipeline)),
+                        "df_empty": True,
+                    },
+                )
 
     self.df = self.data_processor.preprocess_data(base_df)
     if df is None:
@@ -157,7 +174,7 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     """Derive features, apply limits, and build observation/action spaces."""
     # Check if features are specified in config (schema-based approach)
     config_features = getattr(self.config, "feature_names", None)
-    correlation_reduction = getattr(self.config, "enable_correlation_reduction", True)
+    correlation_reduction = getattr(self.config, "correlation_reduction", True)
     logger.info(
         f"Config features: {config_features is not None}, correlation_reduction: {correlation_reduction}"
     )
@@ -183,6 +200,15 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         )
         feature_filter_mode = getattr(self.config, "feature_filter_mode", "whitelist")
 
+        # Use FeatureSetConfig for feature filtering
+        from ztb.features.feature_set_config import get_feature_config
+
+        feature_config = get_feature_config()
+        feature_config.set_feature_set(feature_set)
+        feature_flags = feature_config.get_feature_flags()
+
+        logger.info(f"Feature set: {feature_set}, flags: {feature_flags}")
+
         if enable_feature_filtering and feature_filter_mode == "whitelist":
             curated_features_spec = getattr(self.config, "curated_features_list", None)
             if curated_features_spec:
@@ -192,24 +218,38 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
         max_features_limit = _resolve_max_features_limit(self, max_features)
 
-        if feature_set != "full":
-            logger.warning(
-                "Feature set filtering not implemented, using all features",
-                extra={"feature_set": feature_set, "total_features": len(all_features)},
-            )
-            self.features = all_features
-        else:
-            self.features = all_features
+        # Apply FeatureSetConfig filtering
+        excluded_features = feature_config.get_excluded_features()
+        if excluded_features:
+            all_features = [f for f in all_features if f not in excluded_features]
+            logger.info(f"Excluded {len(excluded_features)} features: {excluded_features}")
 
-        enable_correlation_reduction = getattr(
-            self.config, "enable_correlation_reduction", True
+        # Check if multi-timeframe features should be included
+        if feature_flags.get("include_multi_timeframe_features", False):
+            # Add multi-timeframe features if available
+            from ztb.features.multi_timeframe import MultiTimeframeFeatureSystem
+
+            try:
+                mtf_system = MultiTimeframeFeatureSystem()
+                mtf_data = mtf_system.process_multi_timeframe_data(self.df)
+                if not mtf_data.empty:
+                    mtf_features = [col for col in mtf_data.columns if col not in all_features]
+                    all_features.extend(mtf_features)
+                    logger.info(f"Added {len(mtf_features)} multi-timeframe features")
+            except Exception as e:
+                logger.warning(f"Failed to add multi-timeframe features: {e}")
+
+        self.features = all_features
+
+        correlation_reduction = getattr(
+            self.config, "correlation_reduction", True
         )
         target_feature_count = getattr(self.config, "target_feature_count", None)
         if target_feature_count is None:
             target_feature_count = getattr(self.config, "expected_features", None)
         threshold_trigger = target_feature_count or 10
-        logger.info(f"Correlation reduction enabled: {enable_correlation_reduction}")
-        if enable_correlation_reduction and len(self.features) > threshold_trigger:
+        logger.info(f"Correlation reduction enabled: {correlation_reduction}")
+        if correlation_reduction and len(self.features) > threshold_trigger:
             logger.info(
                 "Applying correlation reduction...",
                 extra={
@@ -354,6 +394,16 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         self.action_space = spaces.Discrete(NUM_DISCRETE_ACTIONS)
         logger.info("Using discrete action space (PPO-compatible)")
 
+    # Initialize data manager with features
+    timestamp_column = getattr(self, '_timestamp_column', None)
+    episode_id_column = getattr(self, '_episode_id_column', None)
+    self.data_manager.initialize_data(
+        self.df,
+        self.features,
+        timestamp_column,
+        episode_id_column,
+    )
+
 
 def _setup_scaler(self: Any) -> None:
     """Setup feature scaler from config or schema data."""
@@ -375,6 +425,18 @@ def _setup_scaler(self: Any) -> None:
 
 def _compute_scaler_from_data(self: Any) -> None:
     """データからスケーラーを計算（標準化用の平均・標準偏差）"""
+    # Ensure fast access buffers are built
+    self._build_fast_access_buffers()
+
+    # Update data manager with built buffers
+    self.data_manager._feature_matrix = self._feature_matrix
+    self.data_manager._price_array = self._price_array
+    self.data_manager._close_array = self._close_array
+    self.data_manager._atr_array = self._atr_array
+    self.data_manager._episode_id_array = self._episode_id_array
+    self.data_manager._nonfinite_rows = self._nonfinite_rows
+    self.data_manager._nonfinite_warned_rows = self._nonfinite_warned_rows
+
     if not hasattr(self, "_feature_matrix") or self._feature_matrix.size == 0:
         logger.warning("Feature matrix is empty. Cannot compute scaler.")
         self.scaler_mean = None

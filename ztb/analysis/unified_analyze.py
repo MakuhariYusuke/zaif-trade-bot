@@ -14,6 +14,7 @@ Categories:
     training    Training process analysis
     performance System and memory performance analysis
     comparative Version comparison and statistical tests
+    paper_trading Paper trading evaluation and simulation
     diagnostic  System diagnosis and debugging
     specialized Feature, reward, and risk specific analysis
     session     Session-specific analysis
@@ -58,12 +59,14 @@ class UnifiedAnalysisSuite:
     def __init__(self) -> None:
         """Initialize analysis suite."""
         self.project_root = project_root
+        self.timesteps_override = None
         self.categories = {
             "model": ModelAnalysis,
             "data": DataAnalysis,
             "training": TrainingAnalysis,
             "performance": PerformanceAnalysis,
             "comparative": ComparativeAnalysis,
+            "paper_trading": PaperTradingAnalysis,
             "diagnostic": DiagnosticAnalysis,
             "specialized": SpecializedAnalysis,
             "session": SessionAnalysis,
@@ -72,6 +75,12 @@ class UnifiedAnalysisSuite:
     def run(self, args: argparse.Namespace) -> int:
         """Run analysis command."""
         try:
+            # Handle timesteps override for consistency with training scripts
+            if hasattr(args, "timesteps") and args.timesteps is not None:
+                logger.info(f"Timesteps override specified: {args.timesteps}")
+                # Store in global context for analyzers to use
+                self.timesteps_override = args.timesteps
+
             category = args.category
 
             # If no tool specified, show available tools for the category
@@ -363,6 +372,50 @@ class TrainingAnalysis(BaseAnalyzer):
             return 1
 
 
+class TrainingAnalysis(BaseAnalyzer):
+    """Training process analysis tools."""
+
+    def run_sac_v423(self, args: argparse.Namespace) -> int:
+        """Analyze SAC v423 training results (integrated from archived script)."""
+        try:
+            from ztb.analysis.core.training.sac_v423_analyzer import SACv423Analyzer
+
+            analyzer = SACv423Analyzer()
+            analyzer.analyze_training_results()
+            return 0
+        except Exception as e:
+            logger.error(f"SAC v423 analysis failed: {e}")
+            return 1
+
+    def run_progress(self, args: argparse.Namespace) -> int:
+        """Monitor training progress."""
+        try:
+            from ztb.analysis.core.training.monitor_progress import (
+                monitor_training_progress,
+            )
+
+            result = monitor_training_progress()
+            logger.info("Progress monitoring completed")
+            return 0
+        except Exception as e:
+            logger.error(f"Progress monitoring failed: {e}")
+            return 1
+
+    def run_profile(self, args: argparse.Namespace) -> int:
+        """Profile training performance."""
+        try:
+            from ztb.analysis.core.training.profile_training import profile_training
+
+            result = profile_training(
+                data_path=getattr(args, "data", "ml-dataset-enhanced-balanced.csv")
+            )
+            logger.info("Training profiling completed")
+            return 0
+        except Exception as e:
+            logger.error(f"Training profiling failed: {e}")
+            return 1
+
+
 class PerformanceAnalysis(BaseAnalyzer):
     """Performance analysis tools."""
 
@@ -527,6 +580,148 @@ class ComparativeAnalysis(BaseAnalyzer):
         """Run benchmark comparison analysis."""
         logger.warning("Benchmark comparison analysis not implemented yet")
         return 1
+
+
+class ComparativeAnalysis(BaseAnalyzer):
+    """Comparative analysis tools for model and strategy comparison."""
+
+    def run_backtest_sac_v424(self, args: argparse.Namespace) -> int:
+        """Run SAC v424 complete backtest (integrated from archived script)."""
+        try:
+            from ztb.analysis.comparative.sac_v424_backtester import SACv424Backtester
+
+            model_path = getattr(args, "model", None)
+            data_path = getattr(args, "data", None)
+            initial_capital = getattr(args, "capital", 200000.0)
+
+            if not model_path or not data_path:
+                logger.error("Model path and data path are required")
+                return 1
+
+            backtester = SACv424Backtester(model_path, initial_capital)
+            results = backtester.run_backtest(data_path)
+            backtester.print_results(results)
+            return 0
+        except Exception as e:
+            logger.error(f"SAC v424 backtest failed: {e}")
+            return 1
+
+    def run_versions(self, args: argparse.Namespace) -> int:
+        """Compare different model versions."""
+        try:
+            from ztb.analysis.comparative.compare_versions import VersionComparator
+
+            versions = getattr(args, "versions", [])
+            if not versions:
+                logger.error("Version list is required")
+                return 1
+
+            comparator = VersionComparator()
+            results = comparator.compare_versions(versions)
+            comparator.print_comparison(results)
+            return 0
+        except Exception as e:
+            logger.error(f"Version comparison failed: {e}")
+            return 1
+
+    def run_analyze_backtest(self, args: argparse.Namespace) -> int:
+        """Run comprehensive backtest analysis."""
+        try:
+            from ztb.analysis.comparative.analyze_backtest import BacktestAnalyzer
+
+            analyzer = BacktestAnalyzer(
+                results_path=getattr(args, "results", ""),
+                training_report_path=getattr(args, "training_report", None),
+            )
+
+            report = analyzer.generate_comprehensive_report()
+
+            # Save report to file if output path specified
+            if hasattr(args, "output") and args.output:
+                with open(args.output, "w", encoding="utf-8") as f:
+                    f.write(report)
+                logger.info(f"Report saved to {args.output}")
+            else:
+                # Print report to console
+                print(report)
+
+            logger.info("Backtest analysis completed")
+            return 0
+        except Exception as e:
+            logger.error(f"Backtest analysis failed: {e}")
+            return 1
+
+    def run_benchmark(self, args: argparse.Namespace) -> int:
+        """Run benchmark comparison analysis."""
+        logger.warning("Benchmark comparison analysis not implemented yet")
+        return 1
+
+    def run_model_comparison(self, args: argparse.Namespace) -> int:
+        """Run comprehensive model comparison analysis."""
+        try:
+            from ztb.analysis.comparative.model_comparator import ModelComparator
+
+            # Parse model results files from arguments
+            model_results_files = {}
+            if hasattr(args, "model_results") and args.model_results:
+                # Assume comma-separated list of "name:path" pairs
+                for item in args.model_results.split(","):
+                    if ":" in item:
+                        name, path = item.split(":", 1)
+                        model_results_files[name.strip()] = path.strip()
+
+            if len(model_results_files) < 2:
+                logger.error("Need at least 2 model results for comparison")
+                logger.info("Use --model_results 'model1:path1,model2:path2' format")
+                return 1
+
+            output_path = getattr(args, "output", None)
+
+            comparator = ModelComparator()
+            results = comparator.compare_models(
+                model_results_files=model_results_files,
+                output_path=output_path,
+            )
+
+            comparator.print_comparison_summary(results)
+            return 0
+        except Exception as e:
+            logger.error(f"Model comparison failed: {e}")
+            return 1
+
+
+class PaperTradingAnalysis(BaseAnalyzer):
+    """Paper trading analysis tools for model evaluation."""
+
+    def run_paper_trade(self, args: argparse.Namespace) -> int:
+        """Run comprehensive paper trading evaluation."""
+        try:
+            from ztb.analysis.evaluation.paper_trading_evaluator import (
+                PaperTradingEvaluator,
+            )
+
+            model_path = getattr(args, "model", None)
+            data_path = getattr(args, "data", None)
+            num_episodes = getattr(args, "episodes", 10)
+            output_path = getattr(args, "output", None)
+
+            if not model_path or not data_path:
+                logger.error("Model path and data path are required")
+                return 1
+
+            evaluator = PaperTradingEvaluator()
+            results = evaluator.evaluate_model(
+                model_path=model_path,
+                data_path=data_path,
+                num_episodes=num_episodes,
+                output_path=output_path,
+            )
+
+            evaluator.print_summary(results)
+            return 0
+        except Exception as e:
+            logger.error(f"Paper trading evaluation failed: {e}")
+            return 1
 
 
 class DiagnosticAnalysis(BaseAnalyzer):
@@ -882,12 +1077,24 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--data-a", help="First dataset")
     parser.add_argument("--data-b", help="Second dataset")
     parser.add_argument("--test", default="ttest", help="Statistical test type")
+    parser.add_argument(
+        "--model_results",
+        help="Model results files (format: 'name1:path1,name2:path2')",
+    )
+
+    # Paper trading analysis arguments
+    parser.add_argument(
+        "--episodes", type=int, default=10, help="Number of episodes for paper trading"
+    )
 
     # Specialized analysis arguments
     parser.add_argument("--features", nargs="+", help="Feature columns")
     parser.add_argument("--target", default="close", help="Target column")
     parser.add_argument("--method", default="correlation", help="Analysis method")
     parser.add_argument("--baseline", help="Baseline configuration")
+    parser.add_argument(
+        "--timesteps", type=int, help="Override total timesteps for analysis"
+    )
     parser.add_argument("--improved", help="Improved configuration")
     parser.add_argument("--measures", nargs="+", help="Risk measures")
     parser.add_argument("--results", help="Backtest results")

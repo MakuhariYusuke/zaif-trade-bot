@@ -64,7 +64,7 @@ class IchimokuTimeTheory(BaseFeature):
         cross_changes = (
             np.abs(np.diff(tk_cross, prepend=tk_cross[0])) / 2
         )  # 1 when cross occurs, 0 otherwise
-        cross_frequency = pd.Series(cross_changes).rolling(50).sum()
+        cross_frequency = pd.Series(cross_changes, index=df.index).rolling(50).sum()
 
         # 3. Time since last cross
         last_cross_idx = -1
