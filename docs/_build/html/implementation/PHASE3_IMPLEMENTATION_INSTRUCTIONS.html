@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Phase 3 実装レビュー &amp; 改善提案" href="PHASE3_REVIEW_AND_IMPROVEMENTS.html" />
-    <link rel="prev" title="Phase 3 最終レビュー &amp; 修正完了レポート" href="PHASE3_FINAL_REVIEW.html" />
+    <link rel="prev" title="Phase 3 最終レビュー &amp; 修正完了レポート" href="PHASE3_FINAL_REVIEW.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -148,7 +148,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="phase-3-environment-backtest-integration">
 <h1>Phase 3: Environment &amp; Backtest Integration - 実装指示書<a class="headerlink" href="#phase-3-environment-backtest-integration" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -166,7 +166,7 @@
 
 <span class="c1"># 実行</span>
 <span class="n">action</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
-<span class="c1"># ❌ エラー: ValueError: Unexpected observation shape (68,) for Box environment, </span>
+<span class="c1"># ❌ エラー: ValueError: Unexpected observation shape (68,) for Box environment,</span>
 <span class="c1">#            please use (110,) for the observation shape.</span>
 </pre></div>
 </div>
@@ -250,16 +250,16 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    モデルのスキーマ情報から環境を作成</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        model_name: モデル名（例: &quot;ppo_reward_v384_curated_60&quot;）</span>
 <span class="sd">        df: 市場データ</span>
 <span class="sd">        config: 環境設定（Noneの場合はデフォルト）</span>
 <span class="sd">        models_dir: モデルディレクトリ</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        HeavyTradingEnv: スキーマに基づいた環境</span>
-<span class="sd">        </span>
+
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: スキーマが見つからない場合</span>
 <span class="sd">        ValueError: データに必要な特徴量がない場合</span>
@@ -321,12 +321,12 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    モデルファイルパスから環境を作成</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        model_path: モデルファイルパス（例: &quot;models/ppo_reward_v384_curated_60.zip&quot;）</span>
 <span class="sd">        df: 市場データ</span>
 <span class="sd">        config: 環境設定</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        HeavyTradingEnv: スキーマに基づいた環境</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -456,12 +456,12 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    スキーマを考慮したバックテスト</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        model_path: モデルファイルパス</span>
 <span class="sd">        data_path: データファイルパス</span>
 <span class="sd">        episodes: エピソード数</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        バックテスト結果</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -980,9 +980,9 @@ ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
 <li><p>関連するログ</p></li>
 </ol>
 <hr class="docutils" />
-<p><strong>作成日</strong>: 2025-10-10<br />
-<strong>対象フェーズ</strong>: Phase 3 (Environment &amp; Backtest Integration)<br />
-<strong>前提</strong>: Phase 1-2完了（FeatureSchemaManager + UnifiedTrainer統合）<br />
+<p><strong>作成日</strong>: 2025-10-10
+<strong>対象フェーズ</strong>: Phase 3 (Environment &amp; Backtest Integration)
+<strong>前提</strong>: Phase 1-2完了（FeatureSchemaManager + UnifiedTrainer統合）
 <strong>目標</strong>: バックテスト時の次元不一致エラーを完全解消</p>
 </section>
 </section>
@@ -1004,7 +1004,7 @@ ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -1015,7 +1015,7 @@ ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

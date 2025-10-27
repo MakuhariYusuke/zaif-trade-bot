@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_dynamic_hyperparameter_adaptation</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Test Dynamic Hyperparameter Adaptation System</span>
@@ -95,25 +95,28 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.dynamic_hyperparameter_adapter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AdaptationResult</span><span class="p">,</span>
+    <span class="n">AdaptationStrategy</span><span class="p">,</span>
     <span class="n">DynamicHyperparameterAdapter</span><span class="p">,</span>
+    <span class="n">HyperparameterAdaptation</span><span class="p">,</span>
     <span class="n">HyperparameterConfig</span><span class="p">,</span>
     <span class="n">HyperparameterType</span><span class="p">,</span>
-    <span class="n">AdaptationStrategy</span><span class="p">,</span>
-    <span class="n">AdaptationResult</span><span class="p">,</span>
-    <span class="n">HyperparameterAdaptation</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.hyperparameter_adaptation_system</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">HyperparameterAdaptationSystem</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.market_aware_hyperparameter_manager</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">MarketAwareHyperparameterManager</span><span class="p">,</span>
     <span class="n">MarketAwareConfig</span><span class="p">,</span>
-    <span class="n">MarketCondition</span>
+    <span class="n">MarketAwareHyperparameterManager</span><span class="p">,</span>
+    <span class="n">MarketCondition</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.hyperparameter_adaptation_system</span><span class="w"> </span><span class="kn">import</span> <span class="n">HyperparameterAdaptationSystem</span>
 
 
 <div class="viewcode-block" id="TestDynamicHyperparameterAdapter">
@@ -133,9 +136,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">HyperparameterConfig</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span> <span class="o">=</span> <span class="n">DynamicHyperparameterAdapter</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
         <span class="p">)</span></div>
 
 
@@ -153,19 +154,18 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_evaluate_market_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件評価テスト&quot;&quot;&quot;</span>
         <span class="c1"># テストデータ作成</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1min&quot;</span><span class="p">)</span>
         <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-            <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
-            <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-        <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span>
+        <span class="p">)</span>
 
         <span class="n">conditions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_evaluate_market_conditions</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;trend_strength&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market_state&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;volatility&quot;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;trend_strength&quot;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;market_state&quot;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">conditions</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_performance_based_adaptation">
@@ -173,9 +173,9 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_performance_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスベース適応テスト&quot;&quot;&quot;</span>
         <span class="n">market_conditions</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
-            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
-            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">1.0</span>
+            <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+            <span class="s2">&quot;trend_strength&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s2">&quot;market_state&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="c1"># パフォーマンス履歴を追加</span>
@@ -200,9 +200,9 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ボラティリティベース適応テスト&quot;&quot;&quot;</span>
         <span class="c1"># 高ボラティリティ条件</span>
         <span class="n">high_vol_conditions</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
-            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
-            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">2.0</span>
+            <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s2">&quot;trend_strength&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s2">&quot;market_state&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="n">adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_volatility_based_adaptation</span><span class="p">(</span><span class="n">high_vol_conditions</span><span class="p">)</span>
@@ -215,9 +215,9 @@
 
         <span class="c1"># 低ボラティリティ条件</span>
         <span class="n">low_vol_conditions</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span>
-            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
-            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">0.0</span>
+            <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span>
+            <span class="s2">&quot;trend_strength&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s2">&quot;market_state&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="n">adaptations_low</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_volatility_based_adaptation</span><span class="p">(</span><span class="n">low_vol_conditions</span><span class="p">)</span>
@@ -237,7 +237,7 @@
                 <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
                 <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
                 <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">),</span>
             <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
                 <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
@@ -246,8 +246,8 @@
                 <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">,</span>
                 <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
                 <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
-            <span class="p">)</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="p">),</span>
         <span class="p">]</span>
 
         <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_combine_adaptations</span><span class="p">(</span><span class="n">adaptations</span><span class="p">)</span>
@@ -264,12 +264,14 @@
         <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
                 <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
-                <span class="n">old_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">],</span>
+                <span class="n">old_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span>
+                    <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span>
+                <span class="p">],</span>
                 <span class="n">new_value</span><span class="o">=</span><span class="mf">1.5e-3</span><span class="p">,</span>
                 <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
                 <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
                 <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">)</span>
         <span class="p">]</span>
 
@@ -277,8 +279,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">applied</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">],</span>
-            <span class="mf">1.5e-3</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">],</span> <span class="mf">1.5e-3</span>
         <span class="p">)</span></div>
 
 
@@ -294,7 +295,7 @@
             <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
             <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
             <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_is_adaptation_safe</span><span class="p">(</span><span class="n">safe_adaptation</span><span class="p">))</span>
@@ -307,7 +308,7 @@
             <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
             <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
             <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_is_adaptation_safe</span><span class="p">(</span><span class="n">unsafe_adaptation</span><span class="p">))</span></div>
@@ -342,14 +343,14 @@
 
         <span class="c1"># モックの設定</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">0.7</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span><span class="o">.</span><span class="n">detect_regime</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;regime&#39;</span><span class="p">:</span> <span class="s1">&#39;neutral&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span><span class="o">.</span><span class="n">detect_regime</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;regime&quot;</span><span class="p">:</span> <span class="s2">&quot;neutral&quot;</span><span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">MarketAwareConfig</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">manager</span> <span class="o">=</span> <span class="n">MarketAwareHyperparameterManager</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -367,12 +368,11 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_get_market_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件取得テスト&quot;&quot;&quot;</span>
         <span class="c1"># テストデータ作成</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1min&quot;</span><span class="p">)</span>
         <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-            <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
-            <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-        <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">50</span><span class="p">)},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span>
+        <span class="p">)</span>
 
         <span class="n">condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
 
@@ -389,9 +389,9 @@
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="n">volatility</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
             <span class="n">trend_strength</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
-            <span class="n">market_regime</span><span class="o">=</span><span class="s1">&#39;neutral&#39;</span><span class="p">,</span>
+            <span class="n">market_regime</span><span class="o">=</span><span class="s2">&quot;neutral&quot;</span><span class="p">,</span>
             <span class="n">volume_profile</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
-            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span>
+            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># 学習データを追加（実際の予測には必要）</span>
@@ -416,14 +416,16 @@
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="n">volatility</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>  <span class="c1"># 高ボラティリティ</span>
             <span class="n">trend_strength</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># 強いトレンド</span>
-            <span class="n">market_regime</span><span class="o">=</span><span class="s1">&#39;volatile&#39;</span><span class="p">,</span>
+            <span class="n">market_regime</span><span class="o">=</span><span class="s2">&quot;volatile&quot;</span><span class="p">,</span>
             <span class="n">volume_profile</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
-            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span>
+            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">predictions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 空の予測</span>
 
-        <span class="n">strategies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_select_adaptation_strategies</span><span class="p">(</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+        <span class="n">strategies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_select_adaptation_strategies</span><span class="p">(</span>
+            <span class="n">market_condition</span><span class="p">,</span> <span class="n">predictions</span>
+        <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">strategies</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">,</span> <span class="n">strategies</span><span class="p">)</span></div>
@@ -466,8 +468,8 @@
         <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_adaptation_statistics</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_adaptations&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market_conditions_count&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;total_adaptations&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;market_conditions_count&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span></div>
 </div>
 
 
@@ -488,14 +490,12 @@
 
         <span class="c1"># アダプター作成</span>
         <span class="n">adapter</span> <span class="o">=</span> <span class="n">DynamicHyperparameterAdapter</span><span class="p">(</span>
-            <span class="n">mock_online_learning</span><span class="p">,</span>
-            <span class="n">mock_evaluation_manager</span>
+            <span class="n">mock_online_learning</span><span class="p">,</span> <span class="n">mock_evaluation_manager</span>
         <span class="p">)</span>
 
         <span class="c1"># マネージャー作成</span>
         <span class="n">manager</span> <span class="o">=</span> <span class="n">MarketAwareHyperparameterManager</span><span class="p">(</span>
-            <span class="n">mock_online_learning</span><span class="p">,</span>
-            <span class="n">mock_evaluation_manager</span>
+            <span class="n">mock_online_learning</span><span class="p">,</span> <span class="n">mock_evaluation_manager</span>
         <span class="p">)</span>
 
         <span class="c1"># 適応実行</span>
@@ -529,8 +529,7 @@
 
         <span class="c1"># 適応システムの初期化</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="n">HyperparameterAdaptationSystem</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span>
         <span class="p">)</span></div>
 
 
@@ -539,19 +538,19 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_backtest_engine_with_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;適応機能付きバックテストエンジンテスト&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestEngine</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuyAndHoldAdapter</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestEngine</span>
 
             <span class="c1"># 適応機能付きエンジンの作成</span>
             <span class="n">engine</span> <span class="o">=</span> <span class="n">BacktestEngine</span><span class="p">(</span>
                 <span class="n">initial_capital</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">,</span>
                 <span class="n">enable_adaptation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">adaptation_config</span><span class="o">=</span><span class="p">{</span>
-                    <span class="s1">&#39;hyperparameter_config&#39;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s1">&#39;adaptation_interval_minutes&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-                        <span class="s1">&#39;safety_margin&#39;</span><span class="p">:</span> <span class="mf">0.1</span>
+                    <span class="s2">&quot;hyperparameter_config&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;adaptation_interval_minutes&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+                        <span class="s2">&quot;safety_margin&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
                     <span class="p">}</span>
-                <span class="p">}</span>
+                <span class="p">},</span>
             <span class="p">)</span>
 
             <span class="c1"># 適応システムが初期化されていることを確認</span>
@@ -565,7 +564,9 @@
             <span class="n">strategy</span> <span class="o">=</span> <span class="n">BuyAndHoldAdapter</span><span class="p">()</span>
 
             <span class="c1"># バックテスト実行</span>
-            <span class="n">equity_curve</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run_backtest</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="n">equity_curve</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run_backtest</span><span class="p">(</span>
+                <span class="n">strategy</span><span class="p">,</span> <span class="n">data</span>
+            <span class="p">)</span>
 
             <span class="c1"># 結果検証</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
@@ -573,8 +574,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptation_summary</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)))</span>
 
             <span class="k">if</span> <span class="n">adaptation_summary</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_adaptations&#39;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;final_hyperparameters&#39;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;total_adaptations&quot;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;final_hyperparameters&quot;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;Backtest components not available&quot;</span><span class="p">)</span></div>
@@ -595,10 +596,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">slow_period</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
 
             <span class="c1"># ハイパーパラメータ更新</span>
-            <span class="n">new_params</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;fast_period&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
-                <span class="s1">&#39;slow_period&#39;</span><span class="p">:</span> <span class="mi">30</span>
-            <span class="p">}</span>
+            <span class="n">new_params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fast_period&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="s2">&quot;slow_period&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">}</span>
             <span class="n">adapter</span><span class="o">.</span><span class="n">update_hyperparameters</span><span class="p">(</span><span class="n">new_params</span><span class="p">)</span>
 
             <span class="c1"># 更新後のパラメータ確認</span>
@@ -614,8 +612,12 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_adaptation_during_backtest_simulation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;バックテスト中の適応シミュレーションテスト&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestEngine</span><span class="p">,</span> <span class="n">MockOnlineLearningPipeline</span><span class="p">,</span> <span class="n">MockEvaluationManager</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuyAndHoldAdapter</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+                <span class="n">BacktestEngine</span><span class="p">,</span>
+                <span class="n">MockEvaluationManager</span><span class="p">,</span>
+                <span class="n">MockOnlineLearningPipeline</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="c1"># モックコンポーネント</span>
             <span class="n">mock_online</span> <span class="o">=</span> <span class="n">MockOnlineLearningPipeline</span><span class="p">()</span>
@@ -626,23 +628,26 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">initialize</span><span class="p">())</span>
 
             <span class="c1"># テスト市場データ作成</span>
-            <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">)</span>
+            <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
             <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">30000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-            <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-                <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.99</span><span class="p">,</span>
-                <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">1.01</span><span class="p">,</span>
-                <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.98</span><span class="p">,</span>
-                <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
-                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-            <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+            <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.99</span><span class="p">,</span>
+                    <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">1.01</span><span class="p">,</span>
+                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.98</span><span class="p">,</span>
+                    <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+                    <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+                <span class="p">},</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="c1"># 適応実行</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">adaptation_system</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
 
             <span class="c1"># 結果検証</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;adaptations&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;performance_improvement&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;adaptations&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;performance_improvement&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;Adaptation system components not available&quot;</span><span class="p">)</span></div>
@@ -650,7 +655,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
 </pre></div>
 
@@ -667,7 +672,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -678,7 +683,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

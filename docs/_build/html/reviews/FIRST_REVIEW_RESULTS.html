@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,10 +88,10 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>潜在的バグレビュー - 徹底調査<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
-<p><strong>日付:</strong> 2025年10月8日<br />
+<p><strong>日付:</strong> 2025年10月8日
 <strong>目的:</strong> 根本的なバグが複数見つかったため、さらなる潜在的バグを洗い出す</p>
 <hr class="docutils" />
 <section id="id2">
@@ -107,14 +105,14 @@
 <span class="n">action</span><span class="p">,</span> <span class="n">_states</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>深刻度:</strong> Critical<br />
+<p><strong>深刻度:</strong> Critical
 <strong>影響:</strong> MaskablePPOモデル使用時にaction_masksが渡されず、不正確な予測</p>
 <p><strong>問題2: debug_model_predictions.py (Line 68)</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ 問題: predict_with_masksを使用していない</span>
 <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>深刻度:</strong> Critical<br />
+<p><strong>深刻度:</strong> Critical
 <strong>影響:</strong> デバッグ時の動作確認が不正確</p>
 <p><strong>問題3: regime_evaluation.py (Line 148)</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ 問題: MaskablePPOをロードしているがaction_masksなし</span>
@@ -123,7 +121,7 @@
 <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>深刻度:</strong> Critical<br />
+<p><strong>深刻度:</strong> Critical
 <strong>影響:</strong> レジーム評価が完全に不正確</p>
 <p><strong>問題4: test_paper_trading.py (Line 167)</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ 問題: MaskablePPOをロードしているがaction_masksなし</span>
@@ -132,7 +130,7 @@
 <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs_reshaped</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>深刻度:</strong> Critical<br />
+<p><strong>深刻度:</strong> Critical
 <strong>影響:</strong> ペーパートレーディングテストが不正確</p>
 </section>
 </section>
@@ -156,7 +154,7 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># environment.py</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="o">...</span>
 
-<span class="c1"># position_manager.py  </span>
+<span class="c1"># position_manager.py</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="o">...</span>
 </pre></div>
 </div>
@@ -338,7 +336,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -349,7 +347,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

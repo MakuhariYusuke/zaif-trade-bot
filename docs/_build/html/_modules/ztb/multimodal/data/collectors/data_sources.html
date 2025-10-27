@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,23 +88,24 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.multimodal.data.collectors.data_sources</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">マルチモーダル学習 - データソース管理</span>
 <span class="sd">無料/公開データセットの調査と統合</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="FreeDataSourceManager">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.multimodal.data.collectors.html#ztb.multimodal.data.collectors.data_sources.FreeDataSourceManager">[docs]</a>
@@ -120,9 +121,9 @@
 
         <span class="c1"># APIレート制限管理</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rate_limits</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;fred&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;requests_per_minute&#39;</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span> <span class="s1">&#39;last_request&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
-            <span class="s1">&#39;newsapi&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;requests_per_minute&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;last_request&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
-            <span class="s1">&#39;alphavantage&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;requests_per_minute&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;last_request&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+            <span class="s2">&quot;fred&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;requests_per_minute&quot;</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span> <span class="s2">&quot;last_request&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
+            <span class="s2">&quot;newsapi&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;requests_per_minute&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;last_request&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
+            <span class="s2">&quot;alphavantage&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;requests_per_minute&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;last_request&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_rate_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -131,25 +132,27 @@
             <span class="k">return</span> <span class="kc">True</span>
 
         <span class="n">limit_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate_limits</span><span class="p">[</span><span class="n">source</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">limit_info</span><span class="p">[</span><span class="s1">&#39;last_request&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">limit_info</span><span class="p">[</span><span class="s2">&quot;last_request&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">True</span>
 
-        <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">limit_info</span><span class="p">[</span><span class="s1">&#39;last_request&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">seconds</span>
-        <span class="n">min_interval</span> <span class="o">=</span> <span class="mi">60</span> <span class="o">/</span> <span class="n">limit_info</span><span class="p">[</span><span class="s1">&#39;requests_per_minute&#39;</span><span class="p">]</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">limit_info</span><span class="p">[</span><span class="s2">&quot;last_request&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">seconds</span>
+        <span class="n">min_interval</span> <span class="o">=</span> <span class="mi">60</span> <span class="o">/</span> <span class="n">limit_info</span><span class="p">[</span><span class="s2">&quot;requests_per_minute&quot;</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">elapsed</span> <span class="o">&gt;=</span> <span class="n">min_interval</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_update_rate_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;レート制限更新&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate_limits</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">rate_limits</span><span class="p">[</span><span class="n">source</span><span class="p">][</span><span class="s1">&#39;last_request&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rate_limits</span><span class="p">[</span><span class="n">source</span><span class="p">][</span><span class="s2">&quot;last_request&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
 
 <div class="viewcode-block" id="FreeDataSourceManager.fetch_fred_economic_data">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.multimodal.data.collectors.html#ztb.multimodal.data.collectors.data_sources.FreeDataSourceManager.fetch_fred_economic_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_fred_economic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                <span class="n">series_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-                                <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span>
-                                <span class="n">end_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_fred_economic_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">series_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span>
+        <span class="n">end_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        FRED (Federal Reserve Economic Data) から経済指標を取得</span>
 <span class="sd">        完全に無料で利用可能</span>
@@ -166,19 +169,15 @@
         <span class="k">if</span> <span class="n">end_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">end_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s1">&#39;fred&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s2">&quot;fred&quot;</span><span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;FRED API rate limit exceeded, using cached data&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fred&#39;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fred&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
 
         <span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://fred.stlouisfed.org/graph/fredgraph.csv&quot;</span>
 
         <span class="n">all_data</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">series_id</span> <span class="ow">in</span> <span class="n">series_ids</span><span class="p">:</span>
-            <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">series_id</span><span class="p">,</span>
-                <span class="s1">&#39;cosd&#39;</span><span class="p">:</span> <span class="n">start_date</span><span class="p">,</span>
-                <span class="s1">&#39;coed&#39;</span><span class="p">:</span> <span class="n">end_date</span>
-            <span class="p">}</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">series_id</span><span class="p">,</span> <span class="s2">&quot;cosd&quot;</span><span class="p">:</span> <span class="n">start_date</span><span class="p">,</span> <span class="s2">&quot;coed&quot;</span><span class="p">:</span> <span class="n">end_date</span><span class="p">}</span>
 
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -186,12 +185,12 @@
 
                 <span class="c1"># CSVデータをDataFrameに変換</span>
                 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
-                <span class="n">df</span><span class="p">[</span><span class="s1">&#39;DATE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;DATE&#39;</span><span class="p">])</span>
-                <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;DATE&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">df</span><span class="p">[</span><span class="s2">&quot;DATE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;DATE&quot;</span><span class="p">])</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;DATE&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
                 <span class="n">all_data</span><span class="p">[</span><span class="n">series_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">series_id</span><span class="p">]</span>
 
-                <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s1">&#39;fred&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s2">&quot;fred&quot;</span><span class="p">)</span>
                 <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># 礼儀的な遅延</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -200,7 +199,7 @@
 
         <span class="k">if</span> <span class="n">all_data</span><span class="p">:</span>
             <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_data</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s1">&#39;fred&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result_df</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;fred&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result_df</span>
             <span class="k">return</span> <span class="n">result_df</span>
 
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span></div>
@@ -208,10 +207,12 @@
 
 <div class="viewcode-block" id="FreeDataSourceManager.fetch_newsapi_data">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.multimodal.data.collectors.html#ztb.multimodal.data.collectors.data_sources.FreeDataSourceManager.fetch_newsapi_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_newsapi_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                          <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cryptocurrency OR bitcoin OR ethereum&quot;</span><span class="p">,</span>
-                          <span class="n">language</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;en&quot;</span><span class="p">,</span>
-                          <span class="n">days_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_newsapi_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cryptocurrency OR bitcoin OR ethereum&quot;</span><span class="p">,</span>
+        <span class="n">language</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;en&quot;</span><span class="p">,</span>
+        <span class="n">days_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        NewsAPIからニュースデータを取得</span>
 <span class="sd">        無料枠：1日100リクエストまで</span>
@@ -231,9 +232,9 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;NewsAPI key not found, returning empty data&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">[]</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s1">&#39;newsapi&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s2">&quot;newsapi&quot;</span><span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;NewsAPI rate limit exceeded&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;newsapi&#39;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;newsapi&quot;</span><span class="p">,</span> <span class="p">[])</span>
 
         <span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://newsapi.org/v2/everything&quot;</span>
 
@@ -241,12 +242,12 @@
         <span class="n">start_date</span> <span class="o">=</span> <span class="n">end_date</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">days_back</span><span class="p">)</span>
 
         <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;q&#39;</span><span class="p">:</span> <span class="n">query</span><span class="p">,</span>
-            <span class="s1">&#39;from&#39;</span><span class="p">:</span> <span class="n">start_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">),</span>
-            <span class="s1">&#39;to&#39;</span><span class="p">:</span> <span class="n">end_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">),</span>
-            <span class="s1">&#39;language&#39;</span><span class="p">:</span> <span class="n">language</span><span class="p">,</span>
-            <span class="s1">&#39;sortBy&#39;</span><span class="p">:</span> <span class="s1">&#39;relevancy&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;apiKey&#39;</span><span class="p">:</span> <span class="n">api_key</span>
+            <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">,</span>
+            <span class="s2">&quot;from&quot;</span><span class="p">:</span> <span class="n">start_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;to&quot;</span><span class="p">:</span> <span class="n">end_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="n">language</span><span class="p">,</span>
+            <span class="s2">&quot;sortBy&quot;</span><span class="p">:</span> <span class="s2">&quot;relevancy&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;apiKey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -254,22 +255,24 @@
             <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 
             <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-            <span class="n">articles</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;articles&#39;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">articles</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;articles&quot;</span><span class="p">,</span> <span class="p">[])</span>
 
             <span class="c1"># 必要な情報のみ抽出</span>
             <span class="n">processed_articles</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">article</span> <span class="ow">in</span> <span class="n">articles</span><span class="p">:</span>
-                <span class="n">processed_articles</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                    <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
-                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
-                    <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
-                    <span class="s1">&#39;publishedAt&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;publishedAt&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
-                    <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
-                    <span class="s1">&#39;url&#39;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-                <span class="p">})</span>
+                <span class="n">processed_articles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;publishedAt&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;publishedAt&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">article</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;url&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s1">&#39;newsapi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processed_articles</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s1">&#39;newsapi&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;newsapi&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">processed_articles</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s2">&quot;newsapi&quot;</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="n">processed_articles</span>
 
@@ -280,10 +283,9 @@
 
 <div class="viewcode-block" id="FreeDataSourceManager.fetch_alpha_vantage_crypto">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.multimodal.data.collectors.html#ztb.multimodal.data.collectors.data_sources.FreeDataSourceManager.fetch_alpha_vantage_crypto">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_alpha_vantage_crypto</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                  <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;BTC&quot;</span><span class="p">,</span>
-                                  <span class="n">market</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span>
-                                  <span class="n">outputsize</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;compact&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fetch_alpha_vantage_crypto</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;BTC&quot;</span><span class="p">,</span> <span class="n">market</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;USD&quot;</span><span class="p">,</span> <span class="n">outputsize</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;compact&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Alpha Vantageから暗号通貨データを取得</span>
 <span class="sd">        無料枠：1日5リクエストまで</span>
@@ -302,18 +304,18 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Alpha Vantage key not found&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s1">&#39;alphavantage&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_rate_limit</span><span class="p">(</span><span class="s2">&quot;alphavantage&quot;</span><span class="p">):</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Alpha Vantage rate limit exceeded&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;alphavantage&#39;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;alphavantage&quot;</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">())</span>
 
         <span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://www.alphavantage.co/query&quot;</span>
 
         <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="s1">&#39;DIGITAL_CURRENCY_DAILY&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;symbol&#39;</span><span class="p">:</span> <span class="n">symbol</span><span class="p">,</span>
-            <span class="s1">&#39;market&#39;</span><span class="p">:</span> <span class="n">market</span><span class="p">,</span>
-            <span class="s1">&#39;apikey&#39;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span>
-            <span class="s1">&#39;outputsize&#39;</span><span class="p">:</span> <span class="n">outputsize</span>
+            <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="s2">&quot;DIGITAL_CURRENCY_DAILY&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">symbol</span><span class="p">,</span>
+            <span class="s2">&quot;market&quot;</span><span class="p">:</span> <span class="n">market</span><span class="p">,</span>
+            <span class="s2">&quot;apikey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span>
+            <span class="s2">&quot;outputsize&quot;</span><span class="p">:</span> <span class="n">outputsize</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -322,32 +324,32 @@
 
             <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
-            <span class="k">if</span> <span class="s1">&#39;Time Series (Digital Currency Daily)&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;Time Series (Digital Currency Daily)&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid response from Alpha Vantage: </span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
-            <span class="n">time_series</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;Time Series (Digital Currency Daily)&#39;</span><span class="p">]</span>
+            <span class="n">time_series</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;Time Series (Digital Currency Daily)&quot;</span><span class="p">]</span>
 
             <span class="c1"># データ整形</span>
             <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">date</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">time_series</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s1">&#39;date&#39;</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
-                    <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;1a. open (USD)&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;2a. high (USD)&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;3a. low (USD)&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;4a. close (USD)&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;5. volume&#39;</span><span class="p">])</span>
+                    <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
+                    <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;1a. open (USD)&quot;</span><span class="p">]),</span>
+                    <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;2a. high (USD)&quot;</span><span class="p">]),</span>
+                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;3a. low (USD)&quot;</span><span class="p">]),</span>
+                    <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;4a. close (USD)&quot;</span><span class="p">]),</span>
+                    <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="s2">&quot;5. volume&quot;</span><span class="p">]),</span>
                 <span class="p">}</span>
                 <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 
             <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
-            <span class="n">df</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;date&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;date&quot;</span><span class="p">])</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s1">&#39;alphavantage&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s1">&#39;alphavantage&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="s2">&quot;alphavantage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_rate_limit</span><span class="p">(</span><span class="s2">&quot;alphavantage&quot;</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="n">df</span>
 
@@ -378,29 +380,27 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="c1"># 主要経済指標</span>
-            <span class="s1">&#39;GDP&#39;</span><span class="p">:</span> <span class="s1">&#39;Gross Domestic Product&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;UNRATE&#39;</span><span class="p">:</span> <span class="s1">&#39;Unemployment Rate&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;FEDFUNDS&#39;</span><span class="p">:</span> <span class="s1">&#39;Federal Funds Rate&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;CPIAUCSL&#39;</span><span class="p">:</span> <span class="s1">&#39;Consumer Price Index&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DEXUSEU&#39;</span><span class="p">:</span> <span class="s1">&#39;USD/EUR Exchange Rate&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DEXJPUS&#39;</span><span class="p">:</span> <span class="s1">&#39;USD/JPY Exchange Rate&#39;</span><span class="p">,</span>
-
+            <span class="s2">&quot;GDP&quot;</span><span class="p">:</span> <span class="s2">&quot;Gross Domestic Product&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;UNRATE&quot;</span><span class="p">:</span> <span class="s2">&quot;Unemployment Rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;FEDFUNDS&quot;</span><span class="p">:</span> <span class="s2">&quot;Federal Funds Rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;CPIAUCSL&quot;</span><span class="p">:</span> <span class="s2">&quot;Consumer Price Index&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DEXUSEU&quot;</span><span class="p">:</span> <span class="s2">&quot;USD/EUR Exchange Rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DEXJPUS&quot;</span><span class="p">:</span> <span class="s2">&quot;USD/JPY Exchange Rate&quot;</span><span class="p">,</span>
             <span class="c1"># 株式市場指標</span>
-            <span class="s1">&#39;SP500&#39;</span><span class="p">:</span> <span class="s1">&#39;S&amp;P 500 Index&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;NASDAQCOM&#39;</span><span class="p">:</span> <span class="s1">&#39;NASDAQ Composite&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DJIA&#39;</span><span class="p">:</span> <span class="s1">&#39;Dow Jones Industrial Average&#39;</span><span class="p">,</span>
-
+            <span class="s2">&quot;SP500&quot;</span><span class="p">:</span> <span class="s2">&quot;S&amp;P 500 Index&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;NASDAQCOM&quot;</span><span class="p">:</span> <span class="s2">&quot;NASDAQ Composite&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DJIA&quot;</span><span class="p">:</span> <span class="s2">&quot;Dow Jones Industrial Average&quot;</span><span class="p">,</span>
             <span class="c1"># 債券市場</span>
-            <span class="s1">&#39;DGS10&#39;</span><span class="p">:</span> <span class="s1">&#39;10-Year Treasury Rate&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DGS2&#39;</span><span class="p">:</span> <span class="s1">&#39;2-Year Treasury Rate&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;T10Y2Y&#39;</span><span class="p">:</span> <span class="s1">&#39;10-Year Minus 2-Year Treasury Spread&#39;</span><span class="p">,</span>
-
+            <span class="s2">&quot;DGS10&quot;</span><span class="p">:</span> <span class="s2">&quot;10-Year Treasury Rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DGS2&quot;</span><span class="p">:</span> <span class="s2">&quot;2-Year Treasury Rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;T10Y2Y&quot;</span><span class="p">:</span> <span class="s2">&quot;10-Year Minus 2-Year Treasury Spread&quot;</span><span class="p">,</span>
             <span class="c1"># 商品価格</span>
-            <span class="s1">&#39;DCOILWTICO&#39;</span><span class="p">:</span> <span class="s1">&#39;WTI Crude Oil Price&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;GOLDAMGBD228NLBM&#39;</span><span class="p">:</span> <span class="s1">&#39;Gold Fixing Price&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;DHHNGSP&#39;</span><span class="p">:</span> <span class="s1">&#39;Henry Hub Natural Gas Spot Price&#39;</span>
+            <span class="s2">&quot;DCOILWTICO&quot;</span><span class="p">:</span> <span class="s2">&quot;WTI Crude Oil Price&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;GOLDAMGBD228NLBM&quot;</span><span class="p">:</span> <span class="s2">&quot;Gold Fixing Price&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DHHNGSP&quot;</span><span class="p">:</span> <span class="s2">&quot;Henry Hub Natural Gas Spot Price&quot;</span><span class="p">,</span>
         <span class="p">}</span></div>
 </div>
+
 
 
 <div class="viewcode-block" id="PublicDatasetLoader">
@@ -426,15 +426,15 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># サンプルデータ生成（実際には公開データセットを使用）</span>
         <span class="n">sample_data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="s2">&quot;Company reports strong quarterly earnings&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;Market shows signs of recovery&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;Economic indicators point to slowdown&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;Stock prices surge on positive news&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;Investors remain cautious amid uncertainty&quot;</span>
+                <span class="s2">&quot;Investors remain cautious amid uncertainty&quot;</span><span class="p">,</span>
             <span class="p">],</span>
-            <span class="s1">&#39;sentiment&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;positive&#39;</span><span class="p">,</span> <span class="s1">&#39;positive&#39;</span><span class="p">,</span> <span class="s1">&#39;negative&#39;</span><span class="p">,</span> <span class="s1">&#39;positive&#39;</span><span class="p">,</span> <span class="s1">&#39;neutral&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;date&#39;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2025-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">)</span>
+            <span class="s2">&quot;sentiment&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;positive&quot;</span><span class="p">,</span> <span class="s2">&quot;positive&quot;</span><span class="p">,</span> <span class="s2">&quot;negative&quot;</span><span class="p">,</span> <span class="s2">&quot;positive&quot;</span><span class="p">,</span> <span class="s2">&quot;neutral&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2025-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
         <span class="p">}</span>
 
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
@@ -451,19 +451,20 @@
 <span class="sd">            経済指標データフレーム</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># FREDなどの公開データを模擬</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2020-01-01&#39;</span><span class="p">,</span> <span class="s1">&#39;2025-01-01&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-01-01&quot;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;M&quot;</span><span class="p">)</span>
 
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;GDP_growth&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
-            <span class="s1">&#39;unemployment_rate&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
-            <span class="s1">&#39;inflation_rate&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
-            <span class="s1">&#39;interest_rate&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">))</span>
+            <span class="s2">&quot;GDP_growth&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
+            <span class="s2">&quot;unemployment_rate&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
+            <span class="s2">&quot;inflation_rate&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
+            <span class="s2">&quot;interest_rate&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)),</span>
         <span class="p">}</span>
 
         <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">df</span></div>
 </div>
+
 
 
 <span class="c1"># 使用例</span>
@@ -492,34 +493,36 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">サンプル経済指標データ: </span><span class="si">{</span><span class="n">economic_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">economic_data</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">    📋 無料データソース利用ガイド:</span>
+    <span class="nb">print</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    📋 無料データソース利用ガイド:</span>
 
-<span class="s2">    1. FRED (Federal Reserve Economic Data)</span>
-<span class="s2">       - URL: https://fred.stlouisfed.org/</span>
-<span class="s2">       - 利用: 完全に無料、レート制限なし</span>
-<span class="s2">       - データ: 経済指標、為替、商品価格など</span>
+<span class="sd">    1. FRED (Federal Reserve Economic Data)</span>
+<span class="sd">       - URL: https://fred.stlouisfed.org/</span>
+<span class="sd">       - 利用: 完全に無料、レート制限なし</span>
+<span class="sd">       - データ: 経済指標、為替、商品価格など</span>
 
-<span class="s2">    2. NewsAPI</span>
-<span class="s2">       - URL: https://newsapi.org/</span>
-<span class="s2">       - 利用: 無料枠（1日100リクエスト）</span>
-<span class="s2">       - データ: ニュース記事、リアルタイム</span>
+<span class="sd">    2. NewsAPI</span>
+<span class="sd">       - URL: https://newsapi.org/</span>
+<span class="sd">       - 利用: 無料枠（1日100リクエスト）</span>
+<span class="sd">       - データ: ニュース記事、リアルタイム</span>
 
-<span class="s2">    3. Alpha Vantage</span>
-<span class="s2">       - URL: https://www.alphavantage.co/</span>
-<span class="s2">       - 利用: 無料枠（1日5リクエスト）</span>
-<span class="s2">       - データ: 株価、暗号通貨、経済指標</span>
+<span class="sd">    3. Alpha Vantage</span>
+<span class="sd">       - URL: https://www.alphavantage.co/</span>
+<span class="sd">       - 利用: 無料枠（1日5リクエスト）</span>
+<span class="sd">       - データ: 株価、暗号通貨、経済指標</span>
 
-<span class="s2">    4. 公開データセット</span>
-<span class="s2">       - Kaggle: 金融ニュースデータセット</span>
-<span class="s2">       - UCI Machine Learning Repository</span>
-<span class="s2">       - 政府機関（日本の場合: 総務省統計局、東証など）</span>
+<span class="sd">    4. 公開データセット</span>
+<span class="sd">       - Kaggle: 金融ニュースデータセット</span>
+<span class="sd">       - UCI Machine Learning Repository</span>
+<span class="sd">       - 政府機関（日本の場合: 総務省統計局、東証など）</span>
 
-<span class="s2">    注意事項:</span>
-<span class="s2">    - APIキーは無料で取得可能</span>
-<span class="s2">    - レート制限を遵守すること</span>
-<span class="s2">    - 商用利用の場合は有料プランを検討</span>
-<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+<span class="sd">    注意事項:</span>
+<span class="sd">    - APIキーは無料で取得可能</span>
+<span class="sd">    - レート制限を遵守すること</span>
+<span class="sd">    - 商用利用の場合は有料プランを検討</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">)</span>
 </pre></div>
 
            </div>
@@ -535,7 +538,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -546,7 +549,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

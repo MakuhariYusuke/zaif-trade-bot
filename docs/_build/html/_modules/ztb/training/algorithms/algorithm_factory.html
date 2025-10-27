@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.algorithms.algorithm_factory</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">アルゴリズムのファクトリークラス。</span>
@@ -97,18 +97,19 @@
 
 <span class="sd">Example:</span>
 <span class="sd">    &gt;&gt;&gt; from ztb.training.algorithms import AlgorithmFactory</span>
-<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; # 利用可能なアルゴリズムを確認</span>
 <span class="sd">    &gt;&gt;&gt; print(AlgorithmFactory.list_algorithms())</span>
 <span class="sd">    [&#39;ppo&#39;, &#39;sac&#39;]</span>
-<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt;</span>
 <span class="sd">    &gt;&gt;&gt; # PPOアルゴリズムを作成</span>
 <span class="sd">    &gt;&gt;&gt; ppo = AlgorithmFactory.create(&quot;ppo&quot;)</span>
 <span class="sd">    &gt;&gt;&gt; print(ppo.algorithm_name)</span>
 <span class="sd">    &#39;ppo&#39;</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">.base_algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseRLAlgorithm</span>
 
 
@@ -117,7 +118,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">AlgorithmFactory</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    アルゴリズムのファクトリークラス。</span>
-<span class="sd">    </span>
+
 <span class="sd">    Registry Patternを使用して、アルゴリズムを動的に登録・生成する。</span>
 <span class="sd">    新しいアルゴリズムを追加する場合は、register()で登録するだけでよい。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -127,17 +128,19 @@
 <div class="viewcode-block" id="AlgorithmFactory.register">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.register">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">algorithm_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">BaseRLAlgorithm</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">algorithm_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">BaseRLAlgorithm</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムを登録する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名（例: &quot;ppo&quot;, &quot;sac&quot;）</span>
 <span class="sd">            algorithm_class: アルゴリズムクラス（BaseRLAlgorithmのサブクラス）</span>
-<span class="sd">            </span>
+
 <span class="sd">        Raises:</span>
 <span class="sd">            TypeError: algorithm_classがBaseRLAlgorithmのサブクラスでない場合</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; from .ppo import PPOAlgorithm</span>
 <span class="sd">            &gt;&gt;&gt; AlgorithmFactory.register(&quot;ppo&quot;, PPOAlgorithm)</span>
@@ -157,17 +160,17 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseRLAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムのインスタンスを作成する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名（大文字小文字を区別しない）</span>
 <span class="sd">            **kwargs: アルゴリズムのコンストラクタ引数</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            アルゴリズムインスタンス</span>
-<span class="sd">            </span>
+
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: 未登録のアルゴリズム名が指定された場合</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; algorithm = AlgorithmFactory.create(&quot;ppo&quot;)</span>
 <span class="sd">            &gt;&gt;&gt; model = algorithm.create_model(env, config)</span>
@@ -191,10 +194,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">list_algorithms</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        利用可能なアルゴリズムのリストを取得。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            登録されているアルゴリズム名のリスト（アルファベット順）</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; AlgorithmFactory.list_algorithms()</span>
 <span class="sd">            [&#39;ppo&#39;, &#39;sac&#39;, &#39;td3&#39;]</span>
@@ -208,13 +211,13 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">is_registered</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムが登録されているか確認。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            登録されていればTrue</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; AlgorithmFactory.is_registered(&quot;ppo&quot;)</span>
 <span class="sd">            True</span>
@@ -230,13 +233,13 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">unregister</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムの登録を解除（主にテスト用）。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            解除に成功したらTrue、未登録ならFalse</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; AlgorithmFactory.unregister(&quot;ppo&quot;)</span>
 <span class="sd">            True</span>
@@ -255,10 +258,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_info</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        登録済みアルゴリズムの情報を取得。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            アルゴリズム情報の辞書</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; info = AlgorithmFactory.get_info()</span>
 <span class="sd">            &gt;&gt;&gt; print(info[&quot;count&quot;])</span>
@@ -270,9 +273,8 @@
             <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="p">),</span>
             <span class="s2">&quot;algorithms&quot;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">list_algorithms</span><span class="p">(),</span>
             <span class="s2">&quot;registry&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="n">name</span><span class="p">:</span> <span class="n">cls_type</span><span class="o">.</span><span class="vm">__name__</span>
-                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cls_type</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-            <span class="p">}</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">cls_type</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cls_type</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">},</span>
         <span class="p">}</span></div>
 </div>
 
@@ -291,7 +293,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -302,7 +304,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,16 +88,16 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>第8回レビュー対応完了報告 - 最終版<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
-<p><strong>日付:</strong> 2025年10月8日<br />
-<strong>対応者:</strong> GitHub Copilot<br />
+<p><strong>日付:</strong> 2025年10月8日
+<strong>対応者:</strong> GitHub Copilot
 <strong>レビュー実施者:</strong> Copilot + Codex (Grok Code Fast) - デュアルレビュー</p>
 <hr class="docutils" />
 <section id="executive-summary">
 <h2>📊 Executive Summary<a class="headerlink" href="#executive-summary" title="Link to this heading"></a></h2>
-<p>第8回デュアルレビューで発見された<strong>計5個のバグ</strong>に対応完了。<br />
+<p>第8回デュアルレビューで発見された<strong>計5個のバグ</strong>に対応完了。
 <strong>修正完了: 4個 (80%)</strong> | <strong>技術的負債: 1個 (20%)</strong></p>
 <section id="id2">
 <h3>修正成果<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
@@ -153,7 +151,7 @@
 <h2>🔧 Bug #37: テストfixtureのmin_holding_period設定欠如 ✅ FIXED<a class="headerlink" href="#bug-37-fixturemin-holding-period-fixed" title="Link to this heading"></a></h2>
 <section id="id3">
 <h3>問題の本質<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
-<p><strong>レビュアー報告（誤り）:</strong> 「<code class="docutils literal notranslate"><span class="pre">EnvironmentConfig</span></code>に<code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>フィールドが欠如」<br />
+<p><strong>レビュアー報告（誤り）:</strong> 「<code class="docutils literal notranslate"><span class="pre">EnvironmentConfig</span></code>に<code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>フィールドが欠如」
 <strong>実際の問題:</strong> <code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>は既存（<code class="docutils literal notranslate"><span class="pre">config.py:111</span></code>）。真の原因は**<code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code>のデフォルト値3がテスト実行を妨害**。</p>
 </section>
 <section id="id4">
@@ -211,7 +209,7 @@
 <h2>🔧 Bug #41: ショート決済BUYが確率で拒否される ✅ FIXED<a class="headerlink" href="#bug-41-buy-fixed" title="Link to this heading"></a></h2>
 <section id="id7">
 <h3>問題詳細<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
-<p><strong>発見者:</strong> Codex (Grok Code Fast)<br />
+<p><strong>発見者:</strong> Codex (Grok Code Fast)
 <strong>深刻度:</strong> HIGH</p>
 <p><code class="docutils literal notranslate"><span class="pre">_should_trade_sell_bias()</span></code> がBUYアクションに常に確率フィルタを適用。</p>
 <p><strong>問題のコード:</strong></p>
@@ -623,8 +621,8 @@
 <li><p><strong>累計修正率:</strong> 90% (37/41)</p></li>
 </ul>
 <hr class="docutils" />
-<p><strong>修正完了日時:</strong> 2025年10月8日<br />
-<strong>次のマイルストーン:</strong> 第9回外部レビュー実施<br />
+<p><strong>修正完了日時:</strong> 2025年10月8日
+<strong>次のマイルストーン:</strong> 第9回外部レビュー実施
 <strong>本番デプロイ状態:</strong> ✅ <strong>READY</strong>（ブロッカーなし）</p>
 </section>
 </section>
@@ -654,7 +652,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -665,7 +663,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

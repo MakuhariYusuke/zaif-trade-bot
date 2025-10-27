@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,12 +87,12 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.live_trader.trading_loop</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Trading loop implementation for live trading.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -110,7 +110,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">TradingLoop</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles the main trading loop execution for live trading.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">live_trader</span><span class="p">:</span> <span class="s1">&#39;LiveTrader&#39;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">live_trader</span><span class="p">:</span> <span class="s2">&quot;LiveTrader&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize trading loop with reference to live trader.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span> <span class="o">=</span> <span class="n">live_trader</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -139,18 +139,28 @@
                     <span class="c1"># Get current price</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_get_current_price</span><span class="p">()</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📈 Price update #</span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;📈 Price update #</span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
                     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get current price: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                             <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_last_valid_price</span>
-                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using last valid price: ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Using last valid price: ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
                         <span class="k">else</span><span class="p">:</span>
                             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No valid price available, skipping iteration&quot;</span><span class="p">)</span>
                             <span class="n">consecutive_errors</span> <span class="o">+=</span> <span class="mi">1</span>
                             <span class="k">if</span> <span class="n">consecutive_errors</span> <span class="o">&gt;=</span> <span class="n">max_consecutive_errors</span><span class="p">:</span>
-                                <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping trading loop&quot;</span><span class="p">)</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="s2">&quot;🚨 CRITICAL: Trading Stopped&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">). Manual intervention required.&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping trading loop&quot;</span>
+                                <span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                                    <span class="s2">&quot;🚨 CRITICAL: Trading Stopped&quot;</span><span class="p">,</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">). Manual intervention required.&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                                <span class="p">)</span>
                                 <span class="k">break</span>
                             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
                             <span class="k">continue</span>
@@ -180,7 +190,9 @@
                     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Predicting action...&quot;</span><span class="p">)</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="n">action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_predict_action</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-                        <span class="n">action_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">ACTION_NAMES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;UNKNOWN(</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                        <span class="n">action_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">ACTION_NAMES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                            <span class="n">action</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;UNKNOWN(</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">)&quot;</span>
+                        <span class="p">)</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Predicted action: </span><span class="si">{</span><span class="n">action_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to predict action: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -189,7 +201,9 @@
 
                     <span class="c1"># Validate position before executing action</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">):</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid position detected: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span><span class="si">}</span><span class="s2">, resetting to 0&quot;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Invalid position detected: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span><span class="si">}</span><span class="s2">, resetting to 0&quot;</span>
+                        <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
 
                     <span class="c1"># Execute action</span>
@@ -207,7 +221,7 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
                             <span class="sa">f</span><span class="s2">&quot;📊 Trading Update #</span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                             <span class="sa">f</span><span class="s2">&quot;Price: ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="se">\n</span><span class="s2">Action: </span><span class="si">{</span><span class="n">action_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">PnL: ¥</span><span class="si">{</span><span class="n">pnl</span><span class="si">:</span><span class="s2">,.2f</span><span class="si">}</span><span class="se">\n</span><span class="s2">Position: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> BTC&quot;</span><span class="p">,</span>
-                            <span class="s2">&quot;info&quot;</span> <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span> <span class="k">else</span> <span class="s2">&quot;success&quot;</span>
+                            <span class="s2">&quot;info&quot;</span> <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span> <span class="k">else</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Notification sent for iteration&quot;</span><span class="p">)</span>
 
@@ -218,17 +232,30 @@
                         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to perform periodic cleanup: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Critical error in trading loop iteration </span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;❌ Critical error in trading loop iteration </span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
                     <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
                     <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Traceback: </span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Traceback: </span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="n">consecutive_errors</span> <span class="o">+=</span> <span class="mi">1</span>
 
-                    <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="s2">&quot;⚠️ Trading Error&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Critical error in iteration </span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                        <span class="s2">&quot;⚠️ Trading Error&quot;</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;Critical error in iteration </span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
 
                     <span class="k">if</span> <span class="n">consecutive_errors</span> <span class="o">&gt;=</span> <span class="n">max_consecutive_errors</span><span class="p">:</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping trading loop&quot;</span><span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="s2">&quot;🚨 CRITICAL: Trading Stopped&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">). Manual intervention required.&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping trading loop&quot;</span>
+                        <span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                            <span class="s2">&quot;🚨 CRITICAL: Trading Stopped&quot;</span><span class="p">,</span>
+                            <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">). Manual intervention required.&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
                         <span class="k">break</span>
 
             <span class="c1"># Wait before next iteration (1 minute in live mode, 1 second in dry-run)</span>
@@ -246,7 +273,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
             <span class="s2">&quot;🏁 Trading Session Complete&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;Duration: </span><span class="si">{</span><span class="n">duration_hours</span><span class="si">}</span><span class="s2"> hours</span><span class="se">\n</span><span class="s2">Total PnL: ¥</span><span class="si">{</span><span class="n">total_pnl</span><span class="si">:</span><span class="s2">,.2f</span><span class="si">}</span><span class="se">\n</span><span class="s2">Trades: </span><span class="si">{</span><span class="n">trades_count</span><span class="si">}</span><span class="se">\n</span><span class="s2">Final Position: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> BTC&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;success&quot;</span>
+            <span class="s2">&quot;success&quot;</span><span class="p">,</span>
         <span class="p">)</span></div>
 </div>
 
@@ -265,7 +292,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -276,7 +303,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ztb.training.binary_search package" href="ztb.training.binary_search.html" />
-    <link rel="prev" title="ztb.training.algorithms.ppo package" href="ztb.training.algorithms.ppo.html" />
+    <link rel="prev" title="ztb.training.algorithms.ppo package" href="ztb.training.algorithms.ppo.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -57,7 +57,7 @@
 <li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb-sac-v427-market-adaptive-system-module">ztb.sac_v427_market_adaptive_system module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
 </ul>
 </li>
@@ -109,7 +109,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section id="ztb-training-algorithms-sac-package">
 <h1>ztb.training.algorithms.sac package<a class="headerlink" href="#ztb-training-algorithms-sac-package" title="Link to this heading"></a></h1>
 <section id="submodules">
@@ -130,6 +130,34 @@
 <li><p>Haarnoja et al., 2018: “Soft Actor-Critic: Off-Policy Maximum Entropy Deep RL”</p></li>
 <li><p>Haarnoja et al., 2019: “Soft Actor-Critic Algorithms and Applications”</p></li>
 </ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.sac_algorithm.</span></span><span class="sig-name descname"><span class="pre">SACLikeModelProtocol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACLikeModelProtocol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a></p>
+<p>Minimal protocol describing the parts of a SAC-like model used by the code.</p>
+<p>Keep this narrow to avoid importing stable-baselines3 types at import time in tests.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterministic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACLikeModelProtocol.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.predict" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACLikeModelProtocol.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.save" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.load">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol" title="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol"><span class="pre">SACLikeModelProtocol</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACLikeModelProtocol.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.load" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.learn">
+<span class="sig-name descname"><span class="pre">learn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total_timesteps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACLikeModelProtocol.learn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACLikeModelProtocol.learn" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.sac_algorithm.</span></span><span class="sig-name descname"><span class="pre">SACAlgorithm</span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm" title="Link to this definition"></a></dt>
@@ -670,7 +698,7 @@ AlgorithmFactoryから使用可能。</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -681,7 +709,7 @@ AlgorithmFactoryから使用可能。</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

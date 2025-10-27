@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,34 +88,84 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.volume.mfi</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">MFI (Money Flow Index) implementation.</span>
-<span class="sd">MFIの実装</span>
+<span class="sd">MFI (Money Flow Index) feature implementation.</span>
+<span class="sd">MFI is a momentum indicator that uses both price and volume to measure buying and selling pressure.</span>
+
+<span class="sd">Output columns:</span>
+<span class="sd">  - mfi: MFI value (0 to 100)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.talib_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaLibWrapper</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseFeature</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
 
 
 <div class="viewcode-block" id="compute_mfi">
 <a class="viewcode-back" href="../../../../api/generated/ztb.features.volume.html#ztb.features.volume.mfi.compute_mfi">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;MFI&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_mfi</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute MFI (Money Flow Index) using Ta-Lib wrapper&quot;&quot;&quot;</span>
-    <span class="n">high</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span>
-    <span class="n">low</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span>
-    <span class="n">close</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
-    <span class="n">volume</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_mfi</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;MFI (Money Flow Index)&quot;&quot;&quot;</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">MFI</span><span class="p">()</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result_df</span><span class="p">[</span><span class="s2">&quot;mfi&quot;</span><span class="p">]</span></div>
 
-    <span class="n">result</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">mfi</span><span class="p">(</span>
-        <span class="n">high</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">low</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">close</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">volume</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">period</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MFI">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volume.html#ztb.features.volume.mfi.MFI">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MFI</span><span class="p">(</span><span class="n">BaseFeature</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Money Flow Index (MFI).</span>
+<span class="sd">    Uses both price and volume to measure buying and selling pressure.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;MFI&quot;</span><span class="p">,</span> <span class="n">deps</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="n">period</span>
+
+<div class="viewcode-block" id="MFI.compute">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volume.html#ztb.features.volume.mfi.MFI.compute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        df columns must include: [&#39;high&#39;, &#39;low&#39;, &#39;close&#39;, &#39;volume&#39;].</span>
+<span class="sd">        Returns a DataFrame with MFI values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">period</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;period&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="c1"># Calculate Typical Price</span>
+        <span class="n">typical_price</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">3</span>
+
+        <span class="c1"># Calculate Raw Money Flow</span>
+        <span class="n">money_flow</span> <span class="o">=</span> <span class="n">typical_price</span> <span class="o">*</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Calculate Money Flow Direction</span>
+        <span class="n">price_change</span> <span class="o">=</span> <span class="n">typical_price</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">positive_flow</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">negative_flow</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="n">positive_mask</span> <span class="o">=</span> <span class="n">price_change</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">negative_mask</span> <span class="o">=</span> <span class="n">price_change</span> <span class="o">&lt;</span> <span class="mi">0</span>
+
+        <span class="n">positive_flow</span><span class="p">[</span><span class="n">positive_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">money_flow</span><span class="p">[</span><span class="n">positive_mask</span><span class="p">]</span>
+        <span class="n">negative_flow</span><span class="p">[</span><span class="n">negative_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">money_flow</span><span class="p">[</span><span class="n">negative_mask</span><span class="p">]</span>
+
+        <span class="c1"># Calculate Money Flow Ratio</span>
+        <span class="n">positive_mf_sum</span> <span class="o">=</span> <span class="n">positive_flow</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">negative_mf_sum</span> <span class="o">=</span> <span class="n">negative_flow</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="n">money_flow_ratio</span> <span class="o">=</span> <span class="n">positive_mf_sum</span> <span class="o">/</span> <span class="n">negative_mf_sum</span>
+
+        <span class="c1"># Calculate MFI</span>
+        <span class="n">mfi</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">money_flow_ratio</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;mfi&quot;</span><span class="p">:</span> <span class="n">mfi</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+</div>
 
 </pre></div>
 
@@ -132,7 +182,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -143,7 +193,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

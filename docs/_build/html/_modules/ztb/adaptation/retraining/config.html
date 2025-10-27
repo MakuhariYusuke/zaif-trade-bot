@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,15 +87,16 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.retraining.config</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Configuration management for Automatic Retraining Triggers</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TriggerType</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="p">,</span> <span class="n">TriggerCondition</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TriggerCondition</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="p">,</span> <span class="n">TriggerType</span>
 
 
 <div class="viewcode-block" id="RetrainingConfig">
@@ -123,24 +124,30 @@
     <span class="n">distribution_drift_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
 
     <span class="c1"># 時間ベース設定</span>
-    <span class="n">time_based_schedules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
-        <span class="p">{</span><span class="s2">&quot;interval_hours&quot;</span><span class="p">:</span> <span class="mi">24</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Daily retraining&quot;</span><span class="p">},</span>
-        <span class="p">{</span><span class="s2">&quot;interval_hours&quot;</span><span class="p">:</span> <span class="mi">168</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Weekly retraining&quot;</span><span class="p">}</span>
-    <span class="p">])</span>
+    <span class="n">time_based_schedules</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;interval_hours&quot;</span><span class="p">:</span> <span class="mi">24</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Daily retraining&quot;</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;interval_hours&quot;</span><span class="p">:</span> <span class="mi">168</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Weekly retraining&quot;</span><span class="p">},</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
 
     <span class="c1"># 出来高ベース設定</span>
-    <span class="n">volume_based_thresholds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;min_new_samples&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
-        <span class="s2">&quot;max_samples_without_retraining&quot;</span><span class="p">:</span> <span class="mi">10000</span>
-    <span class="p">})</span>
+    <span class="n">volume_based_thresholds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;min_new_samples&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+            <span class="s2">&quot;max_samples_without_retraining&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># リソース管理設定</span>
-    <span class="n">resource_limits</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;max_cpu_percent&quot;</span><span class="p">:</span> <span class="mf">80.0</span><span class="p">,</span>
-        <span class="s2">&quot;max_memory_mb&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
-        <span class="s2">&quot;max_gpu_memory_mb&quot;</span><span class="p">:</span> <span class="mi">8192</span><span class="p">,</span>
-        <span class="s2">&quot;max_concurrent_jobs&quot;</span><span class="p">:</span> <span class="mi">1</span>
-    <span class="p">})</span>
+    <span class="n">resource_limits</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;max_cpu_percent&quot;</span><span class="p">:</span> <span class="mf">80.0</span><span class="p">,</span>
+            <span class="s2">&quot;max_memory_mb&quot;</span><span class="p">:</span> <span class="mi">4096</span><span class="p">,</span>
+            <span class="s2">&quot;max_gpu_memory_mb&quot;</span><span class="p">:</span> <span class="mi">8192</span><span class="p">,</span>
+            <span class="s2">&quot;max_concurrent_jobs&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># メモリ管理設定（メモリリーク防止）</span>
     <span class="n">max_history_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># 履歴データの最大サイズ</span>
@@ -148,19 +155,23 @@
     <span class="n">compression_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># 古いデータの圧縮</span>
 
     <span class="c1"># 優先度設定</span>
-    <span class="n">priority_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">TriggerPriority</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
-        <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">LOW</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-        <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
-        <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
-        <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="mf">5.0</span>
-    <span class="p">})</span>
+    <span class="n">priority_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">TriggerPriority</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">LOW</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+            <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
+            <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># 通知設定</span>
     <span class="n">notifications_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">alert_thresholds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;failed_retraining_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="s2">&quot;average_retraining_time_hours&quot;</span><span class="p">:</span> <span class="mi">12</span>
-    <span class="p">})</span>
+    <span class="n">alert_thresholds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;failed_retraining_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+            <span class="s2">&quot;average_retraining_time_hours&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
 <div class="viewcode-block" id="RetrainingConfig.__post_init__">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.retraining.html#ztb.adaptation.retraining.config.RetrainingConfig.__post_init__">[docs]</a>
@@ -185,7 +196,7 @@
                     <span class="n">threshold</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
                     <span class="n">duration_minutes</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                     <span class="n">cooldown_minutes</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
-                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span>
+                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
                 <span class="p">),</span>
                 <span class="n">TriggerCondition</span><span class="p">(</span>
                     <span class="n">trigger_type</span><span class="o">=</span><span class="n">TriggerType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
@@ -194,7 +205,7 @@
                     <span class="n">threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
                     <span class="n">duration_minutes</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
                     <span class="n">cooldown_minutes</span><span class="o">=</span><span class="mi">480</span><span class="p">,</span>
-                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span>
+                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span>
                 <span class="p">),</span>
                 <span class="n">TriggerCondition</span><span class="p">(</span>
                     <span class="n">trigger_type</span><span class="o">=</span><span class="n">TriggerType</span><span class="o">.</span><span class="n">DATA_DISTRIBUTION</span><span class="p">,</span>
@@ -203,8 +214,8 @@
                     <span class="n">threshold</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
                     <span class="n">duration_minutes</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
                     <span class="n">cooldown_minutes</span><span class="o">=</span><span class="mi">180</span><span class="p">,</span>
-                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span>
-                <span class="p">)</span>
+                    <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span>
+                <span class="p">),</span>
             <span class="p">]</span></div>
 </div>
 
@@ -269,7 +280,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -280,7 +291,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.trainers.base_ml_trainer</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -96,9 +96,12 @@
 <span class="sd">Handles base ML reinforcement experiments.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.config_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigManager</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -110,7 +113,7 @@
 <span class="sd">    Handles base ML algorithm training.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_manager</span><span class="p">:</span> <span class="s1">&#39;ConfigManager&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_manager</span><span class="p">:</span> <span class="s2">&quot;ConfigManager&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initialize base ML trainer.</span>
 
@@ -132,10 +135,20 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Training result</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.entrypoints.base_ml_reinforcement</span><span class="w"> </span><span class="kn">import</span> <span class="n">MLReinforcementExperiment</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.entrypoints.base_ml_reinforcement</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">MLReinforcementExperiment</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Local narrowing: prefer passed unified_config (dict), otherwise fall back to</span>
+        <span class="c1"># self.config if available. This avoids attribute-defined type issues.</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">unified_config</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unified_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">else</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="p">)</span>
 
         <span class="n">experiment</span> <span class="o">=</span> <span class="n">MLReinforcementExperiment</span><span class="p">(</span>
-            <span class="n">unified_config</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_steps&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+            <span class="n">cfg</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_steps&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">experiment</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 </div>
@@ -155,7 +168,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -166,7 +179,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

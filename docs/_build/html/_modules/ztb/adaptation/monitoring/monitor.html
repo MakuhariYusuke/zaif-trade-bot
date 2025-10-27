@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.monitoring.monitor</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Continuous Evaluation and Monitoring System</span>
@@ -97,20 +97,23 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">MonitoringConfig</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">MetricType</span><span class="p">,</span> <span class="n">MetricValue</span><span class="p">,</span> <span class="n">AlertLevel</span><span class="p">,</span> <span class="n">AlertStatus</span><span class="p">,</span> <span class="n">AlertCondition</span><span class="p">,</span>
-    <span class="n">Alert</span><span class="p">,</span> <span class="n">Notification</span><span class="p">,</span> <span class="n">DashboardData</span><span class="p">,</span> <span class="n">ReportData</span><span class="p">,</span> <span class="n">TimeSeriesData</span><span class="p">,</span>
-    <span class="n">PerformanceMetrics</span><span class="p">,</span> <span class="n">RiskMetrics</span><span class="p">,</span> <span class="n">SystemMetrics</span><span class="p">,</span> <span class="n">MarketMetrics</span><span class="p">,</span>
-    <span class="n">AdaptationMetrics</span>
+    <span class="n">Alert</span><span class="p">,</span>
+    <span class="n">AlertCondition</span><span class="p">,</span>
+    <span class="n">AlertLevel</span><span class="p">,</span>
+    <span class="n">AlertStatus</span><span class="p">,</span>
+    <span class="n">DashboardData</span><span class="p">,</span>
+    <span class="n">MetricType</span><span class="p">,</span>
+    <span class="n">MetricValue</span><span class="p">,</span>
+    <span class="n">ReportData</span><span class="p">,</span>
+    <span class="n">TimeSeriesData</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -138,8 +141,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">is_collecting</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_collection_worker</span><span class="p">,</span>
-            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_collection_worker</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Metrics collection started&quot;</span><span class="p">)</span></div>
@@ -219,7 +221,7 @@
             <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">150.25</span><span class="p">,</span>
             <span class="s2">&quot;avg_trade_duration&quot;</span><span class="p">:</span> <span class="mf">45.5</span><span class="p">,</span>
             <span class="s2">&quot;total_trades&quot;</span><span class="p">:</span> <span class="mi">1250</span><span class="p">,</span>
-            <span class="s2">&quot;profit_factor&quot;</span><span class="p">:</span> <span class="mf">1.45</span>
+            <span class="s2">&quot;profit_factor&quot;</span><span class="p">:</span> <span class="mf">1.45</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_risk_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
@@ -230,21 +232,21 @@
             <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span>
             <span class="s2">&quot;beta&quot;</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span>
             <span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">:</span> <span class="mf">0.65</span><span class="p">,</span>
-            <span class="s2">&quot;stress_test_loss&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">500.00</span>
+            <span class="s2">&quot;stress_test_loss&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">500.00</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_system_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;システムメトリクス収集&quot;&quot;&quot;</span>
+
         <span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;cpu_usage_percent&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
             <span class="s2">&quot;memory_usage_percent&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
-            <span class="s2">&quot;disk_usage_percent&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
+            <span class="s2">&quot;disk_usage_percent&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
             <span class="s2">&quot;network_connections&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">net_connections</span><span class="p">()),</span>
             <span class="s2">&quot;process_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">pids</span><span class="p">()),</span>
-            <span class="s2">&quot;uptime_seconds&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">psutil</span><span class="o">.</span><span class="n">boot_time</span><span class="p">()</span>
+            <span class="s2">&quot;uptime_seconds&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">psutil</span><span class="o">.</span><span class="n">boot_time</span><span class="p">(),</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_market_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
@@ -255,7 +257,7 @@
             <span class="s2">&quot;liquidity_index&quot;</span><span class="p">:</span> <span class="mf">0.75</span><span class="p">,</span>
             <span class="s2">&quot;spread_average&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
             <span class="s2">&quot;volume_24h&quot;</span><span class="p">:</span> <span class="mf">1000000.0</span><span class="p">,</span>
-            <span class="s2">&quot;price_change_24h&quot;</span><span class="p">:</span> <span class="mf">2.5</span>
+            <span class="s2">&quot;price_change_24h&quot;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_adaptation_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
@@ -266,7 +268,7 @@
             <span class="s2">&quot;adaptation_frequency&quot;</span><span class="p">:</span> <span class="mf">15.5</span><span class="p">,</span>
             <span class="s2">&quot;learning_rate_current&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>
             <span class="s2">&quot;memory_usage_mb&quot;</span><span class="p">:</span> <span class="mf">512.5</span><span class="p">,</span>
-            <span class="s2">&quot;checkpoint_count&quot;</span><span class="p">:</span> <span class="mi">25</span>
+            <span class="s2">&quot;checkpoint_count&quot;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_custom_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -275,17 +277,18 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">value</span> <span class="o">=</span> <span class="n">collector_func</span><span class="p">()</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_store_metric</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_store_metric</span><span class="p">(</span>
+                        <span class="n">name</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                    <span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Custom metric collection error for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_store_metric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">metric_type</span><span class="p">:</span> <span class="n">MetricType</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_store_metric</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">metric_type</span><span class="p">:</span> <span class="n">MetricType</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクス保存&quot;&quot;&quot;</span>
         <span class="n">metric_value</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
-            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-            <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
-            <span class="n">metric_type</span><span class="o">=</span><span class="n">metric_type</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">metric_type</span><span class="o">=</span><span class="n">metric_type</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metrics_buffer</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metric_value</span><span class="p">)</span>
 
@@ -300,13 +303,17 @@
 
 <div class="viewcode-block" id="MetricsCollector.get_metric_history">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.monitor.MetricsCollector.get_metric_history">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_metric_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_metric_history</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクス履歴取得&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">metric_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_buffer</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
 
         <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_buffer</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;=</span> <span class="n">cutoff_time</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_buffer</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;=</span> <span class="n">cutoff_time</span>
+        <span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="MetricsCollector.get_latest_metrics">
@@ -376,15 +383,22 @@
                     <span class="n">triggered_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
                     <span class="n">resolved_at</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                     <span class="n">acknowledged_at</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                    <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_alert_message</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
-                    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;metric_value&quot;</span><span class="p">:</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">}</span>
+                    <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_alert_message</span><span class="p">(</span>
+                        <span class="n">condition</span><span class="p">,</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span>
+                    <span class="p">),</span>
+                    <span class="n">context</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;metric_value&quot;</span><span class="p">:</span> <span class="n">metric_value</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                        <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span>
+                    <span class="p">},</span>
                 <span class="p">)</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">active_alerts</span><span class="p">[</span><span class="n">alert</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">alert</span>
                 <span class="n">new_alerts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">alert</span><span class="p">)</span>
 
                 <span class="c1"># クールダウン設定</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">cooldowns</span><span class="p">[</span><span class="n">alert_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">alert_cooldown_seconds</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cooldowns</span><span class="p">[</span><span class="n">alert_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span>
+                    <span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">alert_cooldown_seconds</span>
+                <span class="p">)</span>
 
                 <span class="c1"># 通知送信</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_send_notifications</span><span class="p">(</span><span class="n">alert</span><span class="p">)</span>
@@ -459,7 +473,9 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_alert_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Alert</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;アラート履歴取得&quot;&quot;&quot;</span>
         <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">alert</span> <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alert_history</span> <span class="k">if</span> <span class="n">alert</span><span class="o">.</span><span class="n">triggered_at</span> <span class="o">&gt;=</span> <span class="n">cutoff_time</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">alert</span> <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alert_history</span> <span class="k">if</span> <span class="n">alert</span><span class="o">.</span><span class="n">triggered_at</span> <span class="o">&gt;=</span> <span class="n">cutoff_time</span>
+        <span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="AlertManager.add_notification_handler">
@@ -481,8 +497,9 @@
 
 <div class="viewcode-block" id="DashboardGenerator.generate_dashboard_data">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.monitor.DashboardGenerator.generate_dashboard_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">generate_dashboard_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics_collector</span><span class="p">:</span> <span class="n">MetricsCollector</span><span class="p">,</span>
-                              <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DashboardData</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_dashboard_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">metrics_collector</span><span class="p">:</span> <span class="n">MetricsCollector</span><span class="p">,</span> <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DashboardData</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ダッシュボードデータ生成&quot;&quot;&quot;</span>
         <span class="c1"># 最新メトリクス取得</span>
         <span class="n">latest_metrics</span> <span class="o">=</span> <span class="n">metrics_collector</span><span class="o">.</span><span class="n">get_latest_metrics</span><span class="p">()</span>
@@ -495,7 +512,7 @@
                 <span class="n">time_series_data</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">TimeSeriesData</span><span class="p">(</span>
                     <span class="n">metric_name</span><span class="o">=</span><span class="n">metric_name</span><span class="p">,</span>
                     <span class="n">timestamps</span><span class="o">=</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">timestamp</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">history</span><span class="p">],</span>
-                    <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">history</span><span class="p">]</span>
+                    <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">history</span><span class="p">],</span>
                 <span class="p">)</span>
 
         <span class="c1"># アラートサマリー</span>
@@ -503,7 +520,7 @@
         <span class="n">alert_summary</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;total_active&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">active_alerts</span><span class="p">),</span>
             <span class="s2">&quot;by_level&quot;</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
-            <span class="s2">&quot;recent_alerts&quot;</span><span class="p">:</span> <span class="p">[]</span>
+            <span class="s2">&quot;recent_alerts&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
         <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="n">active_alerts</span><span class="p">:</span>
@@ -516,7 +533,7 @@
                 <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">alert</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
                 <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="n">alert</span><span class="o">.</span><span class="n">level</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
                 <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">alert</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
-                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">alert</span><span class="o">.</span><span class="n">triggered_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">alert</span><span class="o">.</span><span class="n">triggered_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
             <span class="p">}</span>
             <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="n">recent_alerts</span>
         <span class="p">]</span>
@@ -530,11 +547,13 @@
             <span class="n">time_series</span><span class="o">=</span><span class="n">time_series_data</span><span class="p">,</span>
             <span class="n">alert_summary</span><span class="o">=</span><span class="n">alert_summary</span><span class="p">,</span>
             <span class="n">performance_summary</span><span class="o">=</span><span class="n">performance_summary</span><span class="p">,</span>
-            <span class="n">refresh_interval_seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dashboard_config</span><span class="o">.</span><span class="n">refresh_interval_seconds</span>
+            <span class="n">refresh_interval_seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">dashboard_config</span><span class="o">.</span><span class="n">refresh_interval_seconds</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_performance_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latest_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetricValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_performance_summary</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">latest_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetricValue</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスサマリー生成&quot;&quot;&quot;</span>
         <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -545,11 +564,19 @@
 
         <span class="k">if</span> <span class="s2">&quot;sharpe_ratio&quot;</span> <span class="ow">in</span> <span class="n">latest_metrics</span><span class="p">:</span>
             <span class="n">sharpe</span> <span class="o">=</span> <span class="n">latest_metrics</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
-            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;sharpe_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;excellent&quot;</span> <span class="k">if</span> <span class="n">sharpe</span> <span class="o">&gt;</span> <span class="mf">2.0</span> <span class="k">else</span> <span class="s2">&quot;good&quot;</span> <span class="k">if</span> <span class="n">sharpe</span> <span class="o">&gt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s2">&quot;poor&quot;</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;sharpe_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;excellent&quot;</span> <span class="k">if</span> <span class="n">sharpe</span> <span class="o">&gt;</span> <span class="mf">2.0</span> <span class="k">else</span> <span class="s2">&quot;good&quot;</span> <span class="k">if</span> <span class="n">sharpe</span> <span class="o">&gt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s2">&quot;poor&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="s2">&quot;max_drawdown&quot;</span> <span class="ow">in</span> <span class="n">latest_metrics</span><span class="p">:</span>
             <span class="n">drawdown</span> <span class="o">=</span> <span class="n">latest_metrics</span><span class="p">[</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
-            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;drawdown_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;good&quot;</span> <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.1</span> <span class="k">else</span> <span class="s2">&quot;warning&quot;</span> <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.2</span> <span class="k">else</span> <span class="s2">&quot;critical&quot;</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;drawdown_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;good&quot;</span>
+                <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.1</span>
+                <span class="k">else</span> <span class="s2">&quot;warning&quot;</span>
+                <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.2</span>
+                <span class="k">else</span> <span class="s2">&quot;critical&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">summary</span></div>
 
@@ -565,13 +592,19 @@
 
 <div class="viewcode-block" id="ReportGenerator.generate_report">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.monitor.ReportGenerator.generate_report">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">generate_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics_collector</span><span class="p">:</span> <span class="n">MetricsCollector</span><span class="p">,</span>
-                       <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span><span class="p">,</span> <span class="n">period_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReportData</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">metrics_collector</span><span class="p">:</span> <span class="n">MetricsCollector</span><span class="p">,</span>
+        <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span><span class="p">,</span>
+        <span class="n">period_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReportData</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;レポート生成&quot;&quot;&quot;</span>
         <span class="c1"># 期間内のメトリクス取得</span>
         <span class="n">all_metrics</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">metric_name</span> <span class="ow">in</span> <span class="n">metrics_collector</span><span class="o">.</span><span class="n">metrics_buffer</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">history</span> <span class="o">=</span> <span class="n">metrics_collector</span><span class="o">.</span><span class="n">get_metric_history</span><span class="p">(</span><span class="n">metric_name</span><span class="p">,</span> <span class="n">hours</span><span class="o">=</span><span class="n">period_days</span> <span class="o">*</span> <span class="mi">24</span><span class="p">)</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="n">metrics_collector</span><span class="o">.</span><span class="n">get_metric_history</span><span class="p">(</span>
+                <span class="n">metric_name</span><span class="p">,</span> <span class="n">hours</span><span class="o">=</span><span class="n">period_days</span> <span class="o">*</span> <span class="mi">24</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">history</span><span class="p">:</span>
                 <span class="n">all_metrics</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">history</span>
 
@@ -595,11 +628,13 @@
             <span class="n">trends</span><span class="o">=</span><span class="n">trends</span><span class="p">,</span>
             <span class="n">alert_analysis</span><span class="o">=</span><span class="n">alert_analysis</span><span class="p">,</span>
             <span class="n">performance_analysis</span><span class="o">=</span><span class="n">performance_analysis</span><span class="p">,</span>
-            <span class="n">recommendations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">trends</span><span class="p">,</span> <span class="n">alert_analysis</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">trends</span><span class="p">,</span> <span class="n">alert_analysis</span><span class="p">),</span>
         <span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_statistics</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;統計計算&quot;&quot;&quot;</span>
         <span class="n">statistics</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -614,7 +649,7 @@
                 <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">metric_values</span><span class="p">)),</span>
                 <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">metric_values</span><span class="p">)),</span>
                 <span class="s2">&quot;median&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">metric_values</span><span class="p">)),</span>
-                <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">metric_values</span><span class="p">)</span>
+                <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">metric_values</span><span class="p">),</span>
             <span class="p">}</span>
 
         <span class="k">return</span> <span class="n">statistics</span>
@@ -645,7 +680,9 @@
 
         <span class="k">return</span> <span class="n">trends</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_alerts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span><span class="p">,</span> <span class="n">period_days</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_alerts</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">alert_manager</span><span class="p">:</span> <span class="n">AlertManager</span><span class="p">,</span> <span class="n">period_days</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;アラート分析&quot;&quot;&quot;</span>
         <span class="n">alerts</span> <span class="o">=</span> <span class="n">alert_manager</span><span class="o">.</span><span class="n">get_alert_history</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">period_days</span> <span class="o">*</span> <span class="mi">24</span><span class="p">)</span>
 
@@ -653,39 +690,52 @@
             <span class="s2">&quot;total_alerts&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">alerts</span><span class="p">),</span>
             <span class="s2">&quot;by_level&quot;</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="p">{</span><span class="n">level</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">AlertLevel</span><span class="p">}),</span>
             <span class="s2">&quot;by_metric&quot;</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
-            <span class="s2">&quot;most_frequent_alerts&quot;</span><span class="p">:</span> <span class="p">[]</span>
+            <span class="s2">&quot;most_frequent_alerts&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_performance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス分析&quot;&quot;&quot;</span>
         <span class="c1"># 主要パフォーマンスメトリクスの分析</span>
         <span class="n">analysis</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">if</span> <span class="s2">&quot;win_rate&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
             <span class="n">win_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;win_rate&quot;</span><span class="p">]]</span>
-            <span class="n">analysis</span><span class="p">[</span><span class="s2">&quot;win_rate_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;improving&quot;</span> <span class="k">if</span> <span class="n">win_rates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">win_rates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;declining&quot;</span>
+            <span class="n">analysis</span><span class="p">[</span><span class="s2">&quot;win_rate_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;improving&quot;</span> <span class="k">if</span> <span class="n">win_rates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">win_rates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;declining&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="s2">&quot;total_pnl&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
             <span class="n">pnl_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;total_pnl&quot;</span><span class="p">]]</span>
-            <span class="n">analysis</span><span class="p">[</span><span class="s2">&quot;pnl_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;profitable&quot;</span> <span class="k">if</span> <span class="n">pnl_values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;unprofitable&quot;</span>
+            <span class="n">analysis</span><span class="p">[</span><span class="s2">&quot;pnl_trend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;profitable&quot;</span> <span class="k">if</span> <span class="n">pnl_values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;unprofitable&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">analysis</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_recommendations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trends</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
-                                <span class="n">alert_analysis</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_recommendations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trends</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">alert_analysis</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;推奨事項生成&quot;&quot;&quot;</span>
         <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># トレンドベースの推奨</span>
         <span class="k">if</span> <span class="n">trends</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;win_rate&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;decreasing&quot;</span><span class="p">:</span>
-            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider reviewing trading strategy - win rate is declining&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;Consider reviewing trading strategy - win rate is declining&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">trends</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;increasing&quot;</span><span class="p">:</span>
-            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Implement additional risk controls - drawdown is increasing&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;Implement additional risk controls - drawdown is increasing&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># アラートベースの推奨</span>
         <span class="k">if</span> <span class="n">alert_analysis</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_alerts&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
-            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;High alert frequency detected - review system configuration&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;High alert frequency detected - review system configuration&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">recommendations</span></div>
 
@@ -735,7 +785,7 @@
                 <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                 <span class="n">cooldown_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
                 <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
-                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Win rate below acceptable threshold&quot;</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Win rate below acceptable threshold&quot;</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">AlertCondition</span><span class="p">(</span>
                 <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span>
@@ -744,7 +794,7 @@
                 <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                 <span class="n">cooldown_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
                 <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span>
-                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum drawdown exceeded limit&quot;</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum drawdown exceeded limit&quot;</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">AlertCondition</span><span class="p">(</span>
                 <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;cpu_usage_percent&quot;</span><span class="p">,</span>
@@ -753,7 +803,7 @@
                 <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                 <span class="n">cooldown_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
                 <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
-                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;High CPU usage detected&quot;</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;High CPU usage detected&quot;</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">AlertCondition</span><span class="p">(</span>
                 <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;memory_usage_percent&quot;</span><span class="p">,</span>
@@ -762,8 +812,8 @@
                 <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
                 <span class="n">cooldown_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
                 <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span>
-                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;High memory usage detected&quot;</span>
-            <span class="p">)</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;High memory usage detected&quot;</span><span class="p">,</span>
+            <span class="p">),</span>
         <span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">alert_conditions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">default_conditions</span><span class="p">)</span>
@@ -774,7 +824,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">alert_manager</span><span class="o">.</span><span class="n">add_notification_handler</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_notification</span><span class="p">)</span>
 
         <span class="c1"># コンソール通知（開発用）</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">alert_manager</span><span class="o">.</span><span class="n">add_notification_handler</span><span class="p">(</span><span class="s2">&quot;console&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_console_notification</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alert_manager</span><span class="o">.</span><span class="n">add_notification_handler</span><span class="p">(</span>
+            <span class="s2">&quot;console&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_console_notification</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_log_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alert</span><span class="p">:</span> <span class="n">Alert</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ログ通知&quot;&quot;&quot;</span>
@@ -833,7 +885,9 @@
 
 <div class="viewcode-block" id="PerformanceMonitor.get_metrics_history">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.monitor.PerformanceMonitor.get_metrics_history">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_metrics_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_metrics_history</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">MetricValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクス履歴取得&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics_collector</span><span class="o">.</span><span class="n">get_metric_history</span><span class="p">(</span><span class="n">metric_name</span><span class="p">,</span> <span class="n">hours</span><span class="p">)</span></div>
 
@@ -874,7 +928,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -885,7 +939,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

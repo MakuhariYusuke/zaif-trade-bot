@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_high_entropy</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -100,7 +100,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="c1"># Add src to path for imports</span>
-<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s1">&#39;src&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;src&quot;</span><span class="p">))</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -128,22 +128,26 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="c1"># Check if episode is done</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;infos&#39;</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s1">&#39;infos&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">if</span> <span class="s1">&#39;episode&#39;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
-                <span class="n">episode_info</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;episode&#39;</span><span class="p">]</span>
-                <span class="n">reward</span> <span class="o">=</span> <span class="n">episode_info</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span>
-                <span class="n">length</span> <span class="o">=</span> <span class="n">episode_info</span><span class="p">[</span><span class="s1">&#39;l&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;infos&quot;</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;infos&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;episode&quot;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+                <span class="n">episode_info</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;episode&quot;</span><span class="p">]</span>
+                <span class="n">reward</span> <span class="o">=</span> <span class="n">episode_info</span><span class="p">[</span><span class="s2">&quot;r&quot;</span><span class="p">]</span>
+                <span class="n">length</span> <span class="o">=</span> <span class="n">episode_info</span><span class="p">[</span><span class="s2">&quot;l&quot;</span><span class="p">]</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">+=</span> <span class="mi">1</span>
 
                 <span class="c1"># Get actions from the environment</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_env</span><span class="p">,</span> <span class="s1">&#39;get_last_actions&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_env</span><span class="p">,</span> <span class="s2">&quot;get_last_actions&quot;</span><span class="p">):</span>
                     <span class="n">actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_env</span><span class="o">.</span><span class="n">get_last_actions</span><span class="p">()</span>
                     <span class="k">if</span> <span class="n">actions</span><span class="p">:</span>
-                        <span class="n">actions_list</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+                        <span class="n">actions_list</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">)</span>
+                            <span class="k">else</span> <span class="p">[]</span>
+                        <span class="p">)</span>
                         <span class="c1"># Count actions for this episode</span>
                         <span class="n">h_count</span> <span class="o">=</span> <span class="n">actions_list</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
                         <span class="n">b_count</span> <span class="o">=</span> <span class="n">actions_list</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -152,9 +156,17 @@
 
                 <span class="c1"># Print episode summary every 5 episodes</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">avg_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:])</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span> <span class="k">else</span> <span class="mi">0</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span><span class="si">}</span><span class="s2">: Reward=</span><span class="si">{</span><span class="n">reward</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, Length=</span><span class="si">{</span><span class="n">length</span><span class="si">}</span><span class="s2">, Actions: H=</span><span class="si">{</span><span class="n">h_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;h_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">, B=</span><span class="si">{</span><span class="n">b_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;b_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">, S=</span><span class="si">{</span><span class="n">s_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;s_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span><span class="si">}</span><span class="s2">: Avg Reward = </span><span class="si">{</span><span class="n">avg_reward</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">avg_reward</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:])</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span>
+                        <span class="k">else</span> <span class="mi">0</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span><span class="si">}</span><span class="s2">: Reward=</span><span class="si">{</span><span class="n">reward</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, Length=</span><span class="si">{</span><span class="n">length</span><span class="si">}</span><span class="s2">, Actions: H=</span><span class="si">{</span><span class="n">h_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;h_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">, B=</span><span class="si">{</span><span class="n">b_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;b_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">, S=</span><span class="si">{</span><span class="n">s_count</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s1">&#39;s_count&#39;</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nb">locals</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span><span class="si">}</span><span class="s2">: Avg Reward = </span><span class="si">{</span><span class="n">avg_reward</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
 
         <span class="k">return</span> <span class="kc">True</span></div>
 
@@ -191,7 +203,7 @@
         <span class="n">config</span><span class="o">=</span><span class="n">env_config</span><span class="p">,</span>
         <span class="n">streaming_pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">stream_batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-        <span class="n">max_features</span><span class="o">=</span><span class="mi">68</span>
+        <span class="n">max_features</span><span class="o">=</span><span class="mi">68</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Wrap environment</span>
@@ -214,7 +226,7 @@
         <span class="n">n_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
         <span class="n">n_steps</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
         <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">tensorboard_log</span><span class="o">=</span><span class="s2">&quot;./tensorboard/&quot;</span>
+        <span class="n">tensorboard_log</span><span class="o">=</span><span class="s2">&quot;./tensorboard/&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Create callback</span>
@@ -222,19 +234,17 @@
 
     <span class="c1"># Train model for shorter time to test</span>
     <span class="n">total_timesteps</span> <span class="o">=</span> <span class="mi">25000</span>  <span class="c1"># Shorter training for testing</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span>
-        <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
-        <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
-        <span class="n">progress_bar</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">progress_bar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># Calculate final statistics</span>
     <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">:</span>
         <span class="n">avg_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">)</span>
         <span class="n">reward_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">=== Training Results ===&quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">=== Training Results ===&quot;&quot;&quot;</span>
+        <span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total episodes: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average episode reward: </span><span class="si">{</span><span class="n">avg_reward</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reward std: </span><span class="si">{</span><span class="n">reward_std</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -246,8 +256,10 @@
             <span class="n">sell_count</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">actions_taken</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
             <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">actions_taken</span><span class="p">)</span>
 
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">Action distribution:&quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Action distribution:&quot;&quot;&quot;</span>
+            <span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  HOLD: </span><span class="si">{</span><span class="n">hold_count</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">hold_count</span><span class="o">/</span><span class="n">total_actions</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  BUY: </span><span class="si">{</span><span class="n">buy_count</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">buy_count</span><span class="o">/</span><span class="n">total_actions</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  SELL: </span><span class="si">{</span><span class="n">sell_count</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">sell_count</span><span class="o">/</span><span class="n">total_actions</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
@@ -255,14 +267,16 @@
         <span class="c1"># Save model</span>
         <span class="n">ent_coef_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ent_coef</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">TypedConfig</span><span class="p">()</span>
-        <span class="n">model_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;test_high_entropy_ent_coef_</span><span class="si">{</span><span class="n">ent_coef_str</span><span class="si">}</span><span class="s2">.zip&quot;</span><span class="p">)</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;test_high_entropy_ent_coef_</span><span class="si">{</span><span class="n">ent_coef_str</span><span class="si">}</span><span class="s2">.zip&quot;</span>
+        <span class="p">)</span>
         <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get_model_dir</span><span class="p">(),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model saved to: </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Successfully trained: high_entropy_ent_coef_</span><span class="si">{</span><span class="n">ent_coef_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">avg_reward</span><span class="p">,</span> <span class="n">sell_count</span><span class="o">/</span><span class="n">total_actions</span> <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">actions_taken</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">avg_reward</span><span class="p">,</span> <span class="n">sell_count</span> <span class="o">/</span> <span class="n">total_actions</span> <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">actions_taken</span> <span class="k">else</span> <span class="mi">0</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ No episodes completed&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span></div>
@@ -272,9 +286,15 @@
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_high_entropy.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Test PPO with high entropy coefficient&#39;</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ent_coef&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
-                       <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Entropy coefficient for exploration (default: 0.2)&#39;</span><span class="p">)</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Test PPO with high entropy coefficient&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ent_coef&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Entropy coefficient for exploration (default: 0.2)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
 
@@ -308,7 +328,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -319,7 +339,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -1,0 +1,16 @@
+{
+  "total_episodes": 10,
+  "avg_total_reward": 61576.06000000019,
+  "std_total_reward": 597.2594647405986,
+  "avg_final_portfolio_value": 201369.90330214222,
+  "std_final_portfolio_value": 1456.2548906967238,
+  "avg_total_trades": 3319.8,
+  "avg_trades_per_step": 0.6640928185637127,
+  "total_trades_all_episodes": 33198,
+  "best_episode_reward": 62434.800000000185,
+  "worst_episode_reward": 60603.45000000018,
+  "reward_positive_ratio": 1.0,
+  "portfolio_value_positive_ratio": 0.9,
+  "sharpe_ratio": 103.09767133738583,
+  "max_drawdown": -0.058605169016864404
+}

@@ -8,10 +8,7 @@ Output columns:
 
 from typing import Any
 
-import numpy as np
 import pandas as pd
-
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
@@ -42,12 +39,11 @@ class WilliamsR(BaseFeature):
         """
         period = params.get("period", self.period)
 
-        # Use Ta-Lib wrapper for Williams %R calculation
-        result = TaLibWrapper.williams_r(
-            df["high"].values.astype(np.float64),
-            df["low"].values.astype(np.float64),
-            df["close"].values.astype(np.float64),
-            period,
-        )
+        # Calculate Williams %R manually
+        # Williams %R = (Highest High - Close) / (Highest High - Lowest Low) * -100
+        highest_high = df["high"].rolling(window=period).max()
+        lowest_low = df["low"].rolling(window=period).min()
 
-        return pd.DataFrame({"williams_r": result}, index=df.index)
+        williams_r = ((highest_high - df["close"]) / (highest_high - lowest_low)) * -100
+
+        return pd.DataFrame({"williams_r": williams_r}, index=df.index)

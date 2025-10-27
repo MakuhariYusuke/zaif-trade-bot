@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
+from ztb.utils.exceptions.custom_exceptions import TradingError
+
 # Add project root to path
 from ztb.utils.path_utils import get_project_root
 
@@ -23,20 +25,23 @@ sys.path.insert(0, str(project_root))
 import numpy as np
 import pandas as pd
 import requests
+import gymnasium as gym
 from dotenv import load_dotenv  # type: ignore[import-untyped]
 from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
 
+from ztb.trading.environment.constants import (
+    DEFAULT_CLEANUP_INTERVAL,
+    DEFAULT_PRICE_HISTORY_SIZE,
+)
 from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskProvider
 from ztb.trading.live.registry.broker_registry import get_broker_registry
-from ztb.trading.live_trader.action_prediction import ActionPrediction
-from ztb.trading.live_trader.config import LiveTradingOptions, prometheus_available
-from ztb.trading.live_trader.feature_computation import FeatureComputation
-from ztb.trading.live_trader.health_monitoring import HealthMonitoring
-from ztb.trading.live_trader.model_loading import ModelLoading
-from ztb.trading.live_trader.trading_loop import TradingLoop
-from ztb.utils.logging_utils import get_logger
+from ztb.trading.live_trader.components.order_manager import OrderManager
+from ztb.trading.live_trader.components.risk_manager import RiskManager
+from ztb.trading.live_trader.config import LiveTradingOptions
+from ztb.utils.logging_utils import get_logger, create_structured_logger
+from ztb.utils.safety import safe_get_nested_value, safe_divide, safe_to_int, safe_to_bool, validate_range
 
 # Import feature computation
 try:
@@ -71,6 +76,13 @@ from ztb.utils.cache_utils import TTLCache
 # Import configuration management
 from ztb.utils.config import ZTBConfig
 from ztb.utils.errors import ValidationError, validate_price, validate_quantity
+
+# Import extracted components
+from ztb.trading.live_trader.components.live_trading_components import (
+    ModelManager,
+    FeatureComputer,
+    TradingLoopManager,
+)
 
 # Import Discord notifier
 from ztb.utils.notify.discord import DiscordNotifier
@@ -115,6 +127,8 @@ class LiveTrader:
         dry_run: bool = False,
     ) -> None:
         logger = get_logger(__name__)
+        self.structured_logger = create_structured_logger(__name__, json_format=False)
+        self.structured_logger.set_context(component="LiveTrader", instance_id=id(self))
         logger.info("LiveTrader.__init__ started")
         print("LiveTrader.__init__ started")
 
@@ -141,8 +155,9 @@ class LiveTrader:
             self.dry_run = options.dry_run
             self.algorithm = options.algorithm
             self.ACTION_NAMES = ACTION_NAMES
-            self.price_history = deque(maxlen=100)
-            self.expected_features = 64
+            self.price_history = deque(maxlen=DEFAULT_PRICE_HISTORY_SIZE)
+            # expected_features は動的に設定されるため、初期値はNone
+            self.expected_features = None
             self.feature_names = None
             self.schema_available = False
 
@@ -159,7 +174,7 @@ class LiveTrader:
             self.config = {"price_history_length": 100}  # Basic config for dry-run
             self._current_step = 0
             self._cleanup_counter = 0
-            self._cleanup_interval = 100
+            self._cleanup_interval = DEFAULT_CLEANUP_INTERVAL
 
             # Initialize exchange adapter for live price access in dry-run
             venue = self.options.venue.lower()
@@ -169,7 +184,7 @@ class LiveTrader:
                 self.base_url = "https://coincheck.com"
                 adapter_name = "coincheck"
             else:
-                raise ValueError(f"Unsupported venue for dry-run: {venue}")
+                raise TradingError(f"Unsupported venue for dry-run: {venue}")
 
             try:
                 broker_registry = get_broker_registry()
@@ -234,9 +249,9 @@ class LiveTrader:
 
             # Initialize action mask provider for dry-run
             mask_config = ActionMaskConfig(
-                min_holding_period=self.config.get("min_holding_period", 5),
+                min_holding_period=safe_to_int(safe_get_nested_value(self.config, ["min_holding_period"], 5)),
                 enable_forced_close=True,
-                max_position_age=self.config.get("max_position_age", 1000),
+                max_position_age=safe_to_int(safe_get_nested_value(self.config, ["max_position_age"], 1000)),
             )
             self.mask_provider = ActionMaskProvider(mask_config)
             self._is_maskable_ppo = False
@@ -270,7 +285,7 @@ class LiveTrader:
                         f"Initialized price history with live price: ¥{current_price:,.0f}"
                     )
                 else:
-                    raise ValueError("Invalid API response")
+                    raise TradingError("Invalid API response")
             except Exception as e:
                 logger.warning(
                     f"Failed to initialize price history with live price: {e}, using fallback"
@@ -285,7 +300,7 @@ class LiveTrader:
 
         self.options = options
         if not self.model_path.exists():
-            raise ValueError(f"Model file not found: {self.model_path}")
+            raise TradingError(f"Model file not found: {self.model_path}")
         self.ztb_config = ZTBConfig()
         logger.debug("ZTBConfig initialized")
         self.config = config or self._get_default_config()
@@ -335,7 +350,7 @@ class LiveTrader:
             self.base_url = "https://api.bitflyer.com"
             adapter_name = "bitflyer"
         else:
-            raise ValueError(f"Unsupported venue: {venue}")
+            raise TradingError(f"Unsupported venue: {venue}")
 
         # Validate API credentials for live trading (check for non-empty values)
         self.demo_mode = not (self.api_key and self.api_secret) or self.dry_run
@@ -429,14 +444,14 @@ class LiveTrader:
 
         # Initialize schema attributes
         self.schema_available = False
-        self.expected_features = 64  # Default
+        self.expected_features = None  # Will be set dynamically from feature set
         self.feature_names = None
 
         # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
         mask_config = ActionMaskConfig(
-            min_holding_period=self.config.get("min_holding_period", 5),
+            min_holding_period=safe_to_int(safe_get_nested_value(self.config, ["min_holding_period"], 5)),
             enable_forced_close=True,
-            max_position_age=self.config.get("max_position_age", 1000),
+            max_position_age=safe_to_int(safe_get_nested_value(self.config, ["max_position_age"], 1000)),
         )
         self.mask_provider = ActionMaskProvider(mask_config)
         self._is_maskable_ppo = False  # Will be set in _load_model()
@@ -478,29 +493,25 @@ class LiveTrader:
         )
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
 
-        # Update price history if adapter is available (skip in dry-run)
-        if self.exchange_adapter and not self.dry_run:
-            self._update_price_history()
-        elif self.dry_run:
-            logger.info("Dry-run mode: using mock price history")
-            # Initialize with mock prices for dry-run
-            mock_price = 5000000.0  # Mock BTC/JPY price
-            self.price_history.clear()
-            self.price_history.extend(
-                [mock_price] * self.config.get("price_history_length", 100)
-            )
-        else:
-            logger.info("Price history update deferred until adapter is available")
+        # Initialize extracted components
+        self.model_manager = ModelManager(self.logger)
+        self.feature_computer = FeatureComputer(self.logger)
+        self.trading_loop_manager = TradingLoopManager(self.logger)
+
+        # Initialize model using ModelManager
+        self.model_manager.initialize_model(self.model_path, self.options)
 
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
-        self._cleanup_interval = 100  # Clean up every 100 iterations
+        self._cleanup_interval = DEFAULT_CLEANUP_INTERVAL  # Clean up every N iterations
 
         # Initialize component modules
         self.trading_loop = TradingLoop(self)
         self.feature_computation = FeatureComputation(self)
         self.action_prediction = ActionPrediction(self)
         self.health_monitoring = HealthMonitoring(self)
+        self.risk_manager = RiskManager(self)
+        self.order_manager = OrderManager(self)
         # self.model_loading = ModelLoading(self)  # Already initialized above
 
         # Send startup notification (with schema info if available)
@@ -538,7 +549,11 @@ class LiveTrader:
 
     def run_trading_loop(self, duration_hours: float) -> None:
         """Run the main trading loop for live trading."""
-        return self.trading_loop.run_trading_loop(duration_hours)
+        # Delegate to TradingLoopManager
+        self.trading_loop_manager.run_trading_loop(
+            duration_hours=duration_hours,
+            live_trader=self
+        )
 
         start_time = datetime.now()
         end_time = start_time + timedelta(hours=duration_hours)
@@ -557,6 +572,14 @@ class LiveTrader:
                     # Get current price
                     try:
                         current_price = self._get_current_price()
+                        self.structured_logger.info(
+                            "Price update",
+                            extra={
+                                "iteration": iteration_count,
+                                "price": current_price,
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        )
                         logger.info(
                             f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}"
                         )
@@ -728,7 +751,8 @@ class LiveTrader:
 
     def _compute_features(self) -> NDArray[np.float32]:
         """Compute features for model prediction using full feature engine when available."""
-        return self.feature_computation.compute_features()
+        # Delegate to FeatureComputer
+        return self.feature_computer.compute_features(live_trader=self)
 
     def _compute_rsi(self, prices: List[float]) -> float:
         """Compute RSI indicator."""
@@ -748,14 +772,14 @@ class LiveTrader:
                     gains.append(0)
                     losses.append(-change)
 
-            avg_gain = sum(gains) / len(gains) if gains else 0
-            avg_loss = sum(losses) / len(losses) if losses else 0
+            avg_gain = safe_divide(sum(gains), len(gains), 0.0) if gains else 0
+            avg_loss = safe_divide(sum(losses), len(losses), 0.0) if losses else 0
 
             if avg_loss == 0:
                 return 100.0
 
-            rs = avg_gain / avg_loss
-            rsi = 100 - (100 / (1 + rs))
+            rs = safe_divide(avg_gain, avg_loss, 1.0)
+            rsi = 100 - safe_divide(100, (1 + rs), 50.0)
 
             # Validate RSI is in reasonable range
             return max(0.0, min(100.0, rsi))
@@ -1040,7 +1064,12 @@ class LiveTrader:
 
         Schema Integration: Load schema information for feature validation.
         """
-        return self.model_loading.load_model()
+        # Delegate to ModelManager
+        return self.model_manager.load_model(
+            model_path=self.model_path,
+            options=self.options,
+            live_trader=self
+        )
 
         logger = get_logger(__name__)
         logger.info(
@@ -1075,24 +1104,8 @@ class LiveTrader:
         logger.info(f"Action space type: {type(action_space)}")
 
         # Check if action space is continuous
-        try:
-            import gymnasium as gym
-
-            Box = gym.spaces.Box
-            Discrete = gym.spaces.Discrete
-        except ImportError:
-            try:
-                import gym
-
-                Box = gym.spaces.Box
-                Discrete = gym.spaces.Discrete
-            except ImportError:
-                # Fallback: check by type name
-                Box = type(None)
-                Discrete = type(None)
-                logger.warning(
-                    "Could not import gym/gymnasium spaces, cannot detect action space type"
-                )
+        Box = gym.spaces.Box
+        Discrete = gym.spaces.Discrete
 
         if isinstance(action_space, Box):
             self.is_continuous_action = True
@@ -1508,7 +1521,16 @@ class LiveTrader:
         # Feature count validation (Schema-aware)
         # ========================================================================
         # Determine expected feature count from schema or model
-        expected_features = 68  # Default fallback
+        # Default fallback: get from feature set manager
+        try:
+            from ztb.features.feature_set_manager import get_feature_manager
+
+            manager = get_feature_manager()
+            expected_features = manager.get_feature_count(
+                "curated"
+            )  # Default to curated set
+        except Exception:
+            expected_features = 78  # Fallback to known curated feature count
 
         if self.schema_available and self.expected_features is not None:
             # Use schema information (most reliable)
@@ -1609,63 +1631,8 @@ class LiveTrader:
         return False
 
     def _execute_trade(self, side: str, amount: float) -> bool:
-        """Execute trade on Coincheck with enhanced error handling and notifications."""
-        # 入力バリデーション
-        validate_quantity(amount, "amount")
-        if side not in ["buy", "sell"]:
-            raise ValidationError(f"Invalid side: {side}, must be 'buy' or 'sell'")
-
-        if self.demo_mode:
-            logger = get_logger(__name__)
-            logger.info(f"DEMO MODE: Would execute {side} {amount} BTC")
-            # Send notification for demo trades
-            self._send_notification(
-                "📈 Demo Trade Executed",
-                f"Side: {side.upper()}\n"
-                f"Amount: {amount} BTC\n"
-                f"Mode: DEMO (no real trade)",
-                "info",
-            )
-            return True
-
-        # Enhanced error notification for live trading
-        try:
-            # TODO: Implement actual Coincheck API trading calls
-            logger = get_logger(__name__)
-            logger.warning(
-                f"LIVE MODE: Trade execution not implemented yet - {side} {amount} BTC"
-            )
-            self._send_notification(
-                "⚠️ Live Trade Not Implemented",
-                f"Would execute: {side.upper()} {amount} BTC\n"
-                f"Please implement actual API calls\n"
-                f"Position: {self.position}, Entry: ¥{self.entry_price:,.0f}",
-                "warning",
-            )
-            # Still send trade info notification even though execution is not implemented
-            self._send_notification(
-                "📈 Live Trade Info",
-                f"Side: {side.upper()}\n"
-                f"Amount: {amount} BTC\n"
-                f"Position: {self.position}\n"
-                f"Entry Price: ¥{self.entry_price:,.0f}",
-                "info",
-            )
-            return False
-        except Exception as e:
-            # Critical error notification
-            error_msg = f"CRITICAL: Trade execution failed - {str(e)}"
-            logger = get_logger(__name__)
-            logger.error(error_msg)
-            self._send_notification(
-                "🚨 CRITICAL: Trade Execution Error",
-                f"Side: {side.upper()}\n"
-                f"Amount: {amount} BTC\n"
-                f"Error: {str(e)}\n"
-                f"Position: {self.position}",
-                "error",
-            )
-            return False
+        """Execute trade using OrderManager."""
+        return self.order_manager.execute_trade(side, amount)
 
     def _update_position(self, action: int, current_price: float) -> None:
         """Update position based on model action using PositionManager.

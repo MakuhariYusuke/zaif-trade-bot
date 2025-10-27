@@ -1,0 +1,351 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>新規パターン認識実装計画 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">新規パターン認識実装計画</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/new_pattern_recognition_plan.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>新規パターン認識実装計画<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>Action Signal Guideに以下の新しいパターン認識機能を追加します：</p>
+<ol class="arabic simple">
+<li><p><strong>グランビルの法則 (Granville’s Law)</strong></p></li>
+<li><p><strong>ダウ理論 (Dow Theory)</strong></p></li>
+<li><p><strong>平均足 (Heikin-Ashi)</strong></p></li>
+</ol>
+</section>
+<section id="granvilles-law">
+<h2>1. グランビルの法則 (Granville’s Law)<a class="headerlink" href="#granvilles-law" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>理論的背景<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>ジョセフ・グランビルによる取引ルール。価格と出来高の関係に基づく8つの基本ルール。</p>
+</section>
+<section id="id4">
+<h3>主要ルール<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>買いシグナル</strong>: 価格が上昇し、出来高が増加</p></li>
+<li><p><strong>売りシグナル</strong>: 価格が下降し、出来高が増加</p></li>
+<li><p><strong>買いシグナル</strong>: 価格が上昇し、出来高が減少（弱気相場でのみ有効）</p></li>
+<li><p><strong>売りシグナル</strong>: 価格が下降し、出来高が減少（強気相場でのみ有効）</p></li>
+<li><p><strong>買いシグナル</strong>: 価格が横ばい、出来高が増加</p></li>
+<li><p><strong>売りシグナル</strong>: 価格が横ばい、出来高が減少</p></li>
+<li><p><strong>買いシグナル</strong>: 価格が下降し、出来高が減少（弱気相場でのみ有効）</p></li>
+<li><p><strong>売りシグナル</strong>: 価格が上昇し、出来高が減少（強気相場でのみ有効）</p></li>
+</ol>
+</section>
+<section id="id5">
+<h3>実装計画<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">granville_law.py</span></code></p></li>
+<li><p><strong>クラス</strong>: <code class="docutils literal notranslate"><span class="pre">GranvilleLawRecognizer</span></code></p></li>
+<li><p><strong>入力</strong>: OHLCVデータ</p></li>
+<li><p><strong>出力</strong>: SignalResult (買い/売り/中立)</p></li>
+<li><p><strong>パラメータ</strong>:</p>
+<ul>
+<li><p>出来高変化率の閾値</p></li>
+<li><p>価格変化率の閾値</p></li>
+<li><p>市場トレンドの判定期間</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id6">
+<h3>考慮点<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>様々な解釈が存在するため、複数の実装バリエーションを検討</p></li>
+<li><p>市場トレンド（強気/弱気）の判定が必要</p></li>
+<li><p>出来高データの品質が重要</p></li>
+</ul>
+</section>
+</section>
+<section id="dow-theory">
+<h2>2. ダウ理論 (Dow Theory)<a class="headerlink" href="#dow-theory" title="Link to this heading"></a></h2>
+<section id="id7">
+<h3>理論的背景<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p>チャールズ・ダウによる市場分析の基礎理論。6つの基本原則に基づく。</p>
+</section>
+<section id="id8">
+<h3>主要原則<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>平均は全てを織り込む</strong>: 市場は全ての情報を反映</p></li>
+<li><p><strong>市場には3つのトレンドがある</strong>: 主要トレンド、二次トレンド、短期トレンド</p></li>
+<li><p><strong>主要トレンドは3段階で進む</strong>: 蓄積、参加、分配</p></li>
+<li><p><strong>平均は相互に確認しなければならない</strong>: インデックス平均と輸送平均</p></li>
+<li><p><strong>出来高はトレンドを確認する</strong>: 出来高がトレンドを支持</p></li>
+<li><p><strong>トレンドは明確なシグナルが出るまで継続</strong>: 明確な転換シグナルが必要</p></li>
+</ol>
+</section>
+<section id="id9">
+<h3>実装計画<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">dow_theory.py</span></code></p></li>
+<li><p><strong>クラス</strong>: <code class="docutils literal notranslate"><span class="pre">DowTheoryRecognizer</span></code></p></li>
+<li><p><strong>入力</strong>: 複数インデックスの価格データ</p></li>
+<li><p><strong>出力</strong>: SignalResult (トレンド確認/転換シグナル)</p></li>
+<li><p><strong>パラメータ</strong>:</p>
+<ul>
+<li><p>トレンド判定期間</p></li>
+<li><p>確認のための閾値</p></li>
+<li><p>複数平均の相関閾値</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id10">
+<h3>考慮点<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>複数インデックスのデータが必要</p></li>
+<li><p>長期的なトレンド分析に適する</p></li>
+<li><p>シグナル発生が稀だが信頼性が高い</p></li>
+</ul>
+</section>
+</section>
+<section id="heikin-ashi">
+<h2>3. 平均足 (Heikin-Ashi)<a class="headerlink" href="#heikin-ashi" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>理論的背景<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<p>日本の伝統的なローソク足の変種。価格変動を滑らかにし、トレンドを明確に表示。</p>
+</section>
+<section id="id12">
+<h3>計算式<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HA_Close</span> <span class="o">=</span> <span class="p">(</span><span class="n">Open</span> <span class="o">+</span> <span class="n">High</span> <span class="o">+</span> <span class="n">Low</span> <span class="o">+</span> <span class="n">Close</span><span class="p">)</span> <span class="o">/</span> <span class="mi">4</span>
+<span class="n">HA_Open</span> <span class="o">=</span> <span class="p">(</span><span class="n">前回のHA_Open</span> <span class="o">+</span> <span class="n">前回のHA_Close</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">HA_High</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">High</span><span class="p">,</span> <span class="n">HA_Open</span><span class="p">,</span> <span class="n">HA_Close</span><span class="p">)</span>
+<span class="n">HA_Low</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">Low</span><span class="p">,</span> <span class="n">HA_Open</span><span class="p">,</span> <span class="n">HA_Close</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h3>実装計画<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">heikin_ashi.py</span></code></p></li>
+<li><p><strong>クラス</strong>: <code class="docutils literal notranslate"><span class="pre">HeikinAshiRecognizer</span></code></p></li>
+<li><p><strong>入力</strong>: OHLCデータ</p></li>
+<li><p><strong>出力</strong>: SignalResult (トレンド方向/強度)</p></li>
+<li><p><strong>パラメータ</strong>:</p>
+<ul>
+<li><p>計算期間</p></li>
+<li><p>トレンド判定の閾値</p></li>
+<li><p>シグナル強度の計算方法</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id14">
+<h3>考慮点<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>既存のローソク足パターン認識と統合可能</p></li>
+<li><p>ノイズを減らしトレンドを明確化</p></li>
+<li><p>リアルタイム分析に適する</p></li>
+</ul>
+</section>
+</section>
+<section id="id15">
+<h2>実装スケジュール<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="phase-1-1-2">
+<h3>Phase 1: 基礎実装 (1-2週間)<a class="headerlink" href="#phase-1-1-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>各パターンの基本クラス実装</p></li>
+<li><p>単体テストの作成</p></li>
+<li><p>基本的な機能検証</p></li>
+</ol>
+</section>
+<section id="phase-2-1">
+<h3>Phase 2: 統合と最適化 (1週間)<a class="headerlink" href="#phase-2-1" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Action Signal Guideへの統合</p></li>
+<li><p>パラメータチューニング</p></li>
+<li><p>パフォーマンス最適化</p></li>
+</ol>
+</section>
+<section id="phase-3-1">
+<h3>Phase 3: テストとドキュメント (1週間)<a class="headerlink" href="#phase-3-1" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>包括的なテストスイート</p></li>
+<li><p>ドキュメント更新</p></li>
+<li><p>使用例の作成</p></li>
+</ol>
+</section>
+</section>
+<section id="id16">
+<h2>技術的考慮事項<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>データ要件<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>グランビルの法則</strong>: OHLCVデータ</p></li>
+<li><p><strong>ダウ理論</strong>: 複数インデックスのOHLCデータ</p></li>
+<li><p><strong>平均足</strong>: OHLCデータ</p></li>
+</ul>
+</section>
+<section id="id18">
+<h3>パフォーマンス<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>計算効率の高いアルゴリズムの実装</p></li>
+<li><p>メモリ使用量の最適化</p></li>
+<li><p>リアルタイム処理の考慮</p></li>
+</ul>
+</section>
+<section id="id19">
+<h3>拡張性<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>設定可能なパラメータ</p></li>
+<li><p>複数の解釈バリエーションのサポート</p></li>
+<li><p>他のパターン認識との統合</p></li>
+</ul>
+</section>
+</section>
+<section id="id20">
+<h2>リスクと課題<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>技術的課題<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>複雑なアルゴリズムの正確な実装</p></li>
+<li><p>計算パフォーマンスの確保</p></li>
+<li><p>データ品質の依存</p></li>
+</ul>
+</section>
+<section id="id22">
+<h3>市場適応性<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>異なる市場での有効性の検証</p></li>
+<li><p>パラメータの市場依存性</p></li>
+<li><p>過剰最適化の回避</p></li>
+</ul>
+</section>
+</section>
+<section id="id23">
+<h2>検証計画<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<section id="id24">
+<h3>バックテスト<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>歴史データでの性能評価</p></li>
+<li><p>異なる市場条件でのテスト</p></li>
+<li><p>パラメータ感度分析</p></li>
+</ul>
+</section>
+<section id="id25">
+<h3>フォワードテスト<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>リアルタイムでの性能監視</p></li>
+<li><p>シグナル品質の継続的評価</p></li>
+<li><p>適応的なパラメータ調整</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

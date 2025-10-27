@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Phase 3 最終レビュー &amp; 修正完了レポート" href="PHASE3_FINAL_REVIEW.html" />
-    <link rel="prev" title="run_training.py 修正完了 - v3.6.2" href="RUN_TRAINING_FIX_SUMMARY.html" />
+    <link rel="prev" title="run_training.py 修正完了 - v3.6.2" href="RUN_TRAINING_FIX_SUMMARY.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -142,12 +142,12 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="phase-2">
 <h1>Phase 2 完了レポート: 特徴量スキーマ管理システム<a class="headerlink" href="#phase-2" title="Link to this heading"></a></h1>
 <section id="id1">
 <h2>🎉 実装完了<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
-<p><strong>日時</strong>: 2025年10月10日<br />
+<p><strong>日時</strong>: 2025年10月10日
 <strong>バージョン</strong>: v385 (Phase 2検証版)</p>
 </section>
 <hr class="docutils" />
@@ -258,7 +258,7 @@
 <span class="w">    </span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;price&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pnl&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;win&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;ADX&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ATR&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Lower&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Middle&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Upper&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CCI&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;Ichimoku_Chikou&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Ichimoku_Tenkan&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;MACD&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;MFI&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;RSI&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;Stochastic&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Supertrend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;VWAP&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;close&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">    </span><span class="s2">&quot;Stochastic&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Supertrend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;VWAP&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;close&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;low&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;volume&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ema_5&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;atr_10&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;rolling_mean_20&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="err">...</span><span class="w"> </span><span class="err">(</span><span class="mi">68</span><span class="err">個)</span>
 <span class="w">  </span><span class="p">],</span>
@@ -401,9 +401,9 @@
 <h3>次のアクション<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
 <p>Phase 3の実装を別のCopilotに引き継ぎ、バックテスト・環境統合を完成させることで、特徴量管理の完全自動化が実現します。</p>
 <hr class="docutils" />
-<p><strong>作成日</strong>: 2025年10月10日<br />
-<strong>作成者</strong>: GitHub Copilot<br />
-<strong>検証モデル</strong>: ppo_reward_v385_curated<br />
+<p><strong>作成日</strong>: 2025年10月10日
+<strong>作成者</strong>: GitHub Copilot
+<strong>検証モデル</strong>: ppo_reward_v385_curated
 <strong>ステータス</strong>: Phase 2完了 ✅</p>
 </section>
 </section>
@@ -426,7 +426,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -437,7 +437,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

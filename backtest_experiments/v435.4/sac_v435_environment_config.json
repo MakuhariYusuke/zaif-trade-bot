@@ -1,0 +1,94 @@
+{
+  "_description": "SAC v435.4 Environment Configuration - Advanced scalping",
+  "_improvements": [
+    "Zero transaction cost for Coincheck",
+    "100% position size for aggressive scalping",
+    "Zero frequency penalty for high-frequency trading",
+    "Enhanced feature engineering",
+    "Advanced market regime detection",
+    "Aggressive risk management",
+    "Optimized for scalping strategies"
+  ],
+
+  "transaction_cost": 0.0,
+  "max_position_size": 1.0,
+  "initial_portfolio_value": 100000,
+  "random_start": true,
+
+  "feature_engineering": {
+    "enabled": true,
+    "adaptive_selection": true,
+    "correlation_reduction": true,
+    "correlation_threshold": 0.8,
+    "max_features": 120,
+    "importance_weighting": true,
+    "feature_stability_check": true,
+    "scalping_features": true
+  },
+
+  "market_regime_detection": {
+    "enabled": true,
+    "regime_window": 30,
+    "trend_threshold": 0.015,
+    "volatility_threshold": 0.12,
+    "regime_types": ["bull", "bear", "sideways", "high_volatility"],
+    "regime_adaptation": true,
+    "scalping_regime_bonus": 0.1
+  },
+
+  "risk_management": {
+    "dynamic_position_sizing": true,
+    "position_size_min": 0.05,
+    "position_size_max": 1.0,
+    "volatility_adjustment": true,
+    "drawdown_control": true,
+    "max_drawdown_limit": 0.05,
+    "correlation_risk_control": false,
+    "max_correlation_exposure": 1.0,
+    "scalping_risk_multiplier": 2.0
+  },
+
+  "multi_timeframe_integration": {
+    "enabled": true,
+    "timeframes": ["1m", "5m", "15m", "1h"],
+    "primary_timeframe": "5m",
+    "weighting_scheme": "scalping_weighted",
+    "max_lag_features": 20,
+    "short_term_focus": true
+  },
+
+  "reward_system": {
+    "reward_trade_frequency_penalty": 0.0,
+    "reward_trade_frequency_halflife": 0.5,
+    "reward_trade_cooldown_steps": 0,
+    "reward_trade_cooldown_penalty": 0.0,
+    "reward_max_consecutive_trades": 100,
+    "reward_consecutive_trade_penalty": 0.0,
+    "reward_position_penalty_scale": 0.005,
+    "reward_position_penalty_exponent": 0.5,
+    "reward_inventory_penalty_scale": 0.0,
+    "reward_volatility_penalty_scale": 0.0,
+    "scalping_bonus_multiplier": 3.0
+  },
+
+  "data_processing": {
+    "sequence_length": 32,
+    "prediction_horizon": 1,
+    "feature_scaling": "minmax",
+    "outlier_handling": "none",
+    "missing_data_handling": "forward_fill",
+    "scalping_optimized": true
+  },
+
+  "performance_monitoring": {
+    "enabled": true,
+    "metrics_update_freq": 50,
+    "alert_thresholds": {
+      "max_drawdown": 0.1,
+      "sharpe_ratio": 1.0,
+      "win_rate": 0.5,
+      "profit_factor": 1.2
+    },
+    "scalping_metrics": true
+  }
+}

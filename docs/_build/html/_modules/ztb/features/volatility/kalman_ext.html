@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.volatility.kalman_ext</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -103,6 +103,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">EPSILON</span>
 
 
 <div class="viewcode-block" id="SimpleKalmanFilter">
@@ -302,8 +303,7 @@
 
     <span class="c1"># Normalized residuals - vectorized</span>
     <span class="n">residual_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">())</span>
-    <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-8</span>  <span class="c1"># Small value to prevent division by zero</span>
-    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residuals</span> <span class="o">/</span> <span class="p">(</span><span class="n">residual_std</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residuals</span> <span class="o">/</span> <span class="p">(</span><span class="n">residual_std</span> <span class="o">+</span> <span class="n">EPSILON</span><span class="p">)</span>
 
     <span class="c1"># Residual autocorrelation - optimized vectorized implementation</span>
     <span class="n">autocorr_lags</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
@@ -513,7 +513,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.print_residual_analysis">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">print_residual_analysis</span><span class="p">(</span><span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">residuals</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Residual analysis:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Residual analysis:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Mean: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Std: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skewness: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># type: ignore[str-bytes-safe]</span>
@@ -564,7 +564,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -575,7 +575,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,14 +88,14 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="bug-fixes-sixth-review-cycle">
 <h1>🐛 Bug Fixes - Sixth Review Cycle<a class="headerlink" href="#bug-fixes-sixth-review-cycle" title="Link to this heading"></a></h1>
 <section id="overview">
 <h2>📋 Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
 <p>Based on the sixth dual external review cycle, we fixed <strong>5 new critical bugs</strong> (Bugs #27-31) related to trading fees, position sizing, and live trading strategy enforcement.</p>
-<p><strong>Date:</strong> 2025-10-08<br />
-<strong>Status:</strong> ✅ All bugs fixed<br />
+<p><strong>Date:</strong> 2025-10-08
+<strong>Status:</strong> ✅ All bugs fixed
 <strong>Test Results:</strong> 10/10 tests passed (100%)</p>
 </section>
 <hr class="docutils" />
@@ -105,8 +103,8 @@
 <h2>🎯 Bugs Fixed<a class="headerlink" href="#bugs-fixed" title="Link to this heading"></a></h2>
 <section id="bug-27-livetrader-bypasses-action-masks-partial-fix">
 <h3>Bug #27: LiveTrader Bypasses Action Masks ⚠️ Partial Fix<a class="headerlink" href="#bug-27-livetrader-bypasses-action-masks-partial-fix" title="Link to this heading"></a></h3>
-<p><strong>Severity:</strong> CRITICAL<br />
-<strong>Category:</strong> Action Masking / Risk Controls<br />
+<p><strong>Severity:</strong> CRITICAL
+<strong>Category:</strong> Action Masking / Risk Controls
 <strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:372-396</span></code></p>
 <section id="problem-description">
 <h4>Problem Description<a class="headerlink" href="#problem-description" title="Link to this heading"></a></h4>
@@ -117,11 +115,11 @@
 <p>Added comprehensive warnings to document the limitation. The code now explicitly warns operators that action masking is disabled in live trading when using PPO models.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PPO</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the trained PPO model.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Bug #27 Note: Currently loads as stable_baselines3.PPO which bypasses</span>
 <span class="sd">    action masking for MaskablePPO models. This is a temporary workaround</span>
 <span class="sd">    to avoid ValueError when calling predict_with_masks(env=None).</span>
-<span class="sd">    </span>
+
 <span class="sd">    Future Fix: Create lightweight environment or mask provider to enable</span>
 <span class="sd">    proper MaskablePPO support with action masking in production.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -162,8 +160,8 @@
 <hr class="docutils" />
 <section id="bug-28-livepositionmanager-position-size-mismatch-fixed">
 <h3>Bug #28: LivePositionManager Position Size Mismatch ✅ FIXED<a class="headerlink" href="#bug-28-livepositionmanager-position-size-mismatch-fixed" title="Link to this heading"></a></h3>
-<p><strong>Severity:</strong> CRITICAL<br />
-<strong>Category:</strong> PnL Calculation / Risk Controls<br />
+<p><strong>Severity:</strong> CRITICAL
+<strong>Category:</strong> PnL Calculation / Risk Controls
 <strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:239-260</span></code></p>
 <section id="id1">
 <h4>Problem Description<a class="headerlink" href="#id1" title="Link to this heading"></a></h4>
@@ -201,8 +199,8 @@
 <hr class="docutils" />
 <section id="bug-29-live-pnl-drops-entry-fees-fixed">
 <h3>Bug #29: Live PnL Drops Entry Fees ✅ FIXED<a class="headerlink" href="#bug-29-live-pnl-drops-entry-fees-fixed" title="Link to this heading"></a></h3>
-<p><strong>Severity:</strong> HIGH<br />
-<strong>Category:</strong> PnL Calculation / Risk Controls<br />
+<p><strong>Severity:</strong> HIGH
+<strong>Category:</strong> PnL Calculation / Risk Controls
 <strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:934-973</span></code></p>
 <section id="id2">
 <h4>Problem Description<a class="headerlink" href="#id2" title="Link to this heading"></a></h4>
@@ -241,8 +239,8 @@
 <hr class="docutils" />
 <section id="bug-30-entry-fees-not-reflected-in-reward-fixed">
 <h3>Bug #30: Entry Fees Not Reflected in Reward ✅ FIXED<a class="headerlink" href="#bug-30-entry-fees-not-reflected-in-reward-fixed" title="Link to this heading"></a></h3>
-<p><strong>Severity:</strong> CRITICAL<br />
-<strong>Category:</strong> Financial Logic / Reward Miscalculation<br />
+<p><strong>Severity:</strong> CRITICAL
+<strong>Category:</strong> Financial Logic / Reward Miscalculation
 <strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py:49-153</span></code></p>
 <section id="id4">
 <h4>Problem Description<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
@@ -253,7 +251,7 @@
 <p>Modified <code class="docutils literal notranslate"><span class="pre">execute_action()</span></code> to return entry fees as negative PnL and <code class="docutils literal notranslate"><span class="pre">open_position()</span></code> to return the fee amount:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">execute_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute trading action.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        trade_pnl: PnL from this specific trade INCLUDING entry fees (negative for new positions)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -267,7 +265,7 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">open_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Open position (entry cost immediately reflected).</span>
-<span class="sd">    </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        Entry cost (fee paid to open position)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -297,8 +295,8 @@
 <hr class="docutils" />
 <section id="bug-31-live-trading-blocks-short-position-opening-fixed">
 <h3>Bug #31: Live Trading Blocks Short Position Opening ✅ FIXED<a class="headerlink" href="#bug-31-live-trading-blocks-short-position-opening-fixed" title="Link to this heading"></a></h3>
-<p><strong>Severity:</strong> HIGH<br />
-<strong>Category:</strong> Trading Logic / Strategy Constraint<br />
+<p><strong>Severity:</strong> HIGH
+<strong>Category:</strong> Trading Logic / Strategy Constraint
 <strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:835-869</span></code></p>
 <section id="id6">
 <h4>Problem Description<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
@@ -309,7 +307,7 @@
 <p>Changed logic to allow short openings after warmup period:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_should_trade_sell_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply sell bias to trading decisions.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Bug #31 Fix: Allow short position opening after warmup period.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_SELL</span><span class="p">:</span>
@@ -421,9 +419,9 @@ Total: 10/10 passed
 <hr class="docutils" />
 <section id="summary">
 <h2>📝 Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
-<p><strong>Total Bugs Fixed:</strong> 5 (Bugs #27-31)<br />
-<strong>Lines of Code Changed:</strong> ~200<br />
-<strong>Test Coverage Added:</strong> 2 new tests<br />
+<p><strong>Total Bugs Fixed:</strong> 5 (Bugs #27-31)
+<strong>Lines of Code Changed:</strong> ~200
+<strong>Test Coverage Added:</strong> 2 new tests
 <strong>Critical Issues Resolved:</strong></p>
 <ul class="simple">
 <li><p>✅ Transaction fees now fully reflected in training and production</p></li>
@@ -456,7 +454,7 @@ Total: 10/10 passed
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -467,7 +465,7 @@ Total: 10/10 passed
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

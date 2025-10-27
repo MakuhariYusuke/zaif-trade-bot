@@ -9,8 +9,8 @@ all components work correctly together.
 import sys
 from pathlib import Path
 
-from ztb.optimization.reward_function_evaluator import RewardFunctionEvaluator
-from ztb.optimization.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.reward_function_evaluator import RewardFunctionEvaluator
+from ztb.training.reward_function_optimizer import RewardFunctionOptimizer
 from ztb.utils.logging_utils import get_logger, setup_logging
 
 logger = get_logger(__name__)
@@ -128,7 +128,7 @@ def test_file_operations():
     optimizer = RewardFunctionOptimizer()
 
     # Create a mock result for testing
-    from ztb.optimization.reward_function_optimizer import (
+    from ztb.training.reward_function_optimizer import (
         RewardFunctionConfig,
         RewardOptimizationResult,
     )

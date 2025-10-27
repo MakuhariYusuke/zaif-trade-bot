@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.backtest.adapters</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Strategy adapters for backtesting.</span>
@@ -97,10 +97,11 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Protocol</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.sac_v427_feature_engineering</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv427FeatureEngineer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
 
 
 <div class="viewcode-block" id="StrategyAdapter">
@@ -145,27 +146,34 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">RLPolicyAdapter</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapter for RL policy (PPO trained model).&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">enable_150d_features</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">enable_150d_features</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with trained model path and 150-dimensional feature support.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="o">=</span> <span class="n">model_path</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span> <span class="o">=</span> <span class="n">enable_150d_features</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">()</span> <span class="k">if</span> <span class="n">enable_150d_features</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">SACv427FeatureEngineer</span><span class="p">()</span> <span class="k">if</span> <span class="n">enable_150d_features</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Cache for computed features</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
             <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
             <span class="s2">&quot;regularization_strength&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
-            <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span>
+            <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="n">model_path</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC</span>
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">SAC</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
                 <span class="c1"># Get observation space shape dynamically</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded RL model with observation space: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Loaded RL model with observation space: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;150-dimensional feature expansion enabled&quot;</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -196,28 +204,44 @@
             <span class="c1"># Enhanced feature processing with 150-dimensional expansion</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span><span class="p">:</span>
                 <span class="c1"># Generate comprehensive 150+ dimensional features</span>
-                <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;empty&quot;</span>
+                <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;empty&quot;</span>
+                <span class="p">)</span>
                 <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">enhanced_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                        <span class="n">enhanced_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span>
+                            <span class="n">data</span>
+                        <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">enhanced_data</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated 150+ dimensional features: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> total columns&quot;</span><span class="p">)</span>
+                        <span class="c1"># Only print feature generation info once per cache miss</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># Limit verbose logging</span>
+                            <span class="nb">print</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Generated 150+ dimensional features: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> total columns&quot;</span>
+                            <span class="p">)</span>
                     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">feat_e</span><span class="p">:</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature engineering failed: </span><span class="si">{</span><span class="n">feat_e</span><span class="si">}</span><span class="s2">, falling back to basic features&quot;</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Feature engineering failed: </span><span class="si">{</span><span class="n">feat_e</span><span class="si">}</span><span class="s2">, falling back to basic features&quot;</span>
+                        <span class="p">)</span>
                         <span class="n">enhanced_data</span> <span class="o">=</span> <span class="n">data</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">enhanced_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
 
                 <span class="c1"># Use enhanced features</span>
-                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span>
+                    <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Fallback to basic features</span>
                 <span class="n">enhanced_data</span> <span class="o">=</span> <span class="n">data</span>
-                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span>
+                    <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 
             <span class="c1"># Remove timestamp and non-feature columns</span>
-            <span class="n">exclude_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">]</span>
-            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_cols</span><span class="p">]</span>
+            <span class="n">exclude_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_cols</span>
+            <span class="p">]</span>
 
             <span class="c1"># Prioritize features with valid values (not all NaN)</span>
             <span class="n">valid_features</span> <span class="o">=</span> <span class="p">[]</span>
@@ -228,11 +252,15 @@
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="k">continue</span>  <span class="c1"># Skip problematic columns</span>
 
-            <span class="n">selected_features</span> <span class="o">=</span> <span class="n">valid_features</span><span class="p">[:</span><span class="nb">min</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_features</span><span class="p">))]</span>  <span class="c1"># Limit to 150 features max</span>
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="n">valid_features</span><span class="p">[</span>
+                <span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_features</span><span class="p">))</span>
+            <span class="p">]</span>  <span class="c1"># Limit to 150 features max</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_features</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: No valid features found, using basic price data&quot;</span><span class="p">)</span>
-                <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="p">[]</span>
+                <span class="n">selected_features</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;close&quot;</span> <span class="ow">in</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="p">[]</span>
+                <span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_features</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: No basic price data available, using momentum fallback&quot;</span><span class="p">)</span>
@@ -240,19 +268,29 @@
 
             <span class="c1"># Get the latest data point with error handling</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">obs</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">obs</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="p">)</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">obs_e</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error extracting observation: </span><span class="si">{</span><span class="n">obs_e</span><span class="si">}</span><span class="s2">, using momentum fallback&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
 
             <span class="c1"># Advanced NaN handling: forward fill, then backward fill, then interpolation</span>
             <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Found NaN values in </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span><span class="si">}</span><span class="s2"> features, applying advanced filling&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Warning: Found NaN values in </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span><span class="si">}</span><span class="s2"> features, applying advanced filling&quot;</span>
+                <span class="p">)</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="c1"># Forward fill then backward fill</span>
-                    <span class="n">filled_data</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;ffill&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfill&#39;</span><span class="p">)</span>
+                    <span class="n">filled_data</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span>
+                        <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;ffill&quot;</span><span class="p">)</span>
+                        <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;bfill&quot;</span><span class="p">)</span>
+                    <span class="p">)</span>
                     <span class="c1"># Interpolate remaining NaN</span>
-                    <span class="n">filled_data</span> <span class="o">=</span> <span class="n">filled_data</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">limit_direction</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+                    <span class="n">filled_data</span> <span class="o">=</span> <span class="n">filled_data</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span>
+                        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">limit_direction</span><span class="o">=</span><span class="s2">&quot;both&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">obs</span> <span class="o">=</span> <span class="n">filled_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
                     <span class="c1"># Final fallback to 0</span>
                     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
@@ -261,7 +299,11 @@
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NaN handling failed: </span><span class="si">{</span><span class="n">nan_e</span><span class="si">}</span><span class="s2">, using zeros&quot;</span><span class="p">)</span>
                     <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
 
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features for RL model (150d enabled: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="c1"># Only print feature usage info occasionally to reduce log spam</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Print every 100 cache entries</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features for RL model (150d enabled: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># Adjust to model&#39;s expected observation space</span>
             <span class="n">expected_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="ow">or</span> <span class="mi">13</span>
@@ -273,12 +315,16 @@
                 <span class="c1"># Truncate to expected size</span>
                 <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[:</span><span class="n">expected_features</span><span class="p">]</span>
 
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final observation shape: </span><span class="si">{</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (expected: </span><span class="si">{</span><span class="n">expected_features</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Final observation shape: </span><span class="si">{</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (expected: </span><span class="si">{</span><span class="n">expected_features</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
 
             <span class="c1"># Generate action with model</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="n">action_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="n">action_value</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="p">)</span>
 
                 <span class="c1"># Convert to trading signal</span>
                 <span class="k">if</span> <span class="n">action_value</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
@@ -293,7 +339,7 @@
                     <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">action_value</span><span class="p">),</span>
                     <span class="s2">&quot;raw_action&quot;</span><span class="p">:</span> <span class="n">action_value</span><span class="p">,</span>
                     <span class="s2">&quot;features_used&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">),</span>
-                    <span class="s2">&quot;observation_shape&quot;</span><span class="p">:</span> <span class="n">obs</span><span class="o">.</span><span class="n">shape</span>
+                    <span class="s2">&quot;observation_shape&quot;</span><span class="p">:</span> <span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
                 <span class="p">}</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">pred_e</span><span class="p">:</span>
@@ -320,13 +366,15 @@
             <span class="n">discrete_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Convert continuous to discrete</span>
-            <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="n">action_val</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s2">&quot;__len__&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">action_val</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.33</span><span class="p">:</span>
                 <span class="n">discrete_action</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># SELL</span>
             <span class="k">elif</span> <span class="n">action_val</span> <span class="o">&gt;</span> <span class="mf">0.33</span><span class="p">:</span>
-                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># BUY</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># BUY</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># HOLD</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># HOLD</span>
 
         <span class="c1"># Debug: Log the discrete action to file</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;debug_actions.log&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -371,9 +419,13 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Update learning rate if supported by the model</span>
-                <span class="k">if</span> <span class="s2">&quot;learning_rate&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;learning_rate&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="s2">&quot;learning_rate&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;learning_rate&quot;</span>
+                <span class="p">):</span>
                     <span class="c1"># Note: This is a simplified example. Actual implementation would depend on the model type</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated model learning rate to </span><span class="si">{</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Updated model learning rate to </span><span class="si">{</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Could not update model hyperparameters: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -394,15 +446,17 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
         <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
-        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">sum</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span>
+            <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
-            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
-            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
-            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="s2">&quot;cache_entries&quot;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s2">&quot;estimated_memory_mb&quot;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s2">&quot;features_enabled&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s2">&quot;model_loaded&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 
@@ -503,7 +557,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s2">&quot;fast_period&quot;</span><span class="p">])</span>
         <span class="k">if</span> <span class="s2">&quot;slow_period&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s2">&quot;slow_period&quot;</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated SMA parameters: fast_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span><span class="si">}</span><span class="s2">, slow_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Updated SMA parameters: fast_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span><span class="si">}</span><span class="s2">, slow_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="SMACrossoverAdapter.clear_feature_cache">
@@ -520,15 +576,17 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
         <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
-        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">sum</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span>
+            <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
-            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
-            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
-            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="s2">&quot;cache_entries&quot;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s2">&quot;estimated_memory_mb&quot;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s2">&quot;features_enabled&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s2">&quot;model_loaded&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">}</span></div>
 </div>
 
@@ -593,15 +651,17 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
         <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
-        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">sum</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span>
+            <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
-            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
-            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
-            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="s2">&quot;cache_entries&quot;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s2">&quot;estimated_memory_mb&quot;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s2">&quot;features_enabled&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s2">&quot;model_loaded&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 
@@ -644,7 +704,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -655,7 +715,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -19,18 +19,18 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="SAC Entropy Tuning - Critical Insight" href="SAC_ENTROPY_ANALYSIS.html" />
-    <link rel="prev" title="PPO整理完了レポート - アルゴリズム差し替え可能な設計" href="PPO_REFACTORING_COMPLETE.html" />
+    <link rel="next" title="PPOハイパーパラメータ最適化結果" href="PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.html" />
+    <link rel="prev" title="PPO整理完了レポート - アルゴリズム差し替え可能な設計" href="PPO_REFACTORING_COMPLETE.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -47,8 +47,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -93,6 +91,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#phase-2">📅 次のステップ（Phase 2）</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.html">PPOハイパーパラメータ最適化結果</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SAC_ENTROPY_ANALYSIS.html">SAC Entropy Tuning - Critical Insight</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html">SAC環境診断レポート</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html">========================================</a></li>
@@ -117,6 +116,17 @@
 <li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id20">🎯 次のアクション</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id21">========================================</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SAC_TUNING_ANALYSIS_REPORT.html">SAC Parameter Tuning Analysis Report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_ROOT_CAUSE_ANALYSIS.html">SAC v395i 成功の根本原因 - 完全追跡レポート</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V421_IMPROVEMENT_PLAN.html">SAC v421 Balanced Trading - 改善計画ドキュメント</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V421_IMPROVEMENT_PLAN.html#id27">🚀 高度な改善提案（自己レビュー結果）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V421_IMPROVEMENT_PLAN.html#id58">⚡ 計算時間短縮のための改善策</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V421_IMPROVEMENT_PLAN.html#id90">🔧 量子化・軽量化実装計画</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V421_IMPROVEMENT_PLAN.html#id109">🛡️ 高度リスク管理実装計画</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V424_DEEP_ANALYSIS_REPORT.html">SAC v424 深層分析レポート</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_V425_IMPROVEMENT_PLAN.html">SAC v425 改善計画</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_v427_LEARNING_PLAN.html">SAC v427 学習計画と実行ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_v427_TRAINING_README.html">SAC v427 学習実行ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sac_reward_parameter_tuning.html">SAC 報酬関数・学習パラメータ調整ドキュメント</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
@@ -147,7 +157,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="ppo-refactoring-plan">
 <h1>PPO Refactoring Plan - アルゴリズム差し替え可能な設計へ<a class="headerlink" href="#ppo-refactoring-plan" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -221,12 +231,12 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        モデルを作成する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            env: 訓練環境</span>
 <span class="sd">            config: アルゴリズム設定</span>
 <span class="sd">            tensorboard_log: TensorBoardログディレクトリ</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            作成されたモデル</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -242,13 +252,13 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        モデルを訓練する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            model: 訓練するモデル</span>
 <span class="sd">            total_timesteps: 総ステップ数</span>
 <span class="sd">            callback: コールバック関数</span>
 <span class="sd">            **kwargs: その他のパラメータ</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            訓練済みモデル</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -258,7 +268,7 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
     <span class="k">def</span><span class="w"> </span><span class="nf">get_default_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        デフォルト設定を取得する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            デフォルト設定の辞書</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -295,7 +305,7 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
     <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">algorithm_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムを登録する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名（例: &quot;ppo&quot;）</span>
 <span class="sd">            algorithm_class: アルゴリズムクラス</span>
@@ -306,14 +316,14 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
     <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseRLAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        アルゴリズムのインスタンスを作成する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            algorithm_name: アルゴリズム名</span>
 <span class="sd">            **kwargs: アルゴリズムのコンストラクタ引数</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            アルゴリズムインスタンス</span>
-<span class="sd">            </span>
+
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: 未登録のアルゴリズム名</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -581,7 +591,7 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="PPO_REFACTORING_COMPLETE.html" class="btn btn-neutral float-left" title="PPO整理完了レポート - アルゴリズム差し替え可能な設計" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="SAC_ENTROPY_ANALYSIS.html" class="btn btn-neutral float-right" title="SAC Entropy Tuning - Critical Insight" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.html" class="btn btn-neutral float-right" title="PPOハイパーパラメータ最適化結果" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
@@ -593,7 +603,7 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -604,7 +614,7 @@ mkdir<span class="w"> </span>ztb<span class="se">\t</span>raining<span class="se
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

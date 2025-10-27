@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,17 +87,19 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.schema_env_factory</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="create_env_from_schema">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.environment.html#ztb.trading.environment.schema_env_factory.create_env_from_schema">[docs]</a>
@@ -105,7 +107,7 @@
     <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">models_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">models_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">models_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">models_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
@@ -142,7 +144,9 @@
 
         <span class="c1"># initial_balance → initial_portfolio_value に変換</span>
         <span class="k">if</span> <span class="s2">&quot;initial_balance&quot;</span> <span class="ow">in</span> <span class="n">training_env_config</span><span class="p">:</span>
-            <span class="n">training_env_config</span><span class="p">[</span><span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_env_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">)</span>
+            <span class="n">training_env_config</span><span class="p">[</span><span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_env_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+                <span class="s2">&quot;initial_balance&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># 訓練時設定を適用（ユーザー設定で上書きされていないもののみ）</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">training_env_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -153,25 +157,31 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No training environment config found in metadata&quot;</span><span class="p">)</span>
 
     <span class="c1"># スキーマ情報を設定に追加（特徴量情報は最優先で上書き）</span>
-    <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-        <span class="s2">&quot;feature_names&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
-        <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="p">,</span>
-        <span class="s2">&quot;schema_hash&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="p">,</span>
-        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span>
-    <span class="p">})</span>
+    <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;feature_names&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
+            <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="p">,</span>
+            <span class="s2">&quot;schema_hash&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="p">,</span>
+            <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># スキーマベース環境では相関削減を無効化（デフォルト）</span>
     <span class="c1"># ただし、ユーザーが明示的に設定した場合は尊重</span>
     <span class="k">if</span> <span class="s2">&quot;enable_correlation_reduction&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">config</span> <span class="ow">or</span> <span class="p">{}):</span>
         <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;enable_correlation_reduction&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final env_config: enable_correlation_reduction=</span><span class="si">{</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;enable_correlation_reduction&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Final env_config: enable_correlation_reduction=</span><span class="si">{</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;enable_correlation_reduction&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">scaler</span><span class="p">:</span>
-        <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-            <span class="s2">&quot;scaler_mean&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;scaler_std&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">],</span>
-        <span class="p">})</span>
+        <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;scaler_mean&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;scaler_std&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">],</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
 
     <span class="c1"># 🔧 CRITICAL FIX: random_startは位置引数なので明示的に渡す</span>
     <span class="c1"># HeavyTradingEnv.__init__(df, config, random_start=False, ...)</span>
@@ -183,21 +193,34 @@
     <span class="k">return</span> <span class="n">env</span></div>
 
 
+
 <div class="viewcode-block" id="create_env_from_model_path">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.environment.html#ztb.trading.environment.schema_env_factory.create_env_from_model_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">create_env_from_model_path</span><span class="p">(</span>
-    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-    <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
-    <span class="n">model_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
     <span class="n">model_path_obj</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;models&quot;</span><span class="p">:</span>
-        <span class="n">models_dir</span> <span class="o">=</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">models_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
+    <span class="n">model_name</span> <span class="o">=</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">stem</span>
+    <span class="n">models_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span></div>
+    <span class="c1"># まず直接のモデル名でスキーマを探す</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="c1"># 見つからない場合は、schemasディレクトリをスキャンして</span>
+        <span class="c1"># 最新のスキーマディレクトリを探す（バックテスト用フォールバック）</span>
+        <span class="n">schemas_dir</span> <span class="o">=</span> <span class="n">models_dir</span> <span class="o">/</span> <span class="s2">&quot;schemas&quot;</span>
+        <span class="k">if</span> <span class="n">schemas_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">schema_dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">schemas_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()]</span>
+            <span class="k">if</span> <span class="n">schema_dirs</span><span class="p">:</span>
+                <span class="c1"># 最新のスキーマディレクトリを使用（名前順で最後）</span>
+                <span class="n">latest_schema_dir</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">schema_dirs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">model_name</span> <span class="o">=</span> <span class="n">latest_schema_dir</span><span class="o">.</span><span class="n">name</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fallback schema: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
+
+        <span class="c1"># それでも見つからない場合は元のエラーを投げる</span>
+        <span class="k">raise</span></div>
 
 </pre></div>
 
@@ -214,7 +237,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -225,7 +248,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

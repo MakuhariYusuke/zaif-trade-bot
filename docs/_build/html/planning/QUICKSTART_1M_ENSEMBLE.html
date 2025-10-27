@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="m">
 <h1>1M学習アンサンブル - クイックスタートガイド<a class="headerlink" href="#m" title="Link to this heading"></a></h1>
 <p><strong>CustomPPO横展開完了記念: すぐに始められる1M学習アンサンブル</strong></p>
@@ -146,7 +144,7 @@ python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_tra
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts<span class="se">\r</span>un_1m_ensemble.py
 </pre></div>
 </div>
-<p><strong>所要時間</strong>: 3-5時間 × 3 = 9-15時間<br />
+<p><strong>所要時間</strong>: 3-5時間 × 3 = 9-15時間
 <strong>リソース</strong>: CPU/メモリ集中
 <strong>メリット</strong>: 設定不要、完全自動</p>
 </section>
@@ -169,7 +167,7 @@ python<span class="w"> </span>scripts<span class="se">\r</span>un_1m_ensemble.py
 python<span class="w"> </span>scripts<span class="se">\r</span>un_1m_ensemble.py<span class="w"> </span>--model<span class="w"> </span>C
 </pre></div>
 </div>
-<p><strong>所要時間</strong>: 3-5時間（並列）<br />
+<p><strong>所要時間</strong>: 3-5時間（並列）
 <strong>リソース</strong>: 3倍のCPU/メモリ
 <strong>メリット</strong>: 時間短縮、進捗確認しやすい</p>
 </section>
@@ -178,7 +176,7 @@ python<span class="w"> </span>scripts<span class="se">\r</span>un_1m_ensemble.py
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># モデルA</span>
 python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_A_1M.json
 
-<span class="c1"># モデルB  </span>
+<span class="c1"># モデルB</span>
 python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_1M.json
 
 <span class="c1"># モデルC</span>
@@ -320,8 +318,8 @@ python<span class="w"> </span>scripts<span class="se">\r</span>un_1m_ensemble.py
 └── checkpoint_1000000\
 </pre></div>
 </div>
-<p><strong>チェックポイント数</strong>: 40個（25k間隔）<br />
-<strong>ディスク容量</strong>: 約400MB-2GB<br />
+<p><strong>チェックポイント数</strong>: 40個（25k間隔）
+<strong>ディスク容量</strong>: 約400MB-2GB
 <strong>用途</strong>: 早期停止、モデル選択、過学習回避</p>
 </section>
 <section id="id12">
@@ -437,15 +435,15 @@ python<span class="w"> </span>ztb<span class="se">\t</span>rading<span class="se
 <li><p>TensorBoardで指標確認</p></li>
 </ol>
 <p><strong>よくある質問</strong>:</p>
-<p>Q: 途中で中断した場合は?<br />
+<p>Q: 途中で中断した場合は?
 A: チェックポイントから再開可能（将来対応予定）</p>
-<p>Q: 3モデル全部必要?<br />
+<p>Q: 3モデル全部必要?
 A: 1モデルでも可。アンサンブルは2+推奨</p>
-<p>Q: GPUは必要?<br />
+<p>Q: GPUは必要?
 A: 不要。CPUで動作（ただし遅い）</p>
 <hr class="docutils" />
-<p><strong>作成日</strong>: 2025年10月7日<br />
-<strong>ステータス</strong>: unified_trainer.py統合完了 ✅<br />
+<p><strong>作成日</strong>: 2025年10月7日
+<strong>ステータス</strong>: unified_trainer.py統合完了 ✅
 <strong>推奨実行方法</strong>: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts\run_1m_ensemble.py</span> <span class="pre">--model</span> <span class="pre">A</span></code> (並列実行)</p>
 </section>
 </section>
@@ -464,7 +462,7 @@ A: 不要。CPUで動作（ただし遅い）</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -475,7 +473,7 @@ A: 不要。CPUで動作（ただし遅い）</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

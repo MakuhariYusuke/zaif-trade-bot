@@ -1,0 +1,87 @@
+{
+  "summary": {
+    "total_episodes": 10,
+    "average_reward": -6480.0,
+    "average_trades": 0.0,
+    "win_rate": 0.0,
+    "total_return": -49.77890332467224,
+    "sharpe_ratio": -4977886795.465922,
+    "max_drawdown": -49.77890332467225,
+    "model_path": "models/v440/sac_v440_pnl_final.zip",
+    "config_version": "4.4.0",
+    "approach": "pure_pnl_based"
+  },
+  "episodes": [
+    {
+      "episode": 1,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 2,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 3,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 4,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 5,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 6,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 7,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 8,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 9,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    },
+    {
+      "episode": 10,
+      "reward": -6480.0,
+      "trades": 0,
+      "return_pct": -49.77890332467225,
+      "final_balance": 5022.109667532775
+    }
+  ],
+  "timestamp": "2025-10-28T03:06:10.789252"
+}

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>修正完了サマリー - 外部レビュー対応<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
 <section id="id2">
@@ -102,8 +100,8 @@
 <h2>✅ 修正完了リスト<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
 <section id="high">
 <h3>1. 最小ホールド期間バグ (High) ✅<a class="headerlink" href="#high" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> ポジション保有中でもクローズできず、損失拡大リスク<br />
-<strong>修正:</strong> ポジションクローズは常に許可するように変更<br />
+<p><strong>問題:</strong> ポジション保有中でもクローズできず、損失拡大リスク
+<strong>修正:</strong> ポジションクローズは常に許可するように変更
 <strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後: リスク管理を優先</span>
 <span class="k">if</span> <span class="n">steps_since_last_trade</span> <span class="o">&lt;</span> <span class="n">min_holding_period</span><span class="p">:</span>
@@ -118,8 +116,8 @@
 <hr class="docutils" />
 <section id="action-masks-high">
 <h3>2. アンサンブルのaction_masksバグ (High) ✅<a class="headerlink" href="#action-masks-high" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> MaskablePPOでaction_masksを無視、不正アクション選択<br />
-<strong>修正:</strong> mask_providerを追加、自動でaction_masksを適用<br />
+<p><strong>問題:</strong> MaskablePPOでaction_masksを無視、不正アクション選択
+<strong>修正:</strong> mask_providerを追加、自動でaction_masksを適用
 <strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ensemble.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="n">ensemble</span> <span class="o">=</span> <span class="n">EnsemblePredictor</span><span class="p">(</span>
@@ -132,7 +130,7 @@
 <hr class="docutils" />
 <section id="id4">
 <h3>3. 共通ヘルパー追加 ✅<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
-<p><strong>改善:</strong> MaskablePPO用の統一インターフェース作成<br />
+<p><strong>改善:</strong> MaskablePPO用の統一インターフェース作成
 <strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/policy_utils.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 新規追加</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
@@ -145,7 +143,7 @@
 <hr class="docutils" />
 <section id="id5">
 <h3>4. 環境クリーンアップ強化 ✅<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
-<p><strong>改善:</strong> トレーニング終了時の明示的なリソース解放<br />
+<p><strong>改善:</strong> トレーニング終了時の明示的なリソース解放
 <strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ppo_trainer.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="k">try</span><span class="p">:</span>
@@ -278,8 +276,8 @@
 <li><p>さらなる報酬調整またはカリキュラム変更</p></li>
 </ol>
 <hr class="docutils" />
-<p><strong>修正完了日:</strong> 2025年10月8日<br />
-<strong>修正件数:</strong> 4件 (バグ2件、改善2件)<br />
+<p><strong>修正完了日:</strong> 2025年10月8日
+<strong>修正件数:</strong> 4件 (バグ2件、改善2件)
 <strong>詳細レポート:</strong> <code class="docutils literal notranslate"><span class="pre">BUGFIX_EXTERNAL_REVIEW.md</span></code></p>
 </section>
 </section>
@@ -292,8 +290,8 @@
 </section>
 <section id="medium">
 <h3>1. サマリー表示の問題 (Medium)<a class="headerlink" href="#medium" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> dry-runモードで最終サマリーが表示されない<br />
-<strong>影響:</strong> テスト実行時の結果確認が困難<br />
+<p><strong>問題:</strong> dry-runモードで最終サマリーが表示されない
+<strong>影響:</strong> テスト実行時の結果確認が困難
 <strong>原因:</strong> ログレベル設定と出力先の不一致</p>
 <p><strong>現在の実装:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># trading_loop.py - 最終レポート</span>
@@ -311,8 +309,8 @@
 </section>
 <section id="discord-low">
 <h3>2. Discord通知の無効化 (Low)<a class="headerlink" href="#discord-low" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> dry-runモードでDiscord通知が完全に無効化されている<br />
-<strong>影響:</strong> ライブモード移行時の通知テストができない<br />
+<p><strong>問題:</strong> dry-runモードでDiscord通知が完全に無効化されている
+<strong>影響:</strong> ライブモード移行時の通知テストができない
 <strong>原因:</strong> dry-run初期化でnotifier = None固定</p>
 <p><strong>現在の実装:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># live_trader.py - dry-run初期化</span>
@@ -328,8 +326,8 @@
 </section>
 <section id="id23">
 <h3>3. 非同期/同期処理の混在 (Medium)<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> _get_current_priceでasyncio.runを使用<br />
-<strong>影響:</strong> イベントループの競合リスク、テスト時の不安定さ<br />
+<p><strong>問題:</strong> _get_current_priceでasyncio.runを使用
+<strong>影響:</strong> イベントループの競合リスク、テスト時の不安定さ
 <strong>原因:</strong> CoincheckAdapterがasyncだが、trading_loopがsync</p>
 <p><strong>現在の実装:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># _get_current_price</span>
@@ -347,8 +345,8 @@
 </section>
 <section id="ttlcache-clear-expired-low">
 <h3>4. TTLCache.clear_expiredの問題 (Low)<a class="headerlink" href="#ttlcache-clear-expired-low" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> clear_expiredメソッドが存在しない可能性<br />
-<strong>影響:</strong> メモリリークのリスク<br />
+<p><strong>問題:</strong> clear_expiredメソッドが存在しない可能性
+<strong>影響:</strong> メモリリークのリスク
 <strong>原因:</strong> TTLCache実装の不一致</p>
 <p><strong>現在の実装:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># _periodic_cleanup</span>
@@ -364,8 +362,8 @@
 </section>
 <section id="low">
 <h3>5. ログレベルの設定不足 (Low)<a class="headerlink" href="#low" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> ログ出力レベルが環境によって異なる<br />
-<strong>影響:</strong> デバッグ時の情報不足<br />
+<p><strong>問題:</strong> ログ出力レベルが環境によって異なる
+<strong>影響:</strong> デバッグ時の情報不足
 <strong>原因:</strong> 明示的なログレベル設定なし</p>
 <p><strong>推奨対応:</strong></p>
 <ul class="simple">
@@ -376,8 +374,8 @@
 </section>
 <section id="id24">
 <h3>6. テストカバレッジの不足 (Medium)<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> dry-run機能の自動テストなし<br />
-<strong>影響:</strong> リグレッションリスク<br />
+<p><strong>問題:</strong> dry-run機能の自動テストなし
+<strong>影響:</strong> リグレッションリスク
 <strong>原因:</strong> 統合テストの不在</p>
 <p><strong>推奨対応:</strong></p>
 <ul class="simple">
@@ -388,8 +386,8 @@
 </section>
 <section id="id25">
 <h3>7. 設定管理の複雑化 (Low)<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
-<p><strong>問題:</strong> dry-run/liveモードの条件分岐が散在<br />
-<strong>影響:</strong> コード保守性の低下<br />
+<p><strong>問題:</strong> dry-run/liveモードの条件分岐が散在
+<strong>影響:</strong> コード保守性の低下
 <strong>原因:</strong> 初期設計時のモード分離不足</p>
 <p><strong>推奨対応:</strong></p>
 <ul class="simple">
@@ -474,7 +472,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -485,7 +483,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

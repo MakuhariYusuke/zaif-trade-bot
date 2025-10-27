@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.safety.integrated_safety_manager</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Integrated Safety Manager</span>
@@ -97,17 +97,15 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.safety</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyManager</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.fallback_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FallbackManager</span><span class="p">,</span> <span class="n">FallbackMode</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.anomaly_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnomalyDetectionManager</span><span class="p">,</span> <span class="n">AnomalyResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.fallback_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FallbackManager</span><span class="p">,</span> <span class="n">FallbackMode</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.recovery_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">RecoveryManager</span><span class="p">,</span> <span class="n">RecoveryStrategy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyLevel</span><span class="p">,</span> <span class="n">SafetyEvent</span><span class="p">,</span> <span class="n">SafetyAction</span>
-
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyAction</span><span class="p">,</span> <span class="n">SafetyEvent</span><span class="p">,</span> <span class="n">SafetyLevel</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -170,9 +168,11 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">IntegratedSafetyManager</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統合安全マネージャー&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">safety_manager</span><span class="p">:</span> <span class="n">SafetyManager</span><span class="p">,</span>
-                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">IntegratedSafetyConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">safety_manager</span><span class="p">:</span> <span class="n">SafetyManager</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">IntegratedSafetyConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span> <span class="o">=</span> <span class="n">safety_manager</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">IntegratedSafetyConfig</span><span class="p">()</span>
 
@@ -192,11 +192,11 @@
 
         <span class="c1"># コールバック</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">safety_callbacks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;anomaly_detected&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;fallback_activated&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;recovery_initiated&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;system_recovered&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;critical_alert&#39;</span><span class="p">:</span> <span class="p">[]</span>
+            <span class="s2">&quot;anomaly_detected&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;fallback_activated&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;recovery_initiated&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;system_recovered&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;critical_alert&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
         <span class="c1"># スレッド管理</span>
@@ -215,34 +215,34 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_fallback_system</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span> <span class="o">=</span> <span class="n">FallbackManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">add_fallback_callback</span><span class="p">(</span>
-                    <span class="s1">&#39;activated&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_fallback_activated</span>
+                    <span class="s2">&quot;activated&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_fallback_activated</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">add_fallback_callback</span><span class="p">(</span>
-                    <span class="s1">&#39;deactivated&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_fallback_deactivated</span>
+                    <span class="s2">&quot;deactivated&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_fallback_deactivated</span>
                 <span class="p">)</span>
 
             <span class="c1"># 異常検知マネージャーの初期化</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_anomaly_detection</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span> <span class="o">=</span> <span class="n">AnomalyDetectionManager</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span>
-                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span> <span class="o">=</span> <span class="n">AnomalyDetectionManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">add_anomaly_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_anomaly_detected</span><span class="p">)</span>
 
             <span class="c1"># リカバリーマネージャーの初期化</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_recovery_system</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_recovery_system</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span>
+            <span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span> <span class="o">=</span> <span class="n">RecoveryManager</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">add_recovery_callback</span><span class="p">(</span>
-                    <span class="s1">&#39;recovery_started&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_started</span>
+                    <span class="s2">&quot;recovery_started&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_started</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">add_recovery_callback</span><span class="p">(</span>
-                    <span class="s1">&#39;recovery_completed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_completed</span>
+                    <span class="s2">&quot;recovery_completed&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_completed</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">add_recovery_callback</span><span class="p">(</span>
-                    <span class="s1">&#39;recovery_failed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_failed</span>
+                    <span class="s2">&quot;recovery_failed&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_recovery_failed</span>
                 <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Safety components initialized successfully&quot;</span><span class="p">)</span>
@@ -270,15 +270,13 @@
 
             <span class="c1"># 監視スレッドを開始</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_worker</span><span class="p">,</span>
-                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_worker</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 
             <span class="c1"># 正常性チェックスレッドを開始</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">health_check_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_health_check_worker</span><span class="p">,</span>
-                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_health_check_worker</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">health_check_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 
@@ -350,9 +348,11 @@
                 <span class="n">anomalies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
                 <span class="c1"># 自動フォールバック対応</span>
-                <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_fallback_on_anomaly</span> <span class="ow">and</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span> <span class="ow">and</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_should_activate_fallback</span><span class="p">(</span><span class="n">anomalies</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_fallback_on_anomaly</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_activate_fallback</span><span class="p">(</span><span class="n">anomalies</span><span class="p">)</span>
+                <span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_activate_emergency_fallback</span><span class="p">(</span><span class="n">anomalies</span><span class="p">)</span>
 
             <span class="c1"># システム正常性スコアを更新</span>
@@ -369,29 +369,31 @@
 
             <span class="c1"># 各コンポーネントの正常性をチェック</span>
             <span class="n">health_status</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">current_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
-                <span class="s1">&#39;overall_health&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
-                <span class="s1">&#39;components&#39;</span><span class="p">:</span> <span class="p">{}</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">current_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="s2">&quot;overall_health&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
+                <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">{},</span>
             <span class="p">}</span>
 
             <span class="c1"># 異常検知マネージャーのチェック</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="p">:</span>
                 <span class="n">anomaly_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_anomaly_manager_health</span><span class="p">()</span>
-                <span class="n">health_status</span><span class="p">[</span><span class="s1">&#39;components&#39;</span><span class="p">][</span><span class="s1">&#39;anomaly_detection&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">anomaly_health</span>
+                <span class="n">health_status</span><span class="p">[</span><span class="s2">&quot;components&quot;</span><span class="p">][</span><span class="s2">&quot;anomaly_detection&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">anomaly_health</span>
 
             <span class="c1"># フォールバックマネージャーのチェック</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="p">:</span>
                 <span class="n">fallback_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_fallback_manager_health</span><span class="p">()</span>
-                <span class="n">health_status</span><span class="p">[</span><span class="s1">&#39;components&#39;</span><span class="p">][</span><span class="s1">&#39;fallback_system&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fallback_health</span>
+                <span class="n">health_status</span><span class="p">[</span><span class="s2">&quot;components&quot;</span><span class="p">][</span><span class="s2">&quot;fallback_system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fallback_health</span>
 
             <span class="c1"># リカバリーマネージャーのチェック</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="p">:</span>
                 <span class="n">recovery_health</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_recovery_manager_health</span><span class="p">()</span>
-                <span class="n">health_status</span><span class="p">[</span><span class="s1">&#39;components&#39;</span><span class="p">][</span><span class="s1">&#39;recovery_system&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recovery_health</span>
+                <span class="n">health_status</span><span class="p">[</span><span class="s2">&quot;components&quot;</span><span class="p">][</span><span class="s2">&quot;recovery_system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recovery_health</span>
 
             <span class="c1"># 正常性が低い場合はアラート</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span> <span class="o">&lt;</span> <span class="mf">50.0</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_critical_alert</span><span class="p">(</span><span class="s2">&quot;System health critically low&quot;</span><span class="p">,</span> <span class="n">health_status</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_critical_alert</span><span class="p">(</span>
+                    <span class="s2">&quot;System health critically low&quot;</span><span class="p">,</span> <span class="n">health_status</span>
+                <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Health check completed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 
@@ -409,11 +411,13 @@
                 <span class="n">severity</span><span class="o">=</span><span class="n">anomaly</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="n">anomaly</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
                 <span class="n">related_anomalies</span><span class="o">=</span><span class="p">[</span><span class="n">anomaly</span><span class="o">.</span><span class="n">anomaly_id</span><span class="p">],</span>
-                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;anomaly_details&#39;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">anomaly_type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-                    <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">confidence_score</span><span class="p">,</span>
-                    <span class="s1">&#39;affected_metrics&#39;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">affected_metrics</span>
-                <span class="p">}}</span>
+                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;anomaly_details&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">anomaly_type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                        <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">confidence_score</span><span class="p">,</span>
+                        <span class="s2">&quot;affected_metrics&quot;</span><span class="p">:</span> <span class="n">anomaly</span><span class="o">.</span><span class="n">affected_metrics</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">},</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
@@ -426,7 +430,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">_activate_conservative_fallback</span><span class="p">([</span><span class="n">anomaly</span><span class="p">])</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;anomaly_detected&#39;</span><span class="p">,</span> <span class="n">anomaly</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s2">&quot;anomaly_detected&quot;</span><span class="p">,</span> <span class="n">anomaly</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle anomaly detection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -442,19 +446,22 @@
                 <span class="n">severity</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Fallback mode activated: </span><span class="si">{</span><span class="n">fallback_mode</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                 <span class="n">triggered_actions</span><span class="o">=</span><span class="p">[</span><span class="n">SafetyAction</span><span class="o">.</span><span class="n">ACTIVATE_FALLBACK</span><span class="p">],</span>
-                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;fallback_mode&#39;</span><span class="p">:</span> <span class="n">fallback_mode</span><span class="o">.</span><span class="n">value</span><span class="p">}</span>
+                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fallback_mode&quot;</span><span class="p">:</span> <span class="n">fallback_mode</span><span class="o">.</span><span class="n">value</span><span class="p">},</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 
             <span class="c1"># 自動リカバリー</span>
-            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_recovery_on_fallback</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span> <span class="ow">and</span>
-                <span class="n">fallback_mode</span> <span class="ow">in</span> <span class="p">[</span><span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span><span class="p">,</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_recovery_on_fallback</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span>
+                <span class="ow">and</span> <span class="n">fallback_mode</span>
+                <span class="ow">in</span> <span class="p">[</span><span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span><span class="p">,</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span><span class="p">]</span>
+            <span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_initiate_automatic_recovery</span><span class="p">(</span><span class="n">fallback_mode</span><span class="p">)</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;fallback_activated&#39;</span><span class="p">,</span> <span class="n">fallback_mode</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s2">&quot;fallback_activated&quot;</span><span class="p">,</span> <span class="n">fallback_mode</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle fallback activation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -470,13 +477,13 @@
                 <span class="n">severity</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Fallback mode deactivated&quot;</span><span class="p">,</span>
                 <span class="n">triggered_actions</span><span class="o">=</span><span class="p">[</span><span class="n">SafetyAction</span><span class="o">.</span><span class="n">DEACTIVATE_FALLBACK</span><span class="p">],</span>
-                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;fallback_status&#39;</span><span class="p">:</span> <span class="s1">&#39;deactivated&#39;</span><span class="p">}</span>
+                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fallback_status&quot;</span><span class="p">:</span> <span class="s2">&quot;deactivated&quot;</span><span class="p">},</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;system_recovered&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s2">&quot;system_recovered&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle fallback deactivation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -492,13 +499,13 @@
                 <span class="n">severity</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Recovery initiated: </span><span class="si">{</span><span class="n">recovery_attempt</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                 <span class="n">triggered_actions</span><span class="o">=</span><span class="p">[</span><span class="n">SafetyAction</span><span class="o">.</span><span class="n">INITIATE_RECOVERY</span><span class="p">],</span>
-                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;recovery_strategy&#39;</span><span class="p">:</span> <span class="n">recovery_attempt</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="p">}</span>
+                <span class="n">system_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;recovery_strategy&quot;</span><span class="p">:</span> <span class="n">recovery_attempt</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="p">},</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;recovery_initiated&#39;</span><span class="p">,</span> <span class="n">recovery_attempt</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s2">&quot;recovery_initiated&quot;</span><span class="p">,</span> <span class="n">recovery_attempt</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle recovery start: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -513,7 +520,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">active_events</span><span class="p">[</span><span class="n">event_id</span><span class="p">]</span><span class="o">.</span><span class="n">resolution_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;system_recovered&#39;</span><span class="p">,</span> <span class="n">recovery_attempt</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s2">&quot;system_recovered&quot;</span><span class="p">,</span> <span class="n">recovery_attempt</span><span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle recovery completion: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -530,7 +537,7 @@
             <span class="c1"># クリティカルアラートを発行</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_critical_alert</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Recovery failed: </span><span class="si">{</span><span class="n">recovery_attempt</span><span class="o">.</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="p">{</span><span class="s1">&#39;recovery_attempt&#39;</span><span class="p">:</span> <span class="n">recovery_attempt</span><span class="o">.</span><span class="n">attempt_id</span><span class="p">}</span>
+                <span class="p">{</span><span class="s2">&quot;recovery_attempt&quot;</span><span class="p">:</span> <span class="n">recovery_attempt</span><span class="o">.</span><span class="n">attempt_id</span><span class="p">},</span>
             <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -544,9 +551,10 @@
 
             <span class="c1"># クリティカルな異常があるかチェック</span>
             <span class="n">critical_anomalies</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">anomalies</span>
-                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">severity</span> <span class="o">==</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span> <span class="ow">or</span>
-                   <span class="n">a</span><span class="o">.</span><span class="n">confidence_score</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">critical_anomaly_threshold</span>
+                <span class="n">a</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">anomalies</span>
+                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">severity</span> <span class="o">==</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span>
+                <span class="ow">or</span> <span class="n">a</span><span class="o">.</span><span class="n">confidence_score</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">critical_anomaly_threshold</span>
             <span class="p">]</span>
 
             <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">critical_anomalies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
@@ -561,17 +569,25 @@
                 <span class="k">return</span>
 
             <span class="c1"># 異常の深刻度に基づいてフォールバックモードを選択</span>
-            <span class="n">max_severity</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">severity</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">anomalies</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+            <span class="n">max_severity</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">severity</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">anomalies</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">INFO</span>
+            <span class="p">)</span>
             <span class="n">max_confidence</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">a</span><span class="o">.</span><span class="n">confidence_score</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">anomalies</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">max_severity</span> <span class="o">==</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span> <span class="ow">or</span> <span class="n">max_confidence</span> <span class="o">&gt;=</span> <span class="mf">0.9</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">activate_fallback_mode</span><span class="p">(</span><span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">activate_fallback_mode</span><span class="p">(</span>
+                    <span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span>
+                <span class="p">)</span>
             <span class="k">elif</span> <span class="n">max_confidence</span> <span class="o">&gt;=</span> <span class="mf">0.8</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">activate_fallback_mode</span><span class="p">(</span><span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">activate_fallback_mode</span><span class="p">(</span>
+                    <span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">activate_fallback_mode</span><span class="p">(</span><span class="n">FallbackMode</span><span class="o">.</span><span class="n">CONSERVATIVE</span><span class="p">)</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Emergency fallback activated due to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">anomalies</span><span class="p">)</span><span class="si">}</span><span class="s2"> anomalies&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Emergency fallback activated due to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">anomalies</span><span class="p">)</span><span class="si">}</span><span class="s2"> anomalies&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate emergency fallback: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -603,11 +619,13 @@
             <span class="n">success</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">initiate_recovery</span><span class="p">(</span>
                 <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span>
                 <span class="n">triggered_by</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;automatic_recovery_from_</span><span class="si">{</span><span class="n">fallback_mode</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                <span class="n">affected_components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;trading_system&quot;</span><span class="p">,</span> <span class="s2">&quot;risk_management&quot;</span><span class="p">]</span>
+                <span class="n">affected_components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;trading_system&quot;</span><span class="p">,</span> <span class="s2">&quot;risk_management&quot;</span><span class="p">],</span>
             <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Automatic recovery initiated with strategy: </span><span class="si">{</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Automatic recovery initiated with strategy: </span><span class="si">{</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to initiate automatic recovery&quot;</span><span class="p">)</span>
 
@@ -620,7 +638,7 @@
             <span class="n">score</span> <span class="o">=</span> <span class="mf">100.0</span>
 
             <span class="c1"># CPU使用率による減点</span>
-            <span class="n">cpu_usage</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">cpu_usage</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_usage&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">cpu_usage</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">30</span>
             <span class="k">elif</span> <span class="n">cpu_usage</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">:</span>
@@ -629,7 +647,7 @@
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">5</span>
 
             <span class="c1"># メモリ使用率による減点</span>
-            <span class="n">memory_usage</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_usage&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">memory_usage</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_usage&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">memory_usage</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">30</span>
             <span class="k">elif</span> <span class="n">memory_usage</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">:</span>
@@ -638,7 +656,7 @@
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">5</span>
 
             <span class="c1"># エラーレートによる減点</span>
-            <span class="n">error_rate</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;error_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">error_rate</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">error_rate</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">40</span>
             <span class="k">elif</span> <span class="n">error_rate</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>
@@ -647,7 +665,7 @@
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">5</span>
 
             <span class="c1"># レスポンスタイムによる減点</span>
-            <span class="n">response_time</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;response_time&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">response_time</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;response_time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">response_time</span> <span class="o">&gt;</span> <span class="mi">5000</span><span class="p">:</span>
                 <span class="n">score</span> <span class="o">-=</span> <span class="mi">25</span>
             <span class="k">elif</span> <span class="n">response_time</span> <span class="o">&gt;</span> <span class="mi">2000</span><span class="p">:</span>
@@ -664,57 +682,65 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;異常検知マネージャーの正常性をチェック&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;disabled&#39;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;disabled&quot;</span><span class="p">}</span>
 
             <span class="c1"># 基本的な正常性チェック</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;active&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">is_active</span> <span class="k">else</span> <span class="s1">&#39;inactive&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;anomalies_detected&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">anomaly_history</span><span class="p">),</span>
-                <span class="s1">&#39;last_detection&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">is_active</span> <span class="k">else</span> <span class="s2">&quot;inactive&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;anomalies_detected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">anomaly_history</span><span class="p">),</span>
+                <span class="s2">&quot;last_detection&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;error&#39;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_fallback_manager_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックマネージャーの正常性をチェック&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;disabled&#39;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;disabled&quot;</span><span class="p">}</span>
 
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;active&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">is_active</span> <span class="k">else</span> <span class="s1">&#39;inactive&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;current_mode&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span> <span class="k">else</span> <span class="s1">&#39;normal&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;fallback_history&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">fallback_history</span><span class="p">)</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">is_active</span> <span class="k">else</span> <span class="s2">&quot;inactive&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;current_mode&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span>
+                <span class="k">else</span> <span class="s2">&quot;normal&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;fallback_history&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">fallback_history</span><span class="p">),</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;error&#39;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_recovery_manager_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;リカバリーマネージャーの正常性をチェック&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;disabled&#39;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;disabled&quot;</span><span class="p">}</span>
 
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;active&#39;</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">is_recovery_active</span> <span class="k">else</span> <span class="s1">&#39;recovery_in_progress&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;recovery_history&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span><span class="p">),</span>
-                <span class="s1">&#39;last_recovery&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">is_recovery_active</span>
+                <span class="k">else</span> <span class="s2">&quot;recovery_in_progress&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;recovery_history&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span><span class="p">),</span>
+                <span class="s2">&quot;last_recovery&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span><span class="p">[</span>
+                    <span class="o">-</span><span class="mi">1</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">recovery_history</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;error&#39;</span><span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_current_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;現在のメトリクスを取得&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># SafetyManagerからメトリクスを取得</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;cpu_usage&#39;</span><span class="p">:</span> <span class="mf">45.5</span><span class="p">,</span>
-                <span class="s1">&#39;memory_usage&#39;</span><span class="p">:</span> <span class="mf">67.8</span><span class="p">,</span>
-                <span class="s1">&#39;error_rate&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
-                <span class="s1">&#39;response_time&#39;</span><span class="p">:</span> <span class="mf">150.0</span>
+                <span class="s2">&quot;cpu_usage&quot;</span><span class="p">:</span> <span class="mf">45.5</span><span class="p">,</span>
+                <span class="s2">&quot;memory_usage&quot;</span><span class="p">:</span> <span class="mf">67.8</span><span class="p">,</span>
+                <span class="s2">&quot;error_rate&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+                <span class="s2">&quot;response_time&quot;</span><span class="p">:</span> <span class="mf">150.0</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -729,9 +755,13 @@
 
             <span class="c1"># 履歴サイズを制限</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">event_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_event_history</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_event_history</span><span class="p">:]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span><span class="p">[</span>
+                    <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_event_history</span> <span class="p">:</span>
+                <span class="p">]</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Safety event recorded: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">event_id</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Safety event recorded: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">event_id</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to record event: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -746,13 +776,15 @@
                 <span class="n">event_type</span><span class="o">=</span><span class="n">SafetyEvent</span><span class="o">.</span><span class="n">CRITICAL_ALERT</span><span class="p">,</span>
                 <span class="n">severity</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
-                <span class="n">system_state</span><span class="o">=</span><span class="n">details</span>
+                <span class="n">system_state</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 
             <span class="c1"># コールバックを実行</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span><span class="s1">&#39;critical_alert&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;message&#39;</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span> <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">details</span><span class="p">})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_callbacks</span><span class="p">(</span>
+                <span class="s2">&quot;critical_alert&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span> <span class="s2">&quot;details&quot;</span><span class="p">:</span> <span class="n">details</span><span class="p">}</span>
+            <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Critical alert: </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -781,21 +813,23 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;システム状態を取得&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;is_active&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">,</span>
-                <span class="s1">&#39;health_score&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
-                <span class="s1">&#39;last_health_check&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="s1">&#39;active_events&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_events</span><span class="p">),</span>
-                <span class="s1">&#39;total_events&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">event_history</span><span class="p">),</span>
-                <span class="s1">&#39;components&#39;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s1">&#39;anomaly_detection&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_anomaly_manager_health</span><span class="p">(),</span>
-                    <span class="s1">&#39;fallback_system&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_fallback_manager_health</span><span class="p">(),</span>
-                    <span class="s1">&#39;recovery_system&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_recovery_manager_health</span><span class="p">()</span>
-                <span class="p">}</span>
+                <span class="s2">&quot;is_active&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">,</span>
+                <span class="s2">&quot;health_score&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
+                <span class="s2">&quot;last_health_check&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;active_events&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_events</span><span class="p">),</span>
+                <span class="s2">&quot;total_events&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">event_history</span><span class="p">),</span>
+                <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;anomaly_detection&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_anomaly_manager_health</span><span class="p">(),</span>
+                    <span class="s2">&quot;fallback_system&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_fallback_manager_health</span><span class="p">(),</span>
+                    <span class="s2">&quot;recovery_system&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_recovery_manager_health</span><span class="p">(),</span>
+                <span class="p">},</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get system status: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
 
 
 <div class="viewcode-block" id="IntegratedSafetyManager.get_safety_report">
@@ -806,10 +840,7 @@
             <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
 
             <span class="c1"># 指定期間のイベントをフィルタリング</span>
-            <span class="n">recent_events</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span>
-                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
-            <span class="p">]</span>
+            <span class="n">recent_events</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_history</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span><span class="p">]</span>
 
             <span class="c1"># 統計を計算</span>
             <span class="n">event_counts</span> <span class="o">=</span> <span class="p">{}</span>
@@ -828,34 +859,46 @@
             <span class="c1"># コンポーネント別の統計</span>
             <span class="n">component_stats</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="p">:</span>
-                <span class="n">component_stats</span><span class="p">[</span><span class="s1">&#39;anomaly_detection&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">get_anomaly_statistics</span><span class="p">(</span><span class="n">hours</span><span class="p">)</span>
+                <span class="n">component_stats</span><span class="p">[</span>
+                    <span class="s2">&quot;anomaly_detection&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_manager</span><span class="o">.</span><span class="n">get_anomaly_statistics</span><span class="p">(</span><span class="n">hours</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="p">:</span>
-                <span class="n">component_stats</span><span class="p">[</span><span class="s1">&#39;fallback_system&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="s1">&#39;fallback_count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">([</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">recent_events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;FALLBACK_ACTIVATED&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;current_mode&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span> <span class="k">else</span> <span class="s1">&#39;normal&#39;</span>
+                <span class="n">component_stats</span><span class="p">[</span><span class="s2">&quot;fallback_system&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;fallback_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">e</span>
+                            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">recent_events</span>
+                            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;FALLBACK_ACTIVATED&quot;</span>
+                        <span class="p">]</span>
+                    <span class="p">),</span>
+                    <span class="s2">&quot;current_mode&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span><span class="o">.</span><span class="n">value</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_manager</span><span class="o">.</span><span class="n">current_mode</span>
+                    <span class="k">else</span> <span class="s2">&quot;normal&quot;</span><span class="p">,</span>
                 <span class="p">}</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="p">:</span>
-                <span class="n">component_stats</span><span class="p">[</span><span class="s1">&#39;recovery_system&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">get_recovery_statistics</span><span class="p">(</span><span class="n">hours</span><span class="p">)</span>
+                <span class="n">component_stats</span><span class="p">[</span>
+                    <span class="s2">&quot;recovery_system&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_manager</span><span class="o">.</span><span class="n">get_recovery_statistics</span><span class="p">(</span><span class="n">hours</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;period_hours&#39;</span><span class="p">:</span> <span class="n">hours</span><span class="p">,</span>
-                <span class="s1">&#39;generated_at&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
-                <span class="s1">&#39;system_health&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
-                <span class="s1">&#39;event_summary&#39;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s1">&#39;total_events&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_events</span><span class="p">),</span>
-                    <span class="s1">&#39;by_type&#39;</span><span class="p">:</span> <span class="n">event_counts</span><span class="p">,</span>
-                    <span class="s1">&#39;by_severity&#39;</span><span class="p">:</span> <span class="n">severity_counts</span><span class="p">,</span>
-                    <span class="s1">&#39;by_resolution&#39;</span><span class="p">:</span> <span class="n">resolution_counts</span>
+                <span class="s2">&quot;period_hours&quot;</span><span class="p">:</span> <span class="n">hours</span><span class="p">,</span>
+                <span class="s2">&quot;generated_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="s2">&quot;system_health&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span><span class="p">,</span>
+                <span class="s2">&quot;event_summary&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;total_events&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_events</span><span class="p">),</span>
+                    <span class="s2">&quot;by_type&quot;</span><span class="p">:</span> <span class="n">event_counts</span><span class="p">,</span>
+                    <span class="s2">&quot;by_severity&quot;</span><span class="p">:</span> <span class="n">severity_counts</span><span class="p">,</span>
+                    <span class="s2">&quot;by_resolution&quot;</span><span class="p">:</span> <span class="n">resolution_counts</span><span class="p">,</span>
                 <span class="p">},</span>
-                <span class="s1">&#39;component_statistics&#39;</span><span class="p">:</span> <span class="n">component_stats</span><span class="p">,</span>
-                <span class="s1">&#39;recommendations&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">recent_events</span><span class="p">)</span>
+                <span class="s2">&quot;component_statistics&quot;</span><span class="p">:</span> <span class="n">component_stats</span><span class="p">,</span>
+                <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">recent_events</span><span class="p">),</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to generate safety report: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_generate_recommendations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyEventRecord</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
@@ -864,26 +907,40 @@
             <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
 
             <span class="c1"># 異常検知の推奨</span>
-            <span class="n">anomaly_events</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;ANOMALY_DETECTED&#39;</span><span class="p">]</span>
+            <span class="n">anomaly_events</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;ANOMALY_DETECTED&quot;</span>
+            <span class="p">]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">anomaly_events</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
-                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Consider adjusting anomaly detection thresholds - high frequency of anomalies detected&quot;</span><span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Consider adjusting anomaly detection thresholds - high frequency of anomalies detected&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># フォールバックの推奨</span>
-            <span class="n">fallback_events</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;FALLBACK_ACTIVATED&#39;</span><span class="p">]</span>
+            <span class="n">fallback_events</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">event_type</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;FALLBACK_ACTIVATED&quot;</span>
+            <span class="p">]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fallback_events</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
-                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Review system stability - frequent fallback activations indicate potential issues&quot;</span><span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Review system stability - frequent fallback activations indicate potential issues&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># リカバリーの推奨</span>
-            <span class="n">failed_recoveries</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">resolution_status</span> <span class="o">==</span> <span class="s1">&#39;failed&#39;</span><span class="p">]</span>
+            <span class="n">failed_recoveries</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">resolution_status</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">failed_recoveries</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Investigate recovery procedures - multiple recovery failures detected&quot;</span><span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Investigate recovery procedures - multiple recovery failures detected&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># 正常性の推奨</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_health_score</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">:</span>
-                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;System health is degraded - consider maintenance or resource scaling&quot;</span><span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;System health is degraded - consider maintenance or resource scaling&quot;</span>
+                <span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">recommendations</span><span class="p">:</span>
-                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;System operating normally - no specific recommendations&quot;</span><span class="p">)</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;System operating normally - no specific recommendations&quot;</span>
+                <span class="p">)</span>
 
             <span class="k">return</span> <span class="n">recommendations</span>
 
@@ -905,7 +962,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -916,7 +973,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

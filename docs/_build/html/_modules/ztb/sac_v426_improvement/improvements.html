@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.sac_v426_improvement.improvements</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">SAC v426 Improvements</span>
@@ -96,10 +96,10 @@
 <span class="sd">organized as reusable components.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv426Config</span>
 
@@ -109,6 +109,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">BiasCorrectionResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of bias correction analysis.&quot;&quot;&quot;</span>
+
     <span class="n">sell_bias_ratio</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">action_balance_score</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">correction_needed</span><span class="p">:</span> <span class="nb">bool</span>
@@ -121,6 +122,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MarketAdaptationResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of market adaptation analysis.&quot;&quot;&quot;</span>
+
     <span class="n">correlation_coefficient</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">beta_value</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">adaptation_score</span><span class="p">:</span> <span class="nb">float</span>
@@ -138,7 +140,9 @@
 
 <div class="viewcode-block" id="SACv426Improvements.correct_sell_bias">
 <a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.improvements.SACv426Improvements.correct_sell_bias">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">correct_sell_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">portfolio_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">BiasCorrectionResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_sell_bias</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">portfolio_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BiasCorrectionResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Correct SELL bias that was 67% in training but should be balanced.</span>
 
@@ -159,12 +163,20 @@
 
         <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
         <span class="n">sell_ratio</span> <span class="o">=</span> <span class="n">action_dist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">total_actions</span>  <span class="c1"># SELL is action 2</span>
-        <span class="n">buy_ratio</span> <span class="o">=</span> <span class="n">action_dist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">total_actions</span>   <span class="c1"># BUY is action 1</span>
+        <span class="n">buy_ratio</span> <span class="o">=</span> <span class="n">action_dist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">total_actions</span>  <span class="c1"># BUY is action 1</span>
         <span class="n">hold_ratio</span> <span class="o">=</span> <span class="n">action_dist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">total_actions</span>  <span class="c1"># HOLD is action 0</span>
 
         <span class="c1"># Calculate balance score (ideal is equal distribution)</span>
         <span class="n">ideal_ratio</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">3.0</span>
-        <span class="n">balance_score</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">sell_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">)</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">buy_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">)</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">hold_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">))</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="n">balance_score</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="mf">1.0</span>
+            <span class="o">-</span> <span class="p">(</span>
+                <span class="nb">abs</span><span class="p">(</span><span class="n">sell_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">)</span>
+                <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">buy_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">)</span>
+                <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">hold_ratio</span> <span class="o">-</span> <span class="n">ideal_ratio</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="p">)</span>
 
         <span class="c1"># Check if correction is needed</span>
         <span class="n">threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">bias_correction</span><span class="p">[</span><span class="s2">&quot;sell_bias_threshold&quot;</span><span class="p">]</span>
@@ -185,13 +197,15 @@
             <span class="n">sell_bias_ratio</span><span class="o">=</span><span class="n">sell_ratio</span><span class="p">,</span>
             <span class="n">action_balance_score</span><span class="o">=</span><span class="n">balance_score</span><span class="p">,</span>
             <span class="n">correction_needed</span><span class="o">=</span><span class="n">correction_needed</span><span class="p">,</span>
-            <span class="n">recommended_actions</span><span class="o">=</span><span class="n">recommendations</span>
+            <span class="n">recommended_actions</span><span class="o">=</span><span class="n">recommendations</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="SACv426Improvements.enhance_market_adaptation">
 <a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.improvements.SACv426Improvements.enhance_market_adaptation">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">enhance_market_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">portfolio_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">MarketAdaptationResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enhance_market_adaptation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">price_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">portfolio_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarketAdaptationResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Enhance market adaptation to achieve correlation &gt; 0.1 and proper beta values.</span>
 
@@ -218,13 +232,17 @@
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">price_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolio_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">min_returns</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">price_returns</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolio_returns</span><span class="p">))</span>
-            <span class="n">beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">portfolio_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">],</span> <span class="n">price_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">])[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">price_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">])</span>
+            <span class="n">beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">portfolio_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">],</span> <span class="n">price_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">])[</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+            <span class="p">]</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">price_returns</span><span class="p">[:</span><span class="n">min_returns</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">beta</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="c1"># Calculate adaptation score (correlation closer to target is better)</span>
         <span class="n">target_correlation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span><span class="s2">&quot;correlation_target&quot;</span><span class="p">]</span>
-        <span class="n">adaptation_score</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="nb">abs</span><span class="p">(</span><span class="n">correlation</span> <span class="o">-</span> <span class="n">target_correlation</span><span class="p">)</span> <span class="o">/</span> <span class="n">target_correlation</span>
+        <span class="n">adaptation_score</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="mf">1.0</span> <span class="o">-</span> <span class="nb">abs</span><span class="p">(</span><span class="n">correlation</span> <span class="o">-</span> <span class="n">target_correlation</span><span class="p">)</span> <span class="o">/</span> <span class="n">target_correlation</span>
+        <span class="p">)</span>
 
         <span class="c1"># Simple regime detection</span>
         <span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">price_returns</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">price_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
@@ -244,13 +262,15 @@
             <span class="n">correlation_coefficient</span><span class="o">=</span><span class="n">correlation</span><span class="p">,</span>
             <span class="n">beta_value</span><span class="o">=</span><span class="n">beta</span><span class="p">,</span>
             <span class="n">adaptation_score</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">adaptation_score</span><span class="p">),</span>  <span class="c1"># Clamp to [0, 1]</span>
-            <span class="n">regime_distribution</span><span class="o">=</span><span class="n">regime_dist</span>
+            <span class="n">regime_distribution</span><span class="o">=</span><span class="n">regime_dist</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="SACv426Improvements.apply_comprehensive_validation">
 <a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.improvements.SACv426Improvements.apply_comprehensive_validation">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">apply_comprehensive_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backtest_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_comprehensive_validation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">backtest_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Apply comprehensive validation using integrated evaluation systems.</span>
 
@@ -267,7 +287,7 @@
             <span class="s2">&quot;stochastic_validation&quot;</span><span class="p">:</span> <span class="p">{},</span>
             <span class="s2">&quot;stress_tests&quot;</span><span class="p">:</span> <span class="p">{},</span>
             <span class="s2">&quot;overall_score&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-            <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="p">[]</span>
+            <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
         <span class="c1"># Extract data from backtest results</span>
@@ -282,7 +302,7 @@
                 <span class="s2">&quot;sell_bias_ratio&quot;</span><span class="p">:</span> <span class="n">bias_result</span><span class="o">.</span><span class="n">sell_bias_ratio</span><span class="p">,</span>
                 <span class="s2">&quot;action_balance_score&quot;</span><span class="p">:</span> <span class="n">bias_result</span><span class="o">.</span><span class="n">action_balance_score</span><span class="p">,</span>
                 <span class="s2">&quot;correction_needed&quot;</span><span class="p">:</span> <span class="n">bias_result</span><span class="o">.</span><span class="n">correction_needed</span><span class="p">,</span>
-                <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="n">bias_result</span><span class="o">.</span><span class="n">recommended_actions</span>
+                <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="n">bias_result</span><span class="o">.</span><span class="n">recommended_actions</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="c1"># Apply market adaptation analysis</span>
@@ -292,7 +312,7 @@
                 <span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">:</span> <span class="n">market_result</span><span class="o">.</span><span class="n">correlation_coefficient</span><span class="p">,</span>
                 <span class="s2">&quot;beta_value&quot;</span><span class="p">:</span> <span class="n">market_result</span><span class="o">.</span><span class="n">beta_value</span><span class="p">,</span>
                 <span class="s2">&quot;adaptation_score&quot;</span><span class="p">:</span> <span class="n">market_result</span><span class="o">.</span><span class="n">adaptation_score</span><span class="p">,</span>
-                <span class="s2">&quot;regime_distribution&quot;</span><span class="p">:</span> <span class="n">market_result</span><span class="o">.</span><span class="n">regime_distribution</span>
+                <span class="s2">&quot;regime_distribution&quot;</span><span class="p">:</span> <span class="n">market_result</span><span class="o">.</span><span class="n">regime_distribution</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="c1"># Calculate overall score</span>
@@ -308,11 +328,17 @@
         <span class="c1"># Generate recommendations</span>
         <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correction_needed&quot;</span><span class="p">):</span>
-            <span class="n">recommendations</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">][</span><span class="s2">&quot;recommendations&quot;</span><span class="p">])</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">][</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
 
-        <span class="n">correlation</span> <span class="o">=</span> <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;market_adaptation&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">correlation</span> <span class="o">=</span> <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;market_adaptation&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">correlation</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span><span class="s2">&quot;correlation_target&quot;</span><span class="p">]:</span>
-            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Increase market correlation (current: </span><span class="si">{</span><span class="n">correlation</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, target: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span><span class="s1">&#39;correlation_target&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Increase market correlation (current: </span><span class="si">{</span><span class="n">correlation</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, target: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span><span class="s1">&#39;correlation_target&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
 
         <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recommendations</span>
 
@@ -330,33 +356,41 @@
                     <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;SELL Bias Correction&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Corrected 67% SELL bias to balanced action distribution&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;SELL ratio &lt; 60%&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
                     <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Market Adaptation Enhancement&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Improved market correlation from 0.019 to &gt; 0.1&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;correlation &gt; 0.1, proper beta values&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
                     <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Comprehensive Validation&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Integrated regime analysis, stochastic testing, and stress tests&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;Multi-dimensional evaluation framework&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
                     <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Learning Efficiency&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Improved learning efficiency from 0.000 to 0.2+&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="s2">&quot;adaptation ratio &gt; 0.2&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span>
-                <span class="p">}</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;implemented&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
             <span class="p">],</span>
             <span class="s2">&quot;key_metrics&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;sell_bias_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">bias_correction</span><span class="p">[</span><span class="s2">&quot;sell_bias_threshold&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;correlation_target&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span><span class="s2">&quot;correlation_target&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;stochastic_episodes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">validation_settings</span><span class="p">[</span><span class="s2">&quot;stochastic_episodes&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;regime_analysis&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">validation_settings</span><span class="p">[</span><span class="s2">&quot;regime_analysis_enabled&quot;</span><span class="p">]</span>
-            <span class="p">}</span>
+                <span class="s2">&quot;sell_bias_threshold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">bias_correction</span><span class="p">[</span>
+                    <span class="s2">&quot;sell_bias_threshold&quot;</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;correlation_target&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">market_adaptation</span><span class="p">[</span>
+                    <span class="s2">&quot;correlation_target&quot;</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;stochastic_episodes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">validation_settings</span><span class="p">[</span>
+                    <span class="s2">&quot;stochastic_episodes&quot;</span>
+                <span class="p">],</span>
+                <span class="s2">&quot;regime_analysis&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">validation_settings</span><span class="p">[</span>
+                    <span class="s2">&quot;regime_analysis_enabled&quot;</span>
+                <span class="p">],</span>
+            <span class="p">},</span>
         <span class="p">}</span></div>
 </div>
 
@@ -375,7 +409,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -386,7 +420,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

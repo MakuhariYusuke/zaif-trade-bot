@@ -210,7 +210,8 @@ action_space = Box(low=-1.0, high=1.0, shape=(1,))
 
 **environment.py修正**:
 ```python
-from gym.spaces import Box
+import gymnasium as gym
+from gymnasium.spaces import Box
 
 class HeavyTradingEnv(gym.Env):
     def __init__(self, *args, use_continuous_actions=False, **kwargs):

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.components.reward_stages</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Reward Stages - Curriculum learning stage reward calculations.</span>
@@ -97,9 +97,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.reward_components</span><span class="w"> </span><span class="kn">import</span> <span class="n">RewardComponents</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.reward_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RewardUtils</span>
 
@@ -109,7 +107,11 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">RewardStages</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Curriculum learning stage reward calculations.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reward_settings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">action_counts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">reward_settings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">action_counts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize reward stages with settings and action tracking.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">reward_settings</span> <span class="ow">or</span> <span class="p">{})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_action_counts</span> <span class="o">=</span> <span class="n">action_counts</span> <span class="ow">or</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># [HOLD, BUY, SELL]</span>
@@ -179,8 +181,12 @@
         <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_action_counts</span><span class="p">)</span>
 
         <span class="c1"># Get penalty and tolerance from settings</span>
-        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
-        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.05</span>
+        <span class="p">)</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">4.0</span>
+        <span class="p">)</span>
         <span class="n">balance_penalty</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
@@ -197,8 +203,14 @@
 
         <span class="c1"># Calculate base reward</span>
         <span class="n">base_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">_calculate_base_reward</span><span class="p">(</span>
-            <span class="n">action</span><span class="p">,</span> <span class="n">atr_normalised</span><span class="p">,</span> <span class="n">portfolio_return</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span>
-            <span class="n">effective_max_position</span><span class="p">,</span> <span class="n">current_price</span><span class="p">,</span> <span class="n">atr</span><span class="p">,</span> <span class="n">pnl</span>
+            <span class="n">action</span><span class="p">,</span>
+            <span class="n">atr_normalised</span><span class="p">,</span>
+            <span class="n">portfolio_return</span><span class="p">,</span>
+            <span class="n">position</span><span class="p">,</span>
+            <span class="n">effective_max_position</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="n">atr</span><span class="p">,</span>
+            <span class="n">pnl</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">final_reward</span> <span class="o">=</span> <span class="n">base_reward</span> <span class="o">-</span> <span class="n">balance_penalty</span>
@@ -222,8 +234,12 @@
 
         <span class="c1"># Extreme HOLD penalty: HOLD 5%, BUY 47.5%, SELL 47.5%</span>
         <span class="n">target_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.475</span><span class="p">,</span> <span class="mf">0.475</span><span class="p">]</span>  <span class="c1"># [HOLD, BUY, SELL]</span>
-        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
-        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.1</span>
+        <span class="p">)</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">10.0</span>
+        <span class="p">)</span>
         <span class="n">balance_penalty</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
@@ -237,20 +253,37 @@
 
         <span class="c1"># Calculate base reward</span>
         <span class="n">base_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">_calculate_base_reward</span><span class="p">(</span>
-            <span class="n">action</span><span class="p">,</span> <span class="n">atr_normalised</span><span class="p">,</span> <span class="n">portfolio_return</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span>
-            <span class="n">effective_max_position</span><span class="p">,</span> <span class="n">current_price</span><span class="p">,</span> <span class="n">atr</span><span class="p">,</span> <span class="n">pnl</span>
+            <span class="n">action</span><span class="p">,</span>
+            <span class="n">atr_normalised</span><span class="p">,</span>
+            <span class="n">portfolio_return</span><span class="p">,</span>
+            <span class="n">position</span><span class="p">,</span>
+            <span class="n">effective_max_position</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="n">atr</span><span class="p">,</span>
+            <span class="n">pnl</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Strong HOLD penalty (but not as extreme as trading_focused)</span>
-        <span class="n">hold_penalty_rate</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;hold_penalty_rate&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="n">hold_penalty_rate</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;hold_penalty_rate&quot;</span><span class="p">,</span> <span class="mf">0.05</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span><span class="p">:</span>
-            <span class="n">hold_penalty</span> <span class="o">=</span> <span class="n">hold_penalty_rate</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">effective_max_position</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="n">hold_penalty</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">hold_penalty_rate</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">effective_max_position</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">base_reward</span> <span class="o">-=</span> <span class="n">hold_penalty</span>
 
         <span class="c1"># Moderate trading bonuses</span>
-        <span class="n">trading_bonus_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus_multiplier&quot;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+        <span class="n">trading_bonus_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus_multiplier&quot;</span><span class="p">,</span> <span class="mf">5.0</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span><span class="p">]:</span>
-            <span class="n">trading_bonus</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus&quot;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span> <span class="o">*</span> <span class="n">trading_bonus_multiplier</span>
+            <span class="n">trading_bonus</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus&quot;</span><span class="p">,</span> <span class="mf">0.02</span>
+                <span class="p">)</span>
+                <span class="o">*</span> <span class="n">trading_bonus_multiplier</span>
+            <span class="p">)</span>
             <span class="n">base_reward</span> <span class="o">+=</span> <span class="n">trading_bonus</span>
 
         <span class="n">final_reward</span> <span class="o">=</span> <span class="n">base_reward</span> <span class="o">-</span> <span class="n">balance_penalty</span>
@@ -274,8 +307,12 @@
 
         <span class="c1"># Profit-optimized balance: HOLD 15%, BUY 42.5%, SELL 42.5% (slight edge to trading)</span>
         <span class="n">target_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.425</span><span class="p">,</span> <span class="mf">0.425</span><span class="p">]</span>  <span class="c1"># [HOLD, BUY, SELL]</span>
-        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
-        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">)</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty_tolerance&quot;</span><span class="p">,</span> <span class="mf">0.05</span>
+        <span class="p">)</span>
+        <span class="n">penalty</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;balance_penalty&quot;</span><span class="p">,</span> <span class="mf">6.0</span>
+        <span class="p">)</span>
         <span class="n">balance_penalty</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
@@ -289,13 +326,23 @@
 
         <span class="c1"># Calculate base reward</span>
         <span class="n">base_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">_calculate_base_reward</span><span class="p">(</span>
-            <span class="n">action</span><span class="p">,</span> <span class="n">atr_normalised</span><span class="p">,</span> <span class="n">portfolio_return</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span>
-            <span class="n">effective_max_position</span><span class="p">,</span> <span class="n">current_price</span><span class="p">,</span> <span class="n">atr</span><span class="p">,</span> <span class="n">pnl</span>
+            <span class="n">action</span><span class="p">,</span>
+            <span class="n">atr_normalised</span><span class="p">,</span>
+            <span class="n">portfolio_return</span><span class="p">,</span>
+            <span class="n">position</span><span class="p">,</span>
+            <span class="n">effective_max_position</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="n">atr</span><span class="p">,</span>
+            <span class="n">pnl</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Profit/loss based reward adjustment</span>
-        <span class="n">profit_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;profit_multiplier&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
-        <span class="n">loss_penalty_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;loss_penalty_multiplier&quot;</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+        <span class="n">profit_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;profit_multiplier&quot;</span><span class="p">,</span> <span class="mf">2.0</span>
+        <span class="p">)</span>
+        <span class="n">loss_penalty_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;loss_penalty_multiplier&quot;</span><span class="p">,</span> <span class="mf">1.5</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># Boost profitable trades</span>
@@ -307,15 +354,26 @@
             <span class="n">base_reward</span> <span class="o">-=</span> <span class="n">loss_penalty</span>
 
         <span class="c1"># Strong HOLD penalty (but not as extreme as trading_focused)</span>
-        <span class="n">hold_penalty_rate</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;hold_penalty_rate&quot;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>
+        <span class="n">hold_penalty_rate</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;hold_penalty_rate&quot;</span><span class="p">,</span> <span class="mf">0.02</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span><span class="p">:</span>
-            <span class="n">hold_penalty</span> <span class="o">=</span> <span class="n">hold_penalty_rate</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">effective_max_position</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="n">hold_penalty</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">hold_penalty_rate</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">effective_max_position</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">base_reward</span> <span class="o">-=</span> <span class="n">hold_penalty</span>
 
         <span class="c1"># Moderate trading bonuses</span>
-        <span class="n">trading_bonus_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus_multiplier&quot;</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+        <span class="n">trading_bonus_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus_multiplier&quot;</span><span class="p">,</span> <span class="mf">3.0</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">action</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span><span class="p">]:</span>
-            <span class="n">trading_bonus</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span> <span class="o">*</span> <span class="n">trading_bonus_multiplier</span>
+            <span class="n">trading_bonus</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;trading_bonus&quot;</span><span class="p">,</span> <span class="mf">0.01</span>
+                <span class="p">)</span>
+                <span class="o">*</span> <span class="n">trading_bonus_multiplier</span>
+            <span class="p">)</span>
             <span class="n">base_reward</span> <span class="o">+=</span> <span class="n">trading_bonus</span>
 
         <span class="n">final_reward</span> <span class="o">=</span> <span class="n">base_reward</span> <span class="o">-</span> <span class="n">balance_penalty</span>
@@ -344,8 +402,14 @@
 
         <span class="c1"># Calculate base reward</span>
         <span class="n">base_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="o">.</span><span class="n">_calculate_base_reward</span><span class="p">(</span>
-            <span class="n">action</span><span class="p">,</span> <span class="n">atr_normalised</span><span class="p">,</span> <span class="n">portfolio_return</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span>
-            <span class="n">effective_max_position</span><span class="p">,</span> <span class="n">current_price</span><span class="p">,</span> <span class="n">atr</span><span class="p">,</span> <span class="n">pnl</span>
+            <span class="n">action</span><span class="p">,</span>
+            <span class="n">atr_normalised</span><span class="p">,</span>
+            <span class="n">portfolio_return</span><span class="p">,</span>
+            <span class="n">position</span><span class="p">,</span>
+            <span class="n">effective_max_position</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="n">atr</span><span class="p">,</span>
+            <span class="n">pnl</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Massive trading bonus for ANY trading action</span>
@@ -357,12 +421,16 @@
         <span class="n">base_reward</span> <span class="o">+=</span> <span class="n">position_size_bonus</span>
 
         <span class="c1"># Minimal PnL weighting - focus on trading frequency over perfect timing</span>
-        <span class="n">ultra_profit_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;ultra_profit_multiplier&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Very low</span>
+        <span class="n">ultra_profit_multiplier</span> <span class="o">=</span> <span class="n">RewardUtils</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="s2">&quot;ultra_profit_multiplier&quot;</span><span class="p">,</span> <span class="mf">0.1</span>
+        <span class="p">)</span>  <span class="c1"># Very low</span>
         <span class="k">if</span> <span class="n">pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">profit_bonus</span> <span class="o">=</span> <span class="n">pnl</span> <span class="o">*</span> <span class="n">ultra_profit_multiplier</span>
             <span class="n">base_reward</span> <span class="o">+=</span> <span class="n">profit_bonus</span>
         <span class="k">elif</span> <span class="n">pnl</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">loss_penalty</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">pnl</span><span class="p">)</span> <span class="o">*</span> <span class="n">ultra_profit_multiplier</span> <span class="o">*</span> <span class="mf">0.05</span>  <span class="c1"># Very light penalty</span>
+            <span class="n">loss_penalty</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">abs</span><span class="p">(</span><span class="n">pnl</span><span class="p">)</span> <span class="o">*</span> <span class="n">ultra_profit_multiplier</span> <span class="o">*</span> <span class="mf">0.05</span>
+            <span class="p">)</span>  <span class="c1"># Very light penalty</span>
             <span class="n">base_reward</span> <span class="o">-=</span> <span class="n">loss_penalty</span>
 
         <span class="n">final_reward</span> <span class="o">=</span> <span class="n">base_reward</span> <span class="o">*</span> <span class="n">reward_scaling</span>
@@ -383,7 +451,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -394,7 +462,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

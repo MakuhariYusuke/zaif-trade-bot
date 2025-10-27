@@ -1,0 +1,62 @@
+{
+  "_description": "SAC v435.5 Reward Function Configuration - Micro frequency penalty scalping",
+  "_improvements": [
+    "Micro frequency penalty (0.001) for controlled scalping",
+    "Reduced position penalty for active trading",
+    "非対称ロング/ショート報酬関数",
+    "リスク調整リターンボーナス",
+    "適応型取引頻度ペナルティ (micro penalty)",
+    "市場レジーム別報酬調整",
+    "ポジション保持ボーナス",
+    "タイミング最適化ボーナス"
+  ],
+
+  "base_profit_bonus_atr_coeff": 5.0,
+  "base_profit_bonus_portfolio_coeff": 10.0,
+  "base_action_penalty": 0.15,
+  "loss_penalty_coeff": -1.0,
+  "action_frequency_penalty": 0.001,
+
+  "long_position_bonus_multiplier": 1.5,
+  "short_position_bonus_multiplier": 1.2,
+  "long_loss_penalty_multiplier": 1.8,
+  "short_loss_penalty_multiplier": 1.3,
+
+  "risk_adjusted_bonus_enabled": true,
+  "risk_adjusted_bonus_coeff": 2.0,
+  "volatility_penalty_coeff": -0.5,
+
+  "market_regime_awareness": true,
+  "bull_market_bonus_coeff": 1.2,
+  "bear_market_penalty_coeff": 0.8,
+  "sideways_market_penalty_coeff": 0.9,
+
+  "position_holding_bonus": true,
+  "position_holding_bonus_coeff": 0.02,
+  "position_holding_max_bonus": 0.5,
+
+  "timing_optimization_bonus": true,
+  "entry_timing_bonus_coeff": 0.1,
+  "exit_timing_bonus_coeff": 0.15,
+
+  "transaction_cost_awareness": false,
+  "cost_impact_penalty": 0.0,
+
+  "adaptive_penalty_enabled": true,
+  "high_frequency_penalty_threshold": 0.7,
+  "high_frequency_penalty_coeff": 0.001,
+
+  "reward_clipping": {
+    "enabled": true,
+    "min_reward": -10.0,
+    "max_reward": 10.0
+  },
+
+  "scalping_optimization": {
+    "enabled": true,
+    "quick_profit_bonus": 0.5,
+    "frequent_trading_bonus": 0.1,
+    "position_turnover_bonus": 0.05,
+    "market_timing_bonus": 0.2
+  }
+}

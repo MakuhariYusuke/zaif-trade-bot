@@ -26,6 +26,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import requests
 
+from ztb.types.common import ConfigDict
+
 
 class AsyncNotifier:
     """非同期Discord通知クラス（キュー + 集約送信）"""
@@ -413,7 +415,7 @@ class LoggerManager:
         self._log_to_jsonl("error", {"message": message, **kwargs})
 
     def log_experiment_start(
-        self, experiment_name: str, config: Dict[str, Any]
+        self, experiment_name: str, config: ConfigDict
     ) -> None:
         """Log experiment start"""
         # Use session management for consistency

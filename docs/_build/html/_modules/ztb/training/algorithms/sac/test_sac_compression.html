@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.algorithms.sac.test_sac_compression</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -97,15 +97,13 @@
 <span class="sd">including configuration validation, model creation, and compression application.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms.sac.sac_algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACAlgorithm</span><span class="p">,</span> <span class="n">DEFAULT_SAC_CONFIG</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.optimization.model_compression</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelCompressionManager</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms.sac.sac_algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span> <span class="n">SACAlgorithm</span>
 
 
 <div class="viewcode-block" id="MockEnv">
@@ -135,7 +133,7 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span>
+            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">assert</span> <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">valid_config</span><span class="p">)</span>
@@ -144,7 +142,7 @@
         <span class="n">invalid_config</span> <span class="o">=</span> <span class="p">{</span>
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;invalid_technique&quot;</span><span class="p">]</span>
+            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;invalid_technique&quot;</span><span class="p">],</span>
         <span class="p">}</span>
 
         <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unsupported compression technique&quot;</span><span class="p">):</span>
@@ -162,7 +160,7 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span>
+            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">assert</span> <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">valid_config</span><span class="p">)</span>
@@ -172,7 +170,7 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid_type&quot;</span>
+            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid_type&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unsupported quantization_type&quot;</span><span class="p">):</span>
@@ -191,7 +189,7 @@
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">],</span>
             <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.3</span>
+            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">assert</span> <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">valid_config</span><span class="p">)</span>
@@ -201,7 +199,7 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid_type&quot;</span>
+            <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid_type&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unsupported pruning_type&quot;</span><span class="p">):</span>
@@ -212,10 +210,12 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">1.5</span>  <span class="c1"># &gt; 1.0</span>
+            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>  <span class="c1"># &gt; 1.0</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;pruning_amount must be between 0.0 and 1.0&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span>
+            <span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;pruning_amount must be between 0.0 and 1.0&quot;</span>
+        <span class="p">):</span>
             <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">invalid_config_amount</span><span class="p">)</span></div>
 
 
@@ -232,7 +232,7 @@
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span>
             <span class="s2">&quot;teacher_model_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/path/to/teacher/model.zip&quot;</span><span class="p">,</span>
             <span class="s2">&quot;distillation_temperature&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
-            <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">0.5</span>
+            <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">assert</span> <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">valid_config</span><span class="p">)</span>
@@ -241,7 +241,7 @@
         <span class="n">invalid_config</span> <span class="o">=</span> <span class="p">{</span>
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">]</span>
+            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span>
             <span class="c1"># teacher_model_path missing</span>
         <span class="p">}</span>
 
@@ -254,10 +254,12 @@
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span>
             <span class="s2">&quot;teacher_model_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/path/to/teacher/model.zip&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;distillation_temperature&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span>  <span class="c1"># Invalid negative temperature</span>
+            <span class="s2">&quot;distillation_temperature&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># Invalid negative temperature</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;distillation_temperature must be positive&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span>
+            <span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;distillation_temperature must be positive&quot;</span>
+        <span class="p">):</span>
             <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">invalid_temp_config</span><span class="p">)</span>
 
         <span class="c1"># Invalid distillation alpha</span>
@@ -266,22 +268,24 @@
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span>
             <span class="s2">&quot;teacher_model_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/path/to/teacher/model.zip&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">1.5</span>  <span class="c1"># &gt; 1.0</span>
+            <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>  <span class="c1"># &gt; 1.0</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;distillation_alpha must be between 0.0 and 1.0&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span>
+            <span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;distillation_alpha must be between 0.0 and 1.0&quot;</span>
+        <span class="p">):</span>
             <span class="n">sac</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">invalid_alpha_config</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_create_model_with_compression">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_with_compression">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_create_model_with_compression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating SAC model with compression enabled.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -292,11 +296,13 @@
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
             <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;compressed_model_path&quot;</span><span class="p">:</span> <span class="kc">None</span>
+            <span class="s2">&quot;compressed_model_path&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="c1"># Mock the compression manager</span>
-        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+            <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
             <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>  <span class="c1"># Compressed policy</span>
             <span class="n">mock_create_pipeline</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_manager</span>
@@ -317,22 +323,19 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_create_model_compression_disabled">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_disabled">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_create_model_compression_disabled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating SAC model with compression disabled.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
         <span class="n">env</span> <span class="o">=</span> <span class="n">MockEnv</span><span class="p">()</span>
 
-        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
-            <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">False</span>
-        <span class="p">}</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span> <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
 
         <span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 
@@ -342,13 +345,13 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_create_model_compression_save_path">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_save_path">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_create_model_compression_save_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test saving compressed model when path is specified.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -362,10 +365,12 @@
                 <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
                 <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
                 <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;compressed_model_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+                <span class="s2">&quot;compressed_model_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_path</span><span class="p">),</span>
             <span class="p">}</span>
 
-            <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+                <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
                 <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
                 <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
                 <span class="n">mock_create_pipeline</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_manager</span>
@@ -373,18 +378,20 @@
                 <span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 
                 <span class="c1"># Check that save_compressed_model was called</span>
-                <span class="n">mock_manager</span><span class="o">.</span><span class="n">save_compressed_model</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="n">mock_sac_instance</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_path</span><span class="p">))</span></div>
+                <span class="n">mock_manager</span><span class="o">.</span><span class="n">save_compressed_model</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span>
+                    <span class="n">mock_sac_instance</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+                <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_apply_model_compression_quantization_only">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_quantization_only">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_quantization_only</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test applying quantization compression.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -394,10 +401,12 @@
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span>
+            <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+            <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
             <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">compressed_policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">compressed_policy</span>
@@ -415,13 +424,13 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_apply_model_compression_pruning_only">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_pruning_only">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_pruning_only</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test applying pruning compression.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -432,10 +441,12 @@
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">],</span>
             <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.25</span>
+            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+            <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
             <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">compressed_policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">compressed_policy</span>
@@ -454,19 +465,21 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_apply_model_compression_distillation_only">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_distillation_only">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC.load&#39;</span><span class="p">)</span>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_distillation_only</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">,</span> <span class="n">mock_sac_load</span><span class="p">):</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC.load&quot;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_distillation_only</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">,</span> <span class="n">mock_sac_load</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test applying distillation compression.&quot;&quot;&quot;</span>
         <span class="c1"># Mock teacher model</span>
         <span class="n">mock_teacher</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_teacher</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_teacher</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_load</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_teacher</span>
 
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -481,10 +494,12 @@
                 <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span>
                 <span class="s2">&quot;teacher_model_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">teacher_path</span><span class="p">),</span>
                 <span class="s2">&quot;distillation_temperature&quot;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span>
-                <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">0.7</span>
+                <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
             <span class="p">}</span>
 
-            <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+                <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
                 <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
                 <span class="n">compressed_policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
                 <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">compressed_policy</span>
@@ -494,7 +509,7 @@
                 <span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 
                 <span class="c1"># Check that teacher model was loaded</span>
-                <span class="n">mock_sac_load</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">teacher_path</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+                <span class="n">mock_sac_load</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">teacher_path</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
                 <span class="c1"># Check that distillation config was passed correctly</span>
                 <span class="n">call_args</span> <span class="o">=</span> <span class="n">mock_create_pipeline</span><span class="o">.</span><span class="n">call_args</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
@@ -506,13 +521,13 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_apply_model_compression_multiple_techniques">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_multiple_techniques">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_multiple_techniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test applying multiple compression techniques.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -524,10 +539,12 @@
             <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="s2">&quot;pruning&quot;</span><span class="p">],</span>
             <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>
             <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.2</span>
+            <span class="s2">&quot;pruning_amount&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
         <span class="p">}</span>
 
-        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span>
+            <span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline&quot;</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">mock_create_pipeline</span><span class="p">:</span>
             <span class="n">mock_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">compressed_policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
             <span class="n">mock_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">compressed_policy</span>
@@ -550,13 +567,13 @@
 
 <div class="viewcode-block" id="TestSACCompressionIntegration.test_apply_model_compression_no_techniques">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_no_techniques">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.algorithms.sac.sac_algorithm.SAC&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.training.algorithms.sac.sac_algorithm.SAC&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_model_compression_no_techniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sac_class</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test compression with no techniques specified.&quot;&quot;&quot;</span>
         <span class="c1"># Mock SAC model</span>
         <span class="n">mock_sac_instance</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
         <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
-        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="n">mock_sac_instance</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
         <span class="n">mock_sac_class</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_sac_instance</span>
 
         <span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
@@ -565,8 +582,8 @@
         <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
             <span class="o">**</span><span class="n">DEFAULT_SAC_CONFIG</span><span class="p">,</span>
             <span class="s2">&quot;compression_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[]</span>  <span class="c1"># Empty techniques</span>
-        <span class="p">}</span>
+            <span class="s2">&quot;compression_techniques&quot;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="p">}</span>  <span class="c1"># Empty techniques</span>
 
         <span class="c1"># Should not apply compression but also not fail</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
@@ -606,7 +623,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -617,7 +634,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

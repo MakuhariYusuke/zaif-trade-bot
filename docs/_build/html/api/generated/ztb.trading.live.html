@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ztb.trading.live.core package" href="ztb.trading.live.core.html" />
-    <link rel="prev" title="ztb.trading.environment.utils package" href="ztb.trading.environment.utils.html" />
+    <link rel="prev" title="ztb.trading.environment.utils package" href="ztb.trading.environment.utils.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -57,7 +57,7 @@
 <li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb-sac-v427-market-adaptive-system-module">ztb.sac_v427_market_adaptive_system module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
 </ul>
 </li>
@@ -108,7 +108,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section id="ztb-trading-live-package">
 <h1>ztb.trading.live package<a class="headerlink" href="#ztb-trading-live-package" title="Link to this heading"></a></h1>
 <section id="subpackages">
@@ -418,7 +418,7 @@
 <span id="ztb-trading-live-action-mask-provider-module"></span><h2>ztb.trading.live.action_mask_provider module<a class="headerlink" href="#module-ztb.trading.live.action_mask_provider" title="Link to this heading"></a></h2>
 <p>Action Mask Provider for Live Trading</p>
 <p>Provides action masking functionality for MaskablePPO models in live trading
-without requiring a full gym environment instance.</p>
+without requiring a full Gymnasium environment instance.</p>
 <p>This module addresses Bug #27 by allowing proper action masking in production.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="ztb.trading.live.action_mask_provider.ActionMaskConfig">
@@ -450,7 +450,7 @@ without requiring a full gym environment instance.</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.action_mask_provider.</span></span><span class="sig-name descname"><span class="pre">ActionMaskProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live.action_mask_provider.ActionMaskConfig" title="ztb.trading.live.action_mask_provider.ActionMaskConfig"><span class="pre">ActionMaskConfig</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/action_mask_provider.html#ActionMaskProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.action_mask_provider.ActionMaskProvider" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Lightweight action mask provider for MaskablePPO in live trading.</p>
-<p>This class provides the same action masking logic as the gym environment
+<p>This class provides the same action masking logic as the Gymnasium environment
 but without requiring a full environment instance.</p>
 <p>Bug #27 Fix: Enables proper MaskablePPO usage in live trading with
 action masking safety features (min_holding_period, forced closes, etc.)</p>
@@ -976,7 +976,7 @@ guarantees to prevent duplicate orders and ensure reliable execution.</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -987,7 +987,7 @@ guarantees to prevent duplicate orders and ensure reliable execution.</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

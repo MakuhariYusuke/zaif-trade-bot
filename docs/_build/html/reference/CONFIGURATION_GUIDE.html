@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="運用手順マニュアル" href="operations_manual.html" />
-    <link rel="prev" title="Configuration Guide" href="configuration.html" />
+    <link rel="prev" title="Configuration Guide" href="configuration.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -123,7 +123,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="unified-configuration-management-guide">
 <h1>統一設定管理ガイド (Unified Configuration Management Guide)<a class="headerlink" href="#unified-configuration-management-guide" title="Link to this heading"></a></h1>
 <section id="bug-52">
@@ -149,14 +149,14 @@
 <span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_training_session&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;data_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ml-dataset-enhanced-balanced.csv&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;checkpoint_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;checkpoints/my_session&quot;</span><span class="p">,</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;comment_memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;===== MEMORY OPTIMIZATION =====&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;comment_memory_1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;These parameters were added as part of Bug #52 fix&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;memory_optimization&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;data_rows_limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;max_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;comment_ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;===== PPO HYPERPARAMETERS =====&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30000</span><span class="p">,</span>
@@ -175,7 +175,7 @@
 <span class="w">    </span><span class="nt">&quot;sde_sample_freq&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;verbose&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;comment_env&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;===== ENVIRONMENT PARAMETERS =====&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;max_position_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
@@ -183,7 +183,7 @@
 <span class="w">    </span><span class="nt">&quot;transaction_cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.001</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;reward_scaling&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;comment_backward&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;===== BACKWARD COMPATIBILITY =====&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;comment_backward_1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;These top-level settings are maintained for backward compatibility&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;data_rows_limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
@@ -203,7 +203,7 @@
 <span class="w">  </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_training_session&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;data_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ml-dataset-enhanced-balanced.csv&quot;</span><span class="p">,</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;data_rows_limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;max_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30000</span><span class="p">,</span>
@@ -385,7 +385,7 @@ environment.py
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -396,7 +396,7 @@ environment.py
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

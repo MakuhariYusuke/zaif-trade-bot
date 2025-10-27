@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_balance_fetch</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -122,18 +122,24 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[Test 1] Get all balances:&quot;</span><span class="p">)</span>
     <span class="n">balances</span> <span class="o">=</span> <span class="k">await</span> <span class="n">adapter</span><span class="o">.</span><span class="n">get_balance</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">balance</span> <span class="ow">in</span> <span class="n">balances</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
     <span class="c1"># Test getting specific currency</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[Test 2] Get BTC balance only:&quot;</span><span class="p">)</span>
     <span class="n">btc_balances</span> <span class="o">=</span> <span class="k">await</span> <span class="n">adapter</span><span class="o">.</span><span class="n">get_balance</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="s2">&quot;BTC&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">balance</span> <span class="ow">in</span> <span class="n">btc_balances</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[Test 3] Get JPY balance only:&quot;</span><span class="p">)</span>
     <span class="n">jpy_balances</span> <span class="o">=</span> <span class="k">await</span> <span class="n">adapter</span><span class="o">.</span><span class="n">get_balance</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="s2">&quot;JPY&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">balance</span> <span class="ow">in</span> <span class="n">jpy_balances</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">currency</span><span class="si">}</span><span class="s2">: free=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">free</span><span class="si">}</span><span class="s2">, locked=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">locked</span><span class="si">}</span><span class="s2">, total=</span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
     <span class="c1"># Test getting current price</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[Test 4] Get current BTC/JPY price:&quot;</span><span class="p">)</span>
@@ -161,8 +167,8 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">TypedConfig</span><span class="p">()</span>
         <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span>
-            <span class="n">model_path</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span><span class="s2">&quot;ppo_btc_jpy_v367.zip&quot;</span><span class="p">),</span>  <span class="c1"># Use any existing model</span>
-            <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span><span class="s2">&quot;ppo_btc_jpy_v367.zip&quot;</span><span class="p">),</span>
+            <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Use any existing model</span>
         <span class="p">)</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[Test 5] Get account balance via LiveTrader:&quot;</span><span class="p">)</span>
@@ -219,7 +225,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -230,7 +236,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -1,0 +1,447 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V433 Phase 5: 運用移行システム設計書 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">V433 Phase 5: 運用移行システム設計書</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/V433_PHASE5_DESIGN_DOCUMENT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="v433-phase-5">
+<h1>V433 Phase 5: 運用移行システム設計書<a class="headerlink" href="#v433-phase-5" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>V433 Phase 4で構築された統合システムを実運用環境に移行するための包括的な運用移行システムを設計・実装する。リスクを最小限に抑えながら、段階的に実運用への移行を実現する。</p>
+<section id="id2">
+<h3>背景と目的<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<section id="phase-4">
+<h4>Phase 4完了時の状況<a class="headerlink" href="#phase-4" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>全コンポーネントの統合完了</p></li>
+<li><p>包括的なテストスイート構築</p></li>
+<li><p>パフォーマンス最適化完了</p></li>
+<li><p>現実データ検証システム確立</p></li>
+</ul>
+</section>
+<section id="phase-5">
+<h4>Phase 5の目標<a class="headerlink" href="#phase-5" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>リスク最小化</strong>: 段階的移行による運用リスクの低減</p></li>
+<li><p><strong>並行運用</strong>: 既存システムとの安全な並行稼働</p></li>
+<li><p><strong>監視強化</strong>: 実運用環境での包括的な監視</p></li>
+<li><p><strong>緊急対応</strong>: 異常時の迅速な対応メカニズム</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id3">
+<h2>アーキテクチャ設計<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>全体構造<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>V433 Phase 5: Production Migration System
+├── Paper Trading Layer (無リスク検証)
+│   ├── Virtual Portfolio Manager
+│   ├── Market Data Simulator
+│   └── Performance Validator
+├── Parallel Running Layer (並行運用)
+│   ├── System Switcher
+│   ├── Traffic Distributor
+│   └── Result Comparator
+├── Gradual Rollout Layer (段階移行)
+│   ├── Risk-based Allocator
+│   ├── Performance Monitor
+│   └── Rollback Manager
+├── Production Monitoring Layer (運用監視)
+│   ├── Real-time Metrics
+│   ├── Alert System
+│   └── Health Checker
+└── Emergency Control Layer (緊急制御)
+    ├── Circuit Breaker
+    ├── Emergency Stop
+    └── Recovery System
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id5">
+<h2>主要コンポーネント詳細<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="paper-trading-layer">
+<h3>1. Paper Trading Layer: 無リスク検証<a class="headerlink" href="#paper-trading-layer" title="Link to this heading"></a></h3>
+<section id="virtual-portfolio-manager">
+<h4>Virtual Portfolio Manager<a class="headerlink" href="#virtual-portfolio-manager" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>仮想ポートフォリオ管理</strong>: 実資金を使わない取引シミュレーション</p></li>
+<li><p><strong>リアルタイム同期</strong>: 実市場データとの完全同期</p></li>
+<li><p><strong>パフォーマンス追跡</strong>: 仮想PnL、ドローダウン、リスク指標の計算</p></li>
+<li><p><strong>取引ログ</strong>: 詳細な取引記録と分析</p></li>
+</ul>
+</section>
+<section id="market-data-simulator">
+<h4>Market Data Simulator<a class="headerlink" href="#market-data-simulator" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>ライブデータフィード</strong>: 実市場からのリアルタイムデータ取得</p></li>
+<li><p><strong>遅延シミュレーション</strong>: 実際の取引遅延を再現</p></li>
+<li><p><strong>スリッページモデル</strong>: 現実的な取引コストのシミュレーション</p></li>
+<li><p><strong>市場イベント対応</strong>: ニュース、経済指標発表などの影響再現</p></li>
+</ul>
+</section>
+<section id="performance-validator">
+<h4>Performance Validator<a class="headerlink" href="#performance-validator" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>統計的有意性検証</strong>: 仮想取引結果の統計的妥当性確認</p></li>
+<li><p><strong>リスク指標監視</strong>: VaR、シャープレシオなどのリスク指標計算</p></li>
+<li><p><strong>ベンチマーク比較</strong>: 既存システムとのパフォーマンス比較</p></li>
+<li><p><strong>安定性テスト</strong>: 長期間の安定性検証</p></li>
+</ul>
+</section>
+</section>
+<section id="parallel-running-layer">
+<h3>2. Parallel Running Layer: 並行運用<a class="headerlink" href="#parallel-running-layer" title="Link to this heading"></a></h3>
+<section id="system-switcher">
+<h4>System Switcher<a class="headerlink" href="#system-switcher" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>動的切り替え</strong>: V433と既存システム間のシームレスな切り替え</p></li>
+<li><p><strong>設定管理</strong>: 切り替え条件と閾値の管理</p></li>
+<li><p><strong>状態同期</strong>: 両システム間の状態同期メカニズム</p></li>
+<li><p><strong>ログ統合</strong>: 両システムのログ統合</p></li>
+</ul>
+</section>
+<section id="traffic-distributor">
+<h4>Traffic Distributor<a class="headerlink" href="#traffic-distributor" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>負荷分散</strong>: 取引シグナルの割合ベース分散</p></li>
+<li><p><strong>動的調整</strong>: パフォーマンスベースの自動調整</p></li>
+<li><p><strong>フェイルセーフ</strong>: 一方のシステム障害時の自動切り替え</p></li>
+<li><p><strong>A/Bテスト</strong>: 両システムの並行比較</p></li>
+</ul>
+</section>
+<section id="result-comparator">
+<h4>Result Comparator<a class="headerlink" href="#result-comparator" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>パフォーマンス比較</strong>: リアルタイムでの結果比較</p></li>
+<li><p><strong>統計分析</strong>: 統計的有意性の検証</p></li>
+<li><p><strong>異常検知</strong>: 予期せぬ差異の検知</p></li>
+<li><p><strong>レポート生成</strong>: 比較結果の自動レポート</p></li>
+</ul>
+</section>
+</section>
+<section id="gradual-rollout-layer">
+<h3>3. Gradual Rollout Layer: 段階移行<a class="headerlink" href="#gradual-rollout-layer" title="Link to this heading"></a></h3>
+<section id="risk-based-allocator">
+<h4>Risk-based Allocator<a class="headerlink" href="#risk-based-allocator" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>リスクベース配分</strong>: リスク指標に基づく取引量配分</p></li>
+<li><p><strong>段階的増加</strong>: 時間ベースまたはパフォーマンスベースの増加</p></li>
+<li><p><strong>上限設定</strong>: 最大配分率の制限</p></li>
+<li><p><strong>自動調整</strong>: 市場条件に応じた自動調整</p></li>
+</ul>
+</section>
+<section id="performance-monitor">
+<h4>Performance Monitor<a class="headerlink" href="#performance-monitor" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>リアルタイム監視</strong>: 運用中のパフォーマンス追跡</p></li>
+<li><p><strong>KPI追跡</strong>: 定義されたKPIの継続監視</p></li>
+<li><p><strong>トレンド分析</strong>: パフォーマンスのトレンド分析</p></li>
+<li><p><strong>アラート生成</strong>: 閾値超過時の自動アラート</p></li>
+</ul>
+</section>
+<section id="rollback-manager">
+<h4>Rollback Manager<a class="headerlink" href="#rollback-manager" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>自動ロールバック</strong>: 定義された条件での自動巻き戻し</p></li>
+<li><p><strong>段階的減少</strong>: 問題発生時の段階的取引量減少</p></li>
+<li><p><strong>状態保存</strong>: ロールバック前の状態保存</p></li>
+<li><p><strong>リカバリープラン</strong>: 問題発生時の対応計画</p></li>
+</ul>
+</section>
+</section>
+<section id="production-monitoring-layer">
+<h3>4. Production Monitoring Layer: 運用監視<a class="headerlink" href="#production-monitoring-layer" title="Link to this heading"></a></h3>
+<section id="real-time-metrics">
+<h4>Real-time Metrics<a class="headerlink" href="#real-time-metrics" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>システムメトリクス</strong>: CPU、メモリ、ネットワーク使用率</p></li>
+<li><p><strong>ビジネスメトリクス</strong>: 取引量、成功率、PnL</p></li>
+<li><p><strong>市場メトリクス</strong>: 価格変動、ボラティリティ、流動性</p></li>
+<li><p><strong>カスタムメトリクス</strong>: システム固有の監視指標</p></li>
+</ul>
+</section>
+<section id="alert-system">
+<h4>Alert System<a class="headerlink" href="#alert-system" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>多階層アラート</strong>: 警告、重要、緊急の3段階</p></li>
+<li><p><strong>通知チャネル</strong>: Email、Slack、SMS、Webhook</p></li>
+<li><p><strong>エスカレーション</strong>: 自動エスカレーション機能</p></li>
+<li><p><strong>アラート抑制</strong>: ノイズ削減のための抑制機能</p></li>
+</ul>
+</section>
+<section id="health-checker">
+<h4>Health Checker<a class="headerlink" href="#health-checker" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>コンポーネント監視</strong>: 全コンポーネントの健全性チェック</p></li>
+<li><p><strong>依存関係監視</strong>: 外部サービス、データソースの監視</p></li>
+<li><p><strong>パフォーマンス監視</strong>: 応答時間、スループットの監視</p></li>
+<li><p><strong>自動修復</strong>: 可能な範囲での自動修復機能</p></li>
+</ul>
+</section>
+</section>
+<section id="emergency-control-layer">
+<h3>5. Emergency Control Layer: 緊急制御<a class="headerlink" href="#emergency-control-layer" title="Link to this heading"></a></h3>
+<section id="circuit-breaker">
+<h4>Circuit Breaker<a class="headerlink" href="#circuit-breaker" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>自動遮断</strong>: 定義された条件での自動取引停止</p></li>
+<li><p><strong>段階的遮断</strong>: 部分的な機能停止から完全停止まで</p></li>
+<li><p><strong>回復判定</strong>: 自動回復条件の判定</p></li>
+<li><p><strong>手動オーバーライド</strong>: 緊急時の手動制御</p></li>
+</ul>
+</section>
+<section id="emergency-stop">
+<h4>Emergency Stop<a class="headerlink" href="#emergency-stop" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>即時停止</strong>: すべての取引活動の即時停止</p></li>
+<li><p><strong>ポジションクローズ</strong>: オープン中の全ポジション強制クローズ</p></li>
+<li><p><strong>ログ保存</strong>: 停止時の全状態ログ保存</p></li>
+<li><p><strong>通知発動</strong>: 全関係者への緊急通知</p></li>
+</ul>
+</section>
+<section id="recovery-system">
+<h4>Recovery System<a class="headerlink" href="#recovery-system" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>自動リカバリー</strong>: 定義された条件での自動復旧</p></li>
+<li><p><strong>段階的復旧</strong>: 安全な段階的システム復旧</p></li>
+<li><p><strong>検証プロセス</strong>: 復旧後のシステム検証</p></li>
+<li><p><strong>レポート生成</strong>: インシデントレポートの自動生成</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id6">
+<h2>技術仕様<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="id7">
+<h3>パフォーマンス要件<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>レイテンシー</strong>: 監視システム &lt; 10ms、制御システム &lt; 100ms</p></li>
+<li><p><strong>可用性</strong>: 99.99%以上のシステム可用性</p></li>
+<li><p><strong>スケーラビリティ</strong>: 取引量10倍増加時の対応</p></li>
+<li><p><strong>データ保持</strong>: 運用ログ90日分、取引ログ永久保存</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>セキュリティ要件<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>アクセス制御</strong>: ロールベースアクセス制御 (RBAC)</p></li>
+<li><p><strong>監査ログ</strong>: 全操作の完全監査</p></li>
+<li><p><strong>暗号化</strong>: 機密データの暗号化保存</p></li>
+<li><p><strong>バックアップ</strong>: 自動バックアップと災害復旧</p></li>
+</ul>
+</section>
+<section id="id9">
+<h3>運用要件<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>監視体制</strong>: 24/7自動監視 + 有人監視</p></li>
+<li><p><strong>対応時間</strong>: 重要アラート &lt; 5分、緊急 &lt; 1分</p></li>
+<li><p><strong>バックアップ</strong>: 日次フルバックアップ + 時間単位増分</p></li>
+<li><p><strong>DR</strong>: 災害発生時4時間以内の復旧</p></li>
+</ul>
+</section>
+</section>
+<section id="id10">
+<h2>移行計画<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="phase-5-1-paper-trading-2">
+<h3>Phase 5.1: Paper Trading (2週間)<a class="headerlink" href="#phase-5-1-paper-trading-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>環境構築</strong>: 仮想取引環境の構築</p></li>
+<li><p><strong>データ統合</strong>: 実市場データとの同期</p></li>
+<li><p><strong>シミュレーション</strong>: 1ヶ月分の仮想取引実行</p></li>
+<li><p><strong>検証</strong>: パフォーマンスと安定性の検証</p></li>
+</ol>
+</section>
+<section id="phase-5-2-parallel-running-2">
+<h3>Phase 5.2: Parallel Running (2週間)<a class="headerlink" href="#phase-5-2-parallel-running-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>並行環境構築</strong>: 既存システムとの並行運用環境</p></li>
+<li><p><strong>トラフィック分散</strong>: 初期10%のトラフィック分散</p></li>
+<li><p><strong>比較分析</strong>: 両システムの継続的比較</p></li>
+<li><p><strong>最適化</strong>: 分散比率の最適化</p></li>
+</ol>
+</section>
+<section id="phase-5-3-gradual-rollout-3">
+<h3>Phase 5.3: Gradual Rollout (3週間)<a class="headerlink" href="#phase-5-3-gradual-rollout-3" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>段階的移行</strong>: 25% → 50% → 75% → 100%の移行</p></li>
+<li><p><strong>リスク監視</strong>: 各段階でのリスク指標監視</p></li>
+<li><p><strong>パフォーマンス検証</strong>: 移行中のパフォーマンス検証</p></li>
+<li><p><strong>最終移行</strong>: 完全移行と既存システム停止</p></li>
+</ol>
+</section>
+<section id="phase-5-4-production-stabilization-2">
+<h3>Phase 5.4: Production Stabilization (2週間)<a class="headerlink" href="#phase-5-4-production-stabilization-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>安定化監視</strong>: 完全移行後の安定性監視</p></li>
+<li><p><strong>最適化</strong>: 実運用環境での最終最適化</p></li>
+<li><p><strong>ドキュメント更新</strong>: 運用手順書の更新</p></li>
+<li><p><strong>チーム移管</strong>: 運用チームへの移管</p></li>
+</ol>
+</section>
+</section>
+<section id="id11">
+<h2>リスク管理<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>移行リスク<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>システム障害</strong>: 冗長化と自動回復</p></li>
+<li><p><strong>データ損失</strong>: 多重バックアップと検証</p></li>
+<li><p><strong>パフォーマンス劣化</strong>: 段階的移行と監視</p></li>
+<li><p><strong>運用ミス</strong>: 自動化とチェックリスト</p></li>
+</ul>
+</section>
+<section id="id13">
+<h3>運用リスク<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>市場リスク</strong>: リスク制限と緊急停止</p></li>
+<li><p><strong>技術リスク</strong>: 監視強化と自動対応</p></li>
+<li><p><strong>人的リスク</strong>: トレーニングと権限管理</p></li>
+<li><p><strong>コンプライアンス</strong>: 監査と報告</p></li>
+</ul>
+</section>
+</section>
+<section id="id14">
+<h2>成功基準<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>定量的基準<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>移行成功率</strong>: 各段階95%以上の成功率</p></li>
+<li><p><strong>システム可用性</strong>: 99.9%以上のアップタイム</p></li>
+<li><p><strong>監視精度</strong>: 異常検知率95%、誤検知率5%以下</p></li>
+<li><p><strong>対応時間</strong>: 緊急事態対応 &lt; 5分</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>定性的基準<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>運用安定性</strong>: 手動介入の最小化</p></li>
+<li><p><strong>チーム対応力</strong>: 運用チームの習熟度向上</p></li>
+<li><p><strong>プロセス成熟度</strong>: 運用プロセスの標準化</p></li>
+<li><p><strong>ステークホルダー満足度</strong>: 全関係者の移行満足度</p></li>
+</ul>
+</section>
+</section>
+<section id="id17">
+<h2>結論<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<p>V433 Phase 5は、Phase 4で構築された堅牢なシステムを安全かつ効率的に実運用環境に移行するための包括的な運用移行システムである。段階的アプローチによりリスクを最小化しつつ、継続的な監視と改善により安定した運用基盤を確立する。</content>
+<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\docs\V433_PHASE5_DESIGN_DOCUMENT.md</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

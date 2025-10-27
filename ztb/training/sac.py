@@ -34,6 +34,12 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.config.manager import ConfigManager
+from ztb.training.constants import (
+    SAC_DEFAULT_EPISODES,
+    SAC_DEFAULT_SAMPLES,
+    SAC_ERROR_EXIT_CODE,
+    SAC_PRINT_SEPARATOR_WIDTH,
+)
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
@@ -138,7 +144,7 @@ class SACSuite:
             trainer = UnifiedTrainer(
                 config=training_config,
                 total_timesteps=getattr(args, "timesteps", None)
-                or training_config.get("total_timesteps"),
+                or training_config["training"]["total_timesteps"],
             )
             success = trainer.train()
 
@@ -174,9 +180,10 @@ class SACSuite:
             sac_config = (
                 global_config.training.model_dump() if global_config.training else {}
             )
-            sac_config["total_timesteps"] = getattr(
-                args, "timesteps", None
-            ) or sac_config.get("total_timesteps")
+            sac_config["total_timesteps"] = (
+                getattr(args, "timesteps", None)
+                or sac_config["training"]["total_timesteps"]
+            )
             configs.append(sac_config)
 
             # PPO config if requested
@@ -186,9 +193,10 @@ class SACSuite:
                     if global_config.training
                     else {}
                 )
-                ppo_config["total_timesteps"] = getattr(
-                    args, "timesteps", None
-                ) or ppo_config.get("total_timesteps")
+                ppo_config["total_timesteps"] = (
+                    getattr(args, "timesteps", None)
+                    or ppo_config["training"]["total_timesteps"]
+                )
                 configs.append(ppo_config)
 
             # Load config files if provided
@@ -261,9 +269,9 @@ class SACSuite:
 
     def _print_config_results(self, results: Dict[str, Any]) -> None:
         """Print configuration check results."""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("CONFIG CONSISTENCY CHECK")
-        print("=" * 60)
+        print("=" * SAC_PRINT_SEPARATOR_WIDTH)
 
         if "error" in results:
             print(f"❌ Error: {results['error']}")
@@ -281,9 +289,9 @@ class SACSuite:
 
     def _print_data_results(self, results: Dict[str, Any]) -> None:
         """Print data validation results."""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("DATA VALIDATION")
-        print("=" * 60)
+        print("=" * SAC_PRINT_SEPARATOR_WIDTH)
 
         if "error" in results:
             print(f"❌ Error: {results['error']}")
@@ -302,9 +310,9 @@ class SACSuite:
 
     def _print_clean_results(self, results: Dict[str, Any]) -> None:
         """Print cleanup results."""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("PROJECT CLEANUP")
-        print("=" * 60)
+        print("=" * SAC_PRINT_SEPARATOR_WIDTH)
 
         print(f"🔍 Files Found: {results['files_found']}")
         print(f"💾 Total Size: {results['total_size_mb']:.2f} MB")
@@ -315,9 +323,9 @@ class SACSuite:
 
     def _print_quality_results(self, results: Dict[str, Any]) -> None:
         """Print code quality results."""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("CODE QUALITY CHECK")
-        print("=" * 60)
+        print("=" * SAC_PRINT_SEPARATOR_WIDTH)
 
         for check, info in results.items():
             status = info["status"]
@@ -335,9 +343,9 @@ class SACSuite:
 
     def _print_fix_results(self, results: Dict[str, Any]) -> None:
         """Print fix results."""
-        print("\n" + "=" * 60)
+        print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("COMMON ISSUE FIXES")
-        print("=" * 60)
+        print("=" * SAC_PRINT_SEPARATOR_WIDTH)
 
         print(f"🔧 Files Processed: {results['files_processed']}")
 
@@ -367,7 +375,7 @@ def create_parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--model", "-m", help="Path to SAC model file")
     analyze_parser.add_argument("--config", "-c", help="Path to configuration file")
     analyze_parser.add_argument(
-        "--samples", "-s", type=int, default=1000, help="Number of samples to analyze"
+        "--samples", "-s", type=int, default=SAC_DEFAULT_SAMPLES, help="Number of samples to analyze"
     )
 
     # Backtest command
@@ -382,7 +390,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     backtest_parser.add_argument("--config", "-c", help="Path to configuration file")
     backtest_parser.add_argument(
-        "--episodes", "-e", type=int, default=100, help="Number of episodes to run"
+        "--episodes", "-e", type=int, default=SAC_DEFAULT_EPISODES, help="Number of episodes to run"
     )
     backtest_parser.add_argument(
         "--deterministic", action="store_true", help="Use deterministic policy"
@@ -470,7 +478,7 @@ def main() -> int:
             return 1
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
-        return 130
+        return SAC_ERROR_EXIT_CODE
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return 1

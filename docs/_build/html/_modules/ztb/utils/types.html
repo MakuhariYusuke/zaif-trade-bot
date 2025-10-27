@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.utils.types</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -96,16 +96,16 @@
 <span class="sd">This module provides type hints and protocols used across the codebase.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">TypeVar</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedDict</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedDict</span>
 
 <span class="c1"># Type variables for generic types</span>
-<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span>
-<span class="n">U</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;U&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span>
+<span class="n">U</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;U&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)</span>
 
 <span class="c1"># Generic array types</span>
 <span class="n">NDArrayFloat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
@@ -122,26 +122,30 @@
 <span class="n">ActionMask</span> <span class="o">=</span> <span class="n">NDArrayBool</span>  <span class="c1"># Boolean array for valid actions</span>
 
 <span class="c1"># Market data types</span>
-<span class="n">PriceData</span> <span class="o">=</span> <span class="n">TypedDict</span><span class="p">(</span><span class="s1">&#39;PriceData&#39;</span><span class="p">,</span> <span class="p">{</span>
-    <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">]</span>
-<span class="p">},</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">PriceData</span> <span class="o">=</span> <span class="n">TypedDict</span><span class="p">(</span>
+    <span class="s2">&quot;PriceData&quot;</span><span class="p">,</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">],</span>
+    <span class="p">},</span>
+    <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
 
-<span class="n">OHLCData</span> <span class="o">=</span> <span class="n">TypedDict</span><span class="p">(</span><span class="s1">&#39;OHLCData&#39;</span><span class="p">,</span> <span class="p">{</span>
-    <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
-    <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">ArrayLike</span>
-<span class="p">})</span>
+<span class="n">OHLCData</span> <span class="o">=</span> <span class="n">TypedDict</span><span class="p">(</span>
+    <span class="s2">&quot;OHLCData&quot;</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">},</span>
+<span class="p">)</span>
+
 
 <span class="c1"># Configuration types</span>
 <div class="viewcode-block" id="TrainingConfig">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.TrainingConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainingConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Training configuration dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span>
@@ -157,10 +161,12 @@
     <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="EnvironmentConfig">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.EnvironmentConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EnvironmentConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Environment configuration dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">max_steps</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">initial_balance</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">transaction_fee</span><span class="p">:</span> <span class="nb">float</span>
@@ -170,15 +176,18 @@
     <span class="n">position_penalty</span><span class="p">:</span> <span class="nb">float</span></div>
 
 
+
 <div class="viewcode-block" id="ModelConfig">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.ModelConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ModelConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model configuration dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">policy</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">features_dim</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">action_space_size</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">hidden_layers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
     <span class="n">activation_fn</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <span class="c1"># Protocol definitions</span>
@@ -189,14 +198,20 @@
 
 <div class="viewcode-block" id="TradingEnvironment.reset">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.TradingEnvironment.reset">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;TradingEnvironment&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;TradingEnvironment&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset environment and return initial observation and info.&quot;&quot;&quot;</span>
         <span class="o">...</span></div>
 
 
 <div class="viewcode-block" id="TradingEnvironment.step">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.TradingEnvironment.step">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;TradingEnvironment&quot;</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">ActionType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]],</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">:</span> <span class="s2">&quot;TradingEnvironment&quot;</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">ActionType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]],</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute action and return next observation, reward, terminated, truncated, info.&quot;&quot;&quot;</span>
         <span class="o">...</span></div>
 
@@ -219,6 +234,7 @@
         <span class="o">...</span></div>
 
 
+
 <div class="viewcode-block" id="FeatureCalculator">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.FeatureCalculator">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FeatureCalculator</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
@@ -237,6 +253,7 @@
         <span class="o">...</span></div>
 
 
+
 <div class="viewcode-block" id="CallbackProtocol">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.CallbackProtocol">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CallbackProtocol</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
@@ -250,11 +267,13 @@
 </div>
 
 
+
 <span class="c1"># Result types</span>
 <div class="viewcode-block" id="TrainingResult">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.TrainingResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainingResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Training result dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">final_reward</span><span class="p">:</span> <span class="nb">float</span>
@@ -263,10 +282,12 @@
     <span class="n">config</span><span class="p">:</span> <span class="n">TrainingConfig</span></div>
 
 
+
 <div class="viewcode-block" id="BacktestResult">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.BacktestResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BacktestResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Backtest result dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">total_return</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">sharpe_ratio</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">max_drawdown</span><span class="p">:</span> <span class="nb">float</span>
@@ -276,18 +297,21 @@
     <span class="n">action_distribution</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="ValidationResult">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.types.ValidationResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ValidationResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Validation result dictionary.&quot;&quot;&quot;</span>
+
     <span class="n">is_valid</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">warnings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">metrics</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span></div>
 
 
+
 <span class="c1"># Utility type aliases</span>
-<span class="n">PathLike</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;os.PathLike[str]&#39;</span><span class="p">]</span>
+<span class="n">PathLike</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;os.PathLike[str]&quot;</span><span class="p">]</span>
 <span class="n">JSONSerializable</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
 </pre></div>
 
@@ -304,7 +328,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -315,7 +339,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

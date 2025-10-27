@@ -208,7 +208,7 @@ class OptimizationOrchestrator:
                     "profit_factor": 1.15,
                 },
                 "training_time": 120.0,
-                "total_timesteps": self.config.get("total_timesteps", 10000),
+                "total_timesteps": self.config["training"]["total_timesteps"],
                 "trades": trades,
             }
 

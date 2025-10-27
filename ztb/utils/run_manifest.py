@@ -12,6 +12,8 @@ from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
+from ztb.types.common import ConfigDict
+
 
 def inference_config_to_dict(config: Any) -> Dict[str, Any]:
     """
@@ -157,7 +159,7 @@ def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
 
 def generate_manifest(
     model_dir: Path,
-    config: Dict[str, Any],
+    config: ConfigDict,
     feature_names: List[str],
     warmup: int,
     schema_hash: Optional[str] = None,

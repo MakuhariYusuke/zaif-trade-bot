@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.risk.rules</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Risk management rules and validation.</span>
@@ -96,16 +96,46 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskLimits</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.errors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">validate_portfolio_value</span><span class="p">,</span>
+    <span class="n">validate_price</span><span class="p">,</span>
+    <span class="n">validate_volatility</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="RiskLimits">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskLimits">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RiskLimits</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Risk limits configuration.&quot;&quot;&quot;</span>
+
+    <span class="n">max_daily_loss_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>  <span class="c1"># Maximum daily loss (5%)</span>
+    <span class="n">max_single_trade_risk_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>  <span class="c1"># Maximum risk per trade (2%)</span>
+    <span class="n">max_portfolio_risk_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>  <span class="c1"># Maximum portfolio risk (10%)</span>
+    <span class="n">max_correlation_risk_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>  <span class="c1"># Maximum correlation risk (5%)</span>
+    <span class="n">min_liquidity_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1000.0</span>  <span class="c1"># Minimum liquidity threshold</span>
+    <span class="n">max_volatility_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>  <span class="c1"># Maximum volatility threshold (5%)</span>
+    <span class="n">cooldown_period_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># Cooldown period after stop (5 minutes)</span>
+    <span class="n">max_trades_per_hour</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Maximum trades per hour</span>
+    <span class="n">max_trades_per_day</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># Maximum trades per day</span></div>
+
 
 
 <div class="viewcode-block" id="RiskRuleEngine">
 <a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RiskRuleEngine</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Engine for evaluating and enforcing risk rules.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Constants for position sides</span>
+    <span class="n">POSITION_LONG</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+    <span class="n">POSITION_SHORT</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+
+    <span class="c1"># Valid position sides</span>
+    <span class="n">VALID_POSITION_SIDES</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">POSITION_LONG</span><span class="p">,</span> <span class="n">POSITION_SHORT</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limits</span><span class="p">:</span> <span class="n">RiskLimits</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with risk limits.&quot;&quot;&quot;</span>
@@ -148,6 +178,9 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.update_portfolio_state">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_portfolio_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update current portfolio state.&quot;&quot;&quot;</span>
+        <span class="n">validate_portfolio_value</span><span class="p">(</span><span class="n">current_value</span><span class="p">,</span> <span class="s2">&quot;current_value&quot;</span><span class="p">)</span>
+        <span class="n">validate_volatility</span><span class="p">(</span><span class="n">volatility</span><span class="p">,</span> <span class="s2">&quot;volatility&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="n">current_value</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_volatility</span> <span class="o">=</span> <span class="n">volatility</span>
 
@@ -181,10 +214,10 @@
             <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
 
         <span class="n">drawdown</span> <span class="o">=</span> <span class="p">(</span><span class="n">peak_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">peak_value</span>
-        <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">(</span>
                 <span class="kc">False</span><span class="p">,</span>
-                <span class="sa">f</span><span class="s2">&quot;Max drawdown exceeded: </span><span class="si">{</span><span class="n">drawdown</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Max drawdown exceeded: </span><span class="si">{</span><span class="n">drawdown</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
@@ -214,7 +247,7 @@
         <span class="k">if</span> <span class="n">trade_pct</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_single_trade_pct</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">(</span>
                 <span class="kc">False</span><span class="p">,</span>
-                <span class="sa">f</span><span class="s2">&quot;Trade size exceeds limit: </span><span class="si">{</span><span class="n">trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_single_trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Single trade size exceeds limit: </span><span class="si">{</span><span class="n">trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_single_trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
@@ -277,12 +310,15 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.update_trailing_stop">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_trailing_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">position_side</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update trailing stop level.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">position_side</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;long&quot;</span><span class="p">,</span> <span class="s2">&quot;short&quot;</span><span class="p">]:</span>
-            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">VALID_POSITION_SIDES</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Invalid position side: </span><span class="si">{</span><span class="n">position_side</span><span class="si">}</span><span class="s2">. Must be &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">POSITION_LONG</span><span class="si">}</span><span class="s2">&#39; or &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">POSITION_SHORT</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="n">validate_price</span><span class="p">(</span><span class="n">current_price</span><span class="p">,</span> <span class="s2">&quot;current_price&quot;</span><span class="p">)</span>
 
         <span class="c1"># Initialize trailing stop</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">POSITION_LONG</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span>
                     <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span>
                 <span class="p">)</span>
@@ -293,7 +329,7 @@
             <span class="k">return</span>
 
         <span class="c1"># Update trailing stop</span>
-        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">POSITION_LONG</span><span class="p">:</span>
             <span class="c1"># For long positions, trail below the highest price</span>
             <span class="n">new_stop</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">new_stop</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
@@ -315,9 +351,15 @@
             <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
 
         <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span> <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">position_side</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">POSITION_LONG</span>
+            <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span>
+        <span class="p">):</span>
             <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">elif</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span> <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">position_side</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">POSITION_SHORT</span>
+            <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span>
+        <span class="p">):</span>
             <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="n">stop_hit</span><span class="p">:</span>
@@ -332,7 +374,7 @@
         <span class="bp">self</span><span class="p">,</span> <span class="n">entry_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">position_side</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if take profit target is reached.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">POSITION_LONG</span><span class="p">:</span>
             <span class="n">profit_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="n">entry_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry_price</span>
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># short</span>
             <span class="n">profit_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry_price</span>
@@ -434,7 +476,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -445,7 +487,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

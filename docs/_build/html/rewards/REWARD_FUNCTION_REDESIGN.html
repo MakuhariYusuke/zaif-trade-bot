@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>報酬関数の根本的問題点と再設計提案<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
 <section id="id2">
@@ -196,13 +194,13 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    シンプルで安定した報酬関数 v2.0</span>
-<span class="sd">    </span>
+
 <span class="sd">    設計原則:</span>
 <span class="sd">    1. PnL（損益）をベースとする</span>
 <span class="sd">    2. 取引コストを明示的に考慮</span>
 <span class="sd">    3. 報酬を[-1, 1]に正規化</span>
 <span class="sd">    4. HOLDは中立（ペナルティなし）</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        action: 行動 (0=HOLD, 1=BUY, 2=SELL)</span>
 <span class="sd">        pnl: 損益（円建て）</span>
@@ -210,7 +208,7 @@
 <span class="sd">        portfolio_value: ポートフォリオ価値</span>
 <span class="sd">        position: 現在のポジション</span>
 <span class="sd">        old_position: 前回のポジション</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        正規化された報酬 [-1, 1]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -256,9 +254,9 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    最もシンプルな報酬関数</span>
-<span class="sd">    </span>
+
 <span class="sd">    報酬 = PnL / ポートフォリオ価値 * スケール</span>
-<span class="sd">    </span>
+
 <span class="sd">    これにより:</span>
 <span class="sd">    - 利益 → 正の報酬</span>
 <span class="sd">    - 損失 → 負の報酬</span>
@@ -363,16 +361,16 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Simple PnL-based reward function.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Reward = (PnL / Portfolio Value) * Scale</span>
 <span class="sd">    Clipped to [-10, 10]</span>
-<span class="sd">    </span>
+
 <span class="sd">    This eliminates:</span>
 <span class="sd">    - Complex penalty calculations</span>
 <span class="sd">    - Action-specific bonuses</span>
 <span class="sd">    - Position penalties</span>
 <span class="sd">    - Diversity bonuses</span>
-<span class="sd">    </span>
+
 <span class="sd">    Focus purely on profit/loss.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Normalize PnL by portfolio value</span>
@@ -433,7 +431,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -444,7 +442,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

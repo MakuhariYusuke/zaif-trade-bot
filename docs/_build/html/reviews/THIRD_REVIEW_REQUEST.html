@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,11 +88,11 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>第三者レビュー対応バグ修正レポート<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
-<p><strong>日付:</strong> 2025年10月8日<br />
-<strong>修正者:</strong> AIコーディングエージェント<br />
+<p><strong>日付:</strong> 2025年10月8日
+<strong>修正者:</strong> AIコーディングエージェント
 <strong>レビュー元:</strong> 第三者視点の詳細レビュー</p>
 <hr class="docutils" />
 <section id="id2">
@@ -106,8 +104,8 @@
 <h2>🐛 修正したバグ一覧<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
 <section id="critical-ensemblepredictormaskableppo">
 <h3>1. 🔴 Critical: EnsemblePredictorがMaskablePPOマスクを強制しない<a class="headerlink" href="#critical-ensemblepredictormaskableppo" title="Link to this heading"></a></h3>
-<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ensemble.py</span></code><br />
-<strong>深刻度:</strong> Critical<br />
+<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ensemble.py</span></code>
+<strong>深刻度:</strong> Critical
 <strong>問題:</strong> mask_provider未指定時に警告のみで続行し、action_masksが欠落する致命的バグ</p>
 <p><strong>修正内容:</strong></p>
 <section id="ensemblepredictor-init-line-118">
@@ -156,8 +154,8 @@
 <hr class="docutils" />
 <section id="high-min-holding-periodallow-reverse">
 <h3>2. 🟠 High: min_holding_periodがallow_reverse経由で回避される<a class="headerlink" href="#high-min-holding-periodallow-reverse" title="Link to this heading"></a></h3>
-<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py</span></code><br />
-<strong>深刻度:</strong> High<br />
+<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py</span></code>
+<strong>深刻度:</strong> High
 <strong>問題:</strong> min_holding_period中でもallow_reverse=Trueだとポジション反転が発生</p>
 <p><strong>修正内容:</strong></p>
 <section id="positionmanager-execute-action-line-50">
@@ -199,8 +197,8 @@
 <hr class="docutils" />
 <section id="performance-trainer">
 <h3>3. 🟡 Performance: Trainerがクローズ済み環境参照を保持<a class="headerlink" href="#performance-trainer" title="Link to this heading"></a></h3>
-<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ppo_trainer.py</span></code><br />
-<strong>深刻度:</strong> Performance (メモリリーク)<br />
+<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/training/ppo_trainer.py</span></code>
+<strong>深刻度:</strong> Performance (メモリリーク)
 <strong>問題:</strong> 成功時・失敗時とも self.env/self.model の参照を保持し続ける</p>
 <p><strong>修正内容:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 修正前: tryブロック内で部分的にクリーンアップ</span>
@@ -267,8 +265,8 @@
 <hr class="docutils" />
 <section id="medium-predict-with-masks">
 <h3>4. 💡 Medium: predict_with_masksテストの実効性強化<a class="headerlink" href="#medium-predict-with-masks" title="Link to this heading"></a></h3>
-<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">test_bugfixes.py</span></code><br />
-<strong>深刻度:</strong> Medium (テスト品質)<br />
+<p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">test_bugfixes.py</span></code>
+<strong>深刻度:</strong> Medium (テスト品質)
 <strong>問題:</strong> DummyMaskablePPOの生成失敗をexceptで飲み込み、実際にテストされない</p>
 <p><strong>修正内容:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 修正前: type()でMaskablePPO継承を試み、失敗を無視</span>
@@ -521,8 +519,8 @@ Total: 4/4 passed
 <p>すべての修正は統合テストで検証済み (4/4 PASS) であり、本番環境への適用準備が整っています。</p>
 <p><strong>次のステップ:</strong> これらの修正を含むモデルで再トレーニングを実施し、バックテスト性能を再評価することを推奨します。</p>
 <hr class="docutils" />
-<p><strong>修正完了日:</strong> 2025年10月8日<br />
-<strong>テスト結果:</strong> 4/4 PASS ✅<br />
+<p><strong>修正完了日:</strong> 2025年10月8日
+<strong>テスト結果:</strong> 4/4 PASS ✅
 <strong>レビュー状態:</strong> 完了 ✅</p>
 </section>
 </section>
@@ -541,7 +539,7 @@ Total: 4/4 passed
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -552,7 +550,7 @@ Total: 4/4 passed
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

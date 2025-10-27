@@ -15,6 +15,7 @@ from ztb.training.unified_trainer.ensemble_system import (
 )
 from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 
@@ -36,7 +37,7 @@ class EnsembleMixin:
         # Initialize logger
         self.ensemble_logger = get_logger(f"{self.__class__.__name__}.Ensemble")
 
-    def initialize_ensemble(self, config: Dict[str, Any]) -> None:
+    def initialize_ensemble(self, config: ConfigDict) -> None:
         """
         Initialize ensemble system if enabled in config.
 

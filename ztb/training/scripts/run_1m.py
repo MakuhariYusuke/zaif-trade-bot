@@ -176,6 +176,19 @@ def build_training_config(
 ) -> Dict[str, Any]:
     """Build training configuration from command line arguments and overrides."""
 
+    # Check if config file is provided - use new ConfigurationManager
+    if args.config_file:
+        from ztb.training.config.configuration_manager import load_training_config
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"Loading configuration from file: {args.config_file}")
+
+        # Load config with environment variable support
+        config = load_training_config(args.config_file, config_overrides)
+
+        # Apply CLI overrides on top of loaded config
+        return _apply_cli_overrides(config, args)
+
     # Baseline PPO configuration (keeps legacy defaults for standalone usage)
     base_config: Dict[str, Any] = {
         "ppo": dict(get_ppo_config()),
@@ -240,6 +253,10 @@ def main() -> int:
         "--model-dir", default="models", help="Model directory (default: models)"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--config-file",
+        help="Path to JSON configuration file (uses new ConfigurationManager)",
+    )
     parser.add_argument(
         "--offline-mode",
         action="store_true",

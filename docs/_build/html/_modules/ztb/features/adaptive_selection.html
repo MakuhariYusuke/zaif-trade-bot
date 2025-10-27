@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.adaptive_selection</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -102,13 +102,10 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.attention_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">AttentionTrainer</span><span class="p">,</span> <span class="n">FeatureAttentionLayer</span>
@@ -122,7 +119,9 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">MarketRegimeClassifier</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;市場状態分類器&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adx_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">25.0</span><span class="p">,</span> <span class="n">volatility_percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">70.0</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">adx_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">25.0</span><span class="p">,</span> <span class="n">volatility_percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">70.0</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Args:</span>
 <span class="sd">            adx_threshold: ADXトレンド判定閾値</span>
@@ -144,40 +143,48 @@
 <span class="sd">            - &quot;high_volatility&quot;: 高ボラティリティ</span>
 <span class="sd">            - &quot;low_volatility&quot;: 低ボラティリティ</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;ADX&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;ADX&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="c1"># ADXがない場合はATRベースで判定</span>
-            <span class="k">if</span> <span class="s1">&#39;ATR&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="n">current_atr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;ATR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;ATR&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">current_atr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ATR&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_atr</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">[</span><span class="o">-</span><span class="mi">100</span><span class="p">:]</span>
 
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
-                    <span class="n">volatility_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span><span class="p">)</span>
+                    <span class="n">volatility_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span>
+                    <span class="p">)</span>
                     <span class="k">if</span> <span class="n">current_atr</span> <span class="o">&gt;</span> <span class="n">volatility_threshold</span><span class="p">:</span>
                         <span class="k">return</span> <span class="s2">&quot;high_volatility&quot;</span>
-                    <span class="k">elif</span> <span class="n">current_atr</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="mi">100</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span><span class="p">):</span>
+                    <span class="k">elif</span> <span class="n">current_atr</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="mi">100</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span>
+                    <span class="p">):</span>
                         <span class="k">return</span> <span class="s2">&quot;low_volatility&quot;</span>
 
             <span class="k">return</span> <span class="s2">&quot;ranging&quot;</span>  <span class="c1"># デフォルト</span>
 
         <span class="c1"># ADXベースの判定</span>
-        <span class="n">adx</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;ADX&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">adx</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ADX&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
         <span class="c1"># ボラティリティ判定</span>
-        <span class="k">if</span> <span class="s1">&#39;ATR&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">current_atr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;ATR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;ATR&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">current_atr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ATR&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_atr</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">[</span><span class="o">-</span><span class="mi">100</span><span class="p">:]</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
-                <span class="n">volatility_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span><span class="p">)</span>
+                <span class="n">volatility_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span>
+                <span class="p">)</span>
                 <span class="k">if</span> <span class="n">current_atr</span> <span class="o">&gt;</span> <span class="n">volatility_threshold</span><span class="p">:</span>
                     <span class="k">return</span> <span class="s2">&quot;high_volatility&quot;</span>
-                <span class="k">elif</span> <span class="n">current_atr</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="mi">100</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span><span class="p">):</span>
+                <span class="k">elif</span> <span class="n">current_atr</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">volatility_history</span><span class="p">,</span> <span class="mi">100</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_percentile</span>
+                <span class="p">):</span>
                     <span class="k">return</span> <span class="s2">&quot;low_volatility&quot;</span>
 
         <span class="c1"># トレンド判定</span>
@@ -205,26 +212,22 @@
         <span class="k">if</span> <span class="n">feature_groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">feature_groups</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;trending&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="s2">&quot;ADX&quot;</span><span class="p">,</span> <span class="s2">&quot;MACD&quot;</span><span class="p">,</span> <span class="s2">&quot;MACD_SIGNAL&quot;</span><span class="p">,</span> <span class="s2">&quot;MACD_HIST&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;EMA_5&quot;</span><span class="p">,</span> <span class="s2">&quot;EMA_10&quot;</span><span class="p">,</span> <span class="s2">&quot;EMA_20&quot;</span><span class="p">,</span> <span class="s2">&quot;EMA_50&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;SMA_20&quot;</span><span class="p">,</span> <span class="s2">&quot;SMA_50&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;TREND_STRENGTH&quot;</span><span class="p">,</span> <span class="s2">&quot;MOMENTUM&quot;</span>
+                    <span class="s2">&quot;adx_14&quot;</span><span class="p">,</span> <span class="s2">&quot;macd&quot;</span><span class="p">,</span> <span class="s2">&quot;macd_signal&quot;</span><span class="p">,</span> <span class="s2">&quot;macd_hist&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;ema_5&quot;</span><span class="p">,</span> <span class="s2">&quot;ema_10&quot;</span><span class="p">,</span> <span class="s2">&quot;ema_20&quot;</span><span class="p">,</span> <span class="s2">&quot;ema_50&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;sma_20&quot;</span><span class="p">,</span> <span class="s2">&quot;sma_50&quot;</span><span class="p">,</span> <span class="s2">&quot;trend_strength&quot;</span><span class="p">,</span> <span class="s2">&quot;momentum&quot;</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="s2">&quot;ranging&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="s2">&quot;RSI&quot;</span><span class="p">,</span> <span class="s2">&quot;STOCH_K&quot;</span><span class="p">,</span> <span class="s2">&quot;STOCH_D&quot;</span><span class="p">,</span> <span class="s2">&quot;CCI&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;WILLR&quot;</span><span class="p">,</span> <span class="s2">&quot;ROC&quot;</span><span class="p">,</span> <span class="s2">&quot;MFI&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;BB_UPPER&quot;</span><span class="p">,</span> <span class="s2">&quot;BB_LOWER&quot;</span><span class="p">,</span> <span class="s2">&quot;BB_MIDDLE&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;OSCILLATOR_STRENGTH&quot;</span>
+                    <span class="s2">&quot;rsi_6&quot;</span><span class="p">,</span> <span class="s2">&quot;rsi_14&quot;</span><span class="p">,</span> <span class="s2">&quot;rsi_21&quot;</span><span class="p">,</span> <span class="s2">&quot;stoch_k&quot;</span><span class="p">,</span> <span class="s2">&quot;stoch_d&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;cci_14&quot;</span><span class="p">,</span> <span class="s2">&quot;willr_14&quot;</span><span class="p">,</span> <span class="s2">&quot;roc_10&quot;</span><span class="p">,</span> <span class="s2">&quot;mfi_14&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;bb_upper&quot;</span><span class="p">,</span> <span class="s2">&quot;bb_lower&quot;</span><span class="p">,</span> <span class="s2">&quot;bb_middle&quot;</span><span class="p">,</span> <span class="s2">&quot;oscillator_strength&quot;</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="s2">&quot;high_volatility&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="s2">&quot;ATR&quot;</span><span class="p">,</span> <span class="s2">&quot;NATR&quot;</span><span class="p">,</span> <span class="s2">&quot;TRANGE&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;BB_WIDTH&quot;</span><span class="p">,</span> <span class="s2">&quot;KC_WIDTH&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;VOLATILITY_RATIO&quot;</span><span class="p">,</span> <span class="s2">&quot;PRICE_CHANGE&quot;</span>
+                    <span class="s2">&quot;atr_14&quot;</span><span class="p">,</span> <span class="s2">&quot;natr_14&quot;</span><span class="p">,</span> <span class="s2">&quot;trange&quot;</span><span class="p">,</span> <span class="s2">&quot;bb_width&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;kc_width&quot;</span><span class="p">,</span> <span class="s2">&quot;volatility_ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;price_change_1d&quot;</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="s2">&quot;low_volatility&quot;</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="s2">&quot;PRICE_CHANGE&quot;</span><span class="p">,</span> <span class="s2">&quot;VOLUME_RATIO&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;MICRO_TREND&quot;</span><span class="p">,</span> <span class="s2">&quot;PRECISION_SIGNALS&quot;</span>
-                <span class="p">]</span>
+                    <span class="s2">&quot;price_change_1d&quot;</span><span class="p">,</span> <span class="s2">&quot;volume_ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;micro_trend&quot;</span><span class="p">,</span> <span class="s2">&quot;precision_signals&quot;</span><span class="p">,</span>
+                <span class="p">],</span>
             <span class="p">}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">feature_groups</span> <span class="o">=</span> <span class="n">feature_groups</span>
@@ -266,7 +269,9 @@
 
 <div class="viewcode-block" id="AdaptiveFeatureSelector.select_features_adaptive">
 <a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.adaptive_selection.AdaptiveFeatureSelector.select_features_adaptive">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">select_features_adaptive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">all_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_features_adaptive</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">all_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        適応型特徴量選択</span>
 
@@ -317,7 +322,7 @@
         <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
         <span class="n">all_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
         <span class="n">use_causal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span>
+        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        統合された特徴量選択（適応型 + 因果推論）</span>
@@ -333,7 +338,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">use_causal</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">causal_engine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># 因果推論ベースの選択</span>
-            <span class="n">selected_features</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_features_causal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">all_features</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">)</span>
+            <span class="n">selected_features</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_features_causal</span><span class="p">(</span>
+                <span class="n">df</span><span class="p">,</span> <span class="n">all_features</span><span class="p">,</span> <span class="n">outcome_feature</span>
+            <span class="p">)</span>
             <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;selection_method&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;causal&quot;</span>
             <span class="k">return</span> <span class="n">selected_features</span><span class="p">,</span> <span class="n">stats</span>
         <span class="k">else</span><span class="p">:</span>
@@ -342,7 +349,7 @@
             <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;selection_method&quot;</span><span class="p">:</span> <span class="s2">&quot;adaptive&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;weights&quot;</span><span class="p">:</span> <span class="n">weights</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-                <span class="s2">&quot;n_selected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span>
+                <span class="s2">&quot;n_selected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">),</span>
             <span class="p">}</span>
             <span class="k">return</span> <span class="n">selected_features</span><span class="p">,</span> <span class="n">stats</span></div>
 
@@ -353,7 +360,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">n_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span>
+        <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        注意モデルトレーナーを初期化</span>
@@ -366,19 +373,17 @@
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.attention_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_attention_trainer</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">attention_trainer</span> <span class="o">=</span> <span class="n">create_attention_trainer</span><span class="p">(</span>
-            <span class="n">n_features</span><span class="o">=</span><span class="n">n_features</span><span class="p">,</span>
-            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
-            <span class="n">memory_manager</span><span class="o">=</span><span class="n">memory_manager</span>
+            <span class="n">n_features</span><span class="o">=</span><span class="n">n_features</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">memory_manager</span><span class="o">=</span><span class="n">memory_manager</span>
         <span class="p">)</span>
 
         <span class="c1"># Attention layerも初期化</span>
-        <span class="k">if</span> <span class="n">config</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;enabled&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-            <span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hidden_dim&#39;</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">config</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hidden_dim&quot;</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">attention_layer</span> <span class="o">=</span> <span class="n">FeatureAttentionLayer</span><span class="p">(</span><span class="n">n_features</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
 
         <span class="c1"># Causal inference engine</span>
-        <span class="k">if</span> <span class="n">config</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;causal_enabled&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
-            <span class="n">causal_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;causal_config&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">config</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;causal_enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">causal_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;causal_config&quot;</span><span class="p">,</span> <span class="p">{})</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">causal_engine</span> <span class="o">=</span> <span class="n">CausalInferenceEngine</span><span class="p">(</span><span class="n">causal_config</span><span class="p">,</span> <span class="n">memory_manager</span><span class="p">)</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Initialized attention trainer and layer&quot;</span><span class="p">)</span></div>
@@ -386,7 +391,9 @@
 
 <div class="viewcode-block" id="AdaptiveFeatureSelector.add_training_sample">
 <a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.adaptive_selection.AdaptiveFeatureSelector.add_training_sample">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_training_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">reward</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">regime</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_training_sample</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">reward</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">regime</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        トレーニングサンプルを追加</span>
 
@@ -435,10 +442,7 @@
 <div class="viewcode-block" id="AdaptiveFeatureSelector.select_features_causal">
 <a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.adaptive_selection.AdaptiveFeatureSelector.select_features_causal">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">select_features_causal</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        因果推論による特徴量選択</span>
@@ -452,7 +456,9 @@
 <span class="sd">            (選択された特徴量リスト, 分析結果)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">causal_engine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Causal engine not initialized, falling back to regime-based selection&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Causal engine not initialized, falling back to regime-based selection&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_features_adaptive</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">features</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -464,17 +470,23 @@
             <span class="n">selected_features</span> <span class="o">=</span> <span class="n">analysis_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;selected_features&quot;</span><span class="p">,</span> <span class="p">[])</span>
             <span class="n">causal_effects</span> <span class="o">=</span> <span class="n">analysis_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;causal_effects&quot;</span><span class="p">,</span> <span class="p">{})</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Causal feature selection: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features selected&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Causal feature selection: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features selected&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">selected_features</span><span class="p">,</span> <span class="n">analysis_result</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Causal feature selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, falling back to regime-based&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Causal feature selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, falling back to regime-based&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_features_adaptive</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">features</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="AdaptiveFeatureSelector.update_causal_model">
 <a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.adaptive_selection.AdaptiveFeatureSelector.update_causal_model">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">update_causal_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_causal_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">new_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        因果モデルを更新</span>
 
@@ -486,7 +498,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">causal_engine</span><span class="o">.</span><span class="n">update_model</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_attention_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">base_weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_attention_weights</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">base_weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Attention mechanismによる重み調整</span>
 
@@ -510,16 +524,22 @@
             <span class="n">scaled_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">latest_features</span><span class="p">)</span>
 
             <span class="c1"># 注意重みを取得</span>
-            <span class="n">attention_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_trainer</span><span class="o">.</span><span class="n">get_attention_weights</span><span class="p">(</span><span class="n">scaled_features</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">attention_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_trainer</span><span class="o">.</span><span class="n">get_attention_weights</span><span class="p">(</span>
+                <span class="n">scaled_features</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span>
 
             <span class="c1"># 基本重みと注意重みを組み合わせ</span>
             <span class="n">combined_weights</span> <span class="o">=</span> <span class="mf">0.7</span> <span class="o">*</span> <span class="n">base_weights</span> <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">attention_weights</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applied attention weights, mean: </span><span class="si">{</span><span class="n">attention_weights</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Applied attention weights, mean: </span><span class="si">{</span><span class="n">attention_weights</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">combined_weights</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply attention weights: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, using base weights&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Failed to apply attention weights: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, using base weights&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">base_weights</span>
 
 <div class="viewcode-block" id="AdaptiveFeatureSelector.update_attention_model">
@@ -555,30 +575,46 @@
     <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2024-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1H&quot;</span><span class="p">)</span>
     <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
 
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-        <span class="s1">&#39;ts&#39;</span><span class="p">:</span> <span class="n">dates</span><span class="p">,</span>
-        <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>
-        <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
-        <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span>
-        <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-    <span class="p">})</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;ts&quot;</span><span class="p">:</span> <span class="n">dates</span><span class="p">,</span>
+            <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>
+            <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="c1"># ATR計算 (簡易)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;TR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
-        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">],</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;TR&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">],</span>
         <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
-            <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span>
-            <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-        <span class="p">)</span>
+            <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span>
+        <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;ATR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;TR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ATR&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;TR&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
     <span class="c1"># ADX計算 (簡易)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_plus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">],</span>
-                           <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_minus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
-                            <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">],</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;ADX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_plus&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_minus&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_plus&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;DM_minus&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_plus&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">],</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_minus&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">],</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ADX&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mi">100</span>
+        <span class="o">*</span> <span class="p">(</span>
+            <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_plus&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_minus&quot;</span><span class="p">])</span>
+            <span class="o">/</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_plus&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;DM_minus&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="p">)</span>
 
     <span class="n">classifier</span> <span class="o">=</span> <span class="n">MarketRegimeClassifier</span><span class="p">()</span>
     <span class="n">regime</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">classify_market_regime</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
@@ -606,7 +642,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -617,7 +653,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

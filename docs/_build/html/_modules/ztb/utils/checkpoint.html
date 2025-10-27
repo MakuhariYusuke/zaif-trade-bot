@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.utils.checkpoint</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Checkpoint management for experiments.</span>
@@ -101,7 +101,9 @@
 <span class="sd">    manager.save_async(model, step=1000)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
@@ -109,8 +111,12 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">queue</span><span class="w"> </span><span class="kn">import</span> <span class="n">Queue</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">cast</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.base_class</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAlgorithm</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.types.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigDict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.path_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_dir</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -142,7 +148,37 @@
     <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">step</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span></div>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">training_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Enhanced metadata for training context</span></div>
+
+
+
+<div class="viewcode-block" id="TrainingStateCheckpointData">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateCheckpointData">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingStateCheckpointData</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extended checkpoint data structure for complete training state&quot;&quot;&quot;</span>
+
+    <span class="c1"># Model and training state</span>
+    <span class="n">model_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">optimizer_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">replay_buffer_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+
+    <span class="c1"># Training progress</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">episode_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">episode_rewards</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">episode_lengths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+    <span class="c1"># Random state for reproducibility</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># (random, numpy, torch) states</span>
+
+    <span class="c1"># Training configuration</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">ConfigDict</span>
+
+    <span class="c1"># Metadata</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">training_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
 
@@ -188,7 +224,11 @@
 <div class="viewcode-block" id="CheckpointManager.save_async">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.CheckpointManager.save_async">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_async</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">training_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save checkpoint asynchronously&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_queue</span><span class="o">.</span><span class="n">full</span><span class="p">():</span>
@@ -201,6 +241,7 @@
                 <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step</span><span class="p">,</span>
                 <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span> <span class="ow">or</span> <span class="p">{},</span>
                 <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                <span class="s2">&quot;training_context&quot;</span><span class="p">:</span> <span class="n">training_context</span> <span class="ow">or</span> <span class="p">{},</span>
             <span class="p">}</span>
         <span class="p">)</span></div>
 
@@ -208,10 +249,14 @@
 <div class="viewcode-block" id="CheckpointManager.save_sync">
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.CheckpointManager.save_sync">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_sync</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">training_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save checkpoint synchronously (blocking)&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_checkpoint</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save_checkpoint</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">metadata</span> <span class="ow">or</span> <span class="p">{},</span> <span class="n">training_context</span> <span class="ow">or</span> <span class="p">{})</span></div>
 
 
 <div class="viewcode-block" id="CheckpointManager.load_latest">
@@ -352,13 +397,20 @@
                             <span class="n">color</span><span class="o">=</span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_checkpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">training_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal save method with differential support&quot;&quot;&quot;</span>
         <span class="n">checkpoint_data</span><span class="p">:</span> <span class="n">CheckpointData</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;obj&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="p">,</span>
             <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step</span><span class="p">,</span>
             <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">,</span>
             <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s2">&quot;training_context&quot;</span><span class="p">:</span> <span class="n">training_context</span> <span class="ow">or</span> <span class="p">{},</span>
         <span class="p">}</span>
 
         <span class="c1"># Check if we should save differentially</span>
@@ -657,6 +709,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_init_executor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize ThreadPoolExecutor for async saving&quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
         <span class="n">max_workers</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">2</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span>
             <span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">,</span> <span class="n">thread_name_prefix</span><span class="o">=</span><span class="s2">&quot;checkpoint&quot;</span>
@@ -917,6 +970,301 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 </div>
 
+
+
+<div class="viewcode-block" id="TrainingStateManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingStateManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manager for saving and loading complete training state for resume functionality&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">save_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;models/training_states&quot;</span><span class="p">,</span> <span class="n">compress</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;zstd&quot;</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="n">ensure_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">=</span> <span class="n">compress</span>
+
+<div class="viewcode-block" id="TrainingStateManager.save_training_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager.save_training_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_training_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span>
+        <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">episode_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">episode_rewards</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">episode_lengths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">training_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save complete training state for later resumption&quot;&quot;&quot;</span>
+
+        <span class="c1"># Capture random states for reproducibility</span>
+        <span class="n">random_state</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">getstate</span><span class="p">(),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">get_state</span><span class="p">(),</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">get_rng_state</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+            <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">get_rng_state</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract model state</span>
+        <span class="n">model_state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+            <span class="s2">&quot;policy_kwargs&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;policy_kwargs&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Extract optimizer state if available</span>
+        <span class="n">optimizer_state</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;policy&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span> <span class="s2">&quot;optimizer&quot;</span><span class="p">):</span>
+            <span class="n">optimizer_state</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+
+        <span class="c1"># Extract replay buffer state if available</span>
+        <span class="n">replay_buffer_state</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;replay_buffer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">replay_buffer_state</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not save replay buffer state&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Prepare training state data</span>
+        <span class="n">training_state</span><span class="p">:</span> <span class="n">TrainingStateCheckpointData</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;model_state&quot;</span><span class="p">:</span> <span class="n">model_state</span><span class="p">,</span>
+            <span class="s2">&quot;optimizer_state&quot;</span><span class="p">:</span> <span class="n">optimizer_state</span><span class="p">,</span>
+            <span class="s2">&quot;replay_buffer_state&quot;</span><span class="p">:</span> <span class="n">replay_buffer_state</span><span class="p">,</span>
+            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="n">total_timesteps</span><span class="p">,</span>
+            <span class="s2">&quot;episode_count&quot;</span><span class="p">:</span> <span class="n">episode_count</span><span class="p">,</span>
+            <span class="s2">&quot;episode_rewards&quot;</span><span class="p">:</span> <span class="n">episode_rewards</span> <span class="ow">or</span> <span class="p">[],</span>
+            <span class="s2">&quot;episode_lengths&quot;</span><span class="p">:</span> <span class="n">episode_lengths</span> <span class="ow">or</span> <span class="p">[],</span>
+            <span class="s2">&quot;random_state&quot;</span><span class="p">:</span> <span class="n">random_state</span><span class="p">,</span>
+            <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{},</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s2">&quot;training_time&quot;</span><span class="p">:</span> <span class="n">training_time</span><span class="p">,</span>
+            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Generate filename</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;training_state_</span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.pkl&quot;</span>
+
+        <span class="n">filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span> <span class="o">/</span> <span class="n">filename</span>
+
+        <span class="c1"># Compress and save</span>
+        <span class="n">compressed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compress_data</span><span class="p">(</span><span class="n">training_state</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved training state to </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrainingStateManager.load_training_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager.load_training_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_training_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingStateCheckpointData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load complete training state for resumption&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training state file not found: </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load and decompress</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">compressed_data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="n">training_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decompress_data</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded training state from </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">training_state</span></div>
+
+
+<div class="viewcode-block" id="TrainingStateManager.restore_training_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager.restore_training_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">restore_training_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">training_state</span><span class="p">:</span> <span class="n">TrainingStateCheckpointData</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore training state to model&quot;&quot;&quot;</span>
+
+        <span class="c1"># Restore model state</span>
+        <span class="k">if</span> <span class="s2">&quot;policy&quot;</span> <span class="ow">in</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;model_state&quot;</span><span class="p">]:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;model_state&quot;</span><span class="p">][</span><span class="s2">&quot;policy&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Restore optimizer state</span>
+        <span class="k">if</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;optimizer_state&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span> <span class="s2">&quot;optimizer&quot;</span><span class="p">):</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;optimizer_state&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Restore replay buffer state (limited support)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;replay_buffer_state&quot;</span><span class="p">]</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;replay_buffer&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># This is a simplified restoration - full restoration would require</span>
+                <span class="c1"># more complex buffer state management</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;replay_buffer_state&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Restored replay buffer state&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not restore replay buffer state: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Restore random states</span>
+        <span class="n">random_state</span> <span class="o">=</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;random_state&quot;</span><span class="p">]</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">setstate</span><span class="p">(</span><span class="n">random_state</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">random_state</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">set_rng_state</span><span class="p">(</span><span class="n">random_state</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_rng_state</span><span class="p">(</span><span class="n">random_state</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Restored training state to model&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">TrainingStateCheckpointData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compress training state data&quot;&quot;&quot;</span>
+        <span class="n">pickled_data</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">==</span> <span class="s2">&quot;zstd&quot;</span> <span class="ow">and</span> <span class="n">HAS_ZSTD</span><span class="p">:</span>
+            <span class="n">compressor</span> <span class="o">=</span> <span class="n">zstd</span><span class="o">.</span><span class="n">ZstdCompressor</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickled_data</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">==</span> <span class="s2">&quot;lz4&quot;</span> <span class="ow">and</span> <span class="n">HAS_LZ4</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">lz4_frame</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickled_data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickled_data</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_decompress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">compressed_data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingStateCheckpointData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Decompress training state data&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">==</span> <span class="s2">&quot;zstd&quot;</span> <span class="ow">and</span> <span class="n">HAS_ZSTD</span><span class="p">:</span>
+            <span class="n">decompressor</span> <span class="o">=</span> <span class="n">zstd</span><span class="o">.</span><span class="n">ZstdDecompressor</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">decompressor</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">compress</span> <span class="o">==</span> <span class="s2">&quot;lz4&quot;</span> <span class="ow">and</span> <span class="n">HAS_LZ4</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">lz4_frame</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TrainingStateManager.list_training_states">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager.list_training_states">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_training_states</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List all saved training states with metadata&quot;&quot;&quot;</span>
+        <span class="n">states</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">filepath</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;training_state_*.pkl*&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Quick load just metadata without full decompression</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">compressed_data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">training_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decompress_data</span><span class="p">(</span><span class="n">compressed_data</span><span class="p">)</span>
+
+                <span class="n">states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;filepath&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span>
+                        <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;episode_count&quot;</span><span class="p">:</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;episode_count&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;training_time&quot;</span><span class="p">:</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;training_time&quot;</span><span class="p">],</span>
+                        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">training_state</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">],</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not read training state </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrainingStateManager.validate_resume_compatibility">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.checkpoint.TrainingStateManager.validate_resume_compatibility">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_resume_compatibility</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">training_state</span><span class="p">:</span> <span class="n">TrainingStateCheckpointData</span><span class="p">,</span>
+        <span class="n">current_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">data_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate compatibility between saved training state and current setup&quot;&quot;&quot;</span>
+
+        <span class="n">validation_results</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;compatible&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+        <span class="c1"># Check version compatibility</span>
+        <span class="n">saved_version</span> <span class="o">=</span> <span class="n">training_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">,</span> <span class="s2">&quot;0.0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">saved_version</span> <span class="o">!=</span> <span class="s2">&quot;1.0&quot;</span><span class="p">:</span>
+            <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Version mismatch: saved=</span><span class="si">{</span><span class="n">saved_version</span><span class="si">}</span><span class="s2">, current=1.0&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Check configuration compatibility</span>
+        <span class="n">saved_config</span> <span class="o">=</span> <span class="n">training_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Check critical hyperparameters</span>
+        <span class="n">critical_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">,</span> <span class="s2">&quot;buffer_size&quot;</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">,</span> <span class="s2">&quot;tau&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">critical_params</span><span class="p">:</span>
+            <span class="n">saved_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested_value</span><span class="p">(</span>
+                <span class="n">saved_config</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;training.sac_hyperparameters.</span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">current_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested_value</span><span class="p">(</span>
+                <span class="n">current_config</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;training.sac_hyperparameters.</span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">saved_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">current_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">saved_val</span> <span class="o">!=</span> <span class="n">current_val</span>
+            <span class="p">):</span>
+                <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Hyperparameter mismatch for </span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">: saved=</span><span class="si">{</span><span class="n">saved_val</span><span class="si">}</span><span class="s2">, current=</span><span class="si">{</span><span class="n">current_val</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Check environment configuration</span>
+        <span class="n">saved_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested_value</span><span class="p">(</span><span class="n">saved_config</span><span class="p">,</span> <span class="s2">&quot;training.environment_config&quot;</span><span class="p">)</span>
+        <span class="n">current_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested_value</span><span class="p">(</span>
+            <span class="n">current_config</span><span class="p">,</span> <span class="s2">&quot;training.environment_config&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">saved_env</span> <span class="ow">and</span> <span class="n">current_env</span><span class="p">:</span>
+            <span class="c1"># Check critical environment parameters</span>
+            <span class="n">env_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;window_size&quot;</span><span class="p">,</span> <span class="s2">&quot;fee&quot;</span><span class="p">,</span> <span class="s2">&quot;leverage&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">env_params</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">saved_env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param</span><span class="p">)</span> <span class="o">!=</span> <span class="n">current_env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param</span><span class="p">):</span>
+                    <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Environment parameter mismatch for </span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">: saved=</span><span class="si">{</span><span class="n">saved_env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param</span><span class="p">)</span><span class="si">}</span><span class="s2">, current=</span><span class="si">{</span><span class="n">current_env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+        <span class="c1"># Check data compatibility (if data_path provided)</span>
+        <span class="k">if</span> <span class="n">data_path</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">data_path</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># This would require loading a small sample of data to check compatibility</span>
+                <span class="c1"># For now, just check if data file exists and is readable</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="c1"># Try to read first few lines</span>
+                    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>  <span class="c1"># Check first 5 lines</span>
+                            <span class="k">break</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">lines</span><span class="p">:</span>
+                    <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Data file appears to be empty&quot;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot read data file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine overall compatibility</span>
+        <span class="k">if</span> <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]:</span>
+            <span class="n">validation_results</span><span class="p">[</span><span class="s2">&quot;compatible&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">validation_results</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_nested_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get nested value from config using dot notation&quot;&quot;&quot;</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">config</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
 </pre></div>
 
            </div>
@@ -932,7 +1280,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -943,7 +1291,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.policies.strict_masked_policy</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">StrictMaskedPolicy: カスタムPPOポリシー（学習時の厳密なマスク適用）</span>
@@ -96,15 +96,18 @@
 <span class="sd">違法アクションが損失計算に寄与しないことを保証する。</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">gymnasium</span><span class="w"> </span><span class="kn">import</span> <span class="n">spaces</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib.common.maskable.policies</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskableActorCriticPolicy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.torch_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseFeaturesExtractor</span><span class="p">,</span> <span class="n">FlattenExtractor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.type_aliases</span><span class="w"> </span><span class="kn">import</span> <span class="n">Schedule</span><span class="p">,</span> <span class="n">PyTorchObs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.torch_layers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BaseFeaturesExtractor</span><span class="p">,</span>
+    <span class="n">FlattenExtractor</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.type_aliases</span><span class="w"> </span><span class="kn">import</span> <span class="n">PyTorchObs</span><span class="p">,</span> <span class="n">Schedule</span>
 
 
 <div class="viewcode-block" id="StrictMaskedPolicy">
@@ -112,12 +115,12 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">StrictMaskedPolicy</span><span class="p">(</span><span class="n">MaskableActorCriticPolicy</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    カスタムポリシー: 学習時も違法アクションを完全除外</span>
-<span class="sd">    </span>
+
 <span class="sd">    主な変更点:</span>
 <span class="sd">    1. forward() メソッド: 違法アクションのlogitsを -1e9 に設定</span>
 <span class="sd">    2. evaluate_actions() メソッド: 損失計算時も同じマスクを適用</span>
 <span class="sd">    3. predict() メソッド: 推論時のデコード順序を統一 (mask → softmax(T) → argmax)</span>
-<span class="sd">    </span>
+
 <span class="sd">    これにより、学習/評価の分布不一致を根絶し、違法アクションへの確率漏れを防止。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -138,10 +141,10 @@
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        StrictMaskedPolicy の初期化</span>
-<span class="sd">        </span>
+
 <span class="sd">        親クラス (MaskableActorCriticPolicy) のパラメータをそのまま継承。</span>
 <span class="sd">        追加の初期化処理は不要（マスクロジックはforward/evaluate_actionsで実装）。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Note: MaskableActorCriticPolicy は離散行動空間用なので、</span>
 <span class="sd">        use_sde, log_std_init, full_std, use_expln, squash_output などの</span>
 <span class="sd">        連続行動空間用パラメータは不要。</span>
@@ -171,15 +174,15 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Forward pass with strict mask enforcement.</span>
-<span class="sd">        </span>
+
 <span class="sd">        違法アクションのlogitsを -1e9 に設定することで、</span>
 <span class="sd">        サンプリング時に違法アクションが選ばれる確率を完全にゼロにする。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            obs: Observation tensor [batch_size, obs_dim]</span>
 <span class="sd">            deterministic: If True, select action deterministically (argmax)</span>
 <span class="sd">            action_masks: Action masks [batch_size, n_actions] (1=legal, 0=illegal)</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (actions, values, log_probs)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -240,15 +243,15 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Evaluate actions with strict mask enforcement during loss calculation.</span>
-<span class="sd">        </span>
+
 <span class="sd">        学習時の損失計算でも違法アクションを除外することで、</span>
 <span class="sd">        違法アクションの学習を防止し、合法アクションのみに勾配を流す。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            obs: Observation tensor [batch_size, obs_dim]</span>
 <span class="sd">            actions: Actions tensor [batch_size]</span>
 <span class="sd">            action_masks: Action masks [batch_size, n_actions] (1=legal, 0=illegal)</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            Tuple of (values, log_probs, entropy)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -296,10 +299,10 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Predict values for observations.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            obs: Observation tensor [batch_size, obs_dim]</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            Values tensor [batch_size, 1]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -334,7 +337,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -345,7 +348,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

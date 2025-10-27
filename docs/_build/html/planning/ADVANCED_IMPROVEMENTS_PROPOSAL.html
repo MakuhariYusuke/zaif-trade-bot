@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,10 +88,10 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="ai">
 <h1>AIエージェント提案: 高度な改善案の検討<a class="headerlink" href="#ai" title="Link to this heading"></a></h1>
-<p><strong>日時</strong>: 2025年10月6日<br />
+<p><strong>日時</strong>: 2025年10月6日
 <strong>目的</strong>: RecurrentPPO/LSTM化、連続ポジションサイズ化、自己教師タスク併用の技術的検討</p>
 <hr class="docutils" />
 <section id="id1">
@@ -341,7 +339,8 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
 <section id="id12">
 <h4>アクション空間変更<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
 <p><strong>environment.py修正</strong>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">gym.spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Box</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">gymnasium</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gym</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gymnasium.spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Box</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">(</span><span class="n">gym</span><span class="o">.</span><span class="n">Env</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">use_continuous_actions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -929,9 +928,9 @@ pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span
 </ul>
 <p>これらの改善は、CustomPPOと相補的であり、統合することでさらに強力なトレーディングシステムを構築できます。</p>
 <hr class="docutils" />
-<p><strong>レポート作成日</strong>: 2025年10月6日<br />
-<strong>作成者</strong>: GitHub Copilot<br />
-<strong>ステータス</strong>: 検討資料<br />
+<p><strong>レポート作成日</strong>: 2025年10月6日
+<strong>作成者</strong>: GitHub Copilot
+<strong>ステータス</strong>: 検討資料
 <strong>次回更新</strong>: RecurrentPPO調査完了後</p>
 </section>
 </section>
@@ -950,7 +949,7 @@ pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -961,7 +960,7 @@ pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

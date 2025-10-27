@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.algorithms.ppo.ppo_algorithm</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">PPOアルゴリズムのラッパー実装。</span>
@@ -102,16 +102,14 @@
 <span class="sd">    &gt;&gt;&gt; ppo.train(model, total_timesteps=100000)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.base_class</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAlgorithm</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.vec_env</span><span class="w"> </span><span class="kn">import</span> <span class="n">VecEnv</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms.base_algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseRLAlgorithm</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.ppo_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPOTrainerAutoHalt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.models.custom_ppo</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomPPO</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -122,10 +120,10 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">PPOAlgorithm</span><span class="p">(</span><span class="n">BaseRLAlgorithm</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    PPO (Proximal Policy Optimization) アルゴリズムの実装。</span>
-<span class="sd">    </span>
+
 <span class="sd">    既存のPPOTrainerをラップし、BaseRLAlgorithmインターフェースを提供する。</span>
 <span class="sd">    これにより、他のアルゴリズム（SAC, TD3等）と統一的に扱える。</span>
-<span class="sd">    </span>
+
 <span class="sd">    Attributes:</span>
 <span class="sd">        _trainer: 既存のPPOTrainerインスタンス</span>
 <span class="sd">        _model: 作成されたPPOモデル</span>
@@ -134,7 +132,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_auto_halt</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        初期化。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            use_auto_halt: PPOTrainerAutoHaltを使用するか（デフォルト: False）</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -158,17 +156,17 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        PPOモデルを作成。</span>
-<span class="sd">        </span>
+
 <span class="sd">        既存のPPOTrainerまたはPPOTrainerAutoHaltを使用してモデルを作成する。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            env: 訓練環境（VecEnv）</span>
 <span class="sd">            config: PPO設定（ppo_hyperparameters等を含む）</span>
 <span class="sd">            tensorboard_log: TensorBoardログディレクトリ</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            作成されたPPOモデル</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; ppo = PPOAlgorithm()</span>
 <span class="sd">            &gt;&gt;&gt; model = ppo.create_model(</span>
@@ -189,9 +187,11 @@
         <span class="c1"># Use PPOTrainerAutoHalt for all cases</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Will be initialized when needed</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ PPO model created successfully&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ PPO model created successfully&quot;</span><span class="p">)</span>
         <span class="c1"># Create a placeholder model for now - actual model creation is handled by trainer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="p">(</span><span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tensorboard_log</span><span class="o">=</span><span class="n">tensorboard_log</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="p">(</span>
+            <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tensorboard_log</span><span class="o">=</span><span class="n">tensorboard_log</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
 
 
@@ -202,20 +202,20 @@
         <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span>
         <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseAlgorithm</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        PPOモデルを訓練。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            model: 訓練するPPOモデル</span>
 <span class="sd">            total_timesteps: 総ステップ数</span>
 <span class="sd">            callback: コールバック関数</span>
 <span class="sd">            **kwargs: その他のパラメータ</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            訓練済みモデル</span>
-<span class="sd">            </span>
+
 <span class="sd">        Example:</span>
 <span class="sd">            &gt;&gt;&gt; ppo = PPOAlgorithm()</span>
 <span class="sd">            &gt;&gt;&gt; model = ppo.create_model(env, config)</span>
@@ -228,13 +228,11 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training PPO model for </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;Trainer not initialized. Call create_model() first.&quot;</span>
-            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Trainer not initialized. Call create_model() first.&quot;</span><span class="p">)</span>
 
         <span class="c1"># 既存のPPOTrainer.train()を呼び出す</span>
         <span class="c1"># unified_trainer.py の既存ロジックを使用</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ PPO training completed&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ PPO training completed&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">model</span></div>
 
 
@@ -243,10 +241,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_default_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        PPOのデフォルト設定を取得。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            デフォルト設定の辞書</span>
-<span class="sd">            </span>
+
 <span class="sd">        Note:</span>
 <span class="sd">            SACAlgorithmと統一したインターフェース。</span>
 <span class="sd">            ハイパーパラメータのみを返す（ppo_hyperparametersキーは含まない）。</span>
@@ -276,16 +274,16 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        PPO設定の妥当性を検証。</span>
-<span class="sd">        </span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            config: 検証する設定（PPOハイパーパラメータのみ、またはppo_hyperparametersを含む完全な設定）</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            設定が妥当ならTrue</span>
-<span class="sd">            </span>
+
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: 必須パラメータが不足している場合</span>
-<span class="sd">            </span>
+
 <span class="sd">        Note:</span>
 <span class="sd">            SACAlgorithmと同様のインターフェースに統一。</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -305,13 +303,17 @@
 
         <span class="c1"># 値の範囲チェック</span>
         <span class="k">if</span> <span class="n">ppo_params</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;learning_rate must be positive, got </span><span class="si">{</span><span class="n">ppo_params</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;learning_rate must be positive, got </span><span class="si">{</span><span class="n">ppo_params</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">ppo_params</span><span class="p">[</span><span class="s2">&quot;n_steps&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_steps must be positive, got </span><span class="si">{</span><span class="n">ppo_params</span><span class="p">[</span><span class="s1">&#39;n_steps&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">ppo_params</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;batch_size must be positive, got </span><span class="si">{</span><span class="n">ppo_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;batch_size must be positive, got </span><span class="si">{</span><span class="n">ppo_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ PPO config validation passed: </span><span class="si">{</span><span class="n">ppo_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span></div>
@@ -340,7 +342,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -351,7 +353,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

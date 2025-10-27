@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,16 +88,16 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.momentum.rsi</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">RSI (Relative Strength Index) implementation with multi-timeframe support.</span>
 <span class="sd">RSIの実装 - 複数時間軸対応</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.feature_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature_cache</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
@@ -108,13 +108,20 @@
 <div class="viewcode-block" id="compute_rsi">
 <a class="viewcode-back" href="../../../../api/generated/ztb.features.momentum.html#ztb.features.momentum.rsi.compute_rsi">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;RSI&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_rsi</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_rsi</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute RSI (Relative Strength Index) - Optimized version with Ta-Lib support&quot;&quot;&quot;</span>
     <span class="c1"># Determine period based on timeframe</span>
     <span class="k">if</span> <span class="n">timeframe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.timeframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_timeframe_params</span>
+
         <span class="n">tf_params</span> <span class="o">=</span> <span class="n">get_timeframe_params</span><span class="p">(</span><span class="n">timeframe</span><span class="p">)</span>
-        <span class="n">period</span> <span class="o">=</span> <span class="n">period</span> <span class="ow">or</span> <span class="p">(</span><span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;short_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># RSI typically uses shorter periods</span>
+        <span class="n">period</span> <span class="o">=</span> <span class="n">period</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;short_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="p">)</span>  <span class="c1"># RSI typically uses shorter periods</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">period</span> <span class="o">=</span> <span class="n">period</span> <span class="ow">or</span> <span class="mi">14</span>
 
@@ -131,6 +138,7 @@
 
 
 <span class="c1"># === Multi-Timeframe RSI Features ===</span>
+
 
 <div class="viewcode-block" id="compute_rsi_m1">
 <a class="viewcode-back" href="../../../../api/generated/ztb.features.momentum.html#ztb.features.momentum.rsi.compute_rsi_m1">[docs]</a>
@@ -216,7 +224,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -227,7 +235,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

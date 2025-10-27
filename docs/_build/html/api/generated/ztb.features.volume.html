@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ztb.inference package" href="ztb.inference.html" />
-    <link rel="prev" title="ztb.features.volatility package" href="ztb.features.volatility.html" />
+    <link rel="prev" title="ztb.features.volatility package" href="ztb.features.volatility.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -57,7 +57,7 @@
 <li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb-sac-v427-market-adaptive-system-module">ztb.sac_v427_market_adaptive_system module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
 </ul>
 </li>
@@ -108,7 +108,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section id="ztb-features-volume-package">
 <h1>ztb.features.volume package<a class="headerlink" href="#ztb-features-volume-package" title="Link to this heading"></a></h1>
 <section id="submodules">
@@ -212,12 +212,33 @@ Returns a DataFrame with CMF values.</p>
 </section>
 <section id="module-ztb.features.volume.mfi">
 <span id="ztb-features-volume-mfi-module"></span><h2>ztb.features.volume.mfi module<a class="headerlink" href="#module-ztb.features.volume.mfi" title="Link to this heading"></a></h2>
-<p>MFI (Money Flow Index) implementation.
-MFIの実装</p>
+<p>MFI (Money Flow Index) feature implementation.
+MFI is a momentum indicator that uses both price and volume to measure buying and selling pressure.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>mfi: MFI value (0 to 100)</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="ztb.features.volume.mfi.compute_mfi">
-<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.mfi.</span></span><span class="sig-name descname"><span class="pre">compute_mfi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/mfi.html#compute_mfi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.mfi.compute_mfi" title="Link to this definition"></a></dt>
-<dd><p>Compute MFI (Money Flow Index) using Ta-Lib wrapper</p>
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.mfi.</span></span><span class="sig-name descname"><span class="pre">compute_mfi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/mfi.html#compute_mfi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.mfi.compute_mfi" title="Link to this definition"></a></dt>
+<dd><p>MFI (Money Flow Index)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.volume.mfi.MFI">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.volume.mfi.</span></span><span class="sig-name descname"><span class="pre">MFI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/volume/mfi.html#MFI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.mfi.MFI" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Money Flow Index (MFI).
+Uses both price and volume to measure buying and selling pressure.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.volume.mfi.MFI.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/mfi.html#MFI.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.mfi.MFI.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’, ‘volume’].
+Returns a DataFrame with MFI values.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -348,7 +369,7 @@ VWAPの実装</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -359,7 +380,7 @@ VWAPの実装</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.heavy_env.core</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Core trading environment implementations.&quot;&quot;&quot;</span>
 
@@ -95,13 +95,12 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">gymnasium</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gym</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">gymnasium</span><span class="w"> </span><span class="kn">import</span> <span class="n">spaces</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
@@ -145,15 +144,16 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.streaming_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingPipeline</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.adaptive_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdaptiveFeatureSelector</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.action_validator</span><span class="w"> </span><span class="kn">import</span> <span class="n">ActionValidator</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.data_processor</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataProcessor</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.memory_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryManager</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.observation_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObservationBuilder</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.observation_builder</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">ObservationBuilder</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.position_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">PositionManager</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.reward_calculator</span><span class="w"> </span><span class="kn">import</span> <span class="n">RewardCalculator</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.streaming_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingHandler</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.streaming_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingPipeline</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.adaptive_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdaptiveFeatureSelector</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.live.data.stream_to_bars</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamToBarsConverter</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -304,12 +304,24 @@
 
         <span class="c1"># Get continuous-to-discrete action conversion threshold from config</span>
         <span class="c1"># Default to environment constant if not specified in config</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC_CONTINUOUS_THRESHOLD</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">action_threshold</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
             <span class="s2">&quot;continuous_to_discrete_threshold&quot;</span><span class="p">,</span>
-            <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD</span>
+            <span class="n">SAC_CONTINUOUS_THRESHOLD</span><span class="p">,</span>
         <span class="p">)</span>
+        <span class="c1"># Allow asymmetric configuration but default to symmetric negative threshold if unspecified</span>
+        <span class="n">configured_negative_threshold</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+            <span class="s2">&quot;continuous_to_discrete_threshold_neg&quot;</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">configured_negative_threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">negative_action_threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configured_negative_threshold</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Mirror the positive threshold to avoid unintentional BUY/SELL bias</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">negative_action_threshold</span> <span class="o">=</span> <span class="o">-</span><span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_threshold</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stream_to_bars_converter</span> <span class="o">=</span> <span class="n">stream_to_bars_converter</span>
@@ -329,15 +341,22 @@
             <span class="s2">&quot;volatility_window&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_volatility_window</span><span class="p">,</span>
             <span class="s2">&quot;volatility_penalty_scale&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_volatility_penalty_scale</span><span class="p">,</span>
             <span class="s2">&quot;sharpe_bonus_scale&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_sharpe_bonus_scale</span><span class="p">,</span>
-            <span class="s2">&quot;sortino_bonus_scale&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;reward_sortino_bonus_scale&quot;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span>
-            <span class="s2">&quot;calmar_bonus_scale&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;reward_calmar_bonus_scale&quot;</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">),</span>
+            <span class="s2">&quot;sortino_bonus_scale&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;reward_sortino_bonus_scale&quot;</span><span class="p">,</span> <span class="mf">0.01</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;calmar_bonus_scale&quot;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;reward_calmar_bonus_scale&quot;</span><span class="p">,</span> <span class="mf">0.005</span>
+            <span class="p">),</span>
             <span class="s2">&quot;reward_clip_value&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_clip_value</span><span class="p">,</span>
             <span class="s2">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_profit_bonus_multipliers</span><span class="p">,</span>
             <span class="s2">&quot;enable_forced_diversity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_forced_diversity</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;reward_settings&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
-            <span class="n">merged</span><span class="p">:</span> <span class="n">RewardSettings</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">}</span>  <span class="c1"># type: ignore[typeddict-item]</span>
+            <span class="n">merged</span><span class="p">:</span> <span class="n">RewardSettings</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reward_settings</span><span class="p">,</span>
+            <span class="p">}</span>  <span class="c1"># type: ignore[typeddict-item]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reward_settings</span> <span class="o">=</span> <span class="n">merged</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">fee_model</span> <span class="o">=</span> <span class="n">ExchangeFeeModel</span><span class="p">()</span>
@@ -346,12 +365,19 @@
         <span class="c1"># 🔧 CRITICAL FIX: 訓練時のtransaction_costを尊重</span>
         <span class="c1"># 訓練時に明示的にtransaction_costが設定されている場合、それを優先</span>
         <span class="c1"># fee_modelのデフォルト値で上書きしない</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s1">&#39;transaction_cost&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;transaction_cost&quot;</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">==</span> <span class="mf">0.0</span>
+        <span class="p">):</span>
             <span class="c1"># transaction_costが未設定またはデフォルト値(0.0)の場合のみ、fee_modelから取得</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fee_model</span><span class="o">.</span><span class="n">get_fee_rate</span><span class="p">(</span><span class="s2">&quot;buy&quot;</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fee_model transaction_cost: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Using fee_model transaction_cost: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using configured transaction_cost: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="si">}</span><span class="s2"> (not overriding with fee_model)&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Using configured transaction_cost: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="si">}</span><span class="s2"> (not overriding with fee_model)&quot;</span>
+            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">initial_portfolio_value</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span>
@@ -383,7 +409,9 @@
             <span class="n">scaler_mean</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;scaler_mean&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="n">scaler_std</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;scaler_std&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">scaler_mean</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">scaler_std</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Computing scaler from data (use_standardized_observations=True)&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Computing scaler from data (use_standardized_observations=True)&quot;</span>
+                <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_compute_scaler_from_data</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_remaining_components</span><span class="p">()</span>
@@ -401,12 +429,17 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
 
-        <span class="n">random_start</span> <span class="o">=</span> <span class="p">(</span><span class="n">options</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;random_start&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_start</span>
+        <span class="n">random_start</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">options</span> <span class="ow">and</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;random_start&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_start</span>
 
         <span class="c1"># 🔧 DEBUG: random_start が False になる原因を特定</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
         <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;reset() called: options=</span><span class="si">{</span><span class="n">options</span><span class="si">}</span><span class="s2">, self.random_start=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">random_start</span><span class="si">}</span><span class="s2">, random_start=</span><span class="si">{</span><span class="n">random_start</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;reset() called: options=</span><span class="si">{</span><span class="n">options</span><span class="si">}</span><span class="s2">, self.random_start=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">random_start</span><span class="si">}</span><span class="s2">, random_start=</span><span class="si">{</span><span class="n">random_start</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">random_start</span><span class="p">:</span>
             <span class="n">min_start</span> <span class="o">=</span> <span class="mi">0</span>
@@ -417,10 +450,12 @@
             <span class="n">buffer</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)))</span>
             <span class="n">max_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">-</span> <span class="n">buffer</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">min_start</span><span class="p">,</span> <span class="n">max_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Random start: current_step=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2">, range=[</span><span class="si">{</span><span class="n">min_start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">max_start</span><span class="si">}</span><span class="s2">], buffer=</span><span class="si">{</span><span class="n">buffer</span><span class="si">}</span><span class="s2">, n_steps=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Random start: current_step=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2">, range=[</span><span class="si">{</span><span class="n">min_start</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">max_start</span><span class="si">}</span><span class="s2">], buffer=</span><span class="si">{</span><span class="n">buffer</span><span class="si">}</span><span class="s2">, n_steps=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fixed start: current_step=0&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Fixed start: current_step=0&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reward_calculator</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
@@ -494,16 +529,22 @@
 <a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.heavy_env.html#ztb.trading.HeavyTradingEnv.step">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">action</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>  <span class="c1"># Can be int (discrete) or np.ndarray (continuous)</span>
+        <span class="n">action</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span>
+            <span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+        <span class="p">],</span>  <span class="c1"># Can be int (discrete) or np.ndarray (continuous)</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
         <span class="c1"># Convert continuous action to discrete if necessary</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">continuous_to_discrete_action</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
             <span class="c1"># Continuous action from SAC: convert to discrete using configured threshold</span>
             <span class="n">continuous_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">discrete_action</span> <span class="o">=</span> <span class="n">continuous_to_discrete_action</span><span class="p">(</span><span class="n">continuous_value</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action_threshold</span><span class="p">)</span>
+            <span class="n">discrete_action</span> <span class="o">=</span> <span class="n">continuous_to_discrete_action</span><span class="p">(</span>
+                <span class="n">continuous_value</span><span class="p">,</span>
+                <span class="n">threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action_threshold</span><span class="p">,</span>
+                <span class="n">negative_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">negative_action_threshold</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="c1"># Store both for reward calculation</span>
             <span class="n">actual_action</span> <span class="o">=</span> <span class="n">discrete_action</span>
             <span class="n">continuous_action_value</span> <span class="o">=</span> <span class="n">continuous_value</span>
@@ -527,7 +568,9 @@
 
         <span class="n">old_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
         <span class="n">min_holding_period</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-        <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">actual_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="p">)</span>
+        <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
+            <span class="n">actual_action</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="n">min_holding_period</span>
+        <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_sync_from_position_manager</span><span class="p">()</span>
 
@@ -537,13 +580,17 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">loss_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
                 <span class="k">if</span> <span class="n">loss_ratio</span> <span class="o">&gt;</span> <span class="n">stop_loss_threshold</span><span class="p">:</span>
-                    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
+                    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span>
+                    <span class="p">)</span>
                     <span class="n">trade_pnl</span> <span class="o">+=</span> <span class="n">forced_close_pnl</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_sync_from_position_manager</span><span class="p">()</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">loss_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
                 <span class="k">if</span> <span class="n">loss_ratio</span> <span class="o">&gt;</span> <span class="n">stop_loss_threshold</span><span class="p">:</span>
-                    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
+                    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span>
+                    <span class="p">)</span>
                     <span class="n">trade_pnl</span> <span class="o">+=</span> <span class="n">forced_close_pnl</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_sync_from_position_manager</span><span class="p">()</span>
 
@@ -552,7 +599,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">action_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">actual_action</span><span class="p">)</span>
 
         <span class="n">unrealized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">calculate_unrealized_pnl</span><span class="p">()</span>
-        <span class="n">portfolio_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">+</span> <span class="n">unrealized_pnl</span>
+        <span class="n">portfolio_value</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">+</span> <span class="n">unrealized_pnl</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="n">portfolio_value</span>
 
         <span class="n">pnl</span> <span class="o">=</span> <span class="n">trade_pnl</span>
@@ -596,7 +645,9 @@
         <span class="n">next_obs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_observation</span><span class="p">()</span>
 
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_info</span><span class="p">()</span>
-        <span class="n">position_utilisation</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1e-8</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_position_size</span><span class="p">)</span>
+        <span class="n">position_utilisation</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="mf">1e-8</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_position_size</span>
+        <span class="p">)</span>
         <span class="n">info</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;pnl&quot;</span><span class="p">:</span> <span class="n">pnl</span><span class="p">,</span>
@@ -607,6 +658,8 @@
                 <span class="s2">&quot;atr&quot;</span><span class="p">:</span> <span class="n">atr</span><span class="p">,</span>
                 <span class="s2">&quot;position_utilisation&quot;</span><span class="p">:</span> <span class="n">position_utilisation</span><span class="p">,</span>
                 <span class="s2">&quot;action_masks&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_legal_actions</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">),</span>
+                <span class="s2">&quot;trade_executed&quot;</span><span class="p">:</span> <span class="n">pnl</span> <span class="o">!=</span> <span class="mi">0</span>
+                <span class="ow">or</span> <span class="n">actual_action</span> <span class="o">!=</span> <span class="n">ACTION_HOLD</span><span class="p">,</span>  <span class="c1"># Add trade execution flag</span>
             <span class="p">}</span>
         <span class="p">)</span>
 
@@ -701,7 +754,9 @@
             <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">+</span> <span class="n">EPSILON</span><span class="p">)),</span>
             <span class="s2">&quot;max_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">rewards</span><span class="p">)),</span>
             <span class="s2">&quot;total_trades&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="p">,</span>
-            <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">rewards</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">rewards</span><span class="p">))</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">rewards</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">rewards</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 
@@ -764,7 +819,9 @@
 
 <div class="viewcode-block" id="FlipHeavyTradingEnv.step">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.heavy_env.html#ztb.trading.FlipHeavyTradingEnv.step">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
         <span class="n">flipped_action</span> <span class="o">=</span> <span class="n">action</span>
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_BUY</span><span class="p">:</span>
             <span class="n">flipped_action</span> <span class="o">=</span> <span class="n">ACTION_SELL</span>
@@ -803,7 +860,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -814,7 +871,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

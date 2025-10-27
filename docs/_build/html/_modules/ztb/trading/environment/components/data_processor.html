@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.components.data_processor</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Data processing utilities for trading environment</span>
 <span class="c1"># 取引環境のデータ処理ユーティリティ</span>
@@ -175,9 +175,8 @@
 
         <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">optimized</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">numeric_cols</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">optimized</span><span class="p">[</span><span class="n">numeric_cols</span><span class="p">]</span> <span class="o">=</span> <span class="n">optimized</span><span class="p">[</span><span class="n">numeric_cols</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span>
-            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_cols</span><span class="p">:</span>
+                <span class="n">optimized</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">optimized</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
         <span class="n">bool_cols</span> <span class="o">=</span> <span class="n">optimized</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;bool&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bool_cols</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -195,7 +194,10 @@
 <div class="viewcode-block" id="DataProcessor.fetch_streaming_snapshot">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.DataProcessor.fetch_streaming_snapshot">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">fetch_streaming_snapshot</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">streaming_pipeline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;StreamingPipeline&quot;</span><span class="p">],</span> <span class="n">required_rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stream_batch_size</span><span class="p">:</span> <span class="nb">int</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">streaming_pipeline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;StreamingPipeline&quot;</span><span class="p">],</span>
+        <span class="n">required_rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">stream_batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ストリーミングパイプラインから初期スナップショットを取得&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">streaming_pipeline</span><span class="p">:</span>
@@ -240,15 +242,11 @@
         <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure feature columns use the configured storage dtype&quot;&quot;&quot;</span>
-        <span class="n">feature_dtype</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-            <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_storage_dtype&quot;</span><span class="p">,</span> <span class="s2">&quot;float16&quot;</span><span class="p">)</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">feature_dtype</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_storage_dtype&quot;</span><span class="p">,</span> <span class="s2">&quot;float16&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="n">dtype_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;float16&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="s2">&quot;float32&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">}</span>
         <span class="n">target_dtype</span> <span class="o">=</span> <span class="n">dtype_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feature_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
-        <span class="n">protected</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;precision_columns&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="p">}</span>
+        <span class="n">protected</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;precision_columns&quot;</span><span class="p">,</span> <span class="p">[])}</span>
         <span class="n">candidate_features</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">col</span>
             <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">features</span>
@@ -291,7 +289,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -302,7 +300,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -1,0 +1,26 @@
+{
+  "model": "sac_v427_hybrid_109d",
+  "timestamp": "2025-10-26T06:37:23.538666",
+  "total_reward": 201920.24999999208,
+  "avg_episode_reward": 67306.74999999737,
+  "total_trades": 0,
+  "final_portfolio_value": 10000,
+  "portfolio_return_pct": 0,
+  "sharpe_ratio": 0,
+  "max_drawdown": 0,
+  "win_rate": 0,
+  "evaluation_episodes": 3,
+  "feature_count": 60,
+  "action_stats": {
+    "mean": -0.035746278930220705,
+    "std": 0.7171832997844156,
+    "min": -1.0,
+    "max": 0.9999998807907104
+  },
+  "reward_stats": {
+    "mean": 13.46404280856171,
+    "std": 7.857254999692566,
+    "min": -12.35,
+    "max": 26.650000000000002
+  }
+}

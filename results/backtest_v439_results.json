@@ -1,0 +1,62 @@
+{
+  "total_episodes": 10,
+  "avg_reward": 880.0,
+  "avg_trades": 1.0,
+  "avg_return": -0.4982870712989952,
+  "win_rate": 0.0,
+  "total_return": -4.982870712989952,
+  "sharpe_ratio": -Infinity,
+  "max_drawdown": -0.4982870712989952,
+  "episode_results": [
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    },
+    {
+      "reward": 880.0,
+      "trades": 1,
+      "return": -0.4982870712989952
+    }
+  ]
+}

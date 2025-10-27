@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,11 +88,11 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="critical-fix-hold">
 <h1>🔧 CRITICAL FIX: HOLD偏重問題の根本修正<a class="headerlink" href="#critical-fix-hold" title="Link to this heading"></a></h1>
-<p><strong>作成日</strong>: 2025-10-10<br />
-<strong>対象バージョン</strong>: v4.0.1<br />
+<p><strong>作成日</strong>: 2025-10-10
+<strong>対象バージョン</strong>: v4.0.1
 <strong>修正範囲</strong>: schema_env_factory.py, heavy_env/core.py, action_validator.py, position_manager.py, <a class="reference external" href="http://config.py">config.py</a></p>
 <hr class="docutils" />
 <section id="id1">
@@ -197,7 +195,7 @@
 <h2>✅ 修正内容<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
 <section id="id6">
 <h3>1. schema_env_factory.py: 訓練時設定の適用<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
-<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/schema_env_factory.py</span></code><br />
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/schema_env_factory.py</span></code>
 <strong>Lines</strong>: 34-51</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="c1"># 訓練時の環境設定を適用（CRITICAL FIX for BUG #HOLD_BIAS）</span>
@@ -233,7 +231,7 @@
 </section>
 <section id="heavy-env-core-py-transaction-cost">
 <h3>2. heavy_env/core.py: transaction_cost保護<a class="headerlink" href="#heavy-env-core-py-transaction-cost" title="Link to this heading"></a></h3>
-<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/heavy_env/core.py</span></code><br />
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/heavy_env/core.py</span></code>
 <strong>Lines</strong>: 222-231</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">fee_model</span> <span class="o">=</span> <span class="n">ExchangeFeeModel</span><span class="p">()</span>
@@ -257,7 +255,7 @@
 </section>
 <section id="config-py">
 <h3>3. <a class="reference external" href="http://config.py">config.py</a>: 現実的なデフォルト値<a class="headerlink" href="#config-py" title="Link to this heading"></a></h3>
-<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/utils/config.py</span></code><br />
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/utils/config.py</span></code>
 <strong>Lines</strong>: 98-105</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="c1"># 🔧 CRITICAL FIX: 現実的な資金設定</span>
@@ -276,7 +274,7 @@
 </section>
 <section id="action-validator-py">
 <h3>4. action_validator.py: 少額取引対応<a class="headerlink" href="#action-validator-py" title="Link to this heading"></a></h3>
-<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/action_validator.py</span></code><br />
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/action_validator.py</span></code>
 <strong>Lines</strong>: 89-118</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
@@ -301,7 +299,7 @@
 </section>
 <section id="position-manager-py">
 <h3>5. position_manager.py: 資金制約対応<a class="headerlink" href="#position-manager-py" title="Link to this heading"></a></h3>
-<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py</span></code><br />
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py</span></code>
 <strong>Lines</strong>: 128-187</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">open_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -383,7 +381,7 @@ Trades/Episode:    4.0
 <span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_realistic_v400&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v400: 現実的なBitcoin取引設定 - 価格18M円を考慮した資金・ポジションサイズ&quot;</span><span class="p">,</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;transaction_cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;max_position_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="p">,</span><span class="w">           </span><span class="c1">// 0.01 BTC (180,000円相当)</span>
@@ -394,7 +392,7 @@ Trades/Episode:    4.0
 <span class="w">    </span><span class="nt">&quot;allow_reverse&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;enforce_reverse_cooldown&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span>
+
 <span class="w">  </span><span class="nt">&quot;reward&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;hold_penalty_weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.03</span><span class="p">,</span><span class="w">         </span><span class="c1">// HOLD偏重防止</span>
 <span class="w">    </span><span class="nt">&quot;profit_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span><span class="w">    </span><span class="c1">// 利益を重視</span>
@@ -525,9 +523,9 @@ Trades/Episode:    4.0
 <li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 実取引ドライラン</p></li>
 </ul>
 <hr class="docutils" />
-<p><strong>修正者</strong>: GitHub Copilot<br />
-<strong>承認者</strong>: MakuhariYusuke<br />
-<strong>関連Issue</strong>: #HOLD_BIAS, #BUG_51_REALISTIC_TRADING<br />
+<p><strong>修正者</strong>: GitHub Copilot
+<strong>承認者</strong>: MakuhariYusuke
+<strong>関連Issue</strong>: #HOLD_BIAS, #BUG_51_REALISTIC_TRADING
 <strong>Pull Request</strong>: (作成予定)</p>
 </section>
 </section>
@@ -546,7 +544,7 @@ Trades/Episode:    4.0
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -557,7 +555,7 @@ Trades/Episode:    4.0
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,11 +88,11 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>第9回外部レビュー依頼 - 第8回修正検証<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
-<p><strong>日付:</strong> 2025年10月8日<br />
-<strong>依頼者:</strong> GitHub Copilot Development Team<br />
+<p><strong>日付:</strong> 2025年10月8日
+<strong>依頼者:</strong> GitHub Copilot Development Team
 <strong>対象:</strong> 第8回レビューで発見されたバグの修正検証</p>
 <hr class="docutils" />
 <section id="id2">
@@ -145,7 +143,7 @@
 <h2>🔍 Bug #37: テストfixtureのmin_holding_period設定欠如 ✅ FIXED<a class="headerlink" href="#bug-37-fixturemin-holding-period-fixed" title="Link to this heading"></a></h2>
 <section id="id4">
 <h3>問題の本質<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
-<p><strong>誤報告:</strong> レビュアーは「<code class="docutils literal notranslate"><span class="pre">EnvironmentConfig</span></code>に<code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>フィールドが欠如」と報告<br />
+<p><strong>誤報告:</strong> レビュアーは「<code class="docutils literal notranslate"><span class="pre">EnvironmentConfig</span></code>に<code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>フィールドが欠如」と報告
 <strong>実際の問題:</strong> <code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code>フィールドは既に存在（<code class="docutils literal notranslate"><span class="pre">config.py:111</span></code>）。真の原因は<strong>テストfixtureで<code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code>が未設定</strong>で、デフォルト値の<code class="docutils literal notranslate"><span class="pre">3</span></code>が適用されたこと。</p>
 <p><strong>再現シナリオ:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># test_forced_actions.py</span>
@@ -202,7 +200,7 @@
 <h2>🔍 Bug #41: ショート決済BUYが確率で拒否される ✅ FIXED<a class="headerlink" href="#bug-41-buy-fixed" title="Link to this heading"></a></h2>
 <section id="id7">
 <h3>問題詳細<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
-<p><strong>発見者:</strong> Codex (Grok Code Fast)<br />
+<p><strong>発見者:</strong> Codex (Grok Code Fast)
 <strong>深刻度:</strong> HIGH</p>
 <p><code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> の <code class="docutils literal notranslate"><span class="pre">_should_trade_sell_bias()</span></code> メソッドで、<strong>BUYアクション</strong>に常に確率フィルタが適用されていた。</p>
 <p><strong>問題のロジック:</strong></p>
@@ -265,7 +263,7 @@
 <h2>🔍 Bug #39: reward_scaling設定の不一致 ✅ FIXED<a class="headerlink" href="#bug-39-reward-scaling-fixed" title="Link to this heading"></a></h2>
 <section id="id10">
 <h3>問題詳細<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
-<p><strong>発見者:</strong> Copilot (第2レビュアー)<br />
+<p><strong>発見者:</strong> Copilot (第2レビュアー)
 <strong>深刻度:</strong> HIGH</p>
 <p>トレーニング設定ファイル間で <code class="docutils literal notranslate"><span class="pre">reward_scaling</span></code> の値が不一致。</p>
 <p><strong>不一致の詳細:</strong></p>
@@ -305,7 +303,7 @@
 <h2>🔍 Bug #40: ログローテーション未実装 ✅ FIXED<a class="headerlink" href="#bug-40-fixed" title="Link to this heading"></a></h2>
 <section id="id13">
 <h3>問題詳細<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
-<p><strong>発見者:</strong> Copilot (第2レビュアー)<br />
+<p><strong>発見者:</strong> Copilot (第2レビュアー)
 <strong>深刻度:</strong> HIGH</p>
 <p><code class="docutils literal notranslate"><span class="pre">run_training.py</span></code> と <code class="docutils literal notranslate"><span class="pre">logging_utils.py</span></code> で <code class="docutils literal notranslate"><span class="pre">logging.basicConfig()</span></code> を使用しており、ログファイルのローテーションが実装されていない。</p>
 <p><strong>影響:</strong></p>
@@ -383,8 +381,8 @@
 <h2>📝 Bug #38: 浮動小数点比較 - 技術的負債として記録<a class="headerlink" href="#bug-38" title="Link to this heading"></a></h2>
 <section id="id16">
 <h3>問題詳細<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
-<p><strong>発見者:</strong> Copilot (第2レビュアー)<br />
-<strong>深刻度:</strong> MEDIUM<br />
+<p><strong>発見者:</strong> Copilot (第2レビュアー)
+<strong>深刻度:</strong> MEDIUM
 <strong>状態:</strong> ACKNOWLEDGED (技術的負債)</p>
 <p><code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">==</span> <span class="pre">0.0</span></code> の直接比較が16箇所で使用されている。計算誤差により判定失敗の可能性。</p>
 <p><strong>推奨修正:</strong></p>
@@ -575,8 +573,8 @@
 <li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 既存テスト全PASSを確認</p></li>
 </ul>
 <hr class="docutils" />
-<p><strong>レビュー期限:</strong> なし（完了次第報告してください）<br />
-<strong>連絡先:</strong> GitHub Copilot Development Team<br />
+<p><strong>レビュー期限:</strong> なし（完了次第報告してください）
+<strong>連絡先:</strong> GitHub Copilot Development Team
 <strong>補足資料:</strong> <code class="docutils literal notranslate"><span class="pre">bug_fixes/EIGHTH_REVIEW_RESULTS.md</span></code>（第8回レビュー結果原本）</p>
 <p>よろしくお願いいたします。</p>
 </section>
@@ -596,7 +594,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -607,7 +605,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.explainability.config</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Configuration for Explainability Module</span>
@@ -95,14 +95,15 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span>
 
 
 <div class="viewcode-block" id="ExplanationMethod">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplanationMethod">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ExplanationMethod</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;説明手法&quot;&quot;&quot;</span>
+
     <span class="n">SHAP</span> <span class="o">=</span> <span class="s2">&quot;shap&quot;</span>
     <span class="n">LIME</span> <span class="o">=</span> <span class="s2">&quot;lime&quot;</span>
     <span class="n">INTEGRATED_GRADIENTS</span> <span class="o">=</span> <span class="s2">&quot;integrated_gradients&quot;</span>
@@ -114,8 +115,9 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplanationScope">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ExplanationScope</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;説明範囲&quot;&quot;&quot;</span>
+
     <span class="n">GLOBAL</span> <span class="o">=</span> <span class="s2">&quot;global&quot;</span>  <span class="c1"># 全体的な特徴量重要度</span>
-    <span class="n">LOCAL</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>    <span class="c1"># 個別予測の説明</span>
+    <span class="n">LOCAL</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>  <span class="c1"># 個別予測の説明</span>
     <span class="n">COHORT</span> <span class="o">=</span> <span class="s2">&quot;cohort&quot;</span>  <span class="c1"># グループベースの説明</span></div>
 
 
@@ -167,7 +169,10 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shap_max_evals</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;shap_max_evals must be positive&quot;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">explanation_confidence_threshold</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">explanation_confidence_threshold</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">explanation_confidence_threshold</span> <span class="o">&lt;</span> <span class="mi">0</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">explanation_confidence_threshold</span> <span class="o">&gt;</span> <span class="mi">1</span>
+        <span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;explanation_confidence_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
 
         <span class="c1"># デフォルトの特徴量名マッピングを設定</span>
@@ -187,7 +192,7 @@
             <span class="s2">&quot;ichimoku_tenkan&quot;</span><span class="p">:</span> <span class="s2">&quot;一目均衡表転換線&quot;</span><span class="p">,</span>
             <span class="s2">&quot;ichimoku_kijun&quot;</span><span class="p">:</span> <span class="s2">&quot;一目均衡表基準線&quot;</span><span class="p">,</span>
             <span class="s2">&quot;supertrend&quot;</span><span class="p">:</span> <span class="s2">&quot;スーパートレンド&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;williams_r&quot;</span><span class="p">:</span> <span class="s2">&quot;ウィリアムズ%R&quot;</span>
+            <span class="s2">&quot;williams_r&quot;</span><span class="p">:</span> <span class="s2">&quot;ウィリアムズ%R&quot;</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_categories</span> <span class="o">=</span> <span class="p">{</span>
@@ -200,7 +205,7 @@
             <span class="s2">&quot;ichimoku_tenkan&quot;</span><span class="p">:</span> <span class="s2">&quot;一目均衡表&quot;</span><span class="p">,</span>
             <span class="s2">&quot;ichimoku_kijun&quot;</span><span class="p">:</span> <span class="s2">&quot;一目均衡表&quot;</span><span class="p">,</span>
             <span class="s2">&quot;supertrend&quot;</span><span class="p">:</span> <span class="s2">&quot;トレンド指標&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;williams_r&quot;</span><span class="p">:</span> <span class="s2">&quot;オシレーター&quot;</span>
+            <span class="s2">&quot;williams_r&quot;</span><span class="p">:</span> <span class="s2">&quot;オシレーター&quot;</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 </pre></div>
@@ -218,7 +223,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -229,7 +234,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

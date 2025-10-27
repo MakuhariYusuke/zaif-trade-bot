@@ -6,6 +6,7 @@ UI and display utilities for Unified Trainer.
 import time
 from typing import Any, Dict, List, Optional
 
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 
@@ -25,7 +26,7 @@ class TrainingUI:
         print(f"Config: {config_name}")
         print("=" * 80)
 
-    def print_config_summary(self, config: Dict[str, Any]) -> None:
+    def print_config_summary(self, config: ConfigDict) -> None:
         """Print configuration summary."""
         print("\n📋 CONFIGURATION SUMMARY:")
         print("-" * 40)
@@ -35,7 +36,7 @@ class TrainingUI:
         print(f"Algorithm: {algorithm}")
 
         # Training parameters
-        total_timesteps = config.get("total_timesteps", "unknown")
+        total_timesteps = config["training"]["total_timesteps"]
         if isinstance(total_timesteps, (int, float)):
             print(f"Total Timesteps: {total_timesteps:,}")
         else:
@@ -256,6 +257,20 @@ def format_time(seconds: float) -> str:
         minutes = int((seconds % 3600) // 60)
         secs = seconds % 60
         return f"{hours}h {minutes}m {secs:.1f}s"
+
+    def display_training_complete(self, success: bool, stats: Optional[Dict[str, Any]] = None) -> None:
+        """Display training completion message."""
+        if success:
+            print("\n✅ Training completed successfully!")
+            if stats:
+                print("📊 Final Statistics:")
+                for key, value in stats.items():
+                    if isinstance(value, float):
+                        print(f"  {key}: {value:.4f}")
+                    else:
+                        print(f"  {key}: {value}")
+        else:
+            print("\n❌ Training failed")
 
 
 def format_number(num: float, precision: int = 2) -> str:

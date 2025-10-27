@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,138 +87,49 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.unified_trainer.config</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Configuration classes for Unified Trainer.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">List</span>
-
-
-<div class="viewcode-block" id="UnifiedAlgorithm">
-<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.UnifiedAlgorithm">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">UnifiedAlgorithm</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supported training algorithms in UnifiedTrainer.&quot;&quot;&quot;</span>
-
-    <span class="n">PPO</span> <span class="o">=</span> <span class="s2">&quot;ppo&quot;</span>
-    <span class="n">SAC</span> <span class="o">=</span> <span class="s2">&quot;sac&quot;</span>
-    <span class="n">BASE_ML</span> <span class="o">=</span> <span class="s2">&quot;base_ml&quot;</span>
-    <span class="n">ITERATIVE</span> <span class="o">=</span> <span class="s2">&quot;iterative&quot;</span>
-    <span class="n">ENSEMBLE</span> <span class="o">=</span> <span class="s2">&quot;ensemble&quot;</span>
-    <span class="n">CURRICULUM</span> <span class="o">=</span> <span class="s2">&quot;curriculum&quot;</span>
-    <span class="n">SELF_SUPERVISED</span> <span class="o">=</span> <span class="s2">&quot;self_supervised&quot;</span>
-    <span class="n">MULTIMODAL</span> <span class="o">=</span> <span class="s2">&quot;multimodal&quot;</span>
-    <span class="n">ONLINE_LEARNING</span> <span class="o">=</span> <span class="s2">&quot;online_learning&quot;</span></div>
-
-
-
-<div class="viewcode-block" id="UnifiedTrainerConfig">
-<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.UnifiedTrainerConfig">[docs]</a>
-<span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">UnifiedTrainerConfig</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for UnifiedTrainer.&quot;&quot;&quot;</span>
-
-    <span class="n">algorithm</span><span class="p">:</span> <span class="n">UnifiedAlgorithm</span>
-    <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">enable_streaming</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">stream_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span>
-    <span class="n">max_features</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">offline_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">total_timesteps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Added to fix attribute access error</span>
-
-    <span class="c1"># Federated Learning Configuration</span>
-    <span class="n">enable_federated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">num_clients</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">federated_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
-    <span class="n">privacy_budget</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Differential privacy budget</span>
-    <span class="n">client_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Fraction of clients to participate per round</span>
-
-    <span class="c1"># Mixed Precision Training Configuration</span>
-    <span class="n">enable_mixed_precision</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">precision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fp16&quot;</span>  <span class="c1"># &quot;fp16&quot;, &quot;bf16&quot;, &quot;fp8&quot;</span>
-    <span class="n">gradient_scaling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">gradient_clip_norm</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
-
-    <span class="c1"># Efficient Network Configuration</span>
-    <span class="n">use_efficient_network</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">use_depthwise_conv</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">use_efficient_attention</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">use_dynamic_network</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="n">attention_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linformer&quot;</span>  <span class="c1"># &quot;linformer&quot;, &quot;performer&quot;</span>
-    <span class="n">sequence_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
-
-    <span class="c1"># Multimodal Learning Configuration</span>
-    <span class="n">enable_multimodal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">price_feature_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span>
-    <span class="n">text_embedding_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span>
-    <span class="n">economic_feature_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
-    <span class="n">multimodal_hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span>
-    <span class="n">multimodal_num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
-
-    <span class="c1"># Online Learning Configuration</span>
-    <span class="n">enable_online_learning</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">online_learning_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;incremental&quot;</span>  <span class="c1"># &quot;incremental&quot;, &quot;streaming&quot;</span>
-    <span class="n">online_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span>
-    <span class="n">online_memory_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span>
-    <span class="n">online_adaptation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
-
-    <span class="c1"># Anomaly Detection Configuration</span>
-    <span class="n">enable_anomaly_detection</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">anomaly_statistical_methods</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># [&#39;zscore&#39;, &#39;iqr&#39;, &#39;mad&#39;]</span>
-    <span class="n">anomaly_ml_methods</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># [&#39;isolation_forest&#39;, &#39;elliptic_envelope&#39;]</span>
-    <span class="n">enable_anomaly_autoencoder</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">anomaly_voting_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-
-    <span class="c1"># Meta Learning Configuration</span>
-    <span class="n">enable_meta_learning</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">meta_algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;maml&#39;</span>  <span class="c1"># &#39;maml&#39; or &#39;reptile&#39;</span>
-    <span class="n">meta_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
-    <span class="n">meta_inner_lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
-    <span class="n">meta_outer_lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>
-    <span class="n">meta_adaptation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
-
-    <span class="c1"># Enhanced Federated Learning Configuration</span>
-    <span class="n">federated_markets</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Enable market-based federated learning</span>
-    <span class="n">markets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># List of markets for federated learning</span>
-
-    <span class="c1"># Continual Learning Configuration</span>
-    <span class="n">enable_continual_learning</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">continual_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;ewc&#39;</span>  <span class="c1"># &#39;ewc&#39;, &#39;rehearsal&#39;, &#39;progressive&#39;</span>
-    <span class="n">continual_ewc_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
-    <span class="n">continual_buffer_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
-    <span class="n">continual_max_tasks</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span></div>
-
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.config.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.config.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingConfig</span><span class="p">,</span> <span class="n">ZaifTradeBotConfig</span>
 
 
 <div class="viewcode-block" id="load_config">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.load_config">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZaifTradeBotConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Load configuration from JSON file.</span>
+<span class="sd">    Load configuration using the new ConfigManager.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        config_path: Path to configuration file</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Configuration dictionary or None if loading fails</span>
+<span class="sd">        Validated ZaifTradeBotConfig object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">config</span>
-    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration file not found: </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>
-    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid JSON in configuration file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span></div>
+    <span class="n">config_manager</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">get_instance</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">config_manager</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_training_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.get_training_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_training_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">ZaifTradeBotConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extract training configuration from global config.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Global configuration object</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Training configuration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">training</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Training configuration not found in global config&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">training</span></div>
 
 </pre></div>
 
@@ -235,7 +146,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -246,7 +157,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

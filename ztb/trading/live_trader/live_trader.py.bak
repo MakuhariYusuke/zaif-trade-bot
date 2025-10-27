@@ -23,6 +23,7 @@ sys.path.insert(0, str(project_root))
 import numpy as np
 import pandas as pd
 import requests
+import gymnasium as gym
 from dotenv import load_dotenv
 from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
@@ -1078,20 +1079,8 @@ class LiveTrader:
         logger.info(f"Action space type: {type(action_space)}")
 
         # Check if action space is continuous
-        try:
-            import gymnasium as gym
-            Box = gym.spaces.Box
-            Discrete = gym.spaces.Discrete
-        except ImportError:
-            try:
-                import gym
-                Box = gym.spaces.Box
-                Discrete = gym.spaces.Discrete
-            except ImportError:
-                # Fallback: check by type name
-                Box = type(None)
-                Discrete = type(None)
-                logger.warning("Could not import gym/gymnasium spaces, cannot detect action space type")
+        Box = gym.spaces.Box
+        Discrete = gym.spaces.Discrete
 
         if isinstance(action_space, Box):
             self.is_continuous_action = True

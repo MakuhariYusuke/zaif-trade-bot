@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.data.data_validation</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">データバリデーション機能の実装</span>
@@ -100,13 +100,13 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -116,6 +116,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ValidationResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;バリデーション結果を格納するデータクラス。&quot;&quot;&quot;</span>
+
     <span class="n">is_valid</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">warnings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
@@ -129,12 +130,13 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">DataQualityMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;データ品質メトリクスを格納するデータクラス。&quot;&quot;&quot;</span>
+
     <span class="n">completeness</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 完全性 (0-1)</span>
-    <span class="n">accuracy</span><span class="p">:</span> <span class="nb">float</span>      <span class="c1"># 正確性 (0-1)</span>
-    <span class="n">timeliness</span><span class="p">:</span> <span class="nb">float</span>    <span class="c1"># 適時性 (0-1)</span>
-    <span class="n">consistency</span><span class="p">:</span> <span class="nb">float</span>   <span class="c1"># 一貫性 (0-1)</span>
-    <span class="n">validity</span><span class="p">:</span> <span class="nb">float</span>      <span class="c1"># 有効性 (0-1)</span>
-    <span class="n">uniqueness</span><span class="p">:</span> <span class="nb">float</span>    <span class="c1"># 独自性 (0-1)</span></div>
+    <span class="n">accuracy</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 正確性 (0-1)</span>
+    <span class="n">timeliness</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 適時性 (0-1)</span>
+    <span class="n">consistency</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 一貫性 (0-1)</span>
+    <span class="n">validity</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 有効性 (0-1)</span>
+    <span class="n">uniqueness</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 独自性 (0-1)</span></div>
 
 
 
@@ -162,7 +164,7 @@
             <span class="s2">&quot;uniqueness&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_uniqueness</span><span class="p">,</span>
             <span class="s2">&quot;consistency&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_consistency</span><span class="p">,</span>
             <span class="s2">&quot;temporal_order&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_temporal_order</span><span class="p">,</span>
-            <span class="s2">&quot;statistical_properties&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_statistical_properties</span>
+            <span class="s2">&quot;statistical_properties&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_statistical_properties</span><span class="p">,</span>
         <span class="p">}</span>
 
 <div class="viewcode-block" id="DataValidator.validate_data">
@@ -171,7 +173,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
         <span class="n">schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
-        <span class="n">additional_rules</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">additional_rules</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValidationResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        データに対して包括的なバリデーションを実行。</span>
@@ -213,14 +215,16 @@
 
         <span class="c1"># データ品質メトリクスの計算</span>
         <span class="n">quality_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_quality_metrics</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="n">metrics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-            <span class="s2">&quot;completeness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">completeness</span><span class="p">,</span>
-            <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">accuracy</span><span class="p">,</span>
-            <span class="s2">&quot;timeliness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">timeliness</span><span class="p">,</span>
-            <span class="s2">&quot;consistency&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">consistency</span><span class="p">,</span>
-            <span class="s2">&quot;validity&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">validity</span><span class="p">,</span>
-            <span class="s2">&quot;uniqueness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">uniqueness</span>
-        <span class="p">})</span>
+        <span class="n">metrics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;completeness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">completeness</span><span class="p">,</span>
+                <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">accuracy</span><span class="p">,</span>
+                <span class="s2">&quot;timeliness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">timeliness</span><span class="p">,</span>
+                <span class="s2">&quot;consistency&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">consistency</span><span class="p">,</span>
+                <span class="s2">&quot;validity&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">validity</span><span class="p">,</span>
+                <span class="s2">&quot;uniqueness&quot;</span><span class="p">:</span> <span class="n">quality_metrics</span><span class="o">.</span><span class="n">uniqueness</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
 
         <span class="c1"># 異常検知</span>
         <span class="n">anomaly_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_anomalies</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
@@ -234,14 +238,12 @@
             <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">,</span>
             <span class="n">warnings</span><span class="o">=</span><span class="n">warnings</span><span class="p">,</span>
             <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
-            <span class="n">details</span><span class="o">=</span><span class="n">details</span>
+            <span class="n">details</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_schema</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        スキーマベースのバリデーションを実行。</span>
@@ -269,29 +271,31 @@
             <span class="k">for</span> <span class="n">rule_name</span><span class="p">,</span> <span class="n">rule_value</span> <span class="ow">in</span> <span class="n">rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">rule_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_rules</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">rule_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_rules</span><span class="p">[</span><span class="n">rule_name</span><span class="p">](</span><span class="n">column_data</span><span class="p">,</span> <span class="n">rule_value</span><span class="p">)</span>
+                        <span class="n">rule_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validation_rules</span><span class="p">[</span><span class="n">rule_name</span><span class="p">](</span>
+                            <span class="n">column_data</span><span class="p">,</span> <span class="n">rule_value</span>
+                        <span class="p">)</span>
                         <span class="k">if</span> <span class="ow">not</span> <span class="n">rule_result</span><span class="p">[</span><span class="s2">&quot;valid&quot;</span><span class="p">]:</span>
                             <span class="k">if</span> <span class="n">rule_result</span><span class="p">[</span><span class="s2">&quot;level&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span>
                                 <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rule_result</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">])</span>
                             <span class="k">else</span><span class="p">:</span>
                                 <span class="n">warnings</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rule_result</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">])</span>
                     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Validation failed for </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">rule_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Validation failed for </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">rule_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
 
             <span class="c1"># 列レベルのメトリクス計算</span>
-            <span class="n">metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">_completeness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">column_data</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_data</span><span class="p">))</span>
-            <span class="n">metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">_uniqueness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">column_data</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_data</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">_completeness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span>
+                <span class="n">column_data</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_data</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">_uniqueness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">column_data</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">column_data</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_validation_rule</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
-        <span class="n">rule</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">rule</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        カスタムバリデーションルールを適用。</span>
@@ -332,7 +336,9 @@
 
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_not_null</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_not_null</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Null値チェック。&quot;&quot;&quot;</span>
         <span class="n">null_count</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="n">is_valid</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">required</span> <span class="ow">or</span> <span class="n">null_count</span> <span class="o">==</span> <span class="mi">0</span>
@@ -344,10 +350,12 @@
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
             <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span> <span class="k">if</span> <span class="n">required</span> <span class="k">else</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
+            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">,</span>
         <span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_data_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_data_type</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;データ型チェック。&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">expected_type</span> <span class="o">==</span> <span class="s2">&quot;int&quot;</span><span class="p">:</span>
@@ -362,23 +370,23 @@
                 <span class="k">return</span> <span class="p">{</span>
                     <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
                     <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Unsupported data type: </span><span class="si">{</span><span class="n">expected_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+                    <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Unsupported data type: </span><span class="si">{</span><span class="n">expected_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
                 <span class="p">}</span>
 
-            <span class="k">return</span> <span class="p">{</span>
-                <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;info&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[]</span>
-            <span class="p">}</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;info&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[]}</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span>
                 <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
                 <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Data type conversion failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+                <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Data type conversion failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
             <span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">min_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                       <span class="n">max_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_range</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">min_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;値範囲チェック。&quot;&quot;&quot;</span>
         <span class="n">valid_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
@@ -397,15 +405,10 @@
                 <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">above_max</span><span class="si">}</span><span class="s2"> values above maximum </span><span class="si">{</span><span class="n">max_val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パターン一致チェック。&quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 
         <span class="n">valid_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
         <span class="n">matches</span> <span class="o">=</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
@@ -417,13 +420,11 @@
         <span class="k">if</span> <span class="n">non_matches</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">non_matches</span><span class="si">}</span><span class="s2"> values do not match pattern </span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_uniqueness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">should_be_unique</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_uniqueness</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">should_be_unique</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;独自性チェック。&quot;&quot;&quot;</span>
         <span class="n">unique_count</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
         <span class="n">total_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
@@ -436,13 +437,11 @@
             <span class="n">duplicates</span> <span class="o">=</span> <span class="n">total_count</span> <span class="o">-</span> <span class="n">unique_count</span>
             <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">duplicates</span><span class="si">}</span><span class="s2"> duplicate values&quot;</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_consistency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">related_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_consistency</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">related_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;一貫性チェック（関連列との整合性）。&quot;&quot;&quot;</span>
         <span class="c1"># この実装は具体的なビジネスロジックによる</span>
         <span class="c1"># 例: 価格と出来高の相関関係チェック</span>
@@ -458,16 +457,16 @@
             <span class="n">extreme_ratio</span> <span class="o">=</span> <span class="n">extreme_values</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
 
             <span class="k">if</span> <span class="n">extreme_ratio</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># 10%以上が極端な値</span>
-                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High proportion of extreme values: </span><span class="si">{</span><span class="n">extreme_ratio</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;High proportion of extreme values: </span><span class="si">{</span><span class="n">extreme_ratio</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
                 <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_temporal_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">is_datetime</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_temporal_order</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">is_datetime</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;時系列順序チェック。&quot;&quot;&quot;</span>
         <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">True</span>
@@ -483,18 +482,14 @@
                 <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Datetime validation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_statistical_properties</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
         <span class="n">expected_mean</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">expected_std</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+        <span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;統計的特性チェック。&quot;&quot;&quot;</span>
         <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
@@ -505,7 +500,7 @@
             <span class="k">return</span> <span class="p">{</span>
                 <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
                 <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Insufficient data for statistical validation&quot;</span><span class="p">]</span>
+                <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Insufficient data for statistical validation&quot;</span><span class="p">],</span>
             <span class="p">}</span>
 
         <span class="n">actual_mean</span> <span class="o">=</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
@@ -514,20 +509,20 @@
         <span class="k">if</span> <span class="n">expected_mean</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mean_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">actual_mean</span> <span class="o">-</span> <span class="n">expected_mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">expected_mean</span>
             <span class="k">if</span> <span class="n">mean_diff</span> <span class="o">&gt;</span> <span class="n">tolerance</span><span class="p">:</span>
-                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean deviation: expected </span><span class="si">{</span><span class="n">expected_mean</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Mean deviation: expected </span><span class="si">{</span><span class="n">expected_mean</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_mean</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
                 <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">expected_std</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">std_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">actual_std</span> <span class="o">-</span> <span class="n">expected_std</span><span class="p">)</span> <span class="o">/</span> <span class="n">expected_std</span>
             <span class="k">if</span> <span class="n">std_diff</span> <span class="o">&gt;</span> <span class="n">tolerance</span><span class="p">:</span>
-                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Std deviation: expected </span><span class="si">{</span><span class="n">expected_std</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_std</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Std deviation: expected </span><span class="si">{</span><span class="n">expected_std</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_std</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
                 <span class="n">is_valid</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span>
-            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="n">is_valid</span><span class="p">,</span> <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="n">messages</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_quality_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataQualityMetrics</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -551,8 +546,10 @@
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># 負の値や極端な値がないかをチェック</span>
                 <span class="n">negative_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">valid_data</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-                <span class="n">extreme_ratio</span> <span class="o">=</span> <span class="p">((</span><span class="n">valid_data</span> <span class="o">&lt;</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.01</span><span class="p">))</span> <span class="o">|</span>
-                               <span class="p">(</span><span class="n">valid_data</span> <span class="o">&gt;</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.99</span><span class="p">)))</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">extreme_ratio</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">valid_data</span> <span class="o">&lt;</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.01</span><span class="p">))</span>
+                    <span class="o">|</span> <span class="p">(</span><span class="n">valid_data</span> <span class="o">&gt;</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.99</span><span class="p">))</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
                 <span class="n">accuracy_scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">negative_ratio</span> <span class="o">+</span> <span class="n">extreme_ratio</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
 
         <span class="n">accuracy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">accuracy_scores</span><span class="p">)</span> <span class="k">if</span> <span class="n">accuracy_scores</span> <span class="k">else</span> <span class="mf">0.5</span>
@@ -571,7 +568,7 @@
         <span class="n">validity_scores</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;int64&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">,</span> <span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime64[ns]&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;int64&quot;</span><span class="p">,</span> <span class="s2">&quot;float64&quot;</span><span class="p">,</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span> <span class="s2">&quot;datetime64[ns]&quot;</span><span class="p">]:</span>
                     <span class="n">validity_scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">validity_scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
@@ -590,7 +587,7 @@
             <span class="n">timeliness</span><span class="o">=</span><span class="n">timeliness</span><span class="p">,</span>
             <span class="n">consistency</span><span class="o">=</span><span class="n">consistency</span><span class="p">,</span>
             <span class="n">validity</span><span class="o">=</span><span class="n">validity</span><span class="p">,</span>
-            <span class="n">uniqueness</span><span class="o">=</span><span class="n">uniqueness</span>
+            <span class="n">uniqueness</span><span class="o">=</span><span class="n">uniqueness</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_detect_anomalies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -617,25 +614,24 @@
             <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>
                 <span class="c1"># 分布の変化検知（簡易版）</span>
-                <span class="n">first_half</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>
-                <span class="n">second_half</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span><span class="p">:]</span>
+                <span class="n">first_half</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+                <span class="n">second_half</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span> <span class="p">:]</span>
 
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_half</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">second_half</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="n">stat</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ks_2samp</span><span class="p">(</span><span class="n">first_half</span><span class="p">,</span> <span class="n">second_half</span><span class="p">)</span>
                         <span class="k">if</span> <span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
-                            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Distribution change detected in </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2"> (p=</span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                            <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Distribution change detected in </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2"> (p=</span><span class="si">{</span><span class="n">p_value</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span>
+                            <span class="p">)</span>
                             <span class="n">details</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_distribution_shift&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                                 <span class="s2">&quot;statistic&quot;</span><span class="p">:</span> <span class="n">stat</span><span class="p">,</span>
-                                <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="n">p_value</span>
+                                <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="n">p_value</span><span class="p">,</span>
                             <span class="p">}</span>
                     <span class="k">except</span><span class="p">:</span>
                         <span class="k">pass</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;details&quot;</span><span class="p">:</span> <span class="n">details</span>
-        <span class="p">}</span></div>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;details&quot;</span><span class="p">:</span> <span class="n">details</span><span class="p">}</span></div>
 
 
 
@@ -674,7 +670,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_column_consistency</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_value_ranges</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_temporal_consistency</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_check_business_rules</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_business_rules</span><span class="p">,</span>
         <span class="p">]</span>
 
         <span class="k">for</span> <span class="n">check_func</span> <span class="ow">in</span> <span class="n">integrity_checks</span><span class="p">:</span>
@@ -698,7 +694,7 @@
             <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">,</span>
             <span class="n">warnings</span><span class="o">=</span><span class="n">warnings</span><span class="p">,</span>
             <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
-            <span class="n">details</span><span class="o">=</span><span class="n">details</span>
+            <span class="n">details</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -712,7 +708,7 @@
             <span class="n">dtype</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
 
             <span class="c1"># 数値列のチェック</span>
-            <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="s1">&#39;amount&#39;</span><span class="p">,</span> <span class="s1">&#39;quantity&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">,</span> <span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="s2">&quot;quantity&quot;</span><span class="p">]:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">):</span>
                     <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; should be numeric but is </span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -721,7 +717,7 @@
                         <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains negative values&quot;</span><span class="p">)</span>
 
             <span class="c1"># タイムスタンプ列のチェック</span>
-            <span class="k">elif</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">]:</span>
+            <span class="k">elif</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;datetime&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;date&quot;</span><span class="p">]:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
                 <span class="k">except</span><span class="p">:</span>
@@ -729,11 +725,7 @@
 
             <span class="n">metrics</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_dtype_consistency&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_index_integrity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;インデックスの整合性をチェック。&quot;&quot;&quot;</span>
@@ -757,11 +749,7 @@
 
         <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;index_integrity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_column_consistency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;列間の整合性をチェック。&quot;&quot;&quot;</span>
@@ -770,29 +758,29 @@
         <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># 価格と出来高の相関関係チェック（取引データの場合）</span>
-        <span class="n">price_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s1">&#39;price&#39;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
-        <span class="n">volume_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+        <span class="n">price_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s2">&quot;price&quot;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+        <span class="n">volume_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
 
         <span class="k">if</span> <span class="n">price_cols</span> <span class="ow">and</span> <span class="n">volume_cols</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">price_col</span> <span class="ow">in</span> <span class="n">price_cols</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">volume_col</span> <span class="ow">in</span> <span class="n">volume_cols</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="n">price_col</span><span class="p">]</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">volume_col</span><span class="p">])</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># 負の相関は異常</span>
-                        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unusual correlation between </span><span class="si">{</span><span class="n">price_col</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">volume_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Unusual correlation between </span><span class="si">{</span><span class="n">price_col</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">volume_col</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
 
         <span class="c1"># 列名の整合性チェック</span>
-        <span class="n">invalid_chars</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">invalid_chars</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">invalid_chars</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">col</span><span class="p">:</span>
-                    <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column name &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains invalid character &#39;</span><span class="si">{</span><span class="n">char</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Column name &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains invalid character &#39;</span><span class="si">{</span><span class="n">char</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                    <span class="p">)</span>
 
         <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;column_consistency&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.5</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_value_ranges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;値範囲の妥当性をチェック。&quot;&quot;&quot;</span>
@@ -809,13 +797,13 @@
                 <span class="k">continue</span>
 
             <span class="c1"># 基本的な範囲チェック</span>
-            <span class="k">if</span> <span class="s1">&#39;price&#39;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s2">&quot;price&quot;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                     <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains non-positive prices&quot;</span><span class="p">)</span>
                 <span class="k">elif</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">values</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.99</span><span class="p">)</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains extremely high values&quot;</span><span class="p">)</span>
 
-            <span class="k">elif</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="k">elif</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
                 <span class="k">if</span> <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                     <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains negative volumes&quot;</span><span class="p">)</span>
 
@@ -824,17 +812,17 @@
                 <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; has zero variance&quot;</span><span class="p">)</span>
 
             <span class="c1"># 極端な値の割合</span>
-            <span class="n">extreme_ratio</span> <span class="o">=</span> <span class="p">((</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.01</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">values</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.99</span><span class="p">)))</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">extreme_ratio</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">values</span> <span class="o">&lt;</span> <span class="n">values</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.01</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">values</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.99</span><span class="p">))</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">extreme_ratio</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; has </span><span class="si">{</span><span class="n">extreme_ratio</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> extreme values&quot;</span><span class="p">)</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; has </span><span class="si">{</span><span class="n">extreme_ratio</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> extreme values&quot;</span>
+                <span class="p">)</span>
 
         <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;value_range_validity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_temporal_consistency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;時系列データの整合性をチェック。&quot;&quot;&quot;</span>
@@ -857,12 +845,16 @@
 
                 <span class="c1"># 時系列順序チェック</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">datetime_values</span><span class="o">.</span><span class="n">is_monotonic_increasing</span><span class="p">:</span>
-                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; timestamps are not in chronological order&quot;</span><span class="p">)</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; timestamps are not in chronological order&quot;</span>
+                    <span class="p">)</span>
 
                 <span class="c1"># 未来の日付チェック</span>
                 <span class="n">future_dates</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime_values</span> <span class="o">&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">future_dates</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains </span><span class="si">{</span><span class="n">future_dates</span><span class="si">}</span><span class="s2"> future dates&quot;</span><span class="p">)</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Column &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39; contains </span><span class="si">{</span><span class="n">future_dates</span><span class="si">}</span><span class="s2"> future dates&quot;</span>
+                    <span class="p">)</span>
 
                 <span class="c1"># 時間間隔のチェック</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">datetime_values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
@@ -876,11 +868,7 @@
 
         <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;temporal_consistency&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_business_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ビジネスルールベースの整合性チェック。&quot;&quot;&quot;</span>
@@ -889,27 +877,31 @@
         <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># 取引データのビジネスルール（例）</span>
-        <span class="k">if</span> <span class="s1">&#39;price&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;price&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="c1"># 高価格・低出来高の異常パターン</span>
-            <span class="n">price_q95</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.95</span><span class="p">)</span>
-            <span class="n">volume_q5</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">price_q95</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.95</span><span class="p">)</span>
+            <span class="n">volume_q5</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
 
-            <span class="n">suspicious_trades</span> <span class="o">=</span> <span class="p">((</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">price_q95</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">volume_q5</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">suspicious_trades</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">price_q95</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">volume_q5</span><span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">suspicious_trades</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">suspicious_trades</span><span class="si">}</span><span class="s2"> suspicious high-price low-volume trades&quot;</span><span class="p">)</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">suspicious_trades</span><span class="si">}</span><span class="s2"> suspicious high-price low-volume trades&quot;</span>
+                <span class="p">)</span>
 
         <span class="c1"># OHLCデータの整合性チェック</span>
-        <span class="n">ohlc_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        <span class="n">ohlc_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">]</span>
         <span class="n">available_ohlc</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">ohlc_cols</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_ohlc</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
             <span class="c1"># OHLCの論理関係チェック</span>
             <span class="n">invalid_ohlc</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">])</span> <span class="o">|</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">])</span> <span class="o">|</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">])</span> <span class="o">|</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">])</span> <span class="o">|</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">])</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">])</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;open&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">])</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;open&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">])</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">])</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">])</span>
             <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">invalid_ohlc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -917,14 +909,11 @@
 
         <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;business_rule_compliance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span>
-            <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="n">errors</span><span class="p">,</span> <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">warnings</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_integrity_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">warnings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-                                 <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_integrity_score</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">warnings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        全体的な整合性スコアを計算。</span>
 
@@ -968,7 +957,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -979,7 +968,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

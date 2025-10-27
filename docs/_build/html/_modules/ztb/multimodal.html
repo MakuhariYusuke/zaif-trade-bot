@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.multimodal</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">マルチモーダル学習モジュール</span>
@@ -110,16 +110,17 @@
 <span class="n">__author__</span> <span class="o">=</span> <span class="s2">&quot;AI Assistant&quot;</span>
 <span class="n">__description__</span> <span class="o">=</span> <span class="s2">&quot;Multi-modal learning module for SAC v421 trading AI&quot;</span>
 
+<span class="c1"># 設定管理</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultimodalConfig</span>
+
 <span class="c1"># 主要コンポーネントのインポート</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.data</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.features</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.training</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 
-<span class="c1"># 設定管理</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultimodalConfig</span>
 
 <span class="c1"># デフォルト設定の読み込み</span>
 <div class="viewcode-block" id="get_default_config">
@@ -129,13 +130,16 @@
     <span class="k">return</span> <span class="n">MultimodalConfig</span><span class="o">.</span><span class="n">from_yaml</span><span class="p">(</span><span class="s2">&quot;ztb/multimodal/config/default.yaml&quot;</span><span class="p">)</span></div>
 
 
+
 <span class="c1"># クイックスタート関数</span>
 <div class="viewcode-block" id="create_multimodal_agent">
 <a class="viewcode-back" href="../../api/generated/ztb.multimodal.html#ztb.multimodal.create_multimodal_agent">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">create_multimodal_agent</span><span class="p">(</span><span class="n">price_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
-                           <span class="n">text_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span>
-                           <span class="n">economic_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-                           <span class="n">action_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_multimodal_agent</span><span class="p">(</span>
+    <span class="n">price_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
+    <span class="n">text_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span>
+    <span class="n">economic_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="n">action_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    マルチモーダルSACエージェントを簡単に作成</span>
 
@@ -154,10 +158,11 @@
         <span class="n">price_feature_dim</span><span class="o">=</span><span class="n">price_dim</span><span class="p">,</span>
         <span class="n">text_embedding_dim</span><span class="o">=</span><span class="n">text_dim</span><span class="p">,</span>
         <span class="n">economic_feature_dim</span><span class="o">=</span><span class="n">economic_dim</span><span class="p">,</span>
-        <span class="n">action_dim</span><span class="o">=</span><span class="n">action_dim</span>
+        <span class="n">action_dim</span><span class="o">=</span><span class="n">action_dim</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">agent</span></div>
+
 
 
 <div class="viewcode-block" id="create_data_pipeline">
@@ -175,10 +180,8 @@
     <span class="n">data_manager</span> <span class="o">=</span> <span class="n">FreeDataSourceManager</span><span class="p">()</span>
     <span class="n">preprocessor</span> <span class="o">=</span> <span class="n">MultiModalDataPreprocessor</span><span class="p">()</span>
 
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s1">&#39;data_manager&#39;</span><span class="p">:</span> <span class="n">data_manager</span><span class="p">,</span>
-        <span class="s1">&#39;preprocessor&#39;</span><span class="p">:</span> <span class="n">preprocessor</span>
-    <span class="p">}</span></div>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data_manager&quot;</span><span class="p">:</span> <span class="n">data_manager</span><span class="p">,</span> <span class="s2">&quot;preprocessor&quot;</span><span class="p">:</span> <span class="n">preprocessor</span><span class="p">}</span></div>
+
 
 
 <span class="c1"># バージョン情報</span>
@@ -187,22 +190,23 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">get_version_info</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;バージョン情報を取得&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s1">&#39;version&#39;</span><span class="p">:</span> <span class="n">__version__</span><span class="p">,</span>
-        <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">__author__</span><span class="p">,</span>
-        <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">__description__</span><span class="p">,</span>
-        <span class="s1">&#39;components&#39;</span><span class="p">:</span> <span class="p">[</span>
-            <span class="s1">&#39;core.encoders&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;core.attention&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;core.fusion&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;data.collectors&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;data.preprocessors&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;features.text&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;features.numeric&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;models.agents&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;training.trainers&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;evaluation.metrics&#39;</span>
-        <span class="p">]</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">__version__</span><span class="p">,</span>
+        <span class="s2">&quot;author&quot;</span><span class="p">:</span> <span class="n">__author__</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">__description__</span><span class="p">,</span>
+        <span class="s2">&quot;components&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;core.encoders&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;core.attention&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;core.fusion&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;data.collectors&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;data.preprocessors&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;features.text&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;features.numeric&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;models.agents&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;training.trainers&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;evaluation.metrics&quot;</span><span class="p">,</span>
+        <span class="p">],</span>
     <span class="p">}</span></div>
+
 
 
 <span class="c1"># 初期化完了メッセージ</span>
@@ -223,7 +227,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -234,7 +238,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

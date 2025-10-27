@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.utils.errors</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Utility error types and a backwards-compatible safe_operation.</span>
 
@@ -118,6 +118,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.TradingBotError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TradingBotError</span><span class="p">(</span><span class="n">ZTBError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for all trading bot errors (legacy compatibility).&quot;&quot;&quot;</span>
+
     <span class="k">pass</span></div>
 
 
@@ -126,6 +127,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.InsufficientFundsError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InsufficientFundsError</span><span class="p">(</span><span class="n">TradingBotError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when trading operation fails due to insufficient funds.&quot;&quot;&quot;</span>
+
     <span class="k">pass</span></div>
 
 
@@ -134,6 +136,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.OrderError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderError</span><span class="p">(</span><span class="n">TradingBotError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for order-related errors.&quot;&quot;&quot;</span>
+
     <span class="k">pass</span></div>
 
 
@@ -142,6 +145,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.OrderNotFoundError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OrderNotFoundError</span><span class="p">(</span><span class="n">OrderError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when trying to cancel or query a non-existent order.&quot;&quot;&quot;</span>
+
     <span class="k">pass</span></div>
 
 
@@ -150,6 +154,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.MinimumSizeError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MinimumSizeError</span><span class="p">(</span><span class="n">OrderError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when order size is below exchange minimum requirements.&quot;&quot;&quot;</span>
+
     <span class="k">pass</span></div>
 
 
@@ -158,6 +163,222 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.ValidationError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ValidationError</span><span class="p">(</span><span class="n">ZTBError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Data validation errors.&quot;&quot;&quot;</span></div>
+
+
+
+<span class="c1"># Validation utility functions</span>
+<div class="viewcode-block" id="validate_positive">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_positive">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_positive</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a value is positive.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The value to validate</span>
+<span class="sd">        name: Name of the value for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If value is not positive</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be positive, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_non_negative">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_non_negative">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_non_negative</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a value is non-negative.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The value to validate</span>
+<span class="sd">        name: Name of the value for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If value is negative</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be non-negative, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_price">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_price">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_price</span><span class="p">(</span><span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;price&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a price is positive.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        price: The price to validate</span>
+<span class="sd">        name: Name of the price for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If price is not positive</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_positive</span><span class="p">(</span><span class="n">price</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_quantity">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_quantity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;quantity&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a quantity is positive.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        quantity: The quantity to validate</span>
+<span class="sd">        name: Name of the quantity for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If quantity is not positive</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_positive</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_portfolio_value">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_portfolio_value">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_portfolio_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;portfolio_value&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a portfolio value is non-negative.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The portfolio value to validate</span>
+<span class="sd">        name: Name of the value for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If value is negative</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_non_negative</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_volatility">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_volatility">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_volatility</span><span class="p">(</span><span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;volatility&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that volatility is non-negative.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        volatility: The volatility to validate</span>
+<span class="sd">        name: Name of the volatility for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If volatility is negative</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_non_negative</span><span class="p">(</span><span class="n">volatility</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_range">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_range">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_range</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">min_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a value is within a specified range.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The value to validate</span>
+<span class="sd">        min_val: Minimum allowed value (inclusive), None for no minimum</span>
+<span class="sd">        max_val: Maximum allowed value (inclusive), None for no maximum</span>
+<span class="sd">        name: Name of the value for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If value is outside the allowed range</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">min_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">min_val</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be &gt;= </span><span class="si">{</span><span class="n">min_val</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">max_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">max_val</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be &lt;= </span><span class="si">{</span><span class="n">max_val</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_type">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_type</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a value is of the expected type.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The value to validate</span>
+<span class="sd">        expected_type: Expected type</span>
+<span class="sd">        name: Name of the value for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If value is not of the expected type</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be of type </span><span class="si">{</span><span class="n">expected_type</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_price_range">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_price_range">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_price_range</span><span class="p">(</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">min_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;price&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a price is within reasonable bounds.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        price: The price to validate</span>
+<span class="sd">        min_price: Minimum allowed price, defaults to 1 (to avoid division by zero)</span>
+<span class="sd">        max_price: Maximum allowed price, defaults to 100000000 (100M)</span>
+<span class="sd">        name: Name of the price for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If price is outside reasonable bounds</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_positive</span><span class="p">(</span><span class="n">price</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">validate_range</span><span class="p">(</span><span class="n">price</span><span class="p">,</span> <span class="n">min_price</span> <span class="ow">or</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">max_price</span> <span class="ow">or</span> <span class="mf">100000000.0</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_quantity_range">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_quantity_range">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_quantity_range</span><span class="p">(</span>
+    <span class="n">quantity</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">min_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;quantity&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate that a quantity is within reasonable bounds.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        quantity: The quantity to validate</span>
+<span class="sd">        min_quantity: Minimum allowed quantity, defaults to 0.000001</span>
+<span class="sd">        max_quantity: Maximum allowed quantity, defaults to 1000</span>
+<span class="sd">        name: Name of the quantity for error messages</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If quantity is outside reasonable bounds</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">validate_positive</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">validate_range</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">min_quantity</span> <span class="ow">or</span> <span class="mf">0.000001</span><span class="p">,</span> <span class="n">max_quantity</span> <span class="ow">or</span> <span class="mf">1000.0</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_batch">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.errors.validate_batch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_batch</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">validators</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate multiple values using specified validators.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        values: Dictionary of values to validate</span>
+<span class="sd">        validators: Dictionary mapping value names to validator functions</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: If any validation fails</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">validator</span> <span class="ow">in</span> <span class="n">validators</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">validator</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+            <span class="k">except</span> <span class="n">ValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Validation failed for </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span></div>
 
 
 
@@ -316,9 +537,7 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">operation</span><span class="p">(</span><span class="o">*</span><span class="n">call_args</span><span class="p">,</span> <span class="o">**</span><span class="n">call_kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
-    <span class="k">except</span> <span class="p">(</span>
-        <span class="ne">Exception</span>
-    <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 - we intentionally catch exceptions to return default</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 - we intentionally catch exceptions to return default</span>
         <span class="c1"># If caller asked to only handle specific types, re-raise others</span>
         <span class="k">if</span> <span class="n">error_types</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">error_types</span><span class="p">)):</span>
             <span class="k">raise</span>
@@ -352,7 +571,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -363,7 +582,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

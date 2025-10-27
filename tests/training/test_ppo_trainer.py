@@ -18,8 +18,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from ztb.training.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt, TrainingConfig
-from ztb.training.trainer_params import TrainerParams
+from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
 
 
 class TestPPOTrainerAutoHalt:
@@ -795,3 +794,45 @@ class TestPPOTrainerBasic:
             PPOTrainer(
                 data_path="dummy_path.csv", config=config, checkpoint_dir=""
             )  # Empty checkpoint dir
+
+
+class TestPPOAlgorithmTrainer:
+    """Test PPOAlgorithmTrainer functionality."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def sample_config(self):
+        """Sample configuration for testing."""
+        return {
+            "learning_rate": 3e-4,
+            "n_steps": 2048,
+            "batch_size": 64,
+            "n_epochs": 10,
+            "gamma": 0.99,
+            "gae_lambda": 0.95,
+            "clip_range": 0.2,
+            "ent_coef": 0.0,
+            "vf_coef": 0.5,
+            "max_grad_norm": 0.5,
+            "total_timesteps": 10000,
+            "reward_scaling": 1.0,
+            "use_custom_ppo": False,
+        }
+
+    def test_ppo_algorithm_trainer_initialization(self, temp_dir, sample_config):
+        """Test PPOAlgorithmTrainer initialization."""
+        from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
+
+        config_manager = TrainingConfigManager()
+        trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
+
+        assert trainer.config_manager == config_manager
+        assert trainer.progress_bar_enabled == True
+        assert hasattr(trainer, 'ui_manager')
+        assert hasattr(trainer, 'reporter')
+        assert trainer.logger is not None

@@ -12,6 +12,7 @@ from ztb.trading.constants import (
     SAC_CONTINUOUS_THRESHOLD,
     SAC_CONTINUOUS_THRESHOLD_NEG,
 )
+from ztb.utils.exceptions.custom_exceptions import ConfigurationError
 
 # ============================================================================
 # Common Numeric Constants
@@ -39,11 +40,14 @@ DEFAULT_MAX_ACTION_HISTORY = 256  # Standard action history buffer
 MAX_ACTION_HISTORY_LARGE = 512  # Large action history buffer for complex strategies
 
 # Common batch sizes for training
-BATCH_SIZE_SMALL = 32
-BATCH_SIZE_MEDIUM = 64
-BATCH_SIZE_STANDARD = 128
-BATCH_SIZE_LARGE = 256
-BATCH_SIZE_XLARGE = 512
+# BATCH_SIZE_* constants imported from training.constants
+from ztb.training.constants import (
+    BATCH_SIZE_SMALL,
+    BATCH_SIZE_MEDIUM,
+    BATCH_SIZE_STANDARD,
+    BATCH_SIZE_LARGE,
+    BATCH_SIZE_XLARGE,
+)
 
 # Common buffer/replay buffer sizes
 BUFFER_SIZE_SMALL = 50000
@@ -78,7 +82,8 @@ DEFAULT_TRANSACTION_COST = 1e-5  # Default transaction cost for training
 BASIS_POINTS = 10000  # Basis points conversion factor (1% = 100 basis points)
 
 # Learning rates and optimization parameters
-DEFAULT_LEARNING_RATE = 0.001  # 0.1% learning rate
+# DEFAULT_LEARNING_RATE imported from training.constants
+from ztb.training.constants import DEFAULT_LEARNING_RATE
 DEFAULT_LAGRANGE_ETA_MIN = 0.001  # Minimum Lagrange multiplier
 DEFAULT_LAGRANGE_ETA_LR = 0.001  # Lagrange learning rate
 
@@ -321,3 +326,117 @@ def discrete_to_continuous_action(discrete_action: int) -> float:
         return -1.0
     else:  # HOLD
         return 0.0
+
+
+# ============================================================================
+# Environment-Specific Constants
+# ============================================================================
+
+import os
+from typing import Dict, Any
+
+# Environment detection
+ENVIRONMENT = os.getenv("TRADING_ENV", "dev").lower()
+
+# Environment-specific configurations
+ENV_CONFIGS: Dict[str, Dict[str, Any]] = {
+    "dev": {
+        "fee_rate": 0.001,  # 0.1% for development testing
+        "initial_balance": 10000.0,  # Small balance for quick testing
+        "max_trade_size": 1000.0,  # Small trades for dev
+        "buffer_size": BUFFER_SIZE_SMALL,
+        "batch_size": BATCH_SIZE_SMALL,
+        "max_action_history": DEFAULT_MAX_ACTION_HISTORY,
+        "enable_logging": True,
+        "enable_memory_profiling": True,
+    },
+    "staging": {
+        "fee_rate": 0.001,  # 0.1% for staging
+        "initial_balance": 50000.0,  # Medium balance for staging
+        "max_trade_size": 50000.0,  # Medium trades for staging
+        "buffer_size": BUFFER_SIZE_MEDIUM,
+        "batch_size": BATCH_SIZE_MEDIUM,
+        "max_action_history": DEFAULT_MAX_ACTION_HISTORY,
+        "enable_logging": True,
+        "enable_memory_profiling": False,
+    },
+    "prod": {
+        "fee_rate": 0.001,  # 0.1% for production (actual exchange fees)
+        "initial_balance": 200000.0,  # Full balance for production
+        "max_trade_size": 100000.0,  # Full trade sizes for production
+        "buffer_size": BUFFER_SIZE_MEDIUM,
+        "batch_size": BATCH_SIZE_STANDARD,
+        "max_action_history": MAX_ACTION_HISTORY_LARGE,
+        "enable_logging": False,  # Minimal logging in production
+        "enable_memory_profiling": False,
+    },
+}
+
+# Current environment config
+CURRENT_ENV_CONFIG = ENV_CONFIGS.get(ENVIRONMENT, ENV_CONFIGS["dev"])
+
+# Environment-specific constants (dynamically set based on environment)
+ENV_FEE_RATE = CURRENT_ENV_CONFIG["fee_rate"]
+ENV_INITIAL_BALANCE = CURRENT_ENV_CONFIG["initial_balance"]
+ENV_MAX_TRADE_SIZE = CURRENT_ENV_CONFIG["max_trade_size"]
+ENV_BUFFER_SIZE = CURRENT_ENV_CONFIG["buffer_size"]
+ENV_BATCH_SIZE = CURRENT_ENV_CONFIG["batch_size"]
+ENV_MAX_ACTION_HISTORY = CURRENT_ENV_CONFIG["max_action_history"]
+ENV_ENABLE_LOGGING = CURRENT_ENV_CONFIG["enable_logging"]
+ENV_ENABLE_MEMORY_PROFILING = CURRENT_ENV_CONFIG["enable_memory_profiling"]
+
+# Validation functions for environment configs
+def validate_environment_config() -> None:
+    """
+    Validate current environment configuration.
+
+    Raises:
+        ConfigurationError: If configuration is invalid
+    """
+    if ENVIRONMENT not in ENV_CONFIGS:
+        raise ConfigurationError(f"Invalid environment '{ENVIRONMENT}'. Must be one of: {list(ENV_CONFIGS.keys())}")
+
+    config = CURRENT_ENV_CONFIG
+
+    if config["fee_rate"] <= 0 or config["fee_rate"] > 0.1:
+        raise ConfigurationError(f"Invalid fee_rate: {config['fee_rate']}. Must be between 0 and 0.1")
+
+    if config["initial_balance"] <= 0:
+        raise ConfigurationError(f"Invalid initial_balance: {config['initial_balance']}. Must be positive")
+
+    if config["max_trade_size"] <= 0:
+        raise ConfigurationError(f"Invalid max_trade_size: {config['max_trade_size']}. Must be positive")
+
+    if config["buffer_size"] <= 0:
+        raise ConfigurationError(f"Invalid buffer_size: {config['buffer_size']}. Must be positive")
+
+    if config["batch_size"] <= 0:
+        raise ConfigurationError(f"Invalid batch_size: {config['batch_size']}. Must be positive")
+
+# Validate on import
+validate_environment_config()
+
+# ============================================================================
+# Live Trading Constants
+# ============================================================================
+
+# Price history buffer size for live trading
+DEFAULT_PRICE_HISTORY_SIZE = 100
+
+# Cleanup intervals for live trading
+DEFAULT_CLEANUP_INTERVAL = 100  # iterations
+
+# ============================================================================
+# Heavy Trading Environment Constants
+# ============================================================================
+
+# Random start buffer parameters
+RANDOM_START_MIN_BUFFER = 10  # Minimum buffer size for random start
+RANDOM_START_MAX_BUFFER = 100  # Maximum buffer size for random start
+RANDOM_START_BUFFER_RATIO = 0.1  # Ratio of data length to use as buffer
+
+# Position calculation epsilon to prevent division by zero
+POSITION_EPSILON = 1e-8
+
+# Initial action counts for episode tracking
+ACTION_COUNTS_INITIAL = [0, 0, 0]  # [HOLD, BUY, SELL] counts

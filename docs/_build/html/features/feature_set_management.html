@@ -1,0 +1,879 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>特徴量セット管理システム &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="大規模機能実装サマリー - 2025年10月7日" href="FEATURE_IMPLEMENTATION_SUMMARY.html" />
+    <link rel="prev" title="Features" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">特徴量セット管理システム</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">概要</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">主な機能</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">アーキテクチャ</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id5">主要コンポーネント</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">クラス構造</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">プリセット特徴量セット</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#full">1. full (完全セット)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#no-harmful">2. no_harmful (デフォルト)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#minimal">3. minimal (最小セット)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#high-quality">4. high_quality (高品質セット)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">特徴量セット選択ガイド</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">各セットの使い分け</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">セット選択の判断基準</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">パフォーマンス特性</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">使用方法</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id17">基本的な使用法</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">特定の特徴量セットを使用</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">カスタム設定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">設定ファイルの使用</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">設定ファイル形式</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#json">JSON スキーマ</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id22">フィールド説明</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">高度な使用法</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id24">トレーニングパイプラインでの使用</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id25">バックテストでの使用</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id26">実験での使用</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API リファレンス</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id27">FeatureSetConfig クラス</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id29">SACv427FeatureEngineer クラス</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id31">特徴量カテゴリの詳細</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#technical-indicators">テクニカル指標 (Technical Indicators)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market-regime-features">市場レジーム特徴量 (Market Regime Features)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ensemble-features">アンサンブル特徴量 (Ensemble Features)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#risk-adjusted-features">リスク調整特徴量 (Risk-Adjusted Features)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#market-microstructure">市場マイクロストラクチャ (Market Microstructure)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#correlation-features">相関特徴量 (Correlation Features)</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id32">トラブルシューティング</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id33">一般的な問題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id36">パフォーマンスに関する考慮事項</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id37">互換性に関する注意</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id38">変更履歴</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_IMPLEMENTATION_SUMMARY.html">大規模機能実装サマリー - 2025年10月7日</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.html">Feature Schema Management Reform - 実装完了サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html">Feature Schema Management Reform - 改修計画書</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_REFORM_COMPLETE.html">特徴量スキーマ管理改革 - 完全版サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_CONTROL.html">ログレベル制御ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_INTEGRATION_SUMMARY.html">ログレベル制御機能 統合サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="action_bias_implementation_guide.html">Action Bias Fix - Detailed Implementation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="action_constants.html">Action Constants and Continuous Action Mapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features_audit.html">SAC v421 高度な機能調査・実装ドキュメント</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observation_update_verification.html">Observation Update Verification Report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Features</a></li>
+      <li class="breadcrumb-item active">特徴量セット管理システム</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/feature_set_management.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>特徴量セット管理システム<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>SAC v427 特徴量セット管理システムは、柔軟でコンフィグ可能な特徴量セット管理を提供します。このシステムにより、異なるユースケースや実験要件に応じて特徴量セットを簡単に切り替えることができます。</p>
+<section id="id3">
+<h3>主な機能<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>プリセット特徴量セット</strong>: 一般的なユースケース向けに最適化された4つのプリセット</p></li>
+<li><p><strong>カスタム設定</strong>: 特定の特徴量を動的に除外/追加可能</p></li>
+<li><p><strong>設定ファイルベース</strong>: JSONファイルによる宣言的な設定</p></li>
+<li><p><strong>後方互換性</strong>: 既存コードへの影響を最小限に抑制</p></li>
+</ul>
+</section>
+</section>
+<section id="id4">
+<h2>アーキテクチャ<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>主要コンポーネント<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ztb/features/
+├── feature_set_config.py      # 設定管理クラス
+├── sac_v427_feature_engineering.py  # 特徴量生成エンジン
+└── config/feature_sets/       # 設定ファイルディレクトリ
+    ├── default.json          # デフォルト設定
+    ├── minimal.json          # 最小セット
+    └── high_quality.json     # 高品質セット
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>クラス構造<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<section id="featuresetconfig">
+<h4>FeatureSetConfig<a class="headerlink" href="#featuresetconfig" title="Link to this heading"></a></h4>
+<p>特徴量セットの設定を管理するメインクラスです。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">FeatureSetConfig</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_feature_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">set_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_excluded_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_excluded_feature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remove_excluded_feature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_flags</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_available_sets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span>
+</pre></div>
+</div>
+</section>
+<section id="sacv427featureengineer">
+<h4>SACv427FeatureEngineer<a class="headerlink" href="#sacv427featureengineer" title="Link to this heading"></a></h4>
+<p>特徴量生成エンジンで、設定に基づいて特徴量をフィルタリングします。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SACv427FeatureEngineer</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_system</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_v427_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">window_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">50</span><span class="p">],</span> <span class="n">feature_set</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="id7">
+<h2>プリセット特徴量セット<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="full">
+<h3>1. full (完全セット)<a class="headerlink" href="#full" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: すべての利用可能な特徴量を使用
+<strong>特徴量数</strong>: 150+ 次元
+<strong>含まれる特徴量</strong>:</p>
+<ul class="simple">
+<li><p><strong>基本価格特徴量</strong>: open, high, low, close, volume</p></li>
+<li><p><strong>テクニカル指標</strong>: RSI, MACD, Bollinger Bands, Stochastic, Williams %R</p></li>
+<li><p><strong>トレンド指標</strong>: SMA, EMA, Ichimoku Cloud, ADX</p></li>
+<li><p><strong>ボラティリティ指標</strong>: ATR, Bollinger Band Width, Historical Volatility</p></li>
+<li><p><strong>モメンタム指標</strong>: ROC, Momentum, Williams %R</p></li>
+<li><p><strong>市場レジーム特徴量</strong>: トレンド強度、市場状態分類、ボラティリティレジーム</p></li>
+<li><p><strong>相関特徴量</strong>: 価格間の相関係数、ボラティリティ相関</p></li>
+<li><p><strong>アンサンブル特徴量</strong>: 複数モデルの予測値、予測確信度</p></li>
+<li><p><strong>リスク調整特徴量</strong>: VaR, CVaR, Sharpe Ratio, Sortino Ratio</p></li>
+<li><p><strong>市場マイクロストラクチャ</strong>: スプレッド推定、市場インパクト、流動性指標</p></li>
+</ul>
+<p><strong>設定</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Full Feature Set&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Complete SAC v427 feature set (150+ dimensions)&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;excluded_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;include_regime_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_correlation_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_ensemble_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_risk_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="no-harmful">
+<h3>2. no_harmful (デフォルト)<a class="headerlink" href="#no-harmful" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: クリティカルな有害特徴量を除外した完全セット
+<strong>特徴量数</strong>: 150+ 次元 (有害特徴量除外)
+<strong>除外される特徴量</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dividends</span></code>: 常に0 (仮想通貨では発生しない)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stock</span> <span class="pre">splits</span></code>: 常に0 (仮想通貨では発生しない)</p></li>
+</ul>
+<p><strong>含まれる特徴量</strong> (fullセットと同じ):</p>
+<ul class="simple">
+<li><p><strong>基本価格特徴量</strong>: open, high, low, close, volume</p></li>
+<li><p><strong>テクニカル指標</strong>: RSI, MACD, Bollinger Bands, Stochastic, Williams %R</p></li>
+<li><p><strong>トレンド指標</strong>: SMA, EMA, Ichimoku Cloud, ADX</p></li>
+<li><p><strong>ボラティリティ指標</strong>: ATR, Bollinger Band Width, Historical Volatility</p></li>
+<li><p><strong>モメンタム指標</strong>: ROC, Momentum, Williams %R</p></li>
+<li><p><strong>市場レジーム特徴量</strong>: トレンド強度、市場状態分類、ボラティリティレジーム</p></li>
+<li><p><strong>相関特徴量</strong>: 価格間の相関係数、ボラティリティ相関</p></li>
+<li><p><strong>アンサンブル特徴量</strong>: 複数モデルの予測値、予測確信度</p></li>
+<li><p><strong>リスク調整特徴量</strong>: VaR, CVaR, Sharpe Ratio, Sortino Ratio</p></li>
+<li><p><strong>市場マイクロストラクチャ</strong>: スプレッド推定、市場インパクト、流動性指標</p></li>
+</ul>
+<p><strong>設定</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;No Harmful Features&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Full features with critical harmful features removed&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;excluded_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;dividends&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stock splits&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;include_regime_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_correlation_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_ensemble_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_risk_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="minimal">
+<h3>3. minimal (最小セット)<a class="headerlink" href="#minimal" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: コア機能のみを使用した軽量セット
+<strong>特徴量数</strong>: 30-50 次元
+<strong>含まれる特徴量</strong>:</p>
+<ul class="simple">
+<li><p><strong>基本価格特徴量</strong>: close (価格), volume (出来高)</p></li>
+<li><p><strong>基本リターン特徴量</strong>: returns (単純リターン), log_returns (対数リターン)</p></li>
+<li><p><strong>基本ボラティリティ</strong>: volatility (価格変動率)</p></li>
+<li><p><strong>基本テクニカル指標</strong>: SMA(20), SMA(50), RSI(14)</p></li>
+<li><p><strong>基本モメンタム</strong>: ROC(10) (Rate of Change)</p></li>
+</ul>
+<p><strong>除外される特徴量カテゴリ</strong>:</p>
+<ul class="simple">
+<li><p>市場レジーム特徴量 (regime_*)</p></li>
+<li><p>相関特徴量 (correlation_*)</p></li>
+<li><p>アンサンブル特徴量 (ensemble_*)</p></li>
+<li><p>リスク調整特徴量 (risk_*)</p></li>
+<li><p>高度なテクニカル指標 (MACD, Bollinger Bands, etc.)</p></li>
+<li><p>市場マイクロストラクチャ特徴量</p></li>
+</ul>
+<p><strong>ユースケース</strong>: 高速プロトタイピング、計算リソースの制限された環境、特徴量重要度の初期評価</p>
+<p><strong>設定</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Minimal Feature Set&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Core features only (30-50 dimensions)&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;excluded_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;dividends&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stock splits&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;include_regime_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_correlation_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_ensemble_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_risk_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="high-quality">
+<h3>4. high_quality (高品質セット)<a class="headerlink" href="#high-quality" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 相関分析で高品質と判定された特徴量のみを使用
+<strong>特徴量数</strong>: 100+ 次元
+<strong>除外される特徴量</strong> (相関過多または定数):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dividends</span></code>, <code class="docutils literal notranslate"><span class="pre">stock</span> <span class="pre">splits</span></code>: 常に0 (クリティカル有害)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">open</span></code>, <code class="docutils literal notranslate"><span class="pre">high</span></code>, <code class="docutils literal notranslate"><span class="pre">low</span></code>: OHLCV基本データ (closeとの相関95%+)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">volume</span></code>: 出来高 (他の特徴量との相関が高い)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">returns</span></code>, <code class="docutils literal notranslate"><span class="pre">log_returns</span></code>: 単純リターン (相関が高い)</p></li>
+</ul>
+<p><strong>含まれる特徴量</strong> (分析で優良と判定されたもの):</p>
+<ul class="simple">
+<li><p><strong>高度なテクニカル指標</strong>:</p>
+<ul>
+<li><p>RSI (Relative Strength Index): 14, 21, 28期間</p></li>
+<li><p>MACD (Moving Average Convergence Divergence): シグナル線、ヒストグラム</p></li>
+<li><p>Bollinger Bands: 上限、下限、バンド幅、%B</p></li>
+<li><p>Stochastic Oscillator: %K, %D, Slow Stochastic</p></li>
+<li><p>Williams %R: 14期間</p></li>
+<li><p>CCI (Commodity Channel Index): 20期間</p></li>
+</ul>
+</li>
+<li><p><strong>トレンド・モメンタム指標</strong>:</p>
+<ul>
+<li><p>ADX (Average Directional Index): 14期間</p></li>
+<li><p>ROC (Rate of Change): 10, 20, 30期間</p></li>
+<li><p>Momentum: 10, 20期間</p></li>
+<li><p>Ichimoku Cloud: Tenkan-sen, Kijun-sen, Senkou Span A/B</p></li>
+</ul>
+</li>
+<li><p><strong>ボラティリティ指標</strong>:</p>
+<ul>
+<li><p>ATR (Average True Range): 14期間</p></li>
+<li><p>Bollinger Band Width: 20期間</p></li>
+<li><p>Historical Volatility: 20, 50期間</p></li>
+</ul>
+</li>
+<li><p><strong>市場レジーム特徴量</strong>:</p>
+<ul>
+<li><p>トレンド強度指標</p></li>
+<li><p>市場状態分類 (強気/弱気/横ばい)</p></li>
+<li><p>ボラティリティレジーム検知</p></li>
+</ul>
+</li>
+<li><p><strong>アンサンブル予測特徴量</strong>:</p>
+<ul>
+<li><p>複数モデルの予測値</p></li>
+<li><p>予測確信度スコア</p></li>
+<li><p>モデル間の合意度</p></li>
+</ul>
+</li>
+<li><p><strong>リスク調整済み特徴量</strong>:</p>
+<ul>
+<li><p>Sharpe Ratio (リスク調整リターン)</p></li>
+<li><p>Sortino Ratio (下方リスク調整)</p></li>
+<li><p>Value at Risk (VaR)</p></li>
+<li><p>Conditional VaR (CVaR)</p></li>
+</ul>
+</li>
+<li><p><strong>市場マイクロストラクチャ</strong>:</p>
+<ul>
+<li><p>スプレッド推定値</p></li>
+<li><p>市場インパクト指標</p></li>
+<li><p>流動性指標</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>品質基準</strong>: 相関係数 &lt; 0.95、ゼロ値率 &lt; 80%、分散 &gt; 0
+<strong>ユースケース</strong>: 本番環境での高精度取引、特徴量重要度の詳細分析、モデル比較実験</p>
+<p><strong>設定</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;High Quality Only&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Only excellent quality features (correlation-filtered)&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;excluded_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;dividends&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stock splits&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;volume&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;returns&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;log_returns&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;include_regime_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_correlation_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_ensemble_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_risk_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h2>特徴量セット選択ガイド<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>各セットの使い分け<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>セット</p></th>
+<th class="head"><p>特徴量数</p></th>
+<th class="head"><p>処理速度</p></th>
+<th class="head"><p>品質</p></th>
+<th class="head"><p>推奨ユースケース</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>minimal</strong></p></td>
+<td><p>30-50</p></td>
+<td><p>⭐⭐⭐⭐⭐</p></td>
+<td><p>⭐⭐</p></td>
+<td><p>高速プロトタイピング、初期テスト、リソース制限環</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>high_quality</strong></p></td>
+<td><p>100+</p></td>
+<td><p>⭐⭐⭐</p></td>
+<td><p>⭐⭐⭐⭐⭐</p></td>
+<td><p>本番取引、精度重視、特徴量分析</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>no_harmful</strong></p></td>
+<td><p>150+</p></td>
+<td><p>⭐⭐</p></td>
+<td><p>⭐⭐⭐⭐</p></td>
+<td><p>包括的な実験、完全な特徴量調査</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>full</strong></p></td>
+<td><p>150+</p></td>
+<td><p>⭐⭐</p></td>
+<td><p>⭐⭐⭐</p></td>
+<td><p>理論的完全性重視、すべての特徴量が必要な場合</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id10">
+<h3>セット選択の判断基準<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<section id="id11">
+<h4>開発フェーズ別<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>初期開発</strong>: <code class="docutils literal notranslate"><span class="pre">minimal</span></code> - 高速なイテレーション</p></li>
+<li><p><strong>特徴量検証</strong>: <code class="docutils literal notranslate"><span class="pre">high_quality</span></code> - 品質重視の評価</p></li>
+<li><p><strong>本番最適化</strong>: <code class="docutils literal notranslate"><span class="pre">high_quality</span></code> - 安定した高品質特徴量</p></li>
+<li><p><strong>研究実験</strong>: <code class="docutils literal notranslate"><span class="pre">full</span></code> または <code class="docutils literal notranslate"><span class="pre">no_harmful</span></code> - 包括的な調査</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>リソース制約別<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>計算リソース豊富</strong>: <code class="docutils literal notranslate"><span class="pre">full</span></code> または <code class="docutils literal notranslate"><span class="pre">no_harmful</span></code></p></li>
+<li><p><strong>計算リソース制限</strong>: <code class="docutils literal notranslate"><span class="pre">minimal</span></code> または <code class="docutils literal notranslate"><span class="pre">high_quality</span></code></p></li>
+<li><p><strong>メモリ制限</strong>: <code class="docutils literal notranslate"><span class="pre">minimal</span></code></p></li>
+</ul>
+</section>
+<section id="id13">
+<h4>品質要件別<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>最高精度要求</strong>: <code class="docutils literal notranslate"><span class="pre">high_quality</span></code></p></li>
+<li><p><strong>バランス重視</strong>: <code class="docutils literal notranslate"><span class="pre">no_harmful</span></code></p></li>
+<li><p><strong>速度優先</strong>: <code class="docutils literal notranslate"><span class="pre">minimal</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id14">
+<h3>パフォーマンス特性<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<section id="btc-jpy-352">
+<h4>処理時間 (BTC/JPY 352サンプル基準)<a class="headerlink" href="#btc-jpy-352" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">minimal</span></code>: ~0.5秒</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">high_quality</span></code>: ~1.2秒</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">no_harmful</span></code>: ~2.0秒</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">full</span></code>: ~2.1秒</p></li>
+</ul>
+</section>
+<section id="id15">
+<h4>メモリ使用量 (推定)<a class="headerlink" href="#id15" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">minimal</span></code>: ~50MB</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">high_quality</span></code>: ~120MB</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">no_harmful</span></code>: ~180MB</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">full</span></code>: ~200MB</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id16">
+<h2>使用方法<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>基本的な使用法<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.sac_v427_feature_engineering</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv427FeatureEngineer</span>
+
+<span class="c1"># デフォルト設定を使用 (no_harmful)</span>
+<span class="n">engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">()</span>
+<span class="n">features_df</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data_df</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id18">
+<h3>特定の特徴量セットを使用<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 最小セットを使用</span>
+<span class="n">features_df</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data_df</span><span class="p">,</span> <span class="n">feature_set</span><span class="o">=</span><span class="s1">&#39;minimal&#39;</span><span class="p">)</span>
+
+<span class="c1"># 高品質セットを使用</span>
+<span class="n">features_df</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data_df</span><span class="p">,</span> <span class="n">feature_set</span><span class="o">=</span><span class="s1">&#39;high_quality&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h3>カスタム設定<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.feature_set_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_feature_config</span>
+
+<span class="c1"># 設定を取得</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">get_feature_config</span><span class="p">()</span>
+
+<span class="c1"># 特徴量を追加で除外</span>
+<span class="n">config</span><span class="o">.</span><span class="n">add_excluded_feature</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">)</span>
+<span class="n">config</span><span class="o">.</span><span class="n">add_excluded_feature</span><span class="p">(</span><span class="s1">&#39;some_correlated_feature&#39;</span><span class="p">)</span>
+
+<span class="c1"># 除外特徴量を削除</span>
+<span class="n">config</span><span class="o">.</span><span class="n">remove_excluded_feature</span><span class="p">(</span><span class="s1">&#39;dividends&#39;</span><span class="p">)</span>
+
+<span class="c1"># 設定を適用</span>
+<span class="n">features_df</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data_df</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h3>設定ファイルの使用<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># カスタム設定ファイルを指定</span>
+<span class="n">engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="s1">&#39;path/to/custom_config.json&#39;</span><span class="p">)</span>
+
+<span class="c1"># 設定をファイルに保存</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">feature_config</span>
+<span class="n">config</span><span class="o">.</span><span class="n">save_config</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id21">
+<h2>設定ファイル形式<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="json">
+<h3>JSON スキーマ<a class="headerlink" href="#json" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;セット名&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;セットの説明&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;excluded_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;除外する特徴量のリスト&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;include_regime_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="err">|</span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_correlation_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="err">|</span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_ensemble_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="err">|</span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_risk_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="err">|</span><span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id22">
+<h3>フィールド説明<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>name</strong>: セットの表示名</p></li>
+<li><p><strong>description</strong>: セットの詳細説明</p></li>
+<li><p><strong>excluded_features</strong>: 除外する特徴量名のリスト</p></li>
+<li><p><strong>include_regime_features</strong>: 市場レジーム特徴量を含めるかどうか</p></li>
+<li><p><strong>include_correlation_features</strong>: 相関特徴量を含めるかどうか</p></li>
+<li><p><strong>include_ensemble_features</strong>: アンサンブル特徴量を含めるかどうか</p></li>
+<li><p><strong>include_risk_features</strong>: リスク調整特徴量を含めるかどうか</p></li>
+</ul>
+</section>
+</section>
+<section id="id23">
+<h2>高度な使用法<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<section id="id24">
+<h3>トレーニングパイプラインでの使用<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.sac_v427_advanced_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv427AdvancedTrainer</span>
+
+<span class="c1"># 特定の特徴量セットでトレーニング</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">SACv427AdvancedTrainer</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="s1">&#39;config/training_config.json&#39;</span><span class="p">)</span>
+
+<span class="c1"># 特徴量エンジニアが自動的に適切なセットを使用</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">feature_set</span><span class="o">=</span><span class="s1">&#39;high_quality&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id25">
+<h3>バックテストでの使用<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">RLPolicyAdapter</span>
+
+<span class="c1"># アダプタが特徴量セット設定を自動的に使用</span>
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">RLPolicyAdapter</span><span class="p">(</span><span class="n">model_path</span><span class="o">=</span><span class="s1">&#39;models/sac_model.zip&#39;</span><span class="p">)</span>
+<span class="n">signals</span> <span class="o">=</span> <span class="n">adapter</span><span class="o">.</span><span class="n">generate_signal</span><span class="p">(</span><span class="n">market_data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id26">
+<h3>実験での使用<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 異なる特徴量セットでの比較実験</span>
+<span class="n">feature_sets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;minimal&#39;</span><span class="p">,</span> <span class="s1">&#39;no_harmful&#39;</span><span class="p">,</span> <span class="s1">&#39;high_quality&#39;</span><span class="p">,</span> <span class="s1">&#39;full&#39;</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">set_name</span> <span class="ow">in</span> <span class="n">feature_sets</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Testing feature set: </span><span class="si">{</span><span class="n">set_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">()</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">feature_set</span><span class="o">=</span><span class="n">set_name</span><span class="p">)</span>
+
+    <span class="c1"># モデルトレーニングと評価</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">train_model</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="n">performance</span> <span class="o">=</span> <span class="n">evaluate_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">test_data</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performance with </span><span class="si">{</span><span class="n">set_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">performance</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="api">
+<h2>API リファレンス<a class="headerlink" href="#api" title="Link to this heading"></a></h2>
+<section id="id27">
+<h3>FeatureSetConfig クラス<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<section id="id28">
+<h4>メソッド<a class="headerlink" href="#id28" title="Link to this heading"></a></h4>
+<p><strong><code class="docutils literal notranslate"><span class="pre">__init__(config_path=None)</span></code></strong></p>
+<ul class="simple">
+<li><p>設定ファイルを指定して初期化</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config_path</span></code>: 設定ファイルのパス (オプション)</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">load_config()</span></code></strong></p>
+<ul class="simple">
+<li><p>JSONファイルから設定を読み込み</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">save_config()</span></code></strong></p>
+<ul class="simple">
+<li><p>現在の設定をJSONファイルに保存</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">set_feature_set(set_name)</span></code></strong></p>
+<ul class="simple">
+<li><p>プリセット特徴量セットを設定</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_name</span></code>: ‘full’, ‘minimal’, ‘no_harmful’, ‘high_quality’</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">get_excluded_features()</span></code></strong></p>
+<ul class="simple">
+<li><p>除外対象の特徴量リストを取得</p></li>
+<li><p>戻り値: <code class="docutils literal notranslate"><span class="pre">List[str]</span></code></p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">add_excluded_feature(feature)</span></code></strong></p>
+<ul class="simple">
+<li><p>除外特徴量を追加</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">feature</span></code>: 追加する特徴量名</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">remove_excluded_feature(feature)</span></code></strong></p>
+<ul class="simple">
+<li><p>除外特徴量を削除</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">feature</span></code>: 削除する特徴量名</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">get_feature_flags()</span></code></strong></p>
+<ul class="simple">
+<li><p>特徴量カテゴリの有効/無効フラグを取得</p></li>
+<li><p>戻り値: <code class="docutils literal notranslate"><span class="pre">Dict[str,</span> <span class="pre">bool]</span></code></p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">list_available_sets()</span></code></strong></p>
+<ul class="simple">
+<li><p>利用可能なプリセットを取得</p></li>
+<li><p>戻り値: <code class="docutils literal notranslate"><span class="pre">Dict[str,</span> <span class="pre">Dict]</span></code></p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">get_current_config()</span></code></strong></p>
+<ul class="simple">
+<li><p>現在の設定を取得</p></li>
+<li><p>戻り値: <code class="docutils literal notranslate"><span class="pre">Dict</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id29">
+<h3>SACv427FeatureEngineer クラス<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<section id="id30">
+<h4>メソッド<a class="headerlink" href="#id30" title="Link to this heading"></a></h4>
+<p><strong><code class="docutils literal notranslate"><span class="pre">__init__(market_system=None,</span> <span class="pre">config_path=None)</span></code></strong></p>
+<ul class="simple">
+<li><p>特徴量エンジニアを初期化</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">market_system</span></code>: 市場システムインスタンス (オプション)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config_path</span></code>: 設定ファイルパス (オプション)</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">generate_v427_features(df,</span> <span class="pre">window_sizes=[5,10,20,50],</span> <span class="pre">feature_set=None)</span></code></strong></p>
+<ul class="simple">
+<li><p>SAC v427特徴量を生成</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">df</span></code>: 入力データフレーム</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">window_sizes</span></code>: テクニカル指標のウィンドウサイズ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">feature_set</span></code>: 使用する特徴量セット名 (オプション)</p></li>
+<li><p>戻り値: 特徴量が追加されたデータフレーム</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id31">
+<h2>特徴量カテゴリの詳細<a class="headerlink" href="#id31" title="Link to this heading"></a></h2>
+<section id="technical-indicators">
+<h3>テクニカル指標 (Technical Indicators)<a class="headerlink" href="#technical-indicators" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 価格パターン、トレンド、モメンタムを定量化
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>RSI (Relative Strength Index)</strong>: 買われすぎ/売られすぎを検知 (14, 21, 28期間)</p></li>
+<li><p><strong>MACD</strong>: トレンド変化とモメンタムを測定</p></li>
+<li><p><strong>Bollinger Bands</strong>: 価格の変動範囲と位置を分析</p></li>
+<li><p><strong>Stochastic Oscillator</strong>: 価格の相対的な位置を測定</p></li>
+<li><p><strong>Williams %R</strong>: 買われすぎ/売られすぎのオシレーター</p></li>
+</ul>
+</section>
+<section id="market-regime-features">
+<h3>市場レジーム特徴量 (Market Regime Features)<a class="headerlink" href="#market-regime-features" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 市場の状態 (強気/弱気/横ばい) を分類
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>トレンド強度</strong>: ADXを使用したトレンドの強さ測定</p></li>
+<li><p><strong>市場状態分類</strong>: 機械学習によるレジーム分類</p></li>
+<li><p><strong>ボラティリティレジーム</strong>: 高/中/低ボラティリティ状態の検知</p></li>
+<li><p><strong>相場転換シグナル</strong>: トレンド変化の予測</p></li>
+</ul>
+</section>
+<section id="ensemble-features">
+<h3>アンサンブル特徴量 (Ensemble Features)<a class="headerlink" href="#ensemble-features" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 複数モデルの予測を統合し、信頼性を向上
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>予測平均</strong>: 複数モデルの予測値の平均</p></li>
+<li><p><strong>予測分散</strong>: モデル間の予測ばらつき</p></li>
+<li><p><strong>合意度スコア</strong>: モデル間の一致度</p></li>
+<li><p><strong>確信度指標</strong>: 予測の信頼性スコア</p></li>
+</ul>
+</section>
+<section id="risk-adjusted-features">
+<h3>リスク調整特徴量 (Risk-Adjusted Features)<a class="headerlink" href="#risk-adjusted-features" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: リスクを考慮したパフォーマンス測定
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>Sharpe Ratio</strong>: リスク調整リターンの標準指標</p></li>
+<li><p><strong>Sortino Ratio</strong>: 下方リスクのみを考慮した比率</p></li>
+<li><p><strong>VaR (Value at Risk)</strong>: 最大損失額の推定</p></li>
+<li><p><strong>CVaR (Conditional VaR)</strong>: VaRを超える損失の期待値</p></li>
+</ul>
+</section>
+<section id="market-microstructure">
+<h3>市場マイクロストラクチャ (Market Microstructure)<a class="headerlink" href="#market-microstructure" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 市場の流動性と取引コストを分析
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>スプレッド推定</strong>: 売買スプレッドの計算</p></li>
+<li><p><strong>市場インパクト</strong>: 大口注文の価格影響</p></li>
+<li><p><strong>流動性指標</strong>: 取引量と注文数の関係</p></li>
+<li><p><strong>取引コスト推定</strong>: 取引実行時のコスト予測</p></li>
+</ul>
+</section>
+<section id="correlation-features">
+<h3>相関特徴量 (Correlation Features)<a class="headerlink" href="#correlation-features" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 資産間の関係性を定量化
+<strong>有益な特徴量例</strong>:</p>
+<ul class="simple">
+<li><p><strong>価格相関係数</strong>: 短期/長期の相関関係</p></li>
+<li><p><strong>ボラティリティ相関</strong>: 変動性の連動性</p></li>
+<li><p><strong>リードラグ関係</strong>: 価格変動の時間的ずれ</p></li>
+</ul>
+</section>
+</section>
+<section id="id32">
+<h2>トラブルシューティング<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="id33">
+<h3>一般的な問題<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<section id="q">
+<h4>Q: 特徴量が期待通りに除外されない<a class="headerlink" href="#q" title="Link to this heading"></a></h4>
+<p><strong>A</strong>: 設定ファイルが正しく読み込まれているか確認してください。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">feature_config</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Excluded features:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">get_excluded_features</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Feature flags:&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">get_feature_flags</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="id34">
+<h4>Q: 設定ファイルが見つからない<a class="headerlink" href="#id34" title="Link to this heading"></a></h4>
+<p><strong>A</strong>: デフォルトでは <code class="docutils literal notranslate"><span class="pre">config/feature_sets/default.json</span></code> が使用されます。カスタムパスを指定する場合は絶対パスを使用してください。</p>
+</section>
+<section id="id35">
+<h4>Q: 特徴量セットの切り替えが反映されない<a class="headerlink" href="#id35" title="Link to this heading"></a></h4>
+<p><strong>A</strong>: <code class="docutils literal notranslate"><span class="pre">generate_v427_features()</span></code> の <code class="docutils literal notranslate"><span class="pre">feature_set</span></code> パラメータを使用するか、設定オブジェクトを直接操作してください。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 方法1: パラメータで指定</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">feature_set</span><span class="o">=</span><span class="s1">&#39;minimal&#39;</span><span class="p">)</span>
+
+<span class="c1"># 方法2: 設定を変更</span>
+<span class="n">engineer</span><span class="o">.</span><span class="n">feature_config</span><span class="o">.</span><span class="n">set_feature_set</span><span class="p">(</span><span class="s1">&#39;minimal&#39;</span><span class="p">)</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id36">
+<h3>パフォーマンスに関する考慮事項<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>minimalセット</strong>: 計算時間が最も短く、メモリ使用量も少ない</p></li>
+<li><p><strong>fullセット</strong>: 計算時間が最も長く、メモリ使用量も多い</p></li>
+<li><p><strong>high_qualityセット</strong>: 相関の問題を回避しつつ十分な特徴量を提供</p></li>
+</ul>
+</section>
+<section id="id37">
+<h3>互換性に関する注意<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>このシステムは既存のコードと後方互換性があります</p></li>
+<li><p>デフォルト設定は <code class="docutils literal notranslate"><span class="pre">no_harmful</span></code> であり、クリティカルな有害特徴量を除外します</p></li>
+<li><p>設定を変更しても、他のコンポーネントへの影響はありません</p></li>
+</ul>
+</section>
+</section>
+<section id="id38">
+<h2>変更履歴<a class="headerlink" href="#id38" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>v1.0 (2025-10-25)</strong>: 初期実装</p>
+<ul>
+<li><p>4つのプリセット特徴量セット</p></li>
+<li><p>コンフィグ可能な除外特徴量</p></li>
+<li><p>特徴量カテゴリの有効/無効制御</p></li>
+<li><p>JSONベースの設定ファイル</p></li>
+</ul>
+</li>
+</ul>
+<hr class="docutils" />
+<p><em>このドキュメントは特徴量セット管理システムの実装について説明しています。詳細な技術仕様についてはソースコードを参照してください。</em></content>
+<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\docs\features\FEATURE_SET_MANAGEMENT_SYSTEM.md</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="FEATURE_IMPLEMENTATION_SUMMARY.html" class="btn btn-neutral float-right" title="大規模機能実装サマリー - 2025年10月7日" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

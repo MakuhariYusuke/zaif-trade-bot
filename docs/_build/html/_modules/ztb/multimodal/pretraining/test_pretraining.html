@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.multimodal.pretraining.test_pretraining</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Tests for Self-Supervised Pre-training Module</span>
@@ -99,20 +99,19 @@
 <span class="sd">and Anomaly Detection Pre-training.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.pretraining</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">MaskedPriceModel</span><span class="p">,</span>
-    <span class="n">MaskedPriceModelingTrainer</span><span class="p">,</span>
+    <span class="n">AnomalyDetectionPretrainer</span><span class="p">,</span>
     <span class="n">ContrastiveLearningModel</span><span class="p">,</span>
     <span class="n">ContrastiveLearningTrainer</span><span class="p">,</span>
-    <span class="n">TimeSeriesAugmentation</span><span class="p">,</span>
     <span class="n">HybridAnomalyDetector</span><span class="p">,</span>
-    <span class="n">AnomalyDetectionPretrainer</span><span class="p">,</span>
-    <span class="n">SelfSupervisedTrainer</span>
+    <span class="n">MaskedPriceModel</span><span class="p">,</span>
+    <span class="n">MaskedPriceModelingTrainer</span><span class="p">,</span>
+    <span class="n">SelfSupervisedTrainer</span><span class="p">,</span>
+    <span class="n">TimeSeriesAugmentation</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -135,11 +134,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_masked_price_model_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test MaskedPriceModel initialization&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">MaskedPriceModel</span><span class="p">(</span>
-            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span>
-            <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
-            <span class="n">num_layers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-            <span class="n">num_heads</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-            <span class="n">max_seq_len</span><span class="o">=</span><span class="mi">50</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="o">=</span><span class="mi">50</span>
         <span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">model</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">==</span> <span class="mi">156</span>
@@ -180,14 +175,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test MaskedPriceModelingTrainer&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">MaskedPriceModel</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
         <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">MaskedPriceModelingTrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">MaskedPriceModelingTrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
 
-        <span class="k">assert</span> <span class="s1">&#39;loss&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="s1">&#39;masked_ratio&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;masked_ratio&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span></div>
+        <span class="k">assert</span> <span class="s2">&quot;loss&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="s2">&quot;masked_ratio&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;masked_ratio&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span></div>
 </div>
 
 
@@ -214,7 +209,7 @@
             <span class="n">shift_prob</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># Always apply for testing</span>
             <span class="n">noise_prob</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># Always apply noise</span>
             <span class="n">scale_prob</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-            <span class="n">max_shift</span><span class="o">=</span><span class="mi">10</span>  <span class="c1"># Larger shift to ensure change</span>
+            <span class="n">max_shift</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># Larger shift to ensure change</span>
         <span class="p">)</span>
 
         <span class="n">augmented</span> <span class="o">=</span> <span class="n">augmentation</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
@@ -230,10 +225,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_contrastive_model_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ContrastiveLearningModel initialization&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span>
-            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span>
-            <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
-            <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
-            <span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span>
         <span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">model</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">==</span> <span class="mi">156</span>
@@ -245,7 +237,9 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestContrastiveLearning.test_contrastive_model_forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_contrastive_model_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ContrastiveLearningModel forward pass&quot;&quot;&quot;</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span>
+        <span class="p">)</span>
 
         <span class="n">z1</span><span class="p">,</span> <span class="n">z2</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">sample_data</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">)</span>
 
@@ -257,7 +251,9 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestContrastiveLearning.test_contrastive_loss">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_contrastive_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test contrastive loss computation&quot;&quot;&quot;</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span>
+        <span class="p">)</span>
 
         <span class="n">z1</span><span class="p">,</span> <span class="n">z2</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">sample_data</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">)</span>
         <span class="n">loss</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">compute_contrastive_loss</span><span class="p">(</span><span class="n">z1</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span>
@@ -271,17 +267,19 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestContrastiveLearning.test_contrastive_trainer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_contrastive_trainer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ContrastiveLearningTrainer&quot;&quot;&quot;</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span>
+        <span class="p">)</span>
         <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
         <span class="n">augmentation</span> <span class="o">=</span> <span class="n">TimeSeriesAugmentation</span><span class="p">()</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">ContrastiveLearningTrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">augmentation</span><span class="p">,</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">ContrastiveLearningTrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">augmentation</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
 
-        <span class="k">assert</span> <span class="s1">&#39;loss&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="s1">&#39;z1_norm&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="s1">&#39;z2_norm&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
+        <span class="k">assert</span> <span class="s2">&quot;loss&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="s2">&quot;z1_norm&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="s2">&quot;z2_norm&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
 </div>
 
 
@@ -309,7 +307,7 @@
             <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
             <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
             <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
-            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">model</span><span class="o">.</span><span class="n">alpha</span> <span class="o">==</span> <span class="mf">0.5</span></div>
@@ -320,10 +318,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_hybrid_anomaly_detector_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test HybridAnomalyDetector forward pass&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">HybridAnomalyDetector</span><span class="p">(</span>
-            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span>
-            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
-            <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-            <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
         <span class="p">)</span>
 
         <span class="n">reconstructed</span><span class="p">,</span> <span class="n">prediction</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
@@ -337,10 +332,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_anomaly_score_computation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test anomaly score computation&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">HybridAnomalyDetector</span><span class="p">(</span>
-            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span>
-            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
-            <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-            <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
         <span class="p">)</span>
 
         <span class="n">scores</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">compute_anomaly_score</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
@@ -354,18 +346,15 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_anomaly_trainer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test AnomalyDetectionPretrainer&quot;&quot;&quot;</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">HybridAnomalyDetector</span><span class="p">(</span>
-            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span>
-            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
-            <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-            <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
         <span class="p">)</span>
         <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">AnomalyDetectionPretrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">AnomalyDetectionPretrainer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">sample_data</span><span class="p">)</span>
 
-        <span class="k">assert</span> <span class="s1">&#39;loss&#39;</span> <span class="ow">in</span> <span class="n">metrics</span>
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
+        <span class="k">assert</span> <span class="s2">&quot;loss&quot;</span> <span class="ow">in</span> <span class="n">metrics</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
 </div>
 
 
@@ -390,16 +379,16 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestSelfSupervisedTrainer.test_trainer_initialization">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_trainer_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test SelfSupervisedTrainer initialization&quot;&quot;&quot;</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">==</span> <span class="mi">156</span>
-        <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="s1">&#39;cpu&#39;</span></div>
+        <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="s2">&quot;cpu&quot;</span></div>
 
 
 <div class="viewcode-block" id="TestSelfSupervisedTrainer.test_mpm_initialization">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestSelfSupervisedTrainer.test_mpm_initialization">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_mpm_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test MPM model initialization in trainer&quot;&quot;&quot;</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_masked_price_model</span><span class="p">(</span><span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -410,7 +399,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestSelfSupervisedTrainer.test_contrastive_initialization">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_contrastive_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test contrastive model initialization in trainer&quot;&quot;&quot;</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_contrastive_model</span><span class="p">(</span><span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -421,11 +410,9 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestSelfSupervisedTrainer.test_anomaly_initialization">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_anomaly_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test anomaly model initialization in trainer&quot;&quot;&quot;</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_anomaly_model</span><span class="p">(</span>
-            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
-            <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-            <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
+            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">50</span>
         <span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">trainer</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -436,7 +423,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.test_pretraining.TestSelfSupervisedTrainer.test_get_pretrained_encoders">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_get_pretrained_encoders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test getting pretrained encoders&quot;&quot;&quot;</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
         <span class="c1"># Without any models</span>
         <span class="n">encoders</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_pretrained_encoders</span><span class="p">()</span>
@@ -445,7 +432,7 @@
         <span class="c1"># With models initialized</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_contrastive_model</span><span class="p">(</span><span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
         <span class="n">encoders</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_pretrained_encoders</span><span class="p">()</span>
-        <span class="k">assert</span> <span class="s1">&#39;contrastive_encoder&#39;</span> <span class="ow">in</span> <span class="n">encoders</span></div>
+        <span class="k">assert</span> <span class="s2">&quot;contrastive_encoder&quot;</span> <span class="ow">in</span> <span class="n">encoders</span></div>
 
 
 <div class="viewcode-block" id="TestSelfSupervisedTrainer.test_embeddings_extraction">
@@ -453,10 +440,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_embeddings_extraction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_data</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test embeddings extraction&quot;&quot;&quot;</span>
         <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span> <span class="o">=</span> <span class="n">sample_data</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_contrastive_model</span><span class="p">(</span><span class="n">hidden_dim</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 
-        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;contrastive&#39;</span><span class="p">)</span>
+        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;contrastive&quot;</span><span class="p">)</span>
 
         <span class="k">assert</span> <span class="n">embeddings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="k">assert</span> <span class="n">embeddings</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">train_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -475,7 +462,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_full_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Test complete self-supervised learning pipeline&quot;&quot;&quot;</span>
         <span class="c1"># This is a lightweight integration test</span>
-        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">156</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
         <span class="c1"># Generate small dataset</span>
         <span class="n">batch_size</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">input_dim</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">156</span>
@@ -487,9 +474,7 @@
             <span class="n">hidden_dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_seq_len</span><span class="o">=</span><span class="mi">20</span>
         <span class="p">)</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_contrastive_model</span><span class="p">(</span><span class="n">hidden_dim</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">projection_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-        <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_anomaly_model</span><span class="p">(</span>
-            <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">20</span>
-        <span class="p">)</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">initialize_anomaly_model</span><span class="p">(</span><span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span> <span class="n">latent_dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">seq_len</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
         <span class="c1"># Test training for a few epochs</span>
         <span class="n">trainer</span><span class="o">.</span><span class="n">train_masked_price_modeling</span><span class="p">(</span>
@@ -506,7 +491,7 @@
         <span class="n">encoders</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_pretrained_encoders</span><span class="p">()</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">encoders</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>  <span class="c1"># mpm, contrastive, anomaly</span>
 
-        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;contrastive&#39;</span><span class="p">)</span>
+        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;contrastive&quot;</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">embeddings</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 
         <span class="n">anomaly_scores</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">compute_anomaly_scores</span><span class="p">(</span><span class="n">val_data</span><span class="p">)</span>
@@ -516,7 +501,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="vm">__file__</span><span class="p">])</span>
 </pre></div>
 
@@ -533,7 +518,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -544,7 +529,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -20,6 +20,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
+from ztb.types.common import ConfigDict
 from ztb.utils.data_utils import load_csv_data_optimized
 from ztb.utils.logging_utils import get_logger
 
@@ -44,7 +45,7 @@ def load_v434_2_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
 
 
 def create_v434_2_environment(
-    data_path: str, reward_config: Dict[str, Any], env_config: Dict[str, Any]
+    data_path: str, reward_config: ConfigDict, env_config: ConfigDict
 ) -> DummyVecEnv:
     """v434.2の改良された環境を作成"""
     logger.info("Creating v434.2 environment with improved reward function")

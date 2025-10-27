@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ztb.sac_v426_improvement package" href="ztb.sac_v426_improvement.html" />
-    <link rel="prev" title="ztb.optimization.methods package" href="ztb.optimization.methods.html" />
+    <link rel="prev" title="ztb.optimization.methods package" href="ztb.optimization.methods.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -57,7 +57,7 @@
 <li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb-sac-v427-market-adaptive-system-module">ztb.sac_v427_market_adaptive_system module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
 </ul>
 </li>
@@ -107,7 +107,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section id="ztb-risk-package">
 <h1>ztb.risk package<a class="headerlink" href="#ztb-risk-package" title="Link to this heading"></a></h1>
 <section id="submodules">
@@ -991,10 +991,77 @@ This shim allows gradual migration from old imports.</p>
 <p>Risk management rules and validation.</p>
 <p>Implements hard stops, trailing stops, and cooldown rules.</p>
 <dl class="py class">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.risk.rules.</span></span><span class="sig-name descname"><span class="pre">RiskLimits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_daily_loss_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_single_trade_risk_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_portfolio_risk_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_correlation_risk_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_liquidity_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_volatility_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown_period_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_trades_per_hour</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_trades_per_day</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskLimits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.rules.RiskLimits" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Risk limits configuration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_daily_loss_pct">
+<span class="sig-name descname"><span class="pre">max_daily_loss_pct</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_daily_loss_pct" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_single_trade_risk_pct">
+<span class="sig-name descname"><span class="pre">max_single_trade_risk_pct</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.02</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_single_trade_risk_pct" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_portfolio_risk_pct">
+<span class="sig-name descname"><span class="pre">max_portfolio_risk_pct</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.1</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_portfolio_risk_pct" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_correlation_risk_pct">
+<span class="sig-name descname"><span class="pre">max_correlation_risk_pct</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_correlation_risk_pct" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.min_liquidity_threshold">
+<span class="sig-name descname"><span class="pre">min_liquidity_threshold</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1000.0</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.min_liquidity_threshold" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_volatility_threshold">
+<span class="sig-name descname"><span class="pre">max_volatility_threshold</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_volatility_threshold" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.cooldown_period_seconds">
+<span class="sig-name descname"><span class="pre">cooldown_period_seconds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">300</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.cooldown_period_seconds" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_trades_per_hour">
+<span class="sig-name descname"><span class="pre">max_trades_per_hour</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_trades_per_hour" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskLimits.max_trades_per_day">
+<span class="sig-name descname"><span class="pre">max_trades_per_day</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">50</span></em><a class="headerlink" href="#ztb.risk.rules.RiskLimits.max_trades_per_day" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="ztb.risk.rules.RiskRuleEngine">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.risk.rules.</span></span><span class="sig-name descname"><span class="pre">RiskRuleEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.risk.profiles.RiskLimits" title="ztb.risk.profiles.RiskLimits"><span class="pre">RiskLimits</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.risk.rules.</span></span><span class="sig-name descname"><span class="pre">RiskRuleEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.risk.rules.RiskLimits" title="ztb.risk.rules.RiskLimits"><span class="pre">RiskLimits</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Engine for evaluating and enforcing risk rules.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskRuleEngine.POSITION_LONG">
+<span class="sig-name descname"><span class="pre">POSITION_LONG</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'long'</span></em><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine.POSITION_LONG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskRuleEngine.POSITION_SHORT">
+<span class="sig-name descname"><span class="pre">POSITION_SHORT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'short'</span></em><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine.POSITION_SHORT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.rules.RiskRuleEngine.VALID_POSITION_SIDES">
+<span class="sig-name descname"><span class="pre">VALID_POSITION_SIDES</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('long',</span> <span class="pre">'short')</span></em><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine.VALID_POSITION_SIDES" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="ztb.risk.rules.RiskRuleEngine.reset_daily_tracking">
 <span class="sig-name descname"><span class="pre">reset_daily_tracking</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine.reset_daily_tracking"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.rules.RiskRuleEngine.reset_daily_tracking" title="Link to this definition"></a></dt>
@@ -1105,9 +1172,24 @@ This shim allows gradual migration from old imports.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.risk.</span></span><span class="sig-name descname"><span class="pre">RiskRuleEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.risk.profiles.RiskLimits" title="ztb.risk.profiles.RiskLimits"><span class="pre">RiskLimits</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.RiskRuleEngine" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.risk.</span></span><span class="sig-name descname"><span class="pre">RiskRuleEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.risk.rules.RiskLimits" title="ztb.risk.rules.RiskLimits"><span class="pre">RiskLimits</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.RiskRuleEngine" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Engine for evaluating and enforcing risk rules.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.POSITION_LONG">
+<span class="sig-name descname"><span class="pre">POSITION_LONG</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'long'</span></em><a class="headerlink" href="#ztb.risk.RiskRuleEngine.POSITION_LONG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.POSITION_SHORT">
+<span class="sig-name descname"><span class="pre">POSITION_SHORT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'short'</span></em><a class="headerlink" href="#ztb.risk.RiskRuleEngine.POSITION_SHORT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.VALID_POSITION_SIDES">
+<span class="sig-name descname"><span class="pre">VALID_POSITION_SIDES</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('long',</span> <span class="pre">'short')</span></em><a class="headerlink" href="#ztb.risk.RiskRuleEngine.VALID_POSITION_SIDES" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.check_daily_loss_limit">
 <span class="sig-name descname"><span class="pre">check_daily_loss_limit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/risk/rules.html#RiskRuleEngine.check_daily_loss_limit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.risk.RiskRuleEngine.check_daily_loss_limit" title="Link to this definition"></a></dt>
@@ -1198,6 +1280,16 @@ This shim allows gradual migration from old imports.</p>
 <dd><p>Comprehensive trade validation against all risk rules.</p>
 <p>Returns: (is_allowed, reason_if_rejected)</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.trailing_stop_level">
+<span class="sig-name descname"><span class="pre">trailing_stop_level</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#ztb.risk.RiskRuleEngine.trailing_stop_level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.risk.RiskRuleEngine.trade_history">
+<span class="sig-name descname"><span class="pre">trade_history</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.risk.RiskRuleEngine.trade_history" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -1330,7 +1422,7 @@ This shim allows gradual migration from old imports.</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -1341,7 +1433,7 @@ This shim allows gradual migration from old imports.</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.monitoring.safety_tests</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Unit tests for Safety Mechanisms and Fallback System</span>
@@ -95,18 +95,26 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">call</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.monitoring.safety</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">SafetyManager</span><span class="p">,</span> <span class="n">AnomalyDetector</span><span class="p">,</span> <span class="n">SafetyChecker</span><span class="p">,</span> <span class="n">FallbackHandler</span><span class="p">,</span> <span class="n">RecoveryManager</span><span class="p">,</span> <span class="n">SafetyConfig</span>
+    <span class="n">AnomalyDetector</span><span class="p">,</span>
+    <span class="n">FallbackHandler</span><span class="p">,</span>
+    <span class="n">RecoveryManager</span><span class="p">,</span>
+    <span class="n">SafetyChecker</span><span class="p">,</span>
+    <span class="n">SafetyConfig</span><span class="p">,</span>
+    <span class="n">SafetyManager</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.monitoring.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">SafetyLevel</span><span class="p">,</span> <span class="n">AnomalyType</span><span class="p">,</span> <span class="n">FallbackType</span><span class="p">,</span> <span class="n">AnomalyDetection</span><span class="p">,</span>
-    <span class="n">SafetyCheck</span><span class="p">,</span> <span class="n">FallbackAction</span><span class="p">,</span> <span class="n">SafetyStatus</span><span class="p">,</span> <span class="n">RecoveryPlan</span><span class="p">,</span>
-    <span class="n">MetricType</span><span class="p">,</span> <span class="n">MetricValue</span>
+    <span class="n">AnomalyType</span><span class="p">,</span>
+    <span class="n">FallbackType</span><span class="p">,</span>
+    <span class="n">MetricType</span><span class="p">,</span>
+    <span class="n">MetricValue</span><span class="p">,</span>
+    <span class="n">SafetyLevel</span><span class="p">,</span>
+    <span class="n">SafetyStatus</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -143,7 +151,7 @@
                 <span class="n">name</span><span class="o">=</span><span class="n">metric_name</span><span class="p">,</span>
                 <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
+                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">metric_history</span><span class="p">[</span><span class="n">metric_name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
@@ -155,7 +163,7 @@
             <span class="n">name</span><span class="o">=</span><span class="n">metric_name</span><span class="p">,</span>
             <span class="n">value</span><span class="o">=</span><span class="mf">52.0</span><span class="p">,</span>
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
+            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">anomalies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">({</span><span class="n">metric_name</span><span class="p">:</span> <span class="n">normal_metric</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">anomalies</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
@@ -163,9 +171,9 @@
         <span class="c1"># 異常値のテスト（3σ以上）</span>
         <span class="n">anomaly_metric</span> <span class="o">=</span> <span class="n">MetricValue</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="n">metric_name</span><span class="p">,</span>
-            <span class="n">value</span><span class="o">=</span><span class="mf">70.0</span><span class="p">,</span>  <span class="c1"># 平均+10σ</span>
+            <span class="n">value</span><span class="o">=</span><span class="mf">70.0</span><span class="p">,</span>
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
+            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>  <span class="c1"># 平均+10σ</span>
         <span class="p">)</span>
         <span class="n">anomalies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">({</span><span class="n">metric_name</span><span class="p">:</span> <span class="n">anomaly_metric</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">anomalies</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
@@ -205,14 +213,14 @@
                 <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cpu_usage_percent&quot;</span><span class="p">,</span>
                 <span class="n">value</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span>
+                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="s2">&quot;memory_usage_percent&quot;</span><span class="p">:</span> <span class="n">MetricValue</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="s2">&quot;memory_usage_percent&quot;</span><span class="p">,</span>
                 <span class="n">value</span><span class="o">=</span><span class="mf">60.0</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span>
-            <span class="p">)</span>
+                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span><span class="p">,</span>
+            <span class="p">),</span>
         <span class="p">}</span>
 
         <span class="n">check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker</span><span class="o">.</span><span class="n">_check_system_health</span><span class="p">(</span><span class="n">normal_metrics</span><span class="p">,</span> <span class="p">[])</span>
@@ -225,7 +233,7 @@
             <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cpu_usage_percent&quot;</span><span class="p">,</span>
             <span class="n">value</span><span class="o">=</span><span class="mf">95.0</span><span class="p">,</span>
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span>
+            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">SYSTEM</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker</span><span class="o">.</span><span class="n">_check_system_health</span><span class="p">(</span><span class="n">high_cpu_metrics</span><span class="p">,</span> <span class="p">[])</span>
@@ -243,14 +251,14 @@
                 <span class="n">name</span><span class="o">=</span><span class="s2">&quot;win_rate&quot;</span><span class="p">,</span>
                 <span class="n">value</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
+                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="n">MetricValue</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span>
                 <span class="n">value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
-            <span class="p">)</span>
+                <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
+            <span class="p">),</span>
         <span class="p">}</span>
 
         <span class="n">check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker</span><span class="o">.</span><span class="n">_check_performance_stability</span><span class="p">(</span><span class="n">normal_metrics</span><span class="p">,</span> <span class="p">[])</span>
@@ -263,7 +271,7 @@
             <span class="n">name</span><span class="o">=</span><span class="s2">&quot;win_rate&quot;</span><span class="p">,</span>
             <span class="n">value</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
             <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span>
+            <span class="n">metric_type</span><span class="o">=</span><span class="n">MetricType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">check</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker</span><span class="o">.</span><span class="n">_check_performance_stability</span><span class="p">(</span><span class="n">low_winrate_metrics</span><span class="p">,</span> <span class="p">[])</span>
@@ -358,7 +366,9 @@
         <span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Step 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 2&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 3&quot;</span><span class="p">]</span>
         <span class="n">success_criteria</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Criteria 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Criteria 2&quot;</span><span class="p">]</span>
 
-        <span class="n">plan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">create_recovery_plan</span><span class="p">(</span><span class="n">trigger_reason</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">success_criteria</span><span class="p">)</span>
+        <span class="n">plan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">create_recovery_plan</span><span class="p">(</span>
+            <span class="n">trigger_reason</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">success_criteria</span>
+        <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">plan_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">recovery_plans</span><span class="p">)</span>
         <span class="n">plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">recovery_plans</span><span class="p">[</span><span class="n">plan_id</span><span class="p">]</span>
@@ -369,13 +379,11 @@
 
 <div class="viewcode-block" id="TestRecoveryManager.test_recovery_execution_success">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.safety_tests.TestRecoveryManager.test_recovery_execution_success">[docs]</a>
-    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.adaptation.monitoring.safety.time.sleep&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s2">&quot;ztb.adaptation.monitoring.safety.time.sleep&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_recovery_execution_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_sleep</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;回復実行成功テスト&quot;&quot;&quot;</span>
         <span class="n">plan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">create_recovery_plan</span><span class="p">(</span>
-            <span class="s2">&quot;Test recovery&quot;</span><span class="p">,</span>
-            <span class="p">[</span><span class="s2">&quot;Step 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 2&quot;</span><span class="p">],</span>
-            <span class="p">[</span><span class="s2">&quot;Success criteria&quot;</span><span class="p">]</span>
+            <span class="s2">&quot;Test recovery&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Step 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Step 2&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;Success criteria&quot;</span><span class="p">]</span>
         <span class="p">)</span>
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">execute_recovery</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
@@ -391,9 +399,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;回復試行回数制限テスト&quot;&quot;&quot;</span>
         <span class="n">trigger_reason</span> <span class="o">=</span> <span class="s2">&quot;Test failure&quot;</span>
         <span class="n">plan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">create_recovery_plan</span><span class="p">(</span>
-            <span class="n">trigger_reason</span><span class="p">,</span>
-            <span class="p">[</span><span class="s2">&quot;Recovery step&quot;</span><span class="p">],</span>
-            <span class="p">[</span><span class="s2">&quot;Success criteria&quot;</span><span class="p">]</span>
+            <span class="n">trigger_reason</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Recovery step&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;Success criteria&quot;</span><span class="p">]</span>
         <span class="p">)</span>
 
         <span class="c1"># 回復が成功するはず</span>
@@ -421,7 +427,10 @@
 <div class="viewcode-block" id="TestSafetyManager.tearDown">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.safety_tests.TestSafetyManager.tearDown">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="p">,</span> <span class="s1">&#39;monitoring_thread&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">monitoring_thread</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="p">,</span> <span class="s2">&quot;monitoring_thread&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">monitoring_thread</span>
+        <span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">stop_safety_monitoring</span><span class="p">()</span></div>
 
 
@@ -433,7 +442,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">safety_checker</span><span class="p">,</span> <span class="n">SafetyChecker</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">fallback_handler</span><span class="p">,</span> <span class="n">FallbackHandler</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">recovery_manager</span><span class="p">,</span> <span class="n">RecoveryManager</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">current_status</span><span class="o">.</span><span class="n">overall_safety_level</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">current_status</span><span class="o">.</span><span class="n">overall_safety_level</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">NORMAL</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestSafetyManager.test_manual_fallback_initiation">
@@ -441,8 +452,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_manual_fallback_initiation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;手動フォールバック開始テスト&quot;&quot;&quot;</span>
         <span class="n">action_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">initiate_manual_fallback</span><span class="p">(</span>
-            <span class="n">FallbackType</span><span class="o">.</span><span class="n">CONSERVATIVE</span><span class="p">,</span>
-            <span class="s2">&quot;Manual test fallback&quot;</span>
+            <span class="n">FallbackType</span><span class="o">.</span><span class="n">CONSERVATIVE</span><span class="p">,</span> <span class="s2">&quot;Manual test fallback&quot;</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">action_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
@@ -456,7 +466,7 @@
         <span class="n">plan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">create_recovery_plan</span><span class="p">(</span>
             <span class="s2">&quot;Test recovery&quot;</span><span class="p">,</span>
             <span class="p">[</span><span class="s2">&quot;Recovery step 1&quot;</span><span class="p">,</span> <span class="s2">&quot;Recovery step 2&quot;</span><span class="p">],</span>
-            <span class="p">[</span><span class="s2">&quot;Recovery criteria&quot;</span><span class="p">]</span>
+            <span class="p">[</span><span class="s2">&quot;Recovery criteria&quot;</span><span class="p">],</span>
         <span class="p">)</span>
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">execute_recovery</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
@@ -478,7 +488,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
 </pre></div>
 
@@ -495,7 +505,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -506,7 +516,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

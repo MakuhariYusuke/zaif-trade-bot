@@ -1,0 +1,318 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC v430 Advanced Training Guide &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SAC v430 Advanced Training Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/training/v430/SAC_V430_TRAINING_GUIDE.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-v430-advanced-training-guide">
+<h1>SAC v430 Advanced Training Guide<a class="headerlink" href="#sac-v430-advanced-training-guide" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>🚀 効率的な学習方法の提案<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>SAC v430の学習をより効率的に行うための高度な手法を実装しました。</p>
+<section id="id2">
+<h3>📚 利用可能な学習モード<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<section id="curriculum-learning">
+<h4>1. <strong>カリキュラム学習 (Curriculum Learning)</strong><a class="headerlink" href="#curriculum-learning" title="Link to this heading"></a></h4>
+<p>段階的に難易度を上げる学習方法。初心者から上級者への学習をシミュレート。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--config<span class="w"> </span>configs/v430/sac_v430_optimized.json<span class="w"> </span>--mode<span class="w"> </span>curriculum
+</pre></div>
+</div>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>4段階のカリキュラム（warmup → foundation → optimization → refinement）</p></li>
+<li><p>各段階で成功基準を満たすまで進まない</p></li>
+<li><p>徐々に複雑な報酬関数と学習パラメータを使用</p></li>
+</ul>
+</section>
+<section id="multi-stage-training">
+<h4>2. <strong>マルチステージ学習 (Multi-Stage Training)</strong><a class="headerlink" href="#multi-stage-training" title="Link to this heading"></a></h4>
+<p>異なる目的で段階的に学習。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--config<span class="w"> </span>configs/v430/sac_v430_optimized.json<span class="w"> </span>--mode<span class="w"> </span>multi_stage
+</pre></div>
+</div>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>Stage 1: 探索重視（高エントロピー）</p></li>
+<li><p>Stage 2: 活用重視（低エントロピー）</p></li>
+<li><p>Stage 3: 微調整（低学習率）</p></li>
+</ul>
+</section>
+<section id="ensemble-training">
+<h4>3. <strong>アンサンブル学習 (Ensemble Training)</strong><a class="headerlink" href="#ensemble-training" title="Link to this heading"></a></h4>
+<p>複数のモデルを並列学習し、アンサンブル化。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--config<span class="w"> </span>configs/v430/sac_v430_optimized.json<span class="w"> </span>--mode<span class="w"> </span>ensemble
+</pre></div>
+</div>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>5つの異なるシードでモデルを学習</p></li>
+<li><p>並列処理で効率化</p></li>
+<li><p>アンサンブル設定ファイルを自動生成</p></li>
+</ul>
+</section>
+<section id="standard-training">
+<h4>4. <strong>標準学習 (Standard Training)</strong><a class="headerlink" href="#standard-training" title="Link to this heading"></a></h4>
+<p>最適化された設定で通常の学習。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--config<span class="w"> </span>configs/v430/sac_v430_optimized.json<span class="w"> </span>--mode<span class="w"> </span>standard
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id3">
+<h3>🛠️ 追加の最適化機能<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">sac_v430_training_optimizations.py</span></code> で提供される高度な最適化:</p>
+<section id="gradient-accumulation">
+<h4><strong>グラジエント蓄積 (Gradient Accumulation)</strong><a class="headerlink" href="#gradient-accumulation" title="Link to this heading"></a></h4>
+<p>メモリが限られている場合に有効なバッチサイズを大きくする手法。</p>
+</section>
+<section id="dynamic-lr-scheduling">
+<h4><strong>動的学習率スケジューリング (Dynamic LR Scheduling)</strong><a class="headerlink" href="#dynamic-lr-scheduling" title="Link to this heading"></a></h4>
+<p>学習の停滞を検知して学習率を自動調整。</p>
+</section>
+<section id="early-stopping">
+<h4><strong>早期停止 (Early Stopping)</strong><a class="headerlink" href="#early-stopping" title="Link to this heading"></a></h4>
+<p>検証損失が改善しなくなったら学習を停止。</p>
+</section>
+<section id="id4">
+<h4><strong>メモリ効率的なデータローディング</strong><a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<p>メモリ使用量を最適化して大きなデータセットを扱えるように。</p>
+</section>
+<section id="parallel-evaluation">
+<h4><strong>並列環境評価 (Parallel Evaluation)</strong><a class="headerlink" href="#parallel-evaluation" title="Link to this heading"></a></h4>
+<p>複数の環境で並列して評価を実行。</p>
+</section>
+</section>
+<section id="id5">
+<h3>📊 推奨学習フロー<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="id6">
+<h4><strong>初回学習時:</strong><a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. カリキュラム学習で基礎を築く</span>
+python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--mode<span class="w"> </span>curriculum
+
+<span class="c1"># 2. アンサンブル学習で多様性を持たせる</span>
+python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--mode<span class="w"> </span>ensemble
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h4><strong>継続学習時:</strong><a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># マルチステージ学習で効率的に改善</span>
+python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--mode<span class="w"> </span>multi_stage
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h4><strong>クイックテスト時:</strong><a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 標準学習で高速検証</span>
+python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--mode<span class="w"> </span>standard
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id9">
+<h3>🎯 各モードの推定学習時間<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>モード</p></th>
+<th class="head"><p>推定時間</p></th>
+<th class="head"><p>特徴</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>curriculum</p></td>
+<td><p>2-3時間</p></td>
+<td><p>段階的学習、安定性重視</p></td>
+</tr>
+<tr class="row-odd"><td><p>multi_stage</p></td>
+<td><p>1.5-2時間</p></td>
+<td><p>目的別学習、効率性重視</p></td>
+</tr>
+<tr class="row-even"><td><p>ensemble</p></td>
+<td><p>2-4時間</p></td>
+<td><p>並列学習、多様性重視</p></td>
+</tr>
+<tr class="row-odd"><td><p>standard</p></td>
+<td><p>30-60分</p></td>
+<td><p>高速学習、検証用</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id10">
+<h3>📁 出力ファイル構造<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>runs/sac_v430_{mode}_{timestamp}/
+├── stage_warmup/models/final_model.zip          # カリキュラム学習時
+├── stage_foundation/models/final_model.zip
+├── stage_optimization/models/final_model.zip
+├── stage_refinement/models/final_model.zip
+├── final_model/models/final_model.zip
+├── ensemble_model_0/models/final_model.zip      # アンサンブル学習時
+├── ensemble_model_1/models/final_model.zip
+├── ...
+├── ensemble_config.json                         # アンサンブル設定
+├── training_summary.json                        # 学習サマリー
+└── logs/                                        # 詳細ログ
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>🔧 高度な設定<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id12">
+<h4><strong>メモリ最適化:</strong><a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sac_v430_training_optimizations</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_efficient_training</span>
+<span class="n">setup_efficient_training</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h4><strong>カスタム最適化設定:</strong><a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sac_v430_training_optimizations</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_optimized_config</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">create_optimized_config</span><span class="p">(</span><span class="n">base_config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id14">
+<h3>📈 性能監視<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>各学習モードで以下のメトリクスを監視:</p>
+<ul class="simple">
+<li><p><strong>学習曲線</strong>: 報酬の推移</p></li>
+<li><p><strong>メモリ使用量</strong>: GPU/CPUメモリの効率性</p></li>
+<li><p><strong>学習速度</strong>: ステップ/秒</p></li>
+<li><p><strong>収束性</strong>: 損失関数の減少率</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>🚨 注意事項<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>GPUメモリ</strong>: 大規模モデルでは16GB以上のGPUを推奨</p></li>
+<li><p><strong>学習時間</strong>: カリキュラム学習は時間がかかるが、最良の結果が期待できる</p></li>
+<li><p><strong>並列処理</strong>: アンサンブル学習時はCPUコア数が重要</p></li>
+<li><p><strong>チェックポイント</strong>: 長時間学習時は定期的にチェックポイントを保存</p></li>
+</ol>
+</section>
+<section id="id16">
+<h3>🎉 推奨開始方法<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 初回はカリキュラム学習から</span>
+python<span class="w"> </span>train_v430_advanced.py<span class="w"> </span>--mode<span class="w"> </span>curriculum<span class="w"> </span>--config<span class="w"> </span>configs/v430/sac_v430_optimized.json
+</pre></div>
+</div>
+<p>この学習方法により、SAC v430はより安定して高性能な取引戦略を学習できます！</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

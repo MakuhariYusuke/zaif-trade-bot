@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Union
 
+import gymnasium as gym
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
 
@@ -73,24 +74,8 @@ class ModelLoading:
         logger.info(f"Action space type: {type(action_space)}")
 
         # Check if action space is continuous
-        try:
-            import gymnasium as gym
-
-            Box = gym.spaces.Box
-            Discrete = gym.spaces.Discrete
-        except ImportError:
-            try:
-                import gym
-
-                Box = gym.spaces.Box
-                Discrete = gym.spaces.Discrete
-            except ImportError:
-                # Fallback: check by type name
-                Box = type(None)
-                Discrete = type(None)
-                logger.warning(
-                    "Could not import gym/gymnasium spaces, cannot detect action space type"
-                )
+        Box = gym.spaces.Box
+        Discrete = gym.spaces.Discrete
 
         if isinstance(action_space, Box):
             self.live_trader.is_continuous_action = True
@@ -165,7 +150,16 @@ class ModelLoading:
         else:
             # Dry-run mode: skip schema loading entirely
             logger.info("Dry-run mode: skipping schema loading")
-            self.live_trader.expected_features = 64
+            # Set expected features dynamically from feature set
+            try:
+                from ztb.features.feature_set_manager import get_feature_manager
+
+                manager = get_feature_manager()
+                self.live_trader.expected_features = manager.get_feature_count(
+                    "curated"
+                )
+            except Exception:
+                self.live_trader.expected_features = 78  # Fallback
             self.live_trader.feature_names = None
             self.live_trader.model_schema_hash = None
             self.live_trader.schema_available = False

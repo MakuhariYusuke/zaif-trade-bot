@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="P2実装ノート：学習コスト管理とリーク耐性強化" href="P2_IMPLEMENTATION_NOTES.html" />
-    <link rel="prev" title="P0実装完了サマリー（手戻り防止・地雷埋め戻し）" href="P0_IMPLEMENTATION_SUMMARY.html" />
+    <link rel="prev" title="P0実装完了サマリー（手戻り防止・地雷埋め戻し）" href="P0_IMPLEMENTATION_SUMMARY.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -47,8 +47,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -128,6 +126,11 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="P2_IMPLEMENTATION_NOTES.html">P2実装ノート：学習コスト管理とリーク耐性強化</a></li>
 <li class="toctree-l2"><a class="reference internal" href="RUN_TRAINING_FIX_SUMMARY.html">run_training.py 修正完了 - v3.6.2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PHASE2_COMPLETION_REPORT.html">Phase 2 完了レポート: 特徴量スキーマ管理システム</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PHASE3_FINAL_REVIEW.html">Phase 3 最終レビュー &amp; 修正完了レポート</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PHASE3_IMPLEMENTATION_INSTRUCTIONS.html">Phase 3: Environment &amp; Backtest Integration - 実装指示書</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PHASE3_REVIEW_AND_IMPROVEMENTS.html">Phase 3 実装レビュー &amp; 改善提案</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PHASE4_LIVE_PAPER_TRADE_INTEGRATION.html">Phase 4: Live &amp; Paper Trade Schema Integration</a></li>
 </ul>
 </li>
 </ul>
@@ -156,7 +159,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="p1-1m">
 <h1>P1実装サマリー：1M学習前の品質向上施策<a class="headerlink" href="#p1-1m" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -536,15 +539,15 @@ python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </sp
 <li><p>✅ <strong>P1-5（Target Entropy）</strong>: 既存実装確認、探索維持機能有効化確認</p></li>
 <li><p>✅ <strong>P1-6（1Mロングラン設計）</strong>: ステージング定数、早期停止監視、Sharpe監視実装完了</p></li>
 </ul>
-<p><strong>総追加行数</strong>: 約110行（既存実装確認約434行）<br />
-<strong>総所要時間</strong>: 約30分<br />
+<p><strong>総追加行数</strong>: 約110行（既存実装確認約434行）
+<strong>総所要時間</strong>: 約30分
 <strong>達成効果</strong>: 手戻りコスト削減、学習成功率向上、歩留まり向上（事故率20%→10%）</p>
 </section>
 <hr class="docutils" />
 <section id="id26">
 <h2>📋 コード品質改善計画 - 全体完了<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
-<p><strong>完了日時</strong>: 2025年10月7日<br />
-<strong>総フェーズ</strong>: Phase 1-4完了<br />
+<p><strong>完了日時</strong>: 2025年10月7日
+<strong>総フェーズ</strong>: Phase 1-4完了
 <strong>総コミット</strong>: 3311672 (GitHub push済み)</p>
 <section id="id27">
 <h3>完了フェーズ概要<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
@@ -613,7 +616,7 @@ python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </sp
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -624,7 +627,7 @@ python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </sp
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

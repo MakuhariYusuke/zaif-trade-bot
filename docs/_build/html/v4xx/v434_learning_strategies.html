@@ -1,0 +1,427 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V434: 多彩な学習方法の組み合わせ戦略 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">V434: 多彩な学習方法の組み合わせ戦略</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/v4xx/v434_learning_strategies.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="v434">
+<h1>V434: 多彩な学習方法の組み合わせ戦略<a class="headerlink" href="#v434" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>v434シリーズでは、SACアルゴリズムを基盤とし、v433で確立された適応型学習フレームワークを拡張して、多彩な学習方法を統合したハイブリッド学習アプローチを採用します。本ドキュメントでは、これらの学習方法の組み合わせ方と実装戦略について説明します。</p>
+</section>
+<section id="id2">
+<h2>学習方法の概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="curriculum-learning">
+<h3>1. Curriculum Learning (カリキュラム学習)<a class="headerlink" href="#curriculum-learning" title="Link to this heading"></a></h3>
+<p>段階的に学習難易度を上げることで、安定した学習を実現します。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>基本取引 → 中級取引 → 上級取引の段階的進行</p></li>
+<li><p>各段階で最適化された報酬関数と特徴量</p></li>
+<li><p>進捗基準による自動遷移</p></li>
+</ul>
+</section>
+<section id="adaptive-feature-selection">
+<h3>2. Adaptive Feature Selection (適応型特徴量選択)<a class="headerlink" href="#adaptive-feature-selection" title="Link to this heading"></a></h3>
+<p>市場条件に応じて最適な特徴量を動的に選択します。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>Mutual Informationベースの特徴量重要度評価</p></li>
+<li><p>リアルタイムでの特徴量更新</p></li>
+<li><p>計算コストの最適化</p></li>
+</ul>
+</section>
+<section id="market-regime-detection">
+<h3>3. Market Regime Detection (市場レジーム検知)<a class="headerlink" href="#market-regime-detection" title="Link to this heading"></a></h3>
+<p>現在の市場状況をリアルタイムで分類し、対応する戦略を適用します。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>強気/弱気/横ばい/高ボラティリティの4レジーム分類</p></li>
+<li><p>クラスタリングベースの検知アルゴリズム</p></li>
+<li><p>レジーム別パラメータ適応</p></li>
+</ul>
+</section>
+<section id="dynamic-reward-shaping">
+<h3>4. Dynamic Reward Shaping (動的報酬形成)<a class="headerlink" href="#dynamic-reward-shaping" title="Link to this heading"></a></h3>
+<p>市場状況に応じて報酬関数を動的に調整します。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>ボラティリティ調整報酬</p></li>
+<li><p>トレンド強度ボーナス</p></li>
+<li><p>リスク調整報酬スケーリング</p></li>
+</ul>
+</section>
+<section id="ensemble-learning">
+<h3>5. Ensemble Learning (アンサンブル学習)<a class="headerlink" href="#ensemble-learning" title="Link to this heading"></a></h3>
+<p>複数のモデルを組み合わせることで、堅牢性を向上させます。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>パラメータノイズによる多様性確保</p></li>
+<li><p>パフォーマンスベースの重み付け</p></li>
+<li><p>コンフリクト解決メカニズム</p></li>
+</ul>
+</section>
+<section id="online-learning">
+<h3>6. Online Learning (オンライン学習)<a class="headerlink" href="#online-learning" title="Link to this heading"></a></h3>
+<p>実運用中に継続的に学習を更新します。</p>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>概念ドリフト検知</p></li>
+<li><p>インクリメンタルパラメータ更新</p></li>
+<li><p>適応レート制御</p></li>
+</ul>
+</section>
+</section>
+<section id="id3">
+<h2>組み合わせ戦略<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="phase-1-foundation-building">
+<h3>Phase 1: Foundation Building (基盤構築フェーズ)<a class="headerlink" href="#phase-1-foundation-building" title="Link to this heading"></a></h3>
+<p><strong>組み合わせ:</strong> Curriculum Learning + Adaptive Feature Selection</p>
+<p><strong>目的:</strong> 安定した学習基盤の確立</p>
+<p><strong>実装:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_learning&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;stages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;basic_trading&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;difficulty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;intermediate_trading&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;difficulty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.6</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;advanced_trading&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;difficulty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;adaptive_feature_selection&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;selection_method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mutual_info&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;top_k_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;update_frequency&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果:</strong></p>
+<ul class="simple">
+<li><p>段階的な難易度上昇により学習の安定化</p></li>
+<li><p>各段階で最適化された特徴量セットの使用</p></li>
+<li><p>過学習の防止</p></li>
+</ul>
+</section>
+<section id="phase-2-adaptive-optimization">
+<h3>Phase 2: Adaptive Optimization (適応最適化フェーズ)<a class="headerlink" href="#phase-2-adaptive-optimization" title="Link to this heading"></a></h3>
+<p><strong>組み合わせ:</strong> Market Regime Detection + Dynamic Reward Shaping</p>
+<p><strong>目的:</strong> 市場状況への適応性向上</p>
+<p><strong>実装:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;market_regime_detection&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;regimes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;bull&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bear&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sideways&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;volatile&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;adaptation_frequency&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;dynamic_reward_shaping&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;market_regime_adaptation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;volatility_adjustment&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;trend_strength_bonus&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.005</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果:</strong></p>
+<ul class="simple">
+<li><p>市場レジームに応じた戦略自動切換</p></li>
+<li><p>ボラティリティに応じたリスク調整</p></li>
+<li><p>トレンド相場でのパフォーマンス向上</p></li>
+</ul>
+</section>
+<section id="phase-3-ensemble-continuous-learning">
+<h3>Phase 3: Ensemble &amp; Continuous Learning (統合・継続学習フェーズ)<a class="headerlink" href="#phase-3-ensemble-continuous-learning" title="Link to this heading"></a></h3>
+<p><strong>組み合わせ:</strong> Ensemble Learning + Online Learning</p>
+<p><strong>目的:</strong> 堅牢性と継続的改善の実現</p>
+<p><strong>実装:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ensemble_learning&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;num_models&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;diversity_method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;parameter_noise&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;weighting_method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;performance_based&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;online_learning&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;update_frequency&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;concept_drift_detection&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;adaptation_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果:</strong></p>
+<ul class="simple">
+<li><p>複数のモデルの予測を統合し、安定性向上</p></li>
+<li><p>市場変化へのリアルタイム適応</p></li>
+<li><p>概念ドリフトへの自動対応</p></li>
+</ul>
+</section>
+</section>
+<section id="id4">
+<h2>実装アーキテクチャ<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>統合学習マネージャー<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CombinedLearningManager</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curriculum_manager</span> <span class="o">=</span> <span class="n">CurriculumManager</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_selector</span> <span class="o">=</span> <span class="n">AdaptiveFeatureSelector</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">regime_detector</span> <span class="o">=</span> <span class="n">MarketRegimeDetector</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaper</span> <span class="o">=</span> <span class="n">DynamicRewardShaper</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_manager</span> <span class="o">=</span> <span class="n">EnsembleManager</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_learner</span> <span class="o">=</span> <span class="n">OnlineLearningEngine</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">next_observation</span><span class="p">,</span> <span class="n">done</span><span class="p">):</span>
+        <span class="c1"># 1. 市場レジーム検知</span>
+        <span class="n">regime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="n">observation</span><span class="p">)</span>
+
+        <span class="c1"># 2. カリキュラム段階確認</span>
+        <span class="n">stage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">curriculum_manager</span><span class="o">.</span><span class="n">get_current_stage</span><span class="p">()</span>
+
+        <span class="c1"># 3. 適応型特徴量選択</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_selector</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">regime</span><span class="p">)</span>
+
+        <span class="c1"># 4. 動的報酬形成</span>
+        <span class="n">shaped_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward_shaper</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="n">regime</span><span class="p">,</span> <span class="n">stage</span><span class="p">)</span>
+
+        <span class="c1"># 5. アンサンブル学習</span>
+        <span class="n">ensemble_action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_manager</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+        <span class="c1"># 6. オンライン学習更新</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_learner</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">shaped_reward</span><span class="p">,</span> <span class="n">next_observation</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">shaped_reward</span><span class="p">,</span> <span class="n">ensemble_action</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>学習パイプライン<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Raw Data → Feature Selection → Regime Detection → Reward Shaping → Ensemble Prediction → Online Update
+     ↓            ↓              ↓              ↓              ↓              ↓
+Curriculum   Adaptive       Market         Dynamic       Multiple        Continuous
+Learning    Selection      Adaptation     Rewards       Models         Learning
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id7">
+<h2>評価と検証<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>パフォーマンス指標<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>学習安定性指標</strong></p>
+<ul class="simple">
+<li><p>報酬の分散度</p></li>
+<li><p>学習曲線の滑らかさ</p></li>
+<li><p>過学習検知スコア</p></li>
+</ul>
+</li>
+<li><p><strong>適応性指標</strong></p>
+<ul class="simple">
+<li><p>レジーム別パフォーマンス</p></li>
+<li><p>特徴量選択の有効性</p></li>
+<li><p>アンサンブルの多様性スコア</p></li>
+</ul>
+</li>
+<li><p><strong>堅牢性指標</strong></p>
+<ul class="simple">
+<li><p>ストレステスト結果</p></li>
+<li><p>アウトオブサンプル性能</p></li>
+<li><p>概念ドリフト耐性</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id9">
+<h3>検証方法<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>クロスバリデーション</strong></p>
+<ul class="simple">
+<li><p>時系列クロスバリデーション</p></li>
+<li><p>レジーム別検証</p></li>
+<li><p>アンサンブル成分分析</p></li>
+</ul>
+</li>
+<li><p><strong>ウォークフォワード分析</strong></p>
+<ul class="simple">
+<li><p>段階的検証</p></li>
+<li><p>パフォーマンス劣化検知</p></li>
+<li><p>再訓練トリガー評価</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="v434-1">
+<h2>設定例: v434.1<a class="headerlink" href="#v434-1" title="Link to this heading"></a></h2>
+<p>v434.1では、上記の組み合わせ戦略を実装した設定ファイルを提供します。</p>
+<p><strong>主要パラメータ:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">total_timesteps</span></code>: 10000 (カリキュラム学習対応)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">curriculum_stages</span></code>: 3段階の学習難易度</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">market_regimes</span></code>: 4つの市場状況分類</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ensemble_models</span></code>: 3つの多様性モデル</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">online_update_frequency</span></code>: 100ステップ毎の更新</p></li>
+</ul>
+</section>
+<section id="id10">
+<h2>利点と課題<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>利点<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>学習効率の向上</strong>: カリキュラム学習による段階的難易度上昇</p></li>
+<li><p><strong>適応性の強化</strong>: 市場レジーム検知による状況別最適化</p></li>
+<li><p><strong>堅牢性の確保</strong>: アンサンブル学習による予測安定化</p></li>
+<li><p><strong>継続的改善</strong>: オンライン学習による運用中適応</p></li>
+</ol>
+</section>
+<section id="id12">
+<h3>課題と対策<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>計算コスト増加</strong></p>
+<ul class="simple">
+<li><p><strong>対策</strong>: 適応型特徴量選択による次元削減</p></li>
+</ul>
+</li>
+<li><p><strong>複雑性管理</strong></p>
+<ul class="simple">
+<li><p><strong>対策</strong>: モジュール化されたアーキテクチャ</p></li>
+</ul>
+</li>
+<li><p><strong>ハイパーパラメータ調整</strong></p>
+<ul class="simple">
+<li><p><strong>対策</strong>: 自動最適化アルゴリズムの導入</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id13">
+<h2>次のステップ<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>v434.2</strong>: 高度な転移学習統合</p></li>
+<li><p><strong>v434.3</strong>: マルチモーダル学習拡張</p></li>
+<li><p><strong>v434.4</strong>: 自己教師あり学習導入</p></li>
+</ol>
+<hr class="docutils" />
+<p><em>本ドキュメントはv434シリーズの学習戦略を定義します。実装の詳細はコードベースを参照してください。</em></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

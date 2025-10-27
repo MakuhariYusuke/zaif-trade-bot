@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.constants</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Trading environment constants.</span>
@@ -97,12 +97,93 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ACTION_HOLD</span><span class="p">,</span>
     <span class="n">ACTION_BUY</span><span class="p">,</span>
+    <span class="n">ACTION_HOLD</span><span class="p">,</span>
     <span class="n">ACTION_SELL</span><span class="p">,</span>
     <span class="n">SAC_CONTINUOUS_THRESHOLD</span><span class="p">,</span>
     <span class="n">SAC_CONTINUOUS_THRESHOLD_NEG</span><span class="p">,</span>
 <span class="p">)</span>
+
+<span class="c1"># ============================================================================</span>
+<span class="c1"># Common Numeric Constants</span>
+<span class="c1"># ============================================================================</span>
+
+<span class="c1"># Standard fee rates and percentages</span>
+<span class="n">DEFAULT_FEE_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 0.1% - Standard transaction fee</span>
+<span class="n">MINIMUM_UNIT_BUFFER</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 0.1% - Minimum unit buffer for position sizing</span>
+<span class="n">MAXIMUM_FEE_RATE</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># 1% - Maximum allowable fee rate</span>
+
+<span class="c1"># BTC and trading unit constants</span>
+<span class="n">BTC_MIN_UNIT</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># Minimum BTC trading unit</span>
+<span class="n">EPSILON</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="mf">1e-5</span>  <span class="c1"># Small epsilon value for numerical stability (prevents division by zero)</span>
+<span class="p">)</span>
+
+<span class="c1"># Position and balance constants</span>
+<span class="n">DEFAULT_INITIAL_BALANCE</span> <span class="o">=</span> <span class="mi">200000</span>  <span class="c1"># JPY - Default starting balance</span>
+<span class="n">DEFAULT_INITIAL_BALANCE_SMALL</span> <span class="o">=</span> <span class="mf">10000.0</span>  <span class="c1"># JPY - Small balance for testing</span>
+<span class="n">DEFAULT_TOTAL_CAPITAL</span> <span class="o">=</span> <span class="mf">100000.0</span>  <span class="c1"># JPY - Default total capital</span>
+<span class="n">DEFAULT_MAX_TRADE_SIZE_JPY</span> <span class="o">=</span> <span class="mf">100000.0</span>  <span class="c1"># JPY - Maximum trade size</span>
+
+<span class="c1"># Action history sizes</span>
+<span class="n">DEFAULT_MAX_ACTION_HISTORY</span> <span class="o">=</span> <span class="mi">256</span>  <span class="c1"># Standard action history buffer</span>
+<span class="n">MAX_ACTION_HISTORY_LARGE</span> <span class="o">=</span> <span class="mi">512</span>  <span class="c1"># Large action history buffer for complex strategies</span>
+
+<span class="c1"># Common batch sizes for training</span>
+<span class="n">BATCH_SIZE_SMALL</span> <span class="o">=</span> <span class="mi">32</span>
+<span class="n">BATCH_SIZE_MEDIUM</span> <span class="o">=</span> <span class="mi">64</span>
+<span class="n">BATCH_SIZE_STANDARD</span> <span class="o">=</span> <span class="mi">128</span>
+<span class="n">BATCH_SIZE_LARGE</span> <span class="o">=</span> <span class="mi">256</span>
+<span class="n">BATCH_SIZE_XLARGE</span> <span class="o">=</span> <span class="mi">512</span>
+
+<span class="c1"># Common buffer/replay buffer sizes</span>
+<span class="n">BUFFER_SIZE_SMALL</span> <span class="o">=</span> <span class="mi">50000</span>
+<span class="n">BUFFER_SIZE_MEDIUM</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="n">BUFFER_SIZE_LARGE</span> <span class="o">=</span> <span class="mi">200000</span>
+<span class="n">BUFFER_SIZE_XLARGE</span> <span class="o">=</span> <span class="mi">500000</span>
+
+<span class="c1"># Training and evaluation constants</span>
+<span class="n">DEFAULT_CHECKPOINT_INTERVAL</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Default checkpoint interval</span>
+<span class="n">DEFAULT_MAX_STEPS_PER_EPISODE</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Default max steps per episode</span>
+<span class="n">DEFAULT_ANALYSIS_SAMPLES</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Default number of analysis samples</span>
+<span class="n">DEFAULT_MIN_SAMPLES</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Default minimum samples for metrics</span>
+<span class="n">PPO_DEFAULT_N_STEPS</span> <span class="o">=</span> <span class="mi">2048</span>  <span class="c1"># Default n_steps for PPO training</span>
+
+<span class="c1"># Volume and data generation constants</span>
+<span class="n">DEFAULT_VOLUME_RANGE_MIN</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># Minimum volume range</span>
+<span class="n">DEFAULT_VOLUME_RANGE_MAX</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Maximum volume range</span>
+
+<span class="c1"># Memory conversion constants</span>
+<span class="n">BYTES_PER_KB</span> <span class="o">=</span> <span class="mi">1024</span>
+<span class="n">BYTES_PER_MB</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+<span class="n">BYTES_PER_GB</span> <span class="o">=</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span>
+
+<span class="c1"># Statistical thresholds</span>
+<span class="n">DEFAULT_VOLATILITY_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 0.1% volatility threshold</span>
+<span class="n">DEFAULT_CORRELATION_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.95</span>  <span class="c1"># 95% correlation threshold</span>
+<span class="n">STATISTICAL_SIGNIFICANCE_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># 1% significance level</span>
+<span class="n">MINIMUM_STANDARD_DEVIATION</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># 1% minimum std dev</span>
+
+<span class="c1"># Transaction costs and fees</span>
+<span class="n">DEFAULT_TRANSACTION_COST</span> <span class="o">=</span> <span class="mf">1e-5</span>  <span class="c1"># Default transaction cost for training</span>
+<span class="n">BASIS_POINTS</span> <span class="o">=</span> <span class="mi">10000</span>  <span class="c1"># Basis points conversion factor (1% = 100 basis points)</span>
+
+<span class="c1"># Learning rates and optimization parameters</span>
+<span class="n">DEFAULT_LEARNING_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 0.1% learning rate</span>
+<span class="n">DEFAULT_LAGRANGE_ETA_MIN</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># Minimum Lagrange multiplier</span>
+<span class="n">DEFAULT_LAGRANGE_ETA_LR</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># Lagrange learning rate</span>
+
+<span class="c1"># Performance thresholds</span>
+<span class="n">GRADIENT_NORM_THRESHOLD</span> <span class="o">=</span> <span class="mf">1e-6</span>
+<span class="n">ADVANTAGE_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">TIME_THRESHOLD_MS</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 1ms</span>
+<span class="n">MEMORY_THRESHOLD_MB</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># 10MB</span>
+
+<span class="c1"># Memory optimization</span>
+<span class="n">MEMORY_LEAK_THRESHOLD_PERCENT</span> <span class="o">=</span> <span class="mf">50.0</span>
+<span class="n">OBJECT_LEAK_THRESHOLD</span> <span class="o">=</span> <span class="mi">10000</span>
+<span class="n">PYTORCH_CUDA_ALLOC_MB</span> <span class="o">=</span> <span class="mi">512</span>  <span class="c1"># 512MB for CUDA allocation</span>
+<span class="n">PYTORCH_CUDA_ALLOC_MB</span> <span class="o">=</span> <span class="mi">512</span>  <span class="c1"># 512MB for CUDA allocation</span>
 
 <span class="c1"># ============================================================================</span>
 <span class="c1"># Action Space Constants</span>
@@ -129,55 +210,13 @@
 <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD</span> <span class="o">=</span> <span class="n">SAC_CONTINUOUS_THRESHOLD</span>
 <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG</span> <span class="o">=</span> <span class="n">SAC_CONTINUOUS_THRESHOLD_NEG</span>
 
-
-<span class="c1"># ============================================================================</span>
-<span class="c1"># Transaction Cost Constants (in basis points, 0.0001 = 0.01%)</span>
-<span class="c1"># ============================================================================</span>
-
-<span class="c1"># Default transaction costs</span>
-<span class="n">DEFAULT_TRANSACTION_COST</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># 0.1% (10 basis points)</span>
-<span class="n">DEFAULT_BUY_FEE_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>     <span class="c1"># 0.1%</span>
-<span class="n">DEFAULT_SELL_FEE_RATE</span> <span class="o">=</span> <span class="mf">0.001</span>    <span class="c1"># 0.1%</span>
-
-<span class="c1"># Exchange-specific transaction costs</span>
-<span class="n">EXCHANGE_FEES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;coincheck&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>      <span class="c1"># 0% taker fee</span>
-        <span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>     <span class="c1"># 0% taker fee</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;bitflyer&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>    <span class="c1"># 0.1%</span>
-        <span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>   <span class="c1"># 0.1%</span>
-    <span class="p">},</span>
-    <span class="s2">&quot;binance&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>    <span class="c1"># 0.1%</span>
-        <span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>   <span class="c1"># 0.1%</span>
-    <span class="p">},</span>
-<span class="p">}</span>
-
-<span class="c1"># High-frequency trading</span>
-<span class="n">HFT_TRANSACTION_COST</span> <span class="o">=</span> <span class="mf">0.002</span>  <span class="c1"># 0.2% for aggressive strategies</span>
-
-
-<span class="c1"># ============================================================================</span>
-<span class="c1"># Environment Configuration Constants</span>
-<span class="c1"># ============================================================================</span>
-
-<span class="c1"># Default balance and position limits</span>
-<span class="n">DEFAULT_INITIAL_BALANCE</span> <span class="o">=</span> <span class="mi">200000</span>    <span class="c1"># JPY</span>
-<span class="n">DEFAULT_MAX_POSITION_SIZE</span> <span class="o">=</span> <span class="mf">0.01</span>    <span class="c1"># 1% of balance per trade</span>
-
-<span class="c1"># Action history tracking</span>
-<span class="n">DEFAULT_MAX_ACTION_HISTORY</span> <span class="o">=</span> <span class="mi">256</span>
-<span class="n">MAX_ACTION_HISTORY_LARGE</span> <span class="o">=</span> <span class="mi">512</span>
-
 <span class="c1"># Holding period constraints</span>
-<span class="n">DEFAULT_MIN_HOLDING_PERIOD</span> <span class="o">=</span> <span class="mi">0</span>      <span class="c1"># No restriction</span>
+<span class="n">DEFAULT_MIN_HOLDING_PERIOD</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># No restriction</span>
 <span class="n">RECOMMENDED_MIN_HOLDING_PERIOD</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># Prevent rapid flip-flopping</span>
 
 <span class="c1"># Volatility and correlation thresholds</span>
-<span class="n">DEFAULT_CORRELATION_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.95</span>
-<span class="n">DEFAULT_VOLATILITY_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">DEFAULT_CORRELATION_THRESHOLD</span> <span class="o">=</span> <span class="n">DEFAULT_CORRELATION_THRESHOLD</span>
+<span class="n">DEFAULT_VOLATILITY_THRESHOLD</span> <span class="o">=</span> <span class="n">DEFAULT_VOLATILITY_THRESHOLD</span>
 
 
 <span class="c1"># ============================================================================</span>
@@ -223,15 +262,15 @@
 <span class="c1"># ============================================================================</span>
 
 <span class="c1"># Target SELL rate for Lagrange constraint</span>
-<span class="n">DEFAULT_LAGRANGE_R_TARGET</span> <span class="o">=</span> <span class="mf">0.175</span>    <span class="c1"># 17.5% SELL actions</span>
-<span class="n">MIN_SELL_RATE</span> <span class="o">=</span> <span class="mf">0.15</span>                 <span class="c1"># Minimum 15% SELL actions</span>
+<span class="n">DEFAULT_LAGRANGE_R_TARGET</span> <span class="o">=</span> <span class="mf">0.175</span>  <span class="c1"># 17.5% SELL actions</span>
+<span class="n">MIN_SELL_RATE</span> <span class="o">=</span> <span class="mf">0.15</span>  <span class="c1"># Minimum 15% SELL actions</span>
 
 <span class="c1"># Lagrange multiplier parameters</span>
 <span class="n">DEFAULT_LAGRANGE_TOLERANCE</span> <span class="o">=</span> <span class="mf">0.042625</span>
 <span class="n">DEFAULT_LAGRANGE_ETA</span> <span class="o">=</span> <span class="mf">0.062875</span>
-<span class="n">DEFAULT_LAGRANGE_ETA_MIN</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">DEFAULT_LAGRANGE_ETA_MIN</span> <span class="o">=</span> <span class="n">DEFAULT_LAGRANGE_ETA_MIN</span>
 <span class="n">DEFAULT_LAGRANGE_ETA_MAX</span> <span class="o">=</span> <span class="mf">100.0</span>
-<span class="n">DEFAULT_LAGRANGE_ETA_LR</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">DEFAULT_LAGRANGE_ETA_LR</span> <span class="o">=</span> <span class="n">DEFAULT_LAGRANGE_ETA_LR</span>
 
 
 <span class="c1"># ============================================================================</span>
@@ -241,12 +280,12 @@
 <span class="c1"># Hold restriction levels</span>
 <span class="n">HOLD_RESTRICTION_NONE</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span>
 <span class="n">HOLD_RESTRICTION_LIMITED_20</span> <span class="o">=</span> <span class="s2">&quot;limited_20&quot;</span>  <span class="c1"># Max 20% HOLD</span>
-<span class="n">HOLD_RESTRICTION_FORBIDDEN</span> <span class="o">=</span> <span class="s2">&quot;forbidden&quot;</span>    <span class="c1"># No HOLD allowed</span>
+<span class="n">HOLD_RESTRICTION_FORBIDDEN</span> <span class="o">=</span> <span class="s2">&quot;forbidden&quot;</span>  <span class="c1"># No HOLD allowed</span>
 
 <span class="c1"># Diversity thresholds (minimum percentage for each action)</span>
-<span class="n">MIN_DIVERSITY_THRESHOLD_STRICT</span> <span class="o">=</span> <span class="mf">0.4</span>   <span class="c1"># 40% each BUY/SELL</span>
+<span class="n">MIN_DIVERSITY_THRESHOLD_STRICT</span> <span class="o">=</span> <span class="mf">0.4</span>  <span class="c1"># 40% each BUY/SELL</span>
 <span class="n">MIN_DIVERSITY_THRESHOLD_MODERATE</span> <span class="o">=</span> <span class="mf">0.3</span>  <span class="c1"># 30% each action</span>
-<span class="n">MIN_DIVERSITY_THRESHOLD_RELAXED</span> <span class="o">=</span> <span class="mf">0.2</span>   <span class="c1"># 20% active trading</span>
+<span class="n">MIN_DIVERSITY_THRESHOLD_RELAXED</span> <span class="o">=</span> <span class="mf">0.2</span>  <span class="c1"># 20% active trading</span>
 
 <span class="c1"># Consecutive action penalties for curriculum</span>
 <span class="n">CONSECUTIVE_ACTION_PENALTY_STRONG</span> <span class="o">=</span> <span class="mf">0.01</span>
@@ -270,7 +309,7 @@
 <span class="n">MIN_SAMPLES_PER_ACTION</span> <span class="o">=</span> <span class="mi">1</span>
 
 <span class="c1"># Regime detection</span>
-<span class="n">REGIME_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">REGIME_THRESHOLD</span> <span class="o">=</span> <span class="n">DEFAULT_VOLATILITY_THRESHOLD</span>
 
 <span class="c1"># Evaluation gates</span>
 <span class="n">DEFAULT_CIRCUIT_BREAKER_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.15</span>
@@ -313,15 +352,16 @@
 <span class="c1"># Utility Functions</span>
 <span class="c1"># ============================================================================</span>
 
+
 <div class="viewcode-block" id="get_action_name">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.environment.html#ztb.trading.environment.constants.get_action_name">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_action_name</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get human-readable name for action.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        action: Action index (0=HOLD, 1=BUY, 2=SELL)</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        Action name string</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -334,12 +374,13 @@
 <div class="viewcode-block" id="continuous_to_discrete_action">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.environment.html#ztb.trading.environment.constants.continuous_to_discrete_action">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">continuous_to_discrete_action</span><span class="p">(</span>
-        <span class="n">continuous_action</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD</span><span class="p">,</span>
-        <span class="n">negative_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">continuous_action</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD</span><span class="p">,</span>
+    <span class="n">negative_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">CONTINUOUS_TO_DISCRETE_THRESHOLD_NEG</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert continuous action [-1, 1] to discrete action.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        continuous_action: Continuous action value</span>
 <span class="sd">            - &lt; -threshold: SELL</span>
@@ -348,7 +389,7 @@
 <span class="sd">        threshold: Threshold for action conversion (default: CONTINUOUS_TO_DISCRETE_THRESHOLD)</span>
 <span class="sd">            - Lower threshold = more BUY/SELL actions, less HOLD</span>
 <span class="sd">            - Higher threshold = more HOLD actions, less BUY/SELL</span>
-<span class="sd">            </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        Discrete action (0=HOLD, 1=BUY, 2=SELL)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -366,10 +407,10 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">discrete_to_continuous_action</span><span class="p">(</span><span class="n">discrete_action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert discrete action to continuous action.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        discrete_action: Discrete action (0=HOLD, 1=BUY, 2=SELL)</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        Continuous action value in [-1, 1]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -395,7 +436,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -406,7 +447,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

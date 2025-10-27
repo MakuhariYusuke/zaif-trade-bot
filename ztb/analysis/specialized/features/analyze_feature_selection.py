@@ -30,7 +30,6 @@ from sklearn.model_selection import train_test_split
 
 # Import existing utilities
 from ztb.preprocessing.feature_correlation_filter import FeatureCorrelationProcessor
-from ztb.utils.data_utils import load_csv_data
 
 
 class EnhancedFeatureAnalyzer:
@@ -79,25 +78,35 @@ class EnhancedFeatureAnalyzer:
         nan_threshold: float = 0.10,  # 10% NaN率以上
         variance_threshold: float = 1e-10,  # 分散がほぼゼロ
         outlier_threshold: float = 0.30,  # 30% 外れ値以上
+        correlation_threshold: float = 0.95,  # 過度な相関
+        zero_value_threshold: float = 0.80,  # 80% ゼロ値以上
     ) -> Dict[str, Dict[str, Any]]:
         """
-        Harmful特徴量を判定
+        拡張Harmful特徴量判定システム
 
-        Harmfulの定義:
+        Harmfulの定義 (拡張版):
         1. NaN率が高い (>10%)
         2. 分散がほぼゼロ (定数特徴量)
         3. 外れ値が異常に多い (>30%)
+        4. ゼロ値が過度に多い (>80%)
+        5. 他の特徴量と過度に相関 (>95%)
+        6. SAC v427特徴量特化判定 (市場適応性の欠如)
         """
         harmful_features = {}
+
+        # 特徴量の基本統計を事前計算
+        feature_stats = self._calculate_feature_statistics()
 
         for feature in self.features:
             data = self.df[feature]
             issues = []
+            severity_score = 0
 
             # 1. NaN率チェック
             nan_rate = data.isnull().sum() / len(data)
             if nan_rate > nan_threshold:
                 issues.append(f"high_nan_rate:{nan_rate:.2%}")
+                severity_score += 3
 
             # 2. 分散チェック
             data_clean = data.dropna()
@@ -105,9 +114,11 @@ class EnhancedFeatureAnalyzer:
                 variance = data_clean.var()
                 if variance < variance_threshold:
                     issues.append(f"low_variance:{variance:.2e}")
+                    severity_score += 3
 
-            # 3. 外れ値チェック（IQR法）
+            # 3. 外れ値チェック（IQR法 + Z-score）
             if len(data_clean) > 0:
+                # IQR法
                 Q1 = data_clean.quantile(0.25)
                 Q3 = data_clean.quantile(0.75)
                 IQR = Q3 - Q1
@@ -119,16 +130,131 @@ class EnhancedFeatureAnalyzer:
                     ).sum() / len(data_clean)
                     if outlier_rate > outlier_threshold:
                         issues.append(f"high_outlier_rate:{outlier_rate:.2%}")
+                        severity_score += 2
 
+                # Z-score法 (追加)
+                z_scores = abs((data_clean - data_clean.mean()) / data_clean.std())
+                extreme_outlier_rate = (z_scores > 3).sum() / len(data_clean)
+                if extreme_outlier_rate > 0.05:  # 5% 極端外れ値
+                    issues.append(f"extreme_outliers:{extreme_outlier_rate:.2%}")
+                    severity_score += 1
+
+            # 4. ゼロ値チェック
+            if len(data_clean) > 0:
+                zero_rate = (data_clean == 0).sum() / len(data_clean)
+                if zero_rate > zero_value_threshold:
+                    issues.append(f"excessive_zeros:{zero_rate:.2%}")
+                    severity_score += 2
+
+            # 5. 相関チェック (他の特徴量との過度な相関)
+            if feature in feature_stats:
+                high_corr_count = sum(
+                    1
+                    for corr in feature_stats[feature]["correlations"].values()
+                    if abs(corr) > correlation_threshold
+                )
+                if high_corr_count > 0:
+                    issues.append(f"over_correlated:{high_corr_count}_features")
+                    severity_score += 1
+
+            # 6. SAC v427特徴量特化判定
+            sac_issues = self._check_sac_v427_specific_issues(feature, data_clean)
+            if sac_issues:
+                issues.extend(sac_issues)
+                severity_score += len(sac_issues)
+
+            # 判定結果
             if issues:
+                severity = (
+                    "critical"
+                    if severity_score >= 5
+                    else "moderate"
+                    if severity_score >= 3
+                    else "minor"
+                )
+
                 harmful_features[feature] = {
                     "issues": issues,
                     "nan_rate": float(nan_rate),
                     "variance": float(variance) if len(data_clean) > 0 else 0.0,
-                    "severity": "critical" if len(issues) >= 2 else "moderate",
+                    "zero_rate": float(zero_rate) if len(data_clean) > 0 else 0.0,
+                    "severity": severity,
+                    "severity_score": severity_score,
+                    "recommendation": self._generate_removal_recommendation(
+                        issues, severity
+                    ),
                 }
 
         return harmful_features
+
+    def _calculate_feature_statistics(self) -> Dict[str, Dict[str, Any]]:
+        """特徴量の統計情報を計算（相関など）"""
+        stats = {}
+
+        # 相関行列を計算（メモリ効率的に）
+        numeric_features = [
+            f
+            for f in self.features
+            if self.df[f].dtype in ["float64", "float32", "int64", "int32"]
+        ]
+        if len(numeric_features) > 1:
+            corr_matrix = self.df[numeric_features].corr()
+
+            for feature in numeric_features:
+                if feature in corr_matrix.columns:
+                    correlations = corr_matrix[feature].drop(feature).to_dict()
+                    stats[feature] = {
+                        "correlations": correlations,
+                        "mean_corr": abs(corr_matrix[feature].drop(feature)).mean(),
+                        "max_corr": abs(corr_matrix[feature].drop(feature)).max(),
+                    }
+
+        return stats
+
+    def _check_sac_v427_specific_issues(
+        self, feature: str, data: pd.Series
+    ) -> List[str]:
+        """SAC v427特徴量特化の判定"""
+        issues = []
+
+        # 市場レジーム特徴量のチェック
+        if "regime" in feature.lower():
+            # レジーム特徴量は通常0-1の範囲であるべき
+            if data.min() < 0 or data.max() > 1:
+                issues.append("regime_out_of_bounds")
+
+        # 相関特徴量のチェック
+        if "correlation" in feature.lower():
+            # 相関は通常-1から1の範囲
+            if data.min() < -1.1 or data.max() > 1.1:  # 許容誤差
+                issues.append("correlation_out_of_bounds")
+
+        # 技術指標のチェック
+        if any(
+            indicator in feature.lower()
+            for indicator in ["rsi", "macd", "bb", "sma", "ema"]
+        ):
+            # 技術指標の異常値チェック
+            if data.std() > data.abs().mean() * 10:  # 標準偏差が平均の10倍以上
+                issues.append("technical_indicator_unstable")
+
+        # ノイズチェック（高頻度変動）
+        if len(data) > 100:
+            # 連続した値の変化が激しい場合
+            diff_std = data.diff().std()
+            if diff_std > data.std() * 2:
+                issues.append("excessive_noise")
+
+        return issues
+
+    def _generate_removal_recommendation(self, issues: List[str], severity: str) -> str:
+        """削除推奨理由を生成"""
+        if severity == "critical":
+            return "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
+        elif severity == "moderate":
+            return "検討推奨 - 品質改善のために削除を検討"
+        else:
+            return "注意 - 状況に応じて削除を検討"
 
     def select_by_correlation(
         self,
@@ -306,88 +432,350 @@ class EnhancedFeatureAnalyzer:
             },
         }
 
+    def analyze_feature_quality_detailed(self) -> Dict[str, Any]:
+        """
+        詳細な特徴量品質分析を実行
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Enhanced Feature Selection Analysis")
+        Returns:
+            品質分析の詳細レポート
+        """
+        print("🔍 Performing detailed feature quality analysis...")
+
+        # Harmful特徴量の識別
+        harmful_features = self.identify_harmful_features()
+
+        # 品質スコアの計算
+        quality_scores = self._calculate_quality_scores()
+
+        # 特徴量の分類
+        categories = self._categorize_features_by_quality(
+            harmful_features, quality_scores
+        )
+
+        # SAC v427特化の分析
+        sac_analysis = self._analyze_sac_v427_feature_quality()
+
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "total_features": len(self.features),
+            "harmful_features": harmful_features,
+            "quality_scores": quality_scores,
+            "categories": categories,
+            "sac_v427_analysis": sac_analysis,
+            "recommendations": self._generate_quality_recommendations(
+                harmful_features, categories
+            ),
+        }
+
+        return report
+
+    def _calculate_quality_scores(self) -> Dict[str, float]:
+        """各特徴量の品質スコアを計算"""
+        scores = {}
+
+        for feature in self.features:
+            data = self.df[feature].dropna()
+            if len(data) == 0:
+                scores[feature] = 0.0
+                continue
+
+            score = 1.0  # 基本スコア
+
+            # NaN率ペナルティ
+            nan_rate = self.df[feature].isnull().sum() / len(self.df[feature])
+            score -= nan_rate * 0.5
+
+            # 分散ペナルティ（低分散は悪い）
+            variance = data.var()
+            if variance < 1e-6:
+                score -= 0.3
+            elif variance < 1e-3:
+                score -= 0.1
+
+            # 外れ値ペナルティ
+            if len(data) > 10:
+                Q1, Q3 = data.quantile([0.25, 0.75])
+                IQR = Q3 - Q1
+                if IQR > 0:
+                    outliers = ((data < Q1 - 1.5 * IQR) | (data > Q3 + 1.5 * IQR)).sum()
+                    outlier_rate = outliers / len(data)
+                    score -= outlier_rate * 0.2
+
+            # ゼロ値ペナルティ
+            zero_rate = (data == 0).sum() / len(data)
+            if zero_rate > 0.5:
+                score -= zero_rate * 0.3
+
+            scores[feature] = max(0.0, min(1.0, score))  # 0-1にクリップ
+
+        return scores
+
+    def _categorize_features_by_quality(
+        self, harmful_features: Dict, quality_scores: Dict
+    ) -> Dict[str, List[str]]:
+        """品質に基づいて特徴量を分類"""
+        excellent = []
+        good = []
+        fair = []
+        poor = []
+        harmful = list(harmful_features.keys())
+
+        for feature in self.features:
+            if feature in harmful:
+                continue
+
+            score = quality_scores.get(feature, 0.0)
+            if score >= 0.8:
+                excellent.append(feature)
+            elif score >= 0.6:
+                good.append(feature)
+            elif score >= 0.4:
+                fair.append(feature)
+            else:
+                poor.append(feature)
+
+        return {
+            "excellent": excellent,
+            "good": good,
+            "fair": fair,
+            "poor": poor,
+            "harmful": harmful,
+        }
+
+    def _analyze_sac_v427_feature_quality(self) -> Dict[str, Any]:
+        """SAC v427特徴量セットの品質分析"""
+        analysis = {
+            "regime_features": [],
+            "correlation_features": [],
+            "ensemble_features": [],
+            "technical_features": [],
+            "market_features": [],
+        }
+
+        for feature in self.features:
+            feature_lower = feature.lower()
+
+            if "regime" in feature_lower:
+                analysis["regime_features"].append(feature)
+            elif "correlation" in feature_lower or "beta" in feature_lower:
+                analysis["correlation_features"].append(feature)
+            elif "ensemble" in feature_lower:
+                analysis["ensemble_features"].append(feature)
+            elif any(
+                ind in feature_lower for ind in ["rsi", "macd", "bb", "sma", "ema"]
+            ):
+                analysis["technical_features"].append(feature)
+            elif any(
+                mkt in feature_lower
+                for mkt in ["volume", "microstructure", "volatility"]
+            ):
+                analysis["market_features"].append(feature)
+
+        # カテゴリごとの統計
+        category_stats = {}
+        for category, features in analysis.items():
+            if features:
+                scores = [
+                    self._calculate_quality_scores().get(f, 0.0) for f in features
+                ]
+                category_stats[category] = {
+                    "count": len(features),
+                    "avg_quality": sum(scores) / len(scores),
+                    "excellent_count": sum(1 for s in scores if s >= 0.8),
+                    "poor_count": sum(1 for s in scores if s < 0.4),
+                }
+
+        analysis["category_stats"] = category_stats
+        return analysis
+
+    def _generate_quality_recommendations(
+        self, harmful_features: Dict, categories: Dict
+    ) -> List[str]:
+        """品質分析に基づく推奨事項を生成"""
+        recommendations = []
+
+        # Harmful特徴量の推奨
+        if harmful_features:
+            critical_count = sum(
+                1 for h in harmful_features.values() if h["severity"] == "critical"
+            )
+            recommendations.append(
+                f"⚠️  {len(harmful_features)}個のharmful特徴量を検出（うち{critical_count}個がcritical）"
+            )
+            recommendations.append("   → 即時削除を推奨")
+
+        # 品質カテゴリの推奨
+        poor_count = len(categories["poor"])
+        if poor_count > 0:
+            recommendations.append(f"📉 {poor_count}個のpoor品質特徴量を検出")
+            recommendations.append("   → 品質改善または削除を検討")
+
+        # SAC v427特化の推奨
+        sac_analysis = self._analyze_sac_v427_feature_quality()
+        for category, stats in sac_analysis.get("category_stats", {}).items():
+            if stats["poor_count"] > stats["count"] * 0.3:  # 30%以上がpoor
+                recommendations.append(f"🔧 {category}カテゴリの品質改善が必要")
+
+        return recommendations
+
+
+def main():
+    """メイン実行関数"""
+    parser = argparse.ArgumentParser(
+        description="拡張特徴量分析システム",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用例:
+  python analyze_feature_selection.py --data ml-dataset-enhanced-balanced.csv --target-features 60
+  python analyze_feature_selection.py --data data.csv --analyze-quality --output-dir reports/
+        """,
+    )
+
     parser.add_argument(
-        "--data",
+        "--data", type=str, required=True, help="分析対象のデータファイルパス"
+    )
+
+    parser.add_argument(
+        "--target-column",
         type=str,
-        default="ml-dataset-enhanced-balanced.csv",
-        help="Path to dataset",
+        default="win",
+        help="ターゲット列名 (デフォルト: win)",
     )
+
     parser.add_argument(
-        "--target-features",
-        type=int,
-        default=60,
-        help="Target number of features to select",
+        "--target-features", type=int, default=60, help="目標特徴量数 (デフォルト: 60)"
     )
+
     parser.add_argument(
-        "--output-dir", type=str, default="reports", help="Output directory for reports"
+        "--analyze-quality", action="store_true", help="詳細品質分析を実行"
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="reports",
+        help="出力ディレクトリ (デフォルト: reports)",
+    )
+
+    parser.add_argument(
+        "--nan-threshold", type=float, default=0.10, help="NaN率閾値 (デフォルト: 0.10)"
+    )
+
+    parser.add_argument(
+        "--correlation-threshold",
+        type=float,
+        default=0.90,
+        help="相関閾値 (デフォルト: 0.90)",
     )
 
     args = parser.parse_args()
 
-    # Load data
-    print(f"📂 Loading data from {args.data}...")
-    df = load_csv_data(args.data)
-    print(f"   Loaded {len(df)} rows, {len(df.columns)} columns")
+    try:
+        # データ読み込み
+        print(f"📊 Loading data from {args.data}...")
+        df = pd.read_csv(args.data)
 
-    # Create analyzer
-    analyzer = EnhancedFeatureAnalyzer(df)
-    print(f"   Identified {len(analyzer.features)} feature columns")
+        # アナライザー初期化
+        analyzer = EnhancedFeatureAnalyzer(df=df, target_column=args.target_column)
 
-    # Run analysis
-    results = analyzer.suggest_optimal_features(
-        target_count=args.target_features, remove_harmful=True
-    )
+        print(f"✅ Loaded {len(df)} rows, {len(analyzer.features)} features")
 
-    # Print summary
-    print("\n" + "=" * 80)
-    print("📋 FEATURE SELECTION SUMMARY")
-    print("=" * 80)
-    print(f"Original features:     {results['summary']['original_count']}")
-    print(f"Harmful features:      {results['summary']['harmful_count']}")
-    print(f"Correlation removed:   {results['summary']['correlation_removed_count']}")
-    print(f"Final selected:        {results['summary']['final_count']}")
-    print(f"Reduction rate:        {results['summary']['reduction_rate']:.1f}%")
-    print("=" * 80)
+        # 出力ディレクトリ作成
+        os.makedirs(args.output_dir, exist_ok=True)
 
-    # Save results
-    os.makedirs(args.output_dir, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if args.analyze_quality:
+            # 詳細品質分析
+            print("\n🔍 Running detailed quality analysis...")
+            quality_report = analyzer.analyze_feature_quality_detailed()
 
-    # JSON report
-    report_path = os.path.join(args.output_dir, f"feature_selection_{timestamp}.json")
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-    print(f"\n💾 Detailed report saved to: {report_path}")
+            # 品質レポート保存
+            quality_file = os.path.join(
+                args.output_dir,
+                f"feature_quality_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            )
+            with open(quality_file, "w", encoding="utf-8") as f:
+                json.dump(quality_report, f, indent=2, ensure_ascii=False)
 
-    # Selected features list
-    selected_path = os.path.join(args.output_dir, "recommended_features.txt")
-    with open(selected_path, "w", encoding="utf-8") as f:
-        f.write("# Recommended Features (ranked by importance)\n")
-        f.write(f"# Generated: {datetime.now().isoformat()}\n")
-        f.write(f"# Total: {len(results['selected_features'])} features\n\n")
-        for i, feat in enumerate(results["selected_features"], 1):
-            imp = results["importance_dict"][feat]["importance_mean"]
-            f.write(f"{i:3d}. {feat:40s} (importance: {imp:.6f})\n")
-    print(f"📝 Recommended features saved to: {selected_path}")
+            print(f"📄 Quality analysis saved to: {quality_file}")
 
-    # Harmful features list
-    if results["harmful_features"]:
-        harmful_path = os.path.join(args.output_dir, "harmful_features.txt")
-        with open(harmful_path, "w", encoding="utf-8") as f:
-            f.write("# Harmful Features (should be removed)\n")
-            f.write(f"# Generated: {datetime.now().isoformat()}\n")
-            f.write(f"# Total: {len(results['harmful_features'])} features\n\n")
-            for feat, info in results["harmful_features"].items():
-                f.write(f"- {feat}\n")
-                f.write(f"  Issues: {', '.join(info['issues'])}\n")
-                f.write(f"  Severity: {info['severity']}\n\n")
-        print(f"⚠️  Harmful features saved to: {harmful_path}")
+            # 品質サマリー表示
+            print("\n📊 Quality Analysis Summary:")
+            print(f"   Total features: {quality_report['total_features']}")
+            print(f"   Harmful features: {len(quality_report['harmful_features'])}")
+            print(
+                f"   Excellent quality: {len(quality_report['categories']['excellent'])}"
+            )
+            print(f"   Good quality: {len(quality_report['categories']['good'])}")
+            print(f"   Fair quality: {len(quality_report['categories']['fair'])}")
+            print(f"   Poor quality: {len(quality_report['categories']['poor'])}")
 
-    print("\n✅ Feature selection analysis complete!")
+            # 推奨事項表示
+            print("\n💡 Recommendations:")
+            for rec in quality_report["recommendations"]:
+                print(f"   {rec}")
+
+        else:
+            # 従来の特徴量選択
+            print(f"\n🎯 Selecting optimal {args.target_features} features...")
+
+            selected_features, removal_log = analyzer.select_optimal_features(
+                target_count=args.target_features,
+                nan_threshold=args.nan_threshold,
+                correlation_threshold=args.correlation_threshold,
+            )
+
+            # 結果保存
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            result_file = os.path.join(
+                args.output_dir, f"feature_selection_{timestamp}.json"
+            )
+
+            result = {
+                "timestamp": timestamp,
+                "original_features": len(analyzer.features),
+                "selected_features": len(selected_features),
+                "target_count": args.target_features,
+                "selected_feature_list": selected_features,
+                "removal_log": removal_log,
+                "parameters": {
+                    "nan_threshold": args.nan_threshold,
+                    "correlation_threshold": args.correlation_threshold,
+                },
+            }
+
+            with open(result_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+
+            print("✅ Feature selection completed!")
+            print(
+                f"   Selected: {len(selected_features)}/{len(analyzer.features)} features"
+            )
+            print(f"   Results saved to: {result_file}")
+
+            # 特徴量リスト保存
+            feature_list_file = os.path.join(
+                args.output_dir, "recommended_features.txt"
+            )
+            with open(feature_list_file, "w", encoding="utf-8") as f:
+                f.write("# Recommended Features\n")
+                f.write(f"# Generated: {timestamp}\n")
+                f.write(
+                    f"# Selected: {len(selected_features)}/{len(analyzer.features)}\n\n"
+                )
+                for feature in selected_features:
+                    f.write(f"{feature}\n")
+
+            print(f"   Feature list saved to: {feature_list_file}")
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())

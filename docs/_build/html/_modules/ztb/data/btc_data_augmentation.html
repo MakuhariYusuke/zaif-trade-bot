@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.data.btc_data_augmentation</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -98,13 +98,12 @@
 <span class="sd">by adding diverse market conditions and synthetic data generation.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.performance_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceMonitor</span>
@@ -127,19 +126,27 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_base_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load base BTC dataset&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;.csv&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;.pkl&#39;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.pkl&quot;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file format: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unsupported file format: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data_path</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># Convert timestamp to datetime</span>
-            <span class="k">if</span> <span class="s1">&#39;timestamp&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span>
+                    <span class="n">drop</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded base data: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Loaded base data: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load base data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -156,36 +163,44 @@
             <span class="n">bias_analysis</span> <span class="o">=</span> <span class="p">{}</span>
 
             <span class="c1"># Time period analysis</span>
-            <span class="n">time_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-            <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;time_range_days&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_range</span><span class="o">.</span><span class="n">days</span>
-            <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;data_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-            <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;data_end&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="n">time_range</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;time_range_days&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_range</span><span class="o">.</span><span class="n">days</span>
+            <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;data_start&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;data_end&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
             <span class="c1"># Price trend analysis</span>
-            <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="n">start_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">end_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;close&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">start_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">end_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
                 <span class="n">total_return</span> <span class="o">=</span> <span class="p">(</span><span class="n">end_price</span> <span class="o">-</span> <span class="n">start_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">start_price</span>
 
                 <span class="c1"># Calculate trend strength</span>
-                <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
                 <span class="n">positive_days</span> <span class="o">=</span> <span class="p">(</span><span class="n">returns</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
                 <span class="n">total_days</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;trend_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">positive_days</span> <span class="o">/</span> <span class="n">total_days</span> <span class="k">if</span> <span class="n">total_days</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;total_return&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_return</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;trend_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">positive_days</span> <span class="o">/</span> <span class="n">total_days</span> <span class="k">if</span> <span class="n">total_days</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;total_return&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_return</span>
 
                 <span class="c1"># Volatility analysis</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;max_drawdown&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_max_drawdown</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">])</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_max_drawdown</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
 
             <span class="c1"># Market regime analysis</span>
-            <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;regime_distribution&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_market_regimes</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;regime_distribution&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_market_regimes</span><span class="p">()</span>
 
             <span class="c1"># Volume analysis</span>
-            <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;avg_volume&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-                <span class="n">bias_analysis</span><span class="p">[</span><span class="s1">&#39;volume_volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;avg_volume&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">bias_analysis</span><span class="p">[</span><span class="s2">&quot;volume_volatility&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bias analysis completed: </span><span class="si">{</span><span class="n">bias_analysis</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">bias_analysis</span></div>
@@ -199,7 +214,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_market_regimes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Analyze distribution of market regimes&quot;&quot;&quot;</span>
-        <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
         <span class="c1"># Simple regime classification based on returns</span>
         <span class="n">bullish</span> <span class="o">=</span> <span class="p">(</span><span class="n">returns</span> <span class="o">&gt;</span> <span class="mf">0.01</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
@@ -208,9 +223,9 @@
 
         <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bullish_pct&#39;</span><span class="p">:</span> <span class="n">bullish</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="s1">&#39;bearish_pct&#39;</span><span class="p">:</span> <span class="n">bearish</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="s1">&#39;sideways_pct&#39;</span><span class="p">:</span> <span class="n">sideways</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="s2">&quot;bullish_pct&quot;</span><span class="p">:</span> <span class="n">bullish</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;bearish_pct&quot;</span><span class="p">:</span> <span class="n">bearish</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;sideways_pct&quot;</span><span class="p">:</span> <span class="n">sideways</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
         <span class="p">}</span>
 
 <div class="viewcode-block" id="BTCDataAugmentor.extend_historical_data">
@@ -228,7 +243,7 @@
 
             <span class="c1"># Generate extended data</span>
             <span class="n">extended_data</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="n">current_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">current_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
 
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">years_back</span> <span class="o">*</span> <span class="mi">365</span><span class="p">):</span>  <span class="c1"># Approximate days</span>
                 <span class="c1"># Generate synthetic data for each day</span>
@@ -238,13 +253,17 @@
 
             <span class="c1"># Convert to DataFrame and combine</span>
             <span class="n">extended_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">extended_data</span><span class="p">)</span>
-            <span class="n">extended_df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">extended_df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+            <span class="n">extended_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">extended_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
 
             <span class="c1"># Combine with original data</span>
             <span class="n">combined_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">extended_df</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">combined_data</span> <span class="o">=</span> <span class="n">combined_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">combined_data</span> <span class="o">=</span> <span class="n">combined_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span>
+                <span class="n">drop</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extended data from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">combined_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Extended data from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">combined_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="n">combined_data</span></div>
 
 
@@ -252,49 +271,60 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate statistical properties of base data for synthetic generation&quot;&quot;&quot;</span>
         <span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
 
-        <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;price_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;price_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;price_min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;price_max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;close&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;price_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;price_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;price_min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;price_max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">volumes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;volume_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;volume_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">volumes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;volume_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;volume_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;return_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;return_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;return_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;return_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="n">stats</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_synthetic_day</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_synthetic_day</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate synthetic data for a single day&quot;&quot;&quot;</span>
         <span class="n">day_data</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># Generate multiple price points per day (assuming minute data)</span>
         <span class="n">minutes_per_day</span> <span class="o">=</span> <span class="mi">1440</span>  <span class="c1"># 24 hours * 60 minutes</span>
-        <span class="n">base_price</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_mean&#39;</span><span class="p">,</span> <span class="mi">5000000</span><span class="p">)</span>
+        <span class="n">base_price</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_mean&quot;</span><span class="p">,</span> <span class="mi">5000000</span><span class="p">)</span>
 
         <span class="c1"># Add some trend and volatility variation</span>
         <span class="n">day_trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>  <span class="c1"># Random daily trend</span>
-        <span class="n">day_volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;return_std&#39;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">day_volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;return_std&quot;</span><span class="p">,</span> <span class="mf">0.01</span>
+        <span class="p">)</span>
 
-        <span class="n">current_price</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">))</span>  <span class="c1"># Start near base price</span>
+        <span class="n">current_price</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="p">)</span>  <span class="c1"># Start near base price</span>
 
         <span class="k">for</span> <span class="n">minute</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">minutes_per_day</span><span class="p">):</span>
             <span class="n">timestamp</span> <span class="o">=</span> <span class="n">date</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">minute</span><span class="p">)</span>
 
             <span class="c1"># Generate price movement</span>
-            <span class="n">return_change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">day_trend</span> <span class="o">/</span> <span class="n">minutes_per_day</span><span class="p">,</span> <span class="n">day_volatility</span><span class="p">)</span>
-            <span class="n">current_price</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">return_change</span><span class="p">)</span>
+            <span class="n">return_change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                <span class="n">day_trend</span> <span class="o">/</span> <span class="n">minutes_per_day</span><span class="p">,</span> <span class="n">day_volatility</span>
+            <span class="p">)</span>
+            <span class="n">current_price</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">return_change</span>
 
             <span class="c1"># Ensure price stays within reasonable bounds</span>
-            <span class="n">current_price</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">current_price</span><span class="p">,</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_min&#39;</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">),</span>
-                                  <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_max&#39;</span><span class="p">,</span> <span class="mi">10000000</span><span class="p">))</span>
+            <span class="n">current_price</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">current_price</span><span class="p">,</span>
+                <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_min&quot;</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">),</span>
+                <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_max&quot;</span><span class="p">,</span> <span class="mi">10000000</span><span class="p">),</span>
+            <span class="p">)</span>
 
             <span class="c1"># Generate OHLC</span>
             <span class="n">volatility</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">))</span>
@@ -304,51 +334,57 @@
             <span class="n">close</span> <span class="o">=</span> <span class="n">current_price</span>
 
             <span class="c1"># Generate volume</span>
-            <span class="n">volume</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volume_mean&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
-                                           <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volume_std&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)))</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="mi">1</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;volume_mean&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;volume_std&quot;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
 
             <span class="c1"># Create record</span>
             <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
-                <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">open_price</span><span class="p">,</span>
-                <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">high</span><span class="p">,</span>
-                <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">low</span><span class="p">,</span>
-                <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span>
-                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">volume</span><span class="p">,</span>
-                <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">return_change</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">open_price</span><span class="p">,</span>
+                <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">high</span><span class="p">,</span>
+                <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">low</span><span class="p">,</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">volume</span><span class="p">,</span>
+                <span class="s2">&quot;returns&quot;</span><span class="p">:</span> <span class="n">return_change</span><span class="p">,</span>
             <span class="p">}</span>
 
             <span class="c1"># Add technical indicators if they exist in base data</span>
-            <span class="k">if</span> <span class="s1">&#39;sma_5&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;sma_5&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
                 <span class="n">record</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_technical_indicators</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">day_data</span><span class="p">))</span>
 
             <span class="n">day_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">day_data</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_technical_indicators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_record</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">day_data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_technical_indicators</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">current_record</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">day_data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate basic technical indicators for synthetic data&quot;&quot;&quot;</span>
         <span class="n">indicators</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="c1"># Simple moving averages (simplified)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">day_data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
-            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]]</span>
-            <span class="n">indicators</span><span class="p">[</span><span class="s1">&#39;sma_5&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
+            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]]</span>
+            <span class="n">indicators</span><span class="p">[</span><span class="s2">&quot;sma_5&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">day_data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
-            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">9</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]]</span>
-            <span class="n">indicators</span><span class="p">[</span><span class="s1">&#39;sma_10&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
+            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">9</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]]</span>
+            <span class="n">indicators</span><span class="p">[</span><span class="s2">&quot;sma_10&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">day_data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
-            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">19</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]]</span>
-            <span class="n">indicators</span><span class="p">[</span><span class="s1">&#39;sma_20&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
+            <span class="n">closes</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">19</span><span class="p">:]]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]]</span>
+            <span class="n">indicators</span><span class="p">[</span><span class="s2">&quot;sma_20&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">closes</span><span class="p">)</span>
 
         <span class="c1"># RSI (simplified)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">day_data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">14</span><span class="p">:</span>
             <span class="n">gains</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">day_data</span><span class="p">[</span><span class="o">-</span><span class="mi">13</span><span class="p">:]</span> <span class="o">+</span> <span class="p">[</span><span class="n">current_record</span><span class="p">]:</span>
-                <span class="n">ret</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;returns&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">ret</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">gains</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
                     <span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -360,16 +396,18 @@
             <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span> <span class="k">if</span> <span class="n">losses</span> <span class="k">else</span> <span class="mi">0</span>
 
             <span class="k">if</span> <span class="n">avg_loss</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">indicators</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
+                <span class="n">indicators</span><span class="p">[</span><span class="s2">&quot;rsi_14&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">rs</span> <span class="o">=</span> <span class="n">avg_gain</span> <span class="o">/</span> <span class="n">avg_loss</span>
-                <span class="n">indicators</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
+                <span class="n">indicators</span><span class="p">[</span><span class="s2">&quot;rsi_14&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">indicators</span>
 
 <div class="viewcode-block" id="BTCDataAugmentor.add_diverse_market_conditions">
 <a class="viewcode-back" href="../../../api/generated/ztb.data.html#ztb.BTCDataAugmentor.add_diverse_market_conditions">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_diverse_market_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_diverse_market_conditions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">target_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10000</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Add diverse market conditions to mitigate bias&quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_monitor</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -381,46 +419,84 @@
             <span class="n">base_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_base_statistics</span><span class="p">()</span>
 
             <span class="c1"># Generate data for different market regimes</span>
-            <span class="n">regimes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;strong_bull&#39;</span><span class="p">,</span> <span class="s1">&#39;moderate_bull&#39;</span><span class="p">,</span> <span class="s1">&#39;sideways&#39;</span><span class="p">,</span> <span class="s1">&#39;moderate_bear&#39;</span><span class="p">,</span> <span class="s1">&#39;strong_bear&#39;</span><span class="p">,</span> <span class="s1">&#39;high_volatility&#39;</span><span class="p">,</span> <span class="s1">&#39;low_volatility&#39;</span><span class="p">]</span>
+            <span class="n">regimes</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s2">&quot;strong_bull&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;moderate_bull&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;sideways&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;moderate_bear&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;strong_bear&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;high_volatility&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;low_volatility&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
 
             <span class="n">samples_per_regime</span> <span class="o">=</span> <span class="n">target_samples</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">regimes</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">regime</span> <span class="ow">in</span> <span class="n">regimes</span><span class="p">:</span>
-                <span class="n">regime_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_regime_data</span><span class="p">(</span><span class="n">regime</span><span class="p">,</span> <span class="n">samples_per_regime</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">)</span>
+                <span class="n">regime_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_regime_data</span><span class="p">(</span>
+                    <span class="n">regime</span><span class="p">,</span> <span class="n">samples_per_regime</span><span class="p">,</span> <span class="n">base_stats</span>
+                <span class="p">)</span>
                 <span class="n">diverse_data</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">regime_data</span><span class="p">)</span>
 
             <span class="c1"># Convert to DataFrame</span>
             <span class="n">diverse_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">diverse_data</span><span class="p">)</span>
-            <span class="n">diverse_df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">diverse_df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+            <span class="n">diverse_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">diverse_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
 
             <span class="c1"># Combine with original data</span>
             <span class="n">combined_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">,</span> <span class="n">diverse_df</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">combined_data</span> <span class="o">=</span> <span class="n">combined_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">combined_data</span> <span class="o">=</span> <span class="n">combined_data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span>
+                <span class="n">drop</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added diverse conditions: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">diverse_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> new samples&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">combined_data</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_regime_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regime</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_regime_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">regime</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate data for specific market regime&quot;&quot;&quot;</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># Regime-specific parameters</span>
         <span class="n">regime_params</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;strong_bull&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.015</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">},</span>
-            <span class="s1">&#39;moderate_bull&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">},</span>
-            <span class="s1">&#39;sideways&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.008</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">},</span>
-            <span class="s1">&#39;moderate_bear&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.005</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.012</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">},</span>
-            <span class="s1">&#39;strong_bear&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.02</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">1.8</span><span class="p">},</span>
-            <span class="s1">&#39;high_volatility&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">},</span>
-            <span class="s1">&#39;low_volatility&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.003</span><span class="p">,</span> <span class="s1">&#39;volume_multiplier&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span>
+            <span class="s2">&quot;strong_bull&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.015</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;moderate_bull&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;sideways&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.008</span><span class="p">,</span> <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">},</span>
+            <span class="s2">&quot;moderate_bear&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.005</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.012</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;strong_bear&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.8</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;high_volatility&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;low_volatility&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="mf">0.003</span><span class="p">,</span>
+                <span class="s2">&quot;volume_multiplier&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="p">},</span>
         <span class="p">}</span>
 
         <span class="n">params</span> <span class="o">=</span> <span class="n">regime_params</span><span class="p">[</span><span class="n">regime</span><span class="p">]</span>
-        <span class="n">base_price</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_mean&#39;</span><span class="p">,</span> <span class="mi">5000000</span><span class="p">)</span>
+        <span class="n">base_price</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_mean&quot;</span><span class="p">,</span> <span class="mi">5000000</span><span class="p">)</span>
 
         <span class="c1"># Generate start date before existing data</span>
-        <span class="n">start_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">365</span><span class="p">)</span>
+        <span class="n">start_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">365</span><span class="p">)</span>
 
         <span class="n">current_price</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">))</span>
 
@@ -428,30 +504,39 @@
             <span class="n">timestamp</span> <span class="o">=</span> <span class="n">start_date</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
 
             <span class="c1"># Generate price movement based on regime</span>
-            <span class="n">return_change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;trend&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1440</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">])</span>
-            <span class="n">current_price</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">return_change</span><span class="p">)</span>
+            <span class="n">return_change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;trend&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">1440</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">current_price</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">return_change</span>
 
             <span class="c1"># Generate OHLC</span>
-            <span class="n">volatility</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]))</span>
+            <span class="n">volatility</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]))</span>
             <span class="n">high</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">volatility</span><span class="p">)</span>
             <span class="n">low</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">volatility</span><span class="p">)</span>
-            <span class="n">open_price</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">))</span>
+            <span class="n">open_price</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">close</span> <span class="o">=</span> <span class="n">current_price</span>
 
             <span class="c1"># Generate volume</span>
-            <span class="n">base_volume</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volume_mean&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-            <span class="n">volume</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">base_volume</span> <span class="o">*</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;volume_multiplier&#39;</span><span class="p">],</span>
-                                           <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volume_std&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)))</span>
+            <span class="n">base_volume</span> <span class="o">=</span> <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;volume_mean&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="mi">1</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">base_volume</span> <span class="o">*</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;volume_multiplier&quot;</span><span class="p">],</span>
+                    <span class="n">base_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;volume_std&quot;</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
 
             <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
-                <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">open_price</span><span class="p">,</span>
-                <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">high</span><span class="p">,</span>
-                <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">low</span><span class="p">,</span>
-                <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span>
-                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">volume</span><span class="p">,</span>
-                <span class="s1">&#39;returns&#39;</span><span class="p">:</span> <span class="n">return_change</span><span class="p">,</span>
-                <span class="s1">&#39;market_regime&#39;</span><span class="p">:</span> <span class="n">regime</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">open_price</span><span class="p">,</span>
+                <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">high</span><span class="p">,</span>
+                <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">low</span><span class="p">,</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">close</span><span class="p">,</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">volume</span><span class="p">,</span>
+                <span class="s2">&quot;returns&quot;</span><span class="p">:</span> <span class="n">return_change</span><span class="p">,</span>
+                <span class="s2">&quot;market_regime&quot;</span><span class="p">:</span> <span class="n">regime</span><span class="p">,</span>
             <span class="p">}</span>
 
             <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
@@ -465,14 +550,16 @@
         <span class="n">output_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
         <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">output_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;.csv&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">output_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
             <span class="n">augmented_data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">output_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s1">&#39;.pkl&#39;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">output_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.pkl&quot;</span><span class="p">:</span>
             <span class="n">augmented_data</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported output format: </span><span class="si">{</span><span class="n">output_path</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved augmented data to </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">augmented_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records)&quot;</span><span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Saved augmented data to </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">augmented_data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records)&quot;</span>
+        <span class="p">)</span></div>
 </div>
 
 
@@ -493,32 +580,32 @@
             <span class="n">bias_report</span> <span class="o">=</span> <span class="p">{}</span>
 
             <span class="c1"># Time period bias</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;time_period_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_time_period_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;time_period_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_time_period_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="c1"># Trend bias</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;trend_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_trend_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;trend_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_trend_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="c1"># Volatility bias</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;volatility_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volatility_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;volatility_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volatility_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="c1"># Market regime bias</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;regime_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_regime_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;regime_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_regime_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="c1"># Volume bias</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;volume_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volume_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;volume_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volume_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="c1"># BTC-specific biases</span>
-            <span class="n">bias_report</span><span class="p">[</span><span class="s1">&#39;btc_specific_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_btc_specific_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">bias_report</span><span class="p">[</span><span class="s2">&quot;btc_specific_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_btc_specific_bias</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="n">bias_report</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_time_period_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if data covers diverse time periods&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;timestamp&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;No timestamp column&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No timestamp column&quot;</span><span class="p">}</span>
 
-        <span class="n">timestamps</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+        <span class="n">timestamps</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
         <span class="n">time_range</span> <span class="o">=</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
 
         <span class="c1"># Check for seasonal coverage</span>
@@ -528,22 +615,22 @@
         <span class="n">bias_score</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">months_covered</span><span class="p">)</span> <span class="o">/</span> <span class="mi">12</span><span class="p">)</span>  <span class="c1"># Lower score = more diverse</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
-            <span class="s1">&#39;time_range_days&#39;</span><span class="p">:</span> <span class="n">time_range</span><span class="o">.</span><span class="n">days</span><span class="p">,</span>
-            <span class="s1">&#39;months_covered&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">months_covered</span><span class="p">),</span>
-            <span class="s1">&#39;years_covered&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">years_covered</span><span class="p">),</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.7</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+            <span class="s2">&quot;time_range_days&quot;</span><span class="p">:</span> <span class="n">time_range</span><span class="o">.</span><span class="n">days</span><span class="p">,</span>
+            <span class="s2">&quot;months_covered&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">months_covered</span><span class="p">),</span>
+            <span class="s2">&quot;years_covered&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">years_covered</span><span class="p">),</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_trend_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for trend bias (overwhelming bull/bear markets)&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s1">&#39;close&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;No returns or price data&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;close&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No returns or price data&quot;</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
         <span class="n">positive_returns</span> <span class="o">=</span> <span class="p">(</span><span class="n">returns</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="n">total_returns</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
@@ -554,46 +641,48 @@
         <span class="n">bias_score</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">trend_ratio</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
-            <span class="s1">&#39;positive_ratio&#39;</span><span class="p">:</span> <span class="n">trend_ratio</span><span class="p">,</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.6</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+            <span class="s2">&quot;positive_ratio&quot;</span><span class="p">:</span> <span class="n">trend_ratio</span><span class="p">,</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.6</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_volatility_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for volatility clustering or bias&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s1">&#39;close&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;No returns or price data&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;close&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No returns or price data&quot;</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
         <span class="n">volatility</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
 
         <span class="c1"># Check for volatility clustering (periods of high/low vol)</span>
         <span class="n">rolling_vol</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
-        <span class="n">vol_of_vol</span> <span class="o">=</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">vol_of_vol</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">rolling_vol</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
 
         <span class="c1"># High vol_of_vol indicates volatility clustering</span>
         <span class="n">bias_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">vol_of_vol</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
-            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="n">volatility</span><span class="p">,</span>
-            <span class="s1">&#39;vol_of_vol&#39;</span><span class="p">:</span> <span class="n">vol_of_vol</span><span class="p">,</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.7</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+            <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="n">volatility</span><span class="p">,</span>
+            <span class="s2">&quot;vol_of_vol&quot;</span><span class="p">:</span> <span class="n">vol_of_vol</span><span class="p">,</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_regime_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for market regime bias&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s1">&#39;close&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;No returns or price data&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;close&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No returns or price data&quot;</span><span class="p">}</span>
 
-        <span class="k">if</span> <span class="s1">&#39;returns&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;returns&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
         <span class="c1"># Classify regimes</span>
         <span class="n">high_vol_threshold</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">*</span> <span class="mi">2</span>
@@ -606,10 +695,10 @@
 
         <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
         <span class="n">regime_distribution</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;high_vol_pct&#39;</span><span class="p">:</span> <span class="n">high_vol_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
-            <span class="s1">&#39;bull_pct&#39;</span><span class="p">:</span> <span class="n">bull_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
-            <span class="s1">&#39;bear_pct&#39;</span><span class="p">:</span> <span class="n">bear_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
-            <span class="s1">&#39;sideways_pct&#39;</span><span class="p">:</span> <span class="n">sideways_periods</span> <span class="o">/</span> <span class="n">total</span>
+            <span class="s2">&quot;high_vol_pct&quot;</span><span class="p">:</span> <span class="n">high_vol_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
+            <span class="s2">&quot;bull_pct&quot;</span><span class="p">:</span> <span class="n">bull_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
+            <span class="s2">&quot;bear_pct&quot;</span><span class="p">:</span> <span class="n">bear_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
+            <span class="s2">&quot;sideways_pct&quot;</span><span class="p">:</span> <span class="n">sideways_periods</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="c1"># Check if any regime dominates</span>
@@ -617,17 +706,17 @@
         <span class="n">bias_score</span> <span class="o">=</span> <span class="n">max_regime_pct</span> <span class="o">-</span> <span class="mf">0.25</span>  <span class="c1"># Ideal is ~25% each</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
-            <span class="s1">&#39;regime_distribution&#39;</span><span class="p">:</span> <span class="n">regime_distribution</span><span class="p">,</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.5</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+            <span class="s2">&quot;regime_distribution&quot;</span><span class="p">:</span> <span class="n">regime_distribution</span><span class="p">,</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_volume_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for volume-related biases&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;No volume data available&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="s2">&quot;volume&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No volume data available&quot;</span><span class="p">}</span>
 
-        <span class="n">volumes</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="n">volumes</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
 
         <span class="c1"># Check for volume concentration</span>
         <span class="n">volume_skewness</span> <span class="o">=</span> <span class="n">volumes</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span>
@@ -637,23 +726,25 @@
         <span class="n">bias_score</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">volume_skewness</span><span class="p">)</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">volume_kurtosis</span><span class="p">))</span> <span class="o">/</span> <span class="mi">10</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
-            <span class="s1">&#39;volume_skewness&#39;</span><span class="p">:</span> <span class="n">volume_skewness</span><span class="p">,</span>
-            <span class="s1">&#39;volume_kurtosis&#39;</span><span class="p">:</span> <span class="n">volume_kurtosis</span><span class="p">,</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.5</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+            <span class="s2">&quot;volume_skewness&quot;</span><span class="p">:</span> <span class="n">volume_skewness</span><span class="p">,</span>
+            <span class="s2">&quot;volume_kurtosis&quot;</span><span class="p">:</span> <span class="n">volume_kurtosis</span><span class="p">,</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_btc_specific_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for BTC-specific biases (halving cycles, news events, etc.)&quot;&quot;&quot;</span>
         <span class="n">bias_issues</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">if</span> <span class="s1">&#39;timestamp&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">timestamps</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">timestamps</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
 
             <span class="c1"># Check for halving cycle bias (BTC halves every 4 years)</span>
             <span class="n">years</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">timestamps</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">years</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="n">bias_issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Limited to single year - missing halving cycle effects&quot;</span><span class="p">)</span>
+                <span class="n">bias_issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Limited to single year - missing halving cycle effects&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># Check for weekend/weekday bias (crypto trades 24/7)</span>
             <span class="n">weekday_dist</span> <span class="o">=</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">weekday</span><span class="o">.</span><span class="n">value_counts</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -661,16 +752,16 @@
                 <span class="n">bias_issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Uneven weekday distribution&quot;</span><span class="p">)</span>
 
         <span class="c1"># Check for price level bias (only high/low price ranges)</span>
-        <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">prices</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;close&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
             <span class="n">price_range</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">/</span> <span class="n">prices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">price_range</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># Less than 2x range</span>
                 <span class="n">bias_issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Limited price range - missing full market cycles&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;bias_detected&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bias_issues</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="s1">&#39;issues&#39;</span><span class="p">:</span> <span class="n">bias_issues</span><span class="p">,</span>
-            <span class="s1">&#39;bias_score&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bias_issues</span><span class="p">)</span> <span class="o">/</span> <span class="mi">5</span>  <span class="c1"># Normalize to 0-1</span>
+            <span class="s2">&quot;bias_detected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bias_issues</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;issues&quot;</span><span class="p">:</span> <span class="n">bias_issues</span><span class="p">,</span>
+            <span class="s2">&quot;bias_score&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">bias_issues</span><span class="p">)</span> <span class="o">/</span> <span class="mi">5</span><span class="p">,</span>  <span class="c1"># Normalize to 0-1</span>
         <span class="p">}</span></div>
 
 </pre></div>
@@ -688,7 +779,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -699,7 +790,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

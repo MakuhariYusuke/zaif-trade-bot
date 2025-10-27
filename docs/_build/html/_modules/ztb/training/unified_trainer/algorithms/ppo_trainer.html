@@ -1,0 +1,419 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.unified_trainer.algorithms.ppo_trainer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../algorithms.html">ztb.training.unified_trainer.algorithms</a></li>
+      <li class="breadcrumb-item active">ztb.training.unified_trainer.algorithms.ppo_trainer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.unified_trainer.algorithms.ppo_trainer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;PPO algorithm trainer implementation.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Monitor</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.config.configuration_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.environments.environment_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DEFAULT_INITIAL_BALANCE</span><span class="p">,</span>
+    <span class="n">EnvironmentConfig</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.environments.heavy_trading_env</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.base.base_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAlgorithmTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.base.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingProgressCallback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.utils.distributed_training</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_distributed_info</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.utils.training_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingStats</span>
+
+
+<div class="viewcode-block" id="PPOTrainer">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PPOTrainer</span><span class="p">(</span><span class="n">BaseAlgorithmTrainer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;PPO algorithm trainer with enhanced features from SACTrainer.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">gradient_accumulation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">system_optimizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+        <span class="c1"># model will be instantiated later; annotate as optional to satisfy mypy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PPO</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gradient_accumulation_steps</span> <span class="o">=</span> <span class="n">gradient_accumulation_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span> <span class="o">=</span> <span class="n">system_optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="p">:</span> <span class="n">TrainingStats</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="PPOTrainer.validate_config">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.validate_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate PPO configuration using unified configuration manager.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Use configuration manager for validation</span>
+            <span class="n">config_manager</span> <span class="o">=</span> <span class="n">ConfigurationManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+
+            <span class="c1"># Validate the configuration</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="n">config_manager</span><span class="o">.</span><span class="n">validate_config_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;training&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration validation error: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Additional PPO-specific validation</span>
+            <span class="n">ppo_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ppo_hyperparameters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ppo_config</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Missing PPO hyperparameters section&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Validate PPO-specific parameters</span>
+            <span class="n">required_ppo_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;n_steps&quot;</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">,</span> <span class="s2">&quot;n_epochs&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">required_ppo_params</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">param</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ppo_config</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing PPO hyperparameter: </span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Validate parameter types and ranges</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">),</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+                <span class="ow">or</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;learning_rate must be a positive number&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch_size&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;batch_size must be a positive integer&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_steps&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;n_steps&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;n_steps must be a positive integer&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_epochs&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;n_epochs&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;n_epochs must be a positive integer&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Validate data file exists</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="n">config_manager</span><span class="o">.</span><span class="n">get_config_value</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;training.data_config.data_path&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">data_path</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">data_path</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data file not found: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PPO configuration validation successful&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PPO configuration validation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="PPOTrainer.train">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute PPO training with unified error handling and structured logging.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_training_pipeline</span><span class="p">(</span>
+            <span class="n">algorithm_name</span><span class="o">=</span><span class="s2">&quot;PPO&quot;</span><span class="p">,</span> <span class="n">training_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_execute_ppo_training</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_ppo_training</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">callback</span><span class="p">:</span> <span class="n">TrainingProgressCallback</span><span class="p">,</span>
+        <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute core PPO training logic with structured logging.&quot;&quot;&quot;</span>
+        <span class="c1"># Load and prepare data</span>
+        <span class="n">data_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_config&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">data_path</span> <span class="o">=</span> <span class="n">data_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_path&quot;</span><span class="p">,</span> <span class="s2">&quot;data/btc_jpy_featured_dataset.csv&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">data_path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">DataError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data file not found: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;loading&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">})</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;loaded&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;rows&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)})</span>
+
+        <span class="c1"># Create environment configuration</span>
+        <span class="n">env_config</span> <span class="o">=</span> <span class="n">EnvironmentConfig</span><span class="p">(</span>
+            <span class="n">initial_portfolio_value</span><span class="o">=</span><span class="n">DEFAULT_INITIAL_BALANCE</span><span class="p">,</span>
+            <span class="n">transaction_cost</span><span class="o">=</span><span class="n">data_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.0015</span><span class="p">),</span>
+            <span class="n">reward_scaling</span><span class="o">=</span><span class="n">data_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_scale&quot;</span><span class="p">,</span> <span class="mf">500.0</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create environment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span>
+            <span class="s2">&quot;environment&quot;</span><span class="p">,</span> <span class="s2">&quot;creation&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;HeavyTradingEnv&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">env_config</span><span class="p">)</span>
+        <span class="n">wrapped_env</span><span class="p">:</span> <span class="n">Monitor</span> <span class="o">=</span> <span class="n">Monitor</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+        <span class="c1"># Get PPO hyperparameters</span>
+        <span class="n">ppo_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ppo_hyperparameters&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Create PPO model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span>
+            <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;creation&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;PPO&quot;</span><span class="p">,</span> <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="p">(</span>
+            <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span>
+            <span class="n">wrapped_env</span><span class="p">,</span>
+            <span class="n">learning_rate</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="mf">0.0003</span><span class="p">),</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_steps&quot;</span><span class="p">,</span> <span class="mi">2048</span><span class="p">),</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch_size&quot;</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
+            <span class="n">n_epochs</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_epochs&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="n">gamma</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gamma&quot;</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">),</span>
+            <span class="n">gae_lambda</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gae_lambda&quot;</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">),</span>
+            <span class="n">clip_range</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;clip_range&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">),</span>
+            <span class="n">ent_coef</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ent_coef&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">vf_coef</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vf_coef&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+            <span class="n">max_grad_norm</span><span class="o">=</span><span class="n">ppo_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_grad_norm&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># We&#39;ll handle logging ourselves</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Check for distributed training</span>
+        <span class="n">dist_info</span> <span class="o">=</span> <span class="n">get_distributed_info</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">dist_info</span><span class="p">[</span><span class="s2">&quot;is_distributed&quot;</span><span class="p">]:</span>
+            <span class="n">adjusted_timesteps</span> <span class="o">=</span> <span class="n">total_timesteps</span> <span class="o">//</span> <span class="n">dist_info</span><span class="p">[</span><span class="s2">&quot;world_size&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span>
+                <span class="s2">&quot;distributed&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;setup&quot;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;rank&quot;</span><span class="p">:</span> <span class="n">dist_info</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;world_size&quot;</span><span class="p">:</span> <span class="n">dist_info</span><span class="p">[</span><span class="s2">&quot;world_size&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;original_timesteps&quot;</span><span class="p">:</span> <span class="n">total_timesteps</span><span class="p">,</span>
+                    <span class="s2">&quot;adjusted_timesteps&quot;</span><span class="p">:</span> <span class="n">adjusted_timesteps</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+            <span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">adjusted_timesteps</span>
+
+        <span class="c1"># Narrow self.model locally to help static analyzers and avoid repeated Optional access  # type: ignore[unreachable]</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ModelError</span><span class="p">(</span><span class="s2">&quot;Model not initialized before training&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Set up dynamic LR scheduler with model optimizer if enabled</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lr_scheduler</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;policy&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span> <span class="s2">&quot;optimizer&quot;</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span><span class="s2">&quot;optimizer&quot;</span><span class="p">,</span> <span class="s2">&quot;setup&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;scheduler&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic_lr&quot;</span><span class="p">})</span>
+
+        <span class="c1"># Execute training</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_structured_event</span><span class="p">(</span>
+            <span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="s2">&quot;execution&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;timesteps&quot;</span><span class="p">:</span> <span class="n">total_timesteps</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span>
+            <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">progress_bar</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Training completed</span>
+        <span class="n">training_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># Clean up metrics collection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleanup_metrics_collection</span><span class="p">()</span>
+
+        <span class="c1"># Cleanup training environment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleanup_training_environment</span><span class="p">()</span>
+
+        <span class="c1"># Save model</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo_model&quot;</span><span class="p">)</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="s2">&quot;.zip&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Collect training statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_training_stats</span><span class="p">(</span>
+            <span class="n">training_time</span><span class="o">=</span><span class="n">training_time</span><span class="p">,</span>
+            <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+            <span class="n">steps_per_second</span><span class="o">=</span><span class="n">total_timesteps</span> <span class="o">/</span> <span class="n">training_time</span><span class="p">,</span>
+            <span class="n">final_reward</span><span class="o">=</span><span class="n">callback</span><span class="o">.</span><span class="n">reward_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">reward_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">action_distribution</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_final_action_distribution</span><span class="p">(</span><span class="n">callback</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_training_completion</span><span class="p">(</span><span class="n">training_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="PPOTrainer.get_training_stats">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.get_training_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_training_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get PPO training statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PPOTrainer.load_model">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.load_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load a trained PPO model from file.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading PPO model from </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ Model loaded successfully&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to load model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="PPOTrainer.validate_training">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.validate_training">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate trained PPO model.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Use provided path or get from training stats</span>
+            <span class="n">validation_model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">model_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">validation_model_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_path&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">validation_model_path</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">validation_model_path</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;validation_success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Model path not found: </span><span class="si">{</span><span class="n">validation_model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+
+            <span class="c1"># Load model for validation</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">validation_model_path</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;validation_success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Failed to load model&quot;</span><span class="p">}</span>
+
+            <span class="c1"># Basic validation - model loaded successfully</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;validation_success&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">validation_model_path</span><span class="p">,</span>
+                <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;PPO&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PPO validation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;validation_success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

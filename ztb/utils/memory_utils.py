@@ -6,7 +6,7 @@ particularly for temporary arrays and large data structures.
 """
 
 from contextlib import contextmanager
-from typing import Any, Generator, Optional, TypeVar
+from typing import Any, Dict, Generator, Optional, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -131,3 +131,86 @@ def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:
         return arr.astype(np.int32)
 
     return arr
+
+
+def cleanup_training_memory(
+    env: Optional[Any] = None,
+    model: Optional[Any] = None,
+    data_cache: Optional[dict] = None,
+    force_gc: bool = True
+) -> None:
+    """
+    Perform comprehensive memory cleanup after training operations.
+
+    Args:
+        env: Training environment to close
+        model: Model object (not deleted if might be saved)
+        data_cache: Data cache dictionary to clear
+        force_gc: Whether to force garbage collection
+    """
+    import gc
+
+    try:
+        # Clear data cache
+        if data_cache is not None:
+            data_cache.clear()
+            logger.debug("Cleared data cache")
+
+        # Close environment
+        if env is not None and hasattr(env, 'close'):
+            env.close()
+            logger.debug("Closed training environment")
+
+        # Clear model references (but don't delete if it might be saved)
+        if model is not None:
+            # Just log, don't delete
+            logger.debug("Model cleanup skipped (may be saved)")
+
+        # Force garbage collection
+        if force_gc:
+            collected = gc.collect()
+            logger.debug(f"Garbage collection completed: {collected} objects collected")
+
+        logger.info("Training memory cleanup completed")
+
+    except Exception as e:
+        logger.warning(f"Memory cleanup failed: {e}")
+
+
+def get_memory_usage() -> Dict[str, float]:
+    """
+    Get current memory usage statistics.
+
+    Returns:
+        Dictionary with memory usage information in MB
+    """
+    try:
+        import psutil
+        process = psutil.Process()
+        memory_info = process.memory_info()
+
+        return {
+            'rss': memory_info.rss / 1024 / 1024,  # Resident Set Size
+            'vms': memory_info.vms / 1024 / 1024,  # Virtual Memory Size
+            'percent': process.memory_percent()
+        }
+    except ImportError:
+        logger.warning("psutil not available for memory monitoring")
+        return {'rss': 0.0, 'vms': 0.0, 'percent': 0.0}
+    except Exception as e:
+        logger.warning(f"Failed to get memory usage: {e}")
+        return {'rss': 0.0, 'vms': 0.0, 'percent': 0.0}
+
+
+def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
+    """
+    Check if memory usage is above threshold.
+
+    Args:
+        threshold_mb: Memory threshold in MB
+
+    Returns:
+        True if memory usage is above threshold
+    """
+    memory = get_memory_usage()
+    return memory['rss'] > threshold_mb

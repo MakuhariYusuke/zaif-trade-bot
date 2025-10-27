@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.trend.ichimoku.ichimoku_value_measurement</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Ichimoku Value Measurement feature implementation.</span>
@@ -159,16 +159,19 @@
 
         <span class="c1"># 4. Price fluctuation ratios</span>
         <span class="c1"># How much price movement vs Ichimoku ranges</span>
-        <span class="n">price_tenkan_ratio</span> <span class="o">=</span> <span class="n">price_range</span> <span class="o">/</span> <span class="p">(</span><span class="n">tenkan_range</span> <span class="o">+</span> <span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># Avoid division by zero</span>
+        <span class="n">price_tenkan_ratio</span> <span class="o">=</span> <span class="n">price_range</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="n">tenkan_range</span> <span class="o">+</span> <span class="mf">0.001</span>
+        <span class="p">)</span>  <span class="c1"># Avoid division by zero</span>
         <span class="n">price_kijun_ratio</span> <span class="o">=</span> <span class="n">price_range</span> <span class="o">/</span> <span class="p">(</span><span class="n">kijun_range</span> <span class="o">+</span> <span class="mf">0.001</span><span class="p">)</span>
         <span class="n">price_cloud_ratio</span> <span class="o">=</span> <span class="n">price_range</span> <span class="o">/</span> <span class="p">(</span><span class="n">cloud_value_range</span> <span class="o">+</span> <span class="mf">0.001</span><span class="p">)</span>
 
         <span class="c1"># 5. Value measurement efficiency</span>
         <span class="c1"># How well Ichimoku captures price movements</span>
         <span class="n">price_in_cloud</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">senkou_a</span><span class="p">,</span> <span class="n">senkou_b</span><span class="p">))</span> <span class="o">&amp;</span>
-            <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">senkou_a</span><span class="p">,</span> <span class="n">senkou_b</span><span class="p">)),</span>
-            <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">senkou_a</span><span class="p">,</span> <span class="n">senkou_b</span><span class="p">))</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">senkou_a</span><span class="p">,</span> <span class="n">senkou_b</span><span class="p">)),</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># 6. Value zone utilization</span>
@@ -184,22 +187,26 @@
         <span class="n">ratio_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">price_tenkan_ratio</span> <span class="o">+</span> <span class="n">price_kijun_ratio</span> <span class="o">+</span> <span class="n">price_cloud_ratio</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
         <span class="n">ratio_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ratio_score</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Normalize to 0-1</span>
 
-        <span class="n">utilization_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cloud_utilization</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cloud_utilization</span><span class="p">)</span>  <span class="c1"># 0-1 scale</span>
+        <span class="n">utilization_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">cloud_utilization</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cloud_utilization</span>
+        <span class="p">)</span>  <span class="c1"># 0-1 scale</span>
 
         <span class="n">consistency_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">range_consistency</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Final value measurement score</span>
         <span class="n">value_measurement_score</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="mf">0.4</span> <span class="o">*</span> <span class="n">ratio_norm</span> <span class="o">+</span>           <span class="c1"># Range ratios</span>
-            <span class="mf">0.3</span> <span class="o">*</span> <span class="n">utilization_score</span> <span class="o">+</span>   <span class="c1"># Cloud utilization</span>
-            <span class="mf">0.3</span> <span class="o">*</span> <span class="n">consistency_score</span>     <span class="c1"># Measurement consistency</span>
+            <span class="mf">0.4</span> <span class="o">*</span> <span class="n">ratio_norm</span>
+            <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">utilization_score</span>  <span class="c1"># Range ratios</span>
+            <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="n">consistency_score</span>  <span class="c1"># Cloud utilization  # Measurement consistency</span>
         <span class="p">)</span>
 
         <span class="c1"># Adjust based on price position in cloud</span>
         <span class="n">position_adjustment</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">price_in_cloud</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">)</span>
         <span class="n">value_measurement_score</span> <span class="o">+=</span> <span class="n">position_adjustment</span>
 
-        <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;ichimoku_value_measurement&quot;</span><span class="p">:</span> <span class="n">value_measurement_score</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;ichimoku_value_measurement&quot;</span><span class="p">:</span> <span class="n">value_measurement_score</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">result_df</span></div>
 </div>
 
@@ -218,7 +225,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -229,7 +236,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

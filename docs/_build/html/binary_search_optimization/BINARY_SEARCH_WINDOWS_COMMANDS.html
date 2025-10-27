@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="windows">
 <h1>バイナリサーチ実行ガイド - Windows版<a class="headerlink" href="#windows" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -178,7 +176,7 @@ python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_it
   <span class="p">-</span><span class="n">-timesteps</span> <span class="n">20000</span>
 </pre></div>
 </div>
-<p><strong>期待時間</strong>: 2-3時間<br />
+<p><strong>期待時間</strong>: 2-3時間
 <strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/batch_size_history.json</span></code></p>
 <p><strong>結果の見方 (50k精査の値を決める)</strong>:</p>
 <p><strong>📁 結果ファイルの種類</strong>:</p>
@@ -240,7 +238,7 @@ python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_it
   <span class="p">-</span><span class="n">-timesteps</span> <span class="n">10000</span>
 </pre></div>
 </div>
-<p><strong>期待時間</strong>: 1-2時間<br />
+<p><strong>期待時間</strong>: 1-2時間
 <strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/learning_rate_history.json</span></code></p>
 </section>
 <section id="day-4-6-max-grad-norm-30kseed1">
@@ -252,7 +250,7 @@ python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_it
   <span class="p">-</span><span class="n">-seed</span> <span class="n">42</span>
 </pre></div>
 </div>
-<p><strong>期待時間</strong>: 3-4時間<br />
+<p><strong>期待時間</strong>: 3-4時間
 <strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/max_grad_norm_history.json</span></code></p>
 <p><strong>再現性確認 (seed2)</strong>:</p>
 <div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">max_grad_norm_optimized</span> <span class="p">`</span>
@@ -458,7 +456,7 @@ python -m ztb.training.binary_search.learning_rate_optimized --mode binary --max
 </section>
 <section id="powershell-venv-scripts-activate-ps1">
 <h3>❌ PowerShellで ‘..venv\Scripts\Activate.ps1’ が認識されない 🆕<a class="headerlink" href="#powershell-venv-scripts-activate-ps1" title="Link to this heading"></a></h3>
-<p><strong>原因1</strong>: PowerShellのパス認識問題<br />
+<p><strong>原因1</strong>: PowerShellのパス認識問題
 <strong>原因2</strong>: 仮想環境が不完全 (Activate.ps1が存在しない)</p>
 <p><strong>🔍 まず診断: アクティベーションファイルの存在確認</strong></p>
 <div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># .venv\Scripts\ の中身を確認</span>
@@ -631,7 +629,7 @@ python -m ztb.training.binary_search.learning_rate_optimized --mode binary --max
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -642,7 +640,7 @@ python -m ztb.training.binary_search.learning_rate_optimized --mode binary --max
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

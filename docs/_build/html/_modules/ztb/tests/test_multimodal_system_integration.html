@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_multimodal_system_integration</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -109,28 +109,39 @@
 <span class="sd">バージョン: 1.0.0</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
 <span class="c1"># プロジェクトルートをパスに追加</span>
-<span class="n">project_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">)</span>
+<span class="p">)</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">project_root</span><span class="p">)</span>
 
 <span class="c1"># マルチモーダルモジュールインポート</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.models.architectures.multimodal_architecture</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiModalFeatureEncoder</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.optimization.compression</span><span class="w"> </span><span class="kn">import</span> <span class="n">KnowledgeDistillation</span><span class="p">,</span> <span class="n">ModelPruning</span><span class="p">,</span> <span class="n">ModelCompression</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.optimization.quantization</span><span class="w"> </span><span class="kn">import</span> <span class="n">DynamicQuantization</span><span class="p">,</span> <span class="n">QuantizationUtils</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.models.architectures.multimodal_architecture</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">MultiModalFeatureEncoder</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.optimization.compression</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">KnowledgeDistillation</span><span class="p">,</span>
+        <span class="n">ModelCompression</span><span class="p">,</span>
+        <span class="n">ModelPruning</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.optimization.inference</span><span class="w"> </span><span class="kn">import</span> <span class="n">InferenceOptimizer</span><span class="p">,</span> <span class="n">MemoryManager</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.optimization.quantization</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">DynamicQuantization</span><span class="p">,</span>
+        <span class="n">QuantizationUtils</span><span class="p">,</span>
+    <span class="p">)</span>
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ マルチモーダルモジュールインポート成功&quot;</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ マルチモーダルモジュールインポート失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -138,8 +149,7 @@
 
 <span class="c1"># ロギング設定</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
-    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
-    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
 <span class="p">)</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -151,11 +161,11 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">price_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_dim&#39;</span><span class="p">,</span> <span class="mi">156</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">text_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;text_dim&#39;</span><span class="p">,</span> <span class="mi">768</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">economic_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;economic_dim&#39;</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sequence_length&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_dim&quot;</span><span class="p">,</span> <span class="mi">156</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text_dim&quot;</span><span class="p">,</span> <span class="mi">768</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">economic_dim</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;economic_dim&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sequence_length&quot;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch_size&quot;</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
 
 <div class="viewcode-block" id="MockDataGenerator.generate_price_features">
 <a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_multimodal_system_integration.MockDataGenerator.generate_price_features">[docs]</a>
@@ -165,7 +175,9 @@
         <span class="n">base_features</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># OHLCV</span>
 
         <span class="c1"># テクニカル指標のシミュレーション</span>
-        <span class="n">technical_features</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_dim</span> <span class="o">-</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">technical_features</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
+            <span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_dim</span> <span class="o">-</span> <span class="mi">5</span>
+        <span class="p">)</span>
 
         <span class="c1"># 正規化と範囲調整</span>
         <span class="n">technical_features</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">technical_features</span><span class="p">)</span>  <span class="c1"># -1 to 1</span>
@@ -183,7 +195,9 @@
         <span class="c1"># 感情スコアの影響をシミュレート（一部の埋め込みを調整）</span>
         <span class="n">sentiment_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.7</span>
         <span class="n">sentiment_adjustment</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
-        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">sentiment_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">embeddings</span> <span class="o">+</span> <span class="n">sentiment_adjustment</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">)</span>
+        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">sentiment_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">embeddings</span> <span class="o">+</span> <span class="n">sentiment_adjustment</span><span class="p">,</span> <span class="n">embeddings</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">embeddings</span><span class="o">.</span><span class="n">float</span><span class="p">()</span></div>
 
@@ -193,7 +207,9 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">generate_economic_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;経済指標特徴量のモックデータを生成&quot;&quot;&quot;</span>
         <span class="c1"># GDP, インフレ率, 失業率などの経済指標</span>
-        <span class="n">economic_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">economic_dim</span><span class="p">)</span>
+        <span class="n">economic_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
+            <span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">economic_dim</span>
+        <span class="p">)</span>
 
         <span class="c1"># 経済指標の自然な範囲に調整</span>
         <span class="n">economic_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">economic_data</span><span class="p">)</span> <span class="o">*</span> <span class="mf">2.0</span>  <span class="c1"># -2 to 2</span>
@@ -203,15 +219,17 @@
 
 <div class="viewcode-block" id="MockDataGenerator.generate_batch">
 <a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_multimodal_system_integration.MockDataGenerator.generate_batch">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">generate_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;バッチデータの生成&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
 
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;price_features&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_price_features</span><span class="p">(</span><span class="n">batch_size</span><span class="p">),</span>
-            <span class="s1">&#39;text_embeddings&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_text_embeddings</span><span class="p">(</span><span class="n">batch_size</span><span class="p">),</span>
-            <span class="s1">&#39;economic_features&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_economic_features</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+            <span class="s2">&quot;price_features&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_price_features</span><span class="p">(</span><span class="n">batch_size</span><span class="p">),</span>
+            <span class="s2">&quot;text_embeddings&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_text_embeddings</span><span class="p">(</span><span class="n">batch_size</span><span class="p">),</span>
+            <span class="s2">&quot;economic_features&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_economic_features</span><span class="p">(</span><span class="n">batch_size</span><span class="p">),</span>
         <span class="p">}</span></div>
 </div>
 
@@ -225,7 +243,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_generator</span> <span class="o">=</span> <span class="n">MockDataGenerator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;テスト環境: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -234,23 +252,31 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;設定ファイルを読み込み&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">config_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;ztb&#39;</span><span class="p">,</span> <span class="s1">&#39;multimodal&#39;</span><span class="p">,</span> <span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="s1">&#39;default.yaml&#39;</span><span class="p">)</span>
+            <span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;ztb&quot;</span><span class="p">,</span> <span class="s2">&quot;multimodal&quot;</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="s2">&quot;default.yaml&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">full_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ 設定ファイル読み込み成功&quot;</span><span class="p">)</span>
 
             <span class="c1"># テストに必要な設定のみ抽出</span>
             <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;price_dim&#39;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price_dim&#39;</span><span class="p">,</span> <span class="mi">156</span><span class="p">),</span>
-                <span class="s1">&#39;text_dim&#39;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;embedding_dim&#39;</span><span class="p">,</span> <span class="mi">768</span><span class="p">),</span>
-                <span class="s1">&#39;economic_dim&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>  <span class="c1"># デフォルト値</span>
-                <span class="s1">&#39;hidden_dim&#39;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fusion&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;attention_dim&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
-                <span class="s1">&#39;sequence_length&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
-                <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;training&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
-                <span class="s1">&#39;num_epochs&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>  <span class="c1"># テスト用に短く</span>
-                <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;training&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;3e-4&#39;</span><span class="p">))</span>
+                <span class="s2">&quot;price_dim&quot;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_dim&quot;</span><span class="p">,</span> <span class="mi">156</span><span class="p">),</span>
+                <span class="s2">&quot;text_dim&quot;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;embedding_dim&quot;</span><span class="p">,</span> <span class="mi">768</span><span class="p">),</span>
+                <span class="s2">&quot;economic_dim&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>  <span class="c1"># デフォルト値</span>
+                <span class="s2">&quot;hidden_dim&quot;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fusion&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;attention_dim&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
+                <span class="s2">&quot;sequence_length&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+                <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;batch_size&quot;</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>
+                <span class="s2">&quot;num_epochs&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>  <span class="c1"># テスト用に短く</span>
+                <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">full_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;training&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;3e-4&quot;</span><span class="p">)</span>
+                <span class="p">),</span>
             <span class="p">}</span>
             <span class="k">return</span> <span class="n">config</span>
 
@@ -258,14 +284,14 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ 設定ファイル読み込み失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># デフォルト設定を使用</span>
             <span class="k">return</span> <span class="p">{</span>
-                <span class="s1">&#39;price_dim&#39;</span><span class="p">:</span> <span class="mi">156</span><span class="p">,</span>
-                <span class="s1">&#39;text_dim&#39;</span><span class="p">:</span> <span class="mi">768</span><span class="p">,</span>
-                <span class="s1">&#39;economic_dim&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
-                <span class="s1">&#39;hidden_dim&#39;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
-                <span class="s1">&#39;sequence_length&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
-                <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-                <span class="s1">&#39;num_epochs&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-                <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">1e-4</span>
+                <span class="s2">&quot;price_dim&quot;</span><span class="p">:</span> <span class="mi">156</span><span class="p">,</span>
+                <span class="s2">&quot;text_dim&quot;</span><span class="p">:</span> <span class="mi">768</span><span class="p">,</span>
+                <span class="s2">&quot;economic_dim&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                <span class="s2">&quot;hidden_dim&quot;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
+                <span class="s2">&quot;sequence_length&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+                <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+                <span class="s2">&quot;num_epochs&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
             <span class="p">}</span>
 
 <div class="viewcode-block" id="MultiModalSystemTester.test_architecture_initialization">
@@ -277,10 +303,10 @@
 
             <span class="c1"># モデル初期化</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">MultiModalFeatureEncoder</span><span class="p">(</span>
-                <span class="n">price_feature_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;price_dim&#39;</span><span class="p">],</span>
-                <span class="n">text_embedding_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;text_dim&#39;</span><span class="p">],</span>
-                <span class="n">economic_feature_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;economic_dim&#39;</span><span class="p">],</span>
-                <span class="n">hidden_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hidden_dim&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+                <span class="n">price_feature_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;price_dim&quot;</span><span class="p">],</span>
+                <span class="n">text_embedding_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;text_dim&quot;</span><span class="p">],</span>
+                <span class="n">economic_feature_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;economic_dim&quot;</span><span class="p">],</span>
+                <span class="n">hidden_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hidden_dim&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
             <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
             <span class="c1"># パラメータ数の確認</span>
@@ -294,16 +320,22 @@
 
             <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">batch_data</span><span class="p">)</span>
-                <span class="n">expected_shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sequence_length&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hidden_dim&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">))</span>
-                <span class="k">assert</span> <span class="n">output</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">expected_shape</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;出力形状が不正: </span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> vs </span><span class="si">{</span><span class="n">expected_shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">expected_shape</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="mi">4</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sequence_length&quot;</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hidden_dim&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="k">assert</span> <span class="p">(</span>
+                    <span class="n">output</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">expected_shape</span>
+                <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;出力形状が不正: </span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> vs </span><span class="si">{</span><span class="n">expected_shape</span><span class="si">}</span><span class="s2">&quot;</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ アーキテクチャ初期化テスト成功&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;architecture_init&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;architecture_init&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ アーキテクチャ初期化テスト失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;architecture_init&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;architecture_init&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 
@@ -315,17 +347,16 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 最適化機能テスト開始&quot;</span><span class="p">)</span>
 
             <span class="c1"># モデルが初期化されていない場合はスキップ</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️ モデルが初期化されていないため、最適化テストをスキップ&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;optimization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;⚠️ モデルが初期化されていないため、最適化テストをスキップ&quot;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;optimization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="k">return</span> <span class="kc">False</span>
 
             <span class="c1"># モデル圧縮テスト</span>
             <span class="n">compressor</span> <span class="o">=</span> <span class="n">ModelCompression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-            <span class="n">compression_config</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="s1">&#39;pruning&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;pruning_ratio&#39;</span><span class="p">:</span> <span class="mf">0.3</span>
-            <span class="p">}</span>
+            <span class="n">compression_config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;pruning&quot;</span><span class="p">,</span> <span class="s2">&quot;pruning_ratio&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">}</span>
             <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">compression_config</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ モデル圧縮成功&quot;</span><span class="p">)</span>
 
@@ -349,9 +380,9 @@
             <span class="c1"># 推論実行テスト</span>
             <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="n">inference_optimizer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
-                    <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;price_features&#39;</span><span class="p">],</span>
-                    <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;text_embeddings&#39;</span><span class="p">],</span>
-                    <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;economic_features&#39;</span><span class="p">]</span>
+                    <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;price_features&quot;</span><span class="p">],</span>
+                    <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;text_embeddings&quot;</span><span class="p">],</span>
+                    <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;economic_features&quot;</span><span class="p">],</span>
                 <span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;推論出力形状: </span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ JITコンパイル最適化成功&quot;</span><span class="p">)</span>
@@ -362,12 +393,12 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;メモリ統計: </span><span class="si">{</span><span class="n">memory_stats</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ 最適化機能テスト成功&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;optimization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;optimization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ 最適化機能テスト失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;optimization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;optimization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 
@@ -379,17 +410,19 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 学習ループテスト開始&quot;</span><span class="p">)</span>
 
             <span class="c1"># モデルが初期化されていない場合はスキップ</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️ モデルが初期化されていないため、学習テストをスキップ&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;training&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;training&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="k">return</span> <span class="kc">False</span>
 
             <span class="c1"># オプティマイザーと損失関数</span>
-            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">))</span>
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>  <span class="c1"># 簡易的な損失関数</span>
 
             <span class="c1"># 学習ループ</span>
-            <span class="n">num_epochs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_epochs&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">num_epochs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;num_epochs&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
                 <span class="n">epoch_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
                 <span class="n">num_batches</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># テスト用に少なめのバッチ数</span>
@@ -401,7 +434,10 @@
                         <span class="n">batch_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
                     <span class="c1"># ターゲットの生成（ランダム）</span>
-                    <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;price_features&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hidden_dim&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">))</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                    <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
+                        <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;price_features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hidden_dim&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
                     <span class="c1"># フォワードパス</span>
                     <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
@@ -421,12 +457,12 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2">, Loss: </span><span class="si">{</span><span class="n">avg_loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ 学習ループテスト成功&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;training&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;training&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ 学習ループテスト失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;training&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;training&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 
@@ -438,9 +474,9 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 推論パフォーマンステスト開始&quot;</span><span class="p">)</span>
 
             <span class="c1"># モデルが初期化されていない場合はスキップ</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️ モデルが初期化されていないため、推論テストをスキップ&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;inference&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="k">return</span> <span class="kc">False</span>
 
             <span class="c1"># 推論最適化モデルの準備</span>
@@ -462,37 +498,38 @@
                     <span class="c1"># ウォームアップ</span>
                     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
                         <span class="n">_</span> <span class="o">=</span> <span class="n">inference_optimizer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;price_features&#39;</span><span class="p">],</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;text_embeddings&#39;</span><span class="p">],</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;economic_features&#39;</span><span class="p">]</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;price_features&quot;</span><span class="p">],</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;text_embeddings&quot;</span><span class="p">],</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;economic_features&quot;</span><span class="p">],</span>
                         <span class="p">)</span>
 
                     <span class="c1"># 実際の測定</span>
                     <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
                     <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
                     <span class="n">num_runs</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># テスト用に少なく</span>
 
                     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
                         <span class="n">_</span> <span class="o">=</span> <span class="n">inference_optimizer</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;price_features&#39;</span><span class="p">],</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;text_embeddings&#39;</span><span class="p">],</span>
-                            <span class="n">batch_data</span><span class="p">[</span><span class="s1">&#39;economic_features&#39;</span><span class="p">]</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;price_features&quot;</span><span class="p">],</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;text_embeddings&quot;</span><span class="p">],</span>
+                            <span class="n">batch_data</span><span class="p">[</span><span class="s2">&quot;economic_features&quot;</span><span class="p">],</span>
                         <span class="p">)</span>
 
                     <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
                     <span class="n">avg_time</span> <span class="o">=</span> <span class="p">(</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_runs</span>
-                    <span class="n">performance_results</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;batch_</span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_time</span>
+                    <span class="n">performance_results</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;batch_</span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_time</span>
 
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;バッチサイズ </span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2">: 平均推論時間 </span><span class="si">{</span><span class="n">avg_time</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">秒&quot;</span><span class="p">)</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;inference_performance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">performance_results</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inference_performance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">performance_results</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ 推論パフォーマンステスト成功&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;inference&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ 推論パフォーマンステスト失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;inference&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inference&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 
@@ -504,9 +541,11 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 メモリ管理テスト開始&quot;</span><span class="p">)</span>
 
             <span class="c1"># モデルが初期化されていない場合はスキップ</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;model&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️ モデルが初期化されていないため、メモリテストをスキップ&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;⚠️ モデルが初期化されていないため、メモリテストをスキップ&quot;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="k">return</span> <span class="kc">False</span>
 
             <span class="n">memory_manager</span> <span class="o">=</span> <span class="n">MemoryManager</span><span class="p">()</span>
@@ -532,13 +571,17 @@
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;最終メモリ: </span><span class="si">{</span><span class="n">final_memory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
                 <span class="c1"># メモリリークのチェック</span>
-                <span class="k">if</span> <span class="s1">&#39;allocated&#39;</span> <span class="ow">in</span> <span class="n">final_memory</span> <span class="ow">and</span> <span class="n">final_memory</span><span class="p">[</span><span class="s1">&#39;allocated&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">initial_memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;allocated&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="s2">&quot;allocated&quot;</span> <span class="ow">in</span> <span class="n">final_memory</span>
+                    <span class="ow">and</span> <span class="n">final_memory</span><span class="p">[</span><span class="s2">&quot;allocated&quot;</span><span class="p">]</span>
+                    <span class="o">&lt;</span> <span class="n">initial_memory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;allocated&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+                <span class="p">):</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ メモリ管理テスト成功&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
                     <span class="k">return</span> <span class="kc">True</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;⚠️ メモリリークの可能性あり&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                     <span class="k">return</span> <span class="kc">False</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># CPU環境では基本的な推論テストのみ</span>
@@ -550,12 +593,12 @@
                     <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">batch_data</span><span class="p">)</span>
 
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ CPU環境でのメモリ管理テスト成功（簡易チェック）&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ メモリ管理テスト失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;memory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;memory&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">return</span> <span class="kc">False</span></div>
 
 
@@ -568,11 +611,11 @@
 
         <span class="c1"># テスト実行</span>
         <span class="n">tests</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="s1">&#39;architecture_initialization&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_architecture_initialization</span><span class="p">),</span>
-            <span class="p">(</span><span class="s1">&#39;optimization_features&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_optimization_features</span><span class="p">),</span>
-            <span class="p">(</span><span class="s1">&#39;training_loop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_training_loop</span><span class="p">),</span>
-            <span class="p">(</span><span class="s1">&#39;inference_performance&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_inference_performance</span><span class="p">),</span>
-            <span class="p">(</span><span class="s1">&#39;memory_management&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_memory_management</span><span class="p">)</span>
+            <span class="p">(</span><span class="s2">&quot;architecture_initialization&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_architecture_initialization</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;optimization_features&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_optimization_features</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;training_loop&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_training_loop</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;inference_performance&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_inference_performance</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;memory_management&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_memory_management</span><span class="p">),</span>
         <span class="p">]</span>
 
         <span class="n">passed_tests</span> <span class="o">=</span> <span class="mi">0</span>
@@ -593,13 +636,13 @@
         <span class="n">duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
 
         <span class="c1"># 結果サマリー</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;total_tests&#39;</span><span class="p">:</span> <span class="n">total_tests</span><span class="p">,</span>
-            <span class="s1">&#39;passed_tests&#39;</span><span class="p">:</span> <span class="n">passed_tests</span><span class="p">,</span>
-            <span class="s1">&#39;failed_tests&#39;</span><span class="p">:</span> <span class="n">total_tests</span> <span class="o">-</span> <span class="n">passed_tests</span><span class="p">,</span>
-            <span class="s1">&#39;success_rate&#39;</span><span class="p">:</span> <span class="n">passed_tests</span> <span class="o">/</span> <span class="n">total_tests</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
-            <span class="s1">&#39;duration_seconds&#39;</span><span class="p">:</span> <span class="n">duration</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">(),</span>
-            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">end_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;total_tests&quot;</span><span class="p">:</span> <span class="n">total_tests</span><span class="p">,</span>
+            <span class="s2">&quot;passed_tests&quot;</span><span class="p">:</span> <span class="n">passed_tests</span><span class="p">,</span>
+            <span class="s2">&quot;failed_tests&quot;</span><span class="p">:</span> <span class="n">total_tests</span> <span class="o">-</span> <span class="n">passed_tests</span><span class="p">,</span>
+            <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="n">passed_tests</span> <span class="o">/</span> <span class="n">total_tests</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="s2">&quot;duration_seconds&quot;</span><span class="p">:</span> <span class="n">duration</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">(),</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">end_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
         <span class="p">}</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">60</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -612,9 +655,13 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;実行時間: </span><span class="si">{</span><span class="n">duration</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">秒&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">passed_tests</span> <span class="o">==</span> <span class="n">total_tests</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🎉 すべてのテストが成功しました！マルチモーダルシステムは正常に動作しています。&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;🎉 すべてのテストが成功しました！マルチモーダルシステムは正常に動作しています。&quot;</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ </span><span class="si">{</span><span class="n">total_tests</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">passed_tests</span><span class="si">}</span><span class="s2">個のテストが失敗しました。詳細を確認してください。&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;⚠️ </span><span class="si">{</span><span class="n">total_tests</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">passed_tests</span><span class="si">}</span><span class="s2">個のテストが失敗しました。詳細を確認してください。&quot;</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span></div>
 
@@ -628,7 +675,7 @@
             <span class="n">output_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;multimodal_system_test_results_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.json&quot;</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ テスト結果を保存: </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -652,8 +699,8 @@
         <span class="n">tester</span><span class="o">.</span><span class="n">save_results</span><span class="p">()</span>
 
         <span class="c1"># 最終結果表示</span>
-        <span class="n">summary</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;summary&#39;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="n">success_rate</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;success_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">success_rate</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;success_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">success_rate</span> <span class="o">&gt;=</span> <span class="mf">80.0</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🎉 マルチモーダルシステムは正常に動作しています！&quot;</span><span class="p">)</span>
@@ -686,7 +733,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -697,7 +744,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

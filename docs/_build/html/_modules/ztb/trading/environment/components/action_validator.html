@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.trading.environment.components.action_validator</h1><div class="highlight"><pre>
 <span></span><span class="c1"># Action validation utilities for trading environment</span>
 <span class="c1"># 取引環境のアクション検証ユーティリティ</span>
@@ -193,7 +193,9 @@
             <span class="c1"># 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする</span>
             <span class="c1"># これにより、資金がmax_position_size分に満たなくても、</span>
             <span class="c1"># 持っている資金の範囲内で取引できるようになる</span>
-            <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
+            <span class="n">affordable_size</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
+            <span class="p">)</span>
             <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># 最小取引単位 (0.01 mBTC, 約1,800円相当)</span>
 
             <span class="c1"># 条件: 理想サイズが買えるか、または最小単位以上が買える</span>
@@ -232,7 +234,7 @@
         <span class="k">if</span> <span class="n">price_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">price_array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">current_step</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">price_array</span><span class="p">[</span><span class="n">current_step</span><span class="p">])</span>
 
-        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;iloc&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s2">&quot;iloc&quot;</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">row</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_step</span><span class="p">]</span>
                 <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="s2">&quot;adj_close&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">):</span>
@@ -323,7 +325,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -334,7 +336,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_unified_trainer_refactoring</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">unified_trainer.py リファクタリングのテスト。</span>
@@ -102,10 +102,10 @@
 <span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.config_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigBuilder</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.algorithm_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgorithmTrainer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.config_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigManager</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgorithmFactory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.algorithm_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgorithmTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.config_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigBuilder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.config_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigManager</span>
 
 
 <div class="viewcode-block" id="test_config_builder">
@@ -125,12 +125,9 @@
             <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">0.0003</span><span class="p">,</span>
             <span class="s2">&quot;n_steps&quot;</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
             <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
-            <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span>
+            <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
         <span class="p">},</span>
-        <span class="s2">&quot;environment&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;initial_balance&quot;</span><span class="p">:</span> <span class="mi">200000</span><span class="p">,</span>
-            <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.0005</span>
-        <span class="p">}</span>
+        <span class="s2">&quot;environment&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">:</span> <span class="mi">200000</span><span class="p">,</span> <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">},</span>
     <span class="p">}</span>
 
     <span class="c1"># ConfigBuilder作成</span>
@@ -182,17 +179,17 @@
             <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">0.007503</span><span class="p">,</span>
             <span class="s2">&quot;n_steps&quot;</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
             <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
-            <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span>
-        <span class="p">}</span>
+            <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="p">},</span>
     <span class="p">}</span>
 
     <span class="c1"># ConfigManager作成</span>
     <span class="n">config_manager</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created ConfigManager&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Created ConfigManager&quot;</span><span class="p">)</span>
 
     <span class="c1"># AlgorithmTrainer作成</span>
     <span class="n">algorithm_trainer</span> <span class="o">=</span> <span class="n">AlgorithmTrainer</span><span class="p">(</span><span class="n">config_manager</span><span class="p">,</span> <span class="n">progress_bar_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created AlgorithmTrainer&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Created AlgorithmTrainer&quot;</span><span class="p">)</span>
 
     <span class="c1"># AlgorithmFactoryから直接PPO取得</span>
     <span class="n">ppo_algo</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;ppo&quot;</span><span class="p">)</span>
@@ -216,13 +213,14 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainer</span>
+
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Successfully imported UnifiedTrainer&quot;</span><span class="p">)</span>
 
         <span class="c1"># 簡単な設定で初期化テスト</span>
         <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
             <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;import_test&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">1000</span>
+            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -238,6 +236,7 @@
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to import or initialize UnifiedTrainer: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
         <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
         <span class="k">return</span> <span class="kc">False</span>
 
@@ -305,6 +304,7 @@
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ Test suite failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
         <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
@@ -322,7 +322,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -333,7 +333,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

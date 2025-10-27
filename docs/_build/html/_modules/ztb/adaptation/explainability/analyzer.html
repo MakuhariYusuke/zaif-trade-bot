@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.explainability.analyzer</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Explainability Analyzer Implementation</span>
@@ -95,11 +95,12 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -107,33 +108,40 @@
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">shap</span>
+
     <span class="n">SHAP_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">SHAP_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">shap</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">patches</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">FancyBboxPatch</span>
+
     <span class="n">MATPLOTLIB_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">MATPLOTLIB_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">plt</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
     <span class="n">PLOTLY_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">PLOTLY_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">go</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">px</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainabilityConfig</span><span class="p">,</span> <span class="n">ExplanationMethod</span><span class="p">,</span> <span class="n">ExplanationScope</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainabilityConfig</span><span class="p">,</span> <span class="n">ExplanationMethod</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ExplanationResult</span><span class="p">,</span> <span class="n">FeatureImportance</span><span class="p">,</span> <span class="n">DecisionExplanation</span><span class="p">,</span>
-    <span class="n">ExplanationType</span><span class="p">,</span> <span class="n">ExplanationCache</span><span class="p">,</span> <span class="n">VisualizationResult</span>
+    <span class="n">DecisionExplanation</span><span class="p">,</span>
+    <span class="n">ExplanationCache</span><span class="p">,</span>
+    <span class="n">ExplanationResult</span><span class="p">,</span>
+    <span class="n">ExplanationType</span><span class="p">,</span>
+    <span class="n">FeatureImportance</span><span class="p">,</span>
+    <span class="n">VisualizationResult</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -157,11 +165,13 @@
 
 <div class="viewcode-block" id="ExplainabilityAnalyzer.explain_prediction">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplainabilityAnalyzer.explain_prediction">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">explain_prediction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                          <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-                          <span class="n">input_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
-                          <span class="n">prediction</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                          <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExplanationResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">explain_prediction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">input_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
+        <span class="n">prediction</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExplanationResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        予測の説明を生成</span>
 
@@ -195,12 +205,12 @@
             <span class="n">result</span> <span class="o">=</span> <span class="n">ExplanationResult</span><span class="p">(</span>
                 <span class="n">explanation_id</span><span class="o">=</span><span class="n">explanation_id</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">model_version</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;_version&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">),</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;_version&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
                 <span class="n">explanation_type</span><span class="o">=</span><span class="n">ExplanationType</span><span class="o">.</span><span class="n">FEATURE_IMPORTANCE</span><span class="p">,</span>
                 <span class="n">target_prediction</span><span class="o">=</span><span class="n">prediction</span><span class="p">,</span>
                 <span class="n">feature_importance</span><span class="o">=</span><span class="n">feature_importance</span><span class="p">,</span>
                 <span class="n">decision_explanation</span><span class="o">=</span><span class="n">decision_explanation</span><span class="p">,</span>
-                <span class="n">processing_time_seconds</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+                <span class="n">processing_time_seconds</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="c1"># 可視化の生成（有効な場合）</span>
@@ -221,16 +231,18 @@
             <span class="k">return</span> <span class="n">ExplanationResult</span><span class="p">(</span>
                 <span class="n">explanation_id</span><span class="o">=</span><span class="n">explanation_id</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="n">model_version</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;_version&#39;</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">),</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;_version&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
                 <span class="n">explanation_type</span><span class="o">=</span><span class="n">ExplanationType</span><span class="o">.</span><span class="n">FEATURE_IMPORTANCE</span><span class="p">,</span>
                 <span class="n">target_prediction</span><span class="o">=</span><span class="n">prediction</span><span class="p">,</span>
                 <span class="n">feature_importance</span><span class="o">=</span><span class="p">[],</span>
                 <span class="n">processing_time_seconds</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">,</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)},</span>
             <span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess_input</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;入力データの前処理&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
             <span class="c1"># DataFrameの場合、数値データのみを使用</span>
@@ -243,20 +255,24 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported input data type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_feature_importance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                    <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-                                    <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                                    <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_feature_importance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量重要度の計算&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">explanation_method</span> <span class="o">==</span> <span class="n">ExplanationMethod</span><span class="o">.</span><span class="n">SHAP</span> <span class="ow">and</span> <span class="n">SHAP_AVAILABLE</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_shap_importance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">,</span> <span class="n">background_data</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_basic_importance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_shap_importance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                 <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-                                 <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                                 <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_shap_importance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">background_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;SHAPベースの特徴量重要度計算&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># モデルを評価モードに</span>
@@ -267,7 +283,7 @@
                 <span class="c1"># デフォルトの背景データを生成</span>
                 <span class="n">background_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
                     <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">shap_background_samples</span><span class="p">,</span> <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
-                    <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">input_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
                 <span class="p">)</span>
 
             <span class="c1"># SHAP Explainerの作成</span>
@@ -284,11 +300,12 @@
             <span class="n">explainer</span> <span class="o">=</span> <span class="n">shap</span><span class="o">.</span><span class="n">Explainer</span><span class="p">(</span><span class="n">model_predict</span><span class="p">,</span> <span class="n">background_data</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
 
             <span class="c1"># SHAP値の計算</span>
-            <span class="n">shap_values</span> <span class="o">=</span> <span class="n">explainer</span><span class="p">(</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
-                                  <span class="n">max_evals</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">shap_max_evals</span><span class="p">)</span>
+            <span class="n">shap_values</span> <span class="o">=</span> <span class="n">explainer</span><span class="p">(</span>
+                <span class="n">input_tensor</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">max_evals</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">shap_max_evals</span>
+            <span class="p">)</span>
 
             <span class="c1"># 特徴量重要度の抽出</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">shap_values</span><span class="p">,</span> <span class="s1">&#39;values&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">shap_values</span><span class="p">,</span> <span class="s2">&quot;values&quot;</span><span class="p">):</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shap_values</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
                     <span class="c1"># 多次元出力の場合、最初の次元を使用</span>
                     <span class="n">importance_scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">shap_values</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -301,26 +318,28 @@
             <span class="n">feature_importance</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">importance_scores</span><span class="p">):</span>
                 <span class="n">feature_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_name</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-                <span class="n">feature_importance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FeatureImportance</span><span class="p">(</span>
-                    <span class="n">feature_name</span><span class="o">=</span><span class="n">feature_name</span><span class="p">,</span>
-                    <span class="n">importance_score</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">),</span>
-                    <span class="n">feature_category</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
-                    <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_description</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
-                    <span class="n">confidence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_confidence</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="n">importance_scores</span><span class="p">)</span>
-                <span class="p">))</span>
+                <span class="n">feature_importance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">FeatureImportance</span><span class="p">(</span>
+                        <span class="n">feature_name</span><span class="o">=</span><span class="n">feature_name</span><span class="p">,</span>
+                        <span class="n">importance_score</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">),</span>
+                        <span class="n">feature_category</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
+                        <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_description</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
+                        <span class="n">confidence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_confidence</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="n">importance_scores</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
 
             <span class="c1"># 重要度でソート</span>
             <span class="n">feature_importance</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">importance_score</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-            <span class="k">return</span> <span class="n">feature_importance</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_features_to_explain</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">feature_importance</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_features_to_explain</span><span class="p">]</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SHAP calculation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_basic_importance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_basic_importance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                  <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
-                                  <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_basic_importance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;基本的な特徴量重要度計算（勾配ベース）&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
@@ -343,25 +362,27 @@
             <span class="n">feature_importance</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">grad</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gradients</span><span class="p">):</span>
                 <span class="n">feature_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_name</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-                <span class="n">feature_importance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FeatureImportance</span><span class="p">(</span>
-                    <span class="n">feature_name</span><span class="o">=</span><span class="n">feature_name</span><span class="p">,</span>
-                    <span class="n">importance_score</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">grad</span><span class="p">),</span>
-                    <span class="n">feature_category</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
-                    <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_description</span><span class="p">(</span><span class="n">feature_name</span><span class="p">)</span>
-                <span class="p">))</span>
+                <span class="n">feature_importance</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">FeatureImportance</span><span class="p">(</span>
+                        <span class="n">feature_name</span><span class="o">=</span><span class="n">feature_name</span><span class="p">,</span>
+                        <span class="n">importance_score</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">grad</span><span class="p">),</span>
+                        <span class="n">feature_category</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_categories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
+                        <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_feature_description</span><span class="p">(</span><span class="n">feature_name</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
 
             <span class="c1"># 重要度でソート</span>
             <span class="n">feature_importance</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">importance_score</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-            <span class="k">return</span> <span class="n">feature_importance</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_features_to_explain</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">feature_importance</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_features_to_explain</span><span class="p">]</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Basic importance calculation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">[]</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_decision_explanation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                     <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
-                                     <span class="n">prediction</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DecisionExplanation</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_decision_explanation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span> <span class="n">prediction</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DecisionExplanation</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;決定説明の生成&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">feature_importance</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">generate_natural_language</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -381,10 +402,12 @@
 
             <span class="k">return</span> <span class="n">DecisionExplanation</span><span class="p">(</span>
                 <span class="n">decision_type</span><span class="o">=</span><span class="n">decision_type</span><span class="p">,</span>
-                <span class="n">confidence_score</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_decision_confidence</span><span class="p">(</span><span class="n">feature_importance</span><span class="p">),</span>
+                <span class="n">confidence_score</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_decision_confidence</span><span class="p">(</span>
+                    <span class="n">feature_importance</span>
+                <span class="p">),</span>
                 <span class="n">primary_factors</span><span class="o">=</span><span class="n">primary_factors</span><span class="p">,</span>
                 <span class="n">contributing_factors</span><span class="o">=</span><span class="n">contributing_factors</span><span class="p">,</span>
-                <span class="n">natural_language_explanation</span><span class="o">=</span><span class="n">natural_language</span>
+                <span class="n">natural_language_explanation</span><span class="o">=</span><span class="n">natural_language</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -408,10 +431,12 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="s2">&quot;UNKNOWN&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_natural_language_explanation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                            <span class="n">decision_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-                                            <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
-                                            <span class="n">contributing_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_natural_language_explanation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">decision_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
+        <span class="n">contributing_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;自然言語説明の生成（高度化版）&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">explanation_parts</span> <span class="o">=</span> <span class="p">[]</span>
@@ -421,21 +446,23 @@
                 <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="p">[</span>
                     <span class="s2">&quot;強い買いシグナルが検知されました。市場は上昇トレンドを示唆しています。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;購入機会が確認されました。現在の市場状況が有利です。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;買いポジションの確立を推奨します。複数の要因が上昇を示しています。&quot;</span>
+                    <span class="s2">&quot;買いポジションの確立を推奨します。複数の要因が上昇を示しています。&quot;</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="p">[</span>
                     <span class="s2">&quot;売りシグナルが検知されました。下落リスクが高まっています。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;ポジションの整理を検討してください。市場の弱さが確認されます。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;売り圧力が強まっています。利益確定または損切りを検討してください。&quot;</span>
+                    <span class="s2">&quot;売り圧力が強まっています。利益確定または損切りを検討してください。&quot;</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="p">[</span>
                     <span class="s2">&quot;現在のポジションを維持してください。明確なシグナルがありません。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;市場の方向性が不明確です。追加の確認を待ってください。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;観察継続を推奨します。市場の変動が小さい状況です。&quot;</span>
-                <span class="p">]</span>
+                    <span class="s2">&quot;観察継続を推奨します。市場の変動が小さい状況です。&quot;</span><span class="p">,</span>
+                <span class="p">],</span>
             <span class="p">}</span>
 
-            <span class="n">templates</span> <span class="o">=</span> <span class="n">decision_templates</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">decision_type</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;取引シグナルが不明確です。&quot;</span><span class="p">])</span>
+            <span class="n">templates</span> <span class="o">=</span> <span class="n">decision_templates</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="n">decision_type</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;取引シグナルが不明確です。&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
             <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">templates</span><span class="p">))</span>
 
             <span class="c1"># 主な要因の詳細説明</span>
@@ -457,12 +484,14 @@
                     <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="s2">&quot;ボラティリティ指標が</span><span class="si">{}</span><span class="s2">を示しており、市場の変動性が変化しています。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;出来高指標が</span><span class="si">{}</span><span class="s2">を示しており、市場参加者の積極性を表しています。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;momentum&quot;</span><span class="p">:</span> <span class="s2">&quot;モメンタム指標が</span><span class="si">{}</span><span class="s2">を示しており、市場の勢いが変化しています。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;テクニカル&quot;</span><span class="p">:</span> <span class="s2">&quot;テクニカル指標が</span><span class="si">{}</span><span class="s2">を示しており、市場の状態変化を表しています。&quot;</span>
+                    <span class="s2">&quot;テクニカル&quot;</span><span class="p">:</span> <span class="s2">&quot;テクニカル指標が</span><span class="si">{}</span><span class="s2">を示しており、市場の状態変化を表しています。&quot;</span><span class="p">,</span>
                 <span class="p">}</span>
 
                 <span class="n">factor_details</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="k">for</span> <span class="n">category</span><span class="p">,</span> <span class="n">factors</span> <span class="ow">in</span> <span class="n">categories</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="n">template</span> <span class="o">=</span> <span class="n">category_explanations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="n">category_explanations</span><span class="p">[</span><span class="s2">&quot;テクニカル&quot;</span><span class="p">])</span>
+                    <span class="n">template</span> <span class="o">=</span> <span class="n">category_explanations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="n">category</span><span class="p">,</span> <span class="n">category_explanations</span><span class="p">[</span><span class="s2">&quot;テクニカル&quot;</span><span class="p">]</span>
+                    <span class="p">)</span>
                     <span class="n">factor_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">feature_name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">factors</span><span class="p">]</span>
                     <span class="n">factor_details</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;、&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">factor_names</span><span class="p">)))</span>
 
@@ -471,16 +500,24 @@
                 <span class="c1"># 重要度の分析</span>
                 <span class="n">total_importance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">importance_score</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">primary_factors</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">total_importance</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
-                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;これらの要因の重要度が高く、信頼性の高いシグナルです。&quot;</span><span class="p">)</span>
+                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="s2">&quot;これらの要因の重要度が高く、信頼性の高いシグナルです。&quot;</span>
+                    <span class="p">)</span>
                 <span class="k">elif</span> <span class="n">total_importance</span> <span class="o">&gt;</span> <span class="mf">0.3</span><span class="p">:</span>
-                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;これらの要因の重要度は中程度です。追加の確認を推奨します。&quot;</span><span class="p">)</span>
+                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="s2">&quot;これらの要因の重要度は中程度です。追加の確認を推奨します。&quot;</span>
+                    <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;これらの要因の重要度は低めです。慎重な判断が必要です。&quot;</span><span class="p">)</span>
+                    <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="s2">&quot;これらの要因の重要度は低めです。慎重な判断が必要です。&quot;</span>
+                    <span class="p">)</span>
 
             <span class="c1"># 寄与要因の言及</span>
             <span class="k">if</span> <span class="n">contributing_factors</span><span class="p">:</span>
                 <span class="n">contrib_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">feature_name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">contributing_factors</span><span class="p">[:</span><span class="mi">3</span><span class="p">]]</span>
-                <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;また、</span><span class="si">{</span><span class="s1">&#39;、&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">contrib_names</span><span class="p">)</span><span class="si">}</span><span class="s2">などの要因も判断に寄与しています。&quot;</span><span class="p">)</span>
+                <span class="n">explanation_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;また、</span><span class="si">{</span><span class="s1">&#39;、&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">contrib_names</span><span class="p">)</span><span class="si">}</span><span class="s2">などの要因も判断に寄与しています。&quot;</span>
+                <span class="p">)</span>
 
             <span class="c1"># 市場状況の総合評価</span>
             <span class="n">market_context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_market_context</span><span class="p">(</span><span class="n">primary_factors</span><span class="p">)</span>
@@ -498,7 +535,9 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced natural language generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="s2">&quot;説明の生成に失敗しました。&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_market_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_market_context</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;市場状況の分析&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">primary_factors</span><span class="p">:</span>
@@ -519,7 +558,7 @@
                 <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="s2">&quot;市場の変動性が変化しており、リスク管理を強化してください。&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;市場参加者の積極性が高まっています。取引量の変化に注意が必要です。&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;momentum&quot;</span><span class="p">:</span> <span class="s2">&quot;市場の勢いが変化しています。モメンタムの方向性を確認してください。&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;unknown&quot;</span><span class="p">:</span> <span class="s2">&quot;市場状況を総合的に分析した結果です。&quot;</span>
+                <span class="s2">&quot;unknown&quot;</span><span class="p">:</span> <span class="s2">&quot;市場状況を総合的に分析した結果です。&quot;</span><span class="p">,</span>
             <span class="p">}</span>
 
             <span class="k">return</span> <span class="n">context_templates</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">max_category</span><span class="p">,</span> <span class="n">context_templates</span><span class="p">[</span><span class="s2">&quot;unknown&quot;</span><span class="p">])</span>
@@ -528,7 +567,9 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Market context analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_risk_warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decision_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_risk_warning</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">decision_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">primary_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;リスク警告の生成&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">primary_factors</span><span class="p">:</span>
@@ -542,18 +583,18 @@
                 <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="s2">&quot;上昇余地はあるものの、利益確定のタイミングに注意してください。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="s2">&quot;買いシグナルは確認されましたが、市場の変動リスクを考慮してください。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;買いシグナルが弱いため、少量からのポジション構築を推奨します。&quot;</span>
+                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;買いシグナルが弱いため、少量からのポジション構築を推奨します。&quot;</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="s2">&quot;下落リスクが高いため、損切りラインの設定を忘れずに。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="s2">&quot;売りシグナルは確認されましたが、反発リスクに注意してください。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;売りシグナルが弱いため、様子見を推奨します。&quot;</span>
+                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;売りシグナルが弱いため、様子見を推奨します。&quot;</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="s2">&quot;ポジション維持が適切ですが、市場の変化に警戒してください。&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="s2">&quot;現在のポジションを維持してください。&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;明確なシグナルがないため、慎重な姿勢を保ってください。&quot;</span>
-                <span class="p">}</span>
+                    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;明確なシグナルがないため、慎重な姿勢を保ってください。&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
             <span class="p">}</span>
 
             <span class="c1"># 重要度に基づくリスクレベル判定</span>
@@ -571,7 +612,9 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Risk warning generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_decision_confidence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_decision_confidence</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;決定の信頼度計算&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">feature_importance</span><span class="p">:</span>
             <span class="k">return</span> <span class="mf">0.0</span>
@@ -602,10 +645,12 @@
 
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">confidence</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_visualizations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                               <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
-                               <span class="n">decision_explanation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DecisionExplanation</span><span class="p">],</span>
-                               <span class="n">input_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">VisualizationResult</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_visualizations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">],</span>
+        <span class="n">decision_explanation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DecisionExplanation</span><span class="p">],</span>
+        <span class="n">input_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">VisualizationResult</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;可視化の生成&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_visualization</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -615,37 +660,50 @@
 
             <span class="c1"># 特徴量重要度の棒グラフ</span>
             <span class="k">if</span> <span class="n">feature_importance</span><span class="p">:</span>
-                <span class="n">visualizations</span><span class="p">[</span><span class="s1">&#39;feature_importance_plot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_feature_importance_plot</span><span class="p">(</span><span class="n">feature_importance</span><span class="p">)</span>
+                <span class="n">visualizations</span><span class="p">[</span>
+                    <span class="s2">&quot;feature_importance_plot&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_feature_importance_plot</span><span class="p">(</span><span class="n">feature_importance</span><span class="p">)</span>
 
             <span class="c1"># 決定プロセスのフローチャート</span>
             <span class="k">if</span> <span class="n">decision_explanation</span><span class="p">:</span>
-                <span class="n">visualizations</span><span class="p">[</span><span class="s1">&#39;decision_flowchart&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_decision_flowchart</span><span class="p">(</span><span class="n">decision_explanation</span><span class="p">)</span>
+                <span class="n">visualizations</span><span class="p">[</span><span class="s2">&quot;decision_flowchart&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_decision_flowchart</span><span class="p">(</span>
+                    <span class="n">decision_explanation</span>
+                <span class="p">)</span>
 
             <span class="c1"># 特徴量分布の可視化</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">):</span>
-                <span class="n">visualizations</span><span class="p">[</span><span class="s1">&#39;feature_distribution&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_feature_distribution_plot</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">):</span>
+                <span class="n">visualizations</span><span class="p">[</span>
+                    <span class="s2">&quot;feature_distribution&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_feature_distribution_plot</span><span class="p">(</span>
+                    <span class="n">input_data</span><span class="p">,</span> <span class="n">feature_importance</span>
+                <span class="p">)</span>
 
             <span class="k">return</span> <span class="n">VisualizationResult</span><span class="p">(</span>
                 <span class="n">plots</span><span class="o">=</span><span class="n">visualizations</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span>
+                <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="k">return</span> <span class="n">VisualizationResult</span><span class="p">(</span>
                 <span class="n">plots</span><span class="o">=</span><span class="n">visualizations</span><span class="p">,</span>
                 <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-                <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span>
+                <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visualization generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_create_feature_importance_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_feature_importance_plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量重要度の棒グラフ作成&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">MATPLOTLIB_AVAILABLE</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
 
             <span class="c1"># データの準備</span>
             <span class="n">top_features</span> <span class="o">=</span> <span class="n">feature_importance</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>  <span class="c1"># 上位10個</span>
@@ -655,15 +713,18 @@
 
             <span class="c1"># カテゴリ別の色設定</span>
             <span class="n">category_colors</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="s1">&#39;#1f77b4&#39;</span><span class="p">,</span>      <span class="c1"># 青</span>
-                <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="s1">&#39;#ff7f0e&#39;</span><span class="p">,</span> <span class="c1"># オレンジ</span>
-                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="s1">&#39;#2ca02c&#39;</span><span class="p">,</span>     <span class="c1"># 緑</span>
-                <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="s1">&#39;#d62728&#39;</span><span class="p">,</span> <span class="c1"># 赤</span>
-                <span class="s1">&#39;momentum&#39;</span><span class="p">:</span> <span class="s1">&#39;#9467bd&#39;</span><span class="p">,</span>   <span class="c1"># 紫</span>
-                <span class="s1">&#39;Unknown&#39;</span><span class="p">:</span> <span class="s1">&#39;#7f7f7f&#39;</span>     <span class="c1"># 灰</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="s2">&quot;#1f77b4&quot;</span><span class="p">,</span>  <span class="c1"># 青</span>
+                <span class="s2">&quot;oscillator&quot;</span><span class="p">:</span> <span class="s2">&quot;#ff7f0e&quot;</span><span class="p">,</span>  <span class="c1"># オレンジ</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="s2">&quot;#2ca02c&quot;</span><span class="p">,</span>  <span class="c1"># 緑</span>
+                <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="s2">&quot;#d62728&quot;</span><span class="p">,</span>  <span class="c1"># 赤</span>
+                <span class="s2">&quot;momentum&quot;</span><span class="p">:</span> <span class="s2">&quot;#9467bd&quot;</span><span class="p">,</span>  <span class="c1"># 紫</span>
+                <span class="s2">&quot;Unknown&quot;</span><span class="p">:</span> <span class="s2">&quot;#7f7f7f&quot;</span><span class="p">,</span>  <span class="c1"># 灰</span>
             <span class="p">}</span>
 
-            <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="n">category_colors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">category_colors</span><span class="p">[</span><span class="s1">&#39;Unknown&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">]</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">category_colors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">category_colors</span><span class="p">[</span><span class="s2">&quot;Unknown&quot;</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span>
+            <span class="p">]</span>
 
             <span class="c1"># プロットの作成</span>
             <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
@@ -672,25 +733,37 @@
             <span class="c1"># ラベルの設定</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)))</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">feature_names</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Importance Score&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Feature Importance Analysis&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Importance Score&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Feature Importance Analysis&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
 
             <span class="c1"># 値の表示</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">importance_scores</span><span class="p">)):</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">score</span> <span class="o">+</span> <span class="nb">max</span><span class="p">(</span><span class="n">importance_scores</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span>
-                       <span class="s1">&#39;.3f&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                    <span class="n">score</span> <span class="o">+</span> <span class="nb">max</span><span class="p">(</span><span class="n">importance_scores</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">,</span>
+                    <span class="n">i</span><span class="p">,</span>
+                    <span class="s2">&quot;.3f&quot;</span><span class="p">,</span>
+                    <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+                    <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                    <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+                <span class="p">)</span>
 
             <span class="c1"># 凡例の作成</span>
-            <span class="n">legend_elements</span> <span class="o">=</span> <span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">cat</span><span class="p">)</span>
-                             <span class="k">for</span> <span class="n">cat</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">category_colors</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span><span class="p">]</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">handles</span><span class="o">=</span><span class="n">legend_elements</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">)</span>
+            <span class="n">legend_elements</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">cat</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">cat</span><span class="p">,</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">category_colors</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">cat</span> <span class="ow">in</span> <span class="n">categories</span>
+            <span class="p">]</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">handles</span><span class="o">=</span><span class="n">legend_elements</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;lower right&quot;</span><span class="p">)</span>
 
             <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 
             <span class="c1"># 画像として保存</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+
             <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
+                <span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span>
+            <span class="p">)</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">image_data</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -700,55 +773,99 @@
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span>
                 <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">image_data</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量重要度の棒グラフ&quot;</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量重要度の棒グラフ&quot;</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature importance plot creation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_create_decision_flowchart</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decision_explanation</span><span class="p">:</span> <span class="n">DecisionExplanation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_decision_flowchart</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">decision_explanation</span><span class="p">:</span> <span class="n">DecisionExplanation</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;決定プロセスのフローチャート作成&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">MATPLOTLIB_AVAILABLE</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
 
             <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
             <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
 
             <span class="c1"># ノードの位置とサイズ</span>
             <span class="n">nodes</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;市場データ</span><span class="se">\n</span><span class="s2">入力&quot;</span><span class="p">,</span> <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#e6f3ff&quot;</span><span class="p">},</span>
-                <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量</span><span class="se">\n</span><span class="s2">抽出&quot;</span><span class="p">,</span> <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#fff2e6&quot;</span><span class="p">},</span>
-                <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;モデル</span><span class="se">\n</span><span class="s2">予測&quot;</span><span class="p">,</span> <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#f0f9ff&quot;</span><span class="p">},</span>
-                <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;決定:</span><span class="se">\n</span><span class="si">{</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
-                 <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#d4edda&quot;</span> <span class="k">if</span> <span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span> <span class="o">==</span> <span class="s2">&quot;BUY&quot;</span> <span class="k">else</span> <span class="s2">&quot;#f8d7da&quot;</span> <span class="k">if</span> <span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span> <span class="o">==</span> <span class="s2">&quot;SELL&quot;</span> <span class="k">else</span> <span class="s2">&quot;#fff3cd&quot;</span><span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;市場データ</span><span class="se">\n</span><span class="s2">入力&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+                    <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+                    <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#e6f3ff&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量</span><span class="se">\n</span><span class="s2">抽出&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+                    <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+                    <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#fff2e6&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;モデル</span><span class="se">\n</span><span class="s2">予測&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+                    <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+                    <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#f0f9ff&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;決定:</span><span class="se">\n</span><span class="si">{</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                    <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+                    <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#d4edda&quot;</span>
+                    <span class="k">if</span> <span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span> <span class="o">==</span> <span class="s2">&quot;BUY&quot;</span>
+                    <span class="k">else</span> <span class="s2">&quot;#f8d7da&quot;</span>
+                    <span class="k">if</span> <span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span> <span class="o">==</span> <span class="s2">&quot;SELL&quot;</span>
+                    <span class="k">else</span> <span class="s2">&quot;#fff3cd&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
             <span class="p">]</span>
 
             <span class="c1"># 主な要因のノード</span>
             <span class="n">primary_factors</span> <span class="o">=</span> <span class="n">decision_explanation</span><span class="o">.</span><span class="n">primary_factors</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">factor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">primary_factors</span><span class="p">):</span>
-                <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                    <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;主要要因:</span><span class="se">\n</span><span class="si">{</span><span class="n">factor</span><span class="o">.</span><span class="n">feature_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">重要度: </span><span class="si">{</span><span class="n">factor</span><span class="o">.</span><span class="n">importance_score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">6</span> <span class="o">-</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">1.2</span><span class="p">),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#f8f9fa&quot;</span>
-                <span class="p">})</span>
+                <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;主要要因:</span><span class="se">\n</span><span class="si">{</span><span class="n">factor</span><span class="o">.</span><span class="n">feature_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">重要度: </span><span class="si">{</span><span class="n">factor</span><span class="o">.</span><span class="n">importance_score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;pos&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">6</span> <span class="o">-</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">1.2</span><span class="p">),</span>
+                        <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+                        <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#f8f9fa&quot;</span><span class="p">,</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
 
             <span class="c1"># ノードの描画</span>
             <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
                 <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">node</span><span class="p">[</span><span class="s2">&quot;pos&quot;</span><span class="p">]</span>
                 <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">node</span><span class="p">[</span><span class="s2">&quot;size&quot;</span><span class="p">]</span>
-                <span class="n">rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="n">h</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span>
-                                    <span class="n">boxstyle</span><span class="o">=</span><span class="s2">&quot;round,pad=0.1&quot;</span><span class="p">,</span>
-                                    <span class="n">facecolor</span><span class="o">=</span><span class="n">node</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">],</span>
-                                    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;#333333&quot;</span><span class="p">,</span>
-                                    <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">w</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">w</span><span class="p">,</span>
+                    <span class="n">h</span><span class="p">,</span>
+                    <span class="n">boxstyle</span><span class="o">=</span><span class="s2">&quot;round,pad=0.1&quot;</span><span class="p">,</span>
+                    <span class="n">facecolor</span><span class="o">=</span><span class="n">node</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">],</span>
+                    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;#333333&quot;</span><span class="p">,</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
 
                 <span class="c1"># テキストの追加</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">node</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span>
-                       <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">wrap</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span>
+                    <span class="n">y</span><span class="p">,</span>
+                    <span class="n">node</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
+                    <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                    <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                    <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+                    <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span>
+                    <span class="n">wrap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
 
             <span class="c1"># 矢印の描画</span>
             <span class="n">arrows</span> <span class="o">=</span> <span class="p">[</span>
@@ -759,18 +876,33 @@
             <span class="p">]</span>
 
             <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">arrows</span><span class="p">:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">xytext</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
-                          <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#666666&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+                    <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                    <span class="n">xy</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+                    <span class="n">xytext</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+                    <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#666666&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+                <span class="p">)</span>
 
             <span class="c1"># 信頼度の表示</span>
             <span class="n">confidence_text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;決定信頼度: </span><span class="si">{</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">confidence_score</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">confidence_text</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span>
-                   <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s2">&quot;round,pad=0.3&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;#e9ecef&quot;</span><span class="p">))</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                <span class="mi">5</span><span class="p">,</span>
+                <span class="mi">2</span><span class="p">,</span>
+                <span class="n">confidence_text</span><span class="p">,</span>
+                <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                <span class="n">va</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+                <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span>
+                <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s2">&quot;round,pad=0.3&quot;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;#e9ecef&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
 
             <span class="c1"># 画像として保存</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+
             <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
+                <span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span>
+            <span class="p">)</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">image_data</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -780,18 +912,23 @@
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span>
                 <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">image_data</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;決定プロセスのフローチャート&quot;</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;決定プロセスのフローチャート&quot;</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision flowchart creation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_create_feature_distribution_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_feature_distribution_plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">feature_importance</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量分布の可視化&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">MATPLOTLIB_AVAILABLE</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Matplotlib not available for plotting&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
 
             <span class="c1"># データをDataFrameに変換</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
@@ -801,7 +938,10 @@
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
                 <span class="n">data</span> <span class="o">=</span> <span class="n">input_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Unsupported data format for distribution plot&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Unsupported data format for distribution plot&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
 
             <span class="c1"># 上位の重要な特徴量を選択</span>
             <span class="n">top_features</span> <span class="o">=</span> <span class="n">feature_importance</span><span class="p">[:</span><span class="mi">6</span><span class="p">]</span>  <span class="c1"># 上位6個</span>
@@ -823,14 +963,17 @@
                     <span class="k">continue</span>
 
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_indices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient feature data for distribution plot&quot;</span><span class="p">}</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient feature data for distribution plot&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
 
             <span class="c1"># サブプロットの作成</span>
             <span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_indices</span><span class="p">)</span>
             <span class="n">n_cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_features</span><span class="p">)</span>
             <span class="n">n_rows</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_features</span> <span class="o">+</span> <span class="n">n_cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="n">n_cols</span>
 
-            <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">n_cols</span><span class="p">,</span> <span class="mi">4</span><span class="o">*</span><span class="n">n_rows</span><span class="p">))</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span> <span class="o">*</span> <span class="n">n_cols</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">n_rows</span><span class="p">))</span>
             <span class="k">if</span> <span class="n">n_rows</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span> <span class="k">if</span> <span class="n">n_cols</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">axes</span>
             <span class="k">else</span><span class="p">:</span>
@@ -844,16 +987,25 @@
                 <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
 
                 <span class="c1"># 分布のプロット</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#1f77b4&#39;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1"> Distribution&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Value&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Frequency&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
+                    <span class="n">values</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#1f77b4&quot;</span><span class="p">,</span>
+                    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> Distribution&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 
                 <span class="c1"># 統計情報の追加</span>
                 <span class="n">mean_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
                 <span class="n">std_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">mean_val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;.2f&#39;</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span>
+                    <span class="n">mean_val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;.2f&quot;</span>
+                <span class="p">)</span>
                 <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 
             <span class="c1"># 余分なサブプロットを非表示</span>
@@ -864,8 +1016,11 @@
 
             <span class="c1"># 画像として保存</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+
             <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span>
+                <span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span>
+            <span class="p">)</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
             <span class="n">image_data</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
             <span class="n">buf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -875,7 +1030,7 @@
                 <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">plot_format</span><span class="p">,</span>
                 <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">image_data</span><span class="p">,</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量分布のヒストグラム&quot;</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;特徴量分布のヒストグラム&quot;</span><span class="p">,</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -901,7 +1056,7 @@
             <span class="n">explanation_id</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">explanation_id</span><span class="p">,</span>
             <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
             <span class="n">created_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
-            <span class="n">ttl_seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">cache_ttl_seconds</span>
+            <span class="n">ttl_seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">cache_ttl_seconds</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">result</span><span class="o">.</span><span class="n">explanation_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache_entry</span>
@@ -909,13 +1064,14 @@
         <span class="c1"># キャッシュサイズの制限</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_cached_explanations</span><span class="p">:</span>
             <span class="c1"># 最も古いエントリを削除</span>
-            <span class="n">oldest_key</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
-                           <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">created_at</span><span class="p">)</span>
+            <span class="n">oldest_key</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">created_at</span><span class="p">)</span>
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">oldest_key</span><span class="p">]</span>
 
 <div class="viewcode-block" id="ExplainabilityAnalyzer.get_cached_explanation">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplainabilityAnalyzer.get_cached_explanation">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_cached_explanation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">explanation_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cached_explanation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">explanation_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;キャッシュされた説明を取得&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">explanation_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
@@ -933,8 +1089,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">clear_expired_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;期限切れのキャッシュをクリア&quot;&quot;&quot;</span>
         <span class="n">expired_keys</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">cache_entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">cache_entry</span><span class="o">.</span><span class="n">is_expired</span>
+            <span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">cache_entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">cache_entry</span><span class="o">.</span><span class="n">is_expired</span>
         <span class="p">]</span>
 
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">expired_keys</span><span class="p">:</span>
@@ -945,8 +1100,9 @@
 
 <div class="viewcode-block" id="ExplainabilityAnalyzer.get_feature_importance_summary">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplainabilityAnalyzer.get_feature_importance_summary">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_importance_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                     <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_importance_summary</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量重要度のサマリーを取得&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">explanations</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{}</span>
@@ -961,7 +1117,7 @@
                         <span class="s2">&quot;total_importance&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
                         <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
                         <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="n">fi</span><span class="o">.</span><span class="n">feature_category</span><span class="p">,</span>
-                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">fi</span><span class="o">.</span><span class="n">description</span>
+                        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">fi</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
                     <span class="p">}</span>
 
                 <span class="n">all_features</span><span class="p">[</span><span class="n">fi</span><span class="o">.</span><span class="n">feature_name</span><span class="p">][</span><span class="s2">&quot;total_importance&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">fi</span><span class="o">.</span><span class="n">importance_score</span>
@@ -974,7 +1130,7 @@
                 <span class="s2">&quot;average_importance&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;total_importance&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">],</span>
                 <span class="s2">&quot;frequency&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_explanations</span><span class="p">,</span>
                 <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;category&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">]</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">],</span>
             <span class="p">}</span>
 
         <span class="k">return</span> <span class="n">summary</span></div>
@@ -982,9 +1138,9 @@
 
 <div class="viewcode-block" id="ExplainabilityAnalyzer.generate_explanation_report">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.explainability.html#ztb.adaptation.ExplainabilityAnalyzer.generate_explanation_report">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">generate_explanation_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                                  <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">],</span>
-                                  <span class="n">output_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_explanation_report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">],</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;説明レポートの生成&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">explanations</span><span class="p">:</span>
@@ -999,17 +1155,17 @@
             <span class="c1"># ファイル保存</span>
             <span class="k">if</span> <span class="n">output_path</span><span class="p">:</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">output_path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                     <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html_content</span><span class="p">)</span>
                 <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Report saved to: </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># デフォルトのパスに保存</span>
                 <span class="n">default_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">report_path</span><span class="p">,</span>
-                    <span class="sa">f</span><span class="s2">&quot;explanation_report_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.html&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;explanation_report_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.html&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">default_path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">default_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">default_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                     <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html_content</span><span class="p">)</span>
                 <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Report saved to: </span><span class="si">{</span><span class="n">default_path</span><span class="si">}</span><span class="s2">&quot;</span>
 
@@ -1018,12 +1174,16 @@
             <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Report generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_aggregate_explanation_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_aggregate_explanation_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;説明データの集計&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># 基本統計</span>
             <span class="n">total_explanations</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">explanations</span><span class="p">)</span>
-            <span class="n">avg_processing_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">e</span><span class="o">.</span><span class="n">processing_time_seconds</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">explanations</span><span class="p">])</span>
+            <span class="n">avg_processing_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">processing_time_seconds</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">explanations</span><span class="p">]</span>
+            <span class="p">)</span>
 
             <span class="c1"># 決定タイプ別の集計</span>
             <span class="n">decision_counts</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1032,7 +1192,9 @@
             <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">explanations</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="p">:</span>
                     <span class="n">decision_type</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span>
-                    <span class="n">decision_counts</span><span class="p">[</span><span class="n">decision_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">decision_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">decision_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="n">decision_counts</span><span class="p">[</span><span class="n">decision_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">decision_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">decision_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                    <span class="p">)</span>
                     <span class="n">confidence_scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">confidence_score</span><span class="p">)</span>
 
             <span class="c1"># 特徴量重要度の集計</span>
@@ -1047,17 +1209,21 @@
                 <span class="s2">&quot;total_explanations&quot;</span><span class="p">:</span> <span class="n">total_explanations</span><span class="p">,</span>
                 <span class="s2">&quot;avg_processing_time&quot;</span><span class="p">:</span> <span class="n">avg_processing_time</span><span class="p">,</span>
                 <span class="s2">&quot;decision_counts&quot;</span><span class="p">:</span> <span class="n">decision_counts</span><span class="p">,</span>
-                <span class="s2">&quot;avg_confidence&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">confidence_scores</span><span class="p">)</span> <span class="k">if</span> <span class="n">confidence_scores</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;avg_confidence&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">confidence_scores</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">confidence_scores</span>
+                <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
                 <span class="s2">&quot;feature_summary&quot;</span><span class="p">:</span> <span class="n">feature_summary</span><span class="p">,</span>
                 <span class="s2">&quot;time_range&quot;</span><span class="p">:</span> <span class="n">time_range</span> <span class="k">if</span> <span class="n">timestamps</span> <span class="k">else</span> <span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;generated_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="s2">&quot;generated_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">}</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data aggregation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_html_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_html_report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">report_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;HTMLレポートの生成&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">html_template</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
@@ -1189,7 +1355,9 @@
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HTML report generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;Report Generation Failed&lt;/h1&gt;&lt;p&gt;</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;Report Generation Failed&lt;/h1&gt;&lt;p&gt;</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;</span>
+            <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_generate_decision_chart_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decision_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;決定チャートのHTML生成&quot;&quot;&quot;</span>
@@ -1229,11 +1397,16 @@
 <span class="s2">            &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">rows</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_explanation_samples_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_explanation_samples_html</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">explanations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ExplanationResult</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;説明サンプルのHTML生成&quot;&quot;&quot;</span>
         <span class="n">html</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">explanations</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span> <span class="ow">and</span> <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">natural_language_explanation</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span>
+                <span class="ow">and</span> <span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">natural_language_explanation</span>
+            <span class="p">):</span>
                 <span class="n">html</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">                    &lt;div class=&quot;explanation-sample&quot;&gt;</span>
 <span class="s2">                        &lt;h4&gt;決定: </span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">decision_type</span><span class="si">}</span><span class="s2"> (信頼度: </span><span class="si">{</span><span class="n">exp</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">confidence_score</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">)&lt;/h4&gt;</span>
@@ -1258,7 +1431,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -1269,7 +1442,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

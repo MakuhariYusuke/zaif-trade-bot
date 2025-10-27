@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,12 +88,12 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="reviewer-b-copilot">
 <h1>第10回（最終）レビュー結果 - Reviewer B（Copilot）<a class="headerlink" href="#reviewer-b-copilot" title="Link to this heading"></a></h1>
-<p><strong>日付:</strong> 2025年10月8日<br />
-<strong>レビュー対象:</strong> Zaif Trade Bot - Bitcoin自動取引システム<br />
-<strong>レビュー戦略:</strong> アーキテクチャ設計、保守性、テスト戦略<br />
+<p><strong>日付:</strong> 2025年10月8日
+<strong>レビュー対象:</strong> Zaif Trade Bot - Bitcoin自動取引システム
+<strong>レビュー戦略:</strong> アーキテクチャ設計、保守性、テスト戦略
 <strong>レビューサイクル:</strong> 第10回（最終）</p>
 <hr class="docutils" />
 <section id="id1">
@@ -182,8 +180,8 @@
 <h2>🐛 新規発見バグ<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
 <section id="bug-44-critical">
 <h3>Bug #44: テストカバレッジ不足（CRITICAL）<a class="headerlink" href="#bug-44-critical" title="Link to this heading"></a></h3>
-<p><strong>深刻度:</strong> CRITICAL<br />
-<strong>発見者:</strong> Copilot<br />
+<p><strong>深刻度:</strong> CRITICAL
+<strong>発見者:</strong> Copilot
 <strong>影響範囲:</strong> live_trade.py, action_mask_provider.py, position_manager.py</p>
 <p><strong>問題の詳細:</strong></p>
 <ul class="simple">
@@ -216,8 +214,8 @@
 <hr class="docutils" />
 <section id="bug-45-high">
 <h3>Bug #45: 設定バリデーション欠如（HIGH）<a class="headerlink" href="#bug-45-high" title="Link to this heading"></a></h3>
-<p><strong>深刻度:</strong> HIGH<br />
-<strong>発見者:</strong> Copilot<br />
+<p><strong>深刻度:</strong> HIGH
+<strong>発見者:</strong> Copilot
 <strong>影響範囲:</strong> <code class="docutils literal notranslate"><span class="pre">scripts/update_training_configs.py</span></code>, 全設定ファイル</p>
 <p><strong>問題の詳細:</strong></p>
 <ul class="simple">
@@ -254,8 +252,8 @@
 <hr class="docutils" />
 <section id="bug-46-medium">
 <h3>Bug #46: 浮動小数点比較の水平展開漏れ（MEDIUM）<a class="headerlink" href="#bug-46-medium" title="Link to this heading"></a></h3>
-<p><strong>深刻度:</strong> MEDIUM<br />
-<strong>発見者:</strong> Copilot<br />
+<p><strong>深刻度:</strong> MEDIUM
+<strong>発見者:</strong> Copilot
 <strong>影響範囲:</strong> 全Pythonファイル（16箇所）</p>
 <p><strong>問題の詳細:</strong></p>
 <ul class="simple">
@@ -288,8 +286,8 @@
 <hr class="docutils" />
 <section id="bug-47-low">
 <h3>Bug #47: アクション定数の未使用（LOW）<a class="headerlink" href="#bug-47-low" title="Link to this heading"></a></h3>
-<p><strong>深刻度:</strong> LOW<br />
-<strong>発見者:</strong> Copilot<br />
+<p><strong>深刻度:</strong> LOW
+<strong>発見者:</strong> Copilot
 <strong>影響範囲:</strong> live_trade.py 以外</p>
 <p><strong>問題の詳細:</strong></p>
 <ul class="simple">
@@ -379,7 +377,7 @@
 </section>
 <section id="id11">
 <h3>設定スキーマの妥当性<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
-<p><strong>現状:</strong> 非構造化JSON<br />
+<p><strong>現状:</strong> 非構造化JSON
 <strong>推奨:</strong> Pydanticモデル導入</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
 
@@ -400,20 +398,20 @@
 <h2>🔄 水平展開の優先順位評価<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
 <section id="bug-38">
 <h3>Bug #38（浮動小数点比較）<a class="headerlink" href="#bug-38" title="Link to this heading"></a></h3>
-<p><strong>優先度:</strong> MEDIUM<br />
-<strong>理由:</strong> 技術的負債だが、テストコードでは許容<br />
+<p><strong>優先度:</strong> MEDIUM
+<strong>理由:</strong> 技術的負債だが、テストコードでは許容
 <strong>対応:</strong> ユーティリティ関数作成後、段階的適用</p>
 </section>
 <section id="id13">
 <h3>アクション定数明示化<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
-<p><strong>優先度:</strong> LOW<br />
-<strong>理由:</strong> 影響範囲限定、段階的対応可能<br />
+<p><strong>優先度:</strong> LOW
+<strong>理由:</strong> 影響範囲限定、段階的対応可能
 <strong>対応:</strong> 定数ファイル作成後、徐々に置換</p>
 </section>
 <section id="id14">
 <h3>ログローテーションの水平展開<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
-<p><strong>優先度:</strong> MEDIUM<br />
-<strong>理由:</strong> logging_utils.pyは完成しているが、他のログ使用箇所に未適用<br />
+<p><strong>優先度:</strong> MEDIUM
+<strong>理由:</strong> logging_utils.pyは完成しているが、他のログ使用箇所に未適用
 <strong>対応:</strong> 全ロガー設定箇所でRotatingFileHandler適用</p>
 </section>
 </section>
@@ -554,11 +552,11 @@
 <li><p><strong>ドキュメント充実:</strong> 技術的負債の定期見直し</p></li>
 </ol>
 <hr class="docutils" />
-<p><strong>レビュー完了日時:</strong> 2025年10月8日<br />
-<strong>レビュアー:</strong> Copilot (アーキテクチャ・保守性・テスト戦略担当)<br />
+<p><strong>レビュー完了日時:</strong> 2025年10月8日
+<strong>レビュアー:</strong> Copilot (アーキテクチャ・保守性・テスト戦略担当)
 <strong>最終ステータス:</strong> 条件付き承認（3つの条件付き）</p>
 <hr class="docutils" />
-<p><strong>補足:</strong><br />
+<p><strong>補足:</strong>
 第10回最終レビューにおいて、過去9サイクルの修正完全性を確認しつつ、新たな課題を特定しました。特にテスト戦略と設定管理の改善が急務です。これらの改善により、本プロジェクトの長期的な保守性と信頼性が向上すると確信しています。</content>
 <parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\bug_fixes\TENTH_REVIEW_RESULTS.md</p>
 </section>
@@ -579,7 +577,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -590,7 +588,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

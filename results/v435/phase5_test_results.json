@@ -1,0 +1,65 @@
+{
+  "risk_integration": {
+    "adjusted_position": 0.00014285714285714292,
+    "risk_level": 0.15,
+    "control_active": true,
+    "reasons": [
+      "Correlation risk control applied"
+    ],
+    "drawdown_info": {
+      "emergency_stop": false,
+      "position_reduction_factor": 1.0,
+      "warning_triggered": false,
+      "reduction_triggered": false,
+      "current_drawdown": 0.0,
+      "max_drawdown": 0.0
+    },
+    "adaptation_info": {
+      "adapted_position_size": 0.1,
+      "adapted_trade_frequency": 1.0,
+      "adapted_risk_tolerance": 0.5,
+      "market_regime": "sideways",
+      "regime_stability": 0.5,
+      "adaptation_factors": {
+        "trend": 1.0,
+        "volatility": 1.0,
+        "momentum": 1.0
+      }
+    },
+    "market_regime": "sideways"
+  },
+  "training": {
+    "status": "success",
+    "risk_test": {
+      "adjusted_position": 0.00014285714285714292,
+      "risk_level": 0.15,
+      "control_active": true,
+      "reasons": [
+        "Correlation risk control applied"
+      ],
+      "drawdown_info": {
+        "emergency_stop": false,
+        "position_reduction_factor": 1.0,
+        "warning_triggered": false,
+        "reduction_triggered": false,
+        "current_drawdown": 0.0,
+        "max_drawdown": 0.0
+      },
+      "adaptation_info": {
+        "adapted_position_size": 0.1,
+        "adapted_trade_frequency": 1.0,
+        "adapted_risk_tolerance": 0.5,
+        "market_regime": "sideways",
+        "regime_stability": 0.5,
+        "adaptation_factors": {
+          "trend": 1.0,
+          "volatility": 1.0,
+          "momentum": 1.0
+        }
+      },
+      "market_regime": "sideways"
+    }
+  },
+  "evaluation": true,
+  "overall_status": "partial"
+}

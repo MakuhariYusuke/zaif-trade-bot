@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,23 +87,22 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.meta_learning</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Meta-Learning for SAC v421</span>
 <span class="sd">MAMLスタイルのメタラーニングによる迅速な市場適応</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">TensorDataset</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 
@@ -115,6 +114,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TaskData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;タスクデータ&quot;&quot;&quot;</span>
+
     <span class="n">states</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
     <span class="n">actions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
     <span class="n">rewards</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
@@ -129,6 +129,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MetaLearningConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;メタラーニング設定&quot;&quot;&quot;</span>
+
     <span class="n">inner_lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
     <span class="n">outer_lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>
     <span class="n">meta_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
@@ -164,7 +165,9 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;タスクへの適応&quot;&quot;&quot;</span>
         <span class="c1"># モデルコピー</span>
         <span class="n">adapted_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-        <span class="n">adapted_optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">adapted_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">inner_lr</span><span class="p">)</span>
+        <span class="n">adapted_optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span>
+            <span class="n">adapted_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">inner_lr</span>
+        <span class="p">)</span>
 
         <span class="c1"># 適応ステップ</span>
         <span class="n">adapted_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
@@ -173,8 +176,13 @@
 
             <span class="c1"># タスクデータでの損失計算</span>
             <span class="n">outputs</span> <span class="o">=</span> <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">)</span>
-            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
-                          <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span>
+                <span class="n">outputs</span><span class="p">,</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
+                <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
             <span class="n">adapted_optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
@@ -218,12 +226,16 @@
 
 <div class="viewcode-block" id="Reptile.adapt_to_task">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.Reptile.adapt_to_task">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_task</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;タスクへの適応&quot;&quot;&quot;</span>
         <span class="n">adapted_model</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
         <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">adapted_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">inner_lr</span><span class="p">)</span>
 
-        <span class="n">initial_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">adapted_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()}</span>
+        <span class="n">initial_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">adapted_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()</span>
+        <span class="p">}</span>
 
         <span class="c1"># 適応ステップ</span>
         <span class="n">adapted_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
@@ -233,31 +245,40 @@
             <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
 
             <span class="n">outputs</span> <span class="o">=</span> <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">)</span>
-            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
-                          <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span>
+                <span class="n">outputs</span><span class="p">,</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
+                <span class="n">adapted_model</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span>
+                <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
             <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
             <span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
 
         <span class="c1"># パラメータ差分計算</span>
-        <span class="n">final_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">adapted_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()}</span>
+        <span class="n">final_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">adapted_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()</span>
+        <span class="p">}</span>
         <span class="n">param_updates</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">initial_params</span><span class="p">:</span>
             <span class="n">param_updates</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">adapted_model</span><span class="p">,</span> <span class="p">{</span>
-            <span class="s1">&#39;initial_params&#39;</span><span class="p">:</span> <span class="n">initial_params</span><span class="p">,</span>
-            <span class="s1">&#39;final_params&#39;</span><span class="p">:</span> <span class="n">final_params</span><span class="p">,</span>
-            <span class="s1">&#39;param_updates&#39;</span><span class="p">:</span> <span class="n">param_updates</span><span class="p">,</span>
-            <span class="s1">&#39;adaptation_losses&#39;</span><span class="p">:</span> <span class="n">losses</span>
+            <span class="s2">&quot;initial_params&quot;</span><span class="p">:</span> <span class="n">initial_params</span><span class="p">,</span>
+            <span class="s2">&quot;final_params&quot;</span><span class="p">:</span> <span class="n">final_params</span><span class="p">,</span>
+            <span class="s2">&quot;param_updates&quot;</span><span class="p">:</span> <span class="n">param_updates</span><span class="p">,</span>
+            <span class="s2">&quot;adaptation_losses&quot;</span><span class="p">:</span> <span class="n">losses</span><span class="p">,</span>
         <span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="Reptile.meta_update">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.Reptile.meta_update">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">meta_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adapted_models</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">],</span> <span class="n">task_infos</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">meta_update</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">adapted_models</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">],</span> <span class="n">task_infos</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メタ更新&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">meta_optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
 
@@ -266,8 +287,8 @@
 
         <span class="k">for</span> <span class="n">adapted_model</span><span class="p">,</span> <span class="n">task_info</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">adapted_models</span><span class="p">,</span> <span class="n">task_infos</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">adapted_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
-                <span class="n">initial_param</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;initial_params&#39;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
-                <span class="n">final_param</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;final_params&#39;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">initial_param</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;initial_params&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">final_param</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;final_params&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
 
                 <span class="c1"># 適応方向の勾配</span>
                 <span class="n">gradient</span> <span class="o">=</span> <span class="n">final_param</span> <span class="o">-</span> <span class="n">initial_param</span>
@@ -289,15 +310,19 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">MetaLearner</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;メタラーニング統合クラス&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;maml&#39;</span><span class="p">,</span>
-                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MetaLearningConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base_model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;maml&quot;</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MetaLearningConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span> <span class="o">=</span> <span class="n">base_model</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">algorithm</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">MetaLearningConfig</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;maml&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;maml&quot;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span> <span class="o">=</span> <span class="n">MAML</span><span class="p">(</span><span class="n">base_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;reptile&#39;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;reptile&quot;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span> <span class="o">=</span> <span class="n">Reptile</span><span class="p">(</span><span class="n">base_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported algorithm: </span><span class="si">{</span><span class="n">algorithm</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -305,7 +330,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">task_buffer</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">best_model_state</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="MetaLearner.collect_task_data">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MetaLearner.collect_task_data">[docs]</a>
@@ -323,7 +348,9 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">sample_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_tasks</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">TaskData</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;タスクサンプリング&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_buffer</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_tasks</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Insufficient tasks in buffer: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_buffer</span><span class="p">)</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="n">num_tasks</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Insufficient tasks in buffer: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_buffer</span><span class="p">)</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="n">num_tasks</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_buffer</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="c1"># ランダムサンプリング（重複なし）</span>
@@ -333,12 +360,14 @@
 
 <div class="viewcode-block" id="MetaLearner.train_meta">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MetaLearner.train_meta">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">train_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_meta</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メタ学習実行&quot;&quot;&quot;</span>
         <span class="n">training_history</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;meta_losses&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;task_losses&#39;</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="s1">&#39;validation_performance&#39;</span><span class="p">:</span> <span class="p">[]</span>
+            <span class="s2">&quot;meta_losses&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;task_losses&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;validation_performance&quot;</span><span class="p">:</span> <span class="p">[],</span>
         <span class="p">}</span>
 
         <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
@@ -352,7 +381,7 @@
 
             <span class="n">task_losses</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;maml&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;maml&quot;</span><span class="p">:</span>
                 <span class="c1"># MAML学習</span>
                 <span class="n">adapted_models</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="n">task_losses_epoch</span> <span class="o">=</span> <span class="p">[]</span>
@@ -364,39 +393,52 @@
                     <span class="c1"># 適応後モデルの損失計算</span>
                     <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
                         <span class="n">outputs</span> <span class="o">=</span> <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">states</span><span class="p">)</span>
-                        <span class="n">task_loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
-                                          <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span> <span class="n">task</span><span class="o">.</span><span class="n">dones</span><span class="p">)</span>
+                        <span class="n">task_loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span>
+                            <span class="n">outputs</span><span class="p">,</span>
+                            <span class="n">task</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span>
+                            <span class="n">task</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
+                            <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span>
+                            <span class="n">task</span><span class="o">.</span><span class="n">dones</span><span class="p">,</span>
+                        <span class="p">)</span>
                         <span class="n">task_losses_epoch</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_loss</span><span class="p">)</span>
 
                 <span class="c1"># メタ更新</span>
                 <span class="n">meta_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">meta_update</span><span class="p">(</span><span class="n">task_losses_epoch</span><span class="p">)</span>
                 <span class="n">task_losses</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">task_losses_epoch</span><span class="p">)</span>
 
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;reptile&#39;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;reptile&quot;</span><span class="p">:</span>
                 <span class="c1"># Reptile学習</span>
                 <span class="n">adapted_models</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="n">task_infos</span> <span class="o">=</span> <span class="p">[]</span>
 
                 <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
-                    <span class="n">adapted_model</span><span class="p">,</span> <span class="n">task_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">adapt_to_task</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">)</span>
+                    <span class="n">adapted_model</span><span class="p">,</span> <span class="n">task_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">adapt_to_task</span><span class="p">(</span>
+                        <span class="n">task</span><span class="p">,</span> <span class="n">loss_fn</span>
+                    <span class="p">)</span>
                     <span class="n">adapted_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adapted_model</span><span class="p">)</span>
                     <span class="n">task_infos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_info</span><span class="p">)</span>
 
                     <span class="c1"># タスク損失</span>
-                    <span class="n">final_loss</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;adaptation_losses&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">final_loss</span> <span class="o">=</span> <span class="n">task_info</span><span class="p">[</span><span class="s2">&quot;adaptation_losses&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
                     <span class="n">task_losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">final_loss</span><span class="p">))</span>
 
                 <span class="c1"># メタ更新</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">meta_update</span><span class="p">(</span><span class="n">adapted_models</span><span class="p">,</span> <span class="n">task_infos</span><span class="p">)</span>
-                <span class="n">meta_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;adaptation_losses&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">task_infos</span><span class="p">])</span>
+                <span class="n">meta_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;adaptation_losses&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">task_infos</span><span class="p">]</span>
+                <span class="p">)</span>
 
             <span class="c1"># 履歴記録</span>
-            <span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;meta_losses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">meta_loss</span><span class="p">)</span>
-            <span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;task_losses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">loss</span> <span class="ow">in</span> <span class="n">task_losses</span><span class="p">]))</span>
+            <span class="n">training_history</span><span class="p">[</span><span class="s2">&quot;meta_losses&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">meta_loss</span><span class="p">)</span>
+            <span class="n">training_history</span><span class="p">[</span><span class="s2">&quot;task_losses&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">loss</span> <span class="ow">in</span> <span class="n">task_losses</span><span class="p">])</span>
+            <span class="p">)</span>
 
             <span class="c1"># 検証性能評価（簡易版）</span>
-            <span class="n">val_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_meta_performance</span><span class="p">(</span><span class="n">tasks</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">loss_fn</span><span class="p">)</span>  <span class="c1"># 最初の2タスクで評価</span>
-            <span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;validation_performance&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_performance</span><span class="p">)</span>
+            <span class="n">val_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_meta_performance</span><span class="p">(</span>
+                <span class="n">tasks</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">loss_fn</span>
+            <span class="p">)</span>  <span class="c1"># 最初の2タスクで評価</span>
+            <span class="n">training_history</span><span class="p">[</span><span class="s2">&quot;validation_performance&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_performance</span><span class="p">)</span>
 
             <span class="c1"># Early stopping</span>
             <span class="k">if</span> <span class="n">val_performance</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span><span class="p">:</span>
@@ -411,10 +453,12 @@
                 <span class="k">break</span>
 
             <span class="k">if</span> <span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Meta epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2">, &quot;</span>
-                          <span class="sa">f</span><span class="s2">&quot;meta_loss: </span><span class="si">{</span><span class="n">meta_loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
-                          <span class="sa">f</span><span class="s2">&quot;task_loss: </span><span class="si">{</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;task_losses&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
-                          <span class="sa">f</span><span class="s2">&quot;val_perf: </span><span class="si">{</span><span class="n">val_performance</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Meta epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;meta_loss: </span><span class="si">{</span><span class="n">meta_loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;task_loss: </span><span class="si">{</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;task_losses&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;val_perf: </span><span class="si">{</span><span class="n">val_performance</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
 
         <span class="c1"># 最適モデル復元</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_model_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -423,7 +467,9 @@
         <span class="k">return</span> <span class="n">training_history</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_meta_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TaskData</span><span class="p">],</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_meta_performance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TaskData</span><span class="p">],</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メタ性能評価&quot;&quot;&quot;</span>
         <span class="n">total_performance</span> <span class="o">=</span> <span class="mi">0</span>
 
@@ -433,8 +479,13 @@
             <span class="c1"># 適応後性能評価</span>
             <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
                 <span class="n">outputs</span> <span class="o">=</span> <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">states</span><span class="p">)</span>
-                <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
-                             <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span> <span class="n">task</span><span class="o">.</span><span class="n">dones</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span>
+                    <span class="n">outputs</span><span class="p">,</span>
+                    <span class="n">task</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span>
+                    <span class="n">task</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
+                    <span class="n">adapted_model</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">next_states</span><span class="p">),</span>
+                    <span class="n">task</span><span class="o">.</span><span class="n">dones</span><span class="p">,</span>
+                <span class="p">)</span>
                 <span class="c1"># 負の損失を性能として使用（高いほど良い）</span>
                 <span class="n">performance</span> <span class="o">=</span> <span class="o">-</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
                 <span class="n">total_performance</span> <span class="o">+=</span> <span class="n">performance</span>
@@ -443,7 +494,9 @@
 
 <div class="viewcode-block" id="MetaLearner.adapt_to_new_market">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MetaLearner.adapt_to_new_market">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_new_market</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">adaptation_steps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_new_market</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">adaptation_steps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;新規市場への適応&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">adaptation_steps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">adaptation_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">adaptation_steps</span>
@@ -470,12 +523,15 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MetaLearner.save_meta_model">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_meta_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メタモデル保存&quot;&quot;&quot;</span>
-        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
-            <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
-            <span class="s1">&#39;config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
-            <span class="s1">&#39;algorithm&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span>
-            <span class="s1">&#39;best_performance&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span>
-        <span class="p">},</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;model_state_dict&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span>
+                <span class="s2">&quot;best_performance&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">path</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Meta model saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
@@ -484,10 +540,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">load_meta_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メタモデル読み込み&quot;&quot;&quot;</span>
         <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;model_state_dict&#39;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;algorithm&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;best_performance&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta_model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;model_state_dict&quot;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;algorithm&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best_performance</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s2">&quot;best_performance&quot;</span><span class="p">]</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Meta model loaded from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 </div>
 
@@ -509,16 +565,23 @@
             <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dims</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">hidden_dims</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dims</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">action_dim</span><span class="p">),</span>
-            <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">()</span>  <span class="c1"># 行動空間を[-1, 1]に制限</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">(),</span>  <span class="c1"># 行動空間を[-1, 1]に制限</span>
         <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span> <span class="o">=</span> <span class="n">MetaLearner</span><span class="p">(</span><span class="n">base_model</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s1">&#39;maml&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span> <span class="o">=</span> <span class="n">MetaLearner</span><span class="p">(</span><span class="n">base_model</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">&quot;maml&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">market_models</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 市場ごとの適応済みモデル</span>
 
 <div class="viewcode-block" id="MarketMetaLearner.add_market_data">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MarketMetaLearner.add_market_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_market_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">states</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-                       <span class="n">rewards</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">next_states</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">dones</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_market_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">market_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">states</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">actions</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">rewards</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">next_states</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">dones</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;市場データ追加&quot;&quot;&quot;</span>
         <span class="n">task_data</span> <span class="o">=</span> <span class="n">TaskData</span><span class="p">(</span>
             <span class="n">states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">states</span><span class="p">),</span>
@@ -526,7 +589,7 @@
             <span class="n">rewards</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">rewards</span><span class="p">),</span>
             <span class="n">next_states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">next_states</span><span class="p">),</span>
             <span class="n">dones</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">dones</span><span class="p">),</span>
-            <span class="n">task_id</span><span class="o">=</span><span class="n">market_name</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="n">market_name</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">collect_task_data</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span></div>
@@ -536,6 +599,7 @@
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MarketMetaLearner.train_on_markets">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">train_on_markets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;複数市場でのメタ学習&quot;&quot;&quot;</span>
+
         <span class="k">def</span><span class="w"> </span><span class="nf">market_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
             <span class="c1"># SACスタイルの損失（簡易版）</span>
             <span class="n">action_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">outputs</span> <span class="o">-</span> <span class="n">actions</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
@@ -546,15 +610,17 @@
 
 <div class="viewcode-block" id="MarketMetaLearner.adapt_to_market">
 <a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.meta_learning.MarketMetaLearner.adapt_to_market">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_market</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_to_market</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">market_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;特定市場への適応&quot;&quot;&quot;</span>
         <span class="n">task_data</span> <span class="o">=</span> <span class="n">TaskData</span><span class="p">(</span>
-            <span class="n">states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">]),</span>
-            <span class="n">actions</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;actions&#39;</span><span class="p">]),</span>
-            <span class="n">rewards</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">]),</span>
-            <span class="n">next_states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;next_states&#39;</span><span class="p">]),</span>
-            <span class="n">dones</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;dones&#39;</span><span class="p">]),</span>
-            <span class="n">task_id</span><span class="o">=</span><span class="n">market_name</span>
+            <span class="n">states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s2">&quot;states&quot;</span><span class="p">]),</span>
+            <span class="n">actions</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s2">&quot;actions&quot;</span><span class="p">]),</span>
+            <span class="n">rewards</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">]),</span>
+            <span class="n">next_states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s2">&quot;next_states&quot;</span><span class="p">]),</span>
+            <span class="n">dones</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">market_data</span><span class="p">[</span><span class="s2">&quot;dones&quot;</span><span class="p">]),</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="n">market_name</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">adapted_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">adapt_to_new_market</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span>
@@ -592,10 +658,10 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">get_adaptation_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;適応統計取得&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;num_markets&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_models</span><span class="p">),</span>
-            <span class="s1">&#39;market_names&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_models</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
-            <span class="s1">&#39;meta_performance&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">best_performance</span><span class="p">,</span>
-            <span class="s1">&#39;algorithm&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">algorithm</span>
+            <span class="s2">&quot;num_markets&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_models</span><span class="p">),</span>
+            <span class="s2">&quot;market_names&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_models</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="s2">&quot;meta_performance&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">best_performance</span><span class="p">,</span>
+            <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_learner</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span>
         <span class="p">}</span></div>
 </div>
 
@@ -614,7 +680,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -625,7 +691,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

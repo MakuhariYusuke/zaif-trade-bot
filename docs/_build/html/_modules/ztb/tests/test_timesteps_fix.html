@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_timesteps_fix</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -96,6 +96,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
 
 <div class="viewcode-block" id="test_timesteps_override">
 <a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_timesteps_fix.test_timesteps_override">[docs]</a>
@@ -106,15 +107,13 @@
     <span class="n">test_config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="s2">&quot;test_timesteps&quot;</span><span class="p">,</span>
         <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;training&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">999999</span>  <span class="c1"># Should be overridden</span>
-        <span class="p">},</span>
-        <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="s2">&quot;ml-dataset-enhanced-balanced.csv&quot;</span>
+        <span class="s2">&quot;training&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">999999</span><span class="p">},</span>  <span class="c1"># Should be overridden</span>
+        <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="s2">&quot;ml-dataset-enhanced-balanced.csv&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="c1"># Save test config</span>
     <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;configs/training/test_timesteps_override.json&quot;</span><span class="p">)</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
@@ -122,7 +121,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config file: </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config total_timesteps: </span><span class="si">{</span><span class="n">test_config</span><span class="p">[</span><span class="s1">&#39;training&#39;</span><span class="p">][</span><span class="s1">&#39;total_timesteps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Command-line override: 1000&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Command-line override: 1000&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">()</span>
 
     <span class="c1"># Test with UnifiedTrainer</span>
@@ -154,7 +153,7 @@
         <span class="n">config</span><span class="o">=</span><span class="n">test_config</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
         <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">1000</span>  <span class="c1"># Override to 1000</span>
+        <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>  <span class="c1"># Override to 1000</span>
     <span class="p">)</span>
     <span class="n">unified2</span> <span class="o">=</span> <span class="n">trainer2</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">()</span>
 
@@ -192,9 +191,12 @@
 
     <span class="c1"># Summary</span>
     <span class="n">all_pass</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">result1</span> <span class="o">==</span> <span class="mi">999999</span> <span class="ow">and</span> <span class="n">ppo_result1</span> <span class="o">==</span> <span class="mi">999999</span> <span class="ow">and</span>
-        <span class="n">result2</span> <span class="o">==</span> <span class="mi">1000</span> <span class="ow">and</span> <span class="n">ppo_result2</span> <span class="o">==</span> <span class="mi">1000</span> <span class="ow">and</span>
-        <span class="n">result3</span> <span class="o">==</span> <span class="mi">1000</span> <span class="ow">and</span> <span class="n">ppo_result3</span> <span class="o">==</span> <span class="mi">1000</span>
+        <span class="n">result1</span> <span class="o">==</span> <span class="mi">999999</span>
+        <span class="ow">and</span> <span class="n">ppo_result1</span> <span class="o">==</span> <span class="mi">999999</span>
+        <span class="ow">and</span> <span class="n">result2</span> <span class="o">==</span> <span class="mi">1000</span>
+        <span class="ow">and</span> <span class="n">ppo_result2</span> <span class="o">==</span> <span class="mi">1000</span>
+        <span class="ow">and</span> <span class="n">result3</span> <span class="o">==</span> <span class="mi">1000</span>
+        <span class="ow">and</span> <span class="n">ppo_result3</span> <span class="o">==</span> <span class="mi">1000</span>
     <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">all_pass</span><span class="p">:</span>
@@ -210,8 +212,10 @@
     <span class="k">return</span> <span class="n">all_pass</span></div>
 
 
+
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
     <span class="n">success</span> <span class="o">=</span> <span class="n">test_timesteps_override</span><span class="p">()</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">success</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
@@ -229,7 +233,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -240,7 +244,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

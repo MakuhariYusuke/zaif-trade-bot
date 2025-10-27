@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -45,8 +45,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -90,12 +88,12 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="bug-27-complete-fix-action-masking-in-live-trading">
 <h1>Bug #27 Complete Fix: Action Masking in Live Trading<a class="headerlink" href="#bug-27-complete-fix-action-masking-in-live-trading" title="Link to this heading"></a></h1>
-<p><strong>Date:</strong> 2025年10月8日<br />
-<strong>Bug ID:</strong> #27<br />
-<strong>Severity:</strong> CRITICAL → <strong>RESOLVED</strong><br />
+<p><strong>Date:</strong> 2025年10月8日
+<strong>Bug ID:</strong> #27
+<strong>Severity:</strong> CRITICAL → <strong>RESOLVED</strong>
 <strong>Status:</strong> ✅ FIXED (Complete Implementation)</p>
 <hr class="docutils" />
 <section id="problem-summary">
@@ -120,8 +118,8 @@ LiveTrader loaded models using <code class="docutils literal notranslate"><span 
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ActionMaskProvider</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Lightweight action mask provider for MaskablePPO in live trading.</span>
-<span class="sd">    </span>
-<span class="sd">    Provides the same action masking logic as the gym environment</span>
+
+<span class="sd">    Provides the same action masking logic as the Gymnasium environment</span>
 <span class="sd">    but without requiring a full environment instance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -323,8 +321,8 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span>--demo-mode<s
 <h2>Known Limitations<a class="headerlink" href="#known-limitations" title="Link to this heading"></a></h2>
 <section id="forced-close-detection-not-integrated-yet">
 <h3>1. Forced Close Detection Not Integrated (Yet)<a class="headerlink" href="#forced-close-detection-not-integrated-yet" title="Link to this heading"></a></h3>
-<p><strong>Status:</strong> TODO<br />
-<strong>Impact:</strong> MEDIUM<br />
+<p><strong>Status:</strong> TODO
+<strong>Impact:</strong> MEDIUM
 <strong>Description:</strong> <code class="docutils literal notranslate"><span class="pre">forced_close_reason</span></code> is always <code class="docutils literal notranslate"><span class="pre">None</span></code> in current implementation</p>
 <p><strong>Future Work:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add to PositionManager</span>
@@ -344,8 +342,8 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span>--demo-mode<s
 </section>
 <section id="step-counter-overflow-long-term">
 <h3>2. Step Counter Overflow (Long-term)<a class="headerlink" href="#step-counter-overflow-long-term" title="Link to this heading"></a></h3>
-<p><strong>Status:</strong> Acknowledged<br />
-<strong>Impact:</strong> LOW<br />
+<p><strong>Status:</strong> Acknowledged
+<strong>Impact:</strong> LOW
 <strong>Description:</strong> <code class="docutils literal notranslate"><span class="pre">_current_step</span></code> increments indefinitely, may overflow after weeks of continuous operation</p>
 <p><strong>Mitigation:</strong></p>
 <ul class="simple">
@@ -459,8 +457,8 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span>--demo-mode<s
 </ol>
 <p><strong>Status:</strong> ✅ <strong>PRODUCTION READY</strong></p>
 <hr class="docutils" />
-<p><strong>Implementation Date:</strong> 2025年10月8日<br />
-<strong>Implemented By:</strong> AI Development Team<br />
+<p><strong>Implementation Date:</strong> 2025年10月8日
+<strong>Implemented By:</strong> AI Development Team
 <strong>Reviewed By:</strong> Self-Review (SELF_REVIEW_SIXTH_CYCLE.md)</p>
 </section>
 </section>
@@ -479,7 +477,7 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span>--demo-mode<s
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -490,7 +488,7 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span>--demo-mode<s
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

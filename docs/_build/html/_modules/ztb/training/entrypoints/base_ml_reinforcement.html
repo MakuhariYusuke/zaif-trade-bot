@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.training.entrypoints.base_ml_reinforcement</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -108,11 +108,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.experiments.base</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ExperimentMetrics</span><span class="p">,</span>
-    <span class="n">ExperimentResult</span><span class="p">,</span>
-    <span class="n">ScalingExperiment</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.experiments.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperimentMetrics</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">ScalingExperiment</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.checkpoint</span><span class="w"> </span><span class="kn">import</span> <span class="n">HAS_LZ4</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.file_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_json_load</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.parallel_experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceMonitor</span>
@@ -187,7 +183,9 @@
         <span class="c1"># 実験状態</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
         <span class="c1"># Memory optimized: Limit step_results history to prevent unbounded growth</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>  <span class="c1"># Keep last 1000 steps only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span>
+            <span class="n">maxlen</span><span class="o">=</span><span class="mi">1000</span>
+        <span class="p">)</span>  <span class="c1"># Keep last 1000 steps only</span>
 
 <div class="viewcode-block" id="MLReinforcementExperiment.run">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.run">[docs]</a>
@@ -287,7 +285,9 @@
             <span class="n">best_reward</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">,</span>
             <span class="n">model_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dummy&quot;</span><span class="p">:</span> <span class="s2">&quot;model&quot;</span><span class="p">},</span>
             <span class="n">optimizer_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dummy&quot;</span><span class="p">:</span> <span class="s2">&quot;optimizer&quot;</span><span class="p">},</span>
-            <span class="n">step_results</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">)[</span><span class="o">-</span><span class="mi">100</span><span class="p">:],</span>  <span class="c1"># Convert deque to list, last 100 steps</span>
+            <span class="n">step_results</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">)[</span>
+                <span class="o">-</span><span class="mi">100</span><span class="p">:</span>
+            <span class="p">],</span>  <span class="c1"># Convert deque to list, last 100 steps</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">save_async</span><span class="p">(</span>
             <span class="n">asdict</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">),</span>
@@ -375,7 +375,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -386,7 +386,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

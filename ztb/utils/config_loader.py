@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, TextIO, Union, cast
 
 import yaml
 
+from ztb.types.common import ConfigDict
 from ztb.utils.file_utils import safe_json_load
 
 try:
@@ -209,7 +210,7 @@ class ConfigLoader:
 
     @staticmethod
     def save(
-        config: Dict[str, Any],
+        config: ConfigDict,
         file_path: Union[str, Path],
         format: Optional[str] = None,
     ) -> None:
@@ -248,7 +249,7 @@ class ConfigLoader:
                 ConfigLoader._save_toml(config, f)
 
     @staticmethod
-    def _save_toml(config: Dict[str, Any], file_obj: TextIO) -> None:
+    def _save_toml(config: ConfigDict, file_obj: TextIO) -> None:
         """
         Save configuration as TOML.
 
@@ -267,7 +268,7 @@ class ConfigLoader:
 
     @staticmethod
     def _write_basic_toml(
-        config: Dict[str, Any], file_obj: TextIO, prefix: str = ""
+        config: ConfigDict, file_obj: TextIO, prefix: str = ""
     ) -> None:
         """
         Write basic TOML format (fallback when tomli_w is not available).

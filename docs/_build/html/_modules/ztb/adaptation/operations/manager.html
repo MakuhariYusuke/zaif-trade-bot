@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.operations.manager</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Integrated Operations Management System</span>
@@ -97,22 +97,22 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceMonitor</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.safety</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyManager</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.scalability</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoadBalancer</span><span class="p">,</span> <span class="n">AutoScaler</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.scalability</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoScaler</span><span class="p">,</span> <span class="n">LoadBalancer</span>
+
 <span class="c1"># from ..config import SACConfig  # 循環インポートを避けるためコメントアウト</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationsStatus</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">SystemHealth</span><span class="p">,</span> <span class="n">IntegrationStatus</span><span class="p">,</span>
-    <span class="n">OperationalMetrics</span><span class="p">,</span> <span class="n">AlertSummary</span><span class="p">,</span> <span class="n">RecoveryAction</span>
-<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegratedOperationsConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AlertSummary</span><span class="p">,</span>
+    <span class="n">IntegrationStatus</span><span class="p">,</span>
+    <span class="n">OperationalMetrics</span><span class="p">,</span>
+    <span class="n">RecoveryAction</span><span class="p">,</span>
+    <span class="n">SystemHealth</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -122,7 +122,11 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">IntegratedOperationsManager</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統合運用マネージャー&quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">operations_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">IntegratedOperationsConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">operations_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">IntegratedOperationsConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">operations_config</span> <span class="o">=</span> <span class="n">operations_config</span> <span class="ow">or</span> <span class="n">IntegratedOperationsConfig</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_running</span> <span class="o">=</span> <span class="kc">False</span>
@@ -144,7 +148,7 @@
             <span class="n">safety_active</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">scalability_active</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">online_learning_active</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">last_integration_check</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">last_integration_check</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 運用メトリクス</span>
@@ -154,7 +158,7 @@
             <span class="n">error_rate</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
             <span class="n">average_response_time</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
             <span class="n">resource_utilization</span><span class="o">=</span><span class="p">{},</span>
-            <span class="n">last_updated</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">last_updated</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Integrated Operations Manager initialized&quot;</span><span class="p">)</span>
@@ -173,7 +177,7 @@
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operations_config</span><span class="o">.</span><span class="n">safety_enabled</span><span class="p">:</span>
                 <span class="c1"># SafetyManagerの起動メソッドを確認して呼び出し</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s1">&#39;start_safety_monitoring&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s2">&quot;start_safety_monitoring&quot;</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="o">.</span><span class="n">start_safety_monitoring</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">safety_active</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -184,16 +188,14 @@
             <span class="c1"># 統合監視スレッド起動</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operations_config</span><span class="o">.</span><span class="n">integrated_operations_enabled</span><span class="p">:</span>
                 <span class="n">integration_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-                    <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_integration_monitor_worker</span><span class="p">,</span>
-                    <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_integration_monitor_worker</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
                 <span class="p">)</span>
                 <span class="n">integration_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">integration_thread</span><span class="p">)</span>
 
                 <span class="c1"># ヘルスチェックスレッド起動</span>
                 <span class="n">health_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-                    <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_health_check_worker</span><span class="p">,</span>
-                    <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_health_check_worker</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
                 <span class="p">)</span>
                 <span class="n">health_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">threads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">health_thread</span><span class="p">)</span>
@@ -226,7 +228,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operations_config</span><span class="o">.</span><span class="n">safety_enabled</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s1">&#39;stop_safety_monitoring&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s2">&quot;stop_safety_monitoring&quot;</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="o">.</span><span class="n">stop_safety_monitoring</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">safety_active</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -280,22 +282,30 @@
                 <span class="s2">&quot;safety&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">safety_active</span><span class="p">,</span>
                 <span class="s2">&quot;scalability&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">scalability_active</span><span class="p">,</span>
                 <span class="s2">&quot;online_learning&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">online_learning_active</span><span class="p">,</span>
-                <span class="s2">&quot;last_check&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">last_integration_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="s2">&quot;last_check&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">integration_status</span><span class="o">.</span><span class="n">last_integration_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
             <span class="p">},</span>
             <span class="s2">&quot;operational_metrics&quot;</span><span class="p">:</span> <span class="p">{</span>
                 <span class="s2">&quot;uptime_seconds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">uptime_seconds</span><span class="p">,</span>
                 <span class="s2">&quot;total_requests&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">total_requests</span><span class="p">,</span>
                 <span class="s2">&quot;error_rate&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">error_rate</span><span class="p">,</span>
                 <span class="s2">&quot;avg_response_time&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">average_response_time</span><span class="p">,</span>
-                <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">last_updated</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">last_updated</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
             <span class="p">},</span>
             <span class="s2">&quot;component_status&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="o">.</span><span class="n">get_status</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">,</span> <span class="s1">&#39;get_status&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
-                <span class="s2">&quot;safety&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="o">.</span><span class="n">get_safety_status</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s1">&#39;get_safety_status&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
-                <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_scaler</span><span class="o">.</span><span class="n">get_scaling_history</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">auto_scaler</span><span class="p">,</span> <span class="s1">&#39;get_scaling_history&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
-                <span class="s2">&quot;online_learning&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="o">.</span><span class="n">get_status</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="p">,</span> <span class="s1">&#39;get_status&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="o">.</span><span class="n">get_status</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">,</span> <span class="s2">&quot;get_status&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
+                <span class="s2">&quot;safety&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="o">.</span><span class="n">get_safety_status</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="p">,</span> <span class="s2">&quot;get_safety_status&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
+                <span class="s2">&quot;scaler&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_scaler</span><span class="o">.</span><span class="n">get_scaling_history</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">auto_scaler</span><span class="p">,</span> <span class="s2">&quot;get_scaling_history&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;active&quot;</span><span class="p">},</span>
+                <span class="s2">&quot;online_learning&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="o">.</span><span class="n">get_status</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="p">,</span> <span class="s2">&quot;get_status&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s2">&quot;last_health_check&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+            <span class="s2">&quot;last_health_check&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_health_check</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
         <span class="p">}</span></div>
 
 
@@ -314,7 +324,7 @@
             <span class="n">warning_alerts</span><span class="o">=</span><span class="n">warning_count</span><span class="p">,</span>
             <span class="n">info_alerts</span><span class="o">=</span><span class="n">info_count</span><span class="p">,</span>
             <span class="n">top_alerts</span><span class="o">=</span><span class="n">alerts</span><span class="p">[:</span><span class="mi">5</span><span class="p">],</span>  <span class="c1"># 最新5件</span>
-            <span class="n">last_updated</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">last_updated</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span></div>
 
 
@@ -341,8 +351,8 @@
                     <span class="s2">&quot;Investigate the cause of emergency shutdown&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;Check system logs for error details&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;Verify data integrity&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;Perform manual system restart after investigation&quot;</span>
-                <span class="p">]</span>
+                    <span class="s2">&quot;Perform manual system restart after investigation&quot;</span><span class="p">,</span>
+                <span class="p">],</span>
             <span class="p">)</span>
 
             <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Emergency shutdown completed: </span><span class="si">{</span><span class="n">recovery_action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -430,7 +440,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;運用メトリクス更新&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># 稼働時間更新</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;start_time&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;start_time&quot;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">uptime_seconds</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
@@ -439,15 +449,19 @@
 
             <span class="c1"># リクエスト数とエラー率（モニターから取得）</span>
             <span class="n">monitor_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="o">.</span><span class="n">get_recent_metrics</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">total_requests</span> <span class="o">=</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_requests&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">total_requests</span> <span class="o">=</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;total_requests&quot;</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">error_rate</span> <span class="o">=</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error_rate&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">average_response_time</span> <span class="o">=</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_response_time&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">average_response_time</span> <span class="o">=</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;avg_response_time&quot;</span><span class="p">,</span> <span class="mf">0.0</span>
+            <span class="p">)</span>
 
             <span class="c1"># リソース使用率</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">resource_utilization</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;cpu_percent&quot;</span><span class="p">:</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
                 <span class="s2">&quot;memory_percent&quot;</span><span class="p">:</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
-                <span class="s2">&quot;disk_usage&quot;</span><span class="p">:</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;disk_usage&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="s2">&quot;disk_usage&quot;</span><span class="p">:</span> <span class="n">monitor_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;disk_usage&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
             <span class="p">}</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">last_updated</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
@@ -477,8 +491,12 @@
                 <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">critical_alerts</span><span class="p">)</span><span class="si">}</span><span class="s2"> critical alerts&quot;</span><span class="p">)</span>
 
             <span class="c1"># リソース使用率チェック</span>
-            <span class="n">cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">resource_utilization</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-            <span class="n">memory_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">resource_utilization</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">resource_utilization</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;cpu_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span>
+            <span class="p">)</span>
+            <span class="n">memory_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operational_metrics</span><span class="o">.</span><span class="n">resource_utilization</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;memory_percent&quot;</span><span class="p">,</span> <span class="mf">0.0</span>
+            <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">cpu_usage</span> <span class="o">&gt;</span> <span class="mf">95.0</span><span class="p">:</span>
                 <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;CPU usage critically high&quot;</span><span class="p">)</span>
@@ -491,7 +509,10 @@
                 <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Memory usage high&quot;</span><span class="p">)</span>
 
             <span class="c1"># ヘルスステータス決定</span>
-            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;critically&quot;</span> <span class="ow">in</span> <span class="n">issue</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">issues</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">critical_alerts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;critically&quot;</span> <span class="ow">in</span> <span class="n">issue</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">issues</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">critical_alerts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="p">):</span>
                 <span class="k">return</span> <span class="n">SystemHealth</span><span class="o">.</span><span class="n">CRITICAL</span>
             <span class="k">elif</span> <span class="n">issues</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">SystemHealth</span><span class="o">.</span><span class="n">WARNING</span>
@@ -536,7 +557,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -547,7 +568,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

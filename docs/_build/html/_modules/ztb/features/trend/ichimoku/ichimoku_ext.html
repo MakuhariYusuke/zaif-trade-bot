@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.features.trend.ichimoku.ichimoku_ext</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -105,15 +105,18 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.timeframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Timeframe</span>
 
-
 <span class="c1"># Traditional Ichimoku parameters for different timeframes</span>
 <span class="n">ICHIMOKU_PARAMS</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">},</span>      <span class="c1"># 1-minute equivalent</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M5</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">14</span><span class="p">},</span>     <span class="c1"># 5-minute equivalent</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M15</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">26</span><span class="p">},</span>   <span class="c1"># 15-minute equivalent</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">H1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">22</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">44</span><span class="p">},</span>    <span class="c1"># 1-hour equivalent</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">H4</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">44</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">88</span><span class="p">},</span>   <span class="c1"># 4-hour equivalent</span>
-    <span class="n">Timeframe</span><span class="o">.</span><span class="n">D1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">26</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">52</span><span class="p">},</span>    <span class="c1"># 1-day equivalent (traditional)</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">},</span>  <span class="c1"># 1-minute equivalent</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M5</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">14</span><span class="p">},</span>  <span class="c1"># 5-minute equivalent</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">M15</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">26</span><span class="p">},</span>  <span class="c1"># 15-minute equivalent</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">H1</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">22</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">44</span><span class="p">},</span>  <span class="c1"># 1-hour equivalent</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">H4</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">14</span><span class="p">,</span> <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">44</span><span class="p">,</span> <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">88</span><span class="p">},</span>  <span class="c1"># 4-hour equivalent</span>
+    <span class="n">Timeframe</span><span class="o">.</span><span class="n">D1</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;tenkan&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+        <span class="s2">&quot;kijun&quot;</span><span class="p">:</span> <span class="mi">26</span><span class="p">,</span>
+        <span class="s2">&quot;senkou_b&quot;</span><span class="p">:</span> <span class="mi">52</span><span class="p">,</span>
+    <span class="p">},</span>  <span class="c1"># 1-day equivalent (traditional)</span>
 <span class="p">}</span>
 
 
@@ -136,7 +139,9 @@
 <div class="viewcode-block" id="compute_ichimoku_tenkan">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_tenkan">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Tenkan&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_tenkan</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_tenkan</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Tenkan-sen (Conversion Line)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_tenkan&quot;</span><span class="p">]</span></div>
@@ -146,7 +151,9 @@
 <div class="viewcode-block" id="compute_ichimoku_kijun">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_kijun">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Kijun&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_kijun</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_kijun</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Kijun-sen (Base Line)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_kijun&quot;</span><span class="p">]</span></div>
@@ -156,7 +163,9 @@
 <div class="viewcode-block" id="compute_ichimoku_senkou_a">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_senkou_a">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Senkou_A&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_senkou_a</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_senkou_a</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Senkou Span A (Leading Span A)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_senkou_a&quot;</span><span class="p">]</span></div>
@@ -166,7 +175,9 @@
 <div class="viewcode-block" id="compute_ichimoku_senkou_b">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_senkou_b">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Senkou_B&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_senkou_b</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_senkou_b</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Senkou Span B (Leading Span B)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_senkou_b&quot;</span><span class="p">]</span></div>
@@ -176,7 +187,9 @@
 <div class="viewcode-block" id="compute_ichimoku_chikou">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_chikou">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Chikou&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_chikou</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_chikou</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Chikou Span (Lagging Span)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_chikou&quot;</span><span class="p">]</span></div>
@@ -186,7 +199,9 @@
 <div class="viewcode-block" id="compute_ichimoku_cloud_thickness">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_cloud_thickness">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Cloud_Thickness&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_cloud_thickness</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_cloud_thickness</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Cloud Thickness (volatility measure)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_cloud_thickness&quot;</span><span class="p">]</span></div>
@@ -196,7 +211,9 @@
 <div class="viewcode-block" id="compute_ichimoku_price_cloud_distance">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_price_cloud_distance">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Price_Cloud_Distance&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_price_cloud_distance</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_price_cloud_distance</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Price-Cloud Distance&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_price_cloud_distance&quot;</span><span class="p">]</span></div>
@@ -206,7 +223,9 @@
 <div class="viewcode-block" id="compute_ichimoku_composite_signal">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_composite_signal">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Composite_Signal&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_composite_signal</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_composite_signal</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Composite Signal&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_composite_signal&quot;</span><span class="p">]</span></div>
@@ -216,7 +235,9 @@
 <div class="viewcode-block" id="compute_ichimoku_trend">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_trend">[docs]</a>
 <span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Trend&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_trend</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_trend</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Trend Determination (1=bullish, -1=bearish, 0=neutral)&quot;&quot;&quot;</span>
     <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">timeframe</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;ichimoku_trend&quot;</span><span class="p">]</span></div>
@@ -224,6 +245,7 @@
 
 
 <span class="c1"># === Multi-Timeframe Ichimoku Features ===</span>
+
 
 <div class="viewcode-block" id="compute_ichimoku_composite_signal_m1">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_ext.compute_ichimoku_composite_signal_m1">[docs]</a>
@@ -684,7 +706,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -695,7 +717,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

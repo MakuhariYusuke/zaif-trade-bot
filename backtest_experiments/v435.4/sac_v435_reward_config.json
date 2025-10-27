@@ -1,0 +1,74 @@
+{
+  "_description": "SAC v435.4 Reward Function Configuration - Advanced scalping",
+  "_improvements": [
+    "Zero frequency penalty for high-frequency scalping",
+    "Minimal position penalty for aggressive trading",
+    "Enhanced profit bonuses for scalping",
+    "非対称ロング/ショート報酬関数",
+    "リスク調整リターンボーナス",
+    "市場レジーム別報酬調整",
+    "ポジション保持ボーナス (reduced)",
+    "タイミング最適化ボーナス (enhanced)",
+    "Scalping-specific optimizations"
+  ],
+
+  "base_profit_bonus_atr_coeff": 8.0,
+  "base_profit_bonus_portfolio_coeff": 15.0,
+  "base_action_penalty": 0.05,
+  "loss_penalty_coeff": -2.0,
+  "action_frequency_penalty": 0.0,
+
+  "long_position_bonus_multiplier": 1.8,
+  "short_position_bonus_multiplier": 1.5,
+  "long_loss_penalty_multiplier": 2.5,
+  "short_loss_penalty_multiplier": 1.8,
+
+  "risk_adjusted_bonus_enabled": true,
+  "risk_adjusted_bonus_coeff": 3.0,
+  "volatility_penalty_coeff": -0.2,
+
+  "market_regime_awareness": true,
+  "bull_market_bonus_coeff": 1.5,
+  "bear_market_penalty_coeff": 0.6,
+  "sideways_market_penalty_coeff": 0.7,
+
+  "position_holding_bonus": true,
+  "position_holding_bonus_coeff": 0.01,
+  "position_holding_max_bonus": 0.2,
+
+  "timing_optimization_bonus": true,
+  "entry_timing_bonus_coeff": 0.3,
+  "exit_timing_bonus_coeff": 0.4,
+
+  "transaction_cost_awareness": false,
+  "cost_impact_penalty": 0.0,
+
+  "adaptive_penalty_enabled": false,
+  "high_frequency_penalty_threshold": 1.0,
+  "high_frequency_penalty_coeff": 0.0,
+
+  "reward_clipping": {
+    "enabled": true,
+    "min_reward": -5.0,
+    "max_reward": 20.0
+  },
+
+  "scalping_optimization": {
+    "enabled": true,
+    "quick_profit_bonus": 1.0,
+    "frequent_trading_bonus": 0.5,
+    "position_turnover_bonus": 0.2,
+    "market_timing_bonus": 0.5,
+    "scalping_profit_multiplier": 2.0,
+    "high_frequency_threshold": 10,
+    "high_frequency_bonus": 0.3
+  },
+
+  "advanced_features": {
+    "momentum_trading_bonus": 0.2,
+    "mean_reversion_bonus": 0.1,
+    "breakout_bonus": 0.3,
+    "range_trading_bonus": 0.15,
+    "trend_following_bonus": 0.25
+  }
+}

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.utils.parallel_experiments</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Parallel Experiment Execution Utilities</span>
@@ -166,9 +166,9 @@
 
         <span class="c1"># GPUリソース監視 - 遅延評価で効率化</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_available</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># キャッシュ用</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_stats_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="kc">None</span>  <span class="c1"># GPU統計キャッシュ</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_stats_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+            <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># GPU統計キャッシュ</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_cache_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># キャッシュ時間</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gpu_cache_ttl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># キャッシュ有効期間（秒）</span>
 
@@ -329,8 +329,8 @@
                 <span class="c1"># リソースチェック - 制限を超えている場合</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_resource_limits</span><span class="p">():</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">shared_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Resource limits exceeded during batch execution, &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;forcing checkpoint saves for running experiments&quot;</span>
+                        <span class="s2">&quot;Resource limits exceeded during batch execution, &quot;</span>
+                        <span class="s2">&quot;forcing checkpoint saves for running experiments&quot;</span>
                     <span class="p">)</span>
                     <span class="c1"># 実行中のプロセスにチェックポイント保存シグナルを送る</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_force_checkpoint_save</span><span class="p">(</span><span class="n">active_processes</span><span class="p">)</span>
@@ -786,7 +786,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -797,7 +797,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

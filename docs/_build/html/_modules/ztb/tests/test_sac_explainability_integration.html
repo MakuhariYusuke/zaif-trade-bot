@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_sac_explainability_integration</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -96,17 +96,19 @@
 <span class="sd">このスクリプトは、SACアルゴリズムに説明可能性機能が正しく統合されているかをテストします。</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms.sac.sac_algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACAlgorithm</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.explainability.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainabilityConfig</span>
 
 <span class="c1"># ロギング設定</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="test_sac_explainability_integration">
 <a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_sac_explainability_integration.test_sac_explainability_integration">[docs]</a>
@@ -124,8 +126,12 @@
 
     <span class="c1"># 説明可能性設定が含まれているか確認</span>
     <span class="n">explainability_keys</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">&quot;explainability_enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;shap_enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;shap_max_evals&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;natural_language_enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;market_context_analysis&quot;</span><span class="p">,</span> <span class="s2">&quot;risk_warnings&quot;</span>
+        <span class="s2">&quot;explainability_enabled&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;shap_enabled&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;shap_max_evals&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;natural_language_enabled&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;market_context_analysis&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;risk_warnings&quot;</span><span class="p">,</span>
     <span class="p">]</span>
 
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">explainability_keys</span><span class="p">:</span>
@@ -137,12 +143,14 @@
 
     <span class="c1"># 説明可能性を有効にした設定でテスト</span>
     <span class="n">config</span><span class="p">[</span><span class="s2">&quot;explainability_enabled&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Explainability enabled in config&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Explainability enabled in config&quot;</span><span class="p">)</span>
 
     <span class="c1"># 説明可能性アナライザーの初期化テスト（モデル作成なし）</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">sac</span><span class="o">.</span><span class="n">_initialize_explainability_analyzer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Explainability analyzer initialized: </span><span class="si">{</span><span class="n">sac</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;✓ Explainability analyzer initialized: </span><span class="si">{</span><span class="n">sac</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">sac</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Explainability analyzer initialization failed&quot;</span><span class="p">)</span>
@@ -178,6 +186,7 @@
     <span class="k">return</span> <span class="kc">True</span></div>
 
 
+
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">success</span> <span class="o">=</span> <span class="n">test_sac_explainability_integration</span><span class="p">()</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">success</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
@@ -196,7 +205,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -207,7 +216,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -1,0 +1,102 @@
+{
+  "_description": "SAC v435.6 Environment Configuration - Ensemble majority voting system",
+  "_improvements": [
+    "Zero transaction cost for Coincheck",
+    "100% position size for small balance trading",
+    "Ensemble majority voting system",
+    "Multiple model consensus decision making",
+    "適応型特徴量選択",
+    "マルチタイムフレーム統合",
+    "市場レジーム検知",
+    "動的ポジションサイジング",
+    "相関リスク管理",
+    "リアルタイム特徴量更新"
+  ],
+
+  "transaction_cost": 0.0,
+  "max_position_size": 1.0,
+  "initial_portfolio_value": 100000,
+  "random_start": true,
+
+  "feature_engineering": {
+    "enabled": true,
+    "adaptive_selection": true,
+    "correlation_reduction": true,
+    "correlation_threshold": 0.85,
+    "max_features": 100,
+    "importance_weighting": true,
+    "feature_stability_check": true
+  },
+
+  "market_regime_detection": {
+    "enabled": true,
+    "regime_window": 50,
+    "trend_threshold": 0.02,
+    "volatility_threshold": 0.15,
+    "regime_types": ["bull", "bear", "sideways"],
+    "regime_adaptation": true
+  },
+
+  "risk_management": {
+    "dynamic_position_sizing": true,
+    "position_size_min": 0.01,
+    "position_size_max": 1.0,
+    "volatility_adjustment": true,
+    "drawdown_control": true,
+    "max_drawdown_limit": 0.1,
+    "correlation_risk_control": true,
+    "max_correlation_exposure": 0.7
+  },
+
+  "multi_timeframe_integration": {
+    "enabled": true,
+    "timeframes": ["5m", "15m", "1h", "4h", "1d"],
+    "primary_timeframe": "1h",
+    "weighting_scheme": "exponential",
+    "max_lag_features": 10
+  },
+
+  "ensemble_system": {
+    "enabled": true,
+    "models": ["sac_v435.3", "sac_v435.4", "sac_v435.5"],
+    "voting_mechanism": "majority_vote",
+    "confidence_threshold": 0.6,
+    "diversity_weighting": true,
+    "consensus_requirement": 2,
+    "fallback_model": "sac_v435.3",
+    "ensemble_update_freq": 1000
+  },
+
+  "reward_system": {
+    "reward_trade_frequency_penalty": 0.0,
+    "reward_trade_frequency_halflife": 1.0,
+    "reward_trade_cooldown_steps": 0,
+    "reward_trade_cooldown_penalty": 0.0,
+    "reward_max_consecutive_trades": 50,
+    "reward_consecutive_trade_penalty": 0.01,
+    "reward_position_penalty_scale": 0.01,
+    "reward_position_penalty_exponent": 1.0,
+    "reward_inventory_penalty_scale": 0.001,
+    "reward_volatility_penalty_scale": 0.001,
+    "ensemble_consensus_bonus": 0.2,
+    "diversity_penalty": -0.1
+  },
+
+  "data_processing": {
+    "sequence_length": 64,
+    "prediction_horizon": 1,
+    "feature_scaling": "robust",
+    "outlier_handling": "iqr",
+    "missing_data_handling": "interpolation"
+  },
+
+  "performance_monitoring": {
+    "enabled": true,
+    "metrics_update_freq": 100,
+    "alert_thresholds": {
+      "max_drawdown": 0.15,
+      "sharpe_ratio": 0.5,
+      "win_rate": 0.4
+    }
+  }
+}

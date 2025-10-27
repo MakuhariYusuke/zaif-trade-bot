@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,20 +87,22 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.ab_test.analyzer</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Statistical Analysis Engine for A/B Testing</span>
 <span class="sd">処理時間短縮・メモリ効率を考慮したストリーミング統計計算</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stats</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">StatisticalResult</span><span class="p">,</span> <span class="n">ABTestMetrics</span><span class="p">,</span> <span class="n">StatisticalTest</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestMetrics</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">,</span> <span class="n">StatisticalTest</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -112,11 +114,15 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ABTestConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">ABTestConfig</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span>
+        <span class="p">)</span>
 
 <div class="viewcode-block" id="ABTestAnalyzer.analyze_parallel">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.analyzer.ABTestAnalyzer.analyze_parallel">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_parallel</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;並列統計分析&quot;&quot;&quot;</span>
         <span class="c1"># 並列で統計計算を実行</span>
         <span class="n">future_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_stats</span><span class="p">,</span> <span class="n">data_a</span><span class="p">)</span>
@@ -135,10 +141,10 @@
         <span class="n">ci_lower</span><span class="p">,</span> <span class="n">ci_upper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_confidence_interval</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
 
         <span class="c1"># 基本統計量を取得</span>
-        <span class="n">mean_a</span> <span class="o">=</span> <span class="n">stats_a</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span>
-        <span class="n">mean_b</span> <span class="o">=</span> <span class="n">stats_b</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span>
-        <span class="n">std_a</span> <span class="o">=</span> <span class="n">stats_a</span><span class="p">[</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
-        <span class="n">std_b</span> <span class="o">=</span> <span class="n">stats_b</span><span class="p">[</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
+        <span class="n">mean_a</span> <span class="o">=</span> <span class="n">stats_a</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+        <span class="n">mean_b</span> <span class="o">=</span> <span class="n">stats_b</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">]</span>
+        <span class="n">std_a</span> <span class="o">=</span> <span class="n">stats_a</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">]</span>
+        <span class="n">std_b</span> <span class="o">=</span> <span class="n">stats_b</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">StatisticalResult</span><span class="p">(</span>
             <span class="n">test_type</span><span class="o">=</span><span class="s2">&quot;t-test&quot;</span><span class="p">,</span>
@@ -150,17 +156,13 @@
             <span class="n">mean_a</span><span class="o">=</span><span class="n">mean_a</span><span class="p">,</span>
             <span class="n">mean_b</span><span class="o">=</span><span class="n">mean_b</span><span class="p">,</span>
             <span class="n">std_a</span><span class="o">=</span><span class="n">std_a</span><span class="p">,</span>
-            <span class="n">std_b</span><span class="o">=</span><span class="n">std_b</span>
+            <span class="n">std_b</span><span class="o">=</span><span class="n">std_b</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;基本統計量を計算&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">{</span>
-            <span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">),</span>
-            <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-            <span class="s1">&#39;count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_effect_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;効果量を計算（Cohen&#39;s d）&quot;&quot;&quot;</span>
@@ -169,7 +171,9 @@
         <span class="n">pooled_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">std_a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">std_b</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">mean_b</span> <span class="o">-</span> <span class="n">mean_a</span><span class="p">)</span> <span class="o">/</span> <span class="n">pooled_std</span> <span class="k">if</span> <span class="n">pooled_std</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_confidence_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_confidence_interval</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;効果量の信頼区間を計算&quot;&quot;&quot;</span>
         <span class="n">effect_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_effect_size</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
         <span class="c1"># 簡易的な信頼区間計算（実際にはより複雑な計算が必要）</span>
@@ -179,7 +183,9 @@
 
 <div class="viewcode-block" id="ABTestAnalyzer.calculate_bootstrap_ci">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.analyzer.ABTestAnalyzer.calculate_bootstrap_ci">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_bootstrap_ci</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">n_bootstrap</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_bootstrap_ci</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">data_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">n_bootstrap</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ブートストラップ法による信頼区間計算&quot;&quot;&quot;</span>
         <span class="n">effect_sizes</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -199,7 +205,11 @@
         <span class="n">mean_effect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">effect_sizes</span><span class="p">)</span>
 
         <span class="c1"># p値を計算（効果量が0をまたぐ確率）</span>
-        <span class="n">p_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">effect_sizes</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">mean_effect</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">effect_sizes</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">p_value</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">effect_sizes</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mean_effect</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">effect_sizes</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">StatisticalResult</span><span class="p">(</span>
             <span class="n">test_type</span><span class="o">=</span><span class="n">StatisticalTest</span><span class="o">.</span><span class="n">T_TEST</span><span class="p">,</span>
@@ -211,7 +221,7 @@
             <span class="n">mean_a</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data_a</span><span class="p">),</span>
             <span class="n">mean_b</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data_b</span><span class="p">),</span>
             <span class="n">std_a</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-            <span class="n">std_b</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data_b</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">std_b</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data_b</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
         <span class="p">)</span></div>
 
 
@@ -226,11 +236,20 @@
 
 <div class="viewcode-block" id="ABTestAnalyzer.analyze_comparison">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.analyzer.ABTestAnalyzer.analyze_comparison">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_comparison</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics_a</span><span class="p">:</span> <span class="n">ABTestMetrics</span><span class="p">,</span> <span class="n">metrics_b</span><span class="p">:</span> <span class="n">ABTestMetrics</span><span class="p">,</span> <span class="n">test_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;t-test&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_comparison</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">metrics_a</span><span class="p">:</span> <span class="n">ABTestMetrics</span><span class="p">,</span>
+        <span class="n">metrics_b</span><span class="p">:</span> <span class="n">ABTestMetrics</span><span class="p">,</span>
+        <span class="n">test_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;t-test&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatisticalResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクス比較分析&quot;&quot;&quot;</span>
         <span class="c1"># 簡易的な実装 - 実際にはより複雑な分析が必要</span>
-        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">mean_reward</span><span class="p">,</span> <span class="n">metrics_a</span><span class="o">.</span><span class="n">std_reward</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 仮定</span>
-        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">mean_reward</span><span class="p">,</span> <span class="n">metrics_b</span><span class="o">.</span><span class="n">std_reward</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 仮定</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+            <span class="n">metrics_a</span><span class="o">.</span><span class="n">mean_reward</span><span class="p">,</span> <span class="n">metrics_a</span><span class="o">.</span><span class="n">std_reward</span><span class="p">,</span> <span class="mi">100</span>
+        <span class="p">)</span>  <span class="c1"># 仮定</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+            <span class="n">metrics_b</span><span class="o">.</span><span class="n">mean_reward</span><span class="p">,</span> <span class="n">metrics_b</span><span class="o">.</span><span class="n">std_reward</span><span class="p">,</span> <span class="mi">100</span>
+        <span class="p">)</span>  <span class="c1"># 仮定</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span></div>
 
@@ -239,7 +258,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.analyzer.ABTestAnalyzer.__del__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;クリーンアップ&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;executor&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;executor&quot;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 </div>
 
@@ -258,7 +277,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -269,7 +288,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

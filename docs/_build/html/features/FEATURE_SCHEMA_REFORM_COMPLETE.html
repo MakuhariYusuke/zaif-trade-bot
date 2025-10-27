@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="ログレベル制御ガイド" href="LOG_LEVEL_CONTROL.html" />
-    <link rel="prev" title="Feature Schema Management Reform - 改修計画書" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html" />
+    <link rel="prev" title="Feature Schema Management Reform - 改修計画書" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -64,6 +64,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="feature_set_management.html">特徴量セット管理システム</a></li>
 <li class="toctree-l2"><a class="reference internal" href="FEATURE_IMPLEMENTATION_SUMMARY.html">大規模機能実装サマリー - 2025年10月7日</a></li>
 <li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.html">Feature Schema Management Reform - 実装完了サマリー</a></li>
 <li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html">Feature Schema Management Reform - 改修計画書</a></li>
@@ -149,12 +150,12 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>特徴量スキーマ管理改革 - 完全版サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
-<p><strong>プロジェクト</strong>: zaif-trade-bot<br />
-<strong>期間</strong>: 2025年10月9日 - 2025年10月10日<br />
-<strong>バージョン</strong>: 4.0.0<br />
+<p><strong>プロジェクト</strong>: zaif-trade-bot
+<strong>期間</strong>: 2025年10月9日 - 2025年10月10日
+<strong>バージョン</strong>: 4.0.0
 <strong>ステータス</strong>: 🎉 <strong>全Phase完了</strong></p>
 <hr class="docutils" />
 <section id="id2">
@@ -192,7 +193,7 @@
 <section id="id6">
 <h3>ユーザーの宣言<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
 <blockquote>
-<div><p>「特徴量を増やしたり減らしたりするときにすごい不便なので<br />
+<div><p>「特徴量を増やしたり減らしたりするときにすごい不便なので
 これについて<strong>unified_trainer.pyを軸に改めて根本的に改修</strong>を行って下さい」</p>
 </div></blockquote>
 </section>
@@ -211,8 +212,8 @@
 <h2>全Phaseサマリー<a class="headerlink" href="#phase" title="Link to this heading"></a></h2>
 <section id="phase-1-2-featureschemamanager">
 <h3>Phase 1-2: FeatureSchemaManager基盤構築<a class="headerlink" href="#phase-1-2-featureschemamanager" title="Link to this heading"></a></h3>
-<p><strong>実装日</strong>: 2025年10月9日<br />
-<strong>担当</strong>: Main Copilot<br />
+<p><strong>実装日</strong>: 2025年10月9日
+<strong>担当</strong>: Main Copilot
 <strong>ステータス</strong>: ✅ 完了</p>
 <section id="id8">
 <h4>主要成果物<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
@@ -337,8 +338,8 @@ scaler.npz
 <hr class="docutils" />
 <section id="phase-3">
 <h3>Phase 3: 環境・バックテスト統合<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h3>
-<p><strong>実装日</strong>: 2025年10月9日<br />
-<strong>担当</strong>: Secondary Copilot → レビュー: Main Copilot<br />
+<p><strong>実装日</strong>: 2025年10月9日
+<strong>担当</strong>: Secondary Copilot → レビュー: Main Copilot
 <strong>ステータス</strong>: ✅ 完了（修正後）</p>
 <section id="id11">
 <h4>主要成果物<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
@@ -435,8 +436,8 @@ Backtest completed
 <hr class="docutils" />
 <section id="phase-4">
 <h3>Phase 4: 実取引・ペーパートレード統合<a class="headerlink" href="#phase-4" title="Link to this heading"></a></h3>
-<p><strong>実装日</strong>: 2025年10月10日<br />
-<strong>担当</strong>: Main Copilot<br />
+<p><strong>実装日</strong>: 2025年10月10日
+<strong>担当</strong>: Main Copilot
 <strong>ステータス</strong>: ✅ 完了</p>
 <section id="id14">
 <h4>主要成果物<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
@@ -941,16 +942,16 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span><span class="
 <h2>まとめ<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
 <section id="id33">
 <h3>達成事項<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
-<p>✅ <strong>Phase 1-2</strong>: FeatureSchemaManager基盤構築（自動スキーマ保存）<br />
-✅ <strong>Phase 3</strong>: 環境・バックテスト統合（動的Environment生成）<br />
+<p>✅ <strong>Phase 1-2</strong>: FeatureSchemaManager基盤構築（自動スキーマ保存）
+✅ <strong>Phase 3</strong>: 環境・バックテスト統合（動的Environment生成）
 ✅ <strong>Phase 4</strong>: 実取引・ペーパートレード統合（統一スキーマ利用）</p>
 </section>
 <section id="id34">
 <h3>成果<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
-<p>🎯 <strong>Single Source of Truth実現</strong><br />
-🎯 <strong>完全自動化</strong>（特徴量変更時の手動作業0）<br />
-🎯 <strong>次元不一致エラー完全解消</strong><br />
-🎯 <strong>コード品質向上</strong>（重複削除、一貫性向上）<br />
+<p>🎯 <strong>Single Source of Truth実現</strong>
+🎯 <strong>完全自動化</strong>（特徴量変更時の手動作業0）
+🎯 <strong>次元不一致エラー完全解消</strong>
+🎯 <strong>コード品質向上</strong>（重複削除、一貫性向上）
 🎯 <strong>後方互換性維持</strong></p>
 </section>
 <section id="id35">
@@ -962,8 +963,8 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span><span class="
 <li><p>🌟 <strong>長期目標</strong>: マルチモデルアンサンブル</p></li>
 </ol>
 <hr class="docutils" />
-<p><strong>プロジェクト完了日</strong>: 2025年10月10日<br />
-<strong>バージョン</strong>: 4.0.0<br />
+<p><strong>プロジェクト完了日</strong>: 2025年10月10日
+<strong>バージョン</strong>: 4.0.0
 <strong>ステータス</strong>: 🎉 <strong>All Phases Complete</strong></p>
 <p><strong>貢献者</strong>:</p>
 <ul class="simple">
@@ -1005,7 +1006,7 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span><span class="
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -1016,7 +1017,7 @@ python<span class="w"> </span>live_trade.py<span class="w"> </span><span class="
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

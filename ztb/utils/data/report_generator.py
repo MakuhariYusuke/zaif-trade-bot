@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 
 
@@ -88,7 +89,7 @@ class ReportGenerator:
     def save_experiment_dump(
         self,
         experiment_id: str,
-        config: Dict[str, Any],
+        config: ConfigDict,
         error: Optional[Exception] = None,
     ) -> None:
         """Save minimal experiment dump on failure"""

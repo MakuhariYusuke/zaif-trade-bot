@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.inference.decode</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Unified action decoding with strict mask enforcement and tiebreaker.</span>
@@ -107,13 +107,14 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">EPSILON</span>
 
 
 <div class="viewcode-block" id="InferenceConfig">
@@ -135,7 +136,7 @@
 
     <span class="c1"># Advantage-aware tiebreaker</span>
     <span class="n">enable_advantage_tiebreaker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Use advantage sign for tiebreaker</span>
-    <span class="n">advantage_epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span>  <span class="c1"># Threshold for advantage comparison</span>
+    <span class="n">advantage_epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">EPSILON</span>  <span class="c1"># Threshold for advantage comparison</span>
 
     <span class="c1"># Cost-aware decode gate</span>
     <span class="n">enable_cost_gate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Enable cost-based filtering</span>
@@ -197,6 +198,7 @@
     <span class="c1"># Guard: Validate temperature range</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">min_temperature</span> <span class="o">&lt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">temperature</span> <span class="o">&lt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">max_temperature</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Temperature </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">temperature</span><span class="si">}</span><span class="s2"> outside safe range &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">min_temperature</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">max_temperature</span><span class="si">}</span><span class="s2">]. &quot;</span>
@@ -231,6 +233,7 @@
     <span class="n">mask_sums</span> <span class="o">=</span> <span class="n">mask_np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">mask_sums</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
         <span class="n">all_illegal_mask</span> <span class="o">=</span> <span class="n">mask_sums</span> <span class="o">==</span> <span class="mi">0</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">all_illegal_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> observations have no legal actions. &quot;</span>
@@ -254,9 +257,8 @@
     <span class="c1"># Guard: Detect NaN/Inf in softmax and retry with higher temperature</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sum_exp</span><span class="p">))</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">sum_exp</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="s2">&quot;NaN or Inf detected in softmax. Retrying with temperature=1.0.&quot;</span>
-        <span class="p">)</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;NaN or Inf detected in softmax. Retrying with temperature=1.0.&quot;</span><span class="p">)</span>
         <span class="c1"># Retry with temperature = 1.0</span>
         <span class="n">scaled_logits</span> <span class="o">=</span> <span class="n">masked_logits</span> <span class="o">/</span> <span class="mf">1.0</span>
         <span class="n">max_logits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">scaled_logits</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -325,7 +327,10 @@
             <span class="n">adv_top2</span> <span class="o">=</span> <span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">top2_action</span><span class="p">]</span>
 
             <span class="c1"># If top2 has positive advantage and top1 has non-positive advantage</span>
-            <span class="k">if</span> <span class="n">adv_top2</span> <span class="o">&gt;</span> <span class="n">config</span><span class="o">.</span><span class="n">advantage_epsilon</span> <span class="ow">and</span> <span class="n">adv_top1</span> <span class="o">&lt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">advantage_epsilon</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">adv_top2</span> <span class="o">&gt;</span> <span class="n">config</span><span class="o">.</span><span class="n">advantage_epsilon</span>
+                <span class="ow">and</span> <span class="n">adv_top1</span> <span class="o">&lt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">advantage_epsilon</span>
+            <span class="p">):</span>
                 <span class="n">selected_action</span> <span class="o">=</span> <span class="n">top2_action</span>
                 <span class="n">tiebreaker_activated</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="n">tiebreaker_reason</span> <span class="o">=</span> <span class="s2">&quot;advantage_sign&quot;</span>
@@ -362,7 +367,11 @@
 
             <span class="c1"># Calculate advantage delta</span>
             <span class="n">adv_selected</span> <span class="o">=</span> <span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">selected_action</span><span class="p">]</span>
-            <span class="n">adv_current</span> <span class="o">=</span> <span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">current_position</span><span class="p">]</span> <span class="k">if</span> <span class="n">current_position</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">adv_current</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">current_position</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">current_position</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">advantages_np</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="p">)</span>
             <span class="n">advantage_delta</span> <span class="o">=</span> <span class="n">adv_selected</span> <span class="o">-</span> <span class="n">adv_current</span>
 
             <span class="c1"># Apply cost gate: require delta_A &gt;= lambda * cost</span>
@@ -436,9 +445,7 @@
     <span class="n">sell_actions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">actions</span> <span class="o">==</span> <span class="n">SELL_ACTION</span><span class="p">)</span>
 
     <span class="c1"># Legal SELL rate: among steps where SELL was legal, how often was it chosen?</span>
-    <span class="n">legal_sell_rate</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">sell_actions</span> <span class="o">/</span> <span class="n">legal_sell_steps</span> <span class="k">if</span> <span class="n">legal_sell_steps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
-    <span class="p">)</span>
+    <span class="n">legal_sell_rate</span> <span class="o">=</span> <span class="n">sell_actions</span> <span class="o">/</span> <span class="n">legal_sell_steps</span> <span class="k">if</span> <span class="n">legal_sell_steps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
     <span class="n">overall_sell_rate</span> <span class="o">=</span> <span class="n">sell_actions</span> <span class="o">/</span> <span class="n">total_steps</span> <span class="k">if</span> <span class="n">total_steps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
 
     <span class="k">return</span> <span class="p">{</span>
@@ -464,7 +471,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -475,7 +482,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

@@ -1,0 +1,786 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC v435.7 Training Analysis Report &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SAC v435.7 Training Analysis Report</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/analysis/SAC_v435_7_TRAINING_ANALYSIS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-v435-7-training-analysis-report">
+<h1>SAC v435.7 Training Analysis Report<a class="headerlink" href="#sac-v435-7-training-analysis-report" title="Link to this heading"></a></h1>
+<section id="sac-v435-7">
+<h2>SAC v435.7 トレーニング分析レポート<a class="headerlink" href="#sac-v435-7" title="Link to this heading"></a></h2>
+<p><strong>分析日</strong>: 2025年10月24日
+<strong>分析者</strong>: GitHub Copilot
+<strong>バージョン</strong>: v435.7a, v435.7b, v435.7c</p>
+</section>
+<hr class="docutils" />
+<section id="id1">
+<h2>📋 概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>SAC (Soft Actor-Critic) v435.7シリーズのトレーニング分析を実施しました。この分析では、3つの報酬関数バリアント（ultra-micro penalty, zero penalty, enhanced bonus）のパフォーマンスを比較し、value sticking問題の根本原因を特定することを目的としています。</p>
+<section id="id2">
+<h3>🎯 分析目的<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>報酬関数バリアント間のアクション分布比較</p></li>
+<li><p>Value sticking問題の根本原因特定</p></li>
+<li><p>SELLアクション学習失敗の原因分析</p></li>
+<li><p>特徴量と報酬関数の相互作用評価</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>🔬 バリアント説明<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="v435-7a-ultra-micro-penalty">
+<h3>v435.7a (Ultra-Micro Penalty)<a class="headerlink" href="#v435-7a-ultra-micro-penalty" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数</strong>: 頻度ペナルティ = 0.0001</p></li>
+<li><p><strong>特徴</strong>: 非常に小さなペナルティで取引頻度を抑制</p></li>
+<li><p><strong>目的</strong>: 過度な取引を最小限に抑えつつ、多様なアクションを学習</p></li>
+</ul>
+</section>
+<section id="v435-7b-zero-penalty">
+<h3>v435.7b (Zero Penalty)<a class="headerlink" href="#v435-7b-zero-penalty" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数</strong>: 頻度ペナルティ = 0.0</p></li>
+<li><p><strong>特徴</strong>: 取引頻度に対するペナルティなし</p></li>
+<li><p><strong>目的</strong>: 自由な取引行動を許可し、自然な学習を促進</p></li>
+</ul>
+</section>
+<section id="v435-7c-enhanced-bonus">
+<h3>v435.7c (Enhanced Bonus)<a class="headerlink" href="#v435-7c-enhanced-bonus" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数</strong>: 強化されたボーナスペナルティ</p></li>
+<li><p><strong>特徴</strong>: 取引行動に対して積極的な報酬/ペナルティを付与</p></li>
+<li><p><strong>目的</strong>: 取引行動を積極的に奨励/抑制</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>📊 トレーニング結果<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>アクション分布比較<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>バリアント</p></th>
+<th class="head"><p>HOLD比率</p></th>
+<th class="head"><p>BUY比率</p></th>
+<th class="head"><p>SELL比率</p></th>
+<th class="head"><p>アクション多様性</p></th>
+<th class="head"><p>トレーニング時間</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>v435.7a</p></td>
+<td><p>100.0%</p></td>
+<td><p>0.0%</p></td>
+<td><p>0.0%</p></td>
+<td><p>極めて低い</p></td>
+<td><p>~1,242ステップ (中断)</p></td>
+</tr>
+<tr class="row-odd"><td><p>v435.7b</p></td>
+<td><p>96.8%</p></td>
+<td><p>3.2%</p></td>
+<td><p>0.0%</p></td>
+<td><p>低い</p></td>
+<td><p>50,000ステップ (完了)</p></td>
+</tr>
+<tr class="row-even"><td><p>v435.7c</p></td>
+<td><p>84.0%</p></td>
+<td><p>16.0%</p></td>
+<td><p>0.0%</p></td>
+<td><p>中程度</p></td>
+<td><p>50,000ステップ (完了)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h3>詳細分析<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<section id="value-sticking">
+<h4>Value Sticking現象<a class="headerlink" href="#value-sticking" title="Link to this heading"></a></h4>
+<p>すべてのバリアントでvalue sticking（価値関数の固定）が観測されました：</p>
+<ul class="simple">
+<li><p><strong>初期段階</strong>: アクションに一定の多様性が見られる</p></li>
+<li><p><strong>中期段階</strong>: アクションが徐々に0.0または1.0に収束</p></li>
+<li><p><strong>最終段階</strong>: アクションが完全に固定化</p></li>
+</ul>
+</section>
+<section id="sell">
+<h4>SELLアクション学習失敗<a class="headerlink" href="#sell" title="Link to this heading"></a></h4>
+<p>最も深刻な問題として、いずれのバリアントでもSELLアクションが全く学習されませんでした：</p>
+<ul class="simple">
+<li><p>50,000ステップのトレーニングを通じて一度もSELLアクションが発生</p></li>
+<li><p>報酬関数の違いがBUYアクションの学習に影響を与えるが、SELLには無効</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🔍 根本原因分析<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>1. 報酬関数の影響評価<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id9">
+<h4>仮説検証<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>仮説1</strong>: ペナルティの強さがアクション分布を決定</p>
+<ul>
+<li><p><strong>結果</strong>: 部分的に支持。Zero penalty (v435.7b)が最も保守的、Enhanced bonus (v435.7c)が最も積極的</p></li>
+<li><p><strong>分析</strong>: ペナルティの強さがHOLD vs BUYのバランスに影響を与えるが、SELLアクションの不在を説明できない</p></li>
+</ul>
+</li>
+<li><p><strong>仮説2</strong>: 報酬関数の設計がSELL行動を抑制</p>
+<ul>
+<li><p><strong>結果</strong>: 可能性あり。報酬関数がSELL行動に対して中立的または負の報酬を与えている可能性</p></li>
+<li><p><strong>分析</strong>: 特徴量がSELLシグナルを提供していても、報酬関数がそれを無視している</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id10">
+<h4>報酬関数実装確認<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 報酬計算の主要部分（想定）</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">market_data</span><span class="p">):</span>
+    <span class="n">base_reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_base_reward</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">market_data</span><span class="p">)</span>
+    <span class="n">frequency_penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_frequency_penalty</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">base_reward</span> <span class="o">+</span> <span class="n">frequency_penalty</span>
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h4>非対称報酬スケーリングの影響（詳細分析）<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<p>v435.7で実装されている非対称報酬スケーリングがSELL学習を阻害している：</p>
+<p><strong>現在の設定</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">short_position_reward_multiplier</span> <span class="o">=</span> <span class="mf">0.7</span>    <span class="c1"># SELL利益報酬を30%減</span>
+<span class="n">short_position_penalty_multiplier</span> <span class="o">=</span> <span class="mf">1.2</span>   <span class="c1"># SELL損失ペナルティを20%増</span>
+<span class="n">long_position_reward_multiplier</span> <span class="o">=</span> <span class="mf">1.5</span>     <span class="c1"># BUY利益報酬を50%増</span>
+<span class="n">long_position_penalty_multiplier</span> <span class="o">=</span> <span class="mf">0.8</span>    <span class="c1"># BUY損失ペナルティを20%減</span>
+</pre></div>
+</div>
+<p><strong>問題点</strong>:</p>
+<ul class="simple">
+<li><p>SELL時の利益報酬が0.7倍 → 学習意欲低下</p></li>
+<li><p>SELL時の損失ペナルティが1.2倍 → リスク回避強化</p></li>
+<li><p>BUY時は利益報酬が1.5倍 → BUY学習が促進される</p></li>
+</ul>
+<p><strong>証拠</strong>: action_analysis_sac_v435.7a.txtで252サンプル全てがBUYアクションのみ発生</p>
+</section>
+<section id="id12">
+<h4>バランスの取れた改善案<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<p>SELLに傾きすぎないようBUYも考慮した調整：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;long_short_asymmetry&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;long_position_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w">    </span><span class="c1">// 1.5 → 1.2 (BUY報酬を適度に)</span>
+<span class="w">  </span><span class="nt">&quot;short_position_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.1</span><span class="p">,</span><span class="w">   </span><span class="c1">// 0.7 → 1.1 (SELL報酬を強化)</span>
+<span class="w">  </span><span class="nt">&quot;long_position_penalty_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.9</span><span class="p">,</span><span class="w">   </span><span class="c1">// 0.8 → 0.9 (BUY損失を緩和)</span>
+<span class="w">  </span><span class="nt">&quot;short_position_penalty_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="w">  </span><span class="c1">// 1.2 → 0.95 (SELL損失を大幅緩和)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id13">
+<h3>2. 特徴量の影響評価<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<section id="id14">
+<h4>特徴量設計の確認<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>156個のテクニカル指標</strong>: 売買両方のシグナルを含むはず</p></li>
+<li><p><strong>対称的な閾値設定</strong>: ±0.3333でBUY/SELLの両方を可能にしている</p></li>
+<li><p><strong>連続アクション空間</strong>: [0,1] → [-1,1]のマッピング</p></li>
+</ul>
+</section>
+<section id="id15">
+<h4>特徴量のSELLシグナル<a class="headerlink" href="#id15" title="Link to this heading"></a></h4>
+<p>ユーザーの指摘通り、特徴量は売買両方とも読み取れるよう設計されているはず：</p>
+<ul class="simple">
+<li><p>RSI, MACD, 移動平均などの指標はSELLシグナルも提供可能</p></li>
+<li><p>価格変動パターンからSELLタイミングを学習可能</p></li>
+</ul>
+</section>
+</section>
+<section id="id16">
+<h3>3. 環境設計の影響評価<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id17">
+<h4>環境のSELL行動サポート<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Action Space</strong>: 連続値[-1,1]、SELLは負の値で表現されるはず</p></li>
+<li><p><strong>Reward Structure</strong>: SELL行動に対する報酬設計が不十分な可能性</p></li>
+<li><p><strong>Market Dynamics</strong>: テストデータのSELL機会が不足している可能性</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>🚨 主要な問題点<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>1. SELLアクションの完全不在<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>現象</strong>: 50,000ステップのトレーニングで一度もSELLアクションが発生</p></li>
+<li><p><strong>影響</strong>: 実用的でない取引戦略（買いのみ/ホールドのみ）</p></li>
+<li><p><strong>原因</strong>: 報酬関数がSELL行動を報酬しない/ペナルティを与える可能性</p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>2. Value Stickingの持続<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>現象</strong>: アクションが0.0または1.0に固定化</p></li>
+<li><p><strong>影響</strong>: 学習の停滞と多様性の欠如</p></li>
+<li><p><strong>原因</strong>: 報酬関数の設計問題または特徴量の表現力不足</p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>3. 報酬関数の限界<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>現象</strong>: ペナルティの強弱がHOLD/BUYバランスに影響するが、SELL学習には無効</p></li>
+<li><p><strong>影響</strong>: 報酬ベースの行動誘導が不完全</p></li>
+<li><p><strong>原因</strong>: SELL行動に対する報酬設計の欠如</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>💡 考察と仮説<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>ユーザーの洞察<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<blockquote>
+<div><p>“閾値が悪さをしているとは考えづらく、特徴量から売買両方とも読み取れるようになっているはずです。少なくとも報酬関数が影響していると見ています。”</p>
+</div></blockquote>
+<p>この指摘は以下の点を示唆：</p>
+<ol class="arabic simple">
+<li><p><strong>閾値設計の正当性</strong>: ±0.3333の対称的な閾値は適切</p></li>
+<li><p><strong>特徴量の十分性</strong>: 156個のテクニカル指標はSELLシグナルも含む</p></li>
+<li><p><strong>報酬関数の責任</strong>: SELLアクション学習失敗の主原因は報酬関数</p></li>
+</ol>
+</section>
+<section id="id24">
+<h3>技術的考察<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数のSELL中立性</strong>: 現在の報酬関数がSELL行動に対して報酬を与えていない可能性</p></li>
+<li><p><strong>特徴量のSELL表現</strong>: 特徴量はSELLシグナルを提供しているが、報酬関数がそれを活用していない</p></li>
+<li><p><strong>学習ダイナミクス</strong>: SACアルゴリズムの学習がSELL行動を探索しない</p></li>
+</ul>
+</section>
+<section id="id25">
+<h3>非対称報酬スケーリングの根本原因<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<p>非対称スケーリングがSELL学習を阻害するメカニズム：</p>
+<ol class="arabic simple">
+<li><p><strong>報酬勾配の歪み</strong>: SELL方向の報酬勾配がBUYより弱いため、勾配降下でSELLに到達しにくい</p></li>
+<li><p><strong>探索の偏り</strong>: SACのエントロピー項がSELL方向の探索を抑制</p></li>
+<li><p><strong>価値関数の固定</strong>: 初期のBUYバイアスがvalue stickingを助長</p></li>
+</ol>
+</section>
+<section id="buy-sell">
+<h3>BUY/SELLバランスの重要性<a class="headerlink" href="#buy-sell" title="Link to this heading"></a></h3>
+<p>SELLに傾きすぎないようBUYも考慮した設計原則：</p>
+<ul class="simple">
+<li><p>BUY報酬を過度に高くしない（BUY-only戦略を避ける）</p></li>
+<li><p>SELL報酬を適切に高くする（SELL学習を促進）</p></li>
+<li><p>損失ペナルティのバランスを取る（リスク管理を両立）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id26">
+<h2>📈 アクションシグナルガイド<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<p>機械学習によるシグナル発見を支援するため、古典的なテクニカルシグナルを事前に定義：</p>
+<section id="buy">
+<h3>BUYシグナル（上昇期待）<a class="headerlink" href="#buy" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ゴールデンクロス</strong>: 短期移動平均が長期移動平均を上抜け</p></li>
+<li><p><strong>RSIダイバージェンス</strong>: RSIが価格と逆行して上昇</p></li>
+<li><p><strong>MACDシグナル</strong>: MACDラインがシグナルラインを上抜け</p></li>
+<li><p><strong>ボリンジャーバンド</strong>: 価格が下バンドにタッチ後反発</p></li>
+<li><p><strong>ストキャスティクス</strong>: %Kと%Dが20以下から上昇</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>SELLシグナル（下落期待）<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>デッドクロス</strong>: 短期移動平均が長期移動平均を下抜け</p></li>
+<li><p><strong>RSIダイバージェンス</strong>: RSIが価格と逆行して下降</p></li>
+<li><p><strong>MACDシグナル</strong>: MACDラインがシグナルラインを下抜け</p></li>
+<li><p><strong>ボリンジャーバンド</strong>: 価格が上バンドにタッチ後反落</p></li>
+<li><p><strong>ストキャスティクス</strong>: %Kと%Dが80以上から下降</p></li>
+</ul>
+</section>
+<section id="id28">
+<h3>ニュートラルシグナル<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>レンジ相場</strong>: ボリンジャーバンド内で推移</p></li>
+<li><p><strong>サイドウェイズ</strong>: 移動平均が平行</p></li>
+<li><p><strong>低ボラティリティ</strong>: ATRが低い状態</p></li>
+</ul>
+<p>これらのシグナルを報酬関数に組み込むことで、学習の初期段階で基本的な売買パターンを教えることが可能。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id29">
+<h2>🔬 特徴量分析（156次元の手動分析）<a class="headerlink" href="#id29" title="Link to this heading"></a></h2>
+<p>156個の特徴量をカテゴリ別に分類し、各特徴量のSELL/BUYシグナル寄与を分析：</p>
+<section id="sma-ema-wma">
+<h3>1. 移動平均系特徴量（SMA, EMA, WMA）<a class="headerlink" href="#sma-ema-wma" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>短期MA &gt; 長期MA（ゴールデンクロス）</p></li>
+<li><p>価格 &gt; MA（上昇トレンド）</p></li>
+<li><p>MA勾配 &gt; 0（加速上昇）</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>短期MA &lt; 長期MA（デッドクロス）</p></li>
+<li><p>価格 &lt; MA（下降トレンド）</p></li>
+<li><p>MA勾配 &lt; 0（加速下降）</p></li>
+</ul>
+<p><strong>分析</strong>: 最も基本的なトレンドフォローシグナル。SELLシグナルも明確に提供可能。</p>
+</section>
+<section id="rsi-cci">
+<h3>2. オシレーター系特徴量（RSI, ストキャスティクス, CCI）<a class="headerlink" href="#rsi-cci" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>RSI &lt; 30（売られすぎ）</p></li>
+<li><p>ストキャスティクス %K &lt; 20</p></li>
+<li><p>CCI &lt; -100（売られすぎ）</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>RSI &gt; 70（買われすぎ）</p></li>
+<li><p>ストキャスティクス %K &gt; 80</p></li>
+<li><p>CCI &gt; 100（買われすぎ）</p></li>
+</ul>
+<p><strong>分析</strong>: 反転シグナルが主力。SELLシグナル（買われすぎ）はBUYシグナル（売られすぎ）と同等に重要。</p>
+</section>
+<section id="macd">
+<h3>3. MACD系特徴量<a class="headerlink" href="#macd" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>MACD &gt; シグナルライン</p></li>
+<li><p>MACDヒストグラム &gt; 0</p></li>
+<li><p>ダイバージェンス（価格下降中MACD上昇）</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>MACD &lt; シグナルライン</p></li>
+<li><p>MACDヒストグラム &lt; 0</p></li>
+<li><p>ダイバージェンス（価格上昇中MACD下降）</p></li>
+</ul>
+<p><strong>分析</strong>: モメンタム変化を検知。SELLシグナルも明確。</p>
+</section>
+<section id="atr">
+<h3>4. ボラティリティ系特徴量（ATR, ボリンジャーバンド）<a class="headerlink" href="#atr" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>価格が下バンドにタッチ後反発</p></li>
+<li><p>ATR増加時の上昇ブレイク</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>価格が上バンドにタッチ後反落</p></li>
+<li><p>ATR増加時の下降ブレイク</p></li>
+</ul>
+<p><strong>分析</strong>: ボラティリティを利用した反転/ブレイクシグナル。SELLシグナルも豊富。</p>
+</section>
+<section id="id30">
+<h3>5. ボリューム系特徴量<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>出来高増加 + 価格上昇</p></li>
+<li><p>オン_balance_volume &gt; 0</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>出来高増加 + 価格下降</p></li>
+<li><p>オン_balance_volume &lt; 0</p></li>
+</ul>
+<p><strong>分析</strong>: 出来高確認によるシグナル強化。SELL時の出来高増加も重要。</p>
+</section>
+<section id="adx-dmi">
+<h3>6. トレンド系特徴量（ADX, DMI）<a class="headerlink" href="#adx-dmi" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>ADX &gt; 25 + DI+ &gt; DI-</p></li>
+<li><p>強い上昇トレンド</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>ADX &gt; 25 + DI- &gt; DI+</p></li>
+<li><p>強い下降トレンド</p></li>
+</ul>
+<p><strong>分析</strong>: トレンド強度判定。SELLトレンドも明確に検知可能。</p>
+</section>
+<section id="id31">
+<h3>7. モメンタム系特徴量<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<p><strong>BUYシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>モメンタム &gt; 0（上昇加速）</p></li>
+<li><p>ROC &gt; 0（上昇率）</p></li>
+</ul>
+<p><strong>SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>モメンタム &lt; 0（下降加速）</p></li>
+<li><p>ROC &lt; 0（下降率）</p></li>
+</ul>
+<p><strong>分析</strong>: 勢いの変化を捉える。SELL時の負のモメンタムも重要。</p>
+</section>
+<section id="id32">
+<h3>8. 時間系特徴量<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<p><strong>BUY/SELLシグナル寄与</strong>:</p>
+<ul class="simple">
+<li><p>時間帯によるバイアス（例: 朝高、夕安）</p></li>
+<li><p>曜日効果</p></li>
+</ul>
+<p><strong>分析</strong>: 市場の時間的パターンを学習。</p>
+</section>
+<section id="id33">
+<h3>特徴量分析の結論<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>SELLシグナル充足度</strong>: すべてのカテゴリでSELLシグナルが提供可能</p></li>
+<li><p><strong>対称性</strong>: BUY/SELLシグナルのバランスは良好</p></li>
+<li><p><strong>問題点</strong>: 報酬関数がこれらのSELLシグナルを活用していない可能性</p></li>
+<li><p><strong>改善策</strong>: 特徴量のSELL関連指標を報酬計算に組み込む</p></li>
+</ul>
+</section>
+</section>
+<section id="id34">
+<h2>🎯 次ステップの提案<a class="headerlink" href="#id34" title="Link to this heading"></a></h2>
+<section id="id35">
+<h3>1. 報酬関数調査<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>報酬関数のSELL行動に対する報酬設計を確認</p></li>
+<li><p>SELL行動を積極的に報酬するメカニズムの追加検討</p></li>
+</ul>
+</section>
+<section id="id36">
+<h3>2. 特徴量-報酬相互作用分析<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>特徴量が提供するSELLシグナルと報酬関数の対応関係を分析</p></li>
+<li><p>特徴量のSELL予測能力を個別に評価</p></li>
+</ul>
+</section>
+<section id="id37">
+<h3>3. 環境設計の見直し<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>SELL行動に対する報酬構造の改善</p></li>
+<li><p>テストデータのSELL機会分布を確認</p></li>
+</ul>
+</section>
+<section id="id38">
+<h3>4. 実験的アプローチ<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>SELL行動を強制的に報酬する実験的報酬関数の実装</p></li>
+<li><p>特徴量のSELL関連指標を強調した報酬設計</p></li>
+</ul>
+</section>
+<section id="id39">
+<h3>5. 非対称スケーリングの改善（優先度高）<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>short_position_reward_multiplier を1.0以上に調整</p></li>
+<li><p>short_position_penalty_multiplier を1.0以下に調整</p></li>
+<li><p>BUY報酬も適度に抑えてバランスを取る</p></li>
+</ul>
+</section>
+<section id="id40">
+<h3>6. アクションシグナル事前学習<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>古典的なテクニカルシグナル（ゴールデンクロス、デッドクロスなど）を報酬関数に組み込み</p></li>
+<li><p>機械学習によるシグナル発見と組み合わせたハイブリッドアプローチ</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id41">
+<h2>📝 結論<a class="headerlink" href="#id41" title="Link to this heading"></a></h2>
+<p>SAC v435.7シリーズのトレーニング分析により、以下の知見が得られました：</p>
+<ol class="arabic simple">
+<li><p><strong>報酬関数のバリアントがHOLD/BUYバランスに影響を与える</strong></p></li>
+<li><p><strong>SELLアクションの学習失敗が根本的な問題</strong></p></li>
+<li><p><strong>特徴量と閾値の設計は適切と考えられる</strong></p></li>
+<li><p><strong>報酬関数がSELL行動を適切に報酬していない可能性が高い</strong></p></li>
+<li><p><strong>非対称報酬スケーリングがSELL学習を阻害</strong></p></li>
+<li><p><strong>特徴量はSELLシグナルを十分に提供している</strong></p></li>
+<li><p><strong>BUY/SELLバランスを考慮した報酬設計が必要</strong></p></li>
+</ol>
+<p>ユーザーの洞察通り、少なくとも報酬関数がSELLアクション学習失敗に影響していると考えられます。今後の調査では、報酬関数のSELL行動に対する報酬設計に焦点を当てることを推奨します。</p>
+<section id="id42">
+<h3>追加の洞察<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>アクションシグナル事前学習</strong>: 古典的なテクニカルシグナルを報酬関数に組み込むことで学習を加速</p></li>
+<li><p><strong>特徴量分析の重要性</strong>: 156次元の特徴量を手動分析することで、SELLシグナルの豊富さを確認</p></li>
+<li><p><strong>バランス設計の必要性</strong>: SELL強化とBUY抑制の両立が重要</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>分析完了日時</strong>: 2025年10月24日
+<strong>次のアクション</strong>: 非対称スケーリングの改善とSELL特化報酬の実装</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v436">
+<h2>🚀 v436: アクションシグナルガイド実装計画<a class="headerlink" href="#v436" title="Link to this heading"></a></h2>
+<section id="id43">
+<h3>概要<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
+<p>v436では、機械学習によるシグナル発見を支援するための「アクションシグナルガイド」を実装します。これはモデルが独りでに考えるようになるまでの補助輪として機能し、古典的なテクニカルシグナルを報酬関数に組み込んで学習を加速させます。</p>
+</section>
+<section id="id44">
+<h3>実装アーキテクチャ<a class="headerlink" href="#id44" title="Link to this heading"></a></h3>
+<section id="id45">
+<h4>1. ディレクトリ構成<a class="headerlink" href="#id45" title="Link to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ztb/trading/strategies/
+├── __init__.py
+├── action_signal_guide.py          # メインのシグナルガイドクラス
+├── signal_definitions.py           # シグナル定義
+├── signal_evaluator.py             # シグナル評価器
+└── signal_integration.py           # 報酬関数統合モジュール
+</pre></div>
+</div>
+</section>
+<section id="id46">
+<h4>2. 主要コンポーネント<a class="headerlink" href="#id46" title="Link to this heading"></a></h4>
+<p><strong>action_signal_guide.py</strong></p>
+<ul class="simple">
+<li><p>ActionSignalGuide クラス</p></li>
+<li><p>シグナル強度計算</p></li>
+<li><p>BUY/SELL/NEUTRAL の判定</p></li>
+</ul>
+<p><strong>signal_definitions.py</strong></p>
+<ul class="simple">
+<li><p>古典的テクニカルシグナルの定義</p></li>
+<li><p>ゴールデンクロス、デッドクロス、RSIダイバージェンスなど</p></li>
+</ul>
+<p><strong>signal_evaluator.py</strong></p>
+<ul class="simple">
+<li><p>シグナルの信頼性評価</p></li>
+<li><p>バックテストによる検証</p></li>
+</ul>
+<p><strong>signal_integration.py</strong></p>
+<ul class="simple">
+<li><p>報酬関数への統合</p></li>
+<li><p>シグナル強度に基づく報酬ボーナス</p></li>
+</ul>
+</section>
+<section id="id47">
+<h4>3. 統合ポイント<a class="headerlink" href="#id47" title="Link to this heading"></a></h4>
+<p><strong>報酬関数統合</strong> (reward_calculator.py)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># signal_guide からのシグナル強度を取得</span>
+<span class="n">signal_strength</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_guide</span><span class="o">.</span><span class="n">get_signal_strength</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">action</span><span class="p">)</span>
+
+<span class="c1"># シグナルに基づく報酬ボーナス</span>
+<span class="k">if</span> <span class="n">signal_strength</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">:</span>  <span class="c1"># 強いシグナル</span>
+    <span class="n">reward</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_bonus_multiplier</span> <span class="o">*</span> <span class="n">signal_strength</span>
+</pre></div>
+</div>
+<p><strong>環境統合</strong> (heavy_env/core.py)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ActionSignalGuide の初期化</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">signal_guide</span> <span class="o">=</span> <span class="n">ActionSignalGuide</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id48">
+<h3>シグナル定義仕様<a class="headerlink" href="#id48" title="Link to this heading"></a></h3>
+<section id="id49">
+<h4>BUYシグナル<a class="headerlink" href="#id49" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>ゴールデンクロス</strong>: 短期MA &gt; 長期MA (強度: 0.8)</p></li>
+<li><p><strong>RSIオーバーソールド</strong>: RSI &lt; 30 (強度: 0.6)</p></li>
+<li><p><strong>MACDダイバージェンス</strong>: 価格下降中MACD上昇 (強度: 0.7)</p></li>
+<li><p><strong>ボリンジャーバンド下抜け</strong>: 価格 &lt; 下バンド (強度: 0.5)</p></li>
+</ul>
+</section>
+<section id="id50">
+<h4>SELLシグナル<a class="headerlink" href="#id50" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>デッドクロス</strong>: 短期MA &lt; 長期MA (強度: 0.8)</p></li>
+<li><p><strong>RSIオーバーボート</strong>: RSI &gt; 70 (強度: 0.6)</p></li>
+<li><p><strong>MACDダイバージェンス</strong>: 価格上昇中MACD下降 (強度: 0.7)</p></li>
+<li><p><strong>ボリンジャーバンド上抜け</strong>: 価格 &gt; 上バンド (強度: 0.5)</p></li>
+</ul>
+</section>
+<section id="id51">
+<h4>ニュートラルシグナル<a class="headerlink" href="#id51" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>レンジ相場</strong>: ボリンジャーバンド内で推移 (強度: 0.3)</p></li>
+<li><p><strong>低ボラティリティ</strong>: ATR &lt; 閾値 (強度: 0.2)</p></li>
+</ul>
+</section>
+</section>
+<section id="id52">
+<h3>実装ステップ<a class="headerlink" href="#id52" title="Link to this heading"></a></h3>
+<section id="phase-1">
+<h4>Phase 1: 基本実装<a class="headerlink" href="#phase-1" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p>ztb/trading/strategies/ ディレクトリ作成</p></li>
+<li><p>ActionSignalGuide クラスの実装</p></li>
+<li><p>基本的なシグナル定義</p></li>
+<li><p>報酬関数への統合テスト</p></li>
+</ol>
+</section>
+<section id="phase-2">
+<h4>Phase 2: 拡張実装<a class="headerlink" href="#phase-2" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p>シグナル強度チューニング</p></li>
+<li><p>バックテスト検証</p></li>
+<li><p>機械学習シグナルとの統合</p></li>
+</ol>
+</section>
+<section id="phase-3">
+<h4>Phase 3: 最適化<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p>パフォーマンス最適化</p></li>
+<li><p>メモリ使用量削減</p></li>
+<li><p>リアルタイム適応</p></li>
+</ol>
+</section>
+</section>
+<section id="id53">
+<h3>期待効果<a class="headerlink" href="#id53" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>学習加速</strong>: 古典的シグナルにより初期学習が高速化</p></li>
+<li><p><strong>SELL学習促進</strong>: SELLシグナルを積極的に報酬化</p></li>
+<li><p><strong>安定性向上</strong>: 補助輪として学習の安定性を確保</p></li>
+<li><p><strong>ハイブリッドアプローチ</strong>: 伝統的分析 + 機械学習の融合</p></li>
+</ol>
+</section>
+<section id="id54">
+<h3>リスクと対策<a class="headerlink" href="#id54" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>過学習リスク</strong>: シグナルガイドが強すぎると機械学習の柔軟性が失われる</p>
+<ul>
+<li><p><strong>対策</strong>: 学習段階に応じてシグナル強度を減衰させる</p></li>
+</ul>
+</li>
+<li><p><strong>市場適応性</strong>: 古典的シグナルが通用しない市場では逆効果</p>
+<ul>
+<li><p><strong>対策</strong>: シグナル有効性の動的評価と適応</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id55">
+<h3>実装優先度<a class="headerlink" href="#id55" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>高</strong>: 基本シグナルガイドの実装</p></li>
+<li><p><strong>中</strong>: 報酬関数統合</p></li>
+<li><p><strong>中</strong>: シグナル強度チューニング</p></li>
+<li><p><strong>低</strong>: 高度な適応機能</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>v436計画策定日</strong>: 2025年10月24日
+<strong>実装開始予定</strong>: 即時</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.multimodal.core.fusion</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;融合モジュール</span>
 
@@ -97,9 +97,11 @@
 
 <span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>  <span class="c1"># type: ignore</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>  <span class="c1"># type: ignore</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
 
 <div class="viewcode-block" id="TemporalIntegrationLayer">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.core.fusion.html#ztb.multimodal.core.fusion.TemporalIntegrationLayer">[docs]</a>
@@ -110,11 +112,13 @@
 <span class="sd">    短期依存性（BiLSTM）と長期依存性（Transformer）を同時に学習。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
-                 <span class="n">num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-                 <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-                 <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+        <span class="n">num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">hidden_dim</span>
@@ -127,7 +131,7 @@
             <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span><span class="p">,</span>
             <span class="n">bidirectional</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span> <span class="k">if</span> <span class="n">num_layers</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># Transformer for long-range dependencies</span>
@@ -136,11 +140,10 @@
             <span class="n">nhead</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
             <span class="n">dim_feedforward</span><span class="o">=</span><span class="n">hidden_dim</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
             <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span><span class="p">,</span>
-            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">TransformerEncoder</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">transformer_layer</span><span class="p">,</span>
-            <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transformer_layer</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span>
         <span class="p">)</span>
 
         <span class="c1"># 出力投影層</span>
@@ -149,9 +152,9 @@
 
 <div class="viewcode-block" id="TemporalIntegrationLayer.forward">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.core.fusion.html#ztb.multimodal.core.fusion.TemporalIntegrationLayer.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        時間的統合の順伝播</span>
 
@@ -174,7 +177,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">transformer_mask</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="n">transformer_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">,</span> <span class="n">src_key_padding_mask</span><span class="o">=</span><span class="n">transformer_mask</span><span class="p">)</span>
+        <span class="n">transformer_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="p">(</span>
+            <span class="n">lstm_out</span><span class="p">,</span> <span class="n">src_key_padding_mask</span><span class="o">=</span><span class="n">transformer_mask</span>
+        <span class="p">)</span>
         <span class="c1"># transformer_out: (batch_size, seq_len, hidden_dim)</span>
 
         <span class="c1"># 最終投影と正規化</span>
@@ -185,6 +190,7 @@
 </div>
 
 
+
 <div class="viewcode-block" id="ModalityFusion">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.core.fusion.html#ztb.multimodal.core.fusion.ModalityFusion">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ModalityFusion</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
@@ -193,10 +199,12 @@
 <span class="sd">    複数モダリティの特徴量を統合し、統一された表現を生成。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">num_modalities</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-                 <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
-                 <span class="n">fusion_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;attention&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">num_modalities</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+        <span class="n">fusion_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;attention&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">num_modalities</span> <span class="o">=</span> <span class="n">num_modalities</span>
@@ -209,7 +217,7 @@
                 <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span> <span class="o">*</span> <span class="n">num_modalities</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
                 <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">(),</span>
                 <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_modalities</span><span class="p">),</span>
-                <span class="n">nn</span><span class="o">.</span><span class="n">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="n">fusion_method</span> <span class="o">==</span> <span class="s2">&quot;concat&quot;</span><span class="p">:</span>
             <span class="c1"># 単純結合</span>
@@ -284,6 +292,7 @@
 </div>
 
 
+
 <div class="viewcode-block" id="MultiModalFeatureEncoder">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.core.fusion.html#ztb.multimodal.core.fusion.MultiModalFeatureEncoder">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MultiModalFeatureEncoder</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
@@ -292,50 +301,46 @@
 <span class="sd">    各モダリティのエンコーダーと融合層を統合した完全な特徴量エンコーダー。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                 <span class="n">price_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
-                 <span class="n">text_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span>
-                 <span class="n">economic_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-                 <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
-                 <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-                 <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">price_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
+        <span class="n">text_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span>
+        <span class="n">economic_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+        <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
         <span class="c1"># 個別モダリティエンコーダー</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">..encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">PriceEncoder</span><span class="p">,</span> <span class="n">TextEncoder</span><span class="p">,</span> <span class="n">EconomicEncoder</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">EconomicEncoder</span><span class="p">,</span> <span class="n">PriceEncoder</span><span class="p">,</span> <span class="n">TextEncoder</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">price_encoder</span> <span class="o">=</span> <span class="n">PriceEncoder</span><span class="p">(</span>
             <span class="n">input_dim</span><span class="o">=</span><span class="n">price_dim</span><span class="p">,</span>
             <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="n">hidden_dim</span> <span class="o">//</span> <span class="mi">2</span><span class="p">],</span>
-            <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span>
+            <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span> <span class="o">=</span> <span class="n">TextEncoder</span><span class="p">(</span>
-            <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;bert-base-uncased&quot;</span><span class="p">,</span>
-            <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
-            <span class="n">fine_tune</span><span class="o">=</span><span class="kc">True</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;bert-base-uncased&quot;</span><span class="p">,</span> <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">fine_tune</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">economic_encoder</span> <span class="o">=</span> <span class="n">EconomicEncoder</span><span class="p">(</span>
             <span class="n">input_dim</span><span class="o">=</span><span class="n">economic_dim</span><span class="p">,</span>
             <span class="n">hidden_dims</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="n">hidden_dim</span> <span class="o">//</span> <span class="mi">2</span><span class="p">],</span>
-            <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span>
+            <span class="n">output_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># クロスモーダル・アテンション</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">..attention</span><span class="w"> </span><span class="kn">import</span> <span class="n">CrossModalAttention</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">cross_attention</span> <span class="o">=</span> <span class="n">CrossModalAttention</span><span class="p">(</span>
-            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
-            <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
-            <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span>
+            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span>
         <span class="p">)</span>
 
         <span class="c1"># 時間的統合</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">temporal_integration</span> <span class="o">=</span> <span class="n">TemporalIntegrationLayer</span><span class="p">(</span>
-            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
-            <span class="n">num_layers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
-            <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span>
+            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span>
         <span class="p">)</span>
 
         <span class="c1"># 最終出力投影</span>
@@ -343,11 +348,13 @@
 
 <div class="viewcode-block" id="MultiModalFeatureEncoder.forward">
 <a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.core.fusion.html#ztb.multimodal.core.fusion.MultiModalFeatureEncoder.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                <span class="n">price_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                <span class="n">text_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                <span class="n">economic_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
-                <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">price_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">text_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">economic_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        マルチモーダル特徴量エンコーディング</span>
 
@@ -366,9 +373,13 @@
         <span class="c1"># テキスト特徴量のシーケンス化（簡易実装）</span>
         <span class="n">batch_size</span> <span class="o">=</span> <span class="n">price_features</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">seq_len</span> <span class="o">=</span> <span class="n">text_data</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">text_data</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span>
-        <span class="n">text_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span><span class="p">(</span><span class="n">text_data</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">)</span>  <span class="c1"># (batch_size, hidden_dim)</span>
+        <span class="n">text_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_encoder</span><span class="p">(</span>
+            <span class="n">text_data</span><span class="p">,</span> <span class="n">attention_mask</span>
+        <span class="p">)</span>  <span class="c1"># (batch_size, hidden_dim)</span>
 
-        <span class="n">economic_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">economic_encoder</span><span class="p">(</span><span class="n">economic_data</span><span class="p">)</span>  <span class="c1"># (batch_size, hidden_dim)</span>
+        <span class="n">economic_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">economic_encoder</span><span class="p">(</span>
+            <span class="n">economic_data</span>
+        <span class="p">)</span>  <span class="c1"># (batch_size, hidden_dim)</span>
 
         <span class="c1"># 特徴量のシーケンス化（時間軸の追加）</span>
         <span class="c1"># 実際の実装では、各タイムステップの特徴量が必要</span>
@@ -408,7 +419,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -419,7 +430,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

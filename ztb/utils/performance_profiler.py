@@ -9,7 +9,7 @@ import io
 import pstats
 import time
 from contextlib import contextmanager
-from typing import Dict, Generator, List, Optional
+from typing import Any, Callable, Dict, Generator, List, Optional
 
 import pandas as pd
 import psutil
@@ -294,3 +294,133 @@ if __name__ == "__main__":
         "MACD",
     ]
     run_performance_analysis(df, key_features)
+
+
+class MemoryProfiler:
+    """
+    Advanced memory profiling utilities for tracking memory usage patterns.
+
+    Provides detailed memory analysis including peak usage, leaks detection,
+    and memory allocation patterns.
+    """
+
+    def __init__(self):
+        try:
+            import psutil
+            import tracemalloc
+            self.psutil_available = True
+            self.tracemalloc_available = True
+            self.process = psutil.Process()
+            tracemalloc.start()
+        except ImportError:
+            self.psutil_available = False
+            self.tracemalloc_available = False
+            self.process = None
+
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive memory statistics.
+
+        Returns:
+            Dictionary with memory statistics
+        """
+        if not self.psutil_available:
+            return {"error": "psutil not available"}
+
+        memory_info = self.process.memory_info()
+        memory_percent = self.process.memory_percent()
+
+        stats = {
+            "rss_mb": memory_info.rss / 1024 / 1024,
+            "vms_mb": memory_info.vms / 1024 / 1024,
+            "percent": memory_percent,
+        }
+
+        if self.tracemalloc_available:
+            import tracemalloc
+            current, peak = tracemalloc.get_traced_memory()
+            stats.update({
+                "current_traced_mb": current / 1024 / 1024,
+                "peak_traced_mb": peak / 1024 / 1024,
+            })
+
+        return stats
+
+    def detect_memory_leaks(self, threshold_mb: float = 50.0) -> Dict[str, Any]:
+        """
+        Detect potential memory leaks by analyzing allocation patterns.
+
+        Args:
+            threshold_mb: Memory increase threshold to consider as leak
+
+        Returns:
+            Dictionary with leak detection results
+        """
+        if not self.tracemalloc_available:
+            return {"error": "tracemalloc not available"}
+
+        import tracemalloc
+
+        # Get top memory allocations
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+
+        leaks = []
+        for stat in top_stats[:10]:  # Top 10 allocations
+            if stat.size / 1024 / 1024 > threshold_mb:
+                leaks.append({
+                    "size_mb": stat.size / 1024 / 1024,
+                    "count": stat.count,
+                    "traceback": str(stat.traceback)
+                })
+
+        return {
+            "potential_leaks": leaks,
+            "total_traced_mb": sum(stat.size for stat in top_stats) / 1024 / 1024
+        }
+
+    def profile_memory_usage(self, func: Callable, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Profile memory usage of a function call.
+
+        Args:
+            func: Function to profile
+            *args: Positional arguments for the function
+            **kwargs: Keyword arguments for the function
+
+        Returns:
+            Dictionary with profiling results
+        """
+        if not self.psutil_available:
+            return {"error": "psutil not available"}
+
+        initial_memory = self.process.memory_info().rss / 1024 / 1024
+
+        if self.tracemalloc_available:
+            import tracemalloc
+            tracemalloc.reset_peak()
+
+        # Execute function
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+
+        final_memory = self.process.memory_info().rss / 1024 / 1024
+        memory_delta = final_memory - initial_memory
+
+        profile_result = {
+            "execution_time": end_time - start_time,
+            "memory_delta_mb": memory_delta,
+            "initial_memory_mb": initial_memory,
+            "final_memory_mb": final_memory,
+        }
+
+        if self.tracemalloc_available:
+            import tracemalloc
+            current, peak = tracemalloc.get_traced_memory()
+            profile_result.update({
+                "peak_memory_mb": peak / 1024 / 1024,
+                "current_memory_mb": current / 1024 / 1024,
+            })
+
+        return profile_result

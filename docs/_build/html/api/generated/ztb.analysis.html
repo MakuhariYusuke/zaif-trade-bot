@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ztb.benchmarks package" href="ztb.benchmarks.html" />
-    <link rel="prev" title="ztb.adaptation.safety package" href="ztb.adaptation.safety.html" />
+    <link rel="prev" title="ztb.adaptation.safety package" href="ztb.adaptation.safety.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -57,7 +57,7 @@
 <li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
 <li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb-sac-v427-market-adaptive-system-module">ztb.sac_v427_market_adaptive_system module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
 </ul>
 </li>
@@ -107,7 +107,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <section id="ztb-analysis-package">
 <h1>ztb.analysis package<a class="headerlink" href="#ztb-analysis-package" title="Link to this heading"></a></h1>
 <section id="submodules">
@@ -907,6 +907,7 @@ data        Data quality and feature analysis
 training    Training process analysis
 performance System and memory performance analysis
 comparative Version comparison and statistical tests
+paper_trading Paper trading evaluation and simulation
 diagnostic  System diagnosis and debugging
 specialized Feature, reward, and risk specific analysis
 session     Session-specific analysis</p>
@@ -922,6 +923,16 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.unified_analyze.</span></span><span class="sig-name descname"><span class="pre">UnifiedAnalysisSuite</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#UnifiedAnalysisSuite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.UnifiedAnalysisSuite" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Unified analysis toolkit interface.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.UnifiedAnalysisSuite.project_root">
+<span class="sig-name descname"><span class="pre">project_root</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#ztb.analysis.unified_analyze.UnifiedAnalysisSuite.project_root" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.UnifiedAnalysisSuite.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.analysis.unified_analyze.UnifiedAnalysisSuite.categories" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="ztb.analysis.unified_analyze.UnifiedAnalysisSuite.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#UnifiedAnalysisSuite.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.UnifiedAnalysisSuite.run" title="Link to this definition"></a></dt>
@@ -1027,17 +1038,11 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <dt class="sig sig-object py" id="ztb.analysis.unified_analyze.TrainingAnalysis">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.unified_analyze.</span></span><span class="sig-name descname"><span class="pre">TrainingAnalysis</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#TrainingAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.TrainingAnalysis" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#ztb.analysis.unified_analyze.BaseAnalyzer" title="ztb.analysis.unified_analyze.BaseAnalyzer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAnalyzer</span></code></a></p>
-<p>Training analysis tools.</p>
+<p>Training process analysis tools.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.TrainingAnalysis.run_tensorboard">
-<span class="sig-name descname"><span class="pre">run_tensorboard</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#TrainingAnalysis.run_tensorboard"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.TrainingAnalysis.run_tensorboard" title="Link to this definition"></a></dt>
-<dd><p>Analyze TensorBoard events.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.TrainingAnalysis.run_metrics">
-<span class="sig-name descname"><span class="pre">run_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#TrainingAnalysis.run_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.TrainingAnalysis.run_metrics" title="Link to this definition"></a></dt>
-<dd><p>Compare training metrics.</p>
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.TrainingAnalysis.run_sac_v423">
+<span class="sig-name descname"><span class="pre">run_sac_v423</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#TrainingAnalysis.run_sac_v423"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.TrainingAnalysis.run_sac_v423" title="Link to this definition"></a></dt>
+<dd><p>Analyze SAC v423 training results (integrated from archived script).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1095,23 +1100,17 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.unified_analyze.</span></span><span class="sig-name descname"><span class="pre">ComparativeAnalysis</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#ztb.analysis.unified_analyze.BaseAnalyzer" title="ztb.analysis.unified_analyze.BaseAnalyzer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAnalyzer</span></code></a></p>
-<p>Comparative analysis tools.</p>
+<p>Comparative analysis tools for model and strategy comparison.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis.run_backtest_sac_v424">
+<span class="sig-name descname"><span class="pre">run_backtest_sac_v424</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis.run_backtest_sac_v424"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis.run_backtest_sac_v424" title="Link to this definition"></a></dt>
+<dd><p>Run SAC v424 complete backtest (integrated from archived script).</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis.run_versions">
 <span class="sig-name descname"><span class="pre">run_versions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis.run_versions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis.run_versions" title="Link to this definition"></a></dt>
-<dd><p>Compare multiple versions.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis.run_backtest">
-<span class="sig-name descname"><span class="pre">run_backtest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis.run_backtest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis.run_backtest" title="Link to this definition"></a></dt>
-<dd><p>Compare backtest results.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis.run_statistical">
-<span class="sig-name descname"><span class="pre">run_statistical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis.run_statistical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis.run_statistical" title="Link to this definition"></a></dt>
-<dd><p>Run statistical tests.</p>
+<dd><p>Compare different model versions.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1126,6 +1125,25 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <dd><p>Run benchmark comparison analysis.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.ComparativeAnalysis.run_model_comparison">
+<span class="sig-name descname"><span class="pre">run_model_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#ComparativeAnalysis.run_model_comparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.ComparativeAnalysis.run_model_comparison" title="Link to this definition"></a></dt>
+<dd><p>Run comprehensive model comparison analysis.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.PaperTradingAnalysis">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.unified_analyze.</span></span><span class="sig-name descname"><span class="pre">PaperTradingAnalysis</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#PaperTradingAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.PaperTradingAnalysis" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ztb.analysis.unified_analyze.BaseAnalyzer" title="ztb.analysis.unified_analyze.BaseAnalyzer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAnalyzer</span></code></a></p>
+<p>Paper trading analysis tools for model evaluation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.PaperTradingAnalysis.run_paper_trade">
+<span class="sig-name descname"><span class="pre">run_paper_trade</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#PaperTradingAnalysis.run_paper_trade"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.PaperTradingAnalysis.run_paper_trade" title="Link to this definition"></a></dt>
+<dd><p>Run comprehensive paper trading evaluation.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1133,30 +1151,6 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.unified_analyze.</span></span><span class="sig-name descname"><span class="pre">DiagnosticAnalysis</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#ztb.analysis.unified_analyze.BaseAnalyzer" title="ztb.analysis.unified_analyze.BaseAnalyzer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAnalyzer</span></code></a></p>
 <p>Diagnostic analysis tools.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.DiagnosticAnalysis.run_environment">
-<span class="sig-name descname"><span class="pre">run_environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis.run_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis.run_environment" title="Link to this definition"></a></dt>
-<dd><p>Diagnose SAC environment.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.DiagnosticAnalysis.run_simple">
-<span class="sig-name descname"><span class="pre">run_simple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis.run_simple"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis.run_simple" title="Link to this definition"></a></dt>
-<dd><p>Run simple SAC diagnosis.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.DiagnosticAnalysis.run_features_diag">
-<span class="sig-name descname"><span class="pre">run_features_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis.run_features_diag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis.run_features_diag" title="Link to this definition"></a></dt>
-<dd><p>Diagnose feature issues.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.DiagnosticAnalysis.run_wave3">
-<span class="sig-name descname"><span class="pre">run_wave3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis.run_wave3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis.run_wave3" title="Link to this definition"></a></dt>
-<dd><p>Run Wave 3 diagnosis.</p>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="ztb.analysis.unified_analyze.DiagnosticAnalysis.run_explainability">
 <span class="sig-name descname"><span class="pre">run_explainability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#DiagnosticAnalysis.run_explainability"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.DiagnosticAnalysis.run_explainability" title="Link to this definition"></a></dt>
@@ -1212,6 +1206,12 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <dd><p>Run enhanced feature analysis.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.SpecializedAnalysis.run_feature_correlation">
+<span class="sig-name descname"><span class="pre">run_feature_correlation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#SpecializedAnalysis.run_feature_correlation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.SpecializedAnalysis.run_feature_correlation" title="Link to this definition"></a></dt>
+<dd><p>Analyze feature correlations.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1231,12 +1231,6 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 <dd><p>Analyze action distribution.</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.unified_analyze.SessionAnalysis.run_v394_training">
-<span class="sig-name descname"><span class="pre">run_v394_training</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#SessionAnalysis.run_v394_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.unified_analyze.SessionAnalysis.run_v394_training" title="Link to this definition"></a></dt>
-<dd><p>Analyze V394 training.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="py function">
@@ -1254,236 +1248,6 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
 </section>
 <section id="module-ztb.analysis">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.analysis" title="Link to this heading"></a></h2>
-<p>Trading Analysis Tools</p>
-<p>This module provides comprehensive analysis tools for trading strategies including:
-- Model analysis and validation
-- Data quality and feature analysis
-- Training process analysis
-- Performance evaluation and reporting
-- Comparative analysis across versions
-- Diagnostic tools and debugging
-- Specialized analysis (features, rewards, risk)
-- Session-specific analysis</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="ztb.analysis.UnifiedAnalysisSuite">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.</span></span><span class="sig-name descname"><span class="pre">UnifiedAnalysisSuite</span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#UnifiedAnalysisSuite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.UnifiedAnalysisSuite" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Unified analysis toolkit interface.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.UnifiedAnalysisSuite.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/unified_analyze.html#UnifiedAnalysisSuite.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.UnifiedAnalysisSuite.run" title="Link to this definition"></a></dt>
-<dd><p>Run analysis command.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.</span></span><span class="sig-name descname"><span class="pre">SACAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Comprehensive SAC model analyzer.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.analyze_action_distribution">
-<span class="sig-name descname"><span class="pre">analyze_action_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterministic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.analyze_action_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.analyze_action_distribution" title="Link to this definition"></a></dt>
-<dd><p>Analyze action distribution of the SAC model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>num_samples</strong> – Number of samples to analyze</p></li>
-<li><p><strong>deterministic</strong> – Whether to use deterministic policy</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Action distribution statistics</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.analyze_bias_patterns">
-<span class="sig-name descname"><span class="pre">analyze_bias_patterns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.analyze_bias_patterns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.analyze_bias_patterns" title="Link to this definition"></a></dt>
-<dd><p>Analyze bias patterns in action distribution.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>action_dist</strong> – Action distribution from analyze_action_distribution</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Bias analysis results</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.generate_recommendations">
-<span class="sig-name descname"><span class="pre">generate_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias_analysis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.generate_recommendations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.generate_recommendations" title="Link to this definition"></a></dt>
-<dd><p>Generate recommendations based on analysis.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>action_dist</strong> – Action distribution</p></li>
-<li><p><strong>bias_analysis</strong> – Bias analysis results</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>List of recommendations</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.load_config">
-<span class="sig-name descname"><span class="pre">load_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.load_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.load_config" title="Link to this definition"></a></dt>
-<dd><p>Load configuration.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.load_model">
-<span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.load_model" title="Link to this definition"></a></dt>
-<dd><p>Load SAC model.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.print_report">
-<span class="sig-name descname"><span class="pre">print_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnalysisResult</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.print_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.print_report" title="Link to this definition"></a></dt>
-<dd><p>Print formatted analysis report.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.print_results">
-<span class="sig-name descname"><span class="pre">print_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AnalysisResult</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.print_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.print_results" title="Link to this definition"></a></dt>
-<dd><p>Print analysis results in a formatted way.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>result</strong> – Analysis results to print</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.SACAnalyzer.run_full_analysis">
-<span class="sig-name descname"><span class="pre">run_full_analysis</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">AnalysisResult</span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/core/model/sac_analyzer.html#SACAnalyzer.run_full_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.SACAnalyzer.run_full_analysis" title="Link to this definition"></a></dt>
-<dd><p>Run complete analysis suite.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>num_samples</strong> – Number of samples for analysis</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Complete analysis results</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.analysis.</span></span><span class="sig-name descname"><span class="pre">BacktestAnalyzer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">training_report_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>汎用バックテスト分析クラス</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_correlation_and_dependencies">
-<span class="sig-name descname"><span class="pre">analyze_correlation_and_dependencies</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_correlation_and_dependencies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_correlation_and_dependencies" title="Link to this definition"></a></dt>
-<dd><p>相関分析と依存関係の分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_market_conditions">
-<span class="sig-name descname"><span class="pre">analyze_market_conditions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_market_conditions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_market_conditions" title="Link to this definition"></a></dt>
-<dd><p>市場環境別の分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_microstructure_effects">
-<span class="sig-name descname"><span class="pre">analyze_microstructure_effects</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_microstructure_effects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_microstructure_effects" title="Link to this definition"></a></dt>
-<dd><p>市場マイクロストラクチャーの影響分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_robustness">
-<span class="sig-name descname"><span class="pre">analyze_robustness</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_robustness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_robustness" title="Link to this definition"></a></dt>
-<dd><p>多様な市場条件下でのロバストネス分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_temporal_patterns">
-<span class="sig-name descname"><span class="pre">analyze_temporal_patterns</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_temporal_patterns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_temporal_patterns" title="Link to this definition"></a></dt>
-<dd><p>時間帯別の分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_trading_frequency">
-<span class="sig-name descname"><span class="pre">analyze_trading_frequency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_trading_frequency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_trading_frequency" title="Link to this definition"></a></dt>
-<dd><p>取引頻度分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_transaction_cost_impact">
-<span class="sig-name descname"><span class="pre">analyze_transaction_cost_impact</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_transaction_cost_impact"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_transaction_cost_impact" title="Link to this definition"></a></dt>
-<dd><p>取引コストの影響分析</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.analyze_walk_forward_efficiency">
-<span class="sig-name descname"><span class="pre">analyze_walk_forward_efficiency</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.analyze_walk_forward_efficiency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.analyze_walk_forward_efficiency" title="Link to this definition"></a></dt>
-<dd><p>ウォークフォワード分析の効率性評価</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.calculate_risk_metrics">
-<span class="sig-name descname"><span class="pre">calculate_risk_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.calculate_risk_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.calculate_risk_metrics" title="Link to this definition"></a></dt>
-<dd><p>リスク指標を計算</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.create_comprehensive_validation_suite">
-<span class="sig-name descname"><span class="pre">create_comprehensive_validation_suite</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.create_comprehensive_validation_suite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.create_comprehensive_validation_suite" title="Link to this definition"></a></dt>
-<dd><p>包括的検証スイート作成</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.create_market_condition_balanced_dataset">
-<span class="sig-name descname"><span class="pre">create_market_condition_balanced_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'data/btc_balanced_dataset.csv'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.create_market_condition_balanced_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.create_market_condition_balanced_dataset" title="Link to this definition"></a></dt>
-<dd><p>市場条件バランスの取れたデータセットを作成</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.enhance_feature_engineering">
-<span class="sig-name descname"><span class="pre">enhance_feature_engineering</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.enhance_feature_engineering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.enhance_feature_engineering" title="Link to this definition"></a></dt>
-<dd><p>特徴量エンジニアリングの強化</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.generate_comprehensive_report">
-<span class="sig-name descname"><span class="pre">generate_comprehensive_report</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.generate_comprehensive_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.generate_comprehensive_report" title="Link to this definition"></a></dt>
-<dd><p>包括的な分析レポートを生成</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.generate_v425_improvement_plan">
-<span class="sig-name descname"><span class="pre">generate_v425_improvement_plan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.generate_v425_improvement_plan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.generate_v425_improvement_plan" title="Link to this definition"></a></dt>
-<dd><p>v425改善計画の生成</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.implement_adaptive_reward_system">
-<span class="sig-name descname"><span class="pre">implement_adaptive_reward_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.implement_adaptive_reward_system"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.implement_adaptive_reward_system" title="Link to this definition"></a></dt>
-<dd><p>適応的報酬システムの実装</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.implement_curriculum_learning_v2">
-<span class="sig-name descname"><span class="pre">implement_curriculum_learning_v2</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.implement_curriculum_learning_v2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.implement_curriculum_learning_v2" title="Link to this definition"></a></dt>
-<dd><p>カリキュラム学習V2の実装</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="ztb.analysis.BacktestAnalyzer.perform_stress_tests">
-<span class="sig-name descname"><span class="pre">perform_stress_tests</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/analysis/comparative/analyze_backtest.html#BacktestAnalyzer.perform_stress_tests"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.analysis.BacktestAnalyzer.perform_stress_tests" title="Link to this definition"></a></dt>
-<dd><p>ストレステストの実行</p>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 </section>
 
@@ -1504,7 +1268,7 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -1515,7 +1279,7 @@ python unified_analyze.py comparative versions –versions v378 v381 v384</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

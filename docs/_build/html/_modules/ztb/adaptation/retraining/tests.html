@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,27 +87,29 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.retraining.tests</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Unit tests for Automatic Retraining Triggers Module</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.retraining.trigger</span><span class="w"> </span><span class="kn">import</span> <span class="n">RetrainingTrigger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.retraining.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">RetrainingConfig</span><span class="p">,</span> <span class="n">RetrainingPolicy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.retraining.trigger</span><span class="w"> </span><span class="kn">import</span> <span class="n">RetrainingTrigger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.retraining.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">TriggerType</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="p">,</span> <span class="n">TriggerStatus</span><span class="p">,</span> <span class="n">TriggerCondition</span><span class="p">,</span>
-    <span class="n">PerformanceMetrics</span><span class="p">,</span> <span class="n">DataDistributionMetrics</span><span class="p">,</span> <span class="n">RetrainingRequest</span><span class="p">,</span>
-    <span class="n">RetrainingResult</span>
+    <span class="n">DataDistributionMetrics</span><span class="p">,</span>
+    <span class="n">PerformanceMetrics</span><span class="p">,</span>
+    <span class="n">RetrainingRequest</span><span class="p">,</span>
+    <span class="n">RetrainingResult</span><span class="p">,</span>
+    <span class="n">TriggerCondition</span><span class="p">,</span>
+    <span class="n">TriggerPriority</span><span class="p">,</span>
+    <span class="n">TriggerStatus</span><span class="p">,</span>
+    <span class="n">TriggerType</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -131,7 +133,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;テスト後のクリーンアップ&quot;&quot;&quot;</span>
         <span class="c1"># メモリリーク防止のため明示的にクリーンアップ</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;_cleanup_timer&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">_cleanup_timer</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="p">,</span> <span class="s2">&quot;_cleanup_timer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">_cleanup_timer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">_cleanup_timer</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 
         <span class="c1"># 弱参照のクリーンアップ</span>
@@ -164,7 +166,7 @@
             <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>  <span class="c1"># 正常</span>
             <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
             <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># トリガーが発動しないことを確認</span>
@@ -180,7 +182,7 @@
             <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>  <span class="c1"># 低下（閾値0.45未満）</span>
             <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
             <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">70</span><span class="p">)</span>  <span class="c1"># 期間条件を満たす</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">70</span><span class="p">),</span>  <span class="c1"># 期間条件を満たす</span>
         <span class="p">)</span>
 
         <span class="c1"># 複数回更新して期間条件を満たす</span>
@@ -209,7 +211,7 @@
             <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.48</span><span class="p">,</span>
             <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>  <span class="c1"># 低下（閾値1.0未満）</span>
             <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.12</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 複数回更新して期間条件を満たす</span>
@@ -236,7 +238,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 分布変化なし</span>
@@ -250,7 +252,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">40</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="n">requests</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">update_distribution_metrics</span><span class="p">(</span><span class="n">changed_metrics</span><span class="p">)</span></div>
@@ -295,9 +297,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;クールダウン機構のテスト&quot;&quot;&quot;</span>
         <span class="c1"># トリガーを発動</span>
         <span class="n">low_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.52</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.52</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 複数回更新してトリガーを発動</span>
@@ -324,7 +331,7 @@
             <span class="n">new_model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model&quot;</span><span class="p">,</span>
             <span class="n">performance_improvement</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
             <span class="n">training_duration</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-            <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 記録前の履歴サイズ</span>
@@ -354,12 +361,14 @@
                 <span class="n">new_model_path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;/path/to/model_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                 <span class="n">performance_improvement</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
                 <span class="n">training_duration</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">record_retraining_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 
         <span class="c1"># 履歴サイズが制限されていることを確認</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">retraining_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">retraining_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestRetrainingTrigger.test_reset_functionality">
@@ -368,9 +377,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;リセット機能のテスト&quot;&quot;&quot;</span>
         <span class="c1"># 何らかの状態を作成</span>
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
@@ -382,7 +396,7 @@
             <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span>
             <span class="n">requested_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="n">estimated_duration</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-            <span class="n">required_resources</span><span class="o">=</span><span class="p">{}</span>
+            <span class="n">required_resources</span><span class="o">=</span><span class="p">{},</span>
         <span class="p">)</span>
 
         <span class="c1"># リセット前の状態を確認</span>
@@ -404,20 +418,29 @@
         <span class="c1"># 大量のデータを追加</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
             <span class="n">metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span>
-                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
         <span class="c1"># 履歴サイズが制限されていることを確認</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span>
+        <span class="p">)</span>
 
         <span class="c1"># 明示的なクリーンアップを実行</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">_cleanup_history_if_needed</span><span class="p">()</span>
 
         <span class="c1"># 引き続き制限内であることを確認</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestRetrainingTrigger.test_error_handling_invalid_metrics">
@@ -426,9 +449,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;無効なメトリクスデータのエラーハンドリング&quot;&quot;&quot;</span>
         <span class="c1"># 無効な値を含むメトリクス（負の値）</span>
         <span class="n">invalid_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># エラーが発生せず、適切に処理されることを確認</span>
@@ -450,7 +478,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="n">requests</span> <span class="o">=</span> <span class="n">new_trigger</span><span class="o">.</span><span class="n">update_distribution_metrics</span><span class="p">(</span><span class="n">distribution_metrics</span><span class="p">)</span>
@@ -470,9 +498,14 @@
 
         <span class="c1"># パフォーマンスメトリクスを更新</span>
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="n">requests</span> <span class="o">=</span> <span class="n">disabled_trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
@@ -486,9 +519,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;トリガーの優先順位付け&quot;&quot;&quot;</span>
         <span class="c1"># 複数のトリガーが同時に発動する状況を作成</span>
         <span class="n">low_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.32</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.32</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 複数回更新して複数のトリガーを発動</span>
@@ -499,7 +537,10 @@
         <span class="n">states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">get_trigger_states</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">states</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">condition</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">priority</span><span class="p">,</span> <span class="p">[</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">LOW</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">])</span></div>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span>
+                    <span class="n">state</span><span class="o">.</span><span class="n">condition</span><span class="o">.</span><span class="n">priority</span><span class="p">,</span>
+                    <span class="p">[</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">LOW</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">],</span>
+                <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestRetrainingTrigger.test_configuration_changes_runtime">
@@ -529,7 +570,7 @@
             <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
             <span class="n">requested_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="n">estimated_duration</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
-            <span class="n">required_resources</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;memory_gb&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">}</span>
+            <span class="n">required_resources</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;memory_gb&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">},</span>
         <span class="p">)</span>
 
         <span class="c1"># リクエストを記録</span>
@@ -537,14 +578,17 @@
 
         <span class="c1"># リソースが追跡されていることを確認</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">active_requests</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">active_requests</span><span class="p">[</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">]</span><span class="o">.</span><span class="n">required_resources</span><span class="p">[</span><span class="s2">&quot;cpu&quot;</span><span class="p">],</span> <span class="mi">4</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">active_requests</span><span class="p">[</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">]</span><span class="o">.</span><span class="n">required_resources</span><span class="p">[</span><span class="s2">&quot;cpu&quot;</span><span class="p">],</span>
+            <span class="mi">4</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestRetrainingTrigger.test_logging_functionality">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.retraining.html#ztb.adaptation.retraining.tests.TestRetrainingTrigger.test_logging_functionality">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">test_logging_functionality</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;ログ機能のテスト&quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s1">&#39;ztb.adaptation.retraining.trigger.logger&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_logger</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;ztb.adaptation.retraining.trigger.logger&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_logger</span><span class="p">:</span>
             <span class="c1"># トリガーを初期化（ログが出力される）</span>
             <span class="n">trigger</span> <span class="o">=</span> <span class="n">RetrainingTrigger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
 
@@ -593,9 +637,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;同時トリガー評価のテスト&quot;&quot;&quot;</span>
         <span class="c1"># 複数の異なるタイプのトリガーが同時に評価される状況</span>
         <span class="n">performance_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.27</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.27</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="n">distribution_metrics</span> <span class="o">=</span> <span class="n">DataDistributionMetrics</span><span class="p">(</span>
@@ -604,7 +653,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># まずパフォーマンス履歴を構築</span>
@@ -626,9 +675,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;閾値の境界条件テスト&quot;&quot;&quot;</span>
         <span class="c1"># 閾値と等しい値でのテスト</span>
         <span class="n">boundary_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.42</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># シャープレシオが閾値と等しい</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.42</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># シャープレシオが閾値と等しい</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 境界値でトリガーが発動しないことを確認</span>
@@ -637,9 +691,14 @@
 
         <span class="c1"># 閾値をわずかに下回る値</span>
         <span class="n">below_threshold</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.42</span><span class="p">,</span>
-            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># 閾値を下回る</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+            <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.42</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># 閾値を下回る</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 複数回更新してトリガーを発動</span>
@@ -666,14 +725,22 @@
         <span class="c1"># 大量の履歴データを追加</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
             <span class="n">metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
-                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">)</span>
             <span class="n">compression_trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
 
         <span class="c1"># 圧縮が実行されていることを確認（履歴サイズが制限されている）</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">compression_trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="n">compression_config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">compression_trigger</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span>
+            <span class="n">compression_config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="TestRetrainingTrigger.test_trigger_state_persistence">
@@ -689,9 +756,15 @@
         <span class="c1"># 十分な回数更新してトリガーが発動するようにする（時間を進める）</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
             <span class="n">current_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
-                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
-                <span class="n">timestamp</span><span class="o">=</span><span class="n">base_time</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># 10分ごとに時間を進める</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">base_time</span>
+                <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span> <span class="o">*</span> <span class="mi">10</span><span class="p">),</span>  <span class="c1"># 10分ごとに時間を進める</span>
             <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">current_metrics</span><span class="p">)</span>
 
@@ -702,9 +775,11 @@
             <span class="k">if</span> <span class="n">trigger_id</span> <span class="ow">in</span> <span class="n">initial_states</span><span class="p">:</span>
                 <span class="n">state</span> <span class="o">=</span> <span class="n">updated_states</span><span class="p">[</span><span class="n">trigger_id</span><span class="p">]</span>
                 <span class="c1"># トリガーが発動したことを確認（last_triggeredが設定されている、またはstatusがTRIGGERED）</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">last_triggered</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span>
-                    <span class="n">state</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TriggerStatus</span><span class="o">.</span><span class="n">TRIGGERED</span> <span class="ow">or</span>
-                    <span class="n">state</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">state</span><span class="o">.</span><span class="n">last_triggered</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TriggerStatus</span><span class="o">.</span><span class="n">TRIGGERED</span>
+                    <span class="ow">or</span> <span class="n">state</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="p">):</span>
                     <span class="n">trigger_fired</span> <span class="o">=</span> <span class="kc">True</span>
                     <span class="k">break</span>
 
@@ -717,8 +792,26 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスメトリクスのバリデーション&quot;&quot;&quot;</span>
         <span class="c1"># 無効な値を含むメトリクス（境界外の値）</span>
         <span class="n">invalid_metrics</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">PerformanceMetrics</span><span class="p">(</span><span class="n">accuracy</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()),</span>
-            <span class="n">PerformanceMetrics</span><span class="p">(</span><span class="n">accuracy</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()),</span>
+            <span class="n">PerformanceMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">PerformanceMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="p">),</span>
         <span class="p">]</span>
 
         <span class="k">for</span> <span class="n">invalid_metric</span> <span class="ow">in</span> <span class="n">invalid_metrics</span><span class="p">:</span>
@@ -732,8 +825,14 @@
         <span class="c1"># NaN値のテスト</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">nan_metrics</span> <span class="o">=</span> <span class="n">PerformanceMetrics</span><span class="p">(</span>
-                <span class="n">accuracy</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
-                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">),</span>
+                <span class="n">precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">recall</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span>
+                <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
             <span class="p">)</span>
             <span class="n">requests</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">update_performance_metrics</span><span class="p">(</span><span class="n">nan_metrics</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">requests</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
@@ -753,7 +852,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 空のメトリクスが適切に処理されることを確認</span>
@@ -767,7 +866,7 @@
             <span class="n">feature_skewness</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">feature_kurtosis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">},</span>
             <span class="n">sample_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
         <span class="p">)</span>
 
         <span class="c1"># 不整合なメトリクスも適切に処理されることを確認</span>
@@ -792,7 +891,7 @@
             <span class="n">threshold</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
             <span class="n">duration_minutes</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
             <span class="n">cooldown_minutes</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
-            <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span>
+            <span class="n">priority</span><span class="o">=</span><span class="n">TriggerPriority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">RetrainingPolicy</span><span class="p">(</span>
             <span class="n">policy_name</span><span class="o">=</span><span class="s2">&quot;test_policy&quot;</span><span class="p">,</span>
@@ -800,7 +899,7 @@
             <span class="n">retraining_strategy</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
             <span class="n">resource_requirements</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;memory_gb&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
             <span class="n">max_execution_time_hours</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-            <span class="n">success_criteria</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;min_improvement&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">}</span>
+            <span class="n">success_criteria</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;min_improvement&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">},</span>
         <span class="p">)</span></div>
 
 
@@ -852,9 +951,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">test_custom_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;カスタム設定での初期化&quot;&quot;&quot;</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">RetrainingConfig</span><span class="p">(</span>
-            <span class="n">enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">max_concurrent_retraining</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-            <span class="n">max_history_size</span><span class="o">=</span><span class="mi">500</span>
+            <span class="n">enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_concurrent_retraining</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_history_size</span><span class="o">=</span><span class="mi">500</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">)</span>
@@ -879,7 +976,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
 </pre></div>
 
@@ -896,7 +993,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -907,7 +1004,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

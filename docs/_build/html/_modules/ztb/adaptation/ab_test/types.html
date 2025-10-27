@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.ab_test.types</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Type definitions for A/B Testing Framework</span>
@@ -95,10 +95,9 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
 <span class="c1"># ストリーミングデータ処理のための型定義</span>
 <span class="n">SampleData</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># 柔軟なサンプルデータ型</span>
@@ -111,6 +110,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.StatisticalTest">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StatisticalTest</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統計検定タイプ&quot;&quot;&quot;</span>
+
     <span class="n">T_TEST</span> <span class="o">=</span> <span class="s2">&quot;t_test&quot;</span>
     <span class="n">MANN_WHITNEY</span> <span class="o">=</span> <span class="s2">&quot;mann_whitney&quot;</span>
     <span class="n">CHI_SQUARE</span> <span class="o">=</span> <span class="s2">&quot;chi_square&quot;</span></div>
@@ -121,12 +121,13 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.ABTestStatus">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテストステータス&quot;&quot;&quot;</span>
-    <span class="n">CREATED</span> <span class="o">=</span> <span class="s2">&quot;created&quot;</span>          <span class="c1"># 作成済み</span>
-    <span class="n">RUNNING</span> <span class="o">=</span> <span class="s2">&quot;running&quot;</span>          <span class="c1"># 実行中</span>
-    <span class="n">PAUSED</span> <span class="o">=</span> <span class="s2">&quot;paused&quot;</span>           <span class="c1"># 一時停止</span>
-    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>     <span class="c1"># 完了</span>
-    <span class="n">CANCELLED</span> <span class="o">=</span> <span class="s2">&quot;cancelled&quot;</span>     <span class="c1"># キャンセル</span>
-    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>          <span class="c1"># 失敗</span></div>
+
+    <span class="n">CREATED</span> <span class="o">=</span> <span class="s2">&quot;created&quot;</span>  <span class="c1"># 作成済み</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="s2">&quot;running&quot;</span>  <span class="c1"># 実行中</span>
+    <span class="n">PAUSED</span> <span class="o">=</span> <span class="s2">&quot;paused&quot;</span>  <span class="c1"># 一時停止</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>  <span class="c1"># 完了</span>
+    <span class="n">CANCELLED</span> <span class="o">=</span> <span class="s2">&quot;cancelled&quot;</span>  <span class="c1"># キャンセル</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>  <span class="c1"># 失敗</span></div>
 
 
 
@@ -134,11 +135,11 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.ABTestResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestResult</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテスト結果&quot;&quot;&quot;</span>
-    <span class="n">INCONCLUSIVE</span> <span class="o">=</span> <span class="s2">&quot;inconclusive&quot;</span>  <span class="c1"># 結論不明</span>
-    <span class="n">WINNER_A</span> <span class="o">=</span> <span class="s2">&quot;winner_a&quot;</span>         <span class="c1"># Aが勝者</span>
-    <span class="n">WINNER_B</span> <span class="o">=</span> <span class="s2">&quot;winner_b&quot;</span>         <span class="c1"># Bが勝者</span>
-    <span class="n">TIE</span> <span class="o">=</span> <span class="s2">&quot;tie&quot;</span>                  <span class="c1"># 同等</span></div>
 
+    <span class="n">INCONCLUSIVE</span> <span class="o">=</span> <span class="s2">&quot;inconclusive&quot;</span>  <span class="c1"># 結論不明</span>
+    <span class="n">WINNER_A</span> <span class="o">=</span> <span class="s2">&quot;winner_a&quot;</span>  <span class="c1"># Aが勝者</span>
+    <span class="n">WINNER_B</span> <span class="o">=</span> <span class="s2">&quot;winner_b&quot;</span>  <span class="c1"># Bが勝者</span>
+    <span class="n">TIE</span> <span class="o">=</span> <span class="s2">&quot;tie&quot;</span>  <span class="c1"># 同等</span></div>
 
 
 
@@ -147,6 +148,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestVariant</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテストのバリアント（AまたはB）&quot;&quot;&quot;</span>
+
     <span class="n">variant_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">model_version</span><span class="p">:</span> <span class="nb">str</span>
@@ -160,6 +162,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">StatisticalResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統計分析結果&quot;&quot;&quot;</span>
+
     <span class="n">test_type</span><span class="p">:</span> <span class="n">StatisticalTest</span>
     <span class="n">p_value</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">effect_size</span><span class="p">:</span> <span class="nb">float</span>
@@ -179,18 +182,19 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">StreamingStatistics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;ストリーミング統計計算クラス（メモリ効率重視）&quot;&quot;&quot;</span>
+
     <span class="n">variant_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">mean</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
     <span class="n">m2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># For Welford&#39;s online algorithm</span>
-    <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
-    <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+    <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="StreamingStatistics.add_sample">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.StreamingStatistics.add_sample">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">add_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="n">SampleDataType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルを追加して統計を更新（Welfordのオンラインアルゴリズム）&quot;&quot;&quot;</span>
-        <span class="n">value</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">delta</span> <span class="o">=</span> <span class="n">value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span>
@@ -225,15 +229,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">min_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span></div>
 </div>
+
+
 
 <div class="viewcode-block" id="RiskAssessment">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.RiskAssessment">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RiskAssessment</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;リスク評価結果&quot;&quot;&quot;</span>
+
     <span class="n">overall_risk</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;low&quot;, &quot;medium&quot;, &quot;high&quot;</span>
     <span class="n">sample_size_risk</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;low&quot;</span>
     <span class="n">statistical_risk</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;low&quot;</span>
@@ -242,11 +249,14 @@
     <span class="n">risk_factors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">recommended_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
 
+
+
 <div class="viewcode-block" id="ABTestMetrics">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.config.ABTestMetrics">[docs]</a>
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテストメトリクス（ストリーミング計算対応）&quot;&quot;&quot;</span>
+
     <span class="n">variant_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">sample_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">mean_reward</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
@@ -261,6 +271,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestConfiguration</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテスト設定&quot;&quot;&quot;</span>
+
     <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
@@ -301,6 +312,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestState</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテスト状態（実行時情報）&quot;&quot;&quot;</span>
+
     <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">status</span><span class="p">:</span> <span class="n">ABTestStatus</span>
     <span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -329,6 +341,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestResultSummary</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテスト結果サマリー&quot;&quot;&quot;</span>
+
     <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">result</span><span class="p">:</span> <span class="n">ABTestResult</span>
     <span class="n">winner_variant_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
@@ -345,6 +358,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ABTestReport</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテストレポート&quot;&quot;&quot;</span>
+
     <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">configuration</span><span class="p">:</span> <span class="n">ABTestConfiguration</span>
     <span class="n">state</span><span class="p">:</span> <span class="n">ABTestState</span>
@@ -377,7 +391,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -388,7 +402,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

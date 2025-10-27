@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.tests.test_explainability</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -95,23 +95,22 @@
 <span class="sd">説明可能性モジュールのテスト</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
 <span class="c1"># プロジェクトルートをパスに追加</span>
-<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">,</span> <span class="s1">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">))</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.explainability.analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainabilityAnalyzer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.explainability.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainabilityConfig</span>
 
 <span class="c1"># ログ設定</span>
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
-    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
-    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
 <span class="p">)</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -128,7 +127,7 @@
             <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
-            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">)</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_version</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
 
@@ -149,9 +148,7 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># 設定の初期化</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">ExplainabilityConfig</span><span class="p">(</span>
-            <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">generate_natural_language</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">max_features_to_explain</span><span class="o">=</span><span class="mi">5</span>
+            <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">generate_natural_language</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_features_to_explain</span><span class="o">=</span><span class="mi">5</span>
         <span class="p">)</span>
 
         <span class="c1"># アナライザーの初期化</span>
@@ -177,7 +174,7 @@
             <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
             <span class="n">input_data</span><span class="o">=</span><span class="n">test_data</span><span class="p">,</span>
             <span class="n">prediction</span><span class="o">=</span><span class="n">predicted_class</span><span class="p">,</span>
-            <span class="n">background_data</span><span class="o">=</span><span class="n">background_data</span>
+            <span class="n">background_data</span><span class="o">=</span><span class="n">background_data</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="c1"># 結果の検証</span>
@@ -186,11 +183,17 @@
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">explanation</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
         <span class="k">assert</span> <span class="n">explanation</span><span class="o">.</span><span class="n">processing_time_seconds</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Explanation generated successfully in </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">processing_time_seconds</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top features: </span><span class="si">{</span><span class="p">[</span><span class="n">fi</span><span class="o">.</span><span class="n">feature_name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">fi</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">explanation</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">[:</span><span class="mi">3</span><span class="p">]]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Explanation generated successfully in </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">processing_time_seconds</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Top features: </span><span class="si">{</span><span class="p">[</span><span class="n">fi</span><span class="o">.</span><span class="n">feature_name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">fi</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">explanation</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">[:</span><span class="mi">3</span><span class="p">]]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">explanation</span><span class="o">.</span><span class="n">decision_explanation</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision explanation: </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">natural_language_explanation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Decision explanation: </span><span class="si">{</span><span class="n">explanation</span><span class="o">.</span><span class="n">decision_explanation</span><span class="o">.</span><span class="n">natural_language_explanation</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># キャッシュ機能のテスト</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing caching functionality...&quot;</span><span class="p">)</span>
@@ -210,6 +213,7 @@
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test failed with error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+
         <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
         <span class="k">return</span> <span class="kc">False</span></div>
 
@@ -229,9 +233,7 @@
 
         <span class="c1"># カスタム設定</span>
         <span class="n">custom_config</span> <span class="o">=</span> <span class="n">ExplainabilityConfig</span><span class="p">(</span>
-            <span class="n">enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-            <span class="n">max_features_to_explain</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-            <span class="n">generate_natural_language</span><span class="o">=</span><span class="kc">False</span>
+            <span class="n">enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_features_to_explain</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">generate_natural_language</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
         <span class="k">assert</span> <span class="n">custom_config</span><span class="o">.</span><span class="n">enabled</span> <span class="o">==</span> <span class="kc">False</span>
         <span class="k">assert</span> <span class="n">custom_config</span><span class="o">.</span><span class="n">max_features_to_explain</span> <span class="o">==</span> <span class="mi">5</span>
@@ -318,7 +320,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -329,7 +331,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>

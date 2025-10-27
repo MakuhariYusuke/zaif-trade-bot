@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-
+  
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-
-
+          
+          
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,22 +87,23 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-
+             
   <h1>Source code for ztb.adaptation.operations.types</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Type definitions for Scalability and Operations</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
 
 <div class="viewcode-block" id="ScalingDirection">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.operations.html#ztb.adaptation.operations.config.ScalingDirection">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingDirection</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリング方向&quot;&quot;&quot;</span>
+
     <span class="n">UP</span> <span class="o">=</span> <span class="s2">&quot;up&quot;</span>
     <span class="n">DOWN</span> <span class="o">=</span> <span class="s2">&quot;down&quot;</span>
     <span class="n">NONE</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span></div>
@@ -113,6 +114,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.operations.html#ztb.adaptation.operations.config.ScalingStrategy">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingStrategy</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリング戦略&quot;&quot;&quot;</span>
+
     <span class="n">CPU_BASED</span> <span class="o">=</span> <span class="s2">&quot;cpu_based&quot;</span>
     <span class="n">MEMORY_BASED</span> <span class="o">=</span> <span class="s2">&quot;memory_based&quot;</span>
     <span class="n">REQUEST_BASED</span> <span class="o">=</span> <span class="s2">&quot;request_based&quot;</span>
@@ -125,6 +127,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.operations.html#ztb.adaptation.operations.config.ResourceType">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ResourceType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;リソースタイプ&quot;&quot;&quot;</span>
+
     <span class="n">CPU</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span>
     <span class="n">MEMORY</span> <span class="o">=</span> <span class="s2">&quot;memory&quot;</span>
     <span class="n">GPU</span> <span class="o">=</span> <span class="s2">&quot;gpu&quot;</span>
@@ -137,6 +140,7 @@
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.operations.html#ztb.adaptation.operations.config.ScalingEventType">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingEventType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリングイベントタイプ&quot;&quot;&quot;</span>
+
     <span class="n">SCALE_UP</span> <span class="o">=</span> <span class="s2">&quot;scale_up&quot;</span>
     <span class="n">SCALE_DOWN</span> <span class="o">=</span> <span class="s2">&quot;scale_down&quot;</span>
     <span class="n">AUTO_SCALE</span> <span class="o">=</span> <span class="s2">&quot;auto_scale&quot;</span>
@@ -150,6 +154,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ResourceMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;リソース使用量メトリクス&quot;&quot;&quot;</span>
+
     <span class="n">resource_type</span><span class="p">:</span> <span class="n">ResourceType</span>
     <span class="n">current_usage</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">capacity</span><span class="p">:</span> <span class="nb">float</span>
@@ -164,6 +169,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingThreshold</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリング閾値&quot;&quot;&quot;</span>
+
     <span class="n">resource_type</span><span class="p">:</span> <span class="n">ResourceType</span>
     <span class="n">scale_up_threshold</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">scale_down_threshold</span><span class="p">:</span> <span class="nb">float</span>
@@ -176,6 +182,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingDecision</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリング決定&quot;&quot;&quot;</span>
+
     <span class="n">direction</span><span class="p">:</span> <span class="n">ScalingDirection</span>
     <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">target_instances</span><span class="p">:</span> <span class="nb">int</span>
@@ -191,6 +198,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalingEvent</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーリングイベント&quot;&quot;&quot;</span>
+
     <span class="n">event_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">event_type</span><span class="p">:</span> <span class="n">ScalingEventType</span>
     <span class="n">decision</span><span class="p">:</span> <span class="n">ScalingDecision</span>
@@ -206,6 +214,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">InstanceInfo</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;インスタンス情報&quot;&quot;&quot;</span>
+
     <span class="n">instance_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">instance_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">region</span><span class="p">:</span> <span class="nb">str</span>
@@ -221,6 +230,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">LoadBalancerConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;ロードバランサー設定&quot;&quot;&quot;</span>
+
     <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;round_robin&quot;, &quot;least_connections&quot;, &quot;ip_hash&quot;</span>
     <span class="n">health_check_interval</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">health_check_timeout</span><span class="p">:</span> <span class="nb">int</span>
@@ -234,6 +244,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CostOptimizationRule</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;コスト最適化ルール&quot;&quot;&quot;</span>
+
     <span class="n">rule_name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">condition</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">action</span><span class="p">:</span> <span class="nb">str</span>
@@ -246,6 +257,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OperationalMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;運用メトリクス&quot;&quot;&quot;</span>
+
     <span class="n">total_instances</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">active_instances</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">average_cpu_utilization</span><span class="p">:</span> <span class="nb">float</span>
@@ -262,6 +274,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">BackupConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;バックアップ設定&quot;&quot;&quot;</span>
+
     <span class="n">backup_interval_hours</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">retention_period_days</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">backup_storage_path</span><span class="p">:</span> <span class="nb">str</span>
@@ -275,6 +288,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaintenanceWindow</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;メンテナンスウィンドウ&quot;&quot;&quot;</span>
+
     <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">start_time</span><span class="p">:</span> <span class="n">datetime</span>
     <span class="n">duration_hours</span><span class="p">:</span> <span class="nb">int</span>
@@ -286,10 +300,12 @@
 
 <span class="c1"># 統合運用管理用の型定義</span>
 
+
 <div class="viewcode-block" id="SystemHealth">
 <a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.operations.html#ztb.adaptation.operations.config.SystemHealth">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SystemHealth</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;システムヘルスステータス&quot;&quot;&quot;</span>
+
     <span class="n">HEALTHY</span> <span class="o">=</span> <span class="s2">&quot;healthy&quot;</span>
     <span class="n">WARNING</span> <span class="o">=</span> <span class="s2">&quot;warning&quot;</span>
     <span class="n">CRITICAL</span> <span class="o">=</span> <span class="s2">&quot;critical&quot;</span>
@@ -299,6 +315,7 @@
 
 <span class="k">class</span><span class="w"> </span><span class="nc">IntegrationStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統合ステータス&quot;&quot;&quot;</span>
+
     <span class="n">ACTIVE</span> <span class="o">=</span> <span class="s2">&quot;active&quot;</span>
     <span class="n">INACTIVE</span> <span class="o">=</span> <span class="s2">&quot;inactive&quot;</span>
     <span class="n">DEGRADED</span> <span class="o">=</span> <span class="s2">&quot;degraded&quot;</span>
@@ -310,6 +327,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">IntegrationStatus</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;統合ステータス&quot;&quot;&quot;</span>
+
     <span class="n">monitoring_active</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">safety_active</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">scalability_active</span><span class="p">:</span> <span class="nb">bool</span>
@@ -323,6 +341,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">OperationalMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;運用メトリクス&quot;&quot;&quot;</span>
+
     <span class="n">uptime_seconds</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">total_requests</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">error_rate</span><span class="p">:</span> <span class="nb">float</span>
@@ -337,6 +356,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">AlertSummary</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;アラート概要&quot;&quot;&quot;</span>
+
     <span class="n">total_alerts</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">critical_alerts</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">warning_alerts</span><span class="p">:</span> <span class="nb">int</span>
@@ -351,6 +371,7 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RecoveryAction</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;回復アクション&quot;&quot;&quot;</span>
+
     <span class="n">action_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
@@ -372,7 +393,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-
+   
 
 </footer>
         </div>
@@ -383,7 +404,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
+  </script> 
 
 </body>
 </html>
