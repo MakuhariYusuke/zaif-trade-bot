@@ -26,6 +26,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+from ztb.types.common import ConfigDict
+
 
 @dataclass
 class ConfigFingerprint:
@@ -71,7 +73,7 @@ class ConfigFingerprint:
     def from_training(
         cls,
         env_config: Any,
-        trainer_config: Dict[str, Any],
+        trainer_config: ConfigDict,
     ) -> "ConfigFingerprint":
         """Create fingerprint from training configuration.
 

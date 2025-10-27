@@ -9,6 +9,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
+from ztb.types.common import ConfigDict
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,7 +94,7 @@ def load_config_file(file_path: Path) -> Optional[Dict[str, Any]]:
     return config
 
 
-def save_config_file(config: Dict[str, Any], file_path: Path) -> bool:
+def save_config_file(config: ConfigDict, file_path: Path) -> bool:
     """
     Save configuration to a JSON file.
 

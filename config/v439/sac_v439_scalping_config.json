@@ -1,0 +1,113 @@
+{
+  "version": "4.3.9",
+  "model_name": "sac_v439_scalping_optimized",
+  "description": "SAC v439 - Aggressive Scalping Trading Model with Action Signal Guidance",
+
+  "training": {
+    "total_timesteps": 100000,
+    "learning_rate": 3e-4,
+    "batch_size": 256,
+    "buffer_size": 1000000,
+    "learning_starts": 1000,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "ent_coef": "auto_1.0",
+    "target_entropy": "auto",
+    "algorithm": "sac"
+  },
+
+  "environment": {
+    "initial_balance": 10000.0,
+    "max_steps": 1000,
+    "commission": 0.001,
+    "slippage": 0.0005,
+    "max_position_size": 1.0,
+    "min_trade_size": 0.00001,
+    "reward_scaling": 1.0,
+    "random_start": true,
+    "feature_set": "scalping_optimized",
+    "curriculum_stage": "pnl_focused",
+
+    "signal_guidance": {
+      "enabled": true,
+      "guidance_level": "strong",
+      "signal_strength_threshold": 0.2,
+      "action_penalty_multiplier": 0.35,
+      "reward_bonus_multiplier": 2.5
+    },
+
+    "scalping_optimization": {
+      "action_threshold": 0.01,
+      "negative_action_threshold": -0.01,
+      "min_position_change": 0.00001,
+      "max_trades_per_episode": 600,
+      "trading_frequency_bonus": 0.2,
+      "hold_penalty_multiplier": 1.2
+    }
+  },
+
+    "reward_function": {
+      "base_profit_bonus_atr_coeff": 5.0,
+      "base_profit_bonus_portfolio_coeff": 10.0,
+      "base_action_penalty": 0.01,
+      "loss_penalty_coeff": -1.0,
+      "action_frequency_penalty": 0.002,
+      "target_action_rate": 0.55,
+      "low_activity_penalty_scale": 0.05,
+      "overtrade_threshold": 0.95,
+      "overtrade_penalty_scale": 0.01,
+      "hold_penalty_multiplier": 1.2,
+      "long_short_asymmetry": true,
+      "risk_adjusted_bonus": true,
+      "market_regime_penalty": true,
+      "scalping_mode": true,
+      "signal_guidance_integration": true,
+    "use_simple_reward": false
+  },
+
+  "features": {
+    "technical_indicators": [
+      "rsi_14", "macd", "macd_signal", "macd_hist",
+      "bb_upper", "bb_middle", "bb_lower", "bb_position",
+      "stoch_k", "stoch_d", "williams_r",
+      "atr_14", "cci_14", "mfi_14", "roc_12"
+    ],
+    "price_features": [
+      "returns", "log_returns", "price_change",
+      "high_low_range", "volume_sma_5"
+    ],
+    "volatility_features": [
+      "volatility_10", "bb_width"
+    ],
+    "exclude_multi_timeframe": true,
+    "target_dimensions": 50
+  },
+
+  "feature_names": [
+    "rsi_14", "macd", "macd_signal", "macd_hist",
+    "bb_upper", "bb_middle", "bb_lower", "bb_position",
+    "stoch_k", "stoch_d", "williams_r",
+    "atr_14", "cci_14", "mfi_14", "roc_12",
+    "returns", "log_returns", "price_change",
+    "high_low_range", "volume_sma_5",
+    "volatility_10", "bb_width",
+    "balance_norm", "position", "unrealized_norm"
+  ],
+
+  "output": {
+    "model_dir": "models/v439",
+    "config_dir": "config/v439",
+    "results_dir": "results/v439",
+    "tensorboard_log": "tensorboard/v439"
+  },
+
+  "evaluation": {
+    "thresholds": {
+      "re_evaluate": 0.05,
+      "monitor": 0.01
+    },
+    "min_samples": 10000,
+    "risk_metrics": ["sharpe", "sortino", "max_drawdown"],
+    "performance_metrics": ["total_return", "win_rate", "profit_factor", "trade_frequency"]
+  }
+}

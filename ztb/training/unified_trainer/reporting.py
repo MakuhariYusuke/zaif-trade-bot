@@ -194,7 +194,7 @@ class TrainingLogger:
             {
                 "algorithm": algorithm,
                 "config_summary": {
-                    "total_timesteps": config.get("total_timesteps"),
+                    "total_timesteps": config["training"]["total_timesteps"],
                     "model_name": config.get("model_name"),
                 },
             },

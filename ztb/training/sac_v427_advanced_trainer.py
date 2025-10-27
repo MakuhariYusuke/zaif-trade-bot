@@ -17,6 +17,7 @@ from ztb.core.base import BaseTrainer
 from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.sac_v427_market_adaptive_system import SACv427MarketAdaptiveSystem
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -73,7 +74,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
         if v427_features.get("ensemble_system", {}).get("enabled", False):
             self._initialize_ensemble_system(v427_features["ensemble_system"])
 
-    def _initialize_meta_learning(self, meta_config: Dict[str, Any]) -> None:
+    def _initialize_meta_learning(self, meta_config: ConfigDict) -> None:
         """Initialize meta-learning components."""
         logger.info("Initializing meta-learning components...")
 
@@ -97,7 +98,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
             }
             logger.info("Reptile meta-learning initialized")
 
-    def _initialize_federated_learning(self, fed_config: Dict[str, Any]) -> None:
+    def _initialize_federated_learning(self, fed_config: ConfigDict) -> None:
         """Initialize federated learning components."""
         logger.info("Initializing federated learning components...")
 
@@ -114,7 +115,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
             f"Federated learning initialized with {fed_config['clients']} clients"
         )
 
-    def _initialize_continual_learning(self, continual_config: Dict[str, Any]) -> None:
+    def _initialize_continual_learning(self, continual_config: ConfigDict) -> None:
         """Initialize continual learning components."""
         logger.info("Initializing continual learning components...")
 
@@ -130,7 +131,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
         }
         logger.info("Continual learning initialized with EWC and rehearsal buffer")
 
-    def _initialize_ensemble_system(self, ensemble_config: Dict[str, Any]) -> None:
+    def _initialize_ensemble_system(self, ensemble_config: ConfigDict) -> None:
         """Initialize ensemble training system."""
         logger.info("Initializing ensemble system...")
 
@@ -307,7 +308,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
         trainer_config.update(
             {
                 "algorithm": "sac",
-                "total_timesteps": self.config.get("total_timesteps", 20000),
+                "total_timesteps": self.config["training"]["total_timesteps"],
                 "eval_freq": 2500,
                 "save_freq": 2500,
             }

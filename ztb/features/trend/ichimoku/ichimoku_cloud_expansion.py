@@ -62,13 +62,13 @@ class IchimokuCloudExpansion(BaseFeature):
             cloud_thickness.rolling(20).mean() * 0.02
         )  # 2% of average thickness
 
-        expansion_signal = np.where(
+        expansion_signal = pd.Series(np.where(
             thickness_change_rate > expansion_threshold,
             1,  # Expanding
             np.where(
                 thickness_change_rate < -expansion_threshold, -1, 0
             ),  # Contracting
-        )
+        ), index=df.index)
 
         # 5. Cloud breathing pattern (cyclical expansion/contraction)
         # Detect if cloud is in expansion or contraction phase

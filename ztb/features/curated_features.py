@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ztb.features.feature_set_manager import get_feature_manager
 from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.logging_utils import get_logger
 
@@ -41,12 +42,22 @@ def get_feature_set(
     Get feature set by name from configuration.
 
     Args:
-    feature_set_name: Name of feature set ("curated", "full", "minimal", or custom name)
+        feature_set_name: Name of feature set ("curated", "full", "minimal", or custom name)
         config_path: Path to feature configuration file
 
     Returns:
         List of feature names
     """
+    # 新しい特徴量マネージャーを使用
+    try:
+        manager = get_feature_manager()
+        return manager.get_feature_set(feature_set_name)
+    except Exception as e:
+        logger.warning(
+            f"Failed to use feature manager: {e}, falling back to legacy method"
+        )
+
+    # フォールバック: 従来の方法
     config = load_feature_config(config_path)
 
     # Check if custom feature set is defined in config
@@ -75,11 +86,8 @@ def get_feature_set(
 
 def get_features_to_remove(feature_set_name: str = "curated") -> List[str]:
     """Get features to remove based on feature set."""
-    if feature_set_name == "curated":
-        return FEATURES_TO_REMOVE
-    else:
-        # For other sets, no features to remove
-        return []
+    # 新しいマネージャーでは削除対象の特徴量は動的に管理されるため、空リストを返す
+    return []
 
 
 # 削除すべき特徴 (47個削除 → 110から63へ)
@@ -312,9 +320,9 @@ CURATED_FEATURES = [
 # 検証: 78個になっているか確認
 # assert len(CURATED_FEATURES) == 78, f"Expected 78 features, got {len(CURATED_FEATURES)}"
 
-print(f"✅ 質的改善特徴セット: {len(CURATED_FEATURES)}個定義完了")
-print(f"削除対象: {len(FEATURES_TO_REMOVE)}個")
-print("元の特徴数: 110個")
-print(f"削減率: {len(FEATURES_TO_REMOVE)/110*100:.1f}%")
-print("Ta-Lib拡張: +7個 (一目4個 + Ta-Lib指標3個 + 高優先度指標2個 + 時間特徴2個)")
-print("一目均衡表拡張: +34個 (基本5個 + 理論的拡張4個 + 高度な分析3個 + 多時間軸18個)")
+# print(f"✅ 質的改善特徴セット: {len(CURATED_FEATURES)}個定義完了")
+# print(f"削除対象: {len(FEATURES_TO_REMOVE)}個")
+# print("元の特徴数: 110個")
+# print(f"削減率: {len(FEATURES_TO_REMOVE)/110*100:.1f}%")
+# print("Ta-Lib拡張: +7個 (一目4個 + Ta-Lib指標3個 + 高優先度指標2個 + 時間特徴2個)")
+# print("一目均衡表拡張: +34個 (基本5個 + 理論的拡張4個 + 高度な分析3個 + 多時間軸18個)")

@@ -235,11 +235,11 @@ class ConfigManager:
         features = self.get_feature_config()
 
         # Extract total_timesteps from multiple possible locations
-        # Priority: override > top-level > training section > ppo section > default
+        # Priority: override > training section > top-level > ppo section > default
         total_timesteps = (
             total_timesteps_override
-            or self.config.get("total_timesteps")
             or (self.config.get("training", {}) or {}).get("total_timesteps")
+            or self.config.get("total_timesteps")
             or (self.config.get("ppo", {}) or {}).get("total_timesteps")
             or DEFAULT_PPO_CONFIG.get("total_timesteps", 100000)
         )

@@ -12,7 +12,8 @@
     "tau": 0.005,
     "gamma": 0.99,
     "ent_coef": "auto_1.0",
-    "target_entropy": "auto"
+    "target_entropy": "auto",
+    "curriculum_learning": true
   },
 
   "environment": {

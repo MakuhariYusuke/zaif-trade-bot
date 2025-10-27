@@ -28,10 +28,11 @@
     "use_standardized_observations": true,
     "random_start": true,
     "curriculum_stage": "strong_penalty_trading",
+    "correlation_reduction": false,
     "continuous_to_discrete_threshold": 0.1,
     "feature_set": "v427_adaptive",
     "adaptive_feature_selection": {
-      "enabled": true,
+      "enabled": false,
       "regime_classifier": {
         "adx_threshold": 25.0,
         "volatility_percentile": 70.0

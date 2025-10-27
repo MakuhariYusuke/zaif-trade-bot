@@ -4,9 +4,13 @@ Logging utilities for consistent logging setup across the codebase.
 """
 
 import logging
+import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
+import time
+
+from ztb.types.common import ConfigDict
 
 
 def setup_logging(
@@ -61,7 +65,7 @@ def setup_logging(
         root_logger.addHandler(file_handler)
 
 
-def setup_logging_from_config(config: Dict[str, Any]) -> None:
+def setup_logging_from_config(config: ConfigDict) -> None:
     """
     Set up logging from configuration dictionary.
 
@@ -87,7 +91,7 @@ def setup_logging_from_config(config: Dict[str, Any]) -> None:
     )
 
 
-def configure_log_levels(config: Dict[str, Any]) -> None:
+def configure_log_levels(config: ConfigDict) -> None:
     """
     Configure specific log levels for different modules.
 
@@ -112,3 +116,74 @@ def get_logger(name: str) -> logging.Logger:
         Logger instance
     """
     return logging.getLogger(name)
+
+
+class StructuredLogger:
+    """
+    Structured logging utility for consistent log formatting.
+
+    Supports JSON output and contextual logging for better log analysis.
+    """
+
+    def __init__(self, name: str, json_format: bool = False):
+        self.logger = get_logger(name)
+        self.json_format = json_format
+        self.context: Dict[str, Any] = {}
+
+    def set_context(self, **kwargs: Any) -> None:
+        """Set logging context that will be included in all log messages."""
+        self.context.update(kwargs)
+
+    def clear_context(self) -> None:
+        """Clear all logging context."""
+        self.context.clear()
+
+    def _format_message(self, message: str, extra: Optional[Dict[str, Any]] = None) -> str:
+        """Format message with context and extra data."""
+        log_data = {**self.context}
+        if extra:
+            log_data.update(extra)
+
+        if self.json_format:
+            import json
+
+            return json.dumps({
+                'message': message,
+                'timestamp': time.time(),
+                **log_data
+            })
+        else:
+            if log_data:
+                context_str = ', '.join(f'{k}={v}' for k, v in log_data.items())
+                return f"{message} [{context_str}]"
+            return message
+
+    def info(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        """Log info message with context."""
+        self.logger.info(self._format_message(message, extra))
+
+    def warning(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        """Log warning message with context."""
+        self.logger.warning(self._format_message(message, extra))
+
+    def error(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        """Log error message with context."""
+        self.logger.error(self._format_message(message, extra))
+
+    def debug(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        """Log debug message with context."""
+        self.logger.debug(self._format_message(message, extra))
+
+
+def create_structured_logger(name: str, json_format: bool = False) -> StructuredLogger:
+    """
+    Create a structured logger instance.
+
+    Args:
+        name: Logger name
+        json_format: Whether to output logs in JSON format
+
+    Returns:
+        StructuredLogger instance
+    """
+    return StructuredLogger(name, json_format)

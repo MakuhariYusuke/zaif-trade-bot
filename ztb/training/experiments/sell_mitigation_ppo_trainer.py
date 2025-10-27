@@ -425,7 +425,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             self.start_training()  # type: ignore[attr-defined]
 
             # Train the model
-            total_timesteps = self.config.get("total_timesteps", 100000)
+            total_timesteps = self.config["training"]["total_timesteps"]
             logger.info("=" * 80)
             logger.info(
                 f"🚀 Starting model.learn() with total_timesteps={total_timesteps:,}"

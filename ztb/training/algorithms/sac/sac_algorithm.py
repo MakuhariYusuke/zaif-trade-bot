@@ -25,10 +25,10 @@ from stable_baselines3.common.vec_env import VecEnv
 
 from ztb.adaptation.explainability.analyzer import ExplainabilityAnalyzer
 from ztb.adaptation.explainability.config import ExplainabilityConfig
-from ztb.optimization.model_compression import (
-    ModelCompressionManager,
-    create_compression_pipeline,
-)
+# from ztb.optimization.model_compression import (
+#     ModelCompressionManager,
+#     create_compression_pipeline,
+# )
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
 
@@ -160,7 +160,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         """SACAlgorithmを初期化。"""
         # Use conservative protocol to reduce raw Any in downstream code
         self._model: Optional[SACLikeModelProtocol] = None
-        self.compression_manager: Optional[ModelCompressionManager] = None
+        # self.compression_manager: Optional[ModelCompressionManager] = None
         self.explainability_analyzer: Optional[ExplainabilityAnalyzer] = None
         logger.info("SACAlgorithm initialized")
 
@@ -709,33 +709,37 @@ class SACAlgorithm(BaseRLAlgorithm):
                 logger.warning("No valid compression techniques configured")
                 return
 
+            # モデル圧縮機能は現在無効化されています
+            logger.info("Model compression is currently disabled")
+            return
+
             # 圧縮マネージャーの作成と適用
-            self.compression_manager = create_compression_pipeline(techniques_config)
+            # self.compression_manager = create_compression_pipeline(techniques_config)
 
             # モデルのポリシーを取得して圧縮
-            policy = model.policy
+            # policy = model.policy
 
             # 蒸留の場合は教師モデルを渡す
-            compress_kwargs = {}
-            if teacher_model is not None:
-                compress_kwargs["teacher_model"] = teacher_model
+            # compress_kwargs = {}
+            # if teacher_model is not None:
+            #     compress_kwargs["teacher_model"] = teacher_model
 
-            compressed_policy = self.compression_manager.compress_model(
-                policy, list(techniques_config.keys()), **compress_kwargs
-            )
+            # compressed_policy = self.compression_manager.compress_model(
+            #     policy, list(techniques_config.keys()), **compress_kwargs
+            # )
 
             # 圧縮されたポリシーをモデルに設定
-            model.policy = compressed_policy
+            # model.policy = compressed_policy
 
             # 圧縮モデルの保存
-            compressed_path = config.get("compressed_model_path")
-            if compressed_path:
-                self.compression_manager.save_compressed_model(model, compressed_path)
-                logger.info(f"Compressed model saved to {compressed_path}")
+            # compressed_path = config.get("compressed_model_path")
+            # if compressed_path:
+            #     self.compression_manager.save_compressed_model(model, compressed_path)
+            #     logger.info(f"Compressed model saved to {compressed_path}")
 
             # 圧縮レポートの取得
-            compression_report = self.compression_manager.get_compression_report()
-            logger.info(f"Model compression completed: {compression_report}")
+            # compression_report = self.compression_manager.get_compression_report()
+            # logger.info(f"Model compression completed: {compression_report}")
 
         except Exception as e:
             logger.error(f"Failed to apply model compression: {e}")
@@ -771,7 +775,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         if current_network_type in ["lstm", "transformer"]:
             if not isinstance(pretrained_model.policy, expected_policy):
                 raise ValueError(
-                    f"Network type mismatch: expected {expected_policy.__name__}, "
+                    f"Network type mismatch: expected {expected_policy}, "
                     f"got {pretrained_policy_type} in pretrained model"
                 )
 

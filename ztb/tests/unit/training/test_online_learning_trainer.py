@@ -1,12 +1,8 @@
-""""""""""""
-
+"""
 Unit tests for Online Learning SAC Trainer
+"""
 
-"""Unit tests for Online Learning SAC Trainer
-
-
-
-import unittest"""Unit tests for Online Learning SAC TrainerUnit tests for Online Learning SAC Trainer
+import unittest
 
 from ztb.adaptation.online_learning.trainer import OnlineLearningSACTrainer
 
@@ -170,32 +166,25 @@ class TestOnlineLearningSACTrainer(unittest.TestCase):        self.current_batch
         }
 
         self.env_config = {
+            'observation_space': {'shape': (10,)},
+            'action_space': {'n': 3}
+        }
 
-        self.trainer = OnlineLearningSACTrainer(            'observation_space': {'shape': (10,)},
-
-            online_config=self.online_config,            'action_space': {'n': 3}
-
-            sac_config=self.sac_config,        }
-
-            env_config=self.env_config
-
-        )        self.trainer = OnlineLearningSACTrainer(
-
+        self.trainer = OnlineLearningSACTrainer(
             online_config=self.online_config,
+            sac_config=self.sac_config,
+            env_config=self.env_config
+        )
 
     def tearDown(self):            sac_config=self.sac_config,
 
-        # オンライン学習がアクティブな場合は停止            env_config=self.env_config
-
-        if self.trainer.is_online_learning_active:        )
-
+    def tearDown(self):
+        # オンライン学習がアクティブな場合は停止
+        if self.trainer.is_online_learning_active:
             self.trainer.stop_online_learning()
 
-    def tearDown(self):
-
-    def test_initialization(self):        # オンライン学習がアクティブな場合は停止
-
-        """初期化テスト"""        if self.trainer.is_online_learning_active:
+    def test_initialization(self):
+        """初期化テスト"""
 
         self.assertIsInstance(self.trainer.online_config, OnlineLearningConfig)            self.trainer.stop_online_learning()
 

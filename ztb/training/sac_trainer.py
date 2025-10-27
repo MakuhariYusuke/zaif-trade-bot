@@ -57,7 +57,10 @@ class SACTrainer(BaseTrainer):
         logger.info("Trainer initialized")
 
     def run_training(
-        self, total_timesteps: Optional[int] = None, output_dir: Optional[str] = None
+        self,
+        total_timesteps: Optional[int] = None,
+        output_dir: Optional[str] = None,
+        resume_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run SAC training.
@@ -65,6 +68,7 @@ class SACTrainer(BaseTrainer):
         Args:
             total_timesteps: Override total timesteps
             output_dir: Override output directory
+            resume_path: Path to training state file for resuming training
 
         Returns:
             Training results
@@ -74,16 +78,20 @@ class SACTrainer(BaseTrainer):
 
         # Override config if specified
         if total_timesteps:
-            self.config["total_timesteps"] = total_timesteps
+            self.config["training"]["total_timesteps"] = total_timesteps
             logger.info(f"Total timesteps set to: {total_timesteps}")
 
         if output_dir:
             self.config["output_dir"] = output_dir
             logger.info(f"Output directory set to: {output_dir}")
 
+        if resume_path:
+            self.config["training"]["resume_from"] = resume_path
+            logger.info(f"Resume path set to: {resume_path}")
+
         logger.info("Starting SAC training...")
         logger.info(f"Model: {self.config.get('model_name', 'SAC')}")
-        logger.info(f"Total Timesteps: {self.config['total_timesteps']}")
+        logger.info(f"Total Timesteps: {self.config['training']['total_timesteps']}")
 
         try:
             results = self.trainer.run()
@@ -256,6 +264,9 @@ def main():
         "--validate", action="store_true", help="Validate trained model"
     )
     parser.add_argument("--model-path", type=str, help="Path to model for validation")
+    parser.add_argument(
+        "--resume", type=str, help="Path to training state file for resuming training"
+    )
 
     args = parser.parse_args()
 
@@ -277,7 +288,7 @@ def main():
 
     else:
         # Run standard training
-        results = trainer.run_training(args.timesteps, args.output_dir)
+        results = trainer.run_training(args.timesteps, args.output_dir, args.resume)
 
     # Print results summary
     print("\n" + "=" * 60)

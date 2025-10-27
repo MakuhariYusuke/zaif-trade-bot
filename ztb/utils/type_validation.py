@@ -11,6 +11,9 @@ from typing import Any, Callable, Dict, Optional, Type, Union, get_args, get_ori
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.types.common import ConfigDict
+from ztb.utils.exceptions.custom_exceptions import ValidationError
+
 
 class TypeValidator:
     """
@@ -113,13 +116,13 @@ class TypeValidator:
         Args:
             array: Array to validate
             expected_shape: Expected shape (None for any shape)
-            name: Name for error messages
+            name: Name of the array for error messages
 
         Raises:
-            ValueError: If shape doesn't match
+            ValidationError: If shape doesn't match
         """
         if expected_shape is not None and array.shape != expected_shape:
-            raise ValueError(
+            raise ValidationError(
                 f"{name} shape must be {expected_shape}, got {array.shape}"
             )
 
@@ -198,7 +201,7 @@ def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 # Convenience functions for common validations
-def validate_environment_config(config: Dict[str, Any]) -> None:
+def validate_environment_config(config: ConfigDict) -> None:
     """
     Validate environment configuration dictionary.
 
@@ -206,23 +209,23 @@ def validate_environment_config(config: Dict[str, Any]) -> None:
         config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If configuration is invalid
+        ValidationError: If configuration is invalid
     """
     required_keys = ["reward_scaling", "transaction_cost", "max_position_size"]
     for key in required_keys:
         if key not in config:
-            raise ValueError(f"Missing required config key: {key}")
+            raise ValidationError(f"Missing required config key: {key}")
 
     # Validate types
     if not isinstance(config.get("reward_scaling", 1.0), (int, float)):
-        raise ValueError("reward_scaling must be numeric")
+        raise ValidationError("reward_scaling must be numeric")
     if not isinstance(config.get("transaction_cost", 0.0), (int, float)):
-        raise ValueError("transaction_cost must be numeric")
+        raise ValidationError("transaction_cost must be numeric")
     if not isinstance(config.get("max_position_size", 1.0), (int, float)):
-        raise ValueError("max_position_size must be numeric")
+        raise ValidationError("max_position_size must be numeric")
 
 
-def validate_training_config(config: Dict[str, Any]) -> None:
+def validate_training_config(config: ConfigDict) -> None:
     """
     Validate training configuration dictionary.
 
@@ -230,23 +233,23 @@ def validate_training_config(config: Dict[str, Any]) -> None:
         config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If configuration is invalid
+        ValidationError: If configuration is invalid
     """
     required_keys = ["learning_rate", "batch_size", "total_timesteps"]
     for key in required_keys:
         if key not in config:
-            raise ValueError(f"Missing required training config key: {key}")
+            raise ValidationError(f"Missing required training config key: {key}")
 
     # Validate ranges
     if not (0 < config.get("learning_rate", 0) < 1):
-        raise ValueError("learning_rate must be between 0 and 1")
+        raise ValidationError("learning_rate must be between 0 and 1")
     if config.get("batch_size", 0) <= 0:
-        raise ValueError("batch_size must be positive")
-    if config.get("total_timesteps", 0) <= 0:
-        raise ValueError("total_timesteps must be positive")
+        raise ValidationError("batch_size must be positive")
+    if config["training"]["total_timesteps"] <= 0:
+        raise ValidationError("total_timesteps must be positive")
 
 
-def validate_feature_config(config: Dict[str, Any]) -> None:
+def validate_feature_config(config: ConfigDict) -> None:
     """
     Validate feature configuration dictionary.
 
@@ -254,29 +257,29 @@ def validate_feature_config(config: Dict[str, Any]) -> None:
         config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If configuration is invalid
+        ValidationError: If configuration is invalid
     """
     if "features" not in config:
-        raise ValueError("Missing required feature config key: features")
+        raise ValidationError("Missing required feature config key: features")
 
     features = config["features"]
     if not isinstance(features, list):
-        raise ValueError("features must be a list")
+        raise ValidationError("features must be a list")
 
     if not features:
-        raise ValueError("features list cannot be empty")
+        raise ValidationError("features list cannot be empty")
 
     # Validate each feature has required fields
     for feature in features:
         if not isinstance(feature, dict):
-            raise ValueError("Each feature must be a dictionary")
+            raise ValidationError("Each feature must be a dictionary")
         if "name" not in feature:
-            raise ValueError("Each feature must have a 'name' field")
+            raise ValidationError("Each feature must have a 'name' field")
         if "type" not in feature:
-            raise ValueError("Each feature must have a 'type' field")
+            raise ValidationError("Each feature must have a 'type' field")
 
 
-def validate_trading_config(config: Dict[str, Any]) -> None:
+def validate_trading_config(config: ConfigDict) -> None:
     """
     Validate trading configuration dictionary.
 
@@ -284,21 +287,21 @@ def validate_trading_config(config: Dict[str, Any]) -> None:
         config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If configuration is invalid
+        ValidationError: If configuration is invalid
     """
     required_keys = ["pair", "timeframe", "initial_balance"]
     for key in required_keys:
         if key not in config:
-            raise ValueError(f"Missing required trading config key: {key}")
+            raise ValidationError(f"Missing required trading config key: {key}")
 
     if config.get("initial_balance", 0) <= 0:
-        raise ValueError("initial_balance must be positive")
+        raise ValidationError("initial_balance must be positive")
 
     if config.get("max_position_size", 0) <= 0:
-        raise ValueError("max_position_size must be positive")
+        raise ValidationError("max_position_size must be positive")
 
 
-def validate_model_config(config: Dict[str, Any]) -> None:
+def validate_model_config(config: ConfigDict) -> None:
     """
     Validate model configuration dictionary.
 
@@ -306,18 +309,18 @@ def validate_model_config(config: Dict[str, Any]) -> None:
         config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If configuration is invalid
+        ValidationError: If configuration is invalid
     """
     required_keys = ["policy", "learning_rate", "batch_size"]
     for key in required_keys:
         if key not in config:
-            raise ValueError(f"Missing required model config key: {key}")
+            raise ValidationError(f"Missing required model config key: {key}")
 
     if not (0 < config.get("learning_rate", 0) < 1):
-        raise ValueError("learning_rate must be between 0 and 1")
+        raise ValidationError("learning_rate must be between 0 and 1")
 
     if config.get("batch_size", 0) <= 0:
-        raise ValueError("batch_size must be positive")
+        raise ValidationError("batch_size must be positive")
 
 
 def validate_array_type(arr: Any, expected_dtype: np.dtype[Any]) -> bool:

@@ -132,7 +132,7 @@ class SACv434Trainer:
         print("実験用簡易トレーニング実行開始...")
         try:
             # 設定からステップ数を取得
-            timesteps = self.config.get("total_timesteps", 10000)
+            timesteps = self.config["training"]["total_timesteps"]
             print(f"トレーニングステップ数: {timesteps}")
 
             # プログレスバー付きトレーニング
