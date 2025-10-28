@@ -44,9 +44,90 @@ class FibonacciAnalyzer:
         return levels
 
     @staticmethod
-    def find_fibonacci_retracement(
-        data: pd.DataFrame, start_idx: int, end_idx: int
-    ) -> Optional[Dict]:
+    def calculate_deviation_from_ideal(actual_ratio: float, target_level: float) -> float:
+        """
+        Calculate deviation from ideal Fibonacci level.
+
+        Args:
+            actual_ratio: Actual retracement/projection ratio
+            target_level: Target Fibonacci level (e.g., 0.618)
+
+        Returns:
+            Deviation score (0.0 = perfect alignment, 1.0 = maximum deviation)
+        """
+        deviation = abs(actual_ratio - target_level)
+
+        # Normalize deviation based on typical market noise
+        # Fibonacci levels have natural tolerance bands
+        tolerance = 0.02  # 2% tolerance for major levels
+
+        if deviation <= tolerance:
+            return 0.0  # Perfect alignment
+        elif deviation <= tolerance * 2:
+            return 0.3  # Good alignment
+        elif deviation <= tolerance * 4:
+            return 0.6  # Moderate deviation
+        else:
+            return 1.0  # Poor alignment
+
+    @staticmethod
+    def validate_with_multi_timeframe(
+        actual_ratio: float,
+        target_level: float,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None
+    ) -> float:
+        """
+        Validate Fibonacci level using multi-timeframe confirmation.
+
+        Args:
+            actual_ratio: Actual retracement/projection ratio
+            target_level: Target Fibonacci level
+            multi_timeframe_data: Multi-timeframe feature data
+
+        Returns:
+            Validation boost factor (0.0 to 1.0)
+        """
+        if not multi_timeframe_data:
+            return 0.5  # Neutral boost without multi-timeframe data
+
+        try:
+            # Check if higher timeframe supports the pattern
+            higher_tf_trend = multi_timeframe_data.get('higher_timeframe_trend', 0)
+
+            # Fibonacci levels are more reliable when aligned with higher timeframe
+            if abs(higher_tf_trend) > 0.5:  # Strong trend in higher timeframe
+                deviation = abs(actual_ratio - target_level)
+                if deviation < 0.03:  # Close alignment
+                    return 0.8  # Strong validation boost
+                elif deviation < 0.06:  # Moderate alignment
+                    return 0.6  # Moderate validation boost
+
+            return 0.4  # Weak validation without strong higher timeframe support
+
+        except Exception:
+            return 0.5  # Fallback to neutral
+        """
+        Calculate overall Fibonacci pattern strength.
+
+        Args:
+            actual_ratio: Actual retracement/projection ratio
+            target_level: Target Fibonacci level
+            level_significance: Significance of the level (0.236=0.6, 0.382=0.7, etc.)
+
+        Returns:
+            Strength score (0.0 to 1.0)
+        """
+        deviation_score = FibonacciAnalyzer.calculate_deviation_from_ideal(
+            actual_ratio, target_level
+        )
+
+        # Base strength from level significance
+        base_strength = level_significance
+
+        # Apply deviation penalty
+        strength = base_strength * (1.0 - deviation_score * 0.5)
+
+        return max(0.0, min(1.0, strength))
         """Find if price has retraced to a Fibonacci level within a swing."""
         if start_idx >= end_idx or end_idx >= len(data):
             return None
@@ -93,7 +174,7 @@ class FibonacciRetracementRecognizer(PatternRecognizer):
         self.max_swing_length = config.get('max_swing_length', 50) if config else 50
         self.fib_analyzer = FibonacciAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(self, data: pd.DataFrame, index: int = -1, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Optional[SignalResult]:
         """Recognize Fibonacci retracement at the given index."""
         if index < self.max_swing_length:
             return None
@@ -124,11 +205,24 @@ class FibonacciRetracementRecognizer(PatternRecognizer):
                     0.618: 0.9,
                     0.786: 0.75,
                 }
-                base_strength = level_strength.get(level, 0.6)
+                level_significance = level_strength.get(level, 0.6)
 
-                # Adjust for accuracy
-                accuracy_penalty = abs(fib_retracement["actual_ratio"] - level) * 5
-                strength = max(0.4, base_strength - accuracy_penalty)
+                # Use new deviation-based strength calculation
+                actual_ratio = fib_retracement["actual_ratio"]
+                strength = self.fib_analyzer.calculate_fibonacci_strength(
+                    actual_ratio, level, level_significance
+                )
+
+                # Apply multi-timeframe validation boost
+                mtf_boost = self.fib_analyzer.validate_with_multi_timeframe(
+                    actual_ratio, level, multi_timeframe_data
+                )
+                strength = min(1.0, strength * (1.0 + mtf_boost * 0.2))  # 20% max boost
+
+                # Calculate deviation score for metadata
+                deviation_score = self.fib_analyzer.calculate_deviation_from_ideal(
+                    actual_ratio, level
+                )
 
                 signal_type = (
                     "fib_retracement_support"
@@ -140,11 +234,14 @@ class FibonacciRetracementRecognizer(PatternRecognizer):
                     signal_type=signal_type,
                     strength=strength,
                     direction=direction,
-                    description=f"Fibonacci Retracement at {level:.3f} level",
+                    description=f"Fibonacci Retracement at {level:.3f} level (deviation: {deviation_score:.2f})",
                     timestamp=data.index[index],
                     metadata={
                         "pattern": "fibonacci_retracement",
                         "level": level,
+                        "actual_ratio": actual_ratio,
+                        "deviation_score": deviation_score,
+                        "multi_timeframe_boost": mtf_boost,
                         "swing_length": swing_length,
                         "confidence": strength,
                     },
