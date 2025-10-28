@@ -335,6 +335,7 @@ class BatRecognizer(PatternRecognizer):
     """Recognizes Bat harmonic patterns."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(config)
         self.lookback_period = config.get('lookback_period', 60) if config else 60
         self.tolerance = config.get('tolerance', 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()

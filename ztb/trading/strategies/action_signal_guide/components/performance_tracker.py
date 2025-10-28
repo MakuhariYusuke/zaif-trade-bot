@@ -5,10 +5,10 @@ This component is responsible for tracking performance metrics.
 Follows Single Responsibility Principle by focusing only on performance tracking.
 """
 
-import time
-from typing import Dict, List, Any, Optional, TYPE_CHECKING
-from collections import defaultdict
 import statistics
+import time
+from collections import defaultdict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from ztb.utils.logging_utils import get_logger
 
@@ -53,7 +53,9 @@ class PerformanceTracker(IPerformanceTracker):
         self.errors = 0
 
         # Pattern-specific metrics
-        self.pattern_success_rates: Dict[str, Dict[str, int]] = defaultdict(lambda: {'success': 0, 'total': 0})
+        self.pattern_success_rates: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: {"success": 0, "total": 0}
+        )
         self.pattern_strengths: Dict[str, List[float]] = defaultdict(list)
         self.pattern_confidences: Dict[str, List[float]] = defaultdict(list)
 
@@ -75,7 +77,9 @@ class PerformanceTracker(IPerformanceTracker):
         if len(self.signal_generation_times) > 1000:
             self.signal_generation_times = self.signal_generation_times[-500:]
 
-    def record_pattern_recognition(self, pattern_type: str, duration: float, success: bool) -> None:
+    def record_pattern_recognition(
+        self, pattern_type: str, duration: float, success: bool
+    ) -> None:
         """
         Record pattern recognition performance.
 
@@ -89,16 +93,20 @@ class PerformanceTracker(IPerformanceTracker):
 
             # Keep only recent samples
             if len(self.pattern_recognition_times[pattern_type]) > 100:
-                self.pattern_recognition_times[pattern_type] = self.pattern_recognition_times[pattern_type][-50:]
+                self.pattern_recognition_times[
+                    pattern_type
+                ] = self.pattern_recognition_times[pattern_type][-50:]
 
         self.total_patterns_recognized += 1
 
         # Update success rates
-        self.pattern_success_rates[pattern_type]['total'] += 1
+        self.pattern_success_rates[pattern_type]["total"] += 1
         if success:
-            self.pattern_success_rates[pattern_type]['success'] += 1
+            self.pattern_success_rates[pattern_type]["success"] += 1
 
-    def record_pattern_signal(self, pattern_type: str, strength: float, confidence: float) -> None:
+    def record_pattern_signal(
+        self, pattern_type: str, strength: float, confidence: float
+    ) -> None:
         """
         Record pattern signal metrics.
 
@@ -113,9 +121,13 @@ class PerformanceTracker(IPerformanceTracker):
 
             # Keep only recent samples
             if len(self.pattern_strengths[pattern_type]) > 100:
-                self.pattern_strengths[pattern_type] = self.pattern_strengths[pattern_type][-50:]
+                self.pattern_strengths[pattern_type] = self.pattern_strengths[
+                    pattern_type
+                ][-50:]
             if len(self.pattern_confidences[pattern_type]) > 100:
-                self.pattern_confidences[pattern_type] = self.pattern_confidences[pattern_type][-50:]
+                self.pattern_confidences[pattern_type] = self.pattern_confidences[
+                    pattern_type
+                ][-50:]
 
     def record_cache_operation(self, duration: float, hit: bool) -> None:
         """
@@ -145,7 +157,9 @@ class PerformanceTracker(IPerformanceTracker):
             error_message: Error message
         """
         self.errors += 1
-        self.logger.warning(f"Performance error recorded: {error_type} - {error_message}")
+        self.logger.warning(
+            f"Performance error recorded: {error_type} - {error_message}"
+        )
 
     def record_memory_usage(self, memory_mb: float) -> None:
         """
@@ -168,21 +182,21 @@ class PerformanceTracker(IPerformanceTracker):
             Dictionary with performance metrics
         """
         summary = {
-            'total_signals_generated': self.total_signals_generated,
-            'total_patterns_recognized': self.total_patterns_recognized,
-            'total_errors': self.errors,
-            'uptime_seconds': time.time() - self.start_time,
-            'cache_hit_rate': self._calculate_cache_hit_rate(),
+            "total_signals_generated": self.total_signals_generated,
+            "total_patterns_recognized": self.total_patterns_recognized,
+            "total_errors": self.errors,
+            "uptime_seconds": time.time() - self.start_time,
+            "cache_hit_rate": self._calculate_cache_hit_rate(),
         }
 
         # Signal generation metrics
         if self.signal_generation_times:
-            summary['signal_generation'] = {
-                'avg_time': statistics.mean(self.signal_generation_times),
-                'min_time': min(self.signal_generation_times),
-                'max_time': max(self.signal_generation_times),
-                'median_time': statistics.median(self.signal_generation_times),
-                'samples': len(self.signal_generation_times)
+            summary["signal_generation"] = {
+                "avg_time": statistics.mean(self.signal_generation_times),
+                "min_time": min(self.signal_generation_times),
+                "max_time": max(self.signal_generation_times),
+                "median_time": statistics.median(self.signal_generation_times),
+                "samples": len(self.signal_generation_times),
             }
 
         # Pattern recognition metrics
@@ -191,31 +205,37 @@ class PerformanceTracker(IPerformanceTracker):
             for pattern_type, times in self.pattern_recognition_times.items():
                 if times:
                     pattern_metrics[pattern_type] = {
-                        'avg_time': statistics.mean(times),
-                        'success_rate': self._calculate_pattern_success_rate(pattern_type),
-                        'samples': len(times)
+                        "avg_time": statistics.mean(times),
+                        "success_rate": self._calculate_pattern_success_rate(
+                            pattern_type
+                        ),
+                        "samples": len(times),
                     }
-            summary['pattern_recognition'] = pattern_metrics
+            summary["pattern_recognition"] = pattern_metrics
 
         # Cache metrics
         if self.cache_operation_times:
-            summary['cache_operations'] = {
-                'avg_time': statistics.mean(self.cache_operation_times),
-                'total_operations': len(self.cache_operation_times),
-                'hit_rate': self._calculate_cache_hit_rate()
+            summary["cache_operations"] = {
+                "avg_time": statistics.mean(self.cache_operation_times),
+                "total_operations": len(self.cache_operation_times),
+                "hit_rate": self._calculate_cache_hit_rate(),
             }
 
         # Memory metrics
         if self.memory_usage_samples:
-            summary['memory'] = {
-                'avg_usage_mb': statistics.mean(self.memory_usage_samples),
-                'max_usage_mb': max(self.memory_usage_samples),
-                'current_usage_mb': self.memory_usage_samples[-1] if self.memory_usage_samples else 0
+            summary["memory"] = {
+                "avg_usage_mb": statistics.mean(self.memory_usage_samples),
+                "max_usage_mb": max(self.memory_usage_samples),
+                "current_usage_mb": self.memory_usage_samples[-1]
+                if self.memory_usage_samples
+                else 0,
             }
 
         return summary
 
-    def get_pattern_performance(self, pattern_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_pattern_performance(
+        self, pattern_type: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get detailed pattern performance metrics.
 
@@ -228,7 +248,10 @@ class PerformanceTracker(IPerformanceTracker):
         if pattern_type:
             return self._get_single_pattern_performance(pattern_type)
         else:
-            return {pt: self._get_single_pattern_performance(pt) for pt in self.pattern_success_rates.keys()}
+            return {
+                pt: self._get_single_pattern_performance(pt)
+                for pt in self.pattern_success_rates.keys()
+            }
 
     def reset_metrics(self) -> None:
         """
@@ -272,8 +295,8 @@ class PerformanceTracker(IPerformanceTracker):
         Returns:
             Success rate as percentage
         """
-        stats = self.pattern_success_rates.get(pattern_type, {'success': 0, 'total': 0})
-        return (stats['success'] / stats['total'] * 100) if stats['total'] > 0 else 0.0
+        stats = self.pattern_success_rates.get(pattern_type, {"success": 0, "total": 0})
+        return (stats["success"] / stats["total"] * 100) if stats["total"] > 0 else 0.0
 
     def _get_single_pattern_performance(self, pattern_type: str) -> Dict[str, Any]:
         """
@@ -286,36 +309,42 @@ class PerformanceTracker(IPerformanceTracker):
             Dictionary with pattern metrics
         """
         metrics = {
-            'success_rate': self._calculate_pattern_success_rate(pattern_type),
-            'total_attempts': self.pattern_success_rates[pattern_type]['total'],
-            'successful_attempts': self.pattern_success_rates[pattern_type]['success']
+            "success_rate": self._calculate_pattern_success_rate(pattern_type),
+            "total_attempts": self.pattern_success_rates[pattern_type]["total"],
+            "successful_attempts": self.pattern_success_rates[pattern_type]["success"],
         }
 
         # Add timing metrics if available
         if pattern_type in self.pattern_recognition_times:
             times = self.pattern_recognition_times[pattern_type]
             if times:
-                metrics['recognition_time'] = {
-                    'avg': statistics.mean(times),
-                    'min': min(times),
-                    'max': max(times)
+                metrics["recognition_time"] = {
+                    "avg": statistics.mean(times),
+                    "min": min(times),
+                    "max": max(times),
                 }
 
         # Add signal quality metrics if available
-        if pattern_type in self.pattern_strengths and self.pattern_strengths[pattern_type]:
+        if (
+            pattern_type in self.pattern_strengths
+            and self.pattern_strengths[pattern_type]
+        ):
             strengths = self.pattern_strengths[pattern_type]
-            metrics['signal_strength'] = {
-                'avg': statistics.mean(strengths),
-                'min': min(strengths),
-                'max': max(strengths)
+            metrics["signal_strength"] = {
+                "avg": statistics.mean(strengths),
+                "min": min(strengths),
+                "max": max(strengths),
             }
 
-        if pattern_type in self.pattern_confidences and self.pattern_confidences[pattern_type]:
+        if (
+            pattern_type in self.pattern_confidences
+            and self.pattern_confidences[pattern_type]
+        ):
             confidences = self.pattern_confidences[pattern_type]
-            metrics['signal_confidence'] = {
-                'avg': statistics.mean(confidences),
-                'min': min(confidences),
-                'max': max(confidences)
+            metrics["signal_confidence"] = {
+                "avg": statistics.mean(confidences),
+                "min": min(confidences),
+                "max": max(confidences),
             }
 
         return metrics
@@ -328,7 +357,7 @@ class PerformanceTracker(IPerformanceTracker):
         """Record cache miss."""
         self.cache_misses += 1
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> "PerformanceStats":
         """
         Get performance statistics.
 
@@ -336,33 +365,37 @@ class PerformanceTracker(IPerformanceTracker):
             Dictionary of performance statistics
         """
         total_cache_operations = self.cache_hits + self.cache_misses
-        cache_hit_rate = (self.cache_hits / total_cache_operations) if total_cache_operations > 0 else 0.0
+        cache_hit_rate = (
+            (self.cache_hits / total_cache_operations)
+            if total_cache_operations > 0
+            else 0.0
+        )
 
         stats = {
-            'total_signals_generated': self.total_signals_generated,
-            'total_patterns_recognized': self.total_patterns_recognized,
-            'cache_hit_rate': cache_hit_rate,
-            'cache_hits': self.cache_hits,
-            'cache_misses': self.cache_misses,
-            'errors': self.errors,
-            'uptime_seconds': time.time() - self.start_time
+            "total_signals_generated": self.total_signals_generated,
+            "total_patterns_recognized": self.total_patterns_recognized,
+            "cache_hit_rate": cache_hit_rate,
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
+            "errors": self.errors,
+            "uptime_seconds": time.time() - self.start_time,
         }
 
         # Add timing statistics if available
         if self.signal_generation_times:
-            stats['signal_generation_time'] = {
-                'avg': statistics.mean(self.signal_generation_times),
-                'min': min(self.signal_generation_times),
-                'max': max(self.signal_generation_times),
-                'count': len(self.signal_generation_times)
+            stats["signal_generation_time"] = {
+                "avg": statistics.mean(self.signal_generation_times),
+                "min": min(self.signal_generation_times),
+                "max": max(self.signal_generation_times),
+                "count": len(self.signal_generation_times),
             }
 
         if self.cache_operation_times:
-            stats['cache_operation_time'] = {
-                'avg': statistics.mean(self.cache_operation_times),
-                'min': min(self.cache_operation_times),
-                'max': max(self.cache_operation_times),
-                'count': len(self.cache_operation_times)
+            stats["cache_operation_time"] = {
+                "avg": statistics.mean(self.cache_operation_times),
+                "min": min(self.cache_operation_times),
+                "max": max(self.cache_operation_times),
+                "count": len(self.cache_operation_times),
             }
 
         return stats

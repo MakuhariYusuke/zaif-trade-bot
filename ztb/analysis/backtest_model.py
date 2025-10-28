@@ -36,6 +36,83 @@ sys.path.insert(0, str(project_root))
 from ztb.trading.environment.environment import HeavyTradingEnv
 
 
+# Feature Engineering Strategy Pattern
+class FeatureEngineeringStrategy:
+    """Base class for feature engineering strategies."""
+
+    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Apply feature engineering to the dataframe."""
+        raise NotImplementedError
+
+    def get_description(self) -> str:
+        """Get description of the feature engineering method."""
+        raise NotImplementedError
+
+
+class SACv427FeatureEngineeringStrategy(FeatureEngineeringStrategy):
+    """Strategy for SAC v427 standard features."""
+
+    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
+        from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
+
+        feature_engineer = SACv427FeatureEngineer()
+        return feature_engineer.generate_v427_features(df)
+
+    def get_description(self) -> str:
+        return "SAC v427 standard features"
+
+
+class SACv427QualityFilteredFeatureEngineeringStrategy(FeatureEngineeringStrategy):
+    """Strategy for SAC v427 quality-filtered features."""
+
+    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
+        from ztb.features.sac_v427_feature_engineering import (
+            generate_v427_quality_filtered_features,
+        )
+
+        return generate_v427_quality_filtered_features(df, feature_set="full")
+
+    def get_description(self) -> str:
+        return "SAC v427 quality-filtered features (109 features)"
+
+
+class SACv437FeatureEngineeringStrategy(FeatureEngineeringStrategy):
+    """Strategy for SAC v437 features (placeholder for future implementation)."""
+
+    def apply(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Placeholder - would implement v437 specific features
+        import logging
+        logging.getLogger(__name__).warning("SAC v437 feature engineering not yet implemented, using raw data")
+        return df
+
+    def get_description(self) -> str:
+        return "SAC v437 features (not implemented)"
+
+
+class FeatureEngineeringFactory:
+    """Factory for creating feature engineering strategies."""
+
+    _strategies = {
+        "sac_v427": SACv427FeatureEngineeringStrategy,
+        "sac_v427_quality_filtered": SACv427QualityFilteredFeatureEngineeringStrategy,
+        "sac_v437": SACv437FeatureEngineeringStrategy,
+        "sac_v437_1": SACv437FeatureEngineeringStrategy,  # Same as v437 for now
+    }
+
+    @classmethod
+    def create_strategy(cls, method: str) -> Optional[FeatureEngineeringStrategy]:
+        """Create a feature engineering strategy for the given method."""
+        strategy_class = cls._strategies.get(method)
+        if strategy_class:
+            return strategy_class()
+        return None
+
+    @classmethod
+    def get_available_methods(cls) -> List[str]:
+        """Get list of available feature engineering methods."""
+        return list(cls._strategies.keys())
+
+
 @timed
 def calculate_metrics(
     trades: List[Dict[str, Any]], initial_capital: float = 10000.0
@@ -117,6 +194,9 @@ def run_backtest(
     max_steps: Optional[int] = None,
     config_path: Optional[str] = None,
     verbose: bool = True,
+    feature_engineering: Optional[str] = None,
+    n_episodes: int = 1,
+    deterministic: bool = False,
 ) -> Dict[str, Any]:
     """Run backtest simulation."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -146,6 +226,16 @@ def run_backtest(
     logger.info(f"Loading data from {data_path}")
     df = pd.read_csv(data_path)
     logger.info(f"Loaded {len(df)} rows of data")
+
+    # Apply feature engineering if specified
+    if feature_engineering:
+        logger.info(f"Applying feature engineering: {feature_engineering}")
+        strategy = FeatureEngineeringFactory.create_strategy(feature_engineering)
+        if strategy:
+            df = strategy.apply(df)
+            logger.info(f"Applied {strategy.get_description()}: {len(df.columns)} features")
+        else:
+            logger.warning(f"Unknown feature engineering method: {feature_engineering}")
 
     # Limit data if specified
     if max_steps and len(df) > max_steps:
@@ -194,117 +284,148 @@ def run_backtest(
         random_start=False,
     )
 
-    # Run backtest
-    logger.info("Starting backtest simulation")
-    obs, _ = env.reset()
-    done = False
-    trades = []
-    last_position = 0
-    entry_price = 0
-    entry_time = 0
+    # Run multiple episodes
+    all_trades = []
+    episode_results = []
 
-    step = 0
-    actions_taken = []
+    for episode in range(n_episodes):
+        logger.info(f"Running episode {episode + 1}/{n_episodes}")
 
-    while not done:
-        # Get action with proper masking for MaskablePPO
-        if model_type == "MaskablePPO":
-            action_masks = env.get_action_masks()
-            action, _ = model.predict(
-                obs, action_masks=action_masks, deterministic=False
-            )
-        else:
-            action, _ = model.predict(obs, deterministic=False)
+        # Reset environment for each episode
+        obs, _ = env.reset()
+        done = False
+        episode_trades = []
+        last_position = 0
+        entry_price = 0
+        entry_time = 0
+        step = 0
+        actions_taken = []
 
-        # Convert continuous action to discrete for SAC models
-        if model_type == "SAC":
-            # SAC uses continuous actions, convert to discrete
-            # Use centralized thresholds from constants
-            if action > SAC_CONTINUOUS_THRESHOLD:
-                discrete_action = ACTION_BUY
-            elif action < SAC_CONTINUOUS_THRESHOLD_NEG:
-                discrete_action = ACTION_SELL
+        while not done:
+            # Get action with proper masking for MaskablePPO
+            if model_type == "MaskablePPO":
+                action_masks = env.get_action_masks()
+                action, _ = model.predict(
+                    obs, action_masks=action_masks, deterministic=deterministic
+                )
             else:
-                discrete_action = ACTION_HOLD
-            action = discrete_action
-        else:
-            action = cast(int, action.item() if hasattr(action, "item") else action)
+                action, _ = model.predict(obs, deterministic=deterministic)
 
-        actions_taken.append(action)
+            # Convert continuous action to discrete for SAC models
+            if model_type == "SAC":
+                # SAC uses continuous actions, convert to discrete
+                # Use centralized thresholds from constants
+                if action > SAC_CONTINUOUS_THRESHOLD:
+                    discrete_action = ACTION_BUY
+                elif action < SAC_CONTINUOUS_THRESHOLD_NEG:
+                    discrete_action = ACTION_SELL
+                else:
+                    discrete_action = ACTION_HOLD
+                action = discrete_action
+            else:
+                action = cast(int, action.item() if hasattr(action, "item") else action)
 
-        obs, _, terminated, truncated, _ = env.step(action)
-        done = terminated or truncated
-        step += 1
+            actions_taken.append(action)
 
-        # Track position changes for trade recording
-        current_position = env.position
-        if step % 100 == 0:  # Debug output every 100 steps
-            logger.info(f"Step {step}: action={action}, position={current_position}")
+            obs, _, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
+            step += 1
 
-        # Detect position changes (considering allow_reverse=True)
-        # 1. Opening new position from flat
-        if abs(current_position) > 0 and abs(last_position) == 0:
-            entry_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
-            entry_time = env.current_step
-            logger.info(f"Opened position at step {step}: {current_position}")
+            # Track position changes for trade recording
+            current_position = env.position
+            if step % 100 == 0:  # Debug output every 100 steps
+                logger.info(
+                    f"Episode {episode + 1}, Step {step}: action={action}, position={current_position}"
+                )
 
-        # 2. Closing position to flat
-        elif abs(last_position) > 0 and abs(current_position) == 0:
-            exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
-            pnl = (
-                (exit_price - entry_price) * last_position * (1 - transaction_cost * 2)
-            )
-            trade = {
-                "entry_time": entry_time,
-                "exit_time": env.current_step,
-                "entry_price": entry_price,
-                "exit_price": exit_price,
-                "pnl": pnl,
-                "position": last_position,
-            }
-            trades.append(trade)
-            logger.info(f"Closed position at step {step}: pnl={pnl}")
+            # Detect position changes (considering allow_reverse=True)
+            # 1. Opening new position from flat
+            if abs(current_position) > 0 and abs(last_position) == 0:
+                entry_price = env.df.iloc[min(env.current_step, len(env.df) - 1)][
+                    "close"
+                ]
+                entry_time = env.current_step
+                logger.info(
+                    f"Episode {episode + 1}: Opened position at step {step}: {current_position}"
+                )
 
-        # 3. Position reversal (Long→Short or Short→Long)
-        elif (last_position > 0 and current_position < 0) or (
-            last_position < 0 and current_position > 0
-        ):
-            # Close previous position
-            exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
-            pnl = (
-                (exit_price - entry_price) * last_position * (1 - transaction_cost * 2)
-            )
-            trade = {
-                "entry_time": entry_time,
-                "exit_time": env.current_step,
-                "entry_price": entry_price,
-                "exit_price": exit_price,
-                "pnl": pnl,
-                "position": last_position,
-            }
-            trades.append(trade)
-            logger.info(
-                f"Reversed position at step {step}: {last_position}→{current_position}, pnl={pnl}"
-            )
+            # 2. Closing position to flat
+            elif abs(last_position) > 0 and abs(current_position) == 0:
+                exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)][
+                    "close"
+                ]
+                pnl = (
+                    (exit_price - entry_price)
+                    * last_position
+                    * (1 - transaction_cost * 2)
+                )
+                trade = {
+                    "episode": episode + 1,
+                    "entry_time": entry_time,
+                    "exit_time": env.current_step,
+                    "entry_price": entry_price,
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "position": last_position,
+                }
+                episode_trades.append(trade)
+                logger.info(
+                    f"Episode {episode + 1}: Closed position at step {step}: pnl={pnl}"
+                )
 
-            # Open new reversed position
-            entry_price = exit_price
-            entry_time = env.current_step
+            # 3. Position reversal (Long→Short or Short→Long)
+            elif (last_position > 0 and current_position < 0) or (
+                last_position < 0 and current_position > 0
+            ):
+                # Close previous position
+                exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)][
+                    "close"
+                ]
+                pnl = (
+                    (exit_price - entry_price)
+                    * last_position
+                    * (1 - transaction_cost * 2)
+                )
+                trade = {
+                    "episode": episode + 1,
+                    "entry_time": entry_time,
+                    "exit_time": env.current_step,
+                    "entry_price": entry_price,
+                    "exit_price": exit_price,
+                    "pnl": pnl,
+                    "position": last_position,
+                }
+                episode_trades.append(trade)
+                logger.info(
+                    f"Episode {episode + 1}: Reversed position at step {step}: pnl={pnl}"
+                )
 
-        last_position = current_position
+                # Open new position
+                entry_price = exit_price
+                entry_time = env.current_step
 
-        # Safety check to prevent infinite loops
-        if step > 10000:
-            logger.warning("Simulation exceeded 10000 steps, terminating")
-            break
+            last_position = current_position
 
-    logger.info(f"Simulation completed in {step} steps")
-    logger.info(
-        f"Actions distribution: {pd.Series(actions_taken).value_counts().to_dict()}"
-    )
+        # Store episode results
+        final_portfolio_value = env.portfolio_value
+        total_reward = final_portfolio_value - initial_capital
 
-    # Calculate final metrics
-    metrics = calculate_metrics(trades, initial_capital)
+        episode_result = {
+            "episode": episode + 1,
+            "total_reward": total_reward,
+            "final_portfolio_value": final_portfolio_value,
+            "total_trades": len(episode_trades),
+            "total_steps": step,
+        }
+        episode_results.append(episode_result)
+        all_trades.extend(episode_trades)
+
+        logger.info(
+            f"Episode {episode + 1} completed: Reward={total_reward:.2f}, Trades={len(episode_trades)}, Final Value={final_portfolio_value:.2f}"
+        )
+
+    # Calculate aggregate metrics
+    metrics = calculate_metrics(all_trades, initial_capital)
 
     logger.info("Backtest completed")
     logger.info(f"Total Return: {metrics['total_return']:.2f}%")
@@ -314,13 +435,17 @@ def run_backtest(
 
     return {
         "metrics": metrics,
-        "trades": trades,
+        "trades": all_trades,
+        "episode_results": episode_results,
         "config": {
             "model_path": model_path,
             "data_path": data_path,
             "initial_capital": initial_capital,
             "transaction_cost": transaction_cost,
             "max_steps": max_steps,
+            "feature_engineering": feature_engineering,
+            "n_episodes": n_episodes,
+            "deterministic": deterministic,
         },
     }
 
@@ -360,6 +485,22 @@ def main() -> None:
         help="Path to config file (JSON format)",
     )
     parser.add_argument(
+        "--feature-engineering",
+        choices=FeatureEngineeringFactory.get_available_methods(),
+        help="Feature engineering method to apply",
+    )
+    parser.add_argument(
+        "--n-episodes",
+        type=int,
+        default=1,
+        help="Number of episodes to run (default: 1)",
+    )
+    parser.add_argument(
+        "--deterministic",
+        action="store_true",
+        help="Use deterministic actions (default: False)",
+    )
+    parser.add_argument(
         "--output",
         help="Path to save results as JSON (optional)",
     )
@@ -374,6 +515,9 @@ def main() -> None:
         transaction_cost=args.transaction_cost,
         max_steps=args.max_steps,
         config_path=args.config,
+        feature_engineering=args.feature_engineering,
+        n_episodes=args.n_episodes,
+        deterministic=args.deterministic,
     )
 
     # Print results

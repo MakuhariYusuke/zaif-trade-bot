@@ -6,8 +6,8 @@ Follows Single Responsibility Principle by focusing only on caching operations.
 """
 
 import time
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import numpy as np
 
@@ -44,8 +44,12 @@ class CacheManager(ICacheManager):
         self.logger = get_logger("ztb.trading.strategies.cache_manager")
 
         # Cache storage: OrderedDict for LRU behavior
-        self.observation_cache: OrderedDict[str, Tuple[np.ndarray, float]] = OrderedDict()
-        self.signal_cache: OrderedDict[str, Tuple['ActionSignal', float]] = OrderedDict()
+        self.observation_cache: OrderedDict[
+            str, Tuple[np.ndarray, float]
+        ] = OrderedDict()
+        self.signal_cache: OrderedDict[
+            str, Tuple["ActionSignal", float]
+        ] = OrderedDict()
         self.computation_cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
 
         # Statistics
@@ -75,7 +79,7 @@ class CacheManager(ICacheManager):
         """
         self._put_in_cache(self.observation_cache, key, observation)
 
-    def get_cached_signal(self, key: str) -> Optional['ActionSignal']:
+    def get_cached_signal(self, key: str) -> Optional["ActionSignal"]:
         """
         Retrieve cached signal.
 
@@ -87,7 +91,7 @@ class CacheManager(ICacheManager):
         """
         return self._get_from_cache(self.signal_cache, key)
 
-    def cache_signal(self, key: str, signal: 'ActionSignal') -> None:
+    def cache_signal(self, key: str, signal: "ActionSignal") -> None:
         """
         Cache signal data.
 
@@ -134,9 +138,13 @@ class CacheManager(ICacheManager):
             self.logger.info("All caches invalidated")
         else:
             # Selective invalidation
-            obs_keys_to_remove = [k for k in self.observation_cache.keys() if pattern in k]
+            obs_keys_to_remove = [
+                k for k in self.observation_cache.keys() if pattern in k
+            ]
             sig_keys_to_remove = [k for k in self.signal_cache.keys() if pattern in k]
-            comp_keys_to_remove = [k for k in self.computation_cache.keys() if pattern in k]
+            comp_keys_to_remove = [
+                k for k in self.computation_cache.keys() if pattern in k
+            ]
 
             for key in obs_keys_to_remove:
                 del self.observation_cache[key]
@@ -145,10 +153,16 @@ class CacheManager(ICacheManager):
             for key in comp_keys_to_remove:
                 del self.computation_cache[key]
 
-            total_removed = len(obs_keys_to_remove) + len(sig_keys_to_remove) + len(comp_keys_to_remove)
-            self.logger.info(f"Invalidated {total_removed} cache entries matching pattern: {pattern}")
+            total_removed = (
+                len(obs_keys_to_remove)
+                + len(sig_keys_to_remove)
+                + len(comp_keys_to_remove)
+            )
+            self.logger.info(
+                f"Invalidated {total_removed} cache entries matching pattern: {pattern}"
+            )
 
-    def get_cache_stats(self) -> 'CacheStats':
+    def get_cache_stats(self) -> "CacheStats":
         """
         Get cache statistics.
 
@@ -159,16 +173,18 @@ class CacheManager(ICacheManager):
         hit_rate = self.cache_hits / total_requests if total_requests > 0 else 0
 
         return {
-            'observation_cache_size': len(self.observation_cache),
-            'signal_cache_size': len(self.signal_cache),
-            'computation_cache_size': len(self.computation_cache),
-            'total_cache_size': len(self.observation_cache) + len(self.signal_cache) + len(self.computation_cache),
-            'max_cache_size': self.max_cache_size,
-            'cache_hits': self.cache_hits,
-            'cache_misses': self.cache_misses,
-            'hit_rate': hit_rate,
-            'evictions': self.evictions,
-            'cache_ttl': self.cache_ttl
+            "observation_cache_size": len(self.observation_cache),
+            "signal_cache_size": len(self.signal_cache),
+            "computation_cache_size": len(self.computation_cache),
+            "total_cache_size": len(self.observation_cache)
+            + len(self.signal_cache)
+            + len(self.computation_cache),
+            "max_cache_size": self.max_cache_size,
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
+            "hit_rate": hit_rate,
+            "evictions": self.evictions,
+            "cache_ttl": self.cache_ttl,
         }
 
     def optimize_cache(self) -> None:
@@ -187,7 +203,9 @@ class CacheManager(ICacheManager):
         self._enforce_size_limit(self.signal_cache)
         self._enforce_size_limit(self.computation_cache)
 
-    def _get_from_cache(self, cache: OrderedDict[str, Tuple[Any, float]], key: str) -> Optional[Any]:
+    def _get_from_cache(
+        self, cache: OrderedDict[str, Tuple[Any, float]], key: str
+    ) -> Optional[Any]:
         """
         Generic cache retrieval with LRU behavior.
 
@@ -217,7 +235,9 @@ class CacheManager(ICacheManager):
 
         return value
 
-    def _put_in_cache(self, cache: OrderedDict[str, Tuple[Any, float]], key: str, value: Any) -> None:
+    def _put_in_cache(
+        self, cache: OrderedDict[str, Tuple[Any, float]], key: str, value: Any
+    ) -> None:
         """
         Generic cache storage with size management.
 
@@ -244,7 +264,9 @@ class CacheManager(ICacheManager):
                 self.evictions += 1
                 self.logger.debug(f"Evicted cache entry: {removed_key}")
 
-    def _remove_expired_entries(self, cache: OrderedDict[str, Tuple[Any, float]], current_time: float) -> None:
+    def _remove_expired_entries(
+        self, cache: OrderedDict[str, Tuple[Any, float]], current_time: float
+    ) -> None:
         """
         Remove expired entries from cache.
 
@@ -253,7 +275,8 @@ class CacheManager(ICacheManager):
             current_time: Current timestamp
         """
         expired_keys = [
-            key for key, (_, timestamp) in cache.items()
+            key
+            for key, (_, timestamp) in cache.items()
             if current_time - timestamp > self.cache_ttl
         ]
 
