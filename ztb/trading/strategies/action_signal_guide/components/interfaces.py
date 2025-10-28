@@ -6,20 +6,20 @@ following SOLID principles for better maintainability and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from ..action_signal_guide import ActionSignal, GuidanceLevel
-    from ..types import SignalList, PerformanceStats, PatternStats, CacheStats
+    from ..action_signal_guide import ActionSignal
+    from ..types import CacheStats, PatternStats, PerformanceStats
 
 
 class ISignalGenerator(ABC):
     """Interface for signal generation."""
 
     @abstractmethod
-    def generate_signal(self, observation: np.ndarray, step: int) -> 'ActionSignal':
+    def generate_signal(self, observation: np.ndarray, step: int) -> "ActionSignal":
         """
         Generate trading signal from observation.
 
@@ -42,7 +42,7 @@ class ICacheManager(ABC):
     """Interface for signal caching."""
 
     @abstractmethod
-    def get_cached_signal(self, cache_key: str) -> Optional['ActionSignal']:
+    def get_cached_signal(self, cache_key: str) -> Optional["ActionSignal"]:
         """
         Get cached signal if available and valid.
 
@@ -55,7 +55,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def cache_signal(self, cache_key: str, signal: 'ActionSignal') -> None:
+    def cache_signal(self, cache_key: str, signal: "ActionSignal") -> None:
         """
         Cache a signal.
 
@@ -81,7 +81,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def get_cache_stats(self) -> 'CacheStats':
+    def get_cache_stats(self) -> "CacheStats":
         """
         Get cache statistics.
 
@@ -115,7 +115,7 @@ class IPerformanceTracker(ABC):
         pass
 
     @abstractmethod
-    def get_performance_stats(self) -> 'PerformanceStats':
+    def get_performance_stats(self) -> "PerformanceStats":
         """
         Get performance statistics.
 
@@ -129,7 +129,7 @@ class IPatternStatistics(ABC):
     """Interface for pattern statistics tracking."""
 
     @abstractmethod
-    def record_pattern_signal(self, pattern_type: str, signal: 'ActionSignal') -> None:
+    def record_pattern_signal(self, pattern_type: str, signal: "ActionSignal") -> None:
         """
         Record pattern signal statistics.
 
@@ -140,7 +140,9 @@ class IPatternStatistics(ABC):
         pass
 
     @abstractmethod
-    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> 'PatternStats':
+    def get_pattern_statistics(
+        self, pattern_type: Optional[str] = None
+    ) -> "PatternStats":
         """
         Get pattern statistics.
 

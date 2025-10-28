@@ -144,6 +144,7 @@ class GannAngleRecognizer(PatternRecognizer):
     """Recognizes Gann angle support/resistance levels."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
+        super().__init__(config)
         self.lookback_period = config.get('lookback_period', 50) if config else 50
         self.gann_analyzer = GannAnalyzer()
 
@@ -228,6 +229,7 @@ class GannSquareRecognizer(PatternRecognizer):
     """Recognizes Gann square of 9 levels."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(config)
         self.lookback_period = config.get('lookback_period', 30) if config else 30
         self.gann_analyzer = GannAnalyzer()
 
@@ -292,6 +294,7 @@ class GannTimeClusterRecognizer(PatternRecognizer):
     """Recognizes Gann time clusters and cycle alignments."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(config)
         self.lookback_period = config.get('lookback_period', 30) if config else 30
         self.gann_analyzer = GannAnalyzer()
 

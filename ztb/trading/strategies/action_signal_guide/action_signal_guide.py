@@ -1,40 +1,27 @@
-﻿"""
+"""
 Action Signal Guide - Main Implementation
 
 This module provides the main ActionSignalGuide class that integrates all pattern
 recognition systems for classical technical analysis signals in the SAC RL system.
 """
 
+import logging
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, cast
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import logging
 
 import numpy as np
 import pandas as pd
 
-from .pattern_recognition.base import PatternRecognizer, SignalResult
 
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.utils.statistics import calculate_autocorrelation, detect_outliers_iqr, rolling_statistics
-from ztb.utils.safety import safe_to_float, safe_get_nested_value, safe_divide, validate_range
-
-# Import types
-from .types import (
-    SignalConfig, PatternConfig, SignalList, SignalHistory,
-    PerformanceStats, PatternStats, CacheStats,
-    SignalMetadata, StatisticsMetadata, ConfigInput, GuidanceInput
-)
+from .components.cache_manager import CacheManager
 
 # Import components
-from .components.interfaces import ISignalGenerator, ICacheManager, IPerformanceTracker, IPatternStatistics
-from .components.signal_generator import SignalGenerator
-from .components.cache_manager import CacheManager
-from .components.performance_tracker import PerformanceTracker
 from .components.pattern_statistics import PatternStatistics
-
+from .components.performance_tracker import PerformanceTracker
+from .components.signal_generator import SignalGenerator
+from .pattern_recognition.base import PatternRecognizer
 from .pattern_recognition.candlestick_patterns import (
     BearishEngulfingRecognizer,
     BullishEngulfingRecognizer,
@@ -48,6 +35,7 @@ from .pattern_recognition.candlestick_patterns import (
     ThreeBlackCrowsRecognizer,
     ThreeWhiteSoldiersRecognizer,
 )
+from .pattern_recognition.dow_theory import DowTheoryRecognizer
 from .pattern_recognition.fibonacci_patterns import (
     FibonacciExtensionRecognizer,
     FibonacciProjectionRecognizer,
@@ -65,7 +53,6 @@ from .pattern_recognition.harmonic_patterns import (
     CrabRecognizer,
     GartleyRecognizer,
 )
-from .pattern_recognition.heikin_ashi import HeikinAshiRecognizer
 from .pattern_recognition.wave_counting import (
     CorrectiveWaveRecognizer,
     ImpulseWaveRecognizer,
@@ -77,32 +64,41 @@ from .pattern_recognition.wave_counting import (
     WaveVRecognizer,
     WaveYRecognizer,
 )
-from .pattern_recognition.dow_theory import DowTheoryRecognizer
-from .pattern_recognition.oscillator_patterns import (
-    CCIRecognizer,
-    MFIRecognizer,
-    StochasticRecognizer,
-    WilliamsRRecognizer,
+
+# Import types
+from .types import (
+    CacheStats,
+    ConfigInput,
+    GuidanceInput,
+    PatternConfig,
+    PatternStats,
+    PerformanceStats,
+    SignalHistory,
+    SignalList,
+    SignalMetadata,
 )
-from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 
 
 def _get_action_signal_guide_config() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignalGuideConfig
+
     return ActionSignalGuideConfig
 
 
 def _get_guidance_level_enum() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import GuidanceLevel
+
     return GuidanceLevel
 
 
 def _get_action_signal_class() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignal
+
     return ActionSignal
+
 
 from .pattern_recognition.candlestick_patterns import (
     BearishEngulfingRecognizer,
@@ -117,6 +113,7 @@ from .pattern_recognition.candlestick_patterns import (
     ThreeBlackCrowsRecognizer,
     ThreeWhiteSoldiersRecognizer,
 )
+from .pattern_recognition.dow_theory import DowTheoryRecognizer
 from .pattern_recognition.fibonacci_patterns import (
     FibonacciExtensionRecognizer,
     FibonacciProjectionRecognizer,
@@ -134,7 +131,6 @@ from .pattern_recognition.harmonic_patterns import (
     CrabRecognizer,
     GartleyRecognizer,
 )
-from .pattern_recognition.heikin_ashi import HeikinAshiRecognizer
 from .pattern_recognition.wave_counting import (
     CorrectiveWaveRecognizer,
     ImpulseWaveRecognizer,
@@ -146,14 +142,6 @@ from .pattern_recognition.wave_counting import (
     WaveVRecognizer,
     WaveYRecognizer,
 )
-from .pattern_recognition.dow_theory import DowTheoryRecognizer
-from .pattern_recognition.oscillator_patterns import (
-    CCIRecognizer,
-    MFIRecognizer,
-    StochasticRecognizer,
-    WilliamsRRecognizer,
-)
-from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 
 
 class GuidanceLevel(Enum):
@@ -166,6 +154,7 @@ class GuidanceLevel(Enum):
 @dataclass
 class RecognizerConfig:
     """Configuration for a pattern recognizer."""
+
     name: str
     enabled: bool = True
     weight: float = 1.0
@@ -176,6 +165,7 @@ class RecognizerConfig:
 @dataclass
 class ActionSignalGuideConfig:
     """Configuration for ActionSignalGuide."""
+
     guidance_level: GuidanceLevel = GuidanceLevel.STRONG
     max_signals_per_bar: int = 3
     enable_parallel_processing: bool = False
@@ -308,7 +298,7 @@ class ActionSignal:
     """Represents a complete action signal with all relevant information."""
 
     timestamp: pd.Timestamp
-    direction: int  # 1 for buy, -1 for sell, 0 for hold
+    direction: float  # Continuous value from -1.0 (strong sell) to 1.0 (strong buy), 0.0 for hold
     strength: float  # 0.0 to 1.0
     signal_type: str
     description: str
@@ -316,7 +306,7 @@ class ActionSignal:
     source_patterns: List[str]  # List of pattern names that contributed
 
     @classmethod
-    def neutral(cls) -> 'ActionSignal':
+    def neutral(cls) -> "ActionSignal":
         """Create a neutral (hold) signal."""
         return cls(
             timestamp=pd.Timestamp.now(),
@@ -325,7 +315,7 @@ class ActionSignal:
             signal_type="neutral",
             description="No clear signal detected",
             metadata={},
-            source_patterns=[]
+            source_patterns=[],
         )
 
 
@@ -340,9 +330,7 @@ class ActionSignalGuide:
     """
 
     def __init__(
-        self,
-        guidance_level: GuidanceInput = None,
-        config: ConfigInput = None
+        self, guidance_level: GuidanceInput = None, config: ConfigInput = None
     ) -> None:
         # Lazy import to avoid circular imports
         ActionSignalGuideConfig = _get_action_signal_guide_config()
@@ -359,28 +347,24 @@ class ActionSignalGuide:
 
         # Initialize components following SOLID principles
         self.cache_manager = CacheManager(
-            max_cache_size=self.config.cache_size,
-            cache_ttl=300  # 5 minutes TTL
-        )
+            max_cache_size=self.config.cache_size, cache_ttl=300
+        )  # 5 minutes TTL
 
-        self.performance_tracker = PerformanceTracker(
-            enable_detailed_tracking=True
-        )
+        self.performance_tracker = PerformanceTracker(enable_detailed_tracking=True)
 
-        self.pattern_statistics = PatternStatistics(
-            max_history_size=10000
-        )
+        self.pattern_statistics = PatternStatistics(max_history_size=10000)
 
         # Initialize signal generator with dependencies
         self.signal_generator = SignalGenerator(
             config=self.config,
             performance_tracker=self.performance_tracker,
-            pattern_statistics=self.pattern_statistics
+            pattern_statistics=self.pattern_statistics,
         )
 
         # Initialize multi-timeframe feature system for enhanced pattern validation
         try:
             from ztb.features.multi_timeframe import create_multi_timeframe_system
+
             self.multi_timeframe_system = create_multi_timeframe_system()
             self.use_multi_timeframe = True
             self.logger.info("Multi-timeframe feature system initialized")
@@ -395,17 +379,22 @@ class ActionSignalGuide:
         # Feature names for observation conversion
         self.feature_names: Optional[List[str]] = None
 
-        self.logger.info("ActionSignalGuide initialized with component-based architecture")
+        self.logger.info(
+            "ActionSignalGuide initialized with component-based architecture"
+        )
 
     def _initialize_recognizers(self) -> None:
         """Initialize all pattern recognition systems using configuration."""
+        from .pattern_recognition.adx_patterns import ADXRecognizer
+        from .pattern_recognition.bollinger_patterns import BollingerBandsRecognizer
+        from .pattern_recognition.heikin_ashi import HeikinAshiRecognizer
         from .pattern_recognition.oscillator_patterns import (
-            CCIRecognizer, StochasticRecognizer, WilliamsRRecognizer, MFIRecognizer
+            CCIRecognizer,
+            MFIRecognizer,
+            StochasticRecognizer,
+            WilliamsRRecognizer,
         )
         from .pattern_recognition.volume_patterns import ChaikinADRecognizer
-        from .pattern_recognition.bollinger_patterns import BollingerBandsRecognizer
-        from .pattern_recognition.adx_patterns import ADXRecognizer
-        from .pattern_recognition.heikin_ashi import HeikinAshiRecognizer
 
         # Recognizer factory mapping
         self._recognizer_factory = {
@@ -421,17 +410,18 @@ class ActionSignalGuide:
             "bullish_engulfing": lambda config: BullishEngulfingRecognizer(config),
             "bearish_engulfing": lambda config: BearishEngulfingRecognizer(config),
             "piercing_pattern": lambda config: PiercingPatternRecognizer(config),
-
             # Fibonacci patterns
-            "fibonacci_retracement": lambda config: FibonacciRetracementRecognizer(config),
+            "fibonacci_retracement": lambda config: FibonacciRetracementRecognizer(
+                config
+            ),
             "fibonacci_extension": lambda config: FibonacciExtensionRecognizer(config),
-            "fibonacci_projection": lambda config: FibonacciProjectionRecognizer(config),
-
+            "fibonacci_projection": lambda config: FibonacciProjectionRecognizer(
+                config
+            ),
             # Gann patterns
             "gann_angle": lambda config: GannAngleRecognizer(config),
             "gann_square": lambda config: GannSquareRecognizer(config),
             "gann_time_cluster": lambda config: GannTimeClusterRecognizer(config),
-
             # Wave patterns
             "impulse_wave": lambda config: ImpulseWaveRecognizer(config),
             "corrective_wave": lambda config: CorrectiveWaveRecognizer(config),
@@ -442,28 +432,22 @@ class ActionSignalGuide:
             "wave_p": lambda config: WavePRecognizer(config),
             "wave_n": lambda config: WaveNRecognizer(config),
             "wave_s": lambda config: WaveSRecognizer(config),
-
             # Harmonic patterns
             "gartley": lambda config: GartleyRecognizer(config),
             "butterfly": lambda config: ButterflyRecognizer(config),
             "bat": lambda config: BatRecognizer(config),
             "crab": lambda config: CrabRecognizer(config),
-
             # Oscillator patterns
             "cci": lambda config: CCIRecognizer(config),
             "stochastic": lambda config: StochasticRecognizer(config),
             "williams_r": lambda config: WilliamsRRecognizer(config),
             "mfi": lambda config: MFIRecognizer(config),
-
             # Volume patterns
             "chaikin_ad": lambda config: ChaikinADRecognizer(config),
-
             # Bollinger Bands patterns
             "bollinger_bands": lambda config: BollingerBandsRecognizer(config),
-
             # ADX patterns
             "adx": lambda config: ADXRecognizer(config),
-
             # Other patterns
             "granville_law": lambda config: GranvilleLawRecognizer(config),
             "heikin_ashi": lambda config: HeikinAshiRecognizer(config),
@@ -473,18 +457,18 @@ class ActionSignalGuide:
         if self.config.lazy_loading:
             # Lazy loading: store configurations but don't initialize recognizers yet
             self._recognizer_configs = {
-                'candlestick': self.config.candlestick_patterns,
-                'fibonacci': self.config.fibonacci_patterns,
-                'gann': self.config.gann_patterns,
-                'wave': self.config.wave_patterns,
-                'harmonic': self.config.harmonic_patterns,
-                'oscillator': self.config.oscillator_patterns,
-                'volume': self.config.volume_patterns,
-                'bollinger': self.config.bollinger_patterns,
-                'adx': self.config.adx_patterns,
-                'granville': self.config.granville_patterns,
-                'heikin_ashi': self.config.heikin_ashi_patterns,
-                'dow_theory': self.config.dow_theory_patterns,
+                "candlestick": self.config.candlestick_patterns,
+                "fibonacci": self.config.fibonacci_patterns,
+                "gann": self.config.gann_patterns,
+                "wave": self.config.wave_patterns,
+                "harmonic": self.config.harmonic_patterns,
+                "oscillator": self.config.oscillator_patterns,
+                "volume": self.config.volume_patterns,
+                "bollinger": self.config.bollinger_patterns,
+                "adx": self.config.adx_patterns,
+                "granville": self.config.granville_patterns,
+                "heikin_ashi": self.config.heikin_ashi_patterns,
+                "dow_theory": self.config.dow_theory_patterns,
             }
 
             # Initialize empty lists for lazy-loaded recognizers
@@ -503,42 +487,66 @@ class ActionSignalGuide:
             # all_recognizers will be set below
         else:
             # Eager loading: initialize all recognizers immediately
-            self.candlestick_recognizers = self._create_recognizers_from_config(
-                self.config.candlestick_patterns
-            ) if self.config.enable_candlestick_patterns else []
-            self.fibonacci_recognizers = self._create_recognizers_from_config(
-                self.config.fibonacci_patterns
-            ) if self.config.enable_fibonacci_patterns else []
-            self.gann_recognizers = self._create_recognizers_from_config(
-                self.config.gann_patterns
-            ) if self.config.enable_gann_patterns else []
-            self.wave_recognizers = self._create_recognizers_from_config(
-                self.config.wave_patterns
-            ) if self.config.enable_wave_patterns else []
-            self.harmonic_recognizers = self._create_recognizers_from_config(
-                self.config.harmonic_patterns
-            ) if self.config.enable_harmonic_patterns else []
-            self.oscillator_recognizers = self._create_recognizers_from_config(
-                self.config.oscillator_patterns
-            ) if self.config.enable_oscillator_patterns else []
-            self.volume_recognizers = self._create_recognizers_from_config(
-                self.config.volume_patterns
-            ) if self.config.enable_volume_patterns else []
-            self.bollinger_recognizers = self._create_recognizers_from_config(
-                self.config.bollinger_patterns
-            ) if self.config.enable_bollinger_patterns else []
-            self.adx_recognizers = self._create_recognizers_from_config(
-                self.config.adx_patterns
-            ) if self.config.enable_adx_patterns else []
-            self.granville_recognizers = self._create_recognizers_from_config(
-                self.config.granville_patterns
-            ) if self.config.enable_granville_patterns else []
-            self.heikin_ashi_recognizers = self._create_recognizers_from_config(
-                self.config.heikin_ashi_patterns
-            ) if self.config.enable_heikin_ashi_patterns else []
-            self.dow_theory_recognizers = self._create_recognizers_from_config(
-                self.config.dow_theory_patterns
-            ) if self.config.enable_dow_theory_patterns else []
+            self.candlestick_recognizers = (
+                self._create_recognizers_from_config(self.config.candlestick_patterns)
+                if self.config.enable_candlestick_patterns
+                else []
+            )
+            self.fibonacci_recognizers = (
+                self._create_recognizers_from_config(self.config.fibonacci_patterns)
+                if self.config.enable_fibonacci_patterns
+                else []
+            )
+            self.gann_recognizers = (
+                self._create_recognizers_from_config(self.config.gann_patterns)
+                if self.config.enable_gann_patterns
+                else []
+            )
+            self.wave_recognizers = (
+                self._create_recognizers_from_config(self.config.wave_patterns)
+                if self.config.enable_wave_patterns
+                else []
+            )
+            self.harmonic_recognizers = (
+                self._create_recognizers_from_config(self.config.harmonic_patterns)
+                if self.config.enable_harmonic_patterns
+                else []
+            )
+            self.oscillator_recognizers = (
+                self._create_recognizers_from_config(self.config.oscillator_patterns)
+                if self.config.enable_oscillator_patterns
+                else []
+            )
+            self.volume_recognizers = (
+                self._create_recognizers_from_config(self.config.volume_patterns)
+                if self.config.enable_volume_patterns
+                else []
+            )
+            self.bollinger_recognizers = (
+                self._create_recognizers_from_config(self.config.bollinger_patterns)
+                if self.config.enable_bollinger_patterns
+                else []
+            )
+            self.adx_recognizers = (
+                self._create_recognizers_from_config(self.config.adx_patterns)
+                if self.config.enable_adx_patterns
+                else []
+            )
+            self.granville_recognizers = (
+                self._create_recognizers_from_config(self.config.granville_patterns)
+                if self.config.enable_granville_patterns
+                else []
+            )
+            self.heikin_ashi_recognizers = (
+                self._create_recognizers_from_config(self.config.heikin_ashi_patterns)
+                if self.config.enable_heikin_ashi_patterns
+                else []
+            )
+            self.dow_theory_recognizers = (
+                self._create_recognizers_from_config(self.config.dow_theory_patterns)
+                if self.config.enable_dow_theory_patterns
+                else []
+            )
 
             # Combine all recognizers
             self.all_recognizers: List[PatternRecognizer] = cast(
@@ -556,7 +564,7 @@ class ActionSignalGuide:
                     + self.granville_recognizers
                     + self.heikin_ashi_recognizers
                     + self.dow_theory_recognizers
-                )
+                ),
             )
 
         # Initialize caching (always initialize, but only use if enabled)
@@ -565,68 +573,68 @@ class ActionSignalGuide:
 
     def _ensure_recognizers_loaded(self) -> None:
         """Ensure all recognizers are loaded for lazy loading mode."""
-        if not self.config.lazy_loading or not hasattr(self, '_recognizer_configs'):
+        if not self.config.lazy_loading or not hasattr(self, "_recognizer_configs"):
             return
 
         # Load all recognizer groups if not already loaded
-        if not self.candlestick_recognizers and self._recognizer_configs['candlestick']:
+        if not self.candlestick_recognizers and self._recognizer_configs["candlestick"]:
             self.candlestick_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['candlestick']
+                self._recognizer_configs["candlestick"]
             )
 
-        if not self.fibonacci_recognizers and self._recognizer_configs['fibonacci']:
+        if not self.fibonacci_recognizers and self._recognizer_configs["fibonacci"]:
             self.fibonacci_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['fibonacci']
+                self._recognizer_configs["fibonacci"]
             )
 
-        if not self.gann_recognizers and self._recognizer_configs['gann']:
+        if not self.gann_recognizers and self._recognizer_configs["gann"]:
             self.gann_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['gann']
+                self._recognizer_configs["gann"]
             )
 
-        if not self.wave_recognizers and self._recognizer_configs['wave']:
+        if not self.wave_recognizers and self._recognizer_configs["wave"]:
             self.wave_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['wave']
+                self._recognizer_configs["wave"]
             )
 
-        if not self.harmonic_recognizers and self._recognizer_configs['harmonic']:
+        if not self.harmonic_recognizers and self._recognizer_configs["harmonic"]:
             self.harmonic_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['harmonic']
+                self._recognizer_configs["harmonic"]
             )
 
-        if not self.oscillator_recognizers and self._recognizer_configs['oscillator']:
+        if not self.oscillator_recognizers and self._recognizer_configs["oscillator"]:
             self.oscillator_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['oscillator']
+                self._recognizer_configs["oscillator"]
             )
 
-        if not self.volume_recognizers and self._recognizer_configs['volume']:
+        if not self.volume_recognizers and self._recognizer_configs["volume"]:
             self.volume_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['volume']
+                self._recognizer_configs["volume"]
             )
 
-        if not self.bollinger_recognizers and self._recognizer_configs['bollinger']:
+        if not self.bollinger_recognizers and self._recognizer_configs["bollinger"]:
             self.bollinger_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['bollinger']
+                self._recognizer_configs["bollinger"]
             )
 
-        if not self.adx_recognizers and self._recognizer_configs['adx']:
+        if not self.adx_recognizers and self._recognizer_configs["adx"]:
             self.adx_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['adx']
+                self._recognizer_configs["adx"]
             )
 
-        if not self.granville_recognizers and self._recognizer_configs['granville']:
+        if not self.granville_recognizers and self._recognizer_configs["granville"]:
             self.granville_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['granville']
+                self._recognizer_configs["granville"]
             )
 
-        if not self.heikin_ashi_recognizers and self._recognizer_configs['heikin_ashi']:
+        if not self.heikin_ashi_recognizers and self._recognizer_configs["heikin_ashi"]:
             self.heikin_ashi_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['heikin_ashi']
+                self._recognizer_configs["heikin_ashi"]
             )
 
-        if not self.dow_theory_recognizers and self._recognizer_configs['dow_theory']:
+        if not self.dow_theory_recognizers and self._recognizer_configs["dow_theory"]:
             self.dow_theory_recognizers = self._create_recognizers_from_config(
-                self._recognizer_configs['dow_theory']
+                self._recognizer_configs["dow_theory"]
             )
 
         # Update all_recognizers list
@@ -645,12 +653,12 @@ class ActionSignalGuide:
                 + self.granville_recognizers
                 + self.heikin_ashi_recognizers
                 + self.dow_theory_recognizers
-            )
+            ),
         )
 
         # Clear configs after loading
-        if hasattr(self, '_recognizer_configs'):
-            delattr(self, '_recognizer_configs')
+        if hasattr(self, "_recognizer_configs"):
+            delattr(self, "_recognizer_configs")
 
     def _create_recognizers_from_config(
         self, configs: Optional[List[RecognizerConfig]]
@@ -677,9 +685,7 @@ class ActionSignalGuide:
 
         return recognizers
 
-    def generate_signals(
-        self, data: pd.DataFrame, current_index: int
-    ) -> SignalList:
+    def generate_signals(self, data: pd.DataFrame, current_index: int) -> SignalList:
         """
         Generate action signals for the current market data.
 
@@ -705,41 +711,53 @@ class ActionSignalGuide:
                 # Check if cache is still valid (within last few bars)
                 # Note: CacheManager handles TTL, but we add additional logic for bar proximity
                 processing_time = time.time() - start_time
-                self.performance_tracker.record_cache_operation(processing_time, hit=True)
+                self.performance_tracker.record_cache_operation(
+                    processing_time, hit=True
+                )
                 return cached_signals
 
         # Convert DataFrame row to observation array for SignalGenerator
         try:
             observation = self._convert_to_observation(data, current_index)
         except Exception as e:
-            self.logger.error(f"Failed to convert data to observation at index {current_index}: {e}")
+            self.logger.error(
+                f"Failed to convert data to observation at index {current_index}: {e}"
+            )
             processing_time = time.time() - start_time
             self.performance_tracker.record_cache_operation(processing_time, hit=False)
             return []
 
         # Generate multi-timeframe features if available
         multi_timeframe_data = None
-        if self.use_multi_timeframe and self.multi_timeframe_system:
-            try:
-                # Generate multi-timeframe features for enhanced pattern validation
-                mtf_features = self.multi_timeframe_system.process_multi_timeframe_data(
-                    data, current_timeframe='1h'  # Assume 1h, could be parameterized
-                )
-                multi_timeframe_data = {
-                    'higher_timeframe_trend': mtf_features.get('trend_strength', 0),
-                    'multi_timeframe_support': mtf_features.get('support_resistance', {}),
-                    'timeframe_alignment': mtf_features.get('timeframe_alignment', 0.5)
-                }
-            except Exception as e:
-                self.logger.warning(f"Failed to generate multi-timeframe features: {e}")
-                multi_timeframe_data = None
+        # Temporarily disable multi-timeframe features
+        # if self.use_multi_timeframe and self.multi_timeframe_system:
+        #     try:
+        #         # Generate multi-timeframe features for enhanced pattern validation
+        #         mtf_features = self.multi_timeframe_system.process_multi_timeframe_data(
+        #             data,
+        #             current_timeframe="1h",  # Assume 1h, could be parameterized
+        #         )
+        #         multi_timeframe_data = {
+        #             "higher_timeframe_trend": mtf_features.get("trend_strength", 0),
+        #             "multi_timeframe_support": mtf_features.get(
+        #                 "support_resistance", {}
+        #             ),
+        #             "timeframe_alignment": mtf_features.get("timeframe_alignment", 0.5),
+        #         }
+        #     except Exception as e:
+        #         self.logger.warning(f"Failed to generate multi-timeframe features: {e}")
+        #         multi_timeframe_data = None
 
         # Generate signal using SignalGenerator component
         try:
-            signal = self.signal_generator.generate_signal(observation, current_index, multi_timeframe_data)
+            signal = self.signal_generator.generate_signal(
+                observation, current_index, multi_timeframe_data
+            )
 
             # Convert component signal to legacy ActionSignal format
-            action_signals = self._convert_to_legacy_signals(signal, data, current_index)
+            action_signals = self._convert_to_legacy_signals(
+                signal, data, current_index
+            )
 
             # Filter and prioritize signals (legacy logic)
             action_signals = self._filter_and_prioritize_signals(action_signals)
@@ -762,7 +780,9 @@ class ActionSignalGuide:
             self.performance_tracker.record_error("signal_generation", str(e))
             return []
 
-    def _convert_to_observation(self, data: pd.DataFrame, current_index: int) -> np.ndarray:
+    def _convert_to_observation(
+        self, data: pd.DataFrame, current_index: int
+    ) -> np.ndarray:
         """
         Convert DataFrame row to observation array for SignalGenerator.
 
@@ -774,22 +794,24 @@ class ActionSignalGuide:
             Observation array
         """
         if current_index >= len(data):
-            raise ValueError(f"Index {current_index} out of bounds for data with length {len(data)}")
+            raise ValueError(
+                f"Index {current_index} out of bounds for data with length {len(data)}"
+            )
 
         # Extract current bar data
         current_bar = data.iloc[current_index]
 
         # Build observation array (OHLCV + any additional features)
         observation_data = [
-            current_bar.get('open', 0.0),
-            current_bar.get('high', 0.0),
-            current_bar.get('low', 0.0),
-            current_bar.get('close', 0.0),
-            current_bar.get('volume', 0.0),
+            current_bar.get("open", 0.0),
+            current_bar.get("high", 0.0),
+            current_bar.get("low", 0.0),
+            current_bar.get("close", 0.0),
+            current_bar.get("volume", 0.0),
         ]
 
         # Add any additional features if available
-        if hasattr(current_bar, 'index') and len(current_bar.index) > 5:
+        if hasattr(current_bar, "index") and len(current_bar.index) > 5:
             for i in range(5, len(current_bar.index)):
                 observation_data.append(current_bar.iloc[i])
 
@@ -809,28 +831,25 @@ class ActionSignalGuide:
         Returns:
             List of legacy ActionSignal objects
         """
-        if not hasattr(signal, 'action') or signal.action == 0:
+        if signal.direction == 0:
             return []
 
-        # Convert action: 1=BUY, 2=SELL, 0=HOLD
-        direction_map = {1: 1, 2: -1, 0: 0}
-        direction = direction_map.get(signal.action, 0)
-
-        if direction == 0:
-            return []
-
-        # Create legacy ActionSignal
+        # Create legacy ActionSignal (same format as new ActionSignal)
         ActionSignal = _get_action_signal_class()
-        timestamp = pd.Timestamp.now() if not hasattr(data.index, '__getitem__') else data.index[current_index]
+        timestamp = (
+            pd.Timestamp.now()
+            if not hasattr(data.index, "__getitem__")
+            else data.index[current_index]
+        )
 
         legacy_signal = ActionSignal(
             timestamp=timestamp,
-            direction=direction,
-            strength=getattr(signal, 'strength', 0.5),
-            signal_type=getattr(signal, 'pattern_type', 'aggregated'),
-            description=f"Signal from {getattr(signal, 'pattern_name', 'unknown pattern')}",
-            metadata=getattr(signal, 'metadata', {}),
-            source_patterns=[getattr(signal, 'pattern_name', 'unknown')]
+            direction=signal.direction,
+            strength=signal.strength,
+            signal_type=signal.signal_type,
+            description=signal.description,
+            metadata=signal.metadata,
+            source_patterns=signal.source_patterns,
         )
 
         return [legacy_signal]
@@ -851,7 +870,7 @@ class ActionSignalGuide:
 
         # Use a combination of timestamp and key data points for uniqueness
         current_bar = data.iloc[current_index]
-        timestamp = current_bar.name if hasattr(current_bar, 'name') else current_index
+        timestamp = current_bar.name if hasattr(current_bar, "name") else current_index
 
         # Create a hash from key data points
         key_data = f"{timestamp}_{current_bar.get('close', 0):.6f}_{current_bar.get('volume', 0):.2f}"
@@ -871,9 +890,7 @@ class ActionSignalGuide:
             # This should never happen, but provides type safety
             raise ValueError(f"Unknown guidance level: {self.guidance_level}")
 
-    def _filter_and_prioritize_signals(
-        self, signals: SignalList
-    ) -> SignalList:
+    def _filter_and_prioritize_signals(self, signals: SignalList) -> SignalList:
         """Filter and prioritize signals to avoid conflicts and redundancy."""
         if not signals:
             return signals
@@ -922,7 +939,9 @@ class ActionSignalGuide:
         """
         return self.performance_tracker.get_performance_summary()
 
-    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> PatternStats:
+    def get_pattern_statistics(
+        self, pattern_type: Optional[str] = None
+    ) -> PatternStats:
         """
         Get pattern statistics from PatternStatistics component.
 

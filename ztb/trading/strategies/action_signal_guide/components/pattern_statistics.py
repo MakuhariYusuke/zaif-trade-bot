@@ -6,13 +6,17 @@ Follows Single Responsibility Principle by focusing only on pattern statistics.
 """
 
 import time
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, TYPE_CHECKING
 from collections import defaultdict
 import statistics
 
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IPatternStatistics
+
+if TYPE_CHECKING:
+    from ..action_signal_guide import ActionSignal
+    from ..types import PatternStats, SignalMetadata
 
 
 class PatternStatistics(IPatternStatistics):
@@ -60,7 +64,7 @@ class PatternStatistics(IPatternStatistics):
         self.total_detections = 0
         self.total_successful_detections = 0
 
-    def record_pattern_detection(self, pattern_type: str, detected: bool, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def record_pattern_detection(self, pattern_type: str, detected: bool, metadata: Optional['SignalMetadata'] = None) -> None:
         """
         Record pattern detection attempt.
 
@@ -99,7 +103,7 @@ class PatternStatistics(IPatternStatistics):
         if len(self.temporal_patterns[pattern_type]) > 1000:
             self.temporal_patterns[pattern_type] = self.temporal_patterns[pattern_type][-500:]
 
-    def record_pattern_signal(self, pattern_type: str, signal: Any) -> None:
+    def record_pattern_signal(self, pattern_type: str, signal: 'ActionSignal') -> None:
         """
         Record pattern signal metrics.
 
@@ -163,7 +167,7 @@ class PatternStatistics(IPatternStatistics):
             combination_key = tuple(sorted(pattern_types))
             self.pattern_combinations[combination_key] += 1
 
-    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> 'PatternStats':
         """
         Get comprehensive pattern statistics.
 

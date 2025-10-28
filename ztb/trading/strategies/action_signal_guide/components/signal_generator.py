@@ -6,7 +6,7 @@ Follows Single Responsibility Principle by focusing only on signal generation.
 """
 
 import time
-from typing import List, Optional, TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 
@@ -15,22 +15,24 @@ from ztb.utils.logging_utils import get_logger
 from .interfaces import ISignalGenerator
 
 if TYPE_CHECKING:
-    from ..action_signal_guide import ActionSignal, GuidanceLevel, ActionSignalGuideConfig
+    from ..action_signal_guide import ActionSignal, ActionSignalGuideConfig
     from ..types import SignalList
 
 from ..pattern_recognition.base import PatternRecognizer
-from .interfaces import IPerformanceTracker, IPatternStatistics
+from .interfaces import IPatternStatistics, IPerformanceTracker
 
 
 def _get_action_signal_class():
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import ActionSignal
+
     return ActionSignal
 
 
 def _get_guidance_level_enum():
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import GuidanceLevel
+
     return GuidanceLevel
 
 
@@ -46,9 +48,9 @@ class SignalGenerator(ISignalGenerator):
 
     def __init__(
         self,
-        config: 'ActionSignalGuideConfig',
-        performance_tracker: Optional['IPerformanceTracker'] = None,
-        pattern_statistics: Optional['IPatternStatistics'] = None,
+        config: "ActionSignalGuideConfig",
+        performance_tracker: Optional["IPerformanceTracker"] = None,
+        pattern_statistics: Optional["IPatternStatistics"] = None,
     ) -> None:
         """
         Initialize SignalGenerator.
@@ -75,6 +77,10 @@ class SignalGenerator(ISignalGenerator):
 
         try:
             # Import all recognizer classes
+            from ..pattern_recognition.adx_patterns import ADXRecognizer
+            from ..pattern_recognition.bollinger_patterns import (
+                BollingerBandsRecognizer,
+            )
             from ..pattern_recognition.candlestick_patterns import (
                 BearishEngulfingRecognizer,
                 BullishEngulfingRecognizer,
@@ -88,6 +94,7 @@ class SignalGenerator(ISignalGenerator):
                 ThreeBlackCrowsRecognizer,
                 ThreeWhiteSoldiersRecognizer,
             )
+            from ..pattern_recognition.dow_theory import DowTheoryRecognizer
             from ..pattern_recognition.fibonacci_patterns import (
                 FibonacciExtensionRecognizer,
                 FibonacciProjectionRecognizer,
@@ -105,28 +112,25 @@ class SignalGenerator(ISignalGenerator):
                 CrabRecognizer,
                 GartleyRecognizer,
             )
-            from ..pattern_recognition.wave_counting import (
-                ImpulseWaveRecognizer,
-                CorrectiveWaveRecognizer,
-                WaveExtensionRecognizer,
-                WaveIRecognizer,
-                WaveVRecognizer,
-                WaveYRecognizer,
-                WavePRecognizer,
-                WaveNRecognizer,
-                WaveSRecognizer,
-            )
+            from ..pattern_recognition.heikin_ashi import HeikinAshiRecognizer
             from ..pattern_recognition.oscillator_patterns import (
                 CCIRecognizer,
+                MFIRecognizer,
                 StochasticRecognizer,
                 WilliamsRRecognizer,
-                MFIRecognizer,
             )
             from ..pattern_recognition.volume_patterns import ChaikinADRecognizer
-            from ..pattern_recognition.bollinger_patterns import BollingerBandsRecognizer
-            from ..pattern_recognition.adx_patterns import ADXRecognizer
-            from ..pattern_recognition.heikin_ashi_patterns import HeikinAshiRecognizer
-            from ..pattern_recognition.dow_theory import DowTheoryRecognizer
+            from ..pattern_recognition.wave_counting import (
+                CorrectiveWaveRecognizer,
+                ImpulseWaveRecognizer,
+                WaveExtensionRecognizer,
+                WaveIRecognizer,
+                WaveNRecognizer,
+                WavePRecognizer,
+                WaveSRecognizer,
+                WaveVRecognizer,
+                WaveYRecognizer,
+            )
 
             # Initialize all recognizers
             self.all_recognizers = [
@@ -142,26 +146,21 @@ class SignalGenerator(ISignalGenerator):
                 SakataFiveMethodsRecognizer(),
                 ThreeBlackCrowsRecognizer(),
                 ThreeWhiteSoldiersRecognizer(),
-
                 # Fibonacci patterns
                 FibonacciExtensionRecognizer(),
                 FibonacciProjectionRecognizer(),
                 FibonacciRetracementRecognizer(),
-
                 # Gann analysis
                 GannAngleRecognizer(),
                 GannSquareRecognizer(),
                 GannTimeClusterRecognizer(),
-
                 # Granville law
                 GranvilleLawRecognizer(),
-
                 # Harmonic patterns
                 BatRecognizer(),
                 ButterflyRecognizer(),
                 CrabRecognizer(),
                 GartleyRecognizer(),
-
                 # Wave counting
                 ImpulseWaveRecognizer(),
                 CorrectiveWaveRecognizer(),
@@ -172,25 +171,19 @@ class SignalGenerator(ISignalGenerator):
                 WavePRecognizer(),
                 WaveNRecognizer(),
                 WaveSRecognizer(),
-
                 # Oscillator patterns
                 CCIRecognizer(),
                 StochasticRecognizer(),
                 WilliamsRRecognizer(),
                 MFIRecognizer(),
-
                 # Volume patterns
                 ChaikinADRecognizer(),
-
                 # Bollinger patterns
                 BollingerBandsRecognizer(),
-
                 # ADX patterns
                 ADXRecognizer(),
-
                 # Heikin-Ashi patterns
                 HeikinAshiRecognizer(),
-
                 # Dow Theory
                 DowTheoryRecognizer(),
             ]
@@ -207,7 +200,12 @@ class SignalGenerator(ISignalGenerator):
             self.logger.error(f"Failed to initialize recognizers: {e}")
             self.all_recognizers = []
 
-    def generate_signal(self, observation: np.ndarray, step: int, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Any:
+    def generate_signal(
+        self,
+        observation: np.ndarray,
+        step: int,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Any:
         """
         Generate trading signal from observation.
 
@@ -229,16 +227,26 @@ class SignalGenerator(ISignalGenerator):
 
             for recognizer in self.all_recognizers:
                 try:
-                    signal_result = recognizer.recognize(observation, multi_timeframe_data=multi_timeframe_data)
+                    signal_result = recognizer.recognize(
+                        observation, multi_timeframe_data=multi_timeframe_data
+                    )
 
-                    if signal_result.detected:
+                    if signal_result is not None:
+                        # Create ActionSignal from pattern result
+                        import pandas as pd
                         action_signal = ActionSignal(
-                            action=signal_result.action,
+                            timestamp=pd.Timestamp.now(),
+                            direction=signal_result.direction,
                             strength=signal_result.strength,
-                            confidence=signal_result.confidence,
-                            pattern_type=recognizer.pattern_type,
-                            pattern_name=recognizer.name,
-                            metadata=signal_result.metadata
+                            signal_type=recognizer.pattern_type,
+                            description=f"{recognizer.name}: {signal_result.description}",
+                            metadata={
+                                **signal_result.metadata,
+                                "confidence": signal_result.confidence,
+                                "risk_level": signal_result.risk_level,
+                                "validity_period": signal_result.validity_period,
+                            },
+                            source_patterns=[recognizer.name],
                         )
 
                         all_signals.append(action_signal)
@@ -250,7 +258,9 @@ class SignalGenerator(ISignalGenerator):
 
                         # Record pattern statistics
                         if self.pattern_statistics:
-                            self.pattern_statistics.record_pattern_signal(pattern_type, action_signal)
+                            self.pattern_statistics.record_pattern_signal(
+                                pattern_type, action_signal
+                            )
 
                 except Exception as e:
                     self.logger.warning(f"Recognizer {recognizer.name} failed: {e}")
@@ -277,10 +287,8 @@ class SignalGenerator(ISignalGenerator):
             return ActionSignal.neutral()
 
     def _aggregate_signals(
-        self,
-        all_signals: 'SignalList',
-        pattern_signals: dict
-    ) -> 'ActionSignal':
+        self, all_signals: "SignalList", pattern_signals: dict
+    ) -> "ActionSignal":
         """
         Aggregate signals from multiple patterns based on guidance level.
 
@@ -302,55 +310,51 @@ class SignalGenerator(ISignalGenerator):
         if not filtered_signals:
             return ActionSignal.neutral()
 
-        # Aggregate by action type
-        buy_signals = [s for s in filtered_signals if s.action == 1]  # BUY
-        sell_signals = [s for s in filtered_signals if s.action == 2]  # SELL
-        hold_signals = [s for s in filtered_signals if s.action == 0]  # HOLD
-
-        # Calculate weighted strengths
-        buy_strength = sum(s.strength * s.confidence for s in buy_signals) / len(buy_signals) if buy_signals else 0
-        sell_strength = sum(s.strength * s.confidence for s in sell_signals) / len(sell_signals) if sell_signals else 0
-        hold_strength = sum(s.strength * s.confidence for s in hold_signals) / len(hold_signals) if hold_signals else 0
-
-        # Determine final action
-        max_strength = max(buy_strength, sell_strength, hold_strength)
-
-        if max_strength == 0:
+        # Aggregate signals using weighted average of directions
+        if not filtered_signals:
             return ActionSignal.neutral()
 
-        if buy_strength == max_strength:
-            action = 1  # BUY
-            strength = buy_strength
-            confidence = sum(s.confidence for s in buy_signals) / len(buy_signals)
-        elif sell_strength == max_strength:
-            action = 2  # SELL
-            strength = sell_strength
-            confidence = sum(s.confidence for s in sell_signals) / len(sell_signals)
-        else:
-            action = 0  # HOLD
-            strength = hold_strength
-            confidence = sum(s.confidence for s in hold_signals) / len(hold_signals)
+        # Calculate weighted direction (continuous value from -1.0 to 1.0)
+        total_weight = sum(s.strength * s.confidence for s in filtered_signals)
+        if total_weight == 0:
+            return ActionSignal.neutral()
+
+        # Weighted average of directions
+        weighted_direction = sum(s.direction * s.strength * s.confidence for s in filtered_signals) / total_weight
+
+        # Clamp to [-1.0, 1.0] range
+        direction = max(-1.0, min(1.0, weighted_direction))
+
+        # Calculate overall strength as the magnitude of the weighted direction
+        strength = abs(direction)
+
+        # Calculate average confidence
+        confidence = sum(s.confidence for s in filtered_signals) / len(filtered_signals)
 
         # Create metadata
         metadata = {
-            'total_signals': len(filtered_signals),
-            'buy_signals': len(buy_signals),
-            'sell_signals': len(sell_signals),
-            'hold_signals': len(hold_signals),
-            'pattern_types': list(pattern_signals.keys()),
-            'guidance_level': self.guidance_level.value
+            "total_signals": len(filtered_signals),
+            "buy_signals": len(buy_signals),
+            "sell_signals": len(sell_signals),
+            "hold_signals": len(hold_signals),
+            "pattern_types": list(pattern_signals.keys()),
+            "guidance_level": self.guidance_level.value,
+            "confidence": confidence,
         }
 
+        # Create final ActionSignal
+        import pandas as pd
         return ActionSignal(
-            action=action,
+            timestamp=pd.Timestamp.now(),
+            direction=direction,
             strength=strength,
-            confidence=confidence,
-            pattern_type='aggregated',
-            pattern_name='multi_pattern_aggregate',
-            metadata=metadata
+            signal_type="aggregated",
+            description=f"Multi-pattern aggregate signal ({len(filtered_signals)} patterns)",
+            metadata=metadata,
+            source_patterns=list(pattern_signals.keys()),
         )
 
-    def _filter_by_guidance_level(self, signals: 'SignalList') -> 'SignalList':
+    def _filter_by_guidance_level(self, signals: "SignalList") -> "SignalList":
         """
         Filter signals based on guidance level.
 
