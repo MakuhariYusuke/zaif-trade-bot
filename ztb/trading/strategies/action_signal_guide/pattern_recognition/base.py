@@ -18,7 +18,7 @@ class SignalResult:
         self,
         signal_type: str,
         strength: float,
-        direction: int,  # 1 for buy, -1 for sell, 0 for neutral
+        direction: float,  # Continuous value from -1.0 (strong sell) to 1.0 (strong buy), 0.0 for neutral
         description: str,
         timestamp: Optional[Any] = None,
         confidence: Optional[float] = None,
@@ -66,7 +66,7 @@ class PatternRecognizer(ABC):
             raise ValueError(f"Config 'enabled' must be boolean for {self.name}")
 
     @abstractmethod
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(self, data: pd.DataFrame, index: int = -1, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Optional[SignalResult]:
         """
         Recognize pattern in the given data at the specified index.
 
@@ -79,7 +79,7 @@ class PatternRecognizer(ABC):
         """
         pass
 
-    def recognize_with_cache(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize_with_cache(self, data: pd.DataFrame, index: int = -1, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Optional[SignalResult]:
         """
         Recognize pattern with caching to avoid redundant calculations.
 
@@ -98,7 +98,7 @@ class PatternRecognizer(ABC):
                 return cached_signal
 
         # Calculate new signal
-        signal = self.recognize(data, index)
+        signal = self.recognize(data, index, multi_timeframe_data)
         self._signal_cache[cache_key] = signal
         return signal
 

@@ -5,20 +5,15 @@ This module provides specific type aliases and definitions to replace generic An
 used in the ActionSignalGuide system.
 """
 
-from typing import Dict, List, Optional, Union, Any
-from dataclasses import dataclass
-
-# Import existing types
-from .action_signal_guide import ActionSignal, ActionSignalGuideConfig, GuidanceLevel
-
+from typing import Any, Dict, List, Union
 
 # Type aliases for configuration
 SignalConfig = Dict[str, Any]  # Generic signal configuration
 PatternConfig = Dict[str, Any]  # Pattern-specific configuration
 
-# Type aliases for signals and results
-SignalList = List[ActionSignal]
-SignalHistory = List[ActionSignal]
+# Type aliases for signals and results (using string forward references)
+SignalList = List["ActionSignal"]  # type: ignore
+SignalHistory = List["ActionSignal"]  # type: ignore
 
 # Type aliases for statistics and metrics
 PerformanceStats = Dict[str, Union[int, float, Dict[str, Union[int, float]]]]
@@ -30,5 +25,5 @@ SignalMetadata = Dict[str, Any]
 StatisticsMetadata = Dict[str, Any]
 
 # Union types for flexible inputs
-ConfigInput = Union[ActionSignalGuideConfig, Dict[str, Any], None]
-GuidanceInput = Union[GuidanceLevel, str, None]
+ConfigInput = Union["ActionSignalGuideConfig", Dict[str, Any], None]  # type: ignore
+GuidanceInput = Union["GuidanceLevel", str, None]  # type: ignore

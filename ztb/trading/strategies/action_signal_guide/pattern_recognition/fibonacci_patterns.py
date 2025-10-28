@@ -5,7 +5,7 @@ This module provides pattern recognition for Fibonacci-based technical analysis,
 including retracements, extensions, projections, and Fibonacci-based patterns.
 """
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
@@ -44,7 +44,9 @@ class FibonacciAnalyzer:
         return levels
 
     @staticmethod
-    def calculate_deviation_from_ideal(actual_ratio: float, target_level: float) -> float:
+    def calculate_deviation_from_ideal(
+        actual_ratio: float, target_level: float
+    ) -> float:
         """
         Calculate deviation from ideal Fibonacci level.
 
@@ -74,7 +76,7 @@ class FibonacciAnalyzer:
     def validate_with_multi_timeframe(
         actual_ratio: float,
         target_level: float,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
     ) -> float:
         """
         Validate Fibonacci level using multi-timeframe confirmation.
@@ -92,7 +94,7 @@ class FibonacciAnalyzer:
 
         try:
             # Check if higher timeframe supports the pattern
-            higher_tf_trend = multi_timeframe_data.get('higher_timeframe_trend', 0)
+            higher_tf_trend = multi_timeframe_data.get("higher_timeframe_trend", 0)
 
             # Fibonacci levels are more reliable when aligned with higher timeframe
             if abs(higher_tf_trend) > 0.5:  # Strong trend in higher timeframe
@@ -106,6 +108,13 @@ class FibonacciAnalyzer:
 
         except Exception:
             return 0.5  # Fallback to neutral
+
+    @staticmethod
+    def calculate_fibonacci_strength(
+        actual_ratio: float,
+        target_level: float,
+        level_significance: float
+    ) -> float:
         """
         Calculate overall Fibonacci pattern strength.
 
@@ -128,7 +137,13 @@ class FibonacciAnalyzer:
         strength = base_strength * (1.0 - deviation_score * 0.5)
 
         return max(0.0, min(1.0, strength))
-        """Find if price has retraced to a Fibonacci level within a swing."""
+
+    @staticmethod
+    def find_fibonacci_retracement(
+        data: pd.DataFrame,
+        start_idx: int,
+        end_idx: int
+    ) -> Optional[Dict[str, Any]]:
         if start_idx >= end_idx or end_idx >= len(data):
             return None
 
@@ -170,11 +185,17 @@ class FibonacciRetracementRecognizer(PatternRecognizer):
     """Recognizes Fibonacci retracement levels in price action."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.min_swing_length = config.get('min_swing_length', 5) if config else 5
-        self.max_swing_length = config.get('max_swing_length', 50) if config else 50
+        super().__init__(config)
+        self.min_swing_length = config.get("min_swing_length", 5) if config else 5
+        self.max_swing_length = config.get("max_swing_length", 50) if config else 50
         self.fib_analyzer = FibonacciAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Fibonacci retracement at the given index."""
         if index < self.max_swing_length:
             return None
@@ -193,7 +214,8 @@ class FibonacciRetracementRecognizer(PatternRecognizer):
                 level = fib_retracement["level"]
                 direction = (
                     1
-                    if float(data.iloc[index]["close"]) > float(data.iloc[start_idx]["close"])
+                    if float(data.iloc[index]["close"])
+                    > float(data.iloc[start_idx]["close"])
                     else -1
                 )
 
@@ -254,8 +276,9 @@ class FibonacciExtensionRecognizer(PatternRecognizer):
     """Recognizes Fibonacci extension targets."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.min_swing_length = config.get('min_swing_length', 5) if config else 5
-        self.max_swing_length = config.get('max_swing_length', 50) if config else 50
+        super().__init__(config)
+        self.min_swing_length = config.get("min_swing_length", 5) if config else 5
+        self.max_swing_length = config.get("max_swing_length", 50) if config else 50
         self.fib_analyzer = FibonacciAnalyzer()
 
     def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
@@ -320,8 +343,9 @@ class FibonacciProjectionRecognizer(PatternRecognizer):
     """Recognizes Fibonacci price projections from multiple swings."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.min_swing_length = config.get('min_swing_length', 3) if config else 3
-        self.max_lookback = config.get('max_lookback', 20) if config else 20
+        super().__init__(config)
+        self.min_swing_length = config.get("min_swing_length", 3) if config else 3
+        self.max_lookback = config.get("max_lookback", 20) if config else 20
         self.fib_analyzer = FibonacciAnalyzer()
 
     def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
