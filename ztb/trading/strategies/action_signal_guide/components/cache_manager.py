@@ -6,7 +6,7 @@ Follows Single Responsibility Principle by focusing only on caching operations.
 """
 
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 from collections import OrderedDict
 
 import numpy as np
@@ -14,6 +14,10 @@ import numpy as np
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import ICacheManager
+
+if TYPE_CHECKING:
+    from ..action_signal_guide import ActionSignal
+    from ..types import CacheStats
 
 
 class CacheManager(ICacheManager):
@@ -41,7 +45,7 @@ class CacheManager(ICacheManager):
 
         # Cache storage: OrderedDict for LRU behavior
         self.observation_cache: OrderedDict[str, Tuple[np.ndarray, float]] = OrderedDict()
-        self.signal_cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
+        self.signal_cache: OrderedDict[str, Tuple['ActionSignal', float]] = OrderedDict()
         self.computation_cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
 
         # Statistics
@@ -71,7 +75,7 @@ class CacheManager(ICacheManager):
         """
         self._put_in_cache(self.observation_cache, key, observation)
 
-    def get_cached_signal(self, key: str) -> Optional[Any]:
+    def get_cached_signal(self, key: str) -> Optional['ActionSignal']:
         """
         Retrieve cached signal.
 
@@ -83,7 +87,7 @@ class CacheManager(ICacheManager):
         """
         return self._get_from_cache(self.signal_cache, key)
 
-    def cache_signal(self, key: str, signal: Any) -> None:
+    def cache_signal(self, key: str, signal: 'ActionSignal') -> None:
         """
         Cache signal data.
 
@@ -144,7 +148,7 @@ class CacheManager(ICacheManager):
             total_removed = len(obs_keys_to_remove) + len(sig_keys_to_remove) + len(comp_keys_to_remove)
             self.logger.info(f"Invalidated {total_removed} cache entries matching pattern: {pattern}")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> 'CacheStats':
         """
         Get cache statistics.
 

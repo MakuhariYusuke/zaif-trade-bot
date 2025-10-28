@@ -101,25 +101,44 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
     def _analyze_trend(self, current: pd.Series, previous: pd.Series) -> Optional[Dict[str, Any]]:
         """
-        Analyze trend based on Heikin-Ashi candle patterns.
+        Analyze trend based on Heikin-Ashi candle patterns using ratio-based measurements.
 
         Returns signal dictionary or None if no clear signal.
         """
         # Determine candle colors
-        current_green = current['HA_Close'] > current['HA_Open']
-        previous_green = previous['HA_Close'] > previous['HA_Open']
+        current_green = float(current['HA_Close']) > float(current['HA_Open'])
+        previous_green = float(previous['HA_Close']) > float(previous['HA_Open'])
 
-        # Calculate trend strength
-        body_ratio = current['HA_Body'] / (current['HA_High'] - current['HA_Low'])
-        trend_strength = abs(current['HA_Close'] - current['HA_Open']) / current['HA_Open']
+        # Calculate ratio-based trend strength
+        # Use body-to-range ratio for more accurate trend measurement
+        current_range = float(current['HA_High'] - current['HA_Low'])
+        current_body = abs(float(current['HA_Close']) - float(current['HA_Open']))
+
+        if current_range > 0:
+            body_to_range_ratio = current_body / current_range
+        else:
+            body_to_range_ratio = 0.0
+
+        # Calculate trend momentum using price change ratios
+        prev_open = float(previous['HA_Open'])
+        if prev_open > 0:
+            trend_momentum = (float(current['HA_Close']) - float(previous['HA_Close'])) / prev_open
+        else:
+            trend_momentum = 0.0
+
+        # Combine body ratio and momentum for overall strength
+        trend_strength = (body_to_range_ratio * 0.6) + (abs(trend_momentum) * 0.4)
+
+        # Ensure reasonable bounds
+        trend_strength = min(1.0, max(0.0, trend_strength))
 
         # Strong trend signals
         if trend_strength > self.trend_threshold:
             # Bullish trend continuation (green candle after green)
             if current_green and previous_green:
-                if current['HA_Close'] > previous['HA_Close']:
+                if float(current['HA_Close']) > float(previous['HA_Close']):
                     return {
-                        'direction': ACTION_BUY,
+                        'direction': 1.0,  # Strong bullish signal
                         'strength': trend_strength,
                         'description': f"Heikin-Ashi: Strong bullish trend continuation (strength: {trend_strength:.4f})",
                         'confidence': min(0.9, trend_strength * 100)
@@ -127,9 +146,9 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
             # Bearish trend continuation (red candle after red)
             elif not current_green and not previous_green:
-                if current['HA_Close'] < previous['HA_Close']:
+                if float(current['HA_Close']) < float(previous['HA_Close']):
                     return {
-                        'direction': ACTION_SELL,
+                        'direction': -1.0,  # Strong bearish signal
                         'strength': trend_strength,
                         'description': f"Heikin-Ashi: Strong bearish trend continuation (strength: {trend_strength:.4f})",
                         'confidence': min(0.9, trend_strength * 100)
@@ -138,9 +157,9 @@ class HeikinAshiRecognizer(PatternRecognizer):
         # Reversal signals
         # Bullish reversal (green after red)
         if current_green and not previous_green:
-            if current['HA_Close'] > previous['HA_Open']:
+            if float(current['HA_Close']) > float(previous['HA_Open']):
                 return {
-                    'direction': ACTION_BUY,
+                    'direction': 0.7,  # Moderate bullish signal
                     'strength': trend_strength,
                     'description': f"Heikin-Ashi: Bullish reversal signal (strength: {trend_strength:.4f})",
                     'confidence': min(0.7, trend_strength * 50)
@@ -148,18 +167,18 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
         # Bearish reversal (red after green)
         elif not current_green and previous_green:
-            if current['HA_Close'] < previous['HA_Open']:
+            if float(current['HA_Close']) < float(previous['HA_Open']):
                 return {
-                    'direction': ACTION_SELL,
+                    'direction': -0.7,  # Moderate bearish signal
                     'strength': trend_strength,
                     'description': f"Heikin-Ashi: Bearish reversal signal (strength: {trend_strength:.4f})",
                     'confidence': min(0.7, trend_strength * 50)
                 }
 
         # Doji or weak signals - neutral
-        if body_ratio < 0.1:  # Very small body indicates indecision
+        if body_to_range_ratio < 0.1:  # Very small body indicates indecision
             return {
-                'direction': ACTION_HOLD,
+                'direction': 0.0,  # Neutral signal
                 'strength': 0.1,
                 'description': "Heikin-Ashi: Indecision/Doji pattern detected",
                 'confidence': 0.5
