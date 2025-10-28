@@ -14,6 +14,8 @@ Example:
 from typing import Any, Dict, List, Optional
 
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
+from ztb.trading.environment.utils.config import EnvironmentConfig as TradingEnvironmentConfig
+from ztb.training.config.ppo_config import PPOConfig
 from ztb.training.core.config_manager import ConfigManager
 from ztb.utils.logging_utils import get_logger
 
@@ -21,9 +23,9 @@ logger = get_logger(__name__)
 
 # Type aliases
 MemoryOptimizationConfig = Dict[str, Optional[int]]
-EnvironmentConfig = Dict[str, Any]
-PPOCoreConfig = Dict[str, Any]
-UnifiedConfig = Dict[str, Any]
+EnvironmentConfig = TradingEnvironmentConfig
+PPOCoreConfig = PPOConfig
+UnifiedConfig = Dict[str, Any]  # TODO: Define proper UnifiedConfig type
 
 
 class ConfigBuilder:

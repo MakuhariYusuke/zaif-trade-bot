@@ -232,7 +232,7 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
 }
 
 
-def get_ppo_config(overrides: Optional[Dict[str, Any]] = None) -> PPOConfig:
+def get_ppo_config(overrides: Optional[PPOConfig] = None) -> PPOConfig:
     """
     Get PPO configuration with optional parameter overrides.
 
@@ -252,7 +252,7 @@ def get_ppo_config(overrides: Optional[Dict[str, Any]] = None) -> PPOConfig:
         >>> print(config["learning_rate"])  # 0.0001
         >>> print(config["batch_size"])     # 128
     """
-    config: Dict[str, Any] = dict(DEFAULT_PPO_CONFIG)
+    config: PPOConfig = dict(DEFAULT_PPO_CONFIG)
     if overrides:
         config.update(overrides)
     return config  # type: ignore[return-value]

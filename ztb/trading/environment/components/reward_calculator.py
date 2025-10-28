@@ -8,7 +8,7 @@ Refactored to follow SOLID principles with component-based architecture.
 # mypy: disable-error-code=literal-required
 
 import math
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 import numpy as np
 
@@ -21,7 +21,7 @@ from ztb.trading.constants import (
     MULTIPLIER_INDEX_SELL,
 )
 from ztb.trading.environment.constants import EPSILON
-from ztb.trading.environment.utils.config import RewardSettings
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.utils.logging_utils import get_logger
 
 from .asymmetric_reward_scaler import AsymmetricRewardScaler
@@ -46,7 +46,7 @@ class RewardCalculator:
 
     def __init__(
         self,
-        config: Any,  # EnvironmentConfig
+        config: EnvironmentConfig,  # EnvironmentConfig
         reward_settings: RewardSettings,
         initial_portfolio_value: float,
     ):
@@ -216,7 +216,7 @@ class RewardCalculator:
         pnl: float,
         old_position: float,
         step: int,
-        observation: Optional[Any],
+        observation: Optional[np.ndarray],
         reward_history: List[float],
         portfolio_value_history: List[float],
     ) -> float:
@@ -948,7 +948,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
-        observation: Optional[Any],
+        observation: Optional[np.ndarray],
     ) -> float:
         """Stage 2: PnL-focused reward with trend analysis."""
         base_profit_bonus = (
@@ -1317,7 +1317,7 @@ class RewardCalculator:
         if self.signal_integration is not None:
             self.signal_integration.reset_stats()
 
-    def _convert_continuous_to_discrete_action(self, action: Any) -> int:
+    def _convert_continuous_to_discrete_action(self, action: Union[float, np.ndarray]) -> int:
         """
         Convert continuous action from SAC to discrete action.
 

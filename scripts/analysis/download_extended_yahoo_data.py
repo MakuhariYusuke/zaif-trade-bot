@@ -6,22 +6,23 @@ This script retrieves longer historical data from Yahoo Finance for comprehensiv
 backtesting of the Action Signal Guide patterns.
 """
 
+import logging
+from datetime import datetime
+from pathlib import Path
+
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
-import logging
-import os
-from pathlib import Path
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def download_extended_yahoo_data(
     symbol: str = "BTC-JPY",
     start_date: str = "2020-01-01",
     end_date: str = None,
-    interval: str = "1h"
+    interval: str = "1h",
 ) -> pd.DataFrame:
     """
     Download extended historical data from Yahoo Finance.
@@ -38,16 +39,14 @@ def download_extended_yahoo_data(
     if end_date is None:
         end_date = datetime.now().strftime("%Y-%m-%d")
 
-    logger.info(f"Downloading {symbol} data from {start_date} to {end_date} (interval: {interval})")
+    logger.info(
+        f"Downloading {symbol} data from {start_date} to {end_date} (interval: {interval})"
+    )
 
     try:
         # Download data
         data = yf.download(
-            symbol,
-            start=start_date,
-            end=end_date,
-            interval=interval,
-            progress=False
+            symbol, start=start_date, end=end_date, interval=interval, progress=False
         )
 
         if data.empty:
@@ -56,14 +55,16 @@ def download_extended_yahoo_data(
 
         # Clean column names
         data.columns = data.columns.str.lower()
-        data = data.rename(columns={
-            'open': 'open',
-            'high': 'high',
-            'low': 'low',
-            'close': 'close',
-            'adj close': 'adj_close',
-            'volume': 'volume'
-        })
+        data = data.rename(
+            columns={
+                "open": "open",
+                "high": "high",
+                "low": "low",
+                "close": "close",
+                "adj close": "adj_close",
+                "volume": "volume",
+            }
+        )
 
         # Reset index to have timestamp as column
         data = data.reset_index()
@@ -74,6 +75,7 @@ def download_extended_yahoo_data(
     except Exception as e:
         logger.error(f"Error downloading data: {e}")
         return pd.DataFrame()
+
 
 def save_extended_dataset(data: pd.DataFrame, output_path: Path) -> None:
     """
@@ -88,12 +90,12 @@ def save_extended_dataset(data: pd.DataFrame, output_path: Path) -> None:
         return
 
     # Save as CSV
-    csv_path = output_path.with_suffix('.csv')
+    csv_path = output_path.with_suffix(".csv")
     data.to_csv(csv_path, index=False)
     logger.info(f"Saved CSV: {csv_path}")
 
     # Save as pickle for faster loading
-    pkl_path = output_path.with_suffix('.pkl')
+    pkl_path = output_path.with_suffix(".pkl")
     data.to_pickle(pkl_path)
     logger.info(f"Saved pickle: {pkl_path}")
 
@@ -101,6 +103,7 @@ def save_extended_dataset(data: pd.DataFrame, output_path: Path) -> None:
     logger.info(f"Data range: {data['timestamp'].min()} to {data['timestamp'].max()}")
     logger.info(f"Total records: {len(data)}")
     logger.info(f"Missing values: {data.isnull().sum().sum()}")
+
 
 def main():
     """Main function to download extended Yahoo Finance data."""
@@ -121,15 +124,12 @@ def main():
 
     # Download data
     data = download_extended_yahoo_data(
-        symbol=symbol,
-        start_date=start_date,
-        end_date=end_date,
-        interval=interval
+        symbol=symbol, start_date=start_date, end_date=end_date, interval=interval
     )
 
     if not data.empty:
         # Basic data validation
-        required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+        required_columns = ["timestamp", "open", "high", "low", "close", "volume"]
         missing_columns = [col for col in required_columns if col not in data.columns]
 
         if missing_columns:
@@ -147,19 +147,20 @@ def main():
             "interval": interval,
             "total_records": len(data),
             "date_range": {
-                "start": str(data['timestamp'].min()),
-                "end": str(data['timestamp'].max())
+                "start": str(data["timestamp"].min()),
+                "end": str(data["timestamp"].max()),
             },
             "data_quality": {
                 "missing_values": data.isnull().sum().to_dict(),
-                "duplicates": data.duplicated().sum()
-            }
+                "duplicates": data.duplicated().sum(),
+            },
         }
 
         # Save summary
-        summary_path = output_base.with_suffix('.json')
+        summary_path = output_base.with_suffix(".json")
         import json
-        with open(summary_path, 'w') as f:
+
+        with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2, default=str)
 
         logger.info(f"Extended dataset created successfully: {output_base}")
@@ -167,6 +168,7 @@ def main():
 
     else:
         logger.error("Failed to download extended dataset")
+
 
 if __name__ == "__main__":
     main()
