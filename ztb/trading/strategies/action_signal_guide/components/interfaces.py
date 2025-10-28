@@ -12,13 +12,14 @@ import numpy as np
 
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal, GuidanceLevel
+    from ..types import SignalList, PerformanceStats, PatternStats, CacheStats
 
 
 class ISignalGenerator(ABC):
     """Interface for signal generation."""
 
     @abstractmethod
-    def generate_signal(self, observation: np.ndarray, step: int) -> Any:
+    def generate_signal(self, observation: np.ndarray, step: int) -> 'ActionSignal':
         """
         Generate trading signal from observation.
 
@@ -41,7 +42,7 @@ class ICacheManager(ABC):
     """Interface for signal caching."""
 
     @abstractmethod
-    def get_cached_signal(self, cache_key: str) -> Optional[Any]:
+    def get_cached_signal(self, cache_key: str) -> Optional['ActionSignal']:
         """
         Get cached signal if available and valid.
 
@@ -54,7 +55,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def cache_signal(self, cache_key: str, signal: Any) -> None:
+    def cache_signal(self, cache_key: str, signal: 'ActionSignal') -> None:
         """
         Cache a signal.
 
@@ -80,7 +81,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> 'CacheStats':
         """
         Get cache statistics.
 
@@ -114,7 +115,7 @@ class IPerformanceTracker(ABC):
         pass
 
     @abstractmethod
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> 'PerformanceStats':
         """
         Get performance statistics.
 
@@ -128,7 +129,7 @@ class IPatternStatistics(ABC):
     """Interface for pattern statistics tracking."""
 
     @abstractmethod
-    def record_pattern_signal(self, pattern_type: str, signal: Any) -> None:
+    def record_pattern_signal(self, pattern_type: str, signal: 'ActionSignal') -> None:
         """
         Record pattern signal statistics.
 
@@ -139,7 +140,7 @@ class IPatternStatistics(ABC):
         pass
 
     @abstractmethod
-    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> 'PatternStats':
         """
         Get pattern statistics.
 

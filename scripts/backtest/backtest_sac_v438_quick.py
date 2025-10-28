@@ -1,12 +1,10 @@
-#!/usr/bin/env python3#!/usr/bin/env python3#!/usr/bin/env python3#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 """
 
-Quick SAC v438.1 Backtest"""
+Quick SAC v438.1 Backtest - Bull/Bear Balanced Features Test
 
 """
-
-Quick SAC v438.1 Backtest - Bull/Bear Balanced Features Test""""""
 
 import sys
 
