@@ -6,13 +6,16 @@ Follows Single Responsibility Principle by focusing only on performance tracking
 """
 
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, TYPE_CHECKING
 from collections import defaultdict
 import statistics
 
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IPerformanceTracker
+
+if TYPE_CHECKING:
+    from ..types import PerformanceStats
 
 
 class PerformanceTracker(IPerformanceTracker):

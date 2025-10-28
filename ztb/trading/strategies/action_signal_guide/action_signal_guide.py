@@ -21,6 +21,13 @@ from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.statistics import calculate_autocorrelation, detect_outliers_iqr, rolling_statistics
 from ztb.utils.safety import safe_to_float, safe_get_nested_value, safe_divide, validate_range
 
+# Import types
+from .types import (
+    SignalConfig, PatternConfig, SignalList, SignalHistory,
+    PerformanceStats, PatternStats, CacheStats,
+    SignalMetadata, StatisticsMetadata, ConfigInput, GuidanceInput
+)
+
 # Import components
 from .components.interfaces import ISignalGenerator, ICacheManager, IPerformanceTracker, IPatternStatistics
 from .components.signal_generator import SignalGenerator
@@ -31,7 +38,7 @@ from .components.pattern_statistics import PatternStatistics
 from .pattern_recognition.candlestick_patterns import (
     BearishEngulfingRecognizer,
     BullishEngulfingRecognizer,
-    EveningStar,
+    EveningStarRecognizer,
     HammerRecognizer,
     HangingManRecognizer,
     MorningStarRecognizer,
@@ -80,19 +87,19 @@ from .pattern_recognition.oscillator_patterns import (
 from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 
 
-def _get_action_signal_guide_config():
+def _get_action_signal_guide_config() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignalGuideConfig
     return ActionSignalGuideConfig
 
 
-def _get_guidance_level_enum():
+def _get_guidance_level_enum() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import GuidanceLevel
     return GuidanceLevel
 
 
-def _get_action_signal_class():
+def _get_action_signal_class() -> Any:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignal
     return ActionSignal
@@ -162,7 +169,7 @@ class RecognizerConfig:
     name: str
     enabled: bool = True
     weight: float = 1.0
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[PatternConfig] = None
     group: str = "default"
 
 
@@ -305,7 +312,7 @@ class ActionSignal:
     strength: float  # 0.0 to 1.0
     signal_type: str
     description: str
-    metadata: Dict[str, Any]
+    metadata: SignalMetadata
     source_patterns: List[str]  # List of pattern names that contributed
 
     @classmethod
@@ -334,8 +341,8 @@ class ActionSignalGuide:
 
     def __init__(
         self,
-        guidance_level: Any = None,
-        config: Any = None
+        guidance_level: GuidanceInput = None,
+        config: ConfigInput = None
     ) -> None:
         # Lazy import to avoid circular imports
         ActionSignalGuideConfig = _get_action_signal_guide_config()
@@ -371,8 +378,19 @@ class ActionSignalGuide:
             pattern_statistics=self.pattern_statistics
         )
 
+        # Initialize multi-timeframe feature system for enhanced pattern validation
+        try:
+            from ztb.features.multi_timeframe import create_multi_timeframe_system
+            self.multi_timeframe_system = create_multi_timeframe_system()
+            self.use_multi_timeframe = True
+            self.logger.info("Multi-timeframe feature system initialized")
+        except ImportError:
+            self.multi_timeframe_system = None
+            self.use_multi_timeframe = False
+            self.logger.warning("Multi-timeframe feature system not available")
+
         # Signal history for context
-        self.signal_history: List[Any] = []
+        self.signal_history: SignalHistory = []
 
         # Feature names for observation conversion
         self.feature_names: Optional[List[str]] = None
@@ -542,8 +560,8 @@ class ActionSignalGuide:
             )
 
         # Initialize caching (always initialize, but only use if enabled)
-        self._signal_cache = {}
-        self._cache_timestamps = {}
+        self._signal_cache: Dict[str, Any] = {}
+        self._cache_timestamps: Dict[str, float] = {}
 
     def _ensure_recognizers_loaded(self) -> None:
         """Ensure all recognizers are loaded for lazy loading mode."""
@@ -661,7 +679,7 @@ class ActionSignalGuide:
 
     def generate_signals(
         self, data: pd.DataFrame, current_index: int
-    ) -> List[Any]:
+    ) -> SignalList:
         """
         Generate action signals for the current market data.
 
@@ -699,9 +717,26 @@ class ActionSignalGuide:
             self.performance_tracker.record_cache_operation(processing_time, hit=False)
             return []
 
+        # Generate multi-timeframe features if available
+        multi_timeframe_data = None
+        if self.use_multi_timeframe and self.multi_timeframe_system:
+            try:
+                # Generate multi-timeframe features for enhanced pattern validation
+                mtf_features = self.multi_timeframe_system.process_multi_timeframe_data(
+                    data, current_timeframe='1h'  # Assume 1h, could be parameterized
+                )
+                multi_timeframe_data = {
+                    'higher_timeframe_trend': mtf_features.get('trend_strength', 0),
+                    'multi_timeframe_support': mtf_features.get('support_resistance', {}),
+                    'timeframe_alignment': mtf_features.get('timeframe_alignment', 0.5)
+                }
+            except Exception as e:
+                self.logger.warning(f"Failed to generate multi-timeframe features: {e}")
+                multi_timeframe_data = None
+
         # Generate signal using SignalGenerator component
         try:
-            signal = self.signal_generator.generate_signal(observation, current_index)
+            signal = self.signal_generator.generate_signal(observation, current_index, multi_timeframe_data)
 
             # Convert component signal to legacy ActionSignal format
             action_signals = self._convert_to_legacy_signals(signal, data, current_index)
@@ -761,8 +796,8 @@ class ActionSignalGuide:
         return np.array(observation_data, dtype=np.float32)
 
     def _convert_to_legacy_signals(
-        self, signal: Any, data: pd.DataFrame, current_index: int
-    ) -> List[Any]:
+        self, signal: ActionSignal, data: pd.DataFrame, current_index: int
+    ) -> SignalList:
         """
         Convert SignalGenerator output to legacy ActionSignal format.
 
@@ -837,8 +872,8 @@ class ActionSignalGuide:
             raise ValueError(f"Unknown guidance level: {self.guidance_level}")
 
     def _filter_and_prioritize_signals(
-        self, signals: List[Any]
-    ) -> List[Any]:
+        self, signals: SignalList
+    ) -> SignalList:
         """Filter and prioritize signals to avoid conflicts and redundancy."""
         if not signals:
             return signals
@@ -878,7 +913,7 @@ class ActionSignalGuide:
 
     # Component-based public API methods
 
-    def get_performance_summary(self) -> Dict[str, Any]:
+    def get_performance_summary(self) -> PerformanceStats:
         """
         Get comprehensive performance summary from PerformanceTracker.
 
@@ -887,7 +922,7 @@ class ActionSignalGuide:
         """
         return self.performance_tracker.get_performance_summary()
 
-    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_pattern_statistics(self, pattern_type: Optional[str] = None) -> PatternStats:
         """
         Get pattern statistics from PatternStatistics component.
 
@@ -899,7 +934,7 @@ class ActionSignalGuide:
         """
         return self.pattern_statistics.get_pattern_statistics(pattern_type)
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> CacheStats:
         """
         Get cache statistics from CacheManager.
 
@@ -921,4 +956,4 @@ class ActionSignalGuide:
         """
         self.performance_tracker.reset_metrics()
         self.pattern_statistics.reset_statistics()
-        self.logger.info("Statistics reset")
+        self.logger.info("Statistics reset")

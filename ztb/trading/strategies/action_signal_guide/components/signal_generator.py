@@ -16,8 +16,10 @@ from .interfaces import ISignalGenerator
 
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal, GuidanceLevel, ActionSignalGuideConfig
+    from ..types import SignalList
 
 from ..pattern_recognition.base import PatternRecognizer
+from .interfaces import IPerformanceTracker, IPatternStatistics
 
 
 def _get_action_signal_class():
@@ -44,10 +46,10 @@ class SignalGenerator(ISignalGenerator):
 
     def __init__(
         self,
-        config: Any,
+        config: 'ActionSignalGuideConfig',
         performance_tracker: Optional['IPerformanceTracker'] = None,
         pattern_statistics: Optional['IPatternStatistics'] = None,
-    ):
+    ) -> None:
         """
         Initialize SignalGenerator.
 
@@ -205,7 +207,7 @@ class SignalGenerator(ISignalGenerator):
             self.logger.error(f"Failed to initialize recognizers: {e}")
             self.all_recognizers = []
 
-    def generate_signal(self, observation: np.ndarray, step: int) -> Any:
+    def generate_signal(self, observation: np.ndarray, step: int, multi_timeframe_data: Optional[Dict[str, Any]] = None) -> Any:
         """
         Generate trading signal from observation.
 
@@ -221,13 +223,13 @@ class SignalGenerator(ISignalGenerator):
         try:
             # Generate signals from all recognizers
             all_signals = []
-            pattern_signals = {}
+            pattern_signals: Dict[str, List[Any]] = {}
 
             ActionSignal = _get_action_signal_class()
 
             for recognizer in self.all_recognizers:
                 try:
-                    signal_result = recognizer.recognize(observation)
+                    signal_result = recognizer.recognize(observation, multi_timeframe_data=multi_timeframe_data)
 
                     if signal_result.detected:
                         action_signal = ActionSignal(
@@ -276,9 +278,9 @@ class SignalGenerator(ISignalGenerator):
 
     def _aggregate_signals(
         self,
-        all_signals: List[Any],
+        all_signals: 'SignalList',
         pattern_signals: dict
-    ) -> Any:
+    ) -> 'ActionSignal':
         """
         Aggregate signals from multiple patterns based on guidance level.
 
@@ -348,7 +350,7 @@ class SignalGenerator(ISignalGenerator):
             metadata=metadata
         )
 
-    def _filter_by_guidance_level(self, signals: List[Any]) -> List[Any]:
+    def _filter_by_guidance_level(self, signals: 'SignalList') -> 'SignalList':
         """
         Filter signals based on guidance level.
 
