@@ -5,7 +5,7 @@ This module provides standardized PPO configurations to reduce duplication
 across training scripts and improve consistency.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
 
 # Common constants used across training modules
 DEFAULT_REWARD_SCALING = 6.0  # Optimized value from hyperparameter search

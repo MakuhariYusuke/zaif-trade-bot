@@ -5,8 +5,8 @@ This component is responsible for detecting market regimes based on price moveme
 Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
-import math
-from typing import List
+from collections import defaultdict
+from typing import Dict, List
 
 import numpy as np
 
@@ -56,6 +56,10 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         self.price_history: List[float] = []
         self.current_regime = "sideways"
         self.regime_step_counter = 0
+
+        # Long-term regime statistics
+        self.regime_counts: Dict[str, int] = defaultdict(int)
+        self.total_steps_tracked = 0
 
     def detect_regime(self, current_price: float, step: int) -> str:
         """
@@ -109,4 +113,30 @@ class MarketRegimeDetector(IMarketRegimeDetector):
                 f"(trend: {trend_strength:.4f}, vol: {volatility:.4f})"
             )
 
+            # Update long-term statistics
+            self.regime_counts[regime] += 1
+            self.total_steps_tracked += 1
+
+            # Log regime distribution summary periodically
+            if self.total_steps_tracked % (self.adaptation_frequency * 10) == 0:
+                self._log_regime_distribution()
+
         return self.current_regime
+
+    def _log_regime_distribution(self) -> None:
+        """Log the distribution of regimes over time."""
+        if self.total_steps_tracked == 0:
+            return
+
+        total_regimes = sum(self.regime_counts.values())
+        if total_regimes == 0:
+            return
+
+        distribution = {}
+        for regime, count in self.regime_counts.items():
+            percentage = (count / total_regimes) * 100
+            distribution[regime] = f"{percentage:.1f}%"
+
+        self.logger.info(
+            f"Regime distribution over {self.total_steps_tracked} steps: {distribution}"
+        )

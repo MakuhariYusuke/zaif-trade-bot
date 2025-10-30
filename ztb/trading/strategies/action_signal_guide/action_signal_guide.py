@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
-
 from .components.cache_manager import CacheManager
 
 # Import components
@@ -73,6 +72,7 @@ from .types import (
     PatternConfig,
     PatternStats,
     PerformanceStats,
+    RecognizerStatus,
     SignalHistory,
     SignalList,
     SignalMetadata,
@@ -147,6 +147,7 @@ from .pattern_recognition.wave_counting import (
 class GuidanceLevel(Enum):
     NONE = "none"
     WEAK = "weak"
+    MODERATE = "moderate"
     STRONG = "strong"
     FULL = "full"
 
@@ -173,6 +174,12 @@ class ActionSignalGuideConfig:
     cache_size: int = 1000
     lazy_loading: bool = False
     feature_names: Optional[List[str]] = None
+
+    # Short / debug mode for fast unit tests and debugging
+    debug_short_mode: bool = False
+    short_mode_recognizer_limit: int = 8
+    # How many identical errors to allow before suppressing further identical log lines
+    error_suppression_threshold: int = 3
 
     # Pattern group enable/disable flags for validation
     enable_candlestick_patterns: bool = True
@@ -300,6 +307,7 @@ class ActionSignal:
     timestamp: pd.Timestamp
     direction: float  # Continuous value from -1.0 (strong sell) to 1.0 (strong buy), 0.0 for hold
     strength: float  # 0.0 to 1.0
+    confidence: float  # 0.0 to 1.0
     signal_type: str
     description: str
     metadata: SignalMetadata
@@ -312,6 +320,7 @@ class ActionSignal:
             timestamp=pd.Timestamp.now(),
             direction=0,
             strength=0.0,
+            confidence=0.0,
             signal_type="neutral",
             description="No clear signal detected",
             metadata={},
@@ -378,6 +387,9 @@ class ActionSignalGuide:
 
         # Feature names for observation conversion
         self.feature_names: Optional[List[str]] = None
+
+        # Initialize all pattern recognizers
+        self._initialize_recognizers()
 
         self.logger.info(
             "ActionSignalGuide initialized with component-based architecture"
@@ -751,7 +763,7 @@ class ActionSignalGuide:
         # Generate signal using SignalGenerator component
         try:
             signal = self.signal_generator.generate_signal(
-                observation, current_index, multi_timeframe_data
+                data, current_index, multi_timeframe_data
             )
 
             # Convert component signal to legacy ActionSignal format
@@ -846,6 +858,7 @@ class ActionSignalGuide:
             timestamp=timestamp,
             direction=signal.direction,
             strength=signal.strength,
+            confidence=signal.confidence,
             signal_type=signal.signal_type,
             description=signal.description,
             metadata=signal.metadata,
@@ -902,19 +915,37 @@ class ActionSignalGuide:
         filtered_signals = signals[: self.config.max_signals_per_bar]
 
         # Check for conflicting signals and resolve
-        buy_signals = [s for s in filtered_signals if s.direction == 1]
-        sell_signals = [s for s in filtered_signals if s.direction == -1]
+        buy_signals = [
+            s for s in filtered_signals if s.direction > 0.1
+        ]  # Positive direction signals
+        sell_signals = [
+            s for s in filtered_signals if s.direction < -0.1
+        ]  # Negative direction signals
 
         # If we have both buy and sell signals, keep only the stronger ones
         if buy_signals and sell_signals:
             # Compare strongest buy vs strongest sell
-            strongest_buy = max(buy_signals, key=lambda x: x.strength)
-            strongest_sell = max(sell_signals, key=lambda x: x.strength)
+            strongest_buy = max(
+                buy_signals, key=lambda x: abs(x.direction) * x.strength
+            )
+            strongest_sell = max(
+                sell_signals, key=lambda x: abs(x.direction) * x.strength
+            )
 
-            if strongest_buy.strength > strongest_sell.strength:
-                filtered_signals = [s for s in filtered_signals if s.direction != -1]
-            elif strongest_sell.strength > strongest_buy.strength:
-                filtered_signals = [s for s in filtered_signals if s.direction != 1]
+            if (
+                abs(strongest_buy.direction) * strongest_buy.strength
+                > abs(strongest_sell.direction) * strongest_sell.strength
+            ):
+                filtered_signals = [
+                    s for s in filtered_signals if s.direction >= -0.1
+                ]  # Keep positive and neutral
+            elif (
+                abs(strongest_sell.direction) * strongest_sell.strength
+                > abs(strongest_buy.direction) * strongest_buy.strength
+            ):
+                filtered_signals = [
+                    s for s in filtered_signals if s.direction <= 0.1
+                ]  # Keep negative and neutral
             else:
                 # Equal strength - keep both but reduce their strength
                 for s in filtered_signals:
@@ -929,6 +960,139 @@ class ActionSignalGuide:
         return filtered_signals
 
     # Component-based public API methods
+
+    def get_recognizer_status(self) -> RecognizerStatus:
+        """
+        Get status information about all pattern recognizers.
+
+        Returns:
+            Dictionary with recognizer status information
+        """
+        self._ensure_recognizers_loaded()
+
+        # Safely get recognizer counts
+        def safe_len(attr_name: str) -> int:
+            return len(getattr(self, attr_name, []))
+
+        # Count total recognizers
+        total_count = (
+            safe_len("candlestick_recognizers")
+            + safe_len("fibonacci_recognizers")
+            + safe_len("gann_recognizers")
+            + safe_len("wave_recognizers")
+            + safe_len("harmonic_recognizers")
+            + safe_len("oscillator_recognizers")
+            + safe_len("volume_recognizers")
+            + safe_len("bollinger_recognizers")
+            + safe_len("adx_recognizers")
+            + safe_len("granville_recognizers")
+            + safe_len("heikin_ashi_recognizers")
+            + safe_len("dow_theory_recognizers")
+        )
+
+        # Safely get recognizer lists
+        def safe_list(attr_name: str) -> List[str]:
+            recognizers = getattr(self, attr_name, [])
+            return [r.__class__.__name__ for r in recognizers]
+
+        status = {
+            "total_recognizers": total_count,
+            "guidance_level": getattr(
+                self.guidance_level, "value", str(self.guidance_level)
+            ),
+            "recognizer_groups": {
+                "candlestick": {
+                    "enabled": getattr(
+                        self.config, "enable_candlestick_patterns", True
+                    ),
+                    "count": safe_len("candlestick_recognizers"),
+                    "recognizers": safe_list("candlestick_recognizers"),
+                },
+                "fibonacci": {
+                    "enabled": getattr(self.config, "enable_fibonacci_patterns", True),
+                    "count": safe_len("fibonacci_recognizers"),
+                    "recognizers": safe_list("fibonacci_recognizers"),
+                },
+                "gann": {
+                    "enabled": getattr(self.config, "enable_gann_patterns", True),
+                    "count": safe_len("gann_recognizers"),
+                    "recognizers": safe_list("gann_recognizers"),
+                },
+                "wave": {
+                    "enabled": getattr(self.config, "enable_wave_patterns", True),
+                    "count": safe_len("wave_recognizers"),
+                    "recognizers": safe_list("wave_recognizers"),
+                },
+                "harmonic": {
+                    "enabled": getattr(self.config, "enable_harmonic_patterns", True),
+                    "count": safe_len("harmonic_recognizers"),
+                    "recognizers": safe_list("harmonic_recognizers"),
+                },
+                "oscillator": {
+                    "enabled": getattr(self.config, "enable_oscillator_patterns", True),
+                    "count": safe_len("oscillator_recognizers"),
+                    "recognizers": safe_list("oscillator_recognizers"),
+                },
+                "volume": {
+                    "enabled": getattr(self.config, "enable_volume_patterns", True),
+                    "count": safe_len("volume_recognizers"),
+                    "recognizers": safe_list("volume_recognizers"),
+                },
+                "bollinger": {
+                    "enabled": getattr(self.config, "enable_bollinger_patterns", True),
+                    "count": safe_len("bollinger_recognizers"),
+                    "recognizers": safe_list("bollinger_recognizers"),
+                },
+                "adx": {
+                    "enabled": getattr(self.config, "enable_adx_patterns", True),
+                    "count": safe_len("adx_recognizers"),
+                    "recognizers": safe_list("adx_recognizers"),
+                },
+                "granville": {
+                    "enabled": getattr(self.config, "enable_granville_patterns", True),
+                    "count": safe_len("granville_recognizers"),
+                    "recognizers": safe_list("granville_recognizers"),
+                },
+                "heikin_ashi": {
+                    "enabled": getattr(
+                        self.config, "enable_heikin_ashi_patterns", True
+                    ),
+                    "count": safe_len("heikin_ashi_recognizers"),
+                    "recognizers": safe_list("heikin_ashi_recognizers"),
+                },
+                "dow_theory": {
+                    "enabled": getattr(self.config, "enable_dow_theory_patterns", True),
+                    "count": safe_len("dow_theory_recognizers"),
+                    "recognizers": safe_list("dow_theory_recognizers"),
+                },
+            },
+            "config": {
+                "max_signals_per_bar": getattr(self.config, "max_signals_per_bar", 3),
+                "enable_caching": getattr(self.config, "enable_caching", True),
+                "enable_parallel_processing": getattr(
+                    self.config, "enable_parallel_processing", False
+                ),
+                "lazy_loading": getattr(self.config, "lazy_loading", False),
+            },
+        }
+
+        return status
+
+    def set_guidance_level(self, level: GuidanceLevel) -> None:
+        """
+        Set the guidance level for signal processing.
+
+        Args:
+            level: The new guidance level (NONE, WEAK, STRONG, FULL)
+        """
+        if not isinstance(level, GuidanceLevel):
+            raise ValueError(
+                f"Invalid guidance level: {level}. Must be a GuidanceLevel enum value."
+            )
+
+        self.guidance_level = level
+        self.config.guidance_level = level
+        self.logger.info(f"Guidance level set to: {level.value}")
 
     def get_performance_summary(self) -> PerformanceStats:
         """
@@ -976,3 +1140,84 @@ class ActionSignalGuide:
         self.performance_tracker.reset_metrics()
         self.pattern_statistics.reset_statistics()
         self.logger.info("Statistics reset")
+
+    def analyze_pattern_effectiveness(
+        self, trading_results: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze the effectiveness of different patterns based on trading results.
+
+        Args:
+            trading_results: List of trading result dictionaries containing signals and performance metrics.
+
+        Returns:
+            Dictionary containing pattern effectiveness analysis with win rates, profitability, and risk metrics.
+        """
+        if trading_results is None or not trading_results:
+            return {
+                "total_trades": 0,
+                "patterns": {},
+                "summary": "No trading results provided",
+            }
+
+        # Initialize pattern statistics
+        pattern_stats = {}
+        total_trades = len(trading_results)
+
+        # Aggregate data by pattern
+        for result in trading_results:
+            signals = result.get("signals", [])
+            profit = result.get("profit", 0)
+            win_rate = result.get("win_rate", 0)
+            sharpe_ratio = result.get("sharpe_ratio", 0)
+            max_drawdown = result.get("max_drawdown", 0)
+
+            for signal in signals:
+                source_patterns = signal.get("source_patterns", [])
+                for pattern in source_patterns:
+                    if pattern not in pattern_stats:
+                        pattern_stats[pattern] = {
+                            "trades": [],
+                            "total_profit": 0,
+                            "wins": 0,
+                            "total_win_rate": 0,
+                            "total_sharpe": 0,
+                            "total_drawdown": 0,
+                            "count": 0,
+                        }
+
+                    pattern_stats[pattern]["trades"].append(profit)
+                    pattern_stats[pattern]["total_profit"] += profit
+                    if profit > 0:
+                        pattern_stats[pattern]["wins"] += 1
+                    pattern_stats[pattern]["total_win_rate"] += win_rate
+                    pattern_stats[pattern]["total_sharpe"] += sharpe_ratio
+                    pattern_stats[pattern]["total_drawdown"] += max_drawdown
+                    pattern_stats[pattern]["count"] += 1
+
+        # Calculate metrics
+        analysis = {
+            "total_trades": total_trades,
+            "patterns": {},
+            "summary": f"Analyzed {total_trades} trades across {len(pattern_stats)} patterns",
+        }
+
+        for pattern, stats in pattern_stats.items():
+            count = stats["count"]
+            if count > 0:
+                avg_profit = stats["total_profit"] / count
+                win_rate = stats["wins"] / count
+                avg_win_rate = stats["total_win_rate"] / count
+                avg_sharpe = stats["total_sharpe"] / count
+                avg_drawdown = stats["total_drawdown"] / count
+
+                analysis["patterns"][pattern] = {
+                    "trade_count": count,
+                    "average_profit": avg_profit,
+                    "win_rate": win_rate,
+                    "average_win_rate": avg_win_rate,
+                    "average_sharpe_ratio": avg_sharpe,
+                    "average_max_drawdown": avg_drawdown,
+                }
+
+        return analysis

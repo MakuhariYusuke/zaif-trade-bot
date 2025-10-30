@@ -8,7 +8,7 @@ Follows Single Responsibility Principle by focusing only on signal generation.
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import numpy as np
+import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
 
@@ -67,6 +67,8 @@ class SignalGenerator(ISignalGenerator):
         self.all_recognizers: List[PatternRecognizer] = []
         self.performance_tracker = performance_tracker
         self.pattern_statistics = pattern_statistics
+        # Internal error tracking to avoid log spam for repeated identical errors
+        self._error_counts: Dict[str, int] = {}
 
         # Initialize recognizers
         self.initialize_recognizers()
@@ -202,16 +204,17 @@ class SignalGenerator(ISignalGenerator):
 
     def generate_signal(
         self,
-        observation: np.ndarray,
-        step: int,
+        data: pd.DataFrame,
+        current_index: int,
         multi_timeframe_data: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
-        Generate trading signal from observation.
+        Generate trading signal from market data.
 
         Args:
-            observation: Current market observation
-            step: Current step number
+            data: OHLCV DataFrame
+            current_index: Current bar index
+            multi_timeframe_data: Optional multi-timeframe data
 
         Returns:
             Generated action signal
@@ -223,26 +226,44 @@ class SignalGenerator(ISignalGenerator):
             all_signals = []
             pattern_signals: Dict[str, List[Any]] = {}
 
+            # Respect debug/short mode: only run a subset of recognizers when enabled
+            recognizers_to_run = self.all_recognizers
+            if getattr(self.config, "debug_short_mode", False):
+                limit = getattr(self.config, "short_mode_recognizer_limit", 8)
+                # Only log once per SignalGenerator instance to avoid spam
+                if not hasattr(self, "_short_mode_logged"):
+                    self.logger.info(
+                        f"Debug short mode enabled: limiting recognizers to first {limit}"
+                    )
+                    self._short_mode_logged = True
+                recognizers_to_run = self.all_recognizers[:limit]
+
             ActionSignal = _get_action_signal_class()
 
-            for recognizer in self.all_recognizers:
+            for recognizer in recognizers_to_run:
                 try:
                     signal_result = recognizer.recognize(
-                        observation, multi_timeframe_data=multi_timeframe_data
+                        data,
+                        index=current_index,
+                        multi_timeframe_data=multi_timeframe_data,
                     )
 
                     if signal_result is not None:
                         # Create ActionSignal from pattern result
                         import pandas as pd
+
                         action_signal = ActionSignal(
                             timestamp=pd.Timestamp.now(),
                             direction=signal_result.direction,
                             strength=signal_result.strength,
+                            confidence=signal_result.confidence
+                            or signal_result.strength,
                             signal_type=recognizer.pattern_type,
                             description=f"{recognizer.name}: {signal_result.description}",
                             metadata={
                                 **signal_result.metadata,
-                                "confidence": signal_result.confidence,
+                                "confidence": signal_result.confidence
+                                or signal_result.strength,
                                 "risk_level": signal_result.risk_level,
                                 "validity_period": signal_result.validity_period,
                             },
@@ -263,7 +284,9 @@ class SignalGenerator(ISignalGenerator):
                             )
 
                 except Exception as e:
-                    self.logger.warning(f"Recognizer {recognizer.name} failed: {e}")
+                    # Avoid spamming the same error message repeatedly
+                    msg = f"Recognizer {recognizer.name} failed: {e}"
+                    self._record_error(msg)
                     continue
 
             # Aggregate signals based on guidance level
@@ -277,7 +300,8 @@ class SignalGenerator(ISignalGenerator):
             return final_signal
 
         except Exception as e:
-            self.logger.error(f"Signal generation failed: {e}")
+            # Use internal error recording to avoid noisy repeated logs
+            self._record_error(f"Signal generation failed: {e}")
             processing_time = time.time() - start_time
 
             if self.performance_tracker:
@@ -285,6 +309,34 @@ class SignalGenerator(ISignalGenerator):
 
             # Return neutral signal on failure
             return ActionSignal.neutral()
+
+    def _record_error(self, message: str) -> None:
+        """Record and selectively log errors to prevent log spam from repeated identical messages.
+
+        Logs the first `error_suppression_threshold` occurrences of the same message as warnings.
+        Further occurrences are suppressed; when suppression first happens an info-level note
+        is logged explaining that further identical messages will be suppressed.
+        """
+        try:
+            threshold = getattr(self.config, "error_suppression_threshold", 3)
+        except Exception:
+            threshold = 3
+
+        count = self._error_counts.get(message, 0) + 1
+        self._error_counts[message] = count
+
+        if count <= threshold:
+            # Log the warning normally
+            self.logger.warning(message)
+            if count == threshold:
+                # Warn user that future identical messages will be suppressed
+                self.logger.info(
+                    f"Further identical errors for message will be suppressed: '{message}'"
+                )
+        else:
+            # Suppress additional identical warnings to reduce spam
+            # Do nothing here; counts are still tracked for diagnostics
+            pass
 
     def _aggregate_signals(
         self, all_signals: "SignalList", pattern_signals: dict
@@ -320,7 +372,10 @@ class SignalGenerator(ISignalGenerator):
             return ActionSignal.neutral()
 
         # Weighted average of directions
-        weighted_direction = sum(s.direction * s.strength * s.confidence for s in filtered_signals) / total_weight
+        weighted_direction = (
+            sum(s.direction * s.strength * s.confidence for s in filtered_signals)
+            / total_weight
+        )
 
         # Clamp to [-1.0, 1.0] range
         direction = max(-1.0, min(1.0, weighted_direction))
@@ -332,6 +387,17 @@ class SignalGenerator(ISignalGenerator):
         confidence = sum(s.confidence for s in filtered_signals) / len(filtered_signals)
 
         # Create metadata
+        # Count signals by direction range
+        buy_signals = [
+            s for s in filtered_signals if s.direction > 0.1
+        ]  # Positive direction
+        sell_signals = [
+            s for s in filtered_signals if s.direction < -0.1
+        ]  # Negative direction
+        hold_signals = [
+            s for s in filtered_signals if abs(s.direction) <= 0.1
+        ]  # Near neutral
+
         metadata = {
             "total_signals": len(filtered_signals),
             "buy_signals": len(buy_signals),
@@ -340,14 +406,17 @@ class SignalGenerator(ISignalGenerator):
             "pattern_types": list(pattern_signals.keys()),
             "guidance_level": self.guidance_level.value,
             "confidence": confidence,
+            "weighted_direction": weighted_direction,
         }
 
         # Create final ActionSignal
         import pandas as pd
+
         return ActionSignal(
             timestamp=pd.Timestamp.now(),
             direction=direction,
             strength=strength,
+            confidence=confidence,
             signal_type="aggregated",
             description=f"Multi-pattern aggregate signal ({len(filtered_signals)} patterns)",
             metadata=metadata,

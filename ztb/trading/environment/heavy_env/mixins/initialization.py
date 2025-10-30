@@ -124,6 +124,7 @@ def _initialize_data_structures(self: Any) -> None:
 
     # Initialize action counts for state management
     from ztb.trading.environment.constants import NUM_DISCRETE_ACTIONS
+
     self.ACTION_COUNTS_INITIAL = [0] * NUM_DISCRETE_ACTIONS
 
 
@@ -152,7 +153,9 @@ def _initialize_data(self: Any, df: Optional[pd.DataFrame]) -> None:
                 raise ValidationError(
                     "Streaming pipeline did not provide initial data",
                     details={
-                        "pipeline": str(type(self.streaming_handler.streaming_pipeline)),
+                        "pipeline": str(
+                            type(self.streaming_handler.streaming_pipeline)
+                        ),
                         "df_empty": True,
                     },
                 )
@@ -222,7 +225,9 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         excluded_features = feature_config.get_excluded_features()
         if excluded_features:
             all_features = [f for f in all_features if f not in excluded_features]
-            logger.info(f"Excluded {len(excluded_features)} features: {excluded_features}")
+            logger.info(
+                f"Excluded {len(excluded_features)} features: {excluded_features}"
+            )
 
         # Check if multi-timeframe features should be included
         if feature_flags.get("include_multi_timeframe_features", False):
@@ -233,7 +238,9 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                 mtf_system = MultiTimeframeFeatureSystem()
                 mtf_data = mtf_system.process_multi_timeframe_data(self.df)
                 if not mtf_data.empty:
-                    mtf_features = [col for col in mtf_data.columns if col not in all_features]
+                    mtf_features = [
+                        col for col in mtf_data.columns if col not in all_features
+                    ]
                     all_features.extend(mtf_features)
                     logger.info(f"Added {len(mtf_features)} multi-timeframe features")
             except Exception as e:
@@ -241,9 +248,7 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
         self.features = all_features
 
-        correlation_reduction = getattr(
-            self.config, "correlation_reduction", True
-        )
+        correlation_reduction = getattr(self.config, "correlation_reduction", True)
         target_feature_count = getattr(self.config, "target_feature_count", None)
         if target_feature_count is None:
             target_feature_count = getattr(self.config, "expected_features", None)
@@ -361,11 +366,24 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
     _build_fast_access_buffers(self)
 
+    # Calculate observation space dimensions
+    obs_dim = len(self.features)
+
+    # Add optimizer features dimension if tracker is available
+    if hasattr(self, "optimizer_tracker") and self.optimizer_tracker is not None:
+        from ztb.features.optimizer_features import OptimizerFeatureTracker
+
+        if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
+            obs_dim += len(self.optimizer_tracker.get_feature_names())
+            logger.info(
+                f"Added optimizer features to observation space: +{len(self.optimizer_tracker.get_feature_names())} dimensions"
+            )
+
     # Observation space (always Box for features)
     self.observation_space = spaces.Box(
         low=-np.inf,
         high=np.inf,
-        shape=(len(self.features),),
+        shape=(obs_dim,),
         dtype=np.float32,
     )
 
@@ -395,14 +413,17 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         logger.info("Using discrete action space (PPO-compatible)")
 
     # Initialize data manager with features
-    timestamp_column = getattr(self, '_timestamp_column', None)
-    episode_id_column = getattr(self, '_episode_id_column', None)
+    timestamp_column = getattr(self, "_timestamp_column", None)
+    episode_id_column = getattr(self, "_episode_id_column", None)
     self.data_manager.initialize_data(
         self.df,
         self.features,
         timestamp_column,
         episode_id_column,
     )
+
+    # Build fast access buffers for data manager
+    self.data_manager.build_fast_access_buffers()
 
 
 def _setup_scaler(self: Any) -> None:
@@ -482,6 +503,7 @@ def _initialize_remaining_components(self: Any) -> None:
         nonfinite_warned_rows=self._nonfinite_warned_rows,
         scaler_mean=self.scaler_mean,
         scaler_std=self.scaler_std,
+        optimizer_tracker=self.optimizer_tracker,
     )
 
     self.action_validator = ActionValidator(

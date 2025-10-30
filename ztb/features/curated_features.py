@@ -315,10 +315,22 @@ CURATED_FEATURES = [
     # 【時間特徴】 (2個追加)
     "Time_Monthly_Cycle",  # 月次サイクル進行度
     "Time_Quarterly_Cycle",  # 四半期サイクル進行度
+    # 【Optimizer特徴量】 (11個追加) - 学習プロセス中のoptimizer状態
+    "optimizer_learning_rate",  # 学習率
+    "optimizer_learning_rate_trend",  # 学習率トレンド
+    "optimizer_gradient_norm_avg",  # 勾配ノルム平均
+    "optimizer_gradient_norm_std",  # 勾配ノルム標準偏差
+    "optimizer_step_size_avg",  # ステップサイズ平均
+    "optimizer_momentum_avg",  # モメンタム平均
+    "optimizer_training_progress",  # 学習進捗
+    "optimizer_loss_trend",  # 損失トレンド
+    "optimizer_update_frequency_avg",  # 更新頻度平均
+    "optimizer_stability_score",  # 安定性スコア
+    "optimizer_adaptive_lr_score",  # 適応学習率スコア
 ]
 
-# 検証: 78個になっているか確認
-# assert len(CURATED_FEATURES) == 78, f"Expected 78 features, got {len(CURATED_FEATURES)}"
+# 検証: 89個になっているか確認 (78 + 11 optimizer features)
+# assert len(CURATED_FEATURES) == 89, f"Expected 89 features, got {len(CURATED_FEATURES)}"
 
 # print(f"✅ 質的改善特徴セット: {len(CURATED_FEATURES)}個定義完了")
 # print(f"削除対象: {len(FEATURES_TO_REMOVE)}個")
@@ -326,3 +338,4 @@ CURATED_FEATURES = [
 # print(f"削減率: {len(FEATURES_TO_REMOVE)/110*100:.1f}%")
 # print("Ta-Lib拡張: +7個 (一目4個 + Ta-Lib指標3個 + 高優先度指標2個 + 時間特徴2個)")
 # print("一目均衡表拡張: +34個 (基本5個 + 理論的拡張4個 + 高度な分析3個 + 多時間軸18個)")
+# print("Optimizer特徴量: +11個 (学習プロセス中のoptimizer状態を特徴量化)")

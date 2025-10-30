@@ -23,6 +23,7 @@ class ObservationBuilder:
         nonfinite_warned_rows: Set[int],
         scaler_mean: Optional[NDArray[np.float32]] = None,
         scaler_std: Optional[NDArray[np.float32]] = None,
+        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
     ):
         super().__init__()
         self.features = features
@@ -31,6 +32,7 @@ class ObservationBuilder:
         self._nonfinite_warned_rows = nonfinite_warned_rows
         self.scaler_mean = scaler_mean
         self.scaler_std = scaler_std
+        self.optimizer_tracker = optimizer_tracker
 
     def get_observation(
         self,
@@ -61,6 +63,14 @@ class ObservationBuilder:
                 safe_std = np.where(self.scaler_std > 1e-8, self.scaler_std, 1.0)
                 obs = ((obs - self.scaler_mean) / safe_std).astype(np.float32)
 
+            # Add optimizer features if tracker is available
+            if self.optimizer_tracker is not None:
+                optimizer_features = self.optimizer_tracker.get_feature_vector()
+                optimizer_values = np.array(
+                    list(optimizer_features.values()), dtype=np.float32
+                )
+                obs = np.concatenate([obs, optimizer_values])
+
             return obs
 
         # Fallback path (should rarely execute) - preserve previous behaviour
@@ -77,6 +87,14 @@ class ObservationBuilder:
         if self.scaler_mean is not None and self.scaler_std is not None:
             safe_std = np.where(self.scaler_std > 1e-8, self.scaler_std, 1.0)
             obs = ((obs - self.scaler_mean) / safe_std).astype(np.float32)
+
+        # Add optimizer features if tracker is available
+        if self.optimizer_tracker is not None:
+            optimizer_features = self.optimizer_tracker.get_feature_vector()
+            optimizer_values = np.array(
+                list(optimizer_features.values()), dtype=np.float32
+            )
+            obs = np.concatenate([obs, optimizer_values])
 
         return obs
 

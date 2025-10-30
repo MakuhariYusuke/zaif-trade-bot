@@ -5,6 +5,8 @@ This component applies dynamic reward shaping based on market conditions.
 Follows Single Responsibility Principle by focusing only on reward shaping.
 """
 
+import math
+
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IDynamicRewardShaper, IMarketRegimeDetector
@@ -88,7 +90,9 @@ class DynamicRewardShaper(IDynamicRewardShaper):
 
         self.logger = get_logger("ztb.trading.environment.dynamic_reward_shaper")
 
-    def shape_reward(self, base_reward: float, current_price: float, step: int, pnl: float) -> float:
+    def shape_reward(
+        self, base_reward: float, current_price: float, step: int, pnl: float
+    ) -> float:
         """
         Apply dynamic reward shaping based on market conditions.
 
@@ -112,41 +116,68 @@ class DynamicRewardShaper(IDynamicRewardShaper):
 
             if regime == "bull":
                 shaped_reward *= self.bull_market_bonus_coeff
-                self.logger.debug(f"Applied bull market bonus: {self.bull_market_bonus_coeff}x")
+                self.logger.debug(
+                    f"Applied bull market bonus: {self.bull_market_bonus_coeff}x"
+                )
             elif regime == "bear":
                 shaped_reward *= self.bear_market_penalty_coeff
-                self.logger.debug(f"Applied bear market penalty: {self.bear_market_penalty_coeff}x")
+                self.logger.debug(
+                    f"Applied bear market penalty: {self.bear_market_penalty_coeff}x"
+                )
             elif regime == "sideways":
                 shaped_reward *= self.sideways_market_penalty_coeff
-                self.logger.debug(f"Applied sideways market penalty: {self.sideways_market_penalty_coeff}x")
+                self.logger.debug(
+                    f"Applied sideways market penalty: {self.sideways_market_penalty_coeff}x"
+                )
             elif regime == "volatile":
                 shaped_reward *= self.volatile_market_bonus_coeff
-                self.logger.debug(f"Applied volatile market bonus: {self.volatile_market_bonus_coeff}x")
+                self.logger.debug(
+                    f"Applied volatile market bonus: {self.volatile_market_bonus_coeff}x"
+                )
 
         # Volatility adjusted rewards
-        if self.volatility_adjusted_rewards and len(self.market_regime_detector.price_history) >= 10:
+        if (
+            self.volatility_adjusted_rewards
+            and len(self.market_regime_detector.price_history) >= 10
+        ):
             prices = self.market_regime_detector.price_history[-20:]  # Last 20 prices
-            returns = [prices[i+1]/prices[i] - 1 for i in range(len(prices)-1)]
-            volatility = sum((r - sum(returns)/len(returns))**2 for r in returns) / len(returns) ** 0.5 if returns else 0.0
+            returns = [prices[i + 1] / prices[i] - 1 for i in range(len(prices) - 1)]
+            if returns:
+                mean_return = sum(returns) / len(returns)
+                variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
+                volatility = math.sqrt(variance)
+            else:
+                volatility = 0.0
 
             if volatility > self.high_volatility_threshold:
                 shaped_reward *= self.high_volatility_bonus
-                self.logger.debug(f"Applied high volatility bonus: {self.high_volatility_bonus}x")
+                self.logger.debug(
+                    f"Applied high volatility bonus: {self.high_volatility_bonus}x"
+                )
             elif volatility < self.low_volatility_threshold:
                 shaped_reward *= self.low_volatility_penalty
-                self.logger.debug(f"Applied low volatility penalty: {self.low_volatility_penalty}x")
+                self.logger.debug(
+                    f"Applied low volatility penalty: {self.low_volatility_penalty}x"
+                )
 
         # Trend strength bonus
-        if self.trend_strength_bonus and len(self.market_regime_detector.price_history) >= 10:
+        if (
+            self.trend_strength_bonus
+            and len(self.market_regime_detector.price_history) >= 10
+        ):
             prices = self.market_regime_detector.price_history[-20:]
-            returns = [prices[i+1]/prices[i] - 1 for i in range(len(prices)-1)]
+            returns = [prices[i + 1] / prices[i] - 1 for i in range(len(prices) - 1)]
             trend_strength = abs(sum(returns)) if returns else 0.0
 
             if trend_strength > self.trend_strength_threshold:
                 shaped_reward *= self.strong_trend_bonus
-                self.logger.debug(f"Applied strong trend bonus: {self.strong_trend_bonus}x")
+                self.logger.debug(
+                    f"Applied strong trend bonus: {self.strong_trend_bonus}x"
+                )
             else:
                 shaped_reward *= self.weak_trend_penalty
-                self.logger.debug(f"Applied weak trend penalty: {self.weak_trend_penalty}x")
+                self.logger.debug(
+                    f"Applied weak trend penalty: {self.weak_trend_penalty}x"
+                )
 
         return shaped_reward

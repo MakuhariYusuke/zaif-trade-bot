@@ -14,6 +14,8 @@ from stable_baselines3 import SAC
 # 環境をインポート
 sys.path.append(str(Path(__file__).parent.parent))
 
+from ztb.utils.analysis_formatters import print_formatted_metrics
+
 
 def run_simple_backtest(model_name, config_path):
     """シンプルなバックテストを実行"""
@@ -216,13 +218,17 @@ def main():
     # 最も良いモデルを選択
     if not df.empty:
         best_model = df.loc[df["profit"].idxmax()]
-        print("\n🏆 Best Performing Model:")
-        print(f"  Model: {best_model['model']}")
-        print(f"  Profit: ${best_model['profit']:.2f}")
-        print(f"  Trades: {best_model['trades']}")
-        print(f"  Frequency Penalty: {best_model['frequency_penalty']}")
-        print(f"  Profit Bonus ATR: {best_model['profit_bonus_atr']}")
-        print(f"  Profit Bonus Portfolio: {best_model['profit_bonus_portfolio']}")
+        best_metrics = {
+            "model": best_model["model"],
+            "profit": best_model["profit"],
+            "trades": best_model["trades"],
+            "total_return_pct": best_model["total_return_pct"],
+            "final_balance": best_model["final_balance"],
+            "frequency_penalty": best_model["frequency_penalty"],
+            "profit_bonus_atr": best_model["profit_bonus_atr"],
+            "profit_bonus_portfolio": best_model["profit_bonus_portfolio"],
+        }
+        print_formatted_metrics(best_metrics, "Best Performing Model")
 
 
 if __name__ == "__main__":
