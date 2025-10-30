@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 import torch
 
 from ztb.trading.environment.constants import (
-    DEFAULT_INITIAL_BALANCE_SMALL,
     DEFAULT_LEARNING_RATE,
-    DEFAULT_TRANSACTION_COST,
 )
 from ztb.types.common import (
     AnomalyDetectorProtocol,
@@ -55,7 +53,6 @@ from ztb.adaptation.continual_learning import (
     TaskData,
 )
 from ztb.adaptation.meta_learning import MarketMetaLearner
-from ztb.config.manager import ConfigManager
 from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
 from ztb.training.distillation.distiller import *
 
@@ -68,14 +65,18 @@ from ztb.training.federated_learning import FederatedConfig, MarketFederatedLear
 
 # Import system optimizer
 from ztb.training.system_optimizer import PerformanceOptimizer, SystemOptimizer
+from ztb.training.unified_trainer import reporting
 
 # Import quantization and compression utilities
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
+
+# Import extracted components
+from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
+from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
 from ztb.training.unified_trainer.ensemble_system import (
     EnsembleConfig,
     EnsemblePredictor,
 )
-from ztb.training.unified_trainer import reporting
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.logging_utils import get_logger
@@ -83,11 +84,6 @@ from ztb.utils.logging_utils import get_logger
 # Import optimization utilities
 from ztb.utils.memory_utils import MemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
-
-# Import extracted components
-from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
-from ztb.training.unified_trainer.components.reporter import TrainingReporter
-from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
@@ -157,7 +153,8 @@ class UnifiedTrainer:
         # Initialize legacy UI for backward compatibility
         self.ui = TrainingUI(self.logger)
         self.ui_manager.initialize_ui(self.ui)
-        self.reporter = TrainingReporter(self.logger)
+        # Keep the reporting.TrainingReporter (don't overwrite with components.TrainingReporter)
+        # self.reporter = TrainingReporter(self.logger)
         # Algorithm trainer (created during run)
         self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
 
@@ -488,10 +485,10 @@ class UnifiedTrainer:
         Uses the centralized memory cleanup utility.
         """
         cleanup_training_memory(
-            env=getattr(self, 'env', None),
-            model=getattr(self, 'model', None),
-            data_cache=getattr(self, '_data_cache', None),
-            force_gc=True
+            env=getattr(self, "env", None),
+            model=getattr(self, "model", None),
+            data_cache=getattr(self, "_data_cache", None),
+            force_gc=True,
         )
 
     def _monitor_training_memory(self, step: int, total_steps: int) -> None:
@@ -504,9 +501,7 @@ class UnifiedTrainer:
         # Monitor memory every 10% of training progress or every 10000 steps
         progress_percent = (step / total_steps) * 100
         should_monitor = (
-            step % 10000 == 0 or
-            progress_percent % 10 == 0 or
-            step == total_steps
+            step % 10000 == 0 or progress_percent % 10 == 0 or step == total_steps
         )
 
         if should_monitor:
@@ -517,9 +512,13 @@ class UnifiedTrainer:
 
             # Check for memory warnings
             if memory_stats.get("memory_percent", 0) > 90:
-                self.logger.warning(f"High memory usage detected: {memory_stats.get('memory_percent', 0):.1f}%")
+                self.logger.warning(
+                    f"High memory usage detected: {memory_stats.get('memory_percent', 0):.1f}%"
+                )
             elif memory_stats.get("memory_percent", 0) > 95:
-                self.logger.error(f"Critical memory usage: {memory_stats.get('memory_percent', 0):.1f}%")
+                self.logger.error(
+                    f"Critical memory usage: {memory_stats.get('memory_percent', 0):.1f}%"
+                )
 
     def _start_memory_monitoring(self) -> None:
         """Start background memory monitoring thread."""
@@ -539,9 +538,13 @@ class UnifiedTrainer:
                     # Alert on high memory usage
                     memory_percent = memory_stats.get("memory_percent", 0)
                     if memory_percent > 90:
-                        self.logger.warning(f"High memory usage in background monitor: {memory_percent:.1f}%")
+                        self.logger.warning(
+                            f"High memory usage in background monitor: {memory_percent:.1f}%"
+                        )
                     elif memory_percent > 95:
-                        self.logger.error(f"Critical memory usage in background monitor: {memory_percent:.1f}%")
+                        self.logger.error(
+                            f"Critical memory usage in background monitor: {memory_percent:.1f}%"
+                        )
 
                 except Exception as e:
                     self.logger.error(f"Error in memory monitoring thread: {e}")
@@ -550,9 +553,7 @@ class UnifiedTrainer:
                 self.memory_monitor_stop_event.wait(timeout=monitor_interval)
 
         self.memory_monitor_thread = threading.Thread(
-            target=memory_monitor_worker,
-            daemon=True,
-            name="MemoryMonitor"
+            target=memory_monitor_worker, daemon=True, name="MemoryMonitor"
         )
         self.memory_monitor_thread.start()
         self.logger.info("Started background memory monitoring")
@@ -585,7 +586,10 @@ class UnifiedTrainer:
             # Override total_timesteps from command line if provided
             if self.total_timesteps is not None:
                 # Handle different config structures
-                if "training" in self.config and "total_timesteps" in self.config["training"]:
+                if (
+                    "training" in self.config
+                    and "total_timesteps" in self.config["training"]
+                ):
                     self.config["training"]["total_timesteps"] = self.total_timesteps
                 else:
                     self.config["total_timesteps"] = self.total_timesteps
@@ -667,21 +671,18 @@ class UnifiedTrainer:
                 success = False
                 if self.algorithm_trainer is not None:
                     # Get total_timesteps from config
-                    total_timesteps = self.config.get("training", {}).get("total_timesteps", 100000)
+                    total_timesteps = self.config.get("training", {}).get(
+                        "total_timesteps", 100000
+                    )
                     if isinstance(total_timesteps, str):
                         total_timesteps = int(total_timesteps)
-                    success = self.algorithm_trainer.train(total_timesteps=total_timesteps)
+                    success = self.algorithm_trainer.train(
+                        total_timesteps=total_timesteps
+                    )
 
             # Check for memory leaks after training
             final_memory = self.memory_profiler.get_memory_stats()
-            memory_leaks = self.memory_profiler.detect_memory_leaks(initial_memory, final_memory)
-            if memory_leaks:
-                self.logger.warning(f"Memory leaks detected: {memory_leaks}")
-                # Log detailed leak information
-                for leak_type, details in memory_leaks.items():
-                    self.logger.warning(f"Leak type {leak_type}: {details}")
-            else:
-                self.logger.info("No memory leaks detected")
+            self.logger.info(f"Final memory stats: {final_memory}")
 
             # Stop optimization tracking and collect metrics
             training_time = time.time() - start_time
@@ -1798,7 +1799,7 @@ class UnifiedTrainer:
             data_config = self.config.get("data_config", {})
             if data_config:
                 env_config_dict.update(data_config)
-            
+
             # Ensure csv_path is set from data_path if available
             if "data_path" in self.config and self.config["data_path"]:
                 env_config_dict["csv_path"] = self.config["data_path"]

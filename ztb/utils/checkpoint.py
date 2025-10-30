@@ -26,6 +26,7 @@ import torch
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 from ztb.types.common import ConfigDict
+from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
@@ -659,7 +660,8 @@ class HierarchicalCheckpointManager:
         checkpoint_type: str,
     ) -> None:
         """Synchronous checkpoint saving"""
-        try:
+
+        def save_checkpoint():
             import time
 
             start_time = time.time()
@@ -714,8 +716,12 @@ class HierarchicalCheckpointManager:
             # Cleanup old checkpoints
             self._cleanup_old_checkpoints(checkpoint_type)
 
-        except Exception as e:
-            print(f"Failed to save checkpoint: {e}")
+        safe_operation(
+            save_checkpoint,
+            default_result=None,
+            logger=logger,
+            context=f"Saving {checkpoint_type} checkpoint at step {step}",
+        )
 
     def _cleanup_old_checkpoints(self, checkpoint_type: str) -> None:
         """Clean up old checkpoints according to retention policy"""
@@ -785,7 +791,7 @@ class HierarchicalCheckpointManager:
         if checkpoint_path is None or not checkpoint_path.exists():
             return None
 
-        try:
+        def load_checkpoint_data():
             with open(checkpoint_path, "rb") as f:
                 compressed_data = f.read()
 
@@ -804,9 +810,12 @@ class HierarchicalCheckpointManager:
             print(f"Loaded checkpoint from {checkpoint_path}")
             return checkpoint_data
 
-        except Exception as e:
-            print(f"Failed to load checkpoint: {e}")
-            return None
+        return safe_operation(
+            load_checkpoint_data,
+            default_result=None,
+            logger=logger,
+            context=f"Loading checkpoint from {checkpoint_path}",
+        )
 
     def get_stats(self) -> Dict[str, Any]:
         """Get checkpoint statistics"""
@@ -873,10 +882,16 @@ class TrainingStateManager:
         # Extract replay buffer state if available
         replay_buffer_state = None
         if hasattr(model, "replay_buffer") and model.replay_buffer is not None:
-            try:
-                replay_buffer_state = model.replay_buffer.__dict__.copy()
-            except:
-                logger.warning("Could not save replay buffer state")
+
+            def extract_replay_buffer():
+                return model.replay_buffer.__dict__.copy()
+
+            replay_buffer_state = safe_operation(
+                extract_replay_buffer,
+                default_result=None,
+                logger=logger,
+                context="Extracting replay buffer state",
+            )
 
         # Prepare training state data
         training_state: TrainingStateCheckpointData = {
@@ -942,15 +957,21 @@ class TrainingStateManager:
             and hasattr(model, "replay_buffer")
             and model.replay_buffer is not None
         ):
-            try:
+
+            def restore_replay_buffer():
                 # This is a simplified restoration - full restoration would require
                 # more complex buffer state management
                 for key, value in training_state["replay_buffer_state"].items():
                     if hasattr(model.replay_buffer, key):
                         setattr(model.replay_buffer, key, value)
                 logger.info("Restored replay buffer state")
-            except Exception as e:
-                logger.warning(f"Could not restore replay buffer state: {e}")
+
+            safe_operation(
+                restore_replay_buffer,
+                default_result=None,
+                logger=logger,
+                context="Restoring replay buffer state",
+            )
 
         # Restore random states
         random_state = training_state["random_state"]
@@ -991,24 +1012,30 @@ class TrainingStateManager:
         """List all saved training states with metadata"""
         states = []
         for filepath in self.save_dir.glob("training_state_*.pkl*"):
-            try:
+
+            def load_training_state_metadata():
                 # Quick load just metadata without full decompression
                 with open(filepath, "rb") as f:
                     compressed_data = f.read()
                 training_state = self._decompress_data(compressed_data)
 
-                states.append(
-                    {
-                        "filepath": str(filepath),
-                        "total_timesteps": training_state["total_timesteps"],
-                        "episode_count": training_state["episode_count"],
-                        "timestamp": training_state["timestamp"],
-                        "training_time": training_state["training_time"],
-                        "version": training_state["version"],
-                    }
-                )
-            except Exception as e:
-                logger.warning(f"Could not read training state {filepath}: {e}")
+                return {
+                    "filepath": str(filepath),
+                    "total_timesteps": training_state["total_timesteps"],
+                    "episode_count": training_state["episode_count"],
+                    "timestamp": training_state["timestamp"],
+                    "training_time": training_state["training_time"],
+                    "version": training_state["version"],
+                }
+
+            metadata = safe_operation(
+                load_training_state_metadata,
+                default_result=None,
+                logger=logger,
+                context=f"Reading training state {filepath}",
+            )
+            if metadata:
+                states.append(metadata)
 
         return sorted(states, key=lambda x: x["timestamp"], reverse=True)
 
@@ -1068,7 +1095,8 @@ class TrainingStateManager:
 
         # Check data compatibility (if data_path provided)
         if data_path and os.path.exists(data_path):
-            try:
+
+            def check_data_file():
                 # This would require loading a small sample of data to check compatibility
                 # For now, just check if data file exists and is readable
                 with open(data_path, "r") as f:
@@ -1082,8 +1110,12 @@ class TrainingStateManager:
                 if not lines:
                     validation_results["errors"].append("Data file appears to be empty")
 
-            except Exception as e:
-                validation_results["errors"].append(f"Cannot read data file: {e}")
+            safe_operation(
+                check_data_file,
+                default_result=None,
+                logger=logger,
+                context="Checking data file compatibility",
+            )
 
         # Determine overall compatibility
         if validation_results["errors"]:

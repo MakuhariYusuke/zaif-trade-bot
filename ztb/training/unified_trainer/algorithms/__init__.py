@@ -18,16 +18,30 @@ def create_algorithm_trainer(
     logger: Optional[logging.Logger] = None,
     gradient_accumulation_steps: int = 1,
     system_optimizer: Optional[Any] = None,
+    optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
 ) -> BaseAlgorithmTrainer:
     """Factory function to create algorithm-specific trainer."""
     algorithm = algorithm.lower()
 
     if algorithm == "sac":
-        return SACTrainer(config, logger, gradient_accumulation_steps, system_optimizer)
+        return SACTrainer(
+            config,
+            logger,
+            gradient_accumulation_steps,
+            system_optimizer,
+            optimizer_tracker,
+        )
     elif algorithm == "ppo":
-        return PPOTrainer(config, logger, gradient_accumulation_steps)
+        return PPOTrainer(
+            config,
+            logger,
+            gradient_accumulation_steps,
+            optimizer_tracker=optimizer_tracker,
+        )
     elif algorithm == "self_supervised":
-        return SelfSupervisedTrainer(config, logger)
+        return SelfSupervisedTrainer(
+            config, logger, optimizer_tracker=optimizer_tracker
+        )
     elif algorithm == "multimodal":
         # Create multimodal config from unified config
         # Temporarily disabled due to circular import issues

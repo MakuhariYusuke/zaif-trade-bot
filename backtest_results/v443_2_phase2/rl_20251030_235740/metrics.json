@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-30T23:57:45.318847",
+    "strategy": "rl",
+    "dataset": "data/btc_jpy_featured_dataset.csv",
+    "slippage_bps": 5.0,
+    "initial_capital": 100000.0,
+    "adaptation_enabled": false,
+    "adaptation_summary": null
+  },
+  "metrics": {
+    "sharpe_ratio": 0.0,
+    "sortino_ratio": 0.0,
+    "calmar_ratio": 0.0,
+    "total_return": 0.0,
+    "cagr": 0.0,
+    "annualized_return": 0.0,
+    "max_drawdown": 0.0,
+    "volatility": NaN,
+    "total_trades": 0,
+    "win_rate": 0.0,
+    "avg_win": 0.0,
+    "avg_loss": 0.0,
+    "profit_factor": 0.0,
+    "turnover": 0.0,
+    "estimated_slippage_bps": 5.0,
+    "deflated_sharpe_ratio": 0.0,
+    "pvalue_bootstrap": 0.0
+  },
+  "equity_curve": [],
+  "orders": []
+}

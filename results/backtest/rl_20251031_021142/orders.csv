@@ -1,0 +1,2 @@
+action,notional,pnl,position_after,position_before,price,shares,sizing_reason,timestamp
+sell,10000.0,0.0,-1,0,4990173.851316141,0.0020039381989392082,Max position size: 1.0,2024-01-01 00:20:00

@@ -19,60 +19,36 @@ warnings.warn(
 
 # Set environment variables before any imports to avoid PyTorch issues
 import importlib.util
-import logging
 import os
 
 from ztb.utils.errors import safe_operation
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.system_utils import configure_pytorch_environment
 
 logger = get_logger(__name__)
 STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
 
-os.environ["PYTORCH_DISABLE_TORCH_DYNAMO"] = "1"
-# Disable CUDA to reduce memory usage
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["TORCH_USE_CUDA_DSA"] = "0"
-os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
-# Additional memory optimization
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
+# Configure PyTorch environment
+configure_pytorch_environment(cuda_optimizations=True)
 
 import json
 import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
-from ztb.training.core.config_builder import ConfigBuilder  # 🆕 New config builder
+from ztb.training.core.config_builder import ConfigBuilder
 from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.path_utils import get_project_root
-
-# import numpy as np
-
-
-# Add project root to path
-project_root = get_project_root()
-sys.path.insert(0, str(project_root))
 
 # Type definitions for better type safety
 MemoryOptimizationConfig = Dict[str, Optional[int]]
 EnvironmentConfig = Dict[str, Union[float, int]]
 PPOCoreConfig = Dict[str, Union[float, int, bool, None]]
-UnifiedConfig = Dict[str, Any]  # Keep flexible for unified structure
-TrainingResult = Union[Any, None]  # Training methods can return various types
-
-# Conditional imports based on algorithm
-ppo_available = True
-try:
-    # Delay torch import by importing PPOTrainer only when needed
-    pass
-except ImportError:
-    ppo_available = False
-    logger.warning("PPO trainer not available (torch import failed)")
-    PPOTrainer = None
+UnifiedConfig = Dict[str, Any]
+TrainingResult = Union[Any, None]
 
 from enum import Enum
 
@@ -101,87 +77,12 @@ class UnifiedTrainerConfig:
     stream_batch_size: int = 256
     max_features: Optional[int] = None
     offline_mode: bool = False
-    total_timesteps: Optional[int] = None  # Added to fix attribute access error
-
-
-def configure_progress_bar(
-    config: Dict[str, Any],
-    cli_override: Optional[bool] = None,
-    log: Optional[logging.Logger] = None,
-) -> bool:
-    """
-    Normalize progress bar settings and coordinate Stable-Baselines3 verbosity.
-
-    Args:
-        config: Mutable training configuration dictionary.
-        cli_override: Optional explicit preference from CLI flags.
-        log: Optional logger; defaults to module-level logger.
-
-    Returns:
-        bool: True when progress visuals should be enabled.
-    """
-    if config.get("_progress_configured"):
-        return bool(config.get("progress_bar", False))
-
-    logger_obj = log or logger
-    progress_preference: Optional[bool] = cli_override
-
-    legacy_top_level = config.pop("progress_bar", None)
-    training_section = config.get("training")
-    legacy_training = None
-    if isinstance(training_section, dict):
-        legacy_training = training_section.pop("progress_bar", None)
-
-    if progress_preference is None and legacy_top_level is not None:
-        progress_preference = bool(legacy_top_level)
-    if progress_preference is None and legacy_training is not None:
-        progress_preference = bool(legacy_training)
-
-    ppo_config = config.setdefault("ppo", {})
-    if not isinstance(ppo_config, dict):
-        logger_obj.warning(
-            "PPO configuration expected to be a dict, but received %s. "
-            "Disabling progress bar to avoid inconsistent state.",
-            type(ppo_config),
-        )
-        config["progress_bar"] = False
-        return False
-
-    if progress_preference is None:
-        progress_preference = bool(ppo_config.get("verbose", 0))
-
-    use_progress_bar = bool(progress_preference)
-
-    if STABLE_BASELINES3_AVAILABLE:
-        desired_verbose = 1 if use_progress_bar else 0
-        current_verbose = ppo_config.get("verbose")
-        if current_verbose != desired_verbose:
-            logger_obj.info(
-                "Stable-Baselines3 detected; adjusting PPO verbose to %s for progress control.",
-                desired_verbose,
-            )
-        ppo_config["verbose"] = desired_verbose
-    else:
-        logger_obj.info(
-            "Stable-Baselines3 not available; %s fallback training progress bar.",
-            "enabling" if use_progress_bar else "disabling",
-        )
-        if not use_progress_bar:
-            ppo_config["verbose"] = 0
-
-    config["progress_bar"] = use_progress_bar
-    config["_progress_configured"] = True
-    return use_progress_bar
+    total_timesteps: Optional[int] = None
 
 
 class UnifiedTrainer:
     """
     Unified training interface for different algorithms.
-    WORK ASSIGNMENT:
-    ---------------
-    - PPO Algorithm: @trading-team - Standard RL training, evaluation, logging
-    - Base ML Algorithm: @ml-research-team - Custom experiments, prototyping
-    - Iterative Algorithm: @production-team - Long-running training, monitoring
     """
 
     def __init__(
@@ -219,24 +120,23 @@ class UnifiedTrainer:
 
         # Initialize components
         self.config_manager = ConfigManager(config)
-        self.config_builder = ConfigBuilder(config)  # 🆕 New config builder
+        self.config_builder = ConfigBuilder(config)
         self.algorithm = str(config.get("algorithm", "ppo")).lower()
         self.logger = get_logger(__name__)
         self._config_cache: Optional[Dict[str, Any]] = None
         self._config_cache_key: Optional[tuple[bool, int, Optional[int]]] = None
 
-        # Configure progress bar
+        # Configure progress bar using utility
+        from ztb.utils.progress_utils import configure_progress_bar
+
         self.progress_bar_enabled = configure_progress_bar(self.config, log=self.logger)
 
-        # Initialize Discord notifier (disabled in offline mode)
-        if config.get("offline_mode", False):
-            from ztb.utils import DiscordNotifier
+        # Initialize notifier using utility
+        from ztb.utils.notifications import get_notifier
 
-            self.notifier = DiscordNotifier(webhook_url=None)  # Explicitly disable
-        else:
-            from ztb.utils import DiscordNotifier
-
-            self.notifier = DiscordNotifier()
+        offline_mode = config.get("offline_mode", False)
+        webhook_url = config.get("discord_webhook_url")
+        self.notifier = get_notifier(webhook_url, offline_mode)
 
         # Preserve legacy config object for backward compatibility with tests/tools
         try:
@@ -250,51 +150,9 @@ class UnifiedTrainer:
             enable_streaming=enable_streaming,
             stream_batch_size=stream_batch_size,
             max_features=max_features,
-            offline_mode=config.get("offline_mode", False),
+            offline_mode=offline_mode,
             total_timesteps=total_timesteps,
         )
-
-    # ==================================================================================
-    # CONFIGURATION MANAGEMENT HELPERS (Bug #52 fix - unified configuration interface)
-    # ==================================================================================
-
-    def _get_config_value(
-        self, key: str, sections: Optional[List[str]] = None, default: Any = None
-    ) -> Any:
-        """
-        Get configuration value with priority order.
-        Priority: top-level > sections (in order) > default
-        Note: This method delegates to ConfigBuilder.get_config_value()
-        """
-        return self.config_builder.get_config_value(key, sections, default)
-
-    def get_memory_optimization_config(self) -> MemoryOptimizationConfig:
-        """
-        Extract memory optimization parameters from config.
-        Note: This method delegates to ConfigBuilder.get_memory_optimization_config()
-        """
-        return self.config_builder.get_memory_optimization_config()
-
-    def get_environment_config(self) -> EnvironmentConfig:
-        """
-        Extract environment-specific parameters from config.
-        Note: This method delegates to ConfigBuilder.get_environment_config()
-        """
-        return self.config_builder.get_environment_config()
-
-    def get_ppo_core_config(self) -> PPOCoreConfig:
-        """
-        Extract PPO algorithm-specific parameters from config.
-        Note: This method delegates to ConfigBuilder.get_ppo_core_config()
-        """
-        return self.config_builder.get_ppo_core_config()
-
-    def get_feature_config(self) -> Dict[str, Any]:
-        """
-        Extract feature-related parameters from config.
-        Note: This method delegates to ConfigBuilder.get_feature_config()
-        """
-        return self.config_builder.get_feature_config()
 
     def build_unified_config(self) -> Dict[str, Any]:
         """
@@ -524,7 +382,6 @@ class UnifiedTrainer:
                     "session_id": self.config.get("session_id", "ppo_session"),
                     "total_timesteps": unified_config["training"]["total_timesteps"],
                     "enable_sell_mitigation": enable_sell_mitigation,
-                    "memory_optimization": memory_opt,
                 },
             )
 
@@ -588,19 +445,7 @@ class UnifiedTrainer:
                 # Clear memory after save
                 gc.collect()
 
-            # Save model schema using FeatureSchemaManager (Phase 2)
-            session_id = self.config.get("session_id", "ppo_session")
-            self._save_model_schema(session_id, model_dir, df=None)
-
         return model
-
-    def _train_base_ml(self) -> TrainingResult:
-        """Train using base ML reinforcement."""
-        unified_config = self.build_unified_config()
-        experiment = MLReinforcementExperiment(
-            unified_config, total_steps=unified_config.get("total_steps", 1000)
-        )
-        return experiment.run()
 
     def _train_iterative(self) -> TrainingResult:
         """Train using iterative approach (from run_1m.py)."""

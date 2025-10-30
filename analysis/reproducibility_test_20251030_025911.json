@@ -1,0 +1,45 @@
+{
+  "test_info": {
+    "description": "SAC v437 reproducibility test with different random seeds",
+    "total_timesteps": 1000,
+    "seeds_tested": [
+      42,
+      123,
+      456,
+      789,
+      999
+    ]
+  },
+  "results": [
+    {
+      "seed": 42,
+      "success": false,
+      "output": "\ud83e\udd16 MultiModal Learning Module v1.0.0 initialized\n\ud83d\udcca Ready for multi-modal trading AI development\nusage: train_sac_v437.py [-h] [--config CONFIG] [--version VERSION]\ntrain_sac_v437.py: error: unrecognized arguments: --seed 42 --total-timesteps 1000\n",
+      "return_code": 2
+    },
+    {
+      "seed": 123,
+      "success": false,
+      "output": "\ud83e\udd16 MultiModal Learning Module v1.0.0 initialized\n\ud83d\udcca Ready for multi-modal trading AI development\nusage: train_sac_v437.py [-h] [--config CONFIG] [--version VERSION]\ntrain_sac_v437.py: error: unrecognized arguments: --seed 123 --total-timesteps 1000\n",
+      "return_code": 2
+    },
+    {
+      "seed": 456,
+      "success": false,
+      "output": "\ud83e\udd16 MultiModal Learning Module v1.0.0 initialized\n\ud83d\udcca Ready for multi-modal trading AI development\nusage: train_sac_v437.py [-h] [--config CONFIG] [--version VERSION]\ntrain_sac_v437.py: error: unrecognized arguments: --seed 456 --total-timesteps 1000\n",
+      "return_code": 2
+    },
+    {
+      "seed": 789,
+      "success": false,
+      "output": "\ud83e\udd16 MultiModal Learning Module v1.0.0 initialized\n\ud83d\udcca Ready for multi-modal trading AI development\nusage: train_sac_v437.py [-h] [--config CONFIG] [--version VERSION]\ntrain_sac_v437.py: error: unrecognized arguments: --seed 789 --total-timesteps 1000\n",
+      "return_code": 2
+    },
+    {
+      "seed": 999,
+      "success": false,
+      "output": "\ud83e\udd16 MultiModal Learning Module v1.0.0 initialized\n\ud83d\udcca Ready for multi-modal trading AI development\nusage: train_sac_v437.py [-h] [--config CONFIG] [--version VERSION]\ntrain_sac_v437.py: error: unrecognized arguments: --seed 999 --total-timesteps 1000\n",
+      "return_code": 2
+    }
+  ]
+}

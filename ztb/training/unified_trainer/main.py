@@ -6,7 +6,6 @@ Main entry point for Unified Trainer.
 import argparse
 import sys
 
-from ztb.config.manager import ConfigManager
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 
@@ -57,19 +56,32 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Load and validate configuration using new ConfigManager
-    config_manager = ConfigManager.get_instance()
-
+    # Load and validate configuration
     try:
         if args.config:
-            config = config_manager.load_config(args.config)
-        else:
-            config = config_manager.load_config()
+            # Load JSON config directly for training configs
+            import json
 
-        # Validate configuration
-        if not config_manager.validate_config(args.config if args.config else None):
-            print("❌ Configuration validation failed")
-            sys.exit(1)
+            with open(args.config, "r") as f:
+                raw_config = json.load(f)
+
+            # Process config using ConfigManager to build unified config
+            from ztb.training.core.config_manager import ConfigManager
+
+            config_manager = ConfigManager(raw_config)
+            config = config_manager.build_unified_config(
+                enable_streaming=args.enable_streaming,
+                stream_batch_size=args.stream_batch_size,
+                total_timesteps_override=args.total_timesteps,
+            )
+            print(f"DEBUG: Unified config environment: {config.get('environment', {})}")
+            print(f"DEBUG: Unified config keys: {list(config.keys())}")
+        else:
+            # Use ConfigManager for default config loading
+            from ztb.config.manager import ConfigManager as GlobalConfigManager
+
+            config_manager = GlobalConfigManager.get_instance()
+            config = config_manager.load_config()
 
     except Exception as e:
         print(f"❌ Failed to load configuration: {e}")

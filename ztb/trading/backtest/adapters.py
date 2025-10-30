@@ -45,7 +45,7 @@ class RLPolicyAdapter:
     """Adapter for RL policy (PPO trained model)."""
 
     def __init__(
-        self, model_path: Optional[str] = None, enable_150d_features: bool = True
+        self, model_path: Optional[str] = None, enable_150d_features: bool = False
     ):
         """Initialize with trained model path and 150-dimensional feature support."""
         self.model_path = model_path
@@ -64,9 +64,9 @@ class RLPolicyAdapter:
         }
         if model_path:
             try:
-                from stable_baselines3 import SAC
+                from stable_baselines3 import PPO
 
-                self.model = SAC.load(model_path)
+                self.model = PPO.load(model_path)
                 # Get observation space shape dynamically
                 self.observation_space_shape = self.model.observation_space.shape[0]
                 print(
@@ -521,6 +521,144 @@ class BuyAndHoldAdapter:
         print("Buy and hold strategy: no hyperparameters to update")
 
 
+class ActionSignalGuideAdapter:
+    """Adapter for Action Signal Guide strategy."""
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize Action Signal Guide adapter."""
+        from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
+            ActionSignalGuide,
+            ActionSignalGuideConfig,
+        )
+
+        self.config = config or {}
+        # Use provided config or create default
+        if config and hasattr(config, "debug_short_mode"):
+            guide_config = config
+        else:
+            # Create config object with debug mode - force minimal setup
+            guide_config = ActionSignalGuideConfig(
+                debug_short_mode=False,  # Run all recognizers
+                guidance_level=ActionSignalGuideConfig().guidance_level,  # Use default guidance level
+                enable_candlestick_patterns=True,
+                enable_fibonacci_patterns=False,
+                enable_gann_patterns=False,
+                enable_wave_patterns=False,
+                enable_harmonic_patterns=False,
+                enable_oscillator_patterns=False,
+                enable_volume_patterns=False,
+                enable_bollinger_patterns=False,
+                enable_adx_patterns=False,
+                enable_granville_patterns=False,
+                enable_heikin_ashi_patterns=False,
+                enable_dow_theory_patterns=False,
+            )
+        self.guide = ActionSignalGuide(config=guide_config)
+        print(
+            f"ActionSignalGuide initialized with {len(self.guide.all_recognizers)} recognizers"
+        )
+        print(f"Debug mode: {guide_config.debug_short_mode}")
+        self.hyperparameters = {
+            "confidence_threshold": 0.1,  # Very low threshold
+            "signal_strength_threshold": 0.0,  # Accept any signal strength
+            "max_signals_per_bar": 5,
+        }
+
+        # Signal statistics tracking
+        self.signal_stats = {
+            "total_signals": 0,
+            "buy_signals": 0,
+            "sell_signals": 0,
+            "hold_signals": 0,
+        }
+
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> Dict[str, Any]:
+        """Generate signal using Action Signal Guide."""
+        try:
+            # Generate signals from Action Signal Guide
+            # Use the last index of current data (current bar)
+            current_index = len(data) - 1
+            signals = self.guide.generate_signals(data, current_index)
+
+            # Debug: print signal information
+            if signals:
+                print(f"Generated {len(signals)} signals at index {current_index}")
+                for i, signal in enumerate(signals):
+                    print(
+                        f"  Signal {i}: direction={signal.direction:.3f}, confidence={signal.confidence:.3f}, type={signal.signal_type}"
+                    )
+            else:
+                if (
+                    current_index >= 25
+                ):  # Only print for indices where patterns should work
+                    print(
+                        f"No signals generated at index {current_index} (data length: {len(data)})"
+                    )
+
+            if not signals:
+                self.signal_stats["hold_signals"] += 1
+                self.signal_stats["total_signals"] += 1
+                return {"action": "hold"}  # Hold
+
+            # Use the most recent signal (last in the list)
+            latest_signal = signals[-1]
+
+            # Convert ActionSignal to action
+            # ActionSignal.direction: -1.0 (strong sell) to 1.0 (strong buy)
+            # Convert to discrete actions: "sell", "hold", "buy"
+            direction = latest_signal.direction
+            confidence = latest_signal.confidence
+
+            # Apply confidence threshold
+            if confidence < self.hyperparameters["confidence_threshold"]:
+                self.signal_stats["hold_signals"] += 1
+                self.signal_stats["total_signals"] += 1
+                return {"action": "hold"}  # Hold if confidence too low
+
+            # Apply signal strength threshold
+            if abs(direction) < self.hyperparameters["signal_strength_threshold"]:
+                self.signal_stats["hold_signals"] += 1
+                self.signal_stats["total_signals"] += 1
+                return {"action": "hold"}  # Hold if signal too weak
+
+            if direction > 0.1:  # Bullish
+                action = "buy"
+                self.signal_stats["buy_signals"] += 1
+            elif direction < -0.1:  # Bearish
+                action = "sell"
+                self.signal_stats["sell_signals"] += 1
+            else:  # Neutral
+                action = "hold"
+                self.signal_stats["hold_signals"] += 1
+
+            self.signal_stats["total_signals"] += 1
+
+            return {
+                "action": action,
+                "confidence": confidence,
+                "direction": direction,
+                "signal_type": latest_signal.signal_type,
+                "description": latest_signal.description,
+            }
+
+        except Exception as e:
+            print(f"Error generating Action Signal Guide signal: {e}")
+            self.signal_stats["hold_signals"] += 1
+            self.signal_stats["total_signals"] += 1
+            return {"action": "hold"}  # Hold on error
+
+    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+        """Update strategy hyperparameters."""
+        self.hyperparameters.update(hyperparameters)
+        print(f"Updated Action Signal Guide hyperparameters: {self.hyperparameters}")
+
+    def get_signal_statistics(self) -> Dict[str, int]:
+        """Get signal generation statistics."""
+        return self.signal_stats.copy()
+
+
 def create_adapter(strategy_name: str, **kwargs: Any) -> StrategyAdapter:
     """Factory function to create strategy adapters."""
 
@@ -530,5 +668,7 @@ def create_adapter(strategy_name: str, **kwargs: Any) -> StrategyAdapter:
         return SMACrossoverAdapter(**kwargs)
     elif strategy_name == "buy_hold":
         return BuyAndHoldAdapter(**kwargs)
+    elif strategy_name == "action_signal_guide":
+        return ActionSignalGuideAdapter(**kwargs)
     else:
         raise ValueError(f"Unknown strategy: {strategy_name}")

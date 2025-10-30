@@ -27,6 +27,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
+        self.pattern_type = "heikin_ashi"
         self.period = self.config.get("period", 1)  # Number of periods to look back
         self.trend_threshold = self.config.get(
             "trend_threshold", 0.001
@@ -38,7 +39,12 @@ class HeikinAshiRecognizer(PatternRecognizer):
         # Use existing HeikinAshi feature class
         self.heikin_ashi_calculator = HeikinAshi()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """
         Recognize Heikin-Ashi patterns in the data.
 

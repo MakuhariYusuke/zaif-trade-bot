@@ -34,6 +34,10 @@ class EnvironmentConfig:
     signal_guidance_enabled: bool = True
     signal_guidance: Dict[str, Any] = field(default_factory=dict)
     scalping_optimization: Dict[str, Any] = field(default_factory=dict)
+    use_continuous_actions: bool = False
+    behavior_optimization: Optional[Dict[str, Any]] = None
+    market_regime: Optional[Dict[str, Any]] = None
+    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
@@ -54,6 +58,10 @@ class EnvironmentConfig:
             "signal_guidance_enabled": self.signal_guidance_enabled,
             "signal_guidance": self.signal_guidance,
             "scalping_optimization": self.scalping_optimization,
+            "use_continuous_actions": self.use_continuous_actions,
+            "behavior_optimization": self.behavior_optimization,
+            "market_regime": self.market_regime,
+            "dynamic_reward_shaping": self.dynamic_reward_shaping,
         }
 
     @classmethod

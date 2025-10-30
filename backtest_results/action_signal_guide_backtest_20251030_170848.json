@@ -1,0 +1,34 @@
+{
+  "backtest_type": "action_signal_guide_only",
+  "timestamp": "20251030_170848",
+  "duration_seconds": 6923.609919,
+  "data_points": 5000,
+  "initial_capital": 100000.0,
+  "final_portfolio_value": 174190.90060589765,
+  "metrics": {
+    "total_return_pct": 74.19090060589765,
+    "annualized_return_pct": 2.836593824278788,
+    "cagr_pct": 2.836593824278788,
+    "total_trades": 1,
+    "win_rate_pct": 0.0,
+    "sharpe_ratio": 0.13894414469905597,
+    "sortino_ratio": 0.3675831172637563,
+    "calmar_ratio": 0.1647518852782504,
+    "max_drawdown_pct": -17.217367919572467,
+    "volatility_pct": 29.0156681149411,
+    "profit_factor": Infinity,
+    "avg_win": 0.0,
+    "avg_loss": 0.0,
+    "turnover": 252.00252,
+    "estimated_slippage_bps": 5.0
+  },
+  "config": {
+    "slippage_bps": 5.0,
+    "commission_bps": 0.1,
+    "strategy_hyperparameters": {
+      "confidence_threshold": 0.3,
+      "signal_strength_threshold": 0.1,
+      "max_signals_per_bar": 5
+    }
+  }
+}
