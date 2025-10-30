@@ -52,25 +52,55 @@ class TrainingProgressCallback(BaseCallback):
         self.learning_rates: List[float] = []
         self.episode_lengths: List[int] = []
 
+        # Per-regime action tracking for debugging market regime adaptation
+        self.regime_action_counts: dict = {}  # regime -> [hold_count, buy_count, sell_count]
+
+        # Initialize optimizer feature tracker from trainer if available
+        self.optimizer_tracker = None
+        if (
+            trainer_ref
+            and hasattr(trainer_ref, "optimizer_tracker")
+            and trainer_ref.optimizer_tracker is not None
+        ):
+            self.optimizer_tracker = trainer_ref.optimizer_tracker
+        # Note: If optimizer_tracker is None, optimizer features are disabled for this training run
+
     def _on_step(self) -> bool:
-        # Record continuous action taken
+        # Record action taken (handle both PPO discrete and SAC continuous actions)
         try:
             actions = self.locals.get("actions")
             if actions is not None:
-                continuous_action = actions[0]
-                if isinstance(continuous_action, np.ndarray):
-                    continuous_action = continuous_action.item()
-                self.continuous_actions.append(continuous_action)
+                action_value = actions[0]
+                if isinstance(action_value, np.ndarray):
+                    action_value = action_value.item()
 
-                # Convert to discrete action for tracking
-                discrete_action = self._continuous_to_discrete_action(continuous_action)
-                self.discrete_actions.append(discrete_action)
-                # Use logger for debug output instead of print
-                logging.debug(
-                    f"Recorded action {continuous_action:.6f} -> {discrete_action}"
+                # Check if this is PPO (discrete actions) or SAC (continuous actions)
+                is_ppo = (
+                    hasattr(self.trainer, "policy")
+                    and hasattr(self.trainer.policy, "action_space")
+                    and hasattr(self.trainer.policy.action_space, "n")
+                    and self.trainer.policy.action_space.n == 3
                 )
+
+                if is_ppo:
+                    # PPO: action is already discrete (0=HOLD, 1=BUY, 2=SELL)
+                    discrete_action = int(action_value)
+                    self.discrete_actions.append(discrete_action)
+                    # Store as continuous for compatibility (map to -1, 0, 1)
+                    continuous_equivalent = {0: 0.0, 1: 1.0, 2: -1.0}[discrete_action]
+                    self.continuous_actions.append(continuous_equivalent)
+                    logging.debug(
+                        f"PPO action {action_value} -> discrete {discrete_action}"
+                    )
+                else:
+                    # SAC: continuous action needs conversion
+                    self.continuous_actions.append(action_value)
+                    discrete_action = self._continuous_to_discrete_action(action_value)
+                    self.discrete_actions.append(discrete_action)
+                    logging.debug(
+                        f"SAC action {action_value:.6f} -> discrete {discrete_action}"
+                    )
             else:
-                # Use logger if available
                 logging.debug("Actions not available - actions: %s", actions)
         except Exception as e:
             if hasattr(self, "logger") and self.logger is not None:
@@ -87,6 +117,25 @@ class TrainingProgressCallback(BaseCallback):
             if rewards:
                 reward = rewards[0]
                 self.reward_history.append(reward)
+
+                # Record per-regime action counts for debugging
+                try:
+                    infos = self.locals.get("infos")
+                    if infos and len(infos) > 0:
+                        info = infos[0]
+                        if isinstance(info, dict) and "market_regime" in info:
+                            regime = info["market_regime"]
+                            if regime not in self.regime_action_counts:
+                                self.regime_action_counts[regime] = [
+                                    0,
+                                    0,
+                                    0,
+                                ]  # [HOLD, BUY, SELL]
+                            if discrete_action >= 0 and discrete_action <= 2:
+                                self.regime_action_counts[regime][discrete_action] += 1
+                except Exception as e:
+                    logging.debug(f"Failed to record regime action: {e}")
+
         except Exception as e:
             logging.warning("Failed to record reward: %s", e)
 
@@ -152,6 +201,41 @@ class TrainingProgressCallback(BaseCallback):
         if self.n_calls % self.check_freq == 0:
             self._log_progress()
 
+        # Update optimizer features for feature engineering (if enabled)
+        if self.optimizer_tracker is not None:
+            try:
+                # Get current training metrics for optimizer features
+                current_lr = None
+                current_actor_loss = None
+                current_critic_loss = None
+                current_ent_coef = None
+
+                # Extract current learning rate
+                if hasattr(self.model, "policy") and hasattr(
+                    self.model.policy, "optimizer"
+                ):
+                    current_lr = self.model.policy.optimizer.param_groups[0]["lr"]
+
+                # Extract current losses from logger if available
+                if hasattr(self.model, "logger") and self.model.logger:
+                    logger_values = getattr(self.model.logger, "name_to_value", {})
+                    current_actor_loss = logger_values.get("train/actor_loss")
+                    current_critic_loss = logger_values.get("train/critic_loss")
+                    current_ent_coef = logger_values.get("train/ent_coef")
+
+                # Update optimizer features with current training state
+                self.optimizer_tracker.update_optimizer_features(
+                    step=self.n_calls,
+                    learning_rate=current_lr,
+                    actor_loss=current_actor_loss,
+                    critic_loss=current_critic_loss,
+                    entropy_coef=current_ent_coef,
+                    reward=self.reward_history[-1] if self.reward_history else None,
+                )
+            except Exception as e:
+                if self.verbose > 1:
+                    logging.debug(f"Failed to update optimizer features: {e}")
+
         return True
 
     def _continuous_to_discrete_action(
@@ -207,6 +291,23 @@ class TrainingProgressCallback(BaseCallback):
                 action_dist["SELL"] * 100.0,
                 len(self.reward_history),
             )
+
+            # Log per-regime action distribution for debugging
+            if self.regime_action_counts:
+                regime_info = []
+                for regime, counts in self.regime_action_counts.items():
+                    total_regime_actions = sum(counts)
+                    if total_regime_actions > 0:
+                        hold_pct = counts[0] / total_regime_actions * 100
+                        buy_pct = counts[1] / total_regime_actions * 100
+                        sell_pct = counts[2] / total_regime_actions * 100
+                        regime_info.append(
+                            f"{regime}: H{hold_pct:.1f}%/B{buy_pct:.1f}%/S{sell_pct:.1f}%"
+                        )
+                if regime_info:
+                    logging.info(
+                        "Regime action distributions: %s", " | ".join(regime_info)
+                    )
         else:
             # Show progress even when no actions recorded yet
             logging.info(

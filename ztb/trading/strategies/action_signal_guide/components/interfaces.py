@@ -8,7 +8,7 @@ following SOLID principles for better maintainability and testability.
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
-import numpy as np
+import pandas as pd
 
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
@@ -19,13 +19,19 @@ class ISignalGenerator(ABC):
     """Interface for signal generation."""
 
     @abstractmethod
-    def generate_signal(self, observation: np.ndarray, step: int) -> "ActionSignal":
+    def generate_signal(
+        self,
+        data: pd.DataFrame,
+        current_index: int,
+        multi_timeframe_data: Optional[dict] = None,
+    ) -> "ActionSignal":
         """
-        Generate trading signal from observation.
+        Generate trading signal from market data.
 
         Args:
-            observation: Current market observation
-            step: Current step number
+            data: OHLCV DataFrame
+            current_index: Current bar index
+            multi_timeframe_data: Optional multi-timeframe data
 
         Returns:
             Generated action signal

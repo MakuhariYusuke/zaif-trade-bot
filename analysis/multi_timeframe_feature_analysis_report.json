@@ -1,0 +1,64 @@
+{
+  "title": "Multi-Timeframe Feature Impact Analysis",
+  "timestamp": "2025-10-27T18:46:35.321216",
+  "summary": {
+    "objective": "Compare SAC v435 performance with and without multi-timeframe features",
+    "methodology": "Training comparison (10k steps) + existing backtest analysis",
+    "configurations_tested": [
+      "sac_v435_unified_config",
+      "sac_v435_unified_config_no_multi_timeframe"
+    ]
+  },
+  "results": {
+    "training_comparison": {
+      "sac_v435_unified_config": {
+        "training_success": true,
+        "timesteps": 10000,
+        "completion_time": "N/A",
+        "status": "completed"
+      },
+      "sac_v435_unified_config_no_multi_timeframe": {
+        "training_success": true,
+        "timesteps": 10000,
+        "completion_time": "N/A",
+        "status": "completed"
+      }
+    },
+    "backtest_comparison": {
+      "phase5_test_results": {
+        "total_return_pct": 0,
+        "win_rate_pct": 0,
+        "total_trades": 0,
+        "final_balance": 10000,
+        "profit_loss": 0
+      },
+      "backtest_backtest_results": {
+        "total_return_pct": 0,
+        "win_rate_pct": 0,
+        "total_trades": 10,
+        "final_balance": 10000,
+        "profit_loss": 0
+      },
+      "backtest_backtest_results_sac_v427_hybrid_20251026_063723": {
+        "total_return_pct": 0,
+        "win_rate_pct": 0,
+        "total_trades": 0,
+        "final_balance": 10000,
+        "profit_loss": 0
+      }
+    },
+    "insights": [
+      "Training completed successfully for 2 configurations",
+      "Average total return across models: 0.00%",
+      "Best performing model return: 0.00%",
+      "Worst performing model return: 0.00%",
+      "Average win rate across models: 0.00%"
+    ]
+  },
+  "conclusions": [
+    "\u2705 All configurations trained successfully for 10,000 steps",
+    "\ud83d\udcc8 Best backtest return: 0.00%",
+    "\ud83d\udcb0 0 out of 3 models showed positive returns",
+    "\ud83d\udd0d Multi-timeframe feature impact requires further analysis with proper backtesting"
+  ]
+}

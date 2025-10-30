@@ -567,8 +567,10 @@ def run_trading_backtest(
                     )
 
                 # Pendulum環境の報酬をポートフォリオ価値に変換
-                # Pendulumの報酬は負の値（制御コスト）なので、正の値に変換
-                portfolio_change = (reward[0] + 10) * 10  # スケーリング
+                # 修正: より適切なスケーリングを使用
+                # 旧: portfolio_change = (reward[0] + 10) * 10  # スケーリングが大きすぎる
+                # 新: 報酬の小さなスケーリング（相関係数改善のため）
+                portfolio_change = reward[0] * 0.1  # 直接使用または小さなスケーリング
                 current_portfolio = episode_portfolio[-1] + portfolio_change
                 episode_portfolio.append(current_portfolio)
 

@@ -15,6 +15,8 @@ from stable_baselines3 import SAC
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.utils.analysis_formatters import print_formatted_metrics
+
 
 def main():
     print("🚀 SAC v435.5 Backtest")
@@ -174,13 +176,6 @@ def main():
     total_return = (balance - 10000) / 10000 * 100
     win_rate = wins / trades * 100 if trades > 0 else 0
 
-    print("\n📊 Results:")
-    print(f"Total Return: {total_return:.2f}%")
-    print(f"Total Trades: {trades}")
-    print(f"Win Rate: {win_rate:.1f}%")
-    print(f"Final Balance: ${balance:.2f}")
-
-    # Save results
     results = {
         "model": "sac_v435.5",
         "total_return_pct": total_return,
@@ -189,6 +184,9 @@ def main():
         "final_balance": balance,
     }
 
+    print_formatted_metrics(results, "SAC v435.5 Backtest Results")
+
+    # Save results
     with open("results/sac_v435_5_backtest.json", "w") as f:
         json.dump(results, f, indent=2)
 

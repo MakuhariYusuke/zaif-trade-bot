@@ -7,11 +7,13 @@ supporting both Ta-Lib and custom implementations with fallback logic.
 
 import logging
 import warnings
+from collections import OrderedDict
 from typing import Any, Dict, Tuple, Union, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+
 
 # Try to import Ta-Lib, fallback to custom implementations if not available
 try:
@@ -100,7 +102,7 @@ class TaLibWrapper:
         self.enable_cache = enable_cache
         self.cache_size = cache_size
         self.strict_validation = strict_validation
-        self._cache: Dict[str, Any] = {}
+        self._cache: OrderedDict[str, Any] = OrderedDict()
 
     @staticmethod
     def check_talib_availability() -> bool:
@@ -157,6 +159,26 @@ class TaLibWrapper:
         key_data = f"{func_name}_{str(args)}_{str(sorted(kwargs.items()))}"
         return hashlib.md5(key_data.encode()).hexdigest()
 
+    def _cache_get(self, key: str) -> Any:
+        """Get item from cache with LRU update."""
+        if key in self._cache:
+            # Move to end (most recently used)
+            self._cache.move_to_end(key)
+            return self._cache[key]
+        return None
+
+    def _cache_put(self, key: str, value: Any) -> None:
+        """Put item in cache with LRU eviction."""
+        if key in self._cache:
+            # Update existing item
+            self._cache.move_to_end(key)
+        else:
+            # Add new item
+            if len(self._cache) >= self.cache_size:
+                # Remove least recently used
+                self._cache.popitem(last=False)
+        self._cache[key] = value
+
     @timed
     def sma(
         self, data: Union[NDArray[np.float64], pd.Series], period: int
@@ -183,8 +205,9 @@ class TaLibWrapper:
         # Check cache
         if self.enable_cache:
             cache_key = self._get_cache_key("sma", data.tobytes(), period)
-            if cache_key in self._cache:
-                return self._cache[cache_key].copy()
+            cached_result = self._cache_get(cache_key)
+            if cached_result is not None:
+                return cached_result.copy()
 
         try:
             if TALIB_AVAILABLE:
@@ -201,12 +224,7 @@ class TaLibWrapper:
 
             # Cache result
             if self.enable_cache:
-                self._cache[cache_key] = result.copy()
-                # Limit cache size
-                if len(self._cache) > self.cache_size:
-                    # Remove oldest entry (simple FIFO)
-                    oldest_key = next(iter(self._cache))
-                    del self._cache[oldest_key]
+                self._cache_put(cache_key, result.copy())
 
             return result
 
@@ -299,6 +317,94 @@ class TaLibWrapper:
                 return TaLibWrapper._rsi_custom(data, period)
         except Exception as e:
             raise TaLibError(f"RSI calculation failed: {e}")
+
+    @timed
+    def bbands(
+        self,
+        data: Union[NDArray[np.float64], pd.Series],
+        period: int = 20,
+        nbdevup: float = 2.0,
+        nbdevdn: float = 2.0,
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+        """
+        Bollinger Bands.
+
+        Bollinger Bands are volatility bands placed above and below a moving average.
+        Volatility is based on the standard deviation, which changes as volatility increases or decreases.
+        The bands automatically widen when volatility increases and narrow when volatility decreases.
+
+        Args:
+            data: Input price data (typically closing prices)
+            period: Period for moving average calculation (default: 20)
+            nbdevup: Standard deviation multiplier for upper band (default: 2.0)
+            nbdevdn: Standard deviation multiplier for lower band (default: 2.0)
+
+        Returns:
+            Tuple of (Upper Band, Middle Band (SMA), Lower Band)
+
+        Raises:
+            TaLibError: If input validation fails
+        """
+        data = self._validate_input_data(data, "data")
+        period = self._validate_period(period, "period")
+
+        if len(data) < period:
+            raise TaLibError(f"Data length {len(data)} is less than period {period}")
+
+        # Check cache
+        if self.enable_cache:
+            cache_key = self._get_cache_key(
+                "bbands", data.tobytes(), period, nbdevup, nbdevdn
+            )
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                return (
+                    cached_result[0].copy(),
+                    cached_result[1].copy(),
+                    cached_result[2].copy(),
+                )
+
+        try:
+            if TALIB_AVAILABLE:
+                upper, middle, lower = talib.BBANDS(
+                    data, timeperiod=period, nbdevup=nbdevup, nbdevdn=nbdevdn, matype=0
+                )
+                result = (
+                    np.nan_to_num(upper, nan=np.nan),
+                    np.nan_to_num(middle, nan=np.nan),
+                    np.nan_to_num(lower, nan=np.nan),
+                )
+            elif TA_AVAILABLE:
+                # Use ta library
+                bb_indicator = ta.volatility.BollingerBands(
+                    pd.Series(data), window=period, window_dev=nbdevup
+                )
+                upper = bb_indicator.bollinger_hband().values
+                lower = bb_indicator.bollinger_lband().values
+                middle = bb_indicator.bollinger_mavg().values
+                result = (
+                    np.nan_to_num(upper, nan=np.nan),
+                    np.nan_to_num(middle, nan=np.nan),
+                    np.nan_to_num(lower, nan=np.nan),
+                )
+            else:
+                result = self._bbands_custom(data, period, nbdevup, nbdevdn)
+
+            # Cache result
+            if self.enable_cache:
+                self._cache[cache_key] = (
+                    result[0].copy(),
+                    result[1].copy(),
+                    result[2].copy(),
+                )
+                if len(self._cache) > self.cache_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
+        except Exception as e:
+            raise TaLibError(f"BBANDS calculation failed: {e}")
 
     def macd(
         self,
@@ -1293,17 +1399,22 @@ class TaLibWrapper:
     ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """Custom Bollinger Bands implementation."""
         data = np.asarray(data, dtype=float)
-        sma = TaLibWrapper._sma_custom(data, period)
 
-        # Calculate standard deviation
-        rolling_std = (
-            pd.Series(data).rolling(window=period).std().values.astype(np.float64)
-        )
+        # Calculate SMA using the same method as _sma_custom
+        weights = np.ones(period) / period
+        sma = np.convolve(data, weights, mode="valid").astype(np.float64)
 
-        upper = sma + (rolling_std * nbdevup)
-        lower = sma - (rolling_std * nbdevdn)
+        # Calculate rolling standard deviation for the same windows
+        n = len(data)
+        std = np.full(n - period + 1, np.nan)
+        for i in range(len(std)):
+            window = data[i : i + period]
+            std[i] = np.std(window, ddof=1)  # Use ddof=1 for sample standard deviation
 
-        # Pad to match input length
+        upper = sma + (std * nbdevup)
+        lower = sma - (std * nbdevdn)
+
+        # Pad results to match input length
         result_len = len(data)
         upper_padded = np.full(result_len, np.nan)
         lower_padded = np.full(result_len, np.nan)

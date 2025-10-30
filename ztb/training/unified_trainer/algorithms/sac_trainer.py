@@ -30,12 +30,14 @@ class SACTrainer(BaseAlgorithmTrainer):
         logger: Optional[logging.Logger] = None,
         gradient_accumulation_steps: int = 1,
         system_optimizer: Optional[Any] = None,
+        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
     ):
         super().__init__(config, logger)
         # model will be instantiated later; annotate as optional to satisfy mypy
         self.model: Optional[SAC] = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
+        self.optimizer_tracker = optimizer_tracker
         self.training_stats: TrainingStats = {}
 
         # Training state manager for resume functionality
@@ -52,7 +54,9 @@ class SACTrainer(BaseAlgorithmTrainer):
             config_manager = ConfigurationManager(self.logger)
 
             # Additional SAC-specific validation
-            sac_config = self.config.get("sac_hyperparameters", {})
+            sac_config = self.config.get("sac_hyperparameters", {}) or self.config.get(
+                "training", {}
+            ).get("sac_hyperparameters", {})
             if not sac_config:
                 self.logger.error("Missing SAC hyperparameters section")
                 return False
@@ -100,15 +104,22 @@ class SACTrainer(BaseAlgorithmTrainer):
 
     def train(self, total_timesteps: Optional[int] = None) -> bool:
         """Execute SAC training with enhanced monitoring.
-        
+
         Args:
             total_timesteps: Total number of timesteps to train for (overrides config)
         """
-        return self.execute_training_pipeline("SAC", self._execute_sac_training, total_timesteps=total_timesteps)
+        return self.execute_training_pipeline(
+            "SAC", self._execute_sac_training, total_timesteps=total_timesteps
+        )
 
-    def _execute_sac_training(self, total_timesteps: Optional[int] = None) -> bool:
+    def _execute_sac_training(
+        self,
+        total_timesteps: Optional[int] = None,
+        callback: Optional[TrainingProgressCallback] = None,
+        start_time: Optional[float] = None,
+    ) -> bool:
         """Execute core SAC training logic with structured logging.
-        
+
         Args:
             total_timesteps: Total number of timesteps to train for
         """
@@ -119,7 +130,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             )
             total_timesteps = total_timesteps or config_timesteps
             resume_path = self.config.get("training", {}).get("resume_from", None)
-            start_time = time.time()
+            start_time = start_time or time.time()
 
             # Check for resume functionality
             resumed_state = None
@@ -151,11 +162,15 @@ class SACTrainer(BaseAlgorithmTrainer):
                     f"Resume path {resume_path} not found, starting fresh training"
                 )
 
-            # Create callback for progress tracking
-            callback = TrainingProgressCallback(
-                check_freq=self.config.get("training", {}).get("log_interval", 1000),
-                verbose=1,
-            )
+            # Create callback for progress tracking if not provided
+            if callback is None:
+                callback = TrainingProgressCallback(
+                    check_freq=self.config.get("training", {}).get(
+                        "log_interval", 1000
+                    ),
+                    verbose=1,
+                    trainer_ref=self,
+                )
             # Load and prepare data
             data_config = self.config.get("training", {}).get("data_config", {})
             data_path = data_config.get(
@@ -173,7 +188,20 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.log_structured_event(
                 "environment", "creation", {"type": "HeavyTradingEnv"}
             )
-            env = HeavyTradingEnv(df=df, config=self.config.get("environment", {}))
+            env_config = self.config.get("training", {}).get("environment", {})
+            # Extract the actual config from the environment section
+            actual_env_config = env_config.get("config", env_config)
+            self.logger.info(
+                f"Environment config keys: {list(actual_env_config.keys())}"
+            )
+            self.logger.info(
+                f"use_continuous_actions in config: {actual_env_config.get('use_continuous_actions', 'NOT_FOUND')}"
+            )
+            env = HeavyTradingEnv(
+                df=df,
+                config=actual_env_config,
+                optimizer_tracker=self.optimizer_tracker,
+            )
             wrapped_env: Monitor = Monitor(env)
             self.logger.info(f"Environment observation space: {env.observation_space}")
             self.logger.info(f"Environment action space: {env.action_space}")
@@ -866,3 +894,68 @@ class SACTrainer(BaseAlgorithmTrainer):
         }
 
         return sac_config
+
+    def analyze_results(self) -> Dict[str, Any]:
+        """Analyze training results and provide comprehensive summary."""
+        try:
+            self.logger.info("Analyzing SAC training results...")
+
+            # Get final action distribution from callback if available
+            action_distribution = {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
+            regime_distributions = {}
+
+            # Try to get callback data from training stats
+            if hasattr(self, "training_stats") and self.training_stats:
+                callback = self.training_stats.get("callback")
+                if callback and hasattr(callback, "continuous_actions"):
+                    action_distribution = self._calculate_final_action_distribution(
+                        callback
+                    )
+
+                    # Get regime-specific distributions if available
+                    if (
+                        hasattr(callback, "regime_action_counts")
+                        and callback.regime_action_counts
+                    ):
+                        for regime, counts in callback.regime_action_counts.items():
+                            total_regime_actions = sum(counts)
+                            if total_regime_actions > 0:
+                                regime_distributions[regime] = {
+                                    "HOLD": counts[0] / total_regime_actions,
+                                    "BUY": counts[1] / total_regime_actions,
+                                    "SELL": counts[2] / total_regime_actions,
+                                    "total_actions": total_regime_actions,
+                                }
+
+            # Calculate training metrics
+            training_metrics = {
+                "algorithm": "SAC",
+                "final_action_distribution": action_distribution,
+                "regime_distributions": regime_distributions,
+                "total_training_steps": self.training_stats.get("total_steps", 0)
+                if hasattr(self, "training_stats")
+                else 0,
+                "training_time": self.training_stats.get("training_time", 0)
+                if hasattr(self, "training_stats")
+                else 0,
+            }
+
+            # Log analysis results
+            self.logger.info(
+                f"Final action distribution: HOLD={action_distribution['HOLD']:.1%}, "
+                f"BUY={action_distribution['BUY']:.1%}, SELL={action_distribution['SELL']:.1%}"
+            )
+
+            if regime_distributions:
+                self.logger.info("Per-regime action distributions:")
+                for regime, dist in regime_distributions.items():
+                    self.logger.info(
+                        f"  {regime}: HOLD={dist['HOLD']:.1%}, BUY={dist['BUY']:.1%}, "
+                        f"SELL={dist['SELL']:.1%} ({dist['total_actions']} actions)"
+                    )
+
+            return training_metrics
+
+        except Exception as e:
+            self.logger.error(f"Failed to analyze SAC results: {e}")
+            return {"error": str(e)}

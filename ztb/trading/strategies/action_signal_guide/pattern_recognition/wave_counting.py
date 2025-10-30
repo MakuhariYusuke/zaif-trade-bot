@@ -7,13 +7,13 @@ and various wave patterns.
 """
 
 from enum import Enum
-from typing import Dict, List, NamedTuple, Optional, Any
+from typing import Any, Dict, List, NamedTuple, Optional
 
 import pandas as pd
 
 from ztb.trading.environment.constants import EPSILON
 
-from .base import PatternRecognizer, SignalResult
+from .base import CandlestickPatternRecognizer, SignalResult
 
 
 class WaveType(Enum):
@@ -195,15 +195,22 @@ class WaveAnalyzer:
         return None
 
 
-class ImpulseWaveRecognizer(PatternRecognizer):
+class ImpulseWaveRecognizer(CandlestickPatternRecognizer):
     """Recognizes Elliott Wave impulse patterns (5-wave structures)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.lookback_period = config.get('lookback_period', 50) if config else 50
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "impulse_wave"
+        self.lookback_period = config.get("lookback_period", 50) if config else 50
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize impulse wave patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -228,38 +235,85 @@ class ImpulseWaveRecognizer(PatternRecognizer):
         if wave_structure and wave_structure["type"] == WaveType.IMPULSE:
             # Check if we're at or near the completion of wave 5
             if abs(index - wave_structure["completion_index"]) <= 2:  # Within 2 bars
-                strength = wave_structure["strength"]
-                direction = wave_structure["direction"]
+                # Calculate dynamic confidence based on wave structure quality
+                waves = wave_structure["waves"]
+                if len(waves) >= 5:
+                    w1, w2, w3, w4, w5 = waves[-5:]
 
-                signal_type = "impulse_wave_completion"
+                    # Calculate wave ratios for pattern completeness
+                    wave1_length = abs(w1.price - w2.price)
+                    wave3_length = abs(w3.price - w2.price)
+                    wave5_length = abs(w5.price - w4.price)
+                    total_length = abs(w5.price - w1.price)
 
-                return SignalResult(
-                    signal_type=signal_type,
-                    strength=strength,
-                    direction=direction,
-                    description="Elliott Wave Impulse Pattern (5-wave structure)",
-                    timestamp=data.index[index],
-                    metadata={
-                        "pattern": "impulse_wave",
-                        "wave_type": wave_structure["type"].value,
-                        "degree": wave_structure["degree"].value,
-                        "wave_count": len(wave_structure["waves"]),
-                        "confidence": strength,
-                    },
-                )
+                    # Wave 3 should be the strongest (longest)
+                    wave3_ratio = (
+                        wave3_length / total_length if total_length > 0 else 0.5
+                    )
+                    pattern_completeness = min(
+                        1.0, wave3_ratio * 1.5
+                    )  # Boost confidence for strong wave 3
+
+                    # Base confidence from wave structure quality
+                    base_confidence = min(0.9, 0.7 + pattern_completeness * 0.2)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 20
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.6
+                        ),  # Wave patterns are structural
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.7
+                        ),  # Significant wave movement
+                        "pattern_completeness": pattern_completeness,  # How well the wave ratios fit ideal structure
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = wave_structure["direction"] * confidence
+
+                    signal_type = "impulse_wave_completion"
+
+                    return SignalResult(
+                        signal_type=signal_type,
+                        strength=confidence,
+                        direction=direction,
+                        description="Elliott Wave Impulse Pattern (5-wave structure)",
+                        timestamp=data.index[index],
+                        confidence=confidence,
+                        metadata={
+                            "pattern": "impulse_wave",
+                            "wave_type": wave_structure["type"].value,
+                            "degree": wave_structure["degree"].value,
+                            "wave_count": len(wave_structure["waves"]),
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
+                        },
+                    )
 
         return None
 
 
-class CorrectiveWaveRecognizer(PatternRecognizer):
+class CorrectiveWaveRecognizer(CandlestickPatternRecognizer):
     """Recognizes Elliott Wave corrective patterns (ABC structures)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.lookback_period = config.get('lookback_period', 40) if config else 40
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "corrective_wave"
+        self.lookback_period = config.get("lookback_period", 40) if config else 40
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize corrective wave patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -284,37 +338,90 @@ class CorrectiveWaveRecognizer(PatternRecognizer):
         if wave_structure and wave_structure["type"] == WaveType.CORRECTIVE:
             # Check if we're at or near the completion of wave C
             if abs(index - wave_structure["completion_index"]) <= 2:  # Within 2 bars
-                strength = wave_structure["strength"]
-                direction = wave_structure["direction"]
+                # Calculate dynamic confidence based on corrective structure quality
+                waves = wave_structure["waves"]
+                if len(waves) >= 3:
+                    a, b, c = waves[-3:]
 
-                signal_type = "corrective_wave_completion"
+                    # Calculate corrective pattern ratios
+                    ab_range = abs(a.price - b.price)
+                    bc_range = abs(b.price - c.price)
+                    total_correction = abs(a.price - c.price)
 
-                return SignalResult(
-                    signal_type=signal_type,
-                    strength=strength,
-                    direction=direction,
-                    description="Elliott Wave Corrective Pattern (ABC structure)",
-                    timestamp=data.index[index],
-                    metadata={
-                        "pattern": "corrective_wave",
-                        "wave_type": wave_structure["type"].value,
-                        "degree": wave_structure["degree"].value,
-                        "wave_count": len(wave_structure["waves"]),
-                        "confidence": strength,
-                    },
-                )
+                    # B should be partial retracement (typically 0.382-0.786 of A)
+                    b_retracement = (
+                        ab_range / (a.price - min(a.price, c.price))
+                        if (a.price - min(a.price, c.price)) > 0
+                        else 0.5
+                    )
+                    pattern_completeness = 1.0 - abs(
+                        b_retracement - 0.618
+                    )  # Closer to 0.618 Fibonacci is better
+
+                    # C should extend beyond A (for zigzag corrections)
+                    c_extension = bc_range / ab_range if ab_range > 0 else 1.0
+                    if c_extension > 1.0:  # C extends beyond A
+                        pattern_completeness *= min(1.0, c_extension * 0.5)
+
+                    # Base confidence from pattern structure quality
+                    base_confidence = min(0.85, 0.6 + pattern_completeness * 0.25)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 15
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.5
+                        ),  # Corrective patterns are consolidation
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.6
+                        ),  # Moderate movement in corrections
+                        "pattern_completeness": pattern_completeness,  # How well the ABC ratios fit ideal structure
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = wave_structure["direction"] * confidence
+
+                    signal_type = "corrective_wave_completion"
+
+                    return SignalResult(
+                        signal_type=signal_type,
+                        strength=confidence,
+                        direction=direction,
+                        description="Elliott Wave Corrective Pattern (ABC structure)",
+                        timestamp=data.index[index],
+                        confidence=confidence,
+                        metadata={
+                            "pattern": "corrective_wave",
+                            "wave_type": wave_structure["type"].value,
+                            "degree": wave_structure["degree"].value,
+                            "wave_count": len(wave_structure["waves"]),
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
+                        },
+                    )
 
         return None
 
 
-class WaveExtensionRecognizer(PatternRecognizer):
+class WaveExtensionRecognizer(CandlestickPatternRecognizer):
     """Recognizes wave extensions and truncations."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
+        super().__init__(config)
+        self.pattern_type = "wave_extension"
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize wave extensions or truncations at the given index."""
         if index < self.lookback_period:
             return None
@@ -355,16 +462,7 @@ class WaveExtensionRecognizer(PatternRecognizer):
                     )
                     direction = (
                         1 if recent_pivots[-1].price > recent_pivots[0].price else -1
-                    )
-                    strength = min(
-                        0.85,
-                        0.6
-                        + (
-                            wave_lengths[1] / max(wave_lengths[0], wave_lengths[2])
-                            - 1.5
-                        )
-                        * 0.1,
-                    )
+                    ) * strength
 
                     return SignalResult(
                         signal_type="wave_extension",
@@ -386,34 +484,65 @@ class WaveExtensionRecognizer(PatternRecognizer):
 
             # Check for truncation: wave 5 doesn't exceed wave 3 high (in bullish case)
             if w3.price > w1.price and w5.price < w3.price:
-                strength = 0.7
+                # Calculate truncation severity
+                truncation_ratio = (
+                    (w3.price - w5.price) / (w3.price - w1.price)
+                    if (w3.price - w1.price) > 0
+                    else 0.5
+                )
+                base_confidence = min(0.8, 0.6 + truncation_ratio * 0.3)
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 10),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.5
+                    ),  # Wave patterns are structural
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.8
+                    ),  # Significant wave movement
+                    "pattern_completeness": truncation_ratio,  # How severe the truncation is
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=base_confidence
+                )
 
                 return SignalResult(
                     signal_type="wave_truncation",
-                    strength=strength,
-                    direction=-1,  # Bearish signal (failure)
+                    strength=confidence,
+                    direction=-confidence,  # Bearish signal (failure)
                     description="Elliott Wave Truncation (wave 5 fails to exceed wave 3)",
                     timestamp=data.index[index],
+                    confidence=confidence,
                     metadata={
                         "pattern": "wave_truncation",
                         "wave3_high": w3.price,
                         "wave5_high": w5.price,
-                        "confidence": strength,
+                        "truncation_ratio": truncation_ratio,
+                        "confidence": confidence,
                     },
                 )
 
         return None
 
 
-class WaveIRecognizer(PatternRecognizer):
+class WaveIRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave I (Initial impulse wave) - start of a new trend."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 30) if config else 30
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_i"
+        self.lookback_period = config.get("lookback_period", 30) if config else 30
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave I patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -443,40 +572,77 @@ class WaveIRecognizer(PatternRecognizer):
                 > data["close"].iloc[index - self.lookback_period : index].std() * 2
             ):
                 direction = 1 if p2.price > p1.price else -1
-                strength = min(
-                    0.8,
-                    abs(p2.price - p1.price)
-                    / data["close"].iloc[index - self.lookback_period : index].mean()
-                    * 10,
+
+                # Calculate wave strength based on size relative to recent volatility
+                wave_size = abs(p2.price - p1.price)
+                recent_volatility = (
+                    data["close"].iloc[index - self.lookback_period : index].std()
                 )
+                wave_strength_ratio = (
+                    wave_size / recent_volatility if recent_volatility > 0 else 1.0
+                )
+
+                # Pattern completeness based on how strong the initial move is
+                pattern_completeness = min(
+                    1.0, wave_strength_ratio / 3.0
+                )  # Strong moves get higher confidence
+
+                # Base confidence from wave strength
+                base_confidence = min(0.85, 0.6 + pattern_completeness * 0.25)
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 15),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.7
+                    ),  # Initial waves have larger candles
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.8
+                    ),  # Strong directional movement
+                    "pattern_completeness": pattern_completeness,  # How strong the initial impulse is
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=base_confidence
+                )
+                direction = direction * confidence
 
                 return SignalResult(
                     signal_type="wave_i",
-                    strength=strength,
+                    strength=confidence,
                     direction=direction,
                     description="Elliott Wave I (Initial impulse wave)",
                     timestamp=data.index[index],
+                    confidence=confidence,
                     metadata={
                         "pattern": "wave_i",
                         "wave_label": WaveLabel.I.value,
                         "start_price": p1.price,
                         "end_price": p2.price,
-                        "confidence": strength,
+                        "confidence": confidence,
+                        "pattern_completeness": pattern_completeness,
                     },
                 )
 
         return None
 
 
-class WaveVRecognizer(PatternRecognizer):
+class WaveVRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave V (Final impulse wave) - completion of impulse sequence."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 50) if config else 50
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_v"
+        self.lookback_period = config.get("lookback_period", 50) if config else 50
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave V patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -510,35 +676,77 @@ class WaveVRecognizer(PatternRecognizer):
             ):  # Progression
                 # Wave V should be at the end
                 if abs(index - w5.position) <= 2:  # Near completion
-                    strength = 0.85
-                    direction = 1  # Bullish completion
+                    # Calculate dynamic confidence based on wave structure quality
+                    wave1_length = abs(w1.price - w2.price)
+                    wave3_length = abs(w3.price - w2.price)
+                    wave5_length = abs(w5.price - w4.price)
+                    total_length = abs(w5.price - w1.price)
+
+                    # Wave 3 should be the strongest (longest)
+                    wave3_ratio = (
+                        wave3_length / total_length if total_length > 0 else 0.5
+                    )
+                    pattern_completeness = min(
+                        1.0, wave3_ratio * 1.5
+                    )  # Boost confidence for strong wave 3
+
+                    # Base confidence from wave structure quality (slightly higher for final wave)
+                    base_confidence = min(0.9, 0.75 + pattern_completeness * 0.15)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 20
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.6
+                        ),  # Wave patterns are structural
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.8
+                        ),  # Strong final wave movement
+                        "pattern_completeness": pattern_completeness,  # How well the wave ratios fit ideal structure
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = confidence  # Bullish completion
 
                     return SignalResult(
                         signal_type="wave_v",
-                        strength=strength,
+                        strength=confidence,
                         direction=direction,
                         description="Elliott Wave V (Final impulse wave completion)",
                         timestamp=data.index[index],
+                        confidence=confidence,
                         metadata={
                             "pattern": "wave_v",
                             "wave_label": WaveLabel.V.value,
                             "wave_structure": [w.price for w in recent_pivots],
-                            "confidence": strength,
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
                         },
                     )
 
         return None
 
 
-class WaveYRecognizer(PatternRecognizer):
+class WaveYRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave Y (Terminal wave in complex corrections)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_y"
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave Y patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -572,11 +780,43 @@ class WaveYRecognizer(PatternRecognizer):
                 # Wave Y should be completing
                 if abs(index - y_end.position) <= 2:
                     direction = -1 if y_end.price < y_start.price else 1
-                    strength = 0.8
+
+                    # Calculate dynamic confidence based on complex correction structure
+                    w_length = abs(w_end.price - w_start.price)
+                    x_length = abs(x_end.price - x_start.price)
+                    y_length = abs(y_end.price - y_start.price)
+
+                    # In complex corrections, Y should be larger than X (connecting wave)
+                    y_x_ratio = y_length / x_length if x_length > 0 else 1.0
+                    pattern_completeness = min(
+                        1.0, y_x_ratio * 0.5
+                    )  # Higher confidence for dominant Y wave
+
+                    # Base confidence from complex correction structure
+                    base_confidence = min(0.85, 0.7 + pattern_completeness * 0.15)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 25
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.5
+                        ),  # Complex corrections are consolidation
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.6
+                        ),  # Moderate movement in complex corrections
+                        "pattern_completeness": pattern_completeness,  # How well Y dominates the correction
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = direction * confidence
 
                     return SignalResult(
                         signal_type="wave_y",
-                        strength=strength,
+                        strength=confidence,
                         direction=direction,
                         description="Elliott Wave Y (Terminal wave in complex correction)",
                         timestamp=data.index[index],
@@ -586,22 +826,30 @@ class WaveYRecognizer(PatternRecognizer):
                             "w_length": abs(w_end.price - w_start.price),
                             "x_length": abs(x_end.price - x_start.price),
                             "y_length": abs(y_end.price - y_start.price),
-                            "confidence": strength,
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
                         },
                     )
 
         return None
 
 
-class WavePRecognizer(PatternRecognizer):
+class WavePRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave P (Irregular correction wave)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 40) if config else 40
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_p"
+        self.lookback_period = config.get("lookback_period", 40) if config else 40
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave P (irregular correction) patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -637,14 +885,41 @@ class WavePRecognizer(PatternRecognizer):
                 )
                 if overshoot_ratio > 1.2:  # More than 20% overshoot
                     direction = -1 if end.price < start.price else 1
-                    strength = min(0.75, 0.5 + overshoot_ratio * 0.1)
+
+                    # Calculate dynamic confidence based on overshoot severity
+                    pattern_completeness = min(
+                        1.0, (overshoot_ratio - 1.2) * 2.0
+                    )  # Higher confidence for more severe overshoots
+
+                    # Base confidence from overshoot severity
+                    base_confidence = min(0.8, 0.6 + pattern_completeness * 0.2)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 15
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.5
+                        ),  # Irregular corrections vary
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.7
+                        ),  # Significant overshoot movement
+                        "pattern_completeness": pattern_completeness,  # How severe the irregularity is
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = direction * confidence
 
                     return SignalResult(
                         signal_type="wave_p",
-                        strength=strength,
+                        strength=confidence,
                         direction=direction,
                         description="Elliott Wave P (Irregular correction wave)",
                         timestamp=data.index[index],
+                        confidence=confidence,
                         metadata={
                             "pattern": "wave_p",
                             "wave_label": WaveLabel.P.value,
@@ -652,22 +927,30 @@ class WavePRecognizer(PatternRecognizer):
                             "start_price": start.price,
                             "middle_price": middle.price,
                             "end_price": end.price,
-                            "confidence": strength,
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
                         },
                     )
 
         return None
 
 
-class WaveNRecognizer(PatternRecognizer):
+class WaveNRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave N (Complex correction wave)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 50) if config else 50
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_n"
+        self.lookback_period = config.get("lookback_period", 50) if config else 50
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave N (complex correction) patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -709,36 +992,71 @@ class WaveNRecognizer(PatternRecognizer):
 
                 if direction_changes >= 2:  # At least 2 direction changes
                     direction = 1 if p5.price > p1.price else -1
-                    strength = min(0.8, 0.6 + direction_changes * 0.1)
+
+                    # Calculate dynamic confidence based on complexity
+                    pattern_completeness = min(
+                        1.0, direction_changes * 0.3
+                    )  # Higher confidence for more complex patterns
+
+                    # Base confidence from complexity level
+                    base_confidence = min(0.85, 0.65 + pattern_completeness * 0.2)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 20
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.5
+                        ),  # Complex corrections vary
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.6
+                        ),  # Moderate movement in complex patterns
+                        "pattern_completeness": pattern_completeness,  # How complex the correction is
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = direction * confidence
 
                     return SignalResult(
                         signal_type="wave_n",
-                        strength=strength,
+                        strength=confidence,
                         direction=direction,
                         description="Elliott Wave N (Complex correction wave)",
                         timestamp=data.index[index],
+                        confidence=confidence,
                         metadata={
                             "pattern": "wave_n",
                             "wave_label": WaveLabel.N.value,
                             "direction_changes": direction_changes,
                             "start_price": p1.price,
                             "end_price": p5.price,
-                            "confidence": strength,
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
                         },
                     )
 
         return None
 
 
-class WaveSRecognizer(PatternRecognizer):
+class WaveSRecognizer(CandlestickPatternRecognizer):
     """Recognizes Wave S (Secondary correction wave)."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 35) if config else 35
-        self.min_pivot_distance = config.get('min_pivot_distance', 3) if config else 3
+        super().__init__(config)
+        self.pattern_type = "wave_s"
+        self.lookback_period = config.get("lookback_period", 35) if config else 35
+        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
         self.wave_analyzer = WaveAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Wave S (secondary correction) patterns at the given index."""
         if index < self.lookback_period:
             return None
@@ -778,14 +1096,46 @@ class WaveSRecognizer(PatternRecognizer):
                     prior_trend != correction_direction
                 ):  # Correction opposes prior trend
                     direction = -prior_trend  # Signal continuation of prior trend
-                    strength = min(0.75, 0.5 + correction_depth * 0.5)
+
+                    # Calculate dynamic confidence based on correction depth
+                    # Ideal correction depth is around 0.618 Fibonacci retracement
+                    ideal_depth = 0.618
+                    pattern_completeness = (
+                        1.0 - abs(correction_depth - ideal_depth) * 2
+                    )  # Closer to ideal is better
+                    pattern_completeness = max(
+                        0.0, pattern_completeness
+                    )  # Ensure non-negative
+
+                    # Base confidence from correction depth quality
+                    base_confidence = min(0.8, 0.6 + pattern_completeness * 0.2)
+
+                    # Use pattern confidence calculation
+                    pattern_factors = {
+                        "trend_strength": self._calculate_trend_strength(
+                            data, index, 15
+                        ),
+                        "candle_size": self._calculate_candle_size_confidence(
+                            data, index, 0.5
+                        ),  # Secondary corrections vary
+                        "price_movement": self._calculate_price_movement_confidence(
+                            data, index, 0.6
+                        ),  # Moderate movement in corrections
+                        "pattern_completeness": pattern_completeness,  # How close to ideal Fibonacci correction
+                    }
+
+                    confidence = self._calculate_pattern_confidence(
+                        data, index, pattern_factors, base_confidence=base_confidence
+                    )
+                    direction = direction * confidence
 
                     return SignalResult(
                         signal_type="wave_s",
-                        strength=strength,
+                        strength=confidence,
                         direction=direction,
                         description="Elliott Wave S (Secondary correction wave)",
                         timestamp=data.index[index],
+                        confidence=confidence,
                         metadata={
                             "pattern": "wave_s",
                             "wave_label": WaveLabel.S.value,
@@ -794,7 +1144,8 @@ class WaveSRecognizer(PatternRecognizer):
                             "start_price": start.price,
                             "middle_price": middle.price,
                             "end_price": end.price,
-                            "confidence": strength,
+                            "confidence": confidence,
+                            "pattern_completeness": pattern_completeness,
                         },
                     )
 

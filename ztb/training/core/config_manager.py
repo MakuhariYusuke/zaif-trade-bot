@@ -78,26 +78,48 @@ class ConfigManager:
         """
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
+        # Check for nested training.environment structure
+        training_env = self.config.get("training", {}).get("environment", {})
+
         return {
             "max_position_size": self._get_config_value(
                 "max_position_size",
                 ["environment"],
-                DEFAULT_PPO_CONFIG.get("max_position_size", 1.0),
+                training_env.get(
+                    "max_position_size",
+                    DEFAULT_PPO_CONFIG.get("max_position_size", 1.0),
+                ),
             ),
             "initial_balance": self._get_config_value(
                 "initial_balance",
                 ["environment"],
-                DEFAULT_PPO_CONFIG.get("initial_balance", 1000000),
+                training_env.get(
+                    "initial_balance",
+                    DEFAULT_PPO_CONFIG.get("initial_balance", 1000000),
+                ),
             ),
             "transaction_cost": self._get_config_value(
                 "transaction_cost",
                 ["environment"],
-                DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001),
+                training_env.get(
+                    "transaction_cost",
+                    DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001),
+                ),
             ),
             "reward_scaling": self._get_config_value(
                 "reward_scaling",
                 ["environment"],
-                DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0),
+                training_env.get(
+                    "reward_scaling", DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)
+                ),
+            ),
+            "use_continuous_actions": self._get_config_value(
+                "use_continuous_actions",
+                ["environment"],
+                training_env.get(
+                    "use_continuous_actions",
+                    DEFAULT_PPO_CONFIG.get("use_continuous_actions", False),
+                ),
             ),
         }
 
@@ -189,6 +211,43 @@ class ConfigManager:
             ),
         }
 
+    def get_sac_core_config(self) -> Dict[str, Any]:
+        """
+        Extract SAC (Soft Actor-Critic) algorithm-specific parameters from config.
+
+        Returns:
+            Dict containing SAC hyperparameters
+        """
+        sections = ["sac_hyperparameters", "sac_params", "sac", "training"]
+
+        return {
+            "learning_rate": self._get_config_value("learning_rate", sections, 3e-4),
+            "buffer_size": self._get_config_value("buffer_size", sections, 50000),
+            "learning_starts": self._get_config_value(
+                "learning_starts", sections, 1000
+            ),
+            "batch_size": self._get_config_value("batch_size", sections, 256),
+            "tau": self._get_config_value("tau", sections, 0.005),
+            "gamma": self._get_config_value("gamma", sections, 0.99),
+            "train_freq": self._get_config_value("train_freq", sections, 1),
+            "gradient_steps": self._get_config_value("gradient_steps", sections, 1),
+            "target_update_interval": self._get_config_value(
+                "target_update_interval", sections, 1
+            ),
+            "ent_coef": self._get_config_value("ent_coef", sections, "auto"),
+            "target_entropy": self._get_config_value(
+                "target_entropy", sections, "auto"
+            ),
+            "use_sde": self._get_config_value("use_sde", sections, False),
+            "sde_sample_freq": self._get_config_value("sde_sample_freq", sections, -1),
+            "use_sde_at_warmup": self._get_config_value(
+                "use_sde_at_warmup", sections, False
+            ),
+            "policy_kwargs": self._get_config_value("policy_kwargs", sections, None),
+            "device": self._get_config_value("device", sections, "auto"),
+            "verbose": self._get_config_value("verbose", sections, 1),
+        }
+
     def get_feature_config(self) -> Dict[str, Any]:
         """
         Extract feature-related parameters from config.
@@ -196,8 +255,15 @@ class ConfigManager:
         Returns:
             Dict containing feature settings like feature_set, custom_features, etc.
         """
+        # Check for nested training.features structure
+        training_features = self.config.get("training", {}).get("features", {})
+
         return {
-            "feature_set": self.config.get("feature_set", "curated"),
+            "feature_set": self._get_config_value(
+                "feature_set",
+                ["features"],
+                training_features.get("feature_set", "full"),
+            ),
             "custom_features": self.config.get("custom_features", None),
             "feature_config_path": self.config.get("feature_config_path", None),
             "max_features": self.config.get("max_features", None),
@@ -230,6 +296,7 @@ class ConfigManager:
 
         # Build structured config
         ppo_core = self.get_ppo_core_config()
+        sac_core = self.get_sac_core_config()
         memory_opt = self.get_memory_optimization_config()
         environment = self.get_environment_config()
         features = self.get_feature_config()
@@ -250,6 +317,11 @@ class ConfigManager:
             "ppo": {
                 **ppo_core,
                 **environment,  # PPOConfig expects these fields
+                "total_timesteps": total_timesteps,
+            },
+            "sac": {
+                **sac_core,
+                **environment,  # SAC may also need some env fields
                 "total_timesteps": total_timesteps,
             },
             "memory_optimization": memory_opt,
@@ -279,5 +351,6 @@ class ConfigManager:
         unified["max_features"] = memory_opt["max_features"]
         unified["total_timesteps"] = total_timesteps
         unified["ppo"]["total_timesteps"] = total_timesteps
+        unified["sac"]["total_timesteps"] = total_timesteps
 
         return unified

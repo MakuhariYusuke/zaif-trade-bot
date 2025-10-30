@@ -6,11 +6,11 @@ Gartley, Butterfly, Bat, Crab, and other geometric price patterns based
 on Fibonacci ratios and symmetry.
 """
 
-from typing import Dict, List, NamedTuple, Optional, Any
+from typing import Any, Dict, List, NamedTuple, Optional
 
 import pandas as pd
 
-from .base import PatternRecognizer, SignalResult
+from .base import CandlestickPatternRecognizer, SignalResult
 
 
 class HarmonicPoint(NamedTuple):
@@ -241,15 +241,21 @@ class HarmonicAnalyzer:
         return min(0.9, base_strength)
 
 
-class GartleyRecognizer(PatternRecognizer):
+class GartleyRecognizer(CandlestickPatternRecognizer):
     """Recognizes Gartley harmonic patterns."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
-        self.tolerance = config.get('tolerance', 0.05) if config else 0.05
+        super().__init__(config)
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.tolerance = config.get("tolerance", 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Gartley pattern at the given index."""
         if index < self.lookback_period:
             return None
@@ -263,37 +269,68 @@ class GartleyRecognizer(PatternRecognizer):
             )
 
             if pattern and abs(pattern["completion_index"] - index) <= 1:
-                strength = pattern["strength"]
+                # Calculate pattern completeness based on how close price is to completion
+                price_deviation = (
+                    abs(data.iloc[index]["close"] - pattern["completion_price"])
+                    / pattern["completion_price"]
+                )
+                pattern_completeness = 1.0 - min(
+                    1.0, price_deviation * 10
+                )  # Closer to completion = higher completeness
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 20),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.6
+                    ),  # Harmonic patterns are structural
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.7
+                    ),  # Approaching completion target
+                    "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=pattern["strength"]
+                )
                 direction = pattern["direction"]
 
                 signal_type = "gartley_bullish" if direction == 1 else "gartley_bearish"
 
                 return SignalResult(
                     signal_type=signal_type,
-                    strength=strength,
+                    strength=confidence,
                     direction=direction,
                     description="Gartley Harmonic Pattern",
                     timestamp=data.index[index],
+                    confidence=confidence,
                     metadata={
                         "pattern": "gartley",
                         "completion_price": pattern["completion_price"],
                         "target_price": pattern["target_price"],
-                        "confidence": strength,
+                        "confidence": confidence,
+                        "pattern_completeness": pattern_completeness,
                     },
                 )
 
         return None
 
 
-class ButterflyRecognizer(PatternRecognizer):
+class ButterflyRecognizer(CandlestickPatternRecognizer):
     """Recognizes Butterfly harmonic patterns."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
-        self.tolerance = config.get('tolerance', 0.05) if config else 0.05
+        super().__init__(config)
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.tolerance = config.get("tolerance", 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Butterfly pattern at the given index."""
         if index < self.lookback_period:
             return None
@@ -307,7 +344,30 @@ class ButterflyRecognizer(PatternRecognizer):
             )
 
             if pattern and abs(pattern["completion_index"] - index) <= 1:
-                strength = pattern["strength"]
+                # Calculate pattern completeness based on how close price is to completion
+                price_deviation = (
+                    abs(data.iloc[index]["close"] - pattern["completion_price"])
+                    / pattern["completion_price"]
+                )
+                pattern_completeness = 1.0 - min(
+                    1.0, price_deviation * 10
+                )  # Closer to completion = higher completeness
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 20),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.6
+                    ),  # Harmonic patterns are structural
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.7
+                    ),  # Approaching completion target
+                    "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=pattern["strength"]
+                )
                 direction = pattern["direction"]
 
                 signal_type = (
@@ -316,7 +376,7 @@ class ButterflyRecognizer(PatternRecognizer):
 
                 return SignalResult(
                     signal_type=signal_type,
-                    strength=strength,
+                    strength=confidence,
                     direction=direction,
                     description="Butterfly Harmonic Pattern",
                     timestamp=data.index[index],
@@ -324,23 +384,29 @@ class ButterflyRecognizer(PatternRecognizer):
                         "pattern": "butterfly",
                         "completion_price": pattern["completion_price"],
                         "target_price": pattern["target_price"],
-                        "confidence": strength,
+                        "confidence": confidence,
+                        "pattern_completeness": pattern_completeness,
                     },
                 )
 
         return None
 
 
-class BatRecognizer(PatternRecognizer):
+class BatRecognizer(CandlestickPatternRecognizer):
     """Recognizes Bat harmonic patterns."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(config)
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
-        self.tolerance = config.get('tolerance', 0.05) if config else 0.05
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.tolerance = config.get("tolerance", 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Bat pattern at the given index."""
         if index < self.lookback_period:
             return None
@@ -354,14 +420,37 @@ class BatRecognizer(PatternRecognizer):
             )
 
             if pattern and abs(pattern["completion_index"] - index) <= 1:
-                strength = pattern["strength"]
+                # Calculate pattern completeness based on how close price is to completion
+                price_deviation = (
+                    abs(data.iloc[index]["close"] - pattern["completion_price"])
+                    / pattern["completion_price"]
+                )
+                pattern_completeness = 1.0 - min(
+                    1.0, price_deviation * 10
+                )  # Closer to completion = higher completeness
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 20),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.6
+                    ),  # Harmonic patterns are structural
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.7
+                    ),  # Approaching completion target
+                    "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=pattern["strength"]
+                )
                 direction = pattern["direction"]
 
                 signal_type = "bat_bullish" if direction == 1 else "bat_bearish"
 
                 return SignalResult(
                     signal_type=signal_type,
-                    strength=strength,
+                    strength=confidence,
                     direction=direction,
                     description="Bat Harmonic Pattern",
                     timestamp=data.index[index],
@@ -369,22 +458,29 @@ class BatRecognizer(PatternRecognizer):
                         "pattern": "bat",
                         "completion_price": pattern["completion_price"],
                         "target_price": pattern["target_price"],
-                        "confidence": strength,
+                        "confidence": confidence,
+                        "pattern_completeness": pattern_completeness,
                     },
                 )
 
         return None
 
 
-class CrabRecognizer(PatternRecognizer):
+class CrabRecognizer(CandlestickPatternRecognizer):
     """Recognizes Crab harmonic patterns."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.lookback_period = config.get('lookback_period', 60) if config else 60
-        self.tolerance = config.get('tolerance', 0.05) if config else 0.05
+        super().__init__(config)
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.tolerance = config.get("tolerance", 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """Recognize Crab pattern at the given index."""
         if index < self.lookback_period:
             return None
@@ -398,22 +494,47 @@ class CrabRecognizer(PatternRecognizer):
             )
 
             if pattern and abs(pattern["completion_index"] - index) <= 1:
-                strength = pattern["strength"]
+                # Calculate pattern completeness based on how close price is to completion
+                price_deviation = (
+                    abs(data.iloc[index]["close"] - pattern["completion_price"])
+                    / pattern["completion_price"]
+                )
+                pattern_completeness = 1.0 - min(
+                    1.0, price_deviation * 10
+                )  # Closer to completion = higher completeness
+
+                # Use pattern confidence calculation
+                pattern_factors = {
+                    "trend_strength": self._calculate_trend_strength(data, index, 20),
+                    "candle_size": self._calculate_candle_size_confidence(
+                        data, index, 0.6
+                    ),  # Harmonic patterns are structural
+                    "price_movement": self._calculate_price_movement_confidence(
+                        data, index, 0.7
+                    ),  # Approaching completion target
+                    "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
+                }
+
+                confidence = self._calculate_pattern_confidence(
+                    data, index, pattern_factors, base_confidence=pattern["strength"]
+                )
                 direction = pattern["direction"]
 
                 signal_type = "crab_bullish" if direction == 1 else "crab_bearish"
 
                 return SignalResult(
                     signal_type=signal_type,
-                    strength=strength,
+                    strength=confidence,
                     direction=direction,
                     description="Crab Harmonic Pattern",
                     timestamp=data.index[index],
+                    confidence=confidence,
                     metadata={
                         "pattern": "crab",
                         "completion_price": pattern["completion_price"],
                         "target_price": pattern["target_price"],
-                        "confidence": strength,
+                        "confidence": confidence,
+                        "pattern_completeness": pattern_completeness,
                     },
                 )
 

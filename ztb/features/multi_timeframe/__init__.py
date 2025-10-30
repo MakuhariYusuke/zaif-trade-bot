@@ -7,8 +7,6 @@ Provides high-level API for generating features across multiple timeframes.
 
 from __future__ import annotations
 
-import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
@@ -50,7 +48,9 @@ class MultiTimeframeFeatureSystem:
         feature_flags = feature_config.get_feature_flags()
 
         if not feature_flags.get("include_multi_timeframe_features", True):
-            logger.info("Multi-timeframe features disabled in global feature configuration")
+            logger.info(
+                "Multi-timeframe features disabled in global feature configuration"
+            )
             self.config = None
             self.data_pipeline = None
             self.feature_engineer = None
@@ -70,7 +70,7 @@ class MultiTimeframeFeatureSystem:
 
     def process_multi_timeframe_data(
         self,
-        data_files: Optional[Dict[Timeframe, str]] = None,
+        data_or_files: Optional[Union[pd.DataFrame, Dict[Timeframe, str]]] = None,
         feature_set: Optional[str] = None,
         synchronize_data: bool = True,
         generate_missing_timeframes: bool = True,
@@ -79,7 +79,7 @@ class MultiTimeframeFeatureSystem:
         Process data across multiple timeframes and generate integrated features.
 
         Args:
-            data_files: Optional mapping of timeframes to data file paths
+            data_or_files: Either a single DataFrame (for base timeframe) or mapping of timeframes to data file paths
             feature_set: Feature set to use for generation
             synchronize_data: Whether to synchronize timestamps across timeframes
             generate_missing_timeframes: Whether to generate missing timeframes through resampling
@@ -91,15 +91,71 @@ class MultiTimeframeFeatureSystem:
             logger.warning("Multi-timeframe features are disabled")
             return pd.DataFrame()
 
+        # Handle DataFrame input (single timeframe)
+        if isinstance(data_or_files, pd.DataFrame):
+            # Standardize the input DataFrame columns
+            df = data_or_files.copy()
+
+            # Standardize column names
+            column_mapping = {
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume",
+                "Timestamp": "timestamp",
+                "Date": "timestamp",
+                "Time": "timestamp",
+            }
+            df = df.rename(columns=column_mapping)
+
+            # Ensure required columns exist
+            required_cols = ["open", "high", "low", "close", "volume"]
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                raise ValueError(f"Missing required columns: {missing_cols}")
+
+            # Process timestamps
+            if "timestamp" not in df.columns:
+                if isinstance(df.index, pd.DatetimeIndex):
+                    df["timestamp"] = df.index
+                else:
+                    raise ValueError("No timestamp column found")
+
+            if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+                df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+
+            df = df.dropna(subset=["timestamp"])
+            df = df.sort_values("timestamp").reset_index(drop=True)
+
+            # Basic validation
+            df = df.dropna(subset=["open", "high", "low", "close"], how="all")
+            df = df[
+                (df["open"] > 0)
+                & (df["high"] > 0)
+                & (df["low"] > 0)
+                & (df["close"] > 0)
+            ]
+
+            # Use the provided DataFrame as base timeframe data
+            base_timeframe = self.config.get_base_timeframe()
+            raw_data = {base_timeframe: df}
+            data_files = None
+        else:
+            # Handle file paths input
+            data_files = data_or_files
+            raw_data = {}
+
         # Get enabled timeframes from config
         enabled_timeframes = self.config.get_enabled_timeframes()
 
-        # Load data for enabled timeframes
-        logger.info(f"Loading data for {len(enabled_timeframes)} timeframes")
-        raw_data = self.data_pipeline.load_timeframe_data(
-            timeframes=enabled_timeframes,
-            data_files=data_files,
-        )
+        # Load data for enabled timeframes (if not already provided)
+        if not raw_data:
+            logger.info(f"Loading data for {len(enabled_timeframes)} timeframes")
+            raw_data = self.data_pipeline.load_timeframe_data(
+                timeframes=enabled_timeframes,
+                data_files=data_files,
+            )
 
         if not raw_data:
             raise ValueError("No data loaded for any timeframe")
@@ -124,22 +180,31 @@ class MultiTimeframeFeatureSystem:
             feature_set=feature_set,
         )
 
-        logger.info(f"Generated {len(integrated_features)} rows with {len(integrated_features.columns)} features")
+        logger.info(
+            f"Generated {len(integrated_features)} rows with {len(integrated_features.columns)} features"
+        )
         return integrated_features
 
     def get_data_quality_report(self) -> Dict[str, Any]:
         """Get data quality report for loaded timeframes."""
         if not self._enabled:
-            return {"status": "disabled", "message": "Multi-timeframe features are disabled"}
+            return {
+                "status": "disabled",
+                "message": "Multi-timeframe features are disabled",
+            }
 
-        return self.data_pipeline.get_data_quality_report(self.data_pipeline.timeframe_data)
+        return self.data_pipeline.get_data_quality_report(
+            self.data_pipeline.timeframe_data
+        )
 
     def get_feature_counts(self) -> Dict[str, int]:
         """Get feature counts for each timeframe."""
         if not self._enabled:
             return {}
 
-        return self.feature_engineer.get_timeframe_feature_counts(self.data_pipeline.timeframe_data)
+        return self.feature_engineer.get_timeframe_feature_counts(
+            self.data_pipeline.timeframe_data
+        )
 
     def validate_system(self) -> List[str]:
         """Validate the entire multi-timeframe system."""
@@ -210,10 +275,15 @@ class MultiTimeframeFeatureSystem:
     def get_system_info(self) -> Dict[str, Any]:
         """Get system information and status."""
         if not self._enabled:
-            return {"status": "disabled", "message": "Multi-timeframe features are disabled"}
+            return {
+                "status": "disabled",
+                "message": "Multi-timeframe features are disabled",
+            }
 
         return {
-            "enabled_timeframes": [tf.value for tf in self.config.get_enabled_timeframes()],
+            "enabled_timeframes": [
+                tf.value for tf in self.config.get_enabled_timeframes()
+            ],
             "base_timeframe": self.config.get_base_timeframe().value,
             "loaded_data": list(self.data_pipeline.timeframe_data.keys()),
             "config_path": self.config.config_path,
@@ -222,6 +292,7 @@ class MultiTimeframeFeatureSystem:
 
 
 # Convenience functions for easy usage
+
 
 def create_multi_timeframe_system(
     config_path: Optional[str] = None,
@@ -272,7 +343,6 @@ __all__ = [
     "MultiTimeframeFeatureEngineer",
     "MultiTimeframeConfig",
     "MultiTimeframeDataPipeline",
-
     # Convenience functions
     "create_multi_timeframe_system",
     "process_multi_timeframe_features",

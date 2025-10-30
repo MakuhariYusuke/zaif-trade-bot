@@ -1,0 +1,109 @@
+{
+  "analysis_type": "comprehensive",
+  "log_level": "INFO",
+  "output_dir": "reports/analysis",
+
+  "analysis": {
+    "performance_analysis": true,
+    "risk_analysis": true,
+    "behavioral_analysis": true,
+    "comparison_analysis": false,
+
+    "performance": {
+      "metrics": [
+        "total_return",
+        "sharpe_ratio",
+        "max_drawdown",
+        "win_rate",
+        "profit_factor",
+        "total_trades",
+        "avg_trade_duration"
+      ],
+      "benchmark_comparison": true
+    },
+
+    "risk": {
+      "metrics": [
+        "var_95",
+        "var_99",
+        "expected_shortfall",
+        "beta",
+        "volatility",
+        "risk_adjusted_return"
+      ],
+      "confidence_levels": [0.95, 0.99],
+      "time_horizon_days": 252
+    },
+
+    "behavioral": {
+      "metrics": [
+        "action_distribution",
+        "position_duration_avg",
+        "position_duration_max",
+        "trading_frequency",
+        "market_regime_adaptation"
+      ],
+      "action_categories": ["HOLD", "BUY", "SELL"],
+      "regime_analysis": true
+    },
+
+    "comparison": {
+      "baseline_models": ["ppo_baseline", "sac_v427"],
+      "metrics": [
+        "return_diff",
+        "sharpe_diff",
+        "risk_diff",
+        "win_rate_diff"
+      ],
+      "statistical_tests": true
+    }
+  },
+
+  "reporting": {
+    "format": "html",
+    "include_plots": true,
+    "include_tables": true,
+    "export_path": "reports/analysis/",
+    "template": "default",
+
+    "sections": {
+      "summary": true,
+      "performance": true,
+      "risk": true,
+      "behavioral": true,
+      "comparison": false,
+      "recommendations": true
+    },
+
+    "visualization": {
+      "charts": {
+        "performance_chart": true,
+        "risk_chart": true,
+        "action_distribution_chart": true,
+        "comparison_chart": false
+      },
+      "style": "modern",
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#64748b",
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "danger": "#ef4444"
+      }
+    }
+  },
+
+  "data": {
+    "source": "auto",
+    "validation": true,
+    "preprocessing": true,
+    "caching": true
+  },
+
+  "system": {
+    "parallel_processing": false,
+    "memory_optimization": true,
+    "progress_tracking": true,
+    "error_handling": "strict"
+  }
+}

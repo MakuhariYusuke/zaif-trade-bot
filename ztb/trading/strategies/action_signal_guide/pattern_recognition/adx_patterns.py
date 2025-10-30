@@ -4,12 +4,12 @@ ADXパターン認識 - トレンド強度と方向性分析
 """
 
 from typing import Any, Dict, Optional
+
 import pandas as pd
-import numpy as np
+
+from ztb.features.trend.adx import compute_adx, compute_minus_di, compute_plus_di
 
 from .base import PatternRecognizer, SignalResult
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.features.trend.adx import compute_adx, compute_plus_di, compute_minus_di
 
 
 class ADXRecognizer(PatternRecognizer):
@@ -20,12 +20,20 @@ class ADXRecognizer(PatternRecognizer):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
+        self.pattern_type = "adx"
         self.period = self.config.get("period", 14)
         self.strong_trend_threshold = self.config.get("strong_trend_threshold", 25)
         self.weak_trend_threshold = self.config.get("weak_trend_threshold", 20)
-        self.di_cross_threshold = self.config.get("di_cross_threshold", 1.0)  # DIクロスの最小差
+        self.di_cross_threshold = self.config.get(
+            "di_cross_threshold", 1.0
+        )  # DIクロスの最小差
 
-    def recognize(self, data: pd.DataFrame, index: int = -1) -> Optional[SignalResult]:
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[SignalResult]:
         """
         Recognize ADX patterns.
 
@@ -43,11 +51,11 @@ class ADXRecognizer(PatternRecognizer):
             return SignalResult(
                 signal_type="adx_insufficient_data",
                 strength=0.0,
-                direction=ACTION_HOLD,
+                direction=0.0,
                 description=f"Insufficient data for ADX (need {self.period * 2} periods)",
                 metadata={},
                 validity_period=1,
-                risk_level="low"
+                risk_level="low",
             )
 
         try:
@@ -62,9 +70,9 @@ class ADXRecognizer(PatternRecognizer):
 
             # Get previous values for trend analysis
             if index > 0:
-                prev_adx = adx_series.iloc[index-1]
-                prev_plus_di = plus_di_series.iloc[index-1]
-                prev_minus_di = minus_di_series.iloc[index-1]
+                prev_adx = adx_series.iloc[index - 1]
+                prev_plus_di = plus_di_series.iloc[index - 1]
+                prev_minus_di = minus_di_series.iloc[index - 1]
             else:
                 prev_adx = current_adx
                 prev_plus_di = current_plus_di
@@ -81,18 +89,18 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_strong_uptrend",
                         strength=strength,
-                        direction=ACTION_BUY,
+                        direction=1.0,
                         description=f"Strong uptrend detected (ADX: {current_adx:.2f}, +DI: {current_plus_di:.2f})",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "di_difference": di_difference,
-                            "trend_strength": "strong",
-                            "direction": "up"
+                            "trend_strength": 0.8,  # Strong trend
+                            "direction": "up",
                         },
                         validity_period=5,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
                 elif di_difference < -self.di_cross_threshold:
@@ -101,18 +109,18 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_strong_downtrend",
                         strength=strength,
-                        direction=ACTION_SELL,
+                        direction=-1.0,
                         description=f"Strong downtrend detected (ADX: {current_adx:.2f}, -DI: {current_minus_di:.2f})",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "di_difference": di_difference,
-                            "trend_strength": "strong",
-                            "direction": "down"
+                            "trend_strength": 0.8,  # Strong trend
+                            "direction": "down",
                         },
                         validity_period=5,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
                 else:
@@ -121,79 +129,83 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_strong_trend_unclear",
                         strength=strength,
-                        direction=ACTION_HOLD,
+                        direction=0.0,
                         description=f"Strong trend detected but direction unclear (ADX: {current_adx:.2f})",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "di_difference": di_difference,
-                            "trend_strength": "strong",
-                            "direction": "unclear"
+                            "trend_strength": 0.8,  # Strong trend
+                            "direction": "unclear",
                         },
                         validity_period=3,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
             # 2. Weak Trend / Ranging Market (ADX < weak_trend_threshold)
             elif current_adx <= self.weak_trend_threshold:
-                strength = max(0.1, (self.weak_trend_threshold - current_adx) / self.weak_trend_threshold)
+                strength = max(
+                    0.1,
+                    (self.weak_trend_threshold - current_adx)
+                    / self.weak_trend_threshold,
+                )
                 return SignalResult(
                     signal_type="adx_weak_trend",
                     strength=strength,
-                    direction=ACTION_HOLD,
+                    direction=0.0,
                     description=f"Weak trend or ranging market (ADX: {current_adx:.2f})",
                     metadata={
                         "adx": current_adx,
                         "plus_di": current_plus_di,
                         "minus_di": current_minus_di,
-                        "trend_strength": "weak"
+                        "trend_strength": 0.2,  # Weak trend
                     },
                     validity_period=2,
-                    risk_level="low"
+                    risk_level="low",
                 )
 
             # 3. DI Cross Signals (トレンド変化の兆候)
             # Bullish DI cross: +DI crosses above -DI
-            if (prev_plus_di <= prev_minus_di and current_plus_di > current_minus_di):
+            if prev_plus_di <= prev_minus_di and current_plus_di > current_minus_di:
                 if abs(current_plus_di - current_minus_di) >= self.di_cross_threshold:
                     strength = min(0.6, abs(current_plus_di - current_minus_di) / 10.0)
                     return SignalResult(
                         signal_type="adx_di_cross_bullish",
                         strength=strength,
-                        direction=ACTION_BUY,
-                        description=f"+DI crossed above -DI (potential trend change to up)",
+                        direction=1.0,
+                        description="+DI crossed above -DI (potential trend change to up)",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "prev_plus_di": prev_plus_di,
                             "prev_minus_di": prev_minus_di,
-                            "cross_type": "bullish"
+                            "cross_type": "bullish",
                         },
                         validity_period=3,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
             # Bearish DI cross: -DI crosses above +DI
-            elif (prev_minus_di <= prev_plus_di and current_minus_di > current_plus_di):
+            elif prev_minus_di <= prev_plus_di and current_minus_di > current_plus_di:
                 if abs(current_minus_di - current_plus_di) >= self.di_cross_threshold:
                     strength = min(0.6, abs(current_minus_di - current_plus_di) / 10.0)
                     return SignalResult(
                         signal_type="adx_di_cross_bearish",
                         strength=strength,
-                        direction=ACTION_SELL,
-                        description=f"-DI crossed above +DI (potential trend change to down)",
+                        direction=-1.0,
+                        description="-DI crossed above +DI (potential trend change to down)",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "prev_plus_di": prev_plus_di,
                             "prev_minus_di": prev_minus_di,
-                            "cross_type": "bearish"
+                            "cross_type": "bearish",
                         },
                         validity_period=3,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
             # 4. Moderate Trend with Direction
@@ -206,18 +218,18 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_moderate_uptrend",
                         strength=strength,
-                        direction=ACTION_BUY,
+                        direction=1.0,
                         description=f"Moderate uptrend (ADX: {current_adx:.2f})",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "di_difference": di_difference,
-                            "trend_strength": "moderate",
-                            "direction": "up"
+                            "trend_strength": 0.5,  # Moderate trend
+                            "direction": "up",
                         },
                         validity_period=3,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
                 elif di_difference < -self.di_cross_threshold:
@@ -226,18 +238,18 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_moderate_downtrend",
                         strength=strength,
-                        direction=ACTION_SELL,
+                        direction=-1.0,
                         description=f"Moderate downtrend (ADX: {current_adx:.2f})",
                         metadata={
                             "adx": current_adx,
                             "plus_di": current_plus_di,
                             "minus_di": current_minus_di,
                             "di_difference": di_difference,
-                            "trend_strength": "moderate",
-                            "direction": "down"
+                            "trend_strength": 0.5,  # Moderate trend
+                            "direction": "down",
                         },
                         validity_period=3,
-                        risk_level="medium"
+                        risk_level="medium",
                     )
 
             # 5. ADX Rising (トレンド強度が増加中)
@@ -248,41 +260,41 @@ class ADXRecognizer(PatternRecognizer):
                     return SignalResult(
                         signal_type="adx_strengthening",
                         strength=strength,
-                        direction=ACTION_HOLD,
+                        direction=0.0,
                         description=f"ADX strengthening ({adx_change:.1%} increase)",
                         metadata={
                             "adx": current_adx,
                             "prev_adx": prev_adx,
                             "adx_change": adx_change,
-                            "trend_status": "strengthening"
+                            "trend_status": "strengthening",
                         },
                         validity_period=2,
-                        risk_level="low"
+                        risk_level="low",
                     )
 
             # Default: neutral signal
             return SignalResult(
                 signal_type="adx_neutral",
                 strength=0.0,
-                direction=ACTION_HOLD,
+                direction=0.0,
                 description=f"ADX in neutral zone (ADX: {current_adx:.2f})",
                 metadata={
                     "adx": current_adx,
                     "plus_di": current_plus_di,
                     "minus_di": current_minus_di,
-                    "trend_strength": "neutral"
+                    "trend_strength": 0.0,  # Neutral
                 },
                 validity_period=1,
-                risk_level="low"
+                risk_level="low",
             )
 
         except Exception as e:
             return SignalResult(
                 signal_type="adx_error",
                 strength=0.0,
-                direction=ACTION_HOLD,
+                direction=0.0,
                 description=f"ADX calculation error: {str(e)}",
                 metadata={"error": str(e)},
                 validity_period=1,
-                risk_level="low"
+                risk_level="low",
             )

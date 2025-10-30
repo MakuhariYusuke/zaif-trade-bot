@@ -2,13 +2,8 @@
   "model_name": "sac_v437_enhanced_features",
   "algorithm": "sac",
   "version": "v437.1",
-  "total_timesteps": 100000,
-  "data_source": "csv",
+  "total_timesteps": 1000,
   "data_path": "data/btc_jpy_real_dataset.csv",
-  "data_config": {
-    "csv_path": "btc_jpy_real_dataset.csv",
-    "use_real_data": true
-  },
   "sac_hyperparameters": {
     "learning_rate": 0.0003,
     "buffer_size": 100000,
@@ -18,7 +13,8 @@
     "gamma": 0.99,
     "ent_coef": 0.01,
     "target_update_interval": 1,
-    "target_entropy": -2.0
+    "target_entropy": -2.0,
+    "seed": 43
   },
   "environment": {
     "initial_balance": 200000.0,
