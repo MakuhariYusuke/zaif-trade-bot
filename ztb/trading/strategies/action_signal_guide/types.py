@@ -24,6 +24,10 @@ CacheStats = Dict[str, Union[int, float]]
 SignalMetadata = Dict[str, Any]
 StatisticsMetadata = Dict[str, Any]
 
+# Type aliases for recognizer status
+RecognizerGroupStatus = Dict[str, Union[bool, int, List[str]]]
+RecognizerStatus = Dict[str, Union[int, str, Dict[str, RecognizerGroupStatus]]]
+
 # Union types for flexible inputs
 ConfigInput = Union["ActionSignalGuideConfig", Dict[str, Any], None]  # type: ignore
 GuidanceInput = Union["GuidanceLevel", str, None]  # type: ignore

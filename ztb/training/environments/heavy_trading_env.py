@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from gymnasium import spaces
 
-from .environment_config import EnvironmentConfig
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
-from ztb.trading.strategies.action_signal_guide.action_signal_guide import GuidanceLevel
+
+from .environment_config import EnvironmentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class HeavyTradingEnv(gym.Env):
 
         self.data = data.copy()
         # Clean data: fill NaN values with forward fill, then 0
-        self.data = self.data.fillna(method='ffill').fillna(0)
+        self.data = self.data.fillna(method="ffill").fillna(0)
         self.config = config
         self.feature_columns = feature_columns or []
         self.reward_settings = reward_settings or {}
@@ -61,7 +61,9 @@ class HeavyTradingEnv(gym.Env):
             else -abs(float(self.action_threshold))
         )
         self.min_position_change = getattr(
-            self.config, "min_position_change", getattr(self.config, "min_trade_size", 1e-4)
+            self.config,
+            "min_position_change",
+            getattr(self.config, "min_trade_size", 1e-4),
         )
         self._threshold_suppressed_actions = 0
         self._min_trade_suppressed_actions = 0
@@ -99,7 +101,7 @@ class HeavyTradingEnv(gym.Env):
         self.reward_calculator = RewardCalculator(
             config=self.config,
             reward_settings=self.reward_settings,
-            initial_portfolio_value=self.config.initial_balance
+            initial_portfolio_value=self.config.initial_balance,
         )
 
         # Initialize state
@@ -208,7 +210,9 @@ class HeavyTradingEnv(gym.Env):
             "current_step": self.current_step,
             "action_value": action_value,
             "position_change_threshold": position_change_threshold,
-            "signal_strength": getattr(self.reward_calculator, "last_signal_strength", 0.0),
+            "signal_strength": getattr(
+                self.reward_calculator, "last_signal_strength", 0.0
+            ),
             "signal_reward": getattr(self.reward_calculator, "last_signal_reward", 0.0),
             "threshold_suppressed_actions": self._threshold_suppressed_actions,
             "min_trade_suppressed_actions": self._min_trade_suppressed_actions,
@@ -240,7 +244,9 @@ class HeavyTradingEnv(gym.Env):
 
         # Check for invalid price data
         if np.isnan(current_price) or np.isinf(current_price) or current_price <= 0:
-            logger.warning(f"Invalid price data at step {self.current_step}: {current_price}")
+            logger.warning(
+                f"Invalid price data at step {self.current_step}: {current_price}"
+            )
             return  # Skip trade execution
 
         # Close existing position if any
@@ -264,7 +270,8 @@ class HeavyTradingEnv(gym.Env):
                 )
                 if self._min_trade_suppressed_actions % 50 == 0:
                     logger.debug(
-                        "Total min trade suppressions: %s", self._min_trade_suppressed_actions
+                        "Total min trade suppressions: %s",
+                        self._min_trade_suppressed_actions,
                     )
                 self.position = 0.0
                 self.entry_price = 0.0
@@ -274,7 +281,11 @@ class HeavyTradingEnv(gym.Env):
             execution_price = current_price + slippage
 
             # Check for invalid execution price
-            if np.isnan(execution_price) or np.isinf(execution_price) or execution_price <= 0:
+            if (
+                np.isnan(execution_price)
+                or np.isinf(execution_price)
+                or execution_price <= 0
+            ):
                 logger.warning(f"Invalid execution price: {execution_price}")
                 return
 
@@ -305,7 +316,9 @@ class HeavyTradingEnv(gym.Env):
             if self.position > 0:  # Long position
                 self.unrealized_pnl = self.position * (current_price - self.entry_price)
             else:  # Short position
-                self.unrealized_pnl = abs(self.position) * (self.entry_price - current_price)
+                self.unrealized_pnl = abs(self.position) * (
+                    self.entry_price - current_price
+                )
         else:
             self.unrealized_pnl = 0.0
 
@@ -320,7 +333,9 @@ class HeavyTradingEnv(gym.Env):
 
         # Check for invalid price data
         if np.isnan(current_price) or np.isinf(current_price) or current_price <= 0:
-            logger.warning(f"Invalid price data for reward calculation at step {self.current_step}: {current_price}")
+            logger.warning(
+                f"Invalid price data for reward calculation at step {self.current_step}: {current_price}"
+            )
             return 0.0
 
         # Calculate ATR (simplified)
@@ -356,7 +371,9 @@ class HeavyTradingEnv(gym.Env):
             portfolio_value = self.balance + self.unrealized_pnl
             # Check for invalid portfolio value
             if np.isnan(portfolio_value) or np.isinf(portfolio_value):
-                logger.warning(f"Invalid portfolio value: balance={self.balance}, unrealized_pnl={self.unrealized_pnl}")
+                logger.warning(
+                    f"Invalid portfolio value: balance={self.balance}, unrealized_pnl={self.unrealized_pnl}"
+                )
                 portfolio_value = self.balance  # Fallback to balance only
 
             reward = self.reward_calculator.calculate_reward(
@@ -368,11 +385,11 @@ class HeavyTradingEnv(gym.Env):
                 transaction_cost=self.config.commission,
                 reward_scaling=self.config.reward_scaling,
                 pnl=current_pnl,
-                old_position=getattr(self, '_old_position', 0.0),
+                old_position=getattr(self, "_old_position", 0.0),
                 step=self.current_step,
                 observation=observation,
-                reward_history=getattr(self, 'reward_history', []),
-                portfolio_value_history=getattr(self, 'portfolio_value_history', [])
+                reward_history=getattr(self, "reward_history", []),
+                portfolio_value_history=getattr(self, "portfolio_value_history", []),
             )
             # Store old position for next step
             self._old_position = self.position
@@ -454,7 +471,7 @@ class HeavyTradingEnv(gym.Env):
     def render(self, mode: str = "human") -> None:
         """Render environment."""
         if mode == "human":
-            print(
+            logger.debug(
                 f"Step: {self.current_step}, Balance: {self.balance:.2f}, "
                 f"Position: {self.position:.4f}, P&L: {self.total_pnl:.2f}"
             )

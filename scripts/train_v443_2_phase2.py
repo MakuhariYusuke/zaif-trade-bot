@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""
+Training script for v443.2 Phase 2: Market Regime Adaptation
+"""
+
+import logging
+import sys
+from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
+
+
+def train_v443_2_phase2():
+    """Run full training of v443.2 Phase 2 with market regime adaptation"""
+
+    print("=== Training v443.2 Phase 2: Market Regime Adaptation ===")
+
+    # Set up logging to file and console
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("training_log_v443_2_phase2.txt", mode="w"),
+            logging.StreamHandler(),
+        ],
+    )
+
+    # Ensure all loggers inherit the root logger configuration
+    logging.getLogger().setLevel(logging.INFO)
+
+    config_path = "config/v443_2_phase2_config.json"
+
+    try:
+        # Create trainer with config file
+        trainer = V4XXUnifiedTrainer(config_path=config_path)
+
+        # Re-add file handler after trainer initialization (which may clear handlers)
+        file_handler = logging.FileHandler("training_log_v443_2_phase2.txt", mode="a")
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logging.getLogger().addHandler(file_handler)
+
+        print(f"Starting training with config: {config_path}")
+        print("Market regime adaptation enabled: True")
+        print("Total timesteps: 50,000")
+
+        # Run training
+        trainer.train()
+
+        print("✅ Training completed successfully")
+
+    except Exception as e:
+        print(f"❌ Training failed: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return False
+
+    return True
+
+
+if __name__ == "__main__":
+    success = train_v443_2_phase2()
+    sys.exit(0 if success else 1)

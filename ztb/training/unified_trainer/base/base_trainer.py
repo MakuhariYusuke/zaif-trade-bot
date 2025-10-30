@@ -196,6 +196,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
             metrics_csv_writer=self.metrics_csv_writer,
             lr_scheduler=self.lr_scheduler,
             early_stopping=self.early_stopping,
+            trainer_ref=self,
         )
         return callback
 
@@ -357,9 +358,20 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
                 "start", "pipeline", {"algorithm": algorithm_name}
             )
 
+            # Create training callback
+            callback = self.create_training_callback()
+            context["callback"] = callback
+            context["start_time"] = time.time()
+
             # Execute training function with error handling
             result = self.safe_training_operation(
-                training_function,
+                lambda: training_function(
+                    total_timesteps=self.config.get("training", {}).get(
+                        "total_timesteps", 100000
+                    ),
+                    callback=callback,
+                    start_time=context["start_time"],
+                ),
                 f"{algorithm_name} training pipeline",
                 algorithm=algorithm_name,
                 **context,
@@ -407,7 +419,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
     @abstractmethod
     def train(self, total_timesteps: Optional[int] = None) -> bool:
         """Execute training for this algorithm.
-        
+
         Args:
             total_timesteps: Total number of timesteps to train for
         """

@@ -10,6 +10,7 @@ Usage:
     notify_ci_results(metrics, "discord")
 """
 
+import logging
 import os
 import sys
 import time
@@ -20,7 +21,10 @@ from typing import Any, Dict, Optional
 import psutil
 import requests
 
+from ztb.utils.errors import safe_operation
 from ztb.utils.file_utils import safe_json_load
+
+logger = logging.getLogger(__name__)
 
 
 def collect_ci_metrics() -> Dict[str, Any]:
@@ -40,15 +44,20 @@ def collect_ci_metrics() -> Dict[str, Any]:
     }
 
     # Try to read coverage if available
-    try:
+    def collect_coverage():
         coverage_file = "coverage/coverage.json"
         if os.path.exists(coverage_file):
             coverage_data = safe_json_load(Path(coverage_file))
             metrics["coverage_percent"] = coverage_data.get("totals", {}).get(
                 "percent_covered", 0
             )
-    except Exception:
-        pass
+
+    safe_operation(
+        collect_coverage,
+        default_result=None,
+        logger=logger,
+        context="Collecting coverage metrics",
+    )
 
     return metrics
 

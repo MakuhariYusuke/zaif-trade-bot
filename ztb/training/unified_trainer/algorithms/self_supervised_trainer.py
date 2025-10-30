@@ -24,6 +24,7 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         logger: Optional[logging.Logger] = None,
         gradient_accumulation_steps: int = 1,
         system_optimizer: Optional[Any] = None,
+        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
     ):
         super().__init__(config, logger)
 
@@ -31,6 +32,7 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         self.model: Optional[SSPTrainer] = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
+        self.optimizer_tracker = optimizer_tracker
         self.training_stats: TrainingStats = {}
 
     def validate_config(self) -> bool:

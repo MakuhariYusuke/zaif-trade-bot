@@ -158,6 +158,10 @@ class EnvironmentConfig:
     signal_weight: float = 1.0
     guidance_decay: float = 0.95
 
+    # Market regime detection and adaptation settings (v443 enhancement)
+    market_regime: Optional[Dict[str, Any]] = None
+    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
+
     # Adaptive feature selection settings
     adaptive_feature_selection: Optional[Dict[str, Any]] = None
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
@@ -332,6 +336,14 @@ class EnvironmentConfig:
                     elif key == "signal_guidance" and isinstance(
                         value, dict
                     ):  # Special handling for signal_guidance
+                        config_kwargs[key] = value
+                    elif key == "market_regime" and isinstance(
+                        value, dict
+                    ):  # Special handling for market_regime
+                        config_kwargs[key] = value
+                    elif key == "dynamic_reward_shaping" and isinstance(
+                        value, dict
+                    ):  # Special handling for dynamic_reward_shaping
                         config_kwargs[key] = value
 
         # Handle field name mappings

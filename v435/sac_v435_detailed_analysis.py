@@ -14,10 +14,13 @@ from typing import Any, Dict, List
 
 import numpy as np
 
+from ztb.utils.analysis_formatters import print_formatted_metrics
 from ztb.utils.logging_utils import get_logger
 
 # Import existing analysis utilities
 from ztb.utils.statistics import p_mean_method
+
+logger = get_logger(__name__)
 
 logger = get_logger(__name__)
 
@@ -319,22 +322,30 @@ def main():
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
-        print("=== SAC v435 Detailed Analysis Report ===")
-        print(f"Analysis completed at: {report['analysis_timestamp']}")
-        print(f"Variants analyzed: {', '.join(report['variants_analyzed'])}")
-        print()
+        logger.info("=== SAC v435 Detailed Analysis Report ===")
+        logger.info(f"Analysis completed at: {report['analysis_timestamp']}")
+        logger.info(f"Variants analyzed: {', '.join(report['variants_analyzed'])}")
+        logger.info("")
 
-        print("Key Insights:")
+        logger.info("Key Insights:")
         for insight in report["key_insights"]:
-            print(f"• {insight}")
-        print()
+            logger.info(f"• {insight}")
+        logger.info("")
 
-        print("Recommendations:")
+        logger.info("Recommendations:")
         for rec in report["recommendations"]:
-            print(f"• {rec}")
-        print()
+            logger.info(f"• {rec}")
+        logger.info("")
 
-        print(f"Detailed report saved to: {output_path}")
+        # Print key metrics using formatted output
+        key_metrics = {
+            "analysis_timestamp": report["analysis_timestamp"],
+            "variants_analyzed": len(report["variants_analyzed"]),
+            "total_variants": len(report.get("variant_analysis", {})),
+        }
+        print_formatted_metrics(key_metrics, "SAC v435 Analysis Summary")
+
+        logger.info(f"Detailed report saved to: {output_path}")
 
     except Exception as e:
         logger.error(f"Analysis failed: {e}")

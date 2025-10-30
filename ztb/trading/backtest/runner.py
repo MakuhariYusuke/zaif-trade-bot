@@ -17,7 +17,6 @@ from ztb.utils.path_utils import ensure_dir
 from ztb.utils.run_metadata import RunMetadata
 
 # Import adapters
-from .adapters import RLPolicyAdapter
 
 # Import risk management components (optional)
 try:
@@ -58,6 +57,7 @@ class BacktestEngine:
         correlation_id: Optional[str] = None,
         enable_adaptation: bool = False,
         adaptation_config: Optional[Dict[str, Any]] = None,
+        max_position_size: float = 1.0,
     ) -> None:
         """Initialize backtest engine."""
         self.initial_capital = initial_capital
@@ -69,6 +69,7 @@ class BacktestEngine:
         self.target_vol = target_vol
         self.correlation_id = correlation_id or generate_correlation_id()
         self.enable_adaptation = enable_adaptation and ADAPTATION_AVAILABLE
+        self.max_position_size = max_position_size
 
         # Initialize position sizer
         if target_vol and RISK_AVAILABLE and PositionSizer:
@@ -145,9 +146,9 @@ class BacktestEngine:
                 data["timestamp"] = pd.to_datetime(data["timestamp"])
 
             # Filter to 2023 data only for debugging
-            data = data[data["timestamp"].dt.year == 2023].copy()
+            # data = data[data["timestamp"].dt.year == 2023].copy()
 
-            print(f"Loaded {len(data)} data points for 2023")
+            print(f"Loaded {len(data)} data points")
 
             # Ensure required OHLCV columns exist
             required_cols = ["open", "high", "low", "close", "volume"]
@@ -268,12 +269,15 @@ class BacktestEngine:
                             shares = 0
                         sizing_reason = "Fallback: full capital"
                 else:
-                    # Original logic: all-in, but prevent division by zero
+                    # Original logic: use max_position_size limit, but prevent division by zero
                     if price > 0:
-                        shares = capital / price
+                        max_shares = (capital * self.max_position_size) / price
+                        shares = min(
+                            max_shares, capital / price
+                        )  # Don't exceed available capital
                     else:
                         shares = 0
-                    sizing_reason = "All-in position sizing"
+                    sizing_reason = f"Max position size: {self.max_position_size}"
 
                 # Apply commission
                 commission = shares * price * (self.commission_bps / 10000)
@@ -410,6 +414,10 @@ def main() -> None:
         help="Trading strategy to test",
     )
     parser.add_argument(
+        "--model-path",
+        help="Path to RL model file (required for rl policy)",
+    )
+    parser.add_argument(
         "--dataset", default="btc_usd_1m", help="Dataset to use (default: btc_usd_1m)"
     )
     parser.add_argument(
@@ -513,7 +521,13 @@ def main() -> None:
             adaptation_config=adaptation_config,
         )
 
-        strategy = create_adapter(args.policy)
+        # Create strategy adapter
+        if args.policy == "rl":
+            if not args.model_path:
+                parser.error("--model-path is required when using rl policy")
+            strategy = create_adapter(args.policy, model_path=args.model_path)
+        else:
+            strategy = create_adapter(args.policy)
         data = engine.load_data(args.dataset)
 
         # Run backtest
@@ -651,22 +665,6 @@ def main() -> None:
     except Exception as e:
         print(f"Backtest failed: {e}", file=sys.stderr)
         sys.exit(1)
-
-
-def create_adapter(policy: str) -> StrategyAdapter:
-    """Create strategy adapter based on policy type."""
-    if policy == "rl":
-        # Use the latest trained model
-        model_path = "models/sac_v428_ultra_profit_optimized.zip"
-        return RLPolicyAdapter(model_path=model_path)
-    elif policy == "sma_fast_slow":
-        # TODO: Implement SMA crossover adapter
-        raise NotImplementedError("SMA crossover strategy not implemented")
-    elif policy == "buy_hold":
-        # TODO: Implement buy and hold adapter
-        raise NotImplementedError("Buy and hold strategy not implemented")
-    else:
-        raise ValueError(f"Unknown policy: {policy}")
 
 
 if __name__ == "__main__":

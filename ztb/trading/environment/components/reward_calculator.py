@@ -8,7 +8,7 @@ Refactored to follow SOLID principles with component-based architecture.
 # mypy: disable-error-code=literal-required
 
 import math
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
 import numpy as np
 
@@ -26,7 +26,6 @@ from ztb.utils.logging_utils import get_logger
 
 from .asymmetric_reward_scaler import AsymmetricRewardScaler
 from .dynamic_reward_shaper import DynamicRewardShaper
-from .interfaces import IAsymmetricRewardScaler, IDynamicRewardShaper, ISignalIntegrator
 from .market_regime_detector import MarketRegimeDetector
 from .signal_integrator import SignalIntegrator
 
@@ -58,7 +57,6 @@ class RewardCalculator:
             reward_settings: Dictionary of reward settings
             initial_portfolio_value: Initial portfolio value
         """
-        print("RewardCalculator __init__ called")
         self.config = config
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
@@ -75,16 +73,29 @@ class RewardCalculator:
         ] = []  # Track recent actions for frequency penalty
         self.last_signal_strength: float = 0.0
         self.last_signal_reward: float = 0.0
+        self._previous_portfolio_value = initial_portfolio_value  # Track previous portfolio value for delta calculation
 
         # Initialize components following SOLID principles
 
         # 1. Market Regime Detector
-        print("Initializing MarketRegimeDetector")
-        regime_detection_window = self.get_setting_int("dynamic_reward_shaping.regime_detection_window", 20)
-        adaptation_frequency = self.get_setting_int("dynamic_reward_shaping.adaptation_frequency", 10)
-        high_volatility_threshold = self.get_setting_float("dynamic_reward_shaping.volatility_coefficients.high_volatility_threshold", 0.02)
-        low_volatility_threshold = self.get_setting_float("dynamic_reward_shaping.volatility_coefficients.low_volatility_threshold", 0.005)
-        trend_strength_threshold = self.get_setting_float("dynamic_reward_shaping.trend_coefficients.trend_strength_threshold", 0.001)
+        self.logger.debug("Initializing MarketRegimeDetector")
+        regime_detection_window = self.get_setting_int(
+            "dynamic_reward_shaping.regime_detection_window", 20
+        )
+        adaptation_frequency = self.get_setting_int(
+            "dynamic_reward_shaping.adaptation_frequency", 10
+        )
+        high_volatility_threshold = self.get_setting_float(
+            "dynamic_reward_shaping.volatility_coefficients.high_volatility_threshold",
+            0.02,
+        )
+        low_volatility_threshold = self.get_setting_float(
+            "dynamic_reward_shaping.volatility_coefficients.low_volatility_threshold",
+            0.005,
+        )
+        trend_strength_threshold = self.get_setting_float(
+            "dynamic_reward_shaping.trend_coefficients.trend_strength_threshold", 0.001
+        )
 
         self.market_regime_detector = MarketRegimeDetector(
             regime_detection_window=regime_detection_window,
@@ -95,24 +106,50 @@ class RewardCalculator:
         )
 
         # 2. Dynamic Reward Shaper
-        dynamic_reward_shaping_enabled = self.get_setting_bool("dynamic_reward_shaping.enabled", False)
-        market_regime_awareness = self.get_setting_bool("dynamic_reward_shaping.market_regime_awareness", False)
-        volatility_adjusted_rewards = self.get_setting_bool("dynamic_reward_shaping.volatility_adjusted_rewards", False)
-        trend_strength_bonus = self.get_setting_bool("dynamic_reward_shaping.trend_strength_bonus", False)
+        dynamic_reward_shaping_enabled = self.get_setting_bool(
+            "dynamic_reward_shaping.enabled", False
+        )
+        market_regime_awareness = self.get_setting_bool(
+            "dynamic_reward_shaping.market_regime_awareness", False
+        )
+        volatility_adjusted_rewards = self.get_setting_bool(
+            "dynamic_reward_shaping.volatility_adjusted_rewards", False
+        )
+        trend_strength_bonus = self.get_setting_bool(
+            "dynamic_reward_shaping.trend_strength_bonus", False
+        )
 
         # Regime coefficients
-        bull_market_bonus_coeff = self.get_setting_float("dynamic_reward_shaping.regime_coefficients.bull_market_bonus_coeff", 1.2)
-        bear_market_penalty_coeff = self.get_setting_float("dynamic_reward_shaping.regime_coefficients.bear_market_penalty_coeff", 0.8)
-        sideways_market_penalty_coeff = self.get_setting_float("dynamic_reward_shaping.regime_coefficients.sideways_market_penalty_coeff", 0.9)
-        volatile_market_bonus_coeff = self.get_setting_float("dynamic_reward_shaping.regime_coefficients.volatile_market_bonus_coeff", 1.1)
+        bull_market_bonus_coeff = self.get_setting_float(
+            "dynamic_reward_shaping.regime_coefficients.bull_market_bonus_coeff", 1.2
+        )
+        bear_market_penalty_coeff = self.get_setting_float(
+            "dynamic_reward_shaping.regime_coefficients.bear_market_penalty_coeff", 0.8
+        )
+        sideways_market_penalty_coeff = self.get_setting_float(
+            "dynamic_reward_shaping.regime_coefficients.sideways_market_penalty_coeff",
+            0.9,
+        )
+        volatile_market_bonus_coeff = self.get_setting_float(
+            "dynamic_reward_shaping.regime_coefficients.volatile_market_bonus_coeff",
+            1.1,
+        )
 
         # Volatility coefficients
-        high_volatility_bonus = self.get_setting_float("dynamic_reward_shaping.volatility_coefficients.high_volatility_bonus", 1.3)
-        low_volatility_penalty = self.get_setting_float("dynamic_reward_shaping.volatility_coefficients.low_volatility_penalty", 0.7)
+        high_volatility_bonus = self.get_setting_float(
+            "dynamic_reward_shaping.volatility_coefficients.high_volatility_bonus", 1.3
+        )
+        low_volatility_penalty = self.get_setting_float(
+            "dynamic_reward_shaping.volatility_coefficients.low_volatility_penalty", 0.7
+        )
 
         # Trend coefficients
-        strong_trend_bonus = self.get_setting_float("dynamic_reward_shaping.trend_coefficients.strong_trend_bonus", 1.2)
-        weak_trend_penalty = self.get_setting_float("dynamic_reward_shaping.trend_coefficients.weak_trend_penalty", 0.9)
+        strong_trend_bonus = self.get_setting_float(
+            "dynamic_reward_shaping.trend_coefficients.strong_trend_bonus", 1.2
+        )
+        weak_trend_penalty = self.get_setting_float(
+            "dynamic_reward_shaping.trend_coefficients.weak_trend_penalty", 0.9
+        )
 
         self.dynamic_reward_shaper = DynamicRewardShaper(
             market_regime_detector=self.market_regime_detector,
@@ -138,11 +175,15 @@ class RewardCalculator:
         signal_guidance_config = getattr(self.config, "signal_guidance", {})
         guidance_level_str = signal_guidance_config.get("guidance_level", "strong")
         signal_bonus_weight = signal_guidance_config.get("signal_bonus_weight", 0.1)
-        signal_penalty_weight = signal_guidance_config.get("signal_penalty_weight", 0.05)
+        signal_penalty_weight = signal_guidance_config.get(
+            "signal_penalty_weight", 0.05
+        )
         granville_weight = signal_guidance_config.get("granville_weight", 1.2)
         dow_theory_weight = signal_guidance_config.get("dow_theory_weight", 1.5)
         heikin_ashi_weight = signal_guidance_config.get("heikin_ashi_weight", 1.0)
-        enable_advanced_integration = signal_guidance_config.get("enable_advanced_integration", True)
+        enable_advanced_integration = signal_guidance_config.get(
+            "enable_advanced_integration", True
+        )
 
         self.signal_integrator = SignalIntegrator(
             config=config,
@@ -156,11 +197,23 @@ class RewardCalculator:
             enable_advanced_integration=enable_advanced_integration,
         )
 
+        # Reference to signal integration for backward compatibility
+        self.signal_integration = self.signal_integrator.signal_integration
+        self.signal_guide = self.signal_integrator.signal_guide
+
         # 4. Asymmetric Reward Scaler
-        long_position_reward_multiplier = self.get_setting_float("long_position_reward_multiplier", 1.3)
-        short_position_reward_multiplier = self.get_setting_float("short_position_reward_multiplier", 0.7)
-        long_position_penalty_multiplier = self.get_setting_float("long_position_penalty_multiplier", 0.9)
-        short_position_penalty_multiplier = self.get_setting_float("short_position_penalty_multiplier", 0.95)
+        long_position_reward_multiplier = self.get_setting_float(
+            "long_position_reward_multiplier", 1.3
+        )
+        short_position_reward_multiplier = self.get_setting_float(
+            "short_position_reward_multiplier", 0.7
+        )
+        long_position_penalty_multiplier = self.get_setting_float(
+            "long_position_penalty_multiplier", 0.9
+        )
+        short_position_penalty_multiplier = self.get_setting_float(
+            "short_position_penalty_multiplier", 0.95
+        )
 
         self.asymmetric_reward_scaler = AsymmetricRewardScaler(
             long_position_reward_multiplier=long_position_reward_multiplier,
@@ -169,40 +222,91 @@ class RewardCalculator:
             short_position_penalty_multiplier=short_position_penalty_multiplier,
         )
 
-        self.logger.info(f"Dynamic reward shaping enabled: {dynamic_reward_shaping_enabled}")
+        self.logger.info(
+            f"Dynamic reward shaping enabled: {dynamic_reward_shaping_enabled}"
+        )
         if dynamic_reward_shaping_enabled:
             self.logger.info(f"Market regime awareness: {market_regime_awareness}")
-            self.logger.info(f"Volatility adjusted rewards: {volatility_adjusted_rewards}")
+            self.logger.info(
+                f"Volatility adjusted rewards: {volatility_adjusted_rewards}"
+            )
             self.logger.info(f"Trend strength bonus: {trend_strength_bonus}")
         self.logger.info(f"Signal guide enabled: {signal_guide_enabled}")
 
-    def get_setting_int(self, key: str, default: int) -> int:
-        """Get integer reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
-            if isinstance(value, (int, float)):
-                return int(value)
-        return default
+        # Initialize behavior optimization parameters
+        self.action_balance_target = self.get_setting_float(
+            "behavior_optimization.action_balance_target", 0.8
+        )
+        self.entropy_regularization = self.get_setting_float(
+            "behavior_optimization.entropy_regularization", 0.01
+        )
+        self.action_smoothing = self.get_setting_float(
+            "behavior_optimization.action_smoothing", 0.1
+        )
+        self.consistency_penalty = self.get_setting_float(
+            "behavior_optimization.consistency_penalty", 0.05
+        )
+        self.balance_penalty = self.get_setting_float(
+            "behavior_optimization.balance_penalty", 1.0
+        )
+
+        # Validate and clamp action_balance_target to prevent invalid target ratios
+        original_target = self.action_balance_target
+        self.action_balance_target = max(0.05, min(0.45, self.action_balance_target))
+        if self.action_balance_target != original_target:
+            self.logger.warning(
+                f"action_balance_target {original_target} is out of valid range [0.05, 0.45], "
+                f"clamped to {self.action_balance_target}"
+            )
+
+        self.logger.info(
+            f"Behavior optimization - Balance target: {self.action_balance_target}, "
+            f"Entropy regularization: {self.entropy_regularization}, "
+            f"Action smoothing: {self.action_smoothing}, "
+            f"Consistency penalty: {self.consistency_penalty}, "
+            f"Balance penalty: {self.balance_penalty}"
+        )
 
     def get_setting_float(self, key: str, default: float) -> float:
-        """Get float reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
+        """Get float reward setting with fallback. Supports nested keys with dot notation."""
+        if self.reward_settings:
+            value = self._get_nested_setting(key)
             if isinstance(value, (int, float)):
                 return float(value)
         return default
 
+    def get_setting_int(self, key: str, default: int) -> int:
+        """Get integer reward setting with fallback. Supports nested keys with dot notation."""
+        if self.reward_settings:
+            value = self._get_nested_setting(key)
+            if isinstance(value, (int, float)):
+                return int(value)
+        return default
+
     def get_setting_bool(self, key: str, default: bool) -> bool:
-        """Get boolean reward setting with fallback."""
-        if self.reward_settings and key in self.reward_settings:
-            value = self.reward_settings[key]
+        """Get boolean reward setting with fallback. Supports nested keys with dot notation."""
+        if self.reward_settings:
+            value = self._get_nested_setting(key)
             if isinstance(value, bool):
                 return value
             if isinstance(value, (int, float)):
                 return bool(value)
-            if isinstance(value, str):
-                return value.lower() in {"true", "1", "yes", "y", "on"}
         return default
+
+    def _get_nested_setting(self, key: str) -> Optional[Union[int, float, bool, str]]:
+        """Get nested setting value using dot notation."""
+        keys = key.split(".")
+        value = self.reward_settings
+
+        try:
+            for k in keys:
+                if isinstance(value, dict):
+                    value = value[k]
+                else:
+                    return None
+            return value
+        except (KeyError, TypeError):
+            return None
 
     def calculate_reward(
         self,
@@ -275,6 +379,7 @@ class RewardCalculator:
                 portfolio_value_history,
                 current_price,
                 step,
+                transaction_cost,
             )
 
         # Original complex reward function
@@ -306,6 +411,15 @@ class RewardCalculator:
         atr_normalised = pnl / atr
         portfolio_return = pnl / max(abs(self.initial_portfolio_value), eps)
 
+        # Adjust pnl for transaction costs if a trade occurred
+        # Note: transaction_cost is already deducted in position_manager, so we don't deduct again
+        # if abs(position - old_position) > eps:  # Trade occurred
+        #     adjusted_pnl = pnl - transaction_cost
+        #     self.logger.debug(f"Trade occurred: adjusted pnl from {pnl:.4f} to {adjusted_pnl:.4f} (transaction_cost: {transaction_cost:.4f})")
+        #     pnl = adjusted_pnl
+        #     atr_normalised = pnl / atr
+        #     portfolio_return = pnl / max(abs(self.initial_portfolio_value), eps)
+
         # Curriculum learning stages
         if curriculum_stage == "forced_balance":
             reward = self._calculate_forced_balance_reward(action)
@@ -325,7 +439,9 @@ class RewardCalculator:
             )
             self.logger.debug(f"Final reward: {reward}")
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         elif curriculum_stage == "balanced_transition":
             reward = self._calculate_balanced_transition_reward(
@@ -346,7 +462,9 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         elif curriculum_stage == "pnl_focused":
             reward = self._calculate_pnl_focused_reward(
@@ -369,7 +487,9 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         elif curriculum_stage == "trading_focused":
             reward = self._calculate_trading_focused_reward(
@@ -390,7 +510,9 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         elif curriculum_stage == "profit_optimized":
             reward = self._calculate_profit_optimized_reward(
@@ -412,7 +534,9 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         elif curriculum_stage == "ultra_profit":
             reward = self._calculate_ultra_profit_reward(
@@ -433,10 +557,12 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
-        elif curriculum_stage == "pnl_focused":
-            reward = self._calculate_pnl_focused_reward(
+        elif curriculum_stage == "stability_optimized":
+            reward = self._calculate_stability_optimized_reward(
                 action,
                 atr_normalised,
                 portfolio_return,
@@ -445,19 +571,50 @@ class RewardCalculator:
                 current_price,
                 atr,
                 pnl,
-                1.0,
+                reward_scaling,
                 observation,
                 step,
             )
-            reward *= reward_scaling
             # Apply asymmetric scaling for v435 enhancement
-            reward = self._apply_asymmetric_scaling(reward, position, pnl)
+            reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
             # Apply clipping
             reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self._apply_signal_integration(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
+            return reward
+        elif curriculum_stage == "backtest_optimization":
+            # Calculate portfolio value delta for correlation improvement
+            portfolio_value_delta = portfolio_value - self._previous_portfolio_value
+            self._previous_portfolio_value = portfolio_value
+
+            reward = self._calculate_backtest_optimization_reward(
+                action,
+                atr_normalised,
+                portfolio_return,
+                position,
+                effective_max_position,
+                current_price,
+                atr,
+                pnl,
+                reward_scaling,
+                observation,
+                step,
+                portfolio_value_delta,
+            )
+            # Apply asymmetric scaling for v435 enhancement
+            reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
+            # Apply clipping
+            reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
+            reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
+            reward = np.clip(reward, reward_clip_min, reward_clip_max)
+            # Apply signal integration (v436 enhancement)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
         else:
             # Default stage
@@ -479,7 +636,9 @@ class RewardCalculator:
             reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
             reward = np.clip(reward, reward_clip_min, reward_clip_max)
             # Apply signal integration (v436 enhancement)
-            reward = self.signal_integrator.integrate_signal(reward, observation, action, step)
+            reward = self.signal_integrator.integrate_signal(
+                reward, observation, action, step
+            )
             return reward
 
     def calculate_reward_simple(
@@ -493,6 +652,7 @@ class RewardCalculator:
         portfolio_value_history: List[float],
         current_price: float = 0.0,
         step: int = 0,
+        transaction_cost: float = 0.0,
     ) -> float:
         """
         Calculate simple reward based on PnL with v431 enhancements and v440.1 dynamic shaping.
@@ -513,51 +673,61 @@ class RewardCalculator:
             portfolio_value_history: History of portfolio values
             current_price: Current market price (for regime detection)
             step: Current step number (for regime adaptation)
+            transaction_cost: Transaction cost for the action
 
         Returns:
             Enhanced simple reward value
         """
-        print(f"calculate_reward_simple called with pnl={pnl}, action={action}")
         try:
-            print(f"calculate_reward_simple called: pnl={pnl}, action={action}")
+            self.logger.debug(
+                f"calculate_reward_simple called: pnl={pnl}, action={action}"
+            )
             # Basic NaN/inf checks
             if np.isnan(pnl) or np.isinf(pnl):
-                self.logger.warning("RewardCalculator failed, using simple reward: math range error")
+                self.logger.warning(
+                    "RewardCalculator failed, using simple reward: math range error"
+                )
                 return 0.0
 
             if np.isnan(portfolio_value) or np.isinf(portfolio_value):
-                self.logger.warning("RewardCalculator failed, using simple reward: invalid portfolio_value")
+                self.logger.warning(
+                    "RewardCalculator failed, using simple reward: invalid portfolio_value"
+                )
                 return 0.0
 
             if np.isnan(position) or np.isinf(position):
-                self.logger.warning("RewardCalculator failed, using simple reward: invalid position")
+                self.logger.warning(
+                    "RewardCalculator failed, using simple reward: invalid position"
+                )
                 return 0.0
 
             # Get v431 enhancement parameters
-            hold_penalty_multiplier = self.get_setting_float("hold_penalty_multiplier", 1.0)
+            hold_penalty_multiplier = self.get_setting_float(
+                "hold_penalty_multiplier", 1.0
+            )
             trade_frequency_bonus = self.get_setting_float("trade_frequency_bonus", 0.0)
             reward_scaling = self.get_setting_float("reward_scaling", 1.0)
             reward_clip_value = self.get_setting_float("reward_clip_value", 10.0)
 
+            # Adjust PnL for transaction costs if trade occurred
+            # Note: transaction_cost is already deducted in position_manager, so we don't deduct again
+            adjusted_pnl = pnl
+
             # Base PnL-based reward (scaled)
-            if pnl > 0:
-                reward = pnl * reward_scaling
-            elif pnl < 0:
-                reward = pnl * reward_scaling
+            if adjusted_pnl > 0:
+                reward = adjusted_pnl * reward_scaling
+            elif adjusted_pnl < 0:
+                reward = adjusted_pnl * reward_scaling
             else:
                 reward = 0.0
-
-            print(f"Base reward: {reward}, action: {action}")
 
             # HOLD penalty (v431 enhancement) - encourage trading activity
             if action == ACTION_HOLD:  # 0 = HOLD
                 reward *= hold_penalty_multiplier
-                print(f"After HOLD penalty: {reward}")
 
             # Trade frequency bonus (v431 enhancement) - promote active trading
             if action in [ACTION_BUY, ACTION_SELL]:  # 1 = BUY, 2 = SELL
                 reward += trade_frequency_bonus
-                print(f"After trade bonus: {reward}")
 
             # Small penalty for large position changes to encourage stability
             position_change = abs(position - old_position)
@@ -565,32 +735,30 @@ class RewardCalculator:
                 reward -= 0.1
 
             # Apply dynamic reward shaping (v440.1 enhancement)
-            reward = self.dynamic_reward_shaper.shape_reward(reward, current_price, step, pnl)
-            print(f"After shaping: {reward}")
+            reward = self.dynamic_reward_shaper.shape_reward(
+                reward, current_price, step, pnl
+            )
 
             # Apply signal-based reward integration
             if self.signal_integrator.enabled:
                 # Create observation from current state (simplified for now)
                 observation = np.array([current_price, position, pnl])
                 signal_reward = self.signal_integrator.integrate_signal(
-                    reward=reward,
-                    observation=observation,
-                    action=action,
-                    step=step
+                    reward=reward, observation=observation, action=action, step=step
                 )
                 reward = signal_reward  # integrate_signal returns the modified reward
-                print(f"After signal integration: {reward}")
 
             # Apply asymmetric reward scaling based on position
             reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
-            print(f"After asymmetric scaling: {reward}")
 
             # Apply reward clipping
             # reward = np.clip(reward, -reward_clip_value, reward_clip_value)
 
             # Ensure reward is finite
             if not np.isfinite(reward):
-                self.logger.warning("RewardCalculator failed, using simple reward: non-finite reward")
+                self.logger.warning(
+                    "RewardCalculator failed, using simple reward: non-finite reward"
+                )
                 return 0.0
 
             return reward
@@ -653,7 +821,9 @@ class RewardCalculator:
 
         # Get penalty and tolerance from settings
         tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
-        penalty = self.get_setting_float("balance_penalty", 4.0)
+        penalty = (
+            self.balance_penalty
+        )  # Use the initialized balance_penalty from behavior_optimization
         self.logger.info(f"Penalty settings: penalty={penalty}, tolerance={tolerance}")
         balance_penalty = 0.0
 
@@ -858,20 +1028,28 @@ class RewardCalculator:
             self.logger.debug(f"Trading bonus applied: {trading_bonus:.3f}")
 
         # Position size bonus to encourage moderate trading activity (v438.1 enhancement)
-        position_size_bonus_rate = self.get_setting_float("position_size_bonus_rate", 0.05)
+        position_size_bonus_rate = self.get_setting_float(
+            "position_size_bonus_rate", 0.05
+        )
         position_utilization = abs(position) / max(effective_max_position, 0.01)
         if 0.1 <= position_utilization <= 0.8:  # Sweet spot for moderate positions
             position_size_bonus = position_size_bonus_rate * position_utilization
             base_reward += position_size_bonus
-            self.logger.debug(f"Position size bonus applied: {position_size_bonus:.3f} (utilization: {position_utilization:.2f})")
+            self.logger.debug(
+                f"Position size bonus applied: {position_size_bonus:.3f} (utilization: {position_utilization:.2f})"
+            )
 
         # Activity incentive bonus for recent trading frequency (v438.1 enhancement)
         activity_bonus_rate = self.get_setting_float("activity_bonus_rate", 0.02)
-        recent_trades = sum(1 for a in self._recent_actions[-5:] if a != ACTION_HOLD)  # Last 5 actions
+        recent_trades = sum(
+            1 for a in self._recent_actions[-5:] if a != ACTION_HOLD
+        )  # Last 5 actions
         if recent_trades >= 2:  # At least 2 trades in last 5 actions
             activity_bonus = activity_bonus_rate * (recent_trades / 5.0)
             base_reward += activity_bonus
-            self.logger.debug(f"Activity bonus applied: {activity_bonus:.3f} (recent trades: {recent_trades}/5)")
+            self.logger.debug(
+                f"Activity bonus applied: {activity_bonus:.3f} (recent trades: {recent_trades}/5)"
+            )
 
         final_reward = base_reward - balance_penalty
 
@@ -948,7 +1126,9 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
+        reward_scaling: float,
         observation: Optional[np.ndarray],
+        step: int,
     ) -> float:
         """Stage 2: PnL-focused reward with trend analysis."""
         base_profit_bonus = (
@@ -976,7 +1156,12 @@ class RewardCalculator:
                     macd_hist = float(observation[macd_idx])
 
                     # Check for NaN/inf
-                    if np.isnan(rsi) or np.isinf(rsi) or np.isnan(macd_hist) or np.isinf(macd_hist):
+                    if (
+                        np.isnan(rsi)
+                        or np.isinf(rsi)
+                        or np.isnan(macd_hist)
+                        or np.isinf(macd_hist)
+                    ):
                         trend_multiplier = 1.0
                     else:
                         # Trend ratio
@@ -1043,7 +1228,9 @@ class RewardCalculator:
                 * position_size_factor
                 * volatility_factor
             )
-            base_action_penalty *= self.get_setting_float("hold_penalty_multiplier", 1.0)
+            base_action_penalty *= self.get_setting_float(
+                "hold_penalty_multiplier", 1.0
+            )
             # Add configured HOLD penalty
             action_penalty = base_action_penalty + hold_penalty
         elif action == ACTION_BUY:
@@ -1317,7 +1504,32 @@ class RewardCalculator:
         if self.signal_integration is not None:
             self.signal_integration.reset_stats()
 
-    def _convert_continuous_to_discrete_action(self, action: Union[float, np.ndarray]) -> int:
+    def _apply_signal_integration(
+        self,
+        reward: float,
+        observation: Optional[np.ndarray],
+        action: int,
+        step: int,
+    ) -> float:
+        """
+        Apply signal-based reward integration.
+
+        Args:
+            reward: Base reward value
+            observation: Current observation
+            action: Action taken
+            step: Current step
+
+        Returns:
+            Modified reward with signal integration
+        """
+        return self.signal_integrator.integrate_signal(
+            reward, observation, action, step
+        )
+
+    def _convert_continuous_to_discrete_action(
+        self, action: Union[float, np.ndarray]
+    ) -> int:
         """
         Convert continuous action from SAC to discrete action.
 
@@ -1519,7 +1731,7 @@ class RewardCalculator:
             },
         ]
 
-        print("Testing reward calculation...")
+        self.logger.debug("Testing reward calculation...")
         for i, case in enumerate(test_cases):
             reward = self.calculate_reward(
                 action=case["action"],
@@ -1536,88 +1748,14 @@ class RewardCalculator:
                 reward_history=[],
                 portfolio_value_history=[case["portfolio_value"]] * 30,
             )
-            print(f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}")
-            print(
+            self.logger.debug(
+                f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}"
+            )
+            self.logger.debug(
                 f"  Components: pnl={case['pnl']:.2f}, position={case['position']:.4f}, atr={case['atr']:.2f}"
             )
 
-    def _convert_continuous_to_discrete_action(self, action: float) -> int:
-        """
-        Convert continuous action to discrete action for reward calculation.
-        
-        Args:
-            action: Continuous action value (-1 to 1)
-            
-        Returns:
-            Discrete action (0=HOLD, 1=BUY, 2=SELL)
-        """
-        if action > 0.01:  # Positive action = BUY
-            return ACTION_BUY
-        elif action < -0.01:  # Negative action = SELL
-            return ACTION_SELL
-        else:  # Near zero = HOLD
-            return ACTION_HOLD
-
-    def _calculate_action_balance_bonus(self, discrete_action: int) -> float:
-        """
-        Calculate bonus for balanced action usage.
-        
-        Args:
-            discrete_action: Discrete action (0=HOLD, 1=BUY, 2=SELL)
-            
-        Returns:
-            Action balance bonus
-        """
-        self._action_counts[discrete_action] += 1
-        total_actions = sum(self._action_counts)
-        
-        if total_actions < 10:
-            return 0.0
-            
-        action_ratios = [count / total_actions for count in self._action_counts]
-        buy_ratio = action_ratios[ACTION_BUY]
-        sell_ratio = action_ratios[ACTION_SELL]
-        
-        # Bonus for balanced BUY/SELL ratio
-        if 0.3 <= buy_ratio <= 0.7 and 0.3 <= sell_ratio <= 0.7:
-            return 3.0
-        elif abs(buy_ratio - sell_ratio) <= 0.2:  # Difference within 20%
-            return 1.0
-        else:
-            return 0.0
-
-    def _calculate_win_rate_bonus(self, discrete_action: int, pnl: float) -> float:
-        """
-        Calculate bonus based on win rate.
-        
-        Args:
-            discrete_action: Discrete action
-            pnl: Profit/Loss
-            
-        Returns:
-            Win rate bonus
-        """
-        if pnl > 0:
-            self._win_count += 1
-        elif pnl < 0:
-            self._loss_count += 1
-            
-        total_trades = self._win_count + self._loss_count
-        if total_trades < 5:
-            return 0.0
-            
-        win_rate = self._win_count / total_trades
-        
-        if win_rate >= 0.8:
-            return 5.0
-        elif win_rate >= 0.7:
-            return 2.0
-        elif win_rate >= 0.6:
-            return 1.0
-        else:
-            return 0.0
-
-    def _calculate_pnl_focused_reward(
+    def _calculate_stability_optimized_reward(
         self,
         action: int,
         atr_normalised: float,
@@ -1629,224 +1767,246 @@ class RewardCalculator:
         pnl: float,
         reward_scaling: float,
         observation: Optional[np.ndarray],
-        step: int = 0,
+        step: int,
     ) -> float:
         """
-        Calculate reward focused on P&L with signal integration.
-        
-        Args:
-            action: Action taken
-            atr_normalised: ATR normalized P&L
-            portfolio_return: Portfolio return
-            position: Current position
-            effective_max_position: Effective max position
-            current_price: Current price
-            atr: ATR value
-            pnl: P&L
-            reward_scaling: Reward scaling
-            observation: Current observation
-            
-        Returns:
-            Calculated reward
-        """
-        try:
-            # Base reward from P&L
-            if np.isfinite(pnl):
-                base_reward = pnl * reward_scaling
-            else:
-                base_reward = 0.0
-            
-            # ATR normalized component
-            if np.isfinite(atr_normalised):
-                atr_reward = atr_normalised * 10.0
-            else:
-                atr_reward = 0.0
-            
-            # Portfolio return component
-            if np.isfinite(portfolio_return):
-                portfolio_reward = portfolio_return * 100.0
-            else:
-                portfolio_reward = 0.0
-            
-            # Trend strength component
-            trend_strength = self._calculate_trend_strength()
-            if np.isfinite(trend_strength):
-                trend_reward = trend_strength * 5.0
-            else:
-                trend_reward = 0.0
-            
-            # Signal strength component
-            signal_strength = self._derive_signal_strength(observation, action)
-            if (
-                self.signal_guide
-                and self._signal_guide_available
-                and observation is not None
-            ):
-                try:
-                    guide_component = float(self.signal_guide.get_signal_strength(observation))
-                    guide_sign = np.sign(signal_strength) if signal_strength != 0 else 0.0
-                    if guide_sign == 0.0:
-                        if action == ACTION_BUY:
-                            guide_sign = 1.0
-                        elif action == ACTION_SELL:
-                            guide_sign = -1.0
-                        else:
-                            guide_sign = -1.0
-                    signal_strength += guide_sign * guide_component
-                except Exception as exc:
-                    self._signal_guide_available = False
-                    self.logger.debug("Signal guide fallback: %s", exc)
+        Stability-optimized reward with enhanced balance mechanisms and market regime adaptation.
 
-            if np.isfinite(signal_strength):
-                signal_strength = float(np.clip(signal_strength, -1.0, 1.0))
-                signal_reward = signal_strength * 2.0
-                self.last_signal_strength = signal_strength
-                self.last_signal_reward = signal_reward
-                self.logger.debug(
-                    "Signal guidance applied: strength=%.3f reward=%.3f",
-                    self.last_signal_strength,
-                    self.last_signal_reward,
-                )
-            else:
-                signal_reward = 0.0
-                self.last_signal_strength = 0.0
-                self.last_signal_reward = 0.0
-            
-            # Combine components
-            reward = base_reward + atr_reward + portfolio_reward + trend_reward + signal_reward
-            
-            # Position size penalty
-            if effective_max_position > 0:
-                position_penalty = abs(position) / effective_max_position * 0.1
-            else:
-                position_penalty = 0.0
-            reward -= position_penalty
-            
-            # Action frequency penalty
-            action_penalty = self._calculate_action_frequency_penalty(action)
-            reward -= action_penalty
-            
-            self.logger.debug(
-                f"PnL focused reward components: base={base_reward:.2f}, atr={atr_reward:.2f}, "
-                f"portfolio={portfolio_reward:.2f}, trend={trend_reward:.2f}, signal={signal_reward:.2f}, "
-                f"position_penalty={position_penalty:.2f}, action_penalty={action_penalty:.2f}, total={reward:.2f}"
+        Focuses on action balance, entropy regularization, and consistency penalties
+        to achieve sustainable trading behavior. Now includes market regime detection
+        for adaptive behavior optimization.
+        """
+        # Update action counts
+        self._action_counts[action] += 1
+        total_actions = sum(self._action_counts)
+
+        # Get market regime if enabled
+        market_regime = None
+        regime_adaptive_params = None
+        if (
+            hasattr(self.config, "market_regime")
+            and self.config.market_regime
+            and self.config.market_regime.get("enabled", False)
+        ):
+            # Detect current market regime
+            market_regime = self.market_regime_detector.detect_regime(
+                current_price, step
             )
-            
-            return reward
-            
-        except Exception as e:
-            self.logger.warning(f"Error in pnl_focused reward calculation: {e}")
-            return 0.0
 
-    def _calculate_trend_strength(self) -> float:
-        """
-        Calculate trend strength based on recent market data.
-        
-        Returns:
-            Trend strength between -1.0 and 1.0
-        """
-        try:
-            # Simple trend strength based on recent price movement
-            # This is a placeholder - in real implementation would use more sophisticated analysis
-            return 0.5  # Neutral trend strength
-        except Exception as e:
-            self.logger.warning(f"Error calculating trend strength: {e}")
-            return 0.0
+            # Get regime-adaptive parameters with normalized keys
+            regime_config = self.config.market_regime.get(
+                "regime_adaptive_behavior", {}
+            )
+            # Normalize regime keys: bull -> bull_market, bear -> bear_market, etc.
+            regime_key_map = {
+                "bull": "bull_market",
+                "bear": "bear_market",
+                "sideways": "sideways_market",
+                "volatile": "volatile_market",
+            }
+            normalized_regime_key = regime_key_map.get(market_regime, market_regime)
 
-    def _derive_signal_strength(
-        self, observation: Optional[np.ndarray], action: int
-    ) -> float:
-        """Derive signed signal strength from RSI/MACD features."""
-        feature_names = getattr(self.config, "feature_names", None)
-        if observation is None or feature_names is None:
-            return 0.0
+            if normalized_regime_key in regime_config:
+                regime_adaptive_params = regime_config[normalized_regime_key]
 
-        try:
-            rsi_idx = feature_names.index("rsi_14")
-            macd_idx = feature_names.index("macd_hist")
-        except ValueError:
-            return 0.0
+        # Enhanced balance mechanism with action_balance_target (regime-adaptive)
+        balance_penalty = 0.0
+        if total_actions >= 10:
+            action_ratios = [count / total_actions for count in self._action_counts]
 
-        try:
-            rsi_value = float(observation[rsi_idx])
-            macd_value = float(observation[macd_idx])
-        except (IndexError, TypeError, ValueError):
-            return 0.0
-
-        if not np.isfinite(rsi_value) or not np.isfinite(macd_value):
-            return 0.0
-
-        rsi_strength = min(abs(rsi_value - 50.0) / 50.0, 1.0)
-        macd_strength = min(abs(macd_value) / 100.0, 1.0)
-        magnitude = (rsi_strength + macd_strength) / 2.0
-
-        directional_score = ((rsi_value - 50.0) / 50.0 + macd_value / 100.0) / 2.0
-        directional_score = float(np.clip(directional_score, -1.0, 1.0))
-
-        if action == ACTION_BUY:
-            return magnitude * directional_score
-        if action == ACTION_SELL:
-            return -magnitude * directional_score
-
-        # HOLD receives a small penalty when there is a strong directional bias
-        return -magnitude * abs(directional_score)
-
-    def _calculate_action_frequency_penalty(self, action: int) -> float:
-        """
-        Calculate penalty for frequent actions.
-        
-        Args:
-            action: Current action
-            
-        Returns:
-            Penalty value
-        """
-        try:
-            if len(self._recent_actions) < 5:
-                return 0.0
-
-            # Count recent actions
-            action_count = sum(1 for a in self._recent_actions if a != 0)  # Non-hold actions
-            frequency = action_count / len(self._recent_actions)
-
-            penalty_scale = self.get_setting_float("action_frequency_penalty", 0.01)
-            if self.get_setting_bool("scalping_mode", False):
-                target_rate = self.get_setting_float("target_action_rate", 0.5)
-                inactivity_scale = self.get_setting_float(
-                    "low_activity_penalty_scale", penalty_scale
+            # Use regime-adaptive action_balance_target if available
+            if regime_adaptive_params:
+                buy_sell_target = regime_adaptive_params.get(
+                    "action_balance_target", self.action_balance_target
                 )
-                if frequency < target_rate:
-                    deficit = target_rate - frequency
-                    return max(0.0, deficit * inactivity_scale)
+            else:
+                buy_sell_target = self.action_balance_target
 
-                overtrade_threshold = self.get_setting_float("overtrade_threshold", 0.95)
-                if frequency > overtrade_threshold:
-                    overtrade_scale = self.get_setting_float(
-                        "overtrade_penalty_scale", penalty_scale
-                    )
-                    return max(0.0, (frequency - overtrade_threshold) * overtrade_scale)
+            hold_target = 1.0 - 2 * buy_sell_target
+            target_ratios = [
+                hold_target,
+                buy_sell_target,
+                buy_sell_target,
+            ]  # [HOLD, BUY, SELL]
 
-                return 0.0
+            tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
 
-            # Non-scalping mode maintains conservative penalties
-            if frequency > 0.8:
-                return penalty_scale * 3.0
-            if frequency > 0.6:
-                return penalty_scale * 2.0
-            if frequency > 0.4:
-                return penalty_scale
-            return 0.0
+            # Use regime-adaptive balance_penalty if available
+            if regime_adaptive_params:
+                penalty_weight = regime_adaptive_params.get(
+                    "balance_penalty", self.balance_penalty
+                )
+            else:
+                penalty_weight = self.balance_penalty
 
-        except Exception as e:
-            self.logger.warning(f"Error calculating action frequency penalty: {e}")
-            return 0.0
+            for i, ratio in enumerate(action_ratios):
+                deviation = abs(ratio - target_ratios[i])
+                if deviation > tolerance:
+                    excess_deviation = deviation - tolerance
+                    balance_penalty += penalty_weight * excess_deviation
 
+        # Calculate base reward
+        base_reward = self._calculate_base_reward(
+            action,
+            atr_normalised,
+            portfolio_return,
+            position,
+            effective_max_position,
+            current_price,
+            atr,
+            pnl,
+            observation,
+        )
 
-__all__ = ["RewardCalculator"]
+        # Profit/loss based reward adjustment
+        profit_multiplier = self.get_setting_float("profit_multiplier", 1.5)
+        loss_penalty_multiplier = self.get_setting_float("loss_penalty_multiplier", 1.2)
 
+        pnl_normalizer = atr * effective_max_position * current_price
+        normalized_pnl = pnl / max(pnl_normalizer, 1e-8)
 
+        if pnl > 0:
+            profit_bonus = normalized_pnl * profit_multiplier
+            base_reward += profit_bonus
+        elif pnl < 0:
+            loss_penalty = abs(normalized_pnl) * loss_penalty_multiplier
+            base_reward -= loss_penalty
 
+        # Moderate HOLD penalty
+        hold_penalty_rate = self.get_setting_float("hold_penalty_rate", 0.05)
+        if action == ACTION_HOLD:
+            hold_penalty = (
+                hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            )
+            base_reward -= hold_penalty
 
+        # Moderate trading bonuses
+        if action in [ACTION_BUY, ACTION_SELL]:
+            trading_bonus = self.get_setting_float("trading_bonus", 0.005)
+            base_reward += trading_bonus
 
+        # Entropy regularization to encourage action diversity (regime-adaptive)
+        entropy_bonus = 0.0
+        entropy_reg = self.entropy_regularization
+        if regime_adaptive_params:
+            entropy_reg = regime_adaptive_params.get(
+                "entropy_regularization", entropy_reg
+            )
 
+        if entropy_reg > 0.0 and total_actions >= 20:
+            action_probs = np.array(action_ratios)
+            entropy = -np.sum(action_probs * np.log(action_probs + 1e-8))
+            max_entropy = np.log(3.0)  # 3 actions
+            entropy_ratio = entropy / max_entropy
+            # Only apply positive entropy bonus, avoid penalties
+            if entropy_ratio > 0.5:
+                entropy_bonus = entropy_reg * (entropy_ratio - 0.5)
+            base_reward += entropy_bonus
 
+        # Consistency penalty for repetitive actions (regime-adaptive)
+        consistency_penalty_val = self.consistency_penalty
+        if regime_adaptive_params:
+            consistency_penalty_val = regime_adaptive_params.get(
+                "consistency_penalty", consistency_penalty_val
+            )
+
+        if len(self._recent_actions) >= 5:
+            recent_actions = self._recent_actions[-10:]  # Last 10 actions
+            if len(recent_actions) >= 5:
+                # Calculate action consistency (how often the same action is repeated)
+                most_common_action = max(set(recent_actions), key=recent_actions.count)
+                consistency_ratio = recent_actions.count(most_common_action) / len(
+                    recent_actions
+                )
+
+                if consistency_ratio > 0.7:  # If same action > 70% of recent actions
+                    excess_consistency = consistency_ratio - 0.7
+                    consistency_penalty = consistency_penalty_val * excess_consistency
+                    base_reward -= consistency_penalty
+
+        # Action smoothing penalty for abrupt changes
+        if len(self._recent_actions) >= 3:
+            recent_changes = sum(
+                1
+                for i in range(1, len(self._recent_actions[-5:]))
+                if self._recent_actions[-i] != self._recent_actions[-i - 1]
+            )
+            smoothing_penalty = self.action_smoothing * (
+                recent_changes / 4.0
+            )  # Normalize by max changes
+            base_reward -= smoothing_penalty
+
+        final_reward = base_reward - balance_penalty
+
+        self.logger.debug(
+            f"Stability optimized: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, "
+            f"pnl={pnl:.3f}, entropy_bonus={entropy_bonus:.3f}, "
+            f"consistency_penalty={consistency_penalty if 'consistency_penalty' in locals() else 0:.3f}, "
+            f"market_regime={market_regime}, final_reward={final_reward:.3f}"
+        )
+        return final_reward * reward_scaling
+
+    def _calculate_backtest_optimization_reward(
+        self,
+        action: int,
+        atr_normalised: float,
+        portfolio_return: float,
+        position: float,
+        effective_max_position: float,
+        current_price: float,
+        atr: float,
+        pnl: float,
+        reward_scaling: float,
+        observation: Optional[np.ndarray],
+        step: int,
+        portfolio_value_delta: float,
+    ) -> float:
+        """Backtest optimization stage: Direct PnL-focused reward for correlation improvement."""
+        eps = self.get_setting_float("eps", 1e-8)
+
+        # Portfolio value delta reward - positive for increases, negative for decreases
+        # Use percentage change instead of absolute change for better correlation
+        min_portfolio_value = 1e-6  # Prevent division by very small numbers
+        if abs(self._previous_portfolio_value) > min_portfolio_value:
+            portfolio_percentage_change = portfolio_value_delta / abs(
+                self._previous_portfolio_value
+            )
+            # Clip extreme percentage changes to prevent reward explosion - extremely tight clipping for maximum stability
+            portfolio_percentage_change = np.clip(
+                portfolio_percentage_change, -0.001, 0.001
+            )
+            portfolio_reward = portfolio_percentage_change * self.get_setting_float(
+                "portfolio_scaling", 100.0
+            )
+        else:
+            portfolio_reward = 0.0
+
+        # Position size bonus for active trading
+        position_size_bonus = abs(position) * self.get_setting_float(
+            "position_size_bonus", 0.1
+        )
+
+        # Action penalty to prevent excessive trading
+        action_penalty = (
+            self.get_setting_float("action_penalty", 0.01) if action != 0 else 0.0
+        )
+
+        # Combine rewards
+        total_reward = portfolio_reward + position_size_bonus - action_penalty
+
+        # Scale and clip
+        total_reward *= reward_scaling
+
+        self.logger.debug(
+            f"Backtest optimization: portfolio_delta={portfolio_value_delta:.6f}, portfolio_pct_change={portfolio_percentage_change:.6f}, portfolio_reward={portfolio_reward:.3f}, "
+            f"position_bonus={position_size_bonus:.3f}, action_penalty={action_penalty:.3f}, "
+            f"total_reward={total_reward:.3f}"
+        )
+
+        return total_reward
+
+    def get_current_regime(self, current_price: float, step: int) -> str:
+        """Get the current market regime for external diagnostics."""
+        if self.market_regime_detector:
+            return self.market_regime_detector.detect_regime(current_price, step)
+        return "unknown"

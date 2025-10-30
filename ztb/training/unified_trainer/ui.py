@@ -258,13 +258,17 @@ def format_time(seconds: float) -> str:
         secs = seconds % 60
         return f"{hours}h {minutes}m {secs:.1f}s"
 
-    def display_training_complete(self, success: bool, stats: Optional[Dict[str, Any]] = None) -> None:
+    def display_training_complete(
+        self, final_metrics: Dict[str, Any], training_time: float
+    ) -> None:
         """Display training completion message."""
+        success = bool(final_metrics)  # Assume success if metrics provided
         if success:
             print("\n✅ Training completed successfully!")
-            if stats:
+            print(f"⏱️  Total training time: {self._format_time(training_time)}")
+            if final_metrics:
                 print("📊 Final Statistics:")
-                for key, value in stats.items():
+                for key, value in final_metrics.items():
                     if isinstance(value, float):
                         print(f"  {key}: {value:.4f}")
                     else:
