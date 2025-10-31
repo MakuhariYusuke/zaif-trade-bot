@@ -6,21 +6,20 @@ classification components including MarketRegimeClassifier and
 RegimeAdaptiveTrainerMixin.
 """
 
-import unittest
-import pandas as pd
-import numpy as np
-from unittest.mock import Mock, patch
-import tempfile
-import json
 import os
-from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pandas as pd
 
 from ztb.analysis.market_regime_classifier import (
     MarketRegimeClassifier,
-    RegimeType,
-    RegimeMetrics,
+    RegimeDefinition,
     RegimeDetectionResult,
-    RegimeDefinition
+    RegimeMetrics,
+    RegimeType,
 )
 from ztb.training.components.regime_adaptive_trainer import RegimeAdaptiveTrainerMixin
 
@@ -33,7 +32,7 @@ class TestMarketRegimeClassifier(unittest.TestCase):
         self.classifier = MarketRegimeClassifier()
 
         # Create sample market data
-        dates = pd.date_range('2023-01-01', periods=100, freq='H')
+        dates = pd.date_range("2023-01-01", periods=100, freq="H")
         np.random.seed(42)
 
         # Generate realistic price data
@@ -41,13 +40,16 @@ class TestMarketRegimeClassifier(unittest.TestCase):
         returns = np.random.normal(0.0001, 0.02, 100)  # Small drift with volatility
         prices = base_price * np.exp(np.cumsum(returns))
 
-        self.sample_data = pd.DataFrame({
-            'open': prices * (1 + np.random.normal(0, 0.005, 100)),
-            'high': prices * (1 + np.random.normal(0, 0.01, 100)),
-            'low': prices * (1 - np.random.normal(0, 0.01, 100)),
-            'close': prices,
-            'volume': np.random.uniform(1000, 10000, 100)
-        }, index=dates)
+        self.sample_data = pd.DataFrame(
+            {
+                "open": prices * (1 + np.random.normal(0, 0.005, 100)),
+                "high": prices * (1 + np.random.normal(0, 0.01, 100)),
+                "low": prices * (1 - np.random.normal(0, 0.01, 100)),
+                "close": prices,
+                "volume": np.random.uniform(1000, 10000, 100),
+            },
+            index=dates,
+        )
 
     def test_initialization(self):
         """Test classifier initialization"""
@@ -87,16 +89,14 @@ class TestMarketRegimeClassifier(unittest.TestCase):
     def test_custom_config(self):
         """Test classifier with custom configuration"""
         custom_config = {
-            'regime_scheme': 'basic',
-            'lookback_periods': {
-                'short': 10,
-                'medium': 30,
-                'long': 60
-            }
+            "regime_scheme": "basic",
+            "lookback_periods": {"short": 10, "medium": 30, "long": 60},
         }
 
         classifier = MarketRegimeClassifier(custom_config)
-        self.assertEqual(len(classifier.regime_definitions), 4)  # Basic scheme has 4 regimes
+        self.assertEqual(
+            len(classifier.regime_definitions), 4
+        )  # Basic scheme has 4 regimes
 
     def test_insufficient_data(self):
         """Test behavior with insufficient data"""
@@ -118,16 +118,12 @@ class TestMarketRegimeClassifier(unittest.TestCase):
     def test_config_update(self):
         """Test configuration updates"""
         new_config = {
-            'confidence_threshold': 0.8,
-            'lookback_periods': {
-                'short': 15,
-                'medium': 40,
-                'long': 80
-            }
+            "confidence_threshold": 0.8,
+            "lookback_periods": {"short": 15, "medium": 40, "long": 80},
         }
 
         self.classifier.update_config(new_config)
-        self.assertEqual(self.classifier.config['confidence_threshold'], 0.8)
+        self.assertEqual(self.classifier.config["confidence_threshold"], 0.8)
 
 
 class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
@@ -144,21 +140,18 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
 
     def test_initialization_with_config(self):
         """Test initialization with regime config"""
-        config = {
-            'enabled': True,
-            'adaptation_frequency': 50
-        }
+        config = {"enabled": True, "adaptation_frequency": 50}
         mixin = RegimeAdaptiveTrainerMixin(config)
 
         self.assertTrue(mixin.regime_adaptation_enabled)
-        self.assertEqual(mixin.regime_config['adaptation_frequency'], 50)
+        self.assertEqual(mixin.regime_config["adaptation_frequency"], 50)
 
     def test_regime_detection_disabled(self):
         """Test regime detection when disabled"""
         result = self.mixin.detect_market_regime(self.sample_data)
         self.assertIsNone(result)
 
-    @patch('ztb.training.components.regime_adaptive_trainer.MarketRegimeClassifier')
+    @patch("ztb.training.components.regime_adaptive_trainer.MarketRegimeClassifier")
     def test_regime_detection_enabled(self, mock_classifier):
         """Test regime detection when enabled"""
         # Setup mock
@@ -168,7 +161,7 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
         mock_classifier.return_value.detect_regime.return_value = mock_result
 
         # Enable regime adaptation
-        config = {'enabled': True}
+        config = {"enabled": True}
         mixin = RegimeAdaptiveTrainerMixin(config)
 
         # Test detection
@@ -182,7 +175,7 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
 
         params = mixin.get_regime_specific_parameters(RegimeType.STRONG_BULL)
         self.assertIsInstance(params, dict)
-        self.assertIn('ent_coef', params)
+        self.assertIn("ent_coef", params)
 
     def test_adaptation_suggestions(self):
         """Test getting adaptation suggestions"""
@@ -195,25 +188,25 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
 
     def test_performance_tracking(self):
         """Test regime performance tracking"""
-        mixin = RegimeAdaptiveTrainerMixin({'enabled': True})
+        mixin = RegimeAdaptiveTrainerMixin({"enabled": True})
 
         # Add some performance data
         mixin.update_regime_performance(RegimeType.STRONG_BULL, 1.0, 100)
         mixin.update_regime_performance(RegimeType.STRONG_BULL, 2.0, 200)
 
         summary = mixin.get_regime_performance_summary()
-        self.assertIn('strong_bull', summary)
-        self.assertEqual(summary['strong_bull']['total_steps'], 2)
+        self.assertIn("strong_bull", summary)
+        self.assertEqual(summary["strong_bull"]["total_steps"], 2)
 
     def test_data_export_import(self):
         """Test regime data export and import"""
-        mixin = RegimeAdaptiveTrainerMixin({'enabled': True})
+        mixin = RegimeAdaptiveTrainerMixin({"enabled": True})
 
         # Add some test data
         mixin.current_regime = RegimeType.STRONG_BULL
         mixin.update_regime_performance(RegimeType.STRONG_BULL, 1.5, 100)
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
 
         try:
@@ -221,7 +214,7 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
             mixin.export_regime_data(temp_file)
 
             # Create new mixin and import data
-            new_mixin = RegimeAdaptiveTrainerMixin({'enabled': True})
+            new_mixin = RegimeAdaptiveTrainerMixin({"enabled": True})
             new_mixin.load_regime_data(temp_file)
 
             # Check data was imported
@@ -240,7 +233,7 @@ class TestRegimeIntegration(unittest.TestCase):
         self.classifier = MarketRegimeClassifier()
 
         # Create more realistic test data with different regimes
-        dates = pd.date_range('2023-01-01', periods=200, freq='H')
+        dates = pd.date_range("2023-01-01", periods=200, freq="H")
         np.random.seed(123)
 
         # Create trending data (bull market simulation)
@@ -249,25 +242,31 @@ class TestRegimeIntegration(unittest.TestCase):
         noise = np.random.normal(0, 0.01, 200)
         prices = base_price * np.exp(trend + noise)
 
-        self.trending_data = pd.DataFrame({
-            'open': prices * (1 + np.random.normal(0, 0.002, 200)),
-            'high': prices * (1 + np.random.normal(0, 0.005, 200)),
-            'low': prices * (1 - np.random.normal(0, 0.005, 200)),
-            'close': prices,
-            'volume': np.random.uniform(5000, 15000, 200)
-        }, index=dates)
+        self.trending_data = pd.DataFrame(
+            {
+                "open": prices * (1 + np.random.normal(0, 0.002, 200)),
+                "high": prices * (1 + np.random.normal(0, 0.005, 200)),
+                "low": prices * (1 - np.random.normal(0, 0.005, 200)),
+                "close": prices,
+                "volume": np.random.uniform(5000, 15000, 200),
+            },
+            index=dates,
+        )
 
         # Create ranging data (sideways market simulation)
         range_prices = 100 + np.random.normal(0, 2, 200)  # No trend, just noise
         range_prices = np.clip(range_prices, 95, 105)  # Keep in range
 
-        self.ranging_data = pd.DataFrame({
-            'open': range_prices * (1 + np.random.normal(0, 0.001, 200)),
-            'high': range_prices * (1 + np.random.normal(0, 0.003, 200)),
-            'low': range_prices * (1 - np.random.normal(0, 0.003, 200)),
-            'close': range_prices,
-            'volume': np.random.uniform(1000, 5000, 200)
-        }, index=dates)
+        self.ranging_data = pd.DataFrame(
+            {
+                "open": range_prices * (1 + np.random.normal(0, 0.001, 200)),
+                "high": range_prices * (1 + np.random.normal(0, 0.003, 200)),
+                "low": range_prices * (1 - np.random.normal(0, 0.003, 200)),
+                "close": range_prices,
+                "volume": np.random.uniform(1000, 5000, 200),
+            },
+            index=dates,
+        )
 
     def test_trending_market_detection(self):
         """Test regime detection on trending market data"""
@@ -276,8 +275,12 @@ class TestRegimeIntegration(unittest.TestCase):
         self.assertIsInstance(result, RegimeDetectionResult)
         # Trending data should be detected as some kind of trending regime
         trending_regimes = [
-            RegimeType.STRONG_BULL, RegimeType.MODERATE_BULL, RegimeType.WEAK_BULL,
-            RegimeType.STRONG_BEAR, RegimeType.MODERATE_BEAR, RegimeType.WEAK_BEAR
+            RegimeType.STRONG_BULL,
+            RegimeType.MODERATE_BULL,
+            RegimeType.WEAK_BULL,
+            RegimeType.STRONG_BEAR,
+            RegimeType.MODERATE_BEAR,
+            RegimeType.WEAK_BEAR,
         ]
         self.assertIn(result.primary_regime, trending_regimes)
 
@@ -290,7 +293,7 @@ class TestRegimeIntegration(unittest.TestCase):
         ranging_regimes = [
             RegimeType.HIGH_VOLATILITY_RANGE,
             RegimeType.MODERATE_VOLATILITY_RANGE,
-            RegimeType.LOW_VOLATILITY_RANGE
+            RegimeType.LOW_VOLATILITY_RANGE,
         ]
         # Note: May not always detect as ranging due to random nature of test data
 
@@ -315,5 +318,5 @@ class TestRegimeIntegration(unittest.TestCase):
             self.assertIsInstance(result.primary_regime, RegimeType)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

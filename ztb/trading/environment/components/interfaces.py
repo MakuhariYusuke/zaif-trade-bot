@@ -6,8 +6,11 @@ following SOLID principles for better maintainability and testability.
 """
 
 from abc import ABC, abstractmethod
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
+
 class IMarketRegimeDetector(ABC):
     """Interface for market regime detection."""
 
@@ -30,7 +33,9 @@ class IDynamicRewardShaper(ABC):
     """Interface for dynamic reward shaping."""
 
     @abstractmethod
-    def shape_reward(self, base_reward: float, current_price: float, step: int, pnl: float) -> float:
+    def shape_reward(
+        self, base_reward: float, current_price: float, step: int, pnl: float
+    ) -> float:
         """
         Apply dynamic reward shaping.
 
@@ -48,11 +53,14 @@ class IDynamicRewardShaper(ABC):
 
 import numpy as np
 
+
 class ISignalIntegrator(ABC):
     """Interface for signal integration."""
 
     @abstractmethod
-    def integrate_signal(self, reward: float, observation: Optional[np.ndarray], action: int, step: int) -> float:
+    def integrate_signal(
+        self, reward: float, observation: Optional[np.ndarray], action: int, step: int
+    ) -> float:
         """
         Apply signal integration to reward.
 

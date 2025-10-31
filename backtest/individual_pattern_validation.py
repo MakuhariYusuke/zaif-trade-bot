@@ -17,13 +17,20 @@ DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
 DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
 
 # Patterns to test in debug mode (focus on problematic ones)
-DEBUG_PATTERNS = ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+DEBUG_PATTERNS = (
+    ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+)
 
 # Configure logging for debug mode
 if DEBUG_MODE:
-    logging.basicConfig(level=getattr(logging, DEBUG_LOG_LEVEL), format='%(levelname)s: %(message)s')
+    logging.basicConfig(
+        level=getattr(logging, DEBUG_LOG_LEVEL), format="%(levelname)s: %(message)s"
+    )
 else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
@@ -58,7 +65,9 @@ DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
 DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
 
 # Patterns to test in debug mode (focus on problematic ones)
-DEBUG_PATTERNS = ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+DEBUG_PATTERNS = (
+    ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+)
 
 
 def run_individual_pattern_backtest(pattern_name: str) -> Dict[str, Any]:
@@ -92,7 +101,9 @@ def run_individual_pattern_backtest(pattern_name: str) -> Dict[str, Any]:
 
         # Start backtest from index 200 to ensure sufficient data for pattern recognition
         backtest_data = data.iloc[200:].copy()
-        print(f"Starting backtest from index 200, using {len(backtest_data)} data points")
+        print(
+            f"Starting backtest from index 200, using {len(backtest_data)} data points"
+        )
 
         results = engine.run_backtest(strategy=adapter, data=backtest_data)
 
@@ -211,7 +222,7 @@ def analyze_results(results: List[Dict[str, Any]]) -> None:
     total_returns = [r["performance"]["total_return"] for r in successful_results]
     win_rates = [r["performance"]["win_rate"] for r in successful_results]
     profit_factors = [r["performance"]["profit_factor"] for r in successful_results]
-    
+
     print(f"  Average Total Return: {sum(total_returns)/len(total_returns):.2f}%")
     print(f"  Average Win Rate: {sum(win_rates)/len(win_rates):.2f}%")
     print(f"  Average Profit Factor: {sum(profit_factors)/len(profit_factors):.2f}")

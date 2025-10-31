@@ -5,17 +5,14 @@ This module provides a mixin class that adds market regime adaptation
 capabilities to SAC training classes.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
-import numpy as np
-import pandas as pd
 import logging
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.analysis.market_regime_classifier import (
-    MarketRegimeClassifier,
-    RegimeType,
-    RegimeDetectionResult
-)
+import numpy as np
+import pandas as pd
+
+from ztb.analysis.market_regime_classifier import MarketRegimeClassifier, RegimeDetectionResult, RegimeType
 
 logger = logging.getLogger(__name__)
 
@@ -388,5 +385,4 @@ class RegimeAdaptiveTrainerMixin(ABC):
         Returns:
             Current step count
         """
-        pass</content>
-<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\ztb\training\components\regime_adaptive_trainer.py
+        pass

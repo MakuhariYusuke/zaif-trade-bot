@@ -26,6 +26,7 @@ def create_algorithm_trainer(
     if algorithm == "sac":
         return SACTrainer(
             config,
+            None,  # env
             logger,
             gradient_accumulation_steps,
             system_optimizer,
@@ -40,7 +41,11 @@ def create_algorithm_trainer(
         )
     elif algorithm == "self_supervised":
         return SelfSupervisedTrainer(
-            config, logger, optimizer_tracker=optimizer_tracker
+            config,
+            logger,
+            gradient_accumulation_steps,
+            system_optimizer,
+            optimizer_tracker,
         )
     elif algorithm == "multimodal":
         # Create multimodal config from unified config

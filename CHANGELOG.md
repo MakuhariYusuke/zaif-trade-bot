@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### SAC v444 Advanced Market Regime Adaptation System 🚀
 
+#### Training Results ✅
+- **5000-Step Trial Training**: SAC v444の市場レジーム適応機能を5000ステップで検証
+  - 学習時間: 212.0秒 (SPS: 23.6)
+  - 最終報酬: 2.0
+  - レジーム分布: 強気41.6%、弱気39.4%、横ばい19.0%
+  - モデル保存: `models/sac_v444_advanced_regime_adaptation.zip`
+- **Regime Adaptation Verification**: 12レジーム分類システムの正常動作を確認
+  - カリキュラムステージ: `advanced_regime_adaptation`
+  - 動的閾値適応: ボラティリティに応じたレジーム判定
+  - 複数時間軸確認: レジーム信頼性の向上
+
 #### Bug Fixes
 - **Market Regime Adaptation Integration**: SACTrainerとHeavyTradingEnv間の市場レジーム適応統合を修正
   - `enable_market_regime_adaptation`メソッドの呼び出しを修正
