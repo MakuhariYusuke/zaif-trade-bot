@@ -1,0 +1,26 @@
+{
+  "model_name": "sac_v444_advanced_regime_adaptation",
+  "initial_balance": 10000,
+  "final_balance": 10357.017942483682,
+  "total_return_pct": 3.5701794248368266,
+  "total_trades": 1,
+  "winning_trades": 1,
+  "losing_trades": 0,
+  "avg_win_pct": 3.5701794248368266,
+  "avg_loss_pct": 0,
+  "max_drawdown_pct": 0,
+  "sharpe_ratio": 0,
+  "trades": [
+    {
+      "type": "BUY",
+      "price": 4950010.537334896,
+      "index": 100
+    },
+    {
+      "type": "FINAL_SELL",
+      "price": 5126734.795066081,
+      "pnl": 3.5701794248368266,
+      "index": 4980
+    }
+  ]
+}

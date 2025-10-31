@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-
 # Try to import Ta-Lib, fallback to custom implementations if not available
 try:
     import talib

@@ -134,61 +134,96 @@ class SignalGenerator(ISignalGenerator):
                 WaveYRecognizer,
             )
 
-            # Initialize all recognizers
-            self.all_recognizers = [
-                # Candlestick patterns
-                BearishEngulfingRecognizer(),
-                BullishEngulfingRecognizer(),
-                EveningStarRecognizer(),
-                HammerRecognizer(),
-                HangingManRecognizer(),
-                MorningStarRecognizer(),
-                PiercingPatternRecognizer(),
-                RisingThreeMethodsRecognizer(),
-                SakataFiveMethodsRecognizer(),
-                ThreeBlackCrowsRecognizer(),
-                ThreeWhiteSoldiersRecognizer(),
-                # Fibonacci patterns
-                FibonacciExtensionRecognizer(),
-                FibonacciProjectionRecognizer(),
-                FibonacciRetracementRecognizer(),
-                # Gann analysis
-                GannAngleRecognizer(),
-                GannSquareRecognizer(),
-                GannTimeClusterRecognizer(),
-                # Granville law
-                GranvilleLawRecognizer(),
-                # Harmonic patterns
-                BatRecognizer(),
-                ButterflyRecognizer(),
-                CrabRecognizer(),
-                GartleyRecognizer(),
-                # Wave counting
-                ImpulseWaveRecognizer(),
-                CorrectiveWaveRecognizer(),
-                WaveExtensionRecognizer(),
-                WaveIRecognizer(),
-                WaveVRecognizer(),
-                WaveYRecognizer(),
-                WavePRecognizer(),
-                WaveNRecognizer(),
-                WaveSRecognizer(),
-                # Oscillator patterns
-                CCIRecognizer(),
-                StochasticRecognizer(),
-                WilliamsRRecognizer(),
-                MFIRecognizer(),
-                # Volume patterns
-                ChaikinADRecognizer(),
-                # Bollinger patterns
-                BollingerBandsRecognizer(),
-                # ADX patterns
-                ADXRecognizer(),
-                # Heikin-Ashi patterns
-                HeikinAshiRecognizer(),
-                # Dow Theory
-                DowTheoryRecognizer(),
-            ]
+            # Initialize all recognizers based on config flags
+            self.all_recognizers = []
+            
+            # Candlestick patterns
+            if getattr(self.config, 'enable_candlestick_patterns', True):
+                self.all_recognizers.extend([
+                    BearishEngulfingRecognizer(),
+                    BullishEngulfingRecognizer(),
+                    EveningStarRecognizer(),
+                    HammerRecognizer(),
+                    HangingManRecognizer(),
+                    MorningStarRecognizer(),
+                    PiercingPatternRecognizer(),
+                    RisingThreeMethodsRecognizer(),
+                    SakataFiveMethodsRecognizer(),
+                    ThreeBlackCrowsRecognizer(),
+                    ThreeWhiteSoldiersRecognizer(),
+                ])
+            
+            # Fibonacci patterns
+            if getattr(self.config, 'enable_fibonacci_patterns', True):
+                self.all_recognizers.extend([
+                    FibonacciExtensionRecognizer(),
+                    FibonacciProjectionRecognizer(),
+                    FibonacciRetracementRecognizer(),
+                ])
+            
+            # Gann analysis
+            if getattr(self.config, 'enable_gann_patterns', True):
+                self.all_recognizers.extend([
+                    GannAngleRecognizer(),
+                    GannSquareRecognizer(),
+                    GannTimeClusterRecognizer(),
+                ])
+            
+            # Granville law
+            if getattr(self.config, 'enable_granville_patterns', True):
+                self.all_recognizers.append(GranvilleLawRecognizer())
+            
+            # Harmonic patterns
+            if getattr(self.config, 'enable_harmonic_patterns', True):
+                self.all_recognizers.extend([
+                    BatRecognizer(),
+                    ButterflyRecognizer(),
+                    CrabRecognizer(),
+                    GartleyRecognizer(),
+                ])
+            
+            # Wave counting
+            if getattr(self.config, 'enable_wave_patterns', True):
+                self.all_recognizers.extend([
+                    ImpulseWaveRecognizer(),
+                    CorrectiveWaveRecognizer(),
+                    WaveExtensionRecognizer(),
+                    WaveIRecognizer(),
+                    WaveVRecognizer(),
+                    WaveYRecognizer(),
+                    WavePRecognizer(),
+                    WaveNRecognizer(),
+                    WaveSRecognizer(),
+                ])
+            
+            # Oscillator patterns
+            if getattr(self.config, 'enable_oscillator_patterns', True):
+                self.all_recognizers.extend([
+                    CCIRecognizer(),
+                    StochasticRecognizer(),
+                    WilliamsRRecognizer(),
+                    MFIRecognizer(),
+                ])
+            
+            # Volume patterns
+            if getattr(self.config, 'enable_volume_patterns', True):
+                self.all_recognizers.append(ChaikinADRecognizer())
+            
+            # Bollinger patterns
+            if getattr(self.config, 'enable_bollinger_patterns', True):
+                self.all_recognizers.append(BollingerBandsRecognizer())
+            
+            # ADX patterns
+            if getattr(self.config, 'enable_adx_patterns', True):
+                self.all_recognizers.append(ADXRecognizer())
+            
+            # Heikin-Ashi patterns
+            if getattr(self.config, 'enable_heikin_ashi_patterns', True):
+                self.all_recognizers.append(HeikinAshiRecognizer())
+            
+            # Dow Theory
+            if getattr(self.config, 'enable_dow_theory_patterns', True):
+                self.all_recognizers.append(DowTheoryRecognizer())
 
             initialization_time = time.time() - start_time
             self.logger.info(
@@ -242,6 +277,11 @@ class SignalGenerator(ISignalGenerator):
 
             for recognizer in recognizers_to_run:
                 try:
+                    # Check if we have enough data for this recognizer
+                    lookback_period = getattr(recognizer, 'get_lookback_period', lambda: 20)()
+                    if current_index < lookback_period:
+                        continue  # Skip this recognizer if not enough data
+                    
                     signal_result = recognizer.recognize(
                         data,
                         index=current_index,

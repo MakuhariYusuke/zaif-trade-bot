@@ -160,10 +160,7 @@ class UnifiedAnalyzer:
         return results
 
     def analyze_regime_performance_matrix_v444(
-        self,
-        model: Any,
-        regime_data: Dict[str, Any],
-        **kwargs
+        self, model: Any, regime_data: Dict[str, Any], **kwargs
     ) -> Dict[str, Any]:
         """
         SAC v444: 12レジーム分類に対応したパフォーマンスマトリックス分析
@@ -179,10 +176,19 @@ class UnifiedAnalyzer:
         self.logger.info("Analyzing v444 regime performance matrix...")
 
         regime_classifications = [
-            "strong_bull_trend", "moderate_bull_trend", "weak_bull_trend",
-            "strong_bear_trend", "moderate_bear_trend", "weak_bear_trend",
-            "high_volatility_ranging", "moderate_volatility_ranging", "low_volatility_ranging",
-            "extreme_volatility", "consolidation", "breakout_setup", "breakdown_setup"
+            "strong_bull_trend",
+            "moderate_bull_trend",
+            "weak_bull_trend",
+            "strong_bear_trend",
+            "moderate_bear_trend",
+            "weak_bear_trend",
+            "high_volatility_ranging",
+            "moderate_volatility_ranging",
+            "low_volatility_ranging",
+            "extreme_volatility",
+            "consolidation",
+            "breakout_setup",
+            "breakdown_setup",
         ]
 
         results = {
@@ -190,7 +196,7 @@ class UnifiedAnalyzer:
             "regime_statistics": {},
             "regime_transitions": {},
             "optimal_regimes": [],
-            "risk_adjusted_regime_scores": {}
+            "risk_adjusted_regime_scores": {},
         }
 
         for regime in regime_classifications:
@@ -203,7 +209,9 @@ class UnifiedAnalyzer:
                 results["risk_adjusted_regime_scores"][regime] = risk_adjusted_score
 
         # 最適レジームの特定
-        results["optimal_regimes"] = self._identify_optimal_regimes(results["risk_adjusted_regime_scores"])
+        results["optimal_regimes"] = self._identify_optimal_regimes(
+            results["risk_adjusted_regime_scores"]
+        )
 
         # レジーム遷移分析
         results["regime_transitions"] = self._analyze_regime_transitions(regime_data)
@@ -211,10 +219,7 @@ class UnifiedAnalyzer:
         return results
 
     def analyze_regime_transitions_v444(
-        self,
-        model: Any,
-        transition_data: Dict[str, Any],
-        **kwargs
+        self, model: Any, transition_data: Dict[str, Any], **kwargs
     ) -> Dict[str, Any]:
         """
         SAC v444: レジーム間遷移分析
@@ -234,25 +239,28 @@ class UnifiedAnalyzer:
             "transition_probabilities": {},
             "transition_impacts": {},
             "regime_stability_scores": {},
-            "adaptation_effectiveness": {}
+            "adaptation_effectiveness": {},
         }
 
         # 遷移確率行列の計算
-        results["transition_matrix"] = self._calculate_transition_matrix(transition_data)
+        results["transition_matrix"] = self._calculate_transition_matrix(
+            transition_data
+        )
 
         # 各遷移の影響度分析
-        results["transition_impacts"] = self._analyze_transition_impacts(transition_data)
+        results["transition_impacts"] = self._analyze_transition_impacts(
+            transition_data
+        )
 
         # レジーム安定性スコア
-        results["regime_stability_scores"] = self._calculate_regime_stability(transition_data)
+        results["regime_stability_scores"] = self._calculate_regime_stability(
+            transition_data
+        )
 
         return results
 
     def analyze_adaptive_strategy_validation_v444(
-        self,
-        model: Any,
-        validation_data: Dict[str, Any],
-        **kwargs
+        self, model: Any, validation_data: Dict[str, Any], **kwargs
     ) -> Dict[str, Any]:
         """
         SAC v444: アダプティブ戦略の有効性検証
@@ -272,27 +280,39 @@ class UnifiedAnalyzer:
             "regime_adaptation_accuracy": {},
             "feature_selection_impact": {},
             "multi_timeframe_benefits": {},
-            "overall_adaptation_score": 0.0
+            "overall_adaptation_score": 0.0,
         }
 
         # 戦略有効性の評価
-        results["strategy_effectiveness"] = self._evaluate_strategy_effectiveness(validation_data)
+        results["strategy_effectiveness"] = self._evaluate_strategy_effectiveness(
+            validation_data
+        )
 
         # レジーム適応精度の分析
-        results["regime_adaptation_accuracy"] = self._analyze_adaptation_accuracy(validation_data)
+        results["regime_adaptation_accuracy"] = self._analyze_adaptation_accuracy(
+            validation_data
+        )
 
         # 特徴量選択の影響分析
-        results["feature_selection_impact"] = self._analyze_feature_selection_impact(validation_data)
+        results["feature_selection_impact"] = self._analyze_feature_selection_impact(
+            validation_data
+        )
 
         # マルチタイムフレーム統合の効果
-        results["multi_timeframe_benefits"] = self._analyze_multitimeframe_benefits(validation_data)
+        results["multi_timeframe_benefits"] = self._analyze_multitimeframe_benefits(
+            validation_data
+        )
 
         # 総合適応スコアの計算
-        results["overall_adaptation_score"] = self._calculate_overall_adaptation_score(results)
+        results["overall_adaptation_score"] = self._calculate_overall_adaptation_score(
+            results
+        )
 
         return results
 
-    def _calculate_regime_performance(self, regime_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_regime_performance(
+        self, regime_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """レジーム別パフォーマンス計算"""
         return {
             "total_return": regime_data.get("total_return", 0.0),
@@ -302,7 +322,7 @@ class UnifiedAnalyzer:
             "profit_factor": regime_data.get("profit_factor", 0.0),
             "total_trades": regime_data.get("total_trades", 0),
             "avg_trade_return": regime_data.get("avg_trade_return", 0.0),
-            "volatility": regime_data.get("volatility", 0.0)
+            "volatility": regime_data.get("volatility", 0.0),
         }
 
     def _calculate_risk_adjusted_score(self, regime_stats: Dict[str, Any]) -> float:
@@ -316,47 +336,69 @@ class UnifiedAnalyzer:
         risk_adjusted_score = sharpe * (win_rate + profit_factor) / (max_dd + 1)
         return risk_adjusted_score
 
-    def _identify_optimal_regimes(self, risk_adjusted_scores: Dict[str, float]) -> List[str]:
+    def _identify_optimal_regimes(
+        self, risk_adjusted_scores: Dict[str, float]
+    ) -> List[str]:
         """最適レジームの特定"""
-        sorted_regimes = sorted(risk_adjusted_scores.items(), key=lambda x: x[1], reverse=True)
+        sorted_regimes = sorted(
+            risk_adjusted_scores.items(), key=lambda x: x[1], reverse=True
+        )
         return [regime for regime, score in sorted_regimes[:3]]  # 上位3つ
 
-    def _analyze_regime_transitions(self, regime_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_regime_transitions(
+        self, regime_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """レジーム遷移分析"""
         return {
             "transition_frequency": {},
             "transition_success_rate": {},
-            "transition_impact_score": {}
+            "transition_impact_score": {},
         }
 
-    def _calculate_transition_matrix(self, transition_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_transition_matrix(
+        self, transition_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """遷移確率行列計算"""
         return {}
 
-    def _analyze_transition_impacts(self, transition_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_transition_impacts(
+        self, transition_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """遷移影響分析"""
         return {}
 
-    def _calculate_regime_stability(self, transition_data: Dict[str, Any]) -> Dict[str, float]:
+    def _calculate_regime_stability(
+        self, transition_data: Dict[str, Any]
+    ) -> Dict[str, float]:
         """レジーム安定性計算"""
         return {}
 
-    def _evaluate_strategy_effectiveness(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _evaluate_strategy_effectiveness(
+        self, validation_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """戦略有効性評価"""
         return {}
 
-    def _analyze_adaptation_accuracy(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_adaptation_accuracy(
+        self, validation_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """適応精度分析"""
         return {}
 
-    def _analyze_feature_selection_impact(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_feature_selection_impact(
+        self, validation_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """特徴量選択影響分析"""
         return {}
 
-    def _analyze_multitimeframe_benefits(self, validation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_multitimeframe_benefits(
+        self, validation_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """マルチタイムフレーム効果分析"""
         return {}
 
-    def _calculate_overall_adaptation_score(self, analysis_results: Dict[str, Any]) -> float:
+    def _calculate_overall_adaptation_score(
+        self, analysis_results: Dict[str, Any]
+    ) -> float:
         """総合適応スコア計算"""
         return 0.0

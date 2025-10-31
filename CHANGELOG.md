@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### SAC v444 Advanced Market Regime Adaptation System 🚀
 
+#### Bug Fixes
+- **Market Regime Adaptation Integration**: SACTrainerとHeavyTradingEnv間の市場レジーム適応統合を修正
+  - `enable_market_regime_adaptation`メソッドの呼び出しを修正
+  - `regime_statistics`属性の初期化とエイリアス設定を改善
+  - 統合テストのロジックを更新し、Gymnasium API変更に対応
+- **Logging Standardization**: デバッグ出力に`ztb.utils.logging_utils.get_logger`を使用するよう統一
+
 #### Enhanced Regime Classification System
 - **12-Regime Classification**: 市場状態を12種類に細分化（従来の4分類から大幅拡張）
   - **強気トレンド系**: strong_bull_trend, moderate_bull_trend, weak_bull_trend

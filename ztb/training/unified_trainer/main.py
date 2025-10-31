@@ -4,14 +4,35 @@ Main entry point for Unified Trainer.
 """
 
 import argparse
+from re import L
 import sys
+import json
 
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 
 
 def main() -> None:
-    """Main entry point for unified training."""
+    """
+    Main entry point for unified training.
+
+    Parses command-line arguments, loads and validates configuration,
+    initializes UnifiedTrainer, and executes the training process.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Raises:
+        SystemExit: If configuration loading fails or training fails.
+
+    Processing:
+        - Loads configuration from JSON file or global config manager.
+        - Initializes UnifiedTrainer with parsed arguments and config.
+        - Runs the training process and exits with appropriate status code.
+    """
     logger = get_logger(__name__)
 
     parser = argparse.ArgumentParser(
@@ -60,8 +81,6 @@ def main() -> None:
     try:
         if args.config:
             # Load JSON config directly for training configs
-            import json
-
             with open(args.config, "r") as f:
                 raw_config = json.load(f)
 
@@ -74,8 +93,8 @@ def main() -> None:
                 stream_batch_size=args.stream_batch_size,
                 total_timesteps_override=args.total_timesteps,
             )
-            print(f"DEBUG: Unified config environment: {config.get('environment', {})}")
-            print(f"DEBUG: Unified config keys: {list(config.keys())}")
+            logger.debug(f"Unified config environment: {config.get('environment', {})}")
+            logger.debug(f"Unified config keys: {list(config.keys())}")
         else:
             # Use ConfigManager for default config loading
             from ztb.config.manager import ConfigManager as GlobalConfigManager
@@ -84,10 +103,10 @@ def main() -> None:
             config = config_manager.load_config()
 
     except Exception as e:
-        print(f"❌ Failed to load configuration: {e}")
+        logger.error("❌ Failed to load configuration: {e}")
         sys.exit(1)
 
-    print("✅ Configuration loaded successfully")
+    logger.info("✅ Configuration loaded successfully")
 
     # Create and run trainer
     trainer = UnifiedTrainer(

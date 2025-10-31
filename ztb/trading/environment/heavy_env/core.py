@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import logging
 from collections import deque
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -67,6 +68,9 @@ from ztb.utils.errors import ConfigurationError, ValidationError
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_validation import TypeValidator
+
+# Import v444 regime classifier for advanced market regime adaptation
+from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
@@ -360,6 +364,17 @@ class HeavyTradingEnv(
 
         self._initialize_remaining_components()
 
+        # Initialize v444 regime classifier for advanced market regime adaptation
+        self.regime_classifier = None
+        advanced_regime_config = getattr(self.config, 'advanced_market_regime', None)
+        if advanced_regime_config and advanced_regime_config.get('enabled', False):
+            # Use generic market regime classifier
+            classifier_config = advanced_regime_config.get('regime_classifier_config', {})
+            self.regime_classifier = MarketRegimeClassifier(classifier_config)
+            logger.info("Market Regime Classifier initialized for market regime adaptation")
+        else:
+            logger.info("Advanced market regime adaptation disabled (legacy configuration)")
+
         self.portfolio_value_history = deque(maxlen=self.DEFAULT_MAX_HISTORY_LENGTH)
         self._previous_portfolio_value = None
         self._prev_unrealized_pnl = 0.0
@@ -377,8 +392,6 @@ class HeavyTradingEnv(
         ) or self.random_start
 
         # 🔧 DEBUG: random_start が False になる原因を特定
-        import logging
-
         logger = logging.getLogger(__name__)
         logger.debug(
             f"reset() called: options={options}, self.random_start={self.random_start}, random_start={random_start}"
@@ -447,6 +460,32 @@ class HeavyTradingEnv(
 
     def get_action_masks(self) -> Any:
         return self.action_mask()
+
+    def _get_current_market_regime(self) -> str:
+        """Get current market regime using v444 classifier if available, fallback to legacy."""
+        if self.regime_classifier is not None:
+            try:
+                # Get recent price data for regime classification
+                window_size = 20  # Minimum window for regime detection
+                start_idx = max(0, self.current_step - window_size)
+                end_idx = self.current_step + 1
+
+                if end_idx > len(self.df):
+                    end_idx = len(self.df)
+
+                if end_idx - start_idx >= 10:  # Minimum data points needed
+                    price_data = self.df.iloc[start_idx:end_idx].copy()
+                    if 'close' in price_data.columns:
+                        regime_result = self.regime_classifier.detect_regime(price_data)
+                        return regime_result.primary_regime.value
+            except Exception as e:
+                logger.warning(f"Failed to classify regime with v444 classifier: {e}")
+
+        # Fallback to legacy regime detector
+        try:
+            return self.reward_calculator.market_regime_detector.current_regime
+        except Exception:
+            return "unknown"
 
     def step(
         self,
@@ -532,6 +571,47 @@ class HeavyTradingEnv(
             portfolio_value_history=list(self.portfolio_value_history),
         )
 
+        # Apply market regime adaptation to reward if enabled
+        if self.regime_classifier is not None and hasattr(self, 'regime_adaptation_config'):
+            try:
+                current_regime = self._get_current_market_regime()
+                if current_regime != "unknown":
+                    # Get regime-specific multiplier
+                    reward_multiplier = self.regime_classifier.get_regime_multiplier(
+                        current_regime, 'reward'
+                    )
+                    penalty_multiplier = self.regime_classifier.get_regime_multiplier(
+                        current_regime, 'penalty'
+                    )
+
+                    # Apply multipliers based on reward sign
+                    if reward > 0:
+                        reward *= reward_multiplier
+                    elif reward < 0:
+                        reward *= penalty_multiplier
+
+                    # Update regime statistics
+                    if current_regime not in self.regime_stats["regime_counts"]:
+                        self.regime_stats["regime_counts"][current_regime] = 0
+                        self.regime_stats["regime_rewards"][current_regime] = []
+                        self.regime_stats["regime_actions"][current_regime] = []
+
+                    self.regime_stats["regime_counts"][current_regime] += 1
+                    self.regime_stats["regime_rewards"][current_regime].append(reward)
+                    self.regime_stats["regime_actions"][current_regime].append(actual_action)
+
+                    # Track regime transitions
+                    if self.regime_stats["current_regime"] != current_regime:
+                        self.regime_stats["regime_transitions"].append({
+                            "from": self.regime_stats["current_regime"],
+                            "to": current_regime,
+                            "step": self.current_step
+                        })
+                        self.regime_stats["current_regime"] = current_regime
+
+            except Exception as e:
+                logger.warning(f"Failed to apply regime adaptation: {e}")
+
         # Validate reward using ValidationManager
         reward = self.validation_manager.validate_reward_calculation(reward)
 
@@ -562,7 +642,7 @@ class HeavyTradingEnv(
                 "action_masks": self.get_legal_actions().astype(bool),
                 "trade_executed": pnl != 0
                 or actual_action != ACTION_HOLD,  # Add trade execution flag
-                "market_regime": self.reward_calculator.market_regime_detector.current_regime,
+                "market_regime": self._get_current_market_regime(),
             }
         )
 
@@ -661,12 +741,52 @@ class HeavyTradingEnv(
     def get_last_actions(self) -> List[int]:
         return self._current_episode_actions.copy()
 
+    def enable_market_regime_adaptation(
+        self,
+        regime_classifier: Optional["MarketRegimeClassifier"] = None,
+        adaptation_config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Enable market regime adaptation for the environment
+
+        Args:
+            regime_classifier: Market regime classifier instance
+            adaptation_config: Configuration for regime adaptation
+        """
+        if regime_classifier is not None:
+            self.regime_classifier = regime_classifier
+            logger.info("Market regime classifier set for environment adaptation")
+
+        if adaptation_config is not None:
+            self.regime_adaptation_config = adaptation_config
+            logger.info("Market regime adaptation config updated")
+
+        # Initialize regime statistics tracking
+        self.regime_stats = {
+            "regime_counts": {},
+            "regime_rewards": {},
+            "regime_actions": {},
+            "current_regime": None,
+            "regime_transitions": [],
+        }
+
+        # Alias for backward compatibility
+        self.regime_statistics = self.regime_stats
+
+        # Set the flag to indicate regime adaptation is enabled
+        self.market_regime_adaptation_enabled = True
+
+        logger.info("Market regime adaptation enabled in environment")
+
 
 class FlipHeavyTradingEnv(HeavyTradingEnv):
     """Flipped version of HeavyTradingEnv for symmetry testing."""
 
-    def _get_observation(self) -> Any:
+    def _get_observation(self) -> np.ndarray:
         obs = super()._get_observation()
+
+        if not isinstance(obs, np.ndarray):
+            raise TypeError(f"Expected observation to be np.ndarray, got {type(obs)}")
 
         flip_indices = []
         for i, feature in enumerate(self.features):
@@ -725,3 +845,48 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
         if "position" in info:
             info["position"] = -info["position"]
         return info
+
+    def enable_market_regime_adaptation(
+        self,
+        regime_classifier: Optional["MarketRegimeClassifier"] = None,
+        adaptation_config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        FlipHeavyTradingEnv 用: 市場レジーム適応を有効化します。
+
+        HeavyTradingEnv との主な差分:
+        - デバッグログ (logger.debug) を追加し、呼び出しや regime_stats の初期化状況を詳細に記録します。
+        - regime_stats の初期化方法や例外処理のログ出力が強化されています。
+        - その他の挙動は HeavyTradingEnv と同様ですが、flipped 環境で regime 適応の挙動を検証するための追加ログが含まれます。
+
+        Args:
+            regime_classifier: Market regime classifier instance
+            adaptation_config: Configuration for regime adaptation
+        """
+        logger.debug("enable_market_regime_adaptation called")
+        try:
+            if regime_classifier is not None:
+                self.regime_classifier = regime_classifier
+                logger.info("Market regime classifier set for environment adaptation")
+
+            if adaptation_config is not None:
+                self.regime_adaptation_config = adaptation_config
+                logger.info("Market regime adaptation config updated")
+
+            # Set adaptation enabled flag
+            self.market_regime_adaptation_enabled = True
+
+            # Initialize regime statistics tracking
+            self.regime_stats = {
+                "regime_counts": {},
+                "regime_rewards": {},
+                "regime_actions": {},
+                "current_regime": None,
+                "regime_transitions": [],
+            }
+            logger.debug(f"Regime_stats set: {hasattr(self, 'regime_stats')}")
+
+            logger.info("Market regime adaptation enabled in environment")
+        except Exception as e:
+            logger.debug(f"Exception in enable_market_regime_adaptation: {e}")
+            raise

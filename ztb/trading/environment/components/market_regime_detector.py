@@ -5,8 +5,8 @@ This component is responsible for detecting market regimes based on price moveme
 Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
-from collections import defaultdict
-from typing import Dict, List
+from collections import defaultdict, deque
+from typing import Dict, Deque
 
 import numpy as np
 
@@ -33,6 +33,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         high_volatility_threshold: float = 0.02,
         low_volatility_threshold: float = 0.005,
         trend_strength_threshold: float = 0.001,
+        min_history_for_detection: int = 10,
     ):
         """
         Initialize MarketRegimeDetector.
@@ -43,17 +44,19 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             high_volatility_threshold: Threshold for high volatility
             low_volatility_threshold: Threshold for low volatility
             trend_strength_threshold: Threshold for strong trend
+            min_history_for_detection: Minimum price history required for regime detection
         """
         self.regime_detection_window = regime_detection_window
         self.adaptation_frequency = adaptation_frequency
         self.high_volatility_threshold = high_volatility_threshold
         self.low_volatility_threshold = low_volatility_threshold
         self.trend_strength_threshold = trend_strength_threshold
+        self.min_history_for_detection = min_history_for_detection
 
         self.logger = get_logger("ztb.trading.environment.market_regime_detector")
 
         # Internal state
-        self.price_history: List[float] = []
+        self.price_history: Deque[float] = deque(maxlen=self.regime_detection_window)
         self.current_regime = "sideways"
         self.regime_step_counter = 0
 
@@ -74,13 +77,18 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         """
         # Update price history
         self.price_history.append(current_price)
-        if len(self.price_history) > self.regime_detection_window:
-            self.price_history.pop(0)
 
         # Need minimum history for regime detection
-        if len(self.price_history) < 10:
-            return "sideways"
-
+        # Calculate price changes and volatility
+        prices = np.array(self.price_history)
+        # Avoid division by zero by filtering out zero prices
+        safe_prices = prices[:-1]
+        price_diffs = np.diff(prices)
+        # Replace zero prices with np.nan to avoid division by zero
+        safe_prices = np.where(safe_prices == 0, np.nan, safe_prices)
+        returns = np.divide(price_diffs, safe_prices)
+        # Remove nan values from returns for further calculations
+        returns = returns[~np.isnan(returns)]
         # Calculate price changes and volatility
         prices = np.array(self.price_history)
         returns = np.diff(prices) / prices[:-1]
@@ -98,15 +106,18 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             volatility = 0.0
 
         # Detect regime based on trend and volatility
-        if volatility > self.high_volatility_threshold:
-            regime = "volatile"
-        elif abs(trend_strength) > self.trend_strength_threshold:
-            regime = "bull" if trend_strength > 0 else "bear"
-        else:
-            regime = "sideways"
-
-        # Update regime only at adaptation frequency
-        if step % self.adaptation_frequency == 0:
+        # Update regime only at adaptation frequency, but not at initialization (step 0)
+        if step != 0 and step % self.adaptation_frequency == 0:
+            # Determine regime based on trend strength and volatility
+            if trend_strength > self.trend_strength_threshold:
+                regime = "bull"
+            elif trend_strength < -self.trend_strength_threshold:
+                regime = "bear"
+            elif volatility > self.high_volatility_threshold:
+                regime = "volatile"
+            else:
+                regime = "sideways"
+            
             self.current_regime = regime
             self.logger.debug(
                 f"Market regime updated to: {regime} "
