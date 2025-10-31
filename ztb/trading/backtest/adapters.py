@@ -524,7 +524,7 @@ class BuyAndHoldAdapter:
 class ActionSignalGuideAdapter:
     """Adapter for Action Signal Guide strategy."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Any] = None):
         """Initialize Action Signal Guide adapter."""
         from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
             ActionSignalGuide,
@@ -580,21 +580,15 @@ class ActionSignalGuideAdapter:
             # Generate signals from Action Signal Guide
             # Use the last index of current data (current bar)
             current_index = len(data) - 1
+            print(f"DEBUG: ActionSignalGuideAdapter.generate_signal called with data len={len(data)}, current_index={current_index}")
             signals = self.guide.generate_signals(data, current_index)
 
-            # Debug: print signal information
-            if signals:
+            # Debug: print signal information (only for significant signals and not too frequently)
+            if signals and current_index % 100 == 0:  # Print only every 100 bars
                 print(f"Generated {len(signals)} signals at index {current_index}")
-                for i, signal in enumerate(signals):
+                for i, signal in enumerate(signals[:3]):  # Show only first 3 signals
                     print(
                         f"  Signal {i}: direction={signal.direction:.3f}, confidence={signal.confidence:.3f}, type={signal.signal_type}"
-                    )
-            else:
-                if (
-                    current_index >= 25
-                ):  # Only print for indices where patterns should work
-                    print(
-                        f"No signals generated at index {current_index} (data length: {len(data)})"
                     )
 
             if not signals:

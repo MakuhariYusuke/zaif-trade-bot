@@ -6,10 +6,24 @@ This script performs backtesting of individual ActionSignalGuide pattern recogni
 to evaluate their profitability and signal generation capabilities separately.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Debug mode configuration
+DEBUG_MODE = False  # Set to False for full testing
+DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
+DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
+
+# Patterns to test in debug mode (focus on problematic ones)
+DEBUG_PATTERNS = ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+
+# Configure logging for debug mode
+if DEBUG_MODE:
+    logging.basicConfig(level=getattr(logging, DEBUG_LOG_LEVEL), format='%(levelname)s: %(message)s')
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
@@ -38,13 +52,21 @@ PATTERN_RECOGNIZERS = [
     "dow_theory",
 ]
 
+# Debug mode configuration
+DEBUG_MODE = True  # Set to False for full testing
+DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
+DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
+
+# Patterns to test in debug mode (focus on problematic ones)
+DEBUG_PATTERNS = ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
+
 
 def run_individual_pattern_backtest(pattern_name: str) -> Dict[str, Any]:
     """Run backtest for a specific pattern recognizer."""
     print(f"\n=== Testing {pattern_name.upper()} Pattern Recognizer ===")
 
     # Generate data (reuse the same data for fair comparison)
-    data = generate_synthetic_data(5000)  # Fixed seed for reproducibility
+    data = generate_synthetic_data(DEBUG_DATA_LENGTH)  # Use debug data length
 
     # Configure ActionSignalGuide for specific pattern
     config = get_backtest_config_for_pattern(pattern_name)
@@ -68,7 +90,11 @@ def run_individual_pattern_backtest(pattern_name: str) -> Dict[str, Any]:
             max_position_size=backtest_config["max_position_size"],
         )
 
-        results = engine.run_backtest(strategy=adapter, data=data)
+        # Start backtest from index 200 to ensure sufficient data for pattern recognition
+        backtest_data = data.iloc[200:].copy()
+        print(f"Starting backtest from index 200, using {len(backtest_data)} data points")
+
+        results = engine.run_backtest(strategy=adapter, data=backtest_data)
 
         equity_curve, orders, adaptation_history = results
 
@@ -120,10 +146,15 @@ def run_all_individual_tests() -> List[Dict[str, Any]]:
     """Run backtests for all individual pattern recognizers."""
     results = []
 
-    print("=== Individual Pattern Recognizer Validation ===")
-    print(f"Testing {len(PATTERN_RECOGNIZERS)} pattern recognizers individually")
+    # Use debug patterns if in debug mode
+    patterns_to_test = DEBUG_PATTERNS if DEBUG_PATTERNS else PATTERN_RECOGNIZERS
 
-    for pattern in PATTERN_RECOGNIZERS:
+    print("=== Individual Pattern Recognizer Validation ===")
+    print(f"Testing {len(patterns_to_test)} pattern recognizers individually")
+    if DEBUG_MODE:
+        print(f"DEBUG MODE: Testing only problematic patterns: {patterns_to_test}")
+
+    for pattern in patterns_to_test:
         result = run_individual_pattern_backtest(pattern)
         results.append(result)
 
@@ -177,6 +208,10 @@ def analyze_results(results: List[Dict[str, Any]]) -> None:
     print(f"  Win Rate: {worst['performance']['win_rate']:.2f}%")
     print(f"  Profit Factor: {worst['performance']['profit_factor']:.2f}")
     print("\nSUMMARY STATISTICS:")
+    total_returns = [r["performance"]["total_return"] for r in successful_results]
+    win_rates = [r["performance"]["win_rate"] for r in successful_results]
+    profit_factors = [r["performance"]["profit_factor"] for r in successful_results]
+    
     print(f"  Average Total Return: {sum(total_returns)/len(total_returns):.2f}%")
     print(f"  Average Win Rate: {sum(win_rates)/len(win_rates):.2f}%")
     print(f"  Average Profit Factor: {sum(profit_factors)/len(profit_factors):.2f}")

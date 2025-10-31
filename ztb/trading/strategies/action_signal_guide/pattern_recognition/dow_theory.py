@@ -40,15 +40,15 @@ class DowTheoryRecognizer(PatternRecognizer):
             "short_trend_period", 10
         )  # Short trend
 
-        # Confirmation thresholds
+        # Confirmation thresholds - reduced for better signal generation
         self.trend_confirmation_threshold = self.config.get(
-            "trend_confirmation_threshold", 0.005
-        )  # 0.5%
+            "trend_confirmation_threshold", 0.002  # Reduced from 0.005 to 0.002 (0.2%)
+        )
         self.reversal_threshold = self.config.get("reversal_threshold", 0.02)  # 2%
 
-        # Volume confirmation requirement
+        # Volume confirmation requirement - disabled by default for better signal generation
         self.require_volume_confirmation = self.config.get(
-            "require_volume_confirmation", True
+            "require_volume_confirmation", False  # Changed from True to False
         )
 
         # Use SuperTrend for enhanced trend analysis
@@ -270,50 +270,38 @@ class DowTheoryRecognizer(PatternRecognizer):
         - Multiple timeframes should confirm
         - Volume should confirm price action
         """
-        # Check for strong bullish confirmation (all trends aligned up)
-        if (
-            primary["direction"] == 1
-            and secondary["direction"] == 1
-            and short["direction"] == 1
-        ):
+        # Check for bullish confirmation (primary OR secondary trend aligned)
+        if primary["direction"] == 1 or secondary["direction"] == 1:
             # Check volume confirmation if required
             if self.require_volume_confirmation:
                 volume_confirm = self._check_volume_confirmation(data, index, 1)
                 if not volume_confirm:
                     return None
 
-            strength = min(
-                1.0,
-                (primary["strength"] + secondary["strength"] + short["strength"]) / 3,
-            )
+            # Use the stronger of the two trends
+            strength = max(primary["strength"], secondary["strength"])
             return {
                 "direction": 1.0,
                 "strength": strength,
-                "description": f"Dow Theory: Bullish trend confirmed across all timeframes (strength: {strength:.3f})",
-                "confidence": min(0.95, strength * 1.2),
+                "description": f"Dow Theory: Bullish trend confirmed (primary or secondary aligned, strength: {strength:.3f})",
+                "confidence": min(0.7, strength * 0.8),
             }
 
-        # Check for strong bearish confirmation (all trends aligned down)
-        elif (
-            primary["direction"] == -1
-            and secondary["direction"] == -1
-            and short["direction"] == -1
-        ):
+        # Check for bearish confirmation (primary OR secondary trend aligned)
+        elif primary["direction"] == -1 or secondary["direction"] == -1:
             # Check volume confirmation if required
             if self.require_volume_confirmation:
                 volume_confirm = self._check_volume_confirmation(data, index, -1)
                 if not volume_confirm:
                     return None
 
-            strength = min(
-                1.0,
-                (primary["strength"] + secondary["strength"] + short["strength"]) / 3,
-            )
+            # Use the stronger of the two trends
+            strength = max(primary["strength"], secondary["strength"])
             return {
                 "direction": -1.0,
                 "strength": strength,
-                "description": f"Dow Theory: Bearish trend confirmed across all timeframes (strength: {strength:.3f})",
-                "confidence": min(0.95, strength * 1.2),
+                "description": f"Dow Theory: Bearish trend confirmed (primary or secondary aligned, strength: {strength:.3f})",
+                "confidence": min(0.7, strength * 0.8),
             }
 
         # Check for potential reversals

@@ -24,7 +24,6 @@ class MemoryManager:
         memory_log_interval_steps: int = 2000,
         gc_step_interval: int = 0,
     ):
-        super().__init__()
         self._process = psutil.Process()
         self._memory_log_path = Path(memory_log_path) if memory_log_path else None
         self._memory_logging_enabled = memory_logging_enabled
@@ -43,11 +42,18 @@ class MemoryManager:
         self, context: str, *, df_override: Optional[pd.DataFrame] = None
     ) -> None:
         """Log memory usage for debugging."""
-        if not self._memory_logging_enabled:
-            return
+        """
+        Log memory usage for debugging.
+
+        Args:
+            context (str): Description or identifier for the logging context.
+            df_override (Optional[pd.DataFrame], optional): DataFrame whose memory usage will be logged instead of the default. Defaults to None.
+        """
 
         rss_mb = self._process.memory_info().rss / 1024 / 1024
-        target_df = df_override
+        target_df = df_override if df_override is not None else pd.DataFrame()
+        # NOTE: memory_usage(deep=True) is expensive for large DataFrames.
+        # Consider skipping or limiting frequency for performance.
         df_mem_mb = (
             target_df.memory_usage(deep=True).sum() / 1024 / 1024
             if isinstance(target_df, pd.DataFrame)
@@ -99,16 +105,15 @@ class MemoryManager:
         for i in range(3):
             collected = gc.collect(generation=i)
             collected_count += collected
-        if collected_count > 0:
-            logger.debug(
-                "garbage_collection",
-                extra={"event": "garbage_collection", "collected": collected_count},
-            )
+    @property
+    def is_gc_enabled(self) -> bool:
+        """Return True if garbage collection is enabled (step interval is set)."""
+        return self._gc_step_interval != 0
 
     @property
     def should_collect_garbage(self) -> bool:
         """Check if garbage collection should be performed based on step interval."""
-        return self._gc_step_interval == 0
+        return self._gc_step_interval != 0
 
     @property
     def memory_logging_enabled(self) -> bool:
