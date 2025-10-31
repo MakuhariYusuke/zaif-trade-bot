@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import torch
 
-from ztb.trading.environment.constants import (
-    DEFAULT_LEARNING_RATE,
-)
+from ztb.trading.environment.constants import DEFAULT_LEARNING_RATE
 from ztb.types.common import (
     AnomalyDetectorProtocol,
     BaseAlgorithmTrainer,

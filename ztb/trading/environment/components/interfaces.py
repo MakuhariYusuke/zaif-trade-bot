@@ -6,11 +6,8 @@ following SOLID principles for better maintainability and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
-
 import numpy as np
-
-
+from typing import Optional
 class IMarketRegimeDetector(ABC):
     """Interface for market regime detection."""
 
@@ -48,6 +45,8 @@ class IDynamicRewardShaper(ABC):
         """
         pass
 
+
+import numpy as np
 
 class ISignalIntegrator(ABC):
     """Interface for signal integration."""

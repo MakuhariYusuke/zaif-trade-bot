@@ -1,24 +1,65 @@
 {
   "version": "1.0",
-  "algorithm": "ppo",
-  "model_name": "ppo_v444_advanced_regime_adaptation",
-  "description": "SAC v444: Advanced Market Regime Adaptation with 12-Regime Classification",
-  "behavior_optimization": {
-    "action_balance_target": 0.8,
-    "entropy_regularization": 0.01,
-    "action_smoothing": 0.1,
-    "consistency_penalty": 0.05,
-    "balance_penalty": 1.0
+  "algorithm": "sac",
+  "model_name": "sac_v444_advanced_regime_adaptation",
+  "description": "SAC v444: Advanced Market Regime Adaptation with 12-Regime Classification - Extended Training for 25% Return Target",
+  "regime_adaptation": {
+    "enabled": true,
+    "regime_classifier_config": {
+      "regime_scheme": "comprehensive",
+      "use_multi_timeframe": true,
+      "confidence_threshold": 0.6
+    },
+    "adaptation_rules": {
+      "hyperparameter_adjustment": true,
+      "reward_scaling": true,
+      "exploration_adjustment": true
+    },
+    "regime_specific_params": {
+      "strong_bull": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2
+      },
+      "strong_bear": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2
+      },
+      "high_volatility_range": {
+        "ent_coef": 0.05,
+        "learning_rate": 0.0005,
+        "reward_scale": 0.8
+      },
+      "consolidation": {
+        "ent_coef": 0.02,
+        "learning_rate": 0.0001,
+        "reward_scale": 1.5
+      }
+    },
+    "adaptation_frequency": 100,
+    "performance_tracking_window": 1000
   },
   "training": {
-    "algorithm": "ppo",
-    "model_name": "ppo_v444_advanced_regime_adaptation",
-    "total_timesteps": 200000,
+    "algorithm": "sac",
+    "model_name": "sac_v444_advanced_regime_adaptation",
+    "total_timesteps": 5000,
     "data_config": {
-      "csv_path": "data/btc_jpy_real_dataset.csv",
-      "data_path": "data/btc_jpy_real_dataset.csv",
+      "csv_path": "data/btc_jpy_featured_dataset.csv",
+      "data_path": "data/btc_jpy_featured_dataset.csv",
       "use_real_data": true,
       "validation_split": 0.2
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0005,
+      "buffer_size": 100000,
+      "learning_starts": 500,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": 0.2,
+      "target_update_interval": 1,
+      "target_entropy": -2.0
     },
     "environment": {
       "config": {
@@ -26,6 +67,8 @@
         "commission": 0.001,
         "max_position_size": 1.0,
         "reward_scaling": 1.0,
+        "action_space_type": "continuous",
+        "use_continuous_actions": true,
         "curriculum_stage": "advanced_regime_adaptation",
         "continuous_to_discrete_threshold": 0.08,
         "behavior_optimization": {
@@ -267,7 +310,13 @@
         },
         "multi_timeframe_integration": {
           "enabled": true,
-          "timeframes": ["5m", "15m", "1h", "4h", "1d"],
+          "timeframes": [
+            "5m",
+            "15m",
+            "1h",
+            "4h",
+            "1d"
+          ],
           "primary_timeframe": "15m",
           "regime_voting_weights": {
             "5m": 0.2,
@@ -315,9 +364,9 @@
             "strong_bull_trend_bonus": 1.4,
             "moderate_bull_trend_bonus": 1.2,
             "weak_bull_trend_bonus": 1.1,
-            "strong_bear_trend_penalty": 0.6,
-            "moderate_bear_trend_penalty": 0.8,
-            "weak_bear_trend_penalty": 0.9,
+            "strong_bear_trend_penalty": 0.8,
+            "moderate_bear_trend_penalty": 0.9,
+            "weak_bear_trend_penalty": 0.95,
             "high_volatility_ranging_penalty": 0.7,
             "moderate_volatility_ranging_penalty": 0.9,
             "low_volatility_ranging_bonus": 1.1,

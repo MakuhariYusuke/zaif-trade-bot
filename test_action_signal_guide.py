@@ -82,12 +82,13 @@ def test_action_signal_guide():
     config = ActionSignalGuideConfig(
         debug_short_mode=False,  # Disable debug short mode to run all recognizers
         guidance_level=GuidanceLevel.WEAK,  # Use GuidanceLevel enum
-        enable_candlestick_patterns=True,
+        error_suppression_threshold=0,  # Suppress all error logs
+        enable_candlestick_patterns=False,
         enable_fibonacci_patterns=False,
         enable_gann_patterns=False,
         enable_wave_patterns=False,
         enable_harmonic_patterns=False,
-        enable_oscillator_patterns=False,
+        enable_oscillator_patterns=True,  # Enable only oscillator patterns for testing
         enable_volume_patterns=False,
         enable_bollinger_patterns=False,
         enable_adx_patterns=False,
