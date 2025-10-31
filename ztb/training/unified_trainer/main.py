@@ -4,9 +4,8 @@ Main entry point for Unified Trainer.
 """
 
 import argparse
-from re import L
-import sys
 import json
+import sys
 
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
@@ -102,7 +101,7 @@ def main() -> None:
             config_manager = GlobalConfigManager.get_instance()
             config = config_manager.load_config()
 
-    except Exception as e:
+    except Exception:
         logger.error("❌ Failed to load configuration: {e}")
         sys.exit(1)
 

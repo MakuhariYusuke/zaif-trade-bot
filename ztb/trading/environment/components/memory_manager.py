@@ -105,6 +105,7 @@ class MemoryManager:
         for i in range(3):
             collected = gc.collect(generation=i)
             collected_count += collected
+
     @property
     def is_gc_enabled(self) -> bool:
         """Return True if garbage collection is enabled (step interval is set)."""

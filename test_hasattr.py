@@ -1,9 +1,10 @@
-from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-import pandas as pd
 import numpy as np
+import pandas as pd
+
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 # Create sample market data like in the test
-dates = pd.date_range('2023-01-01', periods=2000, freq='1min')
+dates = pd.date_range("2023-01-01", periods=2000, freq="1min")
 np.random.seed(42)
 
 # Create realistic market data with multiple regimes
@@ -38,14 +39,19 @@ open_price = np.roll(close, 1)
 open_price[0] = base_price
 volume = np.random.uniform(100, 2000, 2000)
 
-df = pd.DataFrame({
-    'timestamp': dates,
-    'open': open_price,
-    'high': high,
-    'low': low,
-    'close': close,
-    'volume': volume
-})
+df = pd.DataFrame(
+    {
+        "timestamp": dates,
+        "open": open_price,
+        "high": high,
+        "low": low,
+        "close": close,
+        "volume": volume,
+    }
+)
 
-env = HeavyTradingEnv(df=df, config={'initial_balance': 10000})
-print('hasattr(env, enable_market_regime_adaptation):', hasattr(env, 'enable_market_regime_adaptation'))
+env = HeavyTradingEnv(df=df, config={"initial_balance": 10000})
+print(
+    "hasattr(env, enable_market_regime_adaptation):",
+    hasattr(env, "enable_market_regime_adaptation"),
+)

@@ -21,7 +21,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -29,8 +29,8 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
 try:
+    from ztb.analysis.v444_regime_classifier import RegimeType, V444RegimeClassifier
     from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
-    from ztb.analysis.v444_regime_classifier import V444RegimeClassifier, RegimeType
 
     print("✓ Successfully imported V4XXUnifiedTrainer and V444RegimeClassifier")
 except ImportError as e:
@@ -56,21 +56,35 @@ class V444RegimeAdaptationTrainer(V4XXUnifiedTrainer):
         super().__init__(config)
 
         # Initialize regime classifier
-        regime_config = config.get('regime_classification', {})
+        regime_config = config.get("regime_classification", {})
         self.regime_classifier = V444RegimeClassifier(regime_config)
 
         # Regime-specific training parameters
-        self.regime_adaptation_enabled = config.get('regime_adaptation', {}).get('enabled', True)
-        self.adaptive_feature_selection = config.get('adaptive_feature_selection', {}).get('enabled', True)
+        self.regime_adaptation_enabled = config.get("regime_adaptation", {}).get(
+            "enabled", True
+        )
+        self.adaptive_feature_selection = config.get(
+            "adaptive_feature_selection", {}
+        ).get("enabled", True)
 
         # Multi-timeframe configuration
-        self.multi_timeframe_enabled = config.get('multi_timeframe', {}).get('enabled', True)
-        self.timeframes = config.get('multi_timeframe', {}).get('timeframes', ['5m', '15m', '1h', '4h', '1d'])
+        self.multi_timeframe_enabled = config.get("multi_timeframe", {}).get(
+            "enabled", True
+        )
+        self.timeframes = config.get("multi_timeframe", {}).get(
+            "timeframes", ["5m", "15m", "1h", "4h", "1d"]
+        )
 
         print("✓ V444 Regime Adaptation Trainer initialized")
-        print(f"  - Regime adaptation: {'enabled' if self.regime_adaptation_enabled else 'disabled'}")
-        print(f"  - Adaptive features: {'enabled' if self.adaptive_feature_selection else 'disabled'}")
-        print(f"  - Multi-timeframe: {'enabled' if self.multi_timeframe_enabled else 'disabled'}")
+        print(
+            f"  - Regime adaptation: {'enabled' if self.regime_adaptation_enabled else 'disabled'}"
+        )
+        print(
+            f"  - Adaptive features: {'enabled' if self.adaptive_feature_selection else 'disabled'}"
+        )
+        print(
+            f"  - Multi-timeframe: {'enabled' if self.multi_timeframe_enabled else 'disabled'}"
+        )
 
     def _get_regime_specific_config(self, current_regime: RegimeType) -> Dict[str, Any]:
         """
@@ -86,19 +100,19 @@ class V444RegimeAdaptationTrainer(V4XXUnifiedTrainer):
 
         # Convert to training-compatible format
         regime_training_config = {
-            'ppo': {
-                'entropy_coef': base_config.get('entropy_regularization', 0.01),
-                'value_loss_coef': 0.5,
-                'max_grad_norm': 0.5,
+            "ppo": {
+                "entropy_coef": base_config.get("entropy_regularization", 0.01),
+                "value_loss_coef": 0.5,
+                "max_grad_norm": 0.5,
             },
-            'reward': {
-                'action_balance_target': base_config.get('action_balance_target', 0.5),
-                'regime_adaptive_scaling': True,
+            "reward": {
+                "action_balance_target": base_config.get("action_balance_target", 0.5),
+                "regime_adaptive_scaling": True,
             },
-            'features': {
-                'regime_weights': base_config.get('feature_weights', {}),
-                'adaptive_selection': self.adaptive_feature_selection,
-            }
+            "features": {
+                "regime_weights": base_config.get("feature_weights", {}),
+                "adaptive_selection": self.adaptive_feature_selection,
+            },
         }
 
         return regime_training_config
@@ -116,19 +130,21 @@ class V444RegimeAdaptationTrainer(V4XXUnifiedTrainer):
         try:
             # Extract price data from observation
             # This assumes observation contains OHLCV data
-            if 'price_data' in observation:
-                price_data = observation['price_data']
+            if "price_data" in observation:
+                price_data = observation["price_data"]
                 # Convert to DataFrame format expected by classifier
                 import pandas as pd
 
                 # Create DataFrame from price data
-                df = pd.DataFrame({
-                    'open': price_data.get('open', []),
-                    'high': price_data.get('high', []),
-                    'low': price_data.get('low', []),
-                    'close': price_data.get('close', []),
-                    'volume': price_data.get('volume', [])
-                })
+                df = pd.DataFrame(
+                    {
+                        "open": price_data.get("open", []),
+                        "high": price_data.get("high", []),
+                        "low": price_data.get("low", []),
+                        "close": price_data.get("close", []),
+                        "volume": price_data.get("volume", []),
+                    }
+                )
 
                 if not df.empty and len(df) > 50:  # Minimum data requirement
                     result = self.regime_classifier.detect_regime(df)
@@ -155,7 +171,9 @@ class V444RegimeAdaptationTrainer(V4XXUnifiedTrainer):
             return training_step
 
         # Detect current regime
-        current_regime = self._detect_market_regime(training_step.get('observation', {}))
+        current_regime = self._detect_market_regime(
+            training_step.get("observation", {})
+        )
 
         # Get regime-specific configuration
         regime_config = self._get_regime_specific_config(current_regime)
@@ -164,19 +182,19 @@ class V444RegimeAdaptationTrainer(V4XXUnifiedTrainer):
         adapted_step = training_step.copy()
 
         # Update PPO parameters
-        if 'ppo_params' in adapted_step:
-            adapted_step['ppo_params'].update(regime_config.get('ppo', {}))
+        if "ppo_params" in adapted_step:
+            adapted_step["ppo_params"].update(regime_config.get("ppo", {}))
 
         # Update reward configuration
-        if 'reward_config' in adapted_step:
-            adapted_step['reward_config'].update(regime_config.get('reward', {}))
+        if "reward_config" in adapted_step:
+            adapted_step["reward_config"].update(regime_config.get("reward", {}))
 
         # Update feature configuration
-        if 'feature_config' in adapted_step:
-            adapted_step['feature_config'].update(regime_config.get('features', {}))
+        if "feature_config" in adapted_step:
+            adapted_step["feature_config"].update(regime_config.get("features", {}))
 
         # Log regime detection
-        adapted_step['detected_regime'] = current_regime.value
+        adapted_step["detected_regime"] = current_regime.value
 
         return adapted_step
 
@@ -216,10 +234,18 @@ def main():
             config = json.load(f)
 
         print("✓ Configuration loaded successfully")
-        print(f"  - Training episodes: {config.get('training', {}).get('total_episodes', 'N/A')}")
-        print(f"  - Regimes: 12 (strong_bull_trend, moderate_bull_trend, weak_bull_trend, strong_bear_trend, moderate_bear_trend, weak_bear_trend, high_volatility_ranging, moderate_volatility_ranging, low_volatility_ranging, extreme_volatility, consolidation, breakout_setup, breakdown_setup)")
-        print(f"  - Multi-timeframe: {config.get('multi_timeframe', {}).get('enabled', False)}")
-        print(f"  - Adaptive features: {config.get('adaptive_feature_selection', {}).get('enabled', False)}")
+        print(
+            f"  - Training episodes: {config.get('training', {}).get('total_episodes', 'N/A')}"
+        )
+        print(
+            "  - Regimes: 12 (strong_bull_trend, moderate_bull_trend, weak_bull_trend, strong_bear_trend, moderate_bear_trend, weak_bear_trend, high_volatility_ranging, moderate_volatility_ranging, low_volatility_ranging, extreme_volatility, consolidation, breakout_setup, breakdown_setup)"
+        )
+        print(
+            f"  - Multi-timeframe: {config.get('multi_timeframe', {}).get('enabled', False)}"
+        )
+        print(
+            f"  - Adaptive features: {config.get('adaptive_feature_selection', {}).get('enabled', False)}"
+        )
 
         # Initialize trainer
         trainer = V444RegimeAdaptationTrainer(config)
@@ -240,6 +266,7 @@ def main():
     except Exception as e:
         print(f"✗ Training failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

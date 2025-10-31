@@ -20,7 +20,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-def main():
+def main() -> bool:
     """Main training function using unified trainer."""
     parser = argparse.ArgumentParser(
         description="SAC v444 Training with Advanced Regime Adaptation"

@@ -42,9 +42,20 @@ def run_simple_backtest(model_name, config_path):
         # 特徴量を手動で設定 (v444の環境設定に基づく)
         # v444は高度なレジーム適応を使用するため、より多くの特徴量が必要
         # モデルが10次元を期待しているので、最初の10個の数値特徴量を使用
-        exclude_cols = ['Date', 'open', 'high', 'low', 'dividends', 'stock splits', 'regime', 'regime_confidence']
+        exclude_cols = [
+            "Date",
+            "open",
+            "high",
+            "low",
+            "dividends",
+            "stock splits",
+            "regime",
+            "regime_confidence",
+        ]
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        available_features = [col for col in numeric_cols if col not in exclude_cols][:10]  # 最初の10個を使用
+        available_features = [col for col in numeric_cols if col not in exclude_cols][
+            :10
+        ]  # 最初の10個を使用
 
         print(f"✅ Using first 10 numeric features: {available_features}")
         print(f"   Total available numeric columns: {len(numeric_cols)}")
@@ -164,7 +175,12 @@ def run_simple_backtest(model_name, config_path):
             pnl = (final_price - entry_price) / entry_price * 100
             total_reward += pnl
             trades.append(
-                {"type": "FINAL_SELL", "price": final_price, "pnl": pnl, "index": len(df)-1}
+                {
+                    "type": "FINAL_SELL",
+                    "price": final_price,
+                    "pnl": pnl,
+                    "index": len(df) - 1,
+                }
             )
             print(f"FINAL SELL at {final_price:.2f}, PnL: {pnl:.2f}%")
 
@@ -177,14 +193,52 @@ def run_simple_backtest(model_name, config_path):
             "initial_balance": initial_balance,
             "final_balance": final_balance,
             "total_return_pct": total_return_pct,
-            "total_trades": len([t for t in trades if t["type"] in ["SELL", "FINAL_SELL"]]),
-            "winning_trades": len([t for t in trades if t.get("pnl", 0) > 0 and t["type"] in ["SELL", "FINAL_SELL"]]),
-            "losing_trades": len([t for t in trades if t.get("pnl", 0) < 0 and t["type"] in ["SELL", "FINAL_SELL"]]),
-            "avg_win_pct": np.mean([t["pnl"] for t in trades if t.get("pnl", 0) > 0 and t["type"] in ["SELL", "FINAL_SELL"]]) if any(t.get("pnl", 0) > 0 for t in trades if t["type"] in ["SELL", "FINAL_SELL"]) else 0,
-            "avg_loss_pct": np.mean([t["pnl"] for t in trades if t.get("pnl", 0) < 0 and t["type"] in ["SELL", "FINAL_SELL"]]) if any(t.get("pnl", 0) < 0 for t in trades if t["type"] in ["SELL", "FINAL_SELL"]) else 0,
+            "total_trades": len(
+                [t for t in trades if t["type"] in ["SELL", "FINAL_SELL"]]
+            ),
+            "winning_trades": len(
+                [
+                    t
+                    for t in trades
+                    if t.get("pnl", 0) > 0 and t["type"] in ["SELL", "FINAL_SELL"]
+                ]
+            ),
+            "losing_trades": len(
+                [
+                    t
+                    for t in trades
+                    if t.get("pnl", 0) < 0 and t["type"] in ["SELL", "FINAL_SELL"]
+                ]
+            ),
+            "avg_win_pct": np.mean(
+                [
+                    t["pnl"]
+                    for t in trades
+                    if t.get("pnl", 0) > 0 and t["type"] in ["SELL", "FINAL_SELL"]
+                ]
+            )
+            if any(
+                t.get("pnl", 0) > 0
+                for t in trades
+                if t["type"] in ["SELL", "FINAL_SELL"]
+            )
+            else 0,
+            "avg_loss_pct": np.mean(
+                [
+                    t["pnl"]
+                    for t in trades
+                    if t.get("pnl", 0) < 0 and t["type"] in ["SELL", "FINAL_SELL"]
+                ]
+            )
+            if any(
+                t.get("pnl", 0) < 0
+                for t in trades
+                if t["type"] in ["SELL", "FINAL_SELL"]
+            )
+            else 0,
             "max_drawdown_pct": 0,  # 簡易版なので計算しない
             "sharpe_ratio": 0,  # 簡易版なので計算しない
-            "trades": trades
+            "trades": trades,
         }
 
         return results
@@ -218,7 +272,9 @@ def main():
         if result["total_return_pct"] > 25:
             print("🎉 SUCCESS: Achieved 25% return improvement target!")
         else:
-            print(f"⚠️  Current return: {result['total_return_pct']:.2f}%, Target: 25% improvement")
+            print(
+                f"⚠️  Current return: {result['total_return_pct']:.2f}%, Target: 25% improvement"
+            )
 
     else:
         print("❌ Backtest failed")

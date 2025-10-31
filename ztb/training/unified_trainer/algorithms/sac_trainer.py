@@ -86,14 +86,6 @@ class SACTrainer(BaseAlgorithmTrainer):
         except Exception as e:
             self.logger.error(f"Failed to initialize market regime adaptation: {e}")
             raise
-                    raise
-
-        except ImportError:
-            self.logger.warning("Market regime classifier not available, disabling adaptation")
-            self.market_regime_adaptation["enabled"] = False
-        except Exception as e:
-            self.logger.error(f"Failed to initialize market regime adaptation: {e}")
-            self.market_regime_adaptation["enabled"] = False
 
     def validate_config(self) -> bool:
         """Validate SAC configuration using unified configuration manager."""
