@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional, cast
 import numpy as np
 import pandas as pd
 
-
 from .base import CandlestickPatternRecognizer, SignalResult
 
 

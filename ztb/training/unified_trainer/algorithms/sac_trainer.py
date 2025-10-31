@@ -27,12 +27,14 @@ class SACTrainer(BaseAlgorithmTrainer):
     def __init__(
         self,
         config: ConfigDict,
+        env: Optional["HeavyTradingEnv"] = None,
         logger: Optional[logging.Logger] = None,
         gradient_accumulation_steps: int = 1,
         system_optimizer: Optional[Any] = None,
         optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
     ):
         super().__init__(config, logger)
+        self.env = env
         # model will be instantiated later; annotate as optional to satisfy mypy
         self.model: Optional[SAC] = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
@@ -46,6 +48,52 @@ class SACTrainer(BaseAlgorithmTrainer):
                 "checkpoint_dir", "models/training_states"
             )
         )
+
+        # Initialize market regime adaptation if enabled
+        self.market_regime_adaptation = self.config.get("training", {}).get(
+            "market_regime_adaptation", {}
+        )
+        self.regime_classifier = None
+        self.regime_adaptation_enabled = False
+        if self.market_regime_adaptation.get("enabled", False) and self.env is not None:
+            self._initialize_market_regime_adaptation()
+
+    def _initialize_market_regime_adaptation(self):
+        """Initialize market regime adaptation system."""
+        try:
+            from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+
+            self.regime_classifier = MarketRegimeClassifier(
+                config=self.market_regime_adaptation
+            )
+            self.regime_adaptation_enabled = True
+            self.logger.info("Market regime adaptation enabled with classifier")
+
+            # Initialize regime-specific statistics
+            self.regime_stats = {
+                "regime_counts": {},
+                "regime_rewards": {},
+                "regime_actions": {},
+                "regime_transitions": {},
+            }
+
+            # Alias for backward compatibility
+            self.regime_statistics = self.regime_stats
+
+            # Enable regime adaptation in the environment if it's a HeavyTradingEnv
+            if hasattr(self.env, 'enable_market_regime_adaptation'):
+                self.env.enable_market_regime_adaptation(self.regime_classifier, self.market_regime_adaptation)
+        except Exception as e:
+            self.logger.error(f"Failed to initialize market regime adaptation: {e}")
+            raise
+                    raise
+
+        except ImportError:
+            self.logger.warning("Market regime classifier not available, disabling adaptation")
+            self.market_regime_adaptation["enabled"] = False
+        except Exception as e:
+            self.logger.error(f"Failed to initialize market regime adaptation: {e}")
+            self.market_regime_adaptation["enabled"] = False
 
     def validate_config(self) -> bool:
         """Validate SAC configuration using unified configuration manager."""
@@ -171,6 +219,10 @@ class SACTrainer(BaseAlgorithmTrainer):
                     verbose=1,
                     trainer_ref=self,
                 )
+
+                # Enable regime tracking if adaptation is enabled
+                if self.regime_classifier is not None:
+                    callback.enable_regime_tracking = True
             # Load and prepare data
             data_config = self.config.get("training", {}).get("data_config", {})
             data_path = data_config.get(
@@ -202,6 +254,14 @@ class SACTrainer(BaseAlgorithmTrainer):
                 config=actual_env_config,
                 optimizer_tracker=self.optimizer_tracker,
             )
+
+            # Enable market regime adaptation in environment if configured
+            if self.regime_classifier is not None:
+                env.enable_market_regime_adaptation(
+                    regime_classifier=self.regime_classifier,
+                    adaptation_config=self.market_regime_adaptation
+                )
+                self.logger.info("Market regime adaptation enabled in environment")
             wrapped_env: Monitor = Monitor(env)
             self.logger.info(f"Environment observation space: {env.observation_space}")
             self.logger.info(f"Environment action space: {env.action_space}")
@@ -927,11 +987,18 @@ class SACTrainer(BaseAlgorithmTrainer):
                                     "total_actions": total_regime_actions,
                                 }
 
+            # Get regime statistics from environment if available
+            regime_stats = {}
+            if hasattr(env, 'regime_stats') and env.regime_stats:
+                regime_stats = env.regime_stats.copy()
+
             # Calculate training metrics
             training_metrics = {
                 "algorithm": "SAC",
                 "final_action_distribution": action_distribution,
                 "regime_distributions": regime_distributions,
+                "regime_stats": regime_stats,
+                "market_regime_adaptation": self.market_regime_adaptation.get("enabled", False),
                 "total_training_steps": self.training_stats.get("total_steps", 0)
                 if hasattr(self, "training_stats")
                 else 0,
@@ -959,3 +1026,19 @@ class SACTrainer(BaseAlgorithmTrainer):
         except Exception as e:
             self.logger.error(f"Failed to analyze SAC results: {e}")
             return {"error": str(e)}
+
+    def select_action(self, state: np.ndarray) -> np.ndarray:
+        """
+        Select an action using the trained SAC model.
+
+        Args:
+            state: Current state observation
+
+        Returns:
+            Selected action
+        """
+        if self.model is None:
+            raise ValueError("Model not initialized. Call train() first.")
+
+        action, _ = self.model.predict(state, deterministic=False)
+        return action

@@ -22,6 +22,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.core.base import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.training.components.regime_adaptive_trainer import RegimeAdaptiveTrainerMixin
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
@@ -31,7 +32,7 @@ project_root = get_project_root()
 logger = get_logger(__name__)
 
 
-class SACTrainer(BaseTrainer):
+class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
     """Unified SAC training interface."""
 
     def __init__(self, config_path: str, config: Optional[Dict[str, Any]] = None):
@@ -39,6 +40,10 @@ class SACTrainer(BaseTrainer):
         self.config_path = Path(config_path)
         self.config_data = self._load_config()
         self.trainer = None
+
+        # Initialize regime adaptation
+        regime_config = self.config_data.get('regime_adaptation', {})
+        RegimeAdaptiveTrainerMixin.__init__(self, regime_config)
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration file."""
@@ -92,6 +97,10 @@ class SACTrainer(BaseTrainer):
         logger.info("Starting SAC training...")
         logger.info(f"Model: {self.config.get('model_name', 'SAC')}")
         logger.info(f"Total Timesteps: {self.config['training']['total_timesteps']}")
+
+        # Initialize regime adaptation if enabled
+        if self.regime_adaptation_enabled:
+            logger.info("Regime adaptation enabled - monitoring market conditions")
 
         try:
             results = self.trainer.run()
@@ -247,6 +256,65 @@ class SACTrainer(BaseTrainer):
         from stable_baselines3 import SAC
 
         return SAC.load(path)
+
+
+    # RegimeAdaptiveTrainerMixin abstract method implementations
+    def apply_hyperparameter_adaptation(self, adapted_params: Dict[str, Any]):
+        """
+        Apply adapted hyperparameters to the training process
+
+        Args:
+            adapted_params: Dictionary of parameters to apply
+        """
+        if not self.trainer:
+            logger.warning("No trainer initialized, cannot apply hyperparameter adaptation")
+            return
+
+        try:
+            # Apply parameters to the underlying trainer if it supports adaptation
+            if hasattr(self.trainer, 'update_hyperparameters'):
+                self.trainer.update_hyperparameters(adapted_params)
+                logger.info(f"Applied hyperparameter adaptation: {adapted_params}")
+            else:
+                logger.warning("Trainer does not support hyperparameter adaptation")
+        except Exception as e:
+            logger.error(f"Failed to apply hyperparameter adaptation: {e}")
+
+    def get_current_market_data(self) -> Optional[pd.DataFrame]:
+        """
+        Get current market data for regime detection
+
+        Returns:
+            DataFrame with market data or None
+        """
+        # Try to get data from trainer or config
+        if hasattr(self.trainer, 'get_current_data'):
+            return self.trainer.get_current_data()
+
+        # Fallback to config data path
+        data_config = self.config_data.get('training', {}).get('data_config', {})
+        data_path = data_config.get('data_path') or data_config.get('csv_path')
+
+        if data_path and Path(data_path).exists():
+            try:
+                return pd.read_csv(data_path)
+            except Exception as e:
+                logger.warning(f"Failed to load market data from {data_path}: {e}")
+
+        return None
+
+    def get_current_step_count(self) -> int:
+        """
+        Get current training step count
+
+        Returns:
+            Current step count
+        """
+        if hasattr(self.trainer, 'get_step_count'):
+            return self.trainer.get_step_count()
+
+        # Fallback to config
+        return self.config_data.get('training', {}).get('total_timesteps', 0)
 
 
 def main():

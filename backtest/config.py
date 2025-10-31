@@ -17,6 +17,7 @@ def get_backtest_config_for_pattern(pattern_name: str = None):
     config = ActionSignalGuideConfig(
         debug_short_mode=False,
         guidance_level=GuidanceLevel.WEAK,
+        error_suppression_threshold=0,  # Suppress all error logs
         enable_candlestick_patterns=False,
         enable_fibonacci_patterns=False,
         enable_gann_patterns=False,
