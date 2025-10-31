@@ -20,18 +20,20 @@ Regimes:
 13. breakdown_setup - Potential breakdown formation
 """
 
+import logging
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class RegimeType(Enum):
     """Enumeration of all 12 market regime types in SAC v444"""
+
     STRONG_BULL_TREND = "strong_bull_trend"
     MODERATE_BULL_TREND = "moderate_bull_trend"
     WEAK_BULL_TREND = "weak_bull_trend"
@@ -50,6 +52,7 @@ class RegimeType(Enum):
 @dataclass
 class RegimeMetrics:
     """Container for regime detection metrics"""
+
     trend_strength: float
     bull_strength: float
     bear_strength: float
@@ -67,6 +70,7 @@ class RegimeMetrics:
 @dataclass
 class RegimeDetectionResult:
     """Result of regime detection analysis"""
+
     primary_regime: RegimeType
     confidence: float
     secondary_regimes: List[Tuple[RegimeType, float]]
@@ -91,34 +95,37 @@ class V444RegimeClassifier:
             config: Configuration dictionary with regime parameters
         """
         self.config = config or {}
-        self.lookback_periods = self.config.get('lookback_periods', {
-            'short': 20,
-            'medium': 50,
-            'long': 100
-        })
+        self.lookback_periods = self.config.get(
+            "lookback_periods", {"short": 20, "medium": 50, "long": 100}
+        )
 
         # Regime detection thresholds
-        self.thresholds = self.config.get('thresholds', {
-            'strong_trend_threshold': 3.0,
-            'moderate_trend_threshold': 2.0,
-            'weak_trend_threshold': 1.0,
-            'high_volatility_threshold': 0.15,  # Adjusted for log returns volatility levels
-            'moderate_volatility_threshold': 0.10,  # Adjusted for log returns volatility levels
-            'extreme_volatility_threshold': 0.20,  # Adjusted for log returns volatility levels
-            'consolidation_range_threshold': 0.05,  # Adjusted for very low volatility
-            'breakout_setup_threshold': 0.15
-        })
+        self.thresholds = self.config.get(
+            "thresholds",
+            {
+                "strong_trend_threshold": 3.0,
+                "moderate_trend_threshold": 2.0,
+                "weak_trend_threshold": 1.0,
+                "high_volatility_threshold": 0.15,  # Adjusted for log returns volatility levels
+                "moderate_volatility_threshold": 0.10,  # Adjusted for log returns volatility levels
+                "extreme_volatility_threshold": 0.20,  # Adjusted for log returns volatility levels
+                "consolidation_range_threshold": 0.05,  # Adjusted for very low volatility
+                "breakout_setup_threshold": 0.15,
+            },
+        )
 
         logger.info("V444 Regime Classifier initialized")
 
         # Debug metrics
         self.metrics = {
-            'candidate_bull': 0,
-            'candidate_bear': 0,
-            'consolidation_fallback': 0
+            "candidate_bull": 0,
+            "candidate_bear": 0,
+            "consolidation_fallback": 0,
         }
 
-    def detect_regime(self, data: pd.DataFrame, current_index: int = -1) -> RegimeDetectionResult:
+    def detect_regime(
+        self, data: pd.DataFrame, current_index: int = -1
+    ) -> RegimeDetectionResult:
         """
         Detect the current market regime from price data
 
@@ -147,10 +154,12 @@ class V444RegimeClassifier:
             secondary_regimes=secondary_regimes,
             metrics=metrics,
             detection_timestamp=data.index[current_index],
-            lookback_period=self.lookback_periods['medium']
+            lookback_period=self.lookback_periods["medium"],
         )
 
-    def _calculate_regime_metrics(self, data: pd.DataFrame, index: int) -> RegimeMetrics:
+    def _calculate_regime_metrics(
+        self, data: pd.DataFrame, index: int
+    ) -> RegimeMetrics:
         """
         Calculate comprehensive regime detection metrics
 
@@ -167,13 +176,27 @@ class V444RegimeClassifier:
             return self._get_default_metrics()
 
         # Extract price data
-        close = data['close'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        high = data['high'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        low = data['low'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        volume = data['volume'].iloc[max(0, index - self.lookback_periods['long']):index + 1] if 'volume' in data.columns else pd.Series([1.0] * len(close))
+        close = data["close"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        high = data["high"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        low = data["low"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        volume = (
+            data["volume"].iloc[
+                max(0, index - self.lookback_periods["long"]) : index + 1
+            ]
+            if "volume" in data.columns
+            else pd.Series([1.0] * len(close))
+        )
 
         # Calculate trend strength (ADX-like)
-        trend_strength, bull_strength, bear_strength = self._calculate_trend_strength(high, low, close)
+        trend_strength, bull_strength, bear_strength = self._calculate_trend_strength(
+            high, low, close
+        )
 
         # Calculate volatility
         volatility = self._calculate_volatility(close)
@@ -200,7 +223,9 @@ class V444RegimeClassifier:
         bollinger_position = self._calculate_bollinger_position(close)
 
         # Calculate support/resistance strength
-        support_resistance_strength = self._calculate_support_resistance_strength(high, low, close)
+        support_resistance_strength = self._calculate_support_resistance_strength(
+            high, low, close
+        )
 
         return RegimeMetrics(
             trend_strength=trend_strength,
@@ -214,10 +239,12 @@ class V444RegimeClassifier:
             rsi=rsi,
             macd_signal=macd_signal,
             bollinger_position=bollinger_position,
-            support_resistance_strength=support_resistance_strength
+            support_resistance_strength=support_resistance_strength,
         )
 
-    def _calculate_trend_strength(self, high: pd.Series, low: pd.Series, close: pd.Series) -> Tuple[float, float, float]:
+    def _calculate_trend_strength(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> Tuple[float, float, float]:
         """Calculate trend strength with directional components"""
         try:
             # Convert to pandas Series if not already
@@ -237,7 +264,9 @@ class V444RegimeClassifier:
 
             # Calculate volatility (standard deviation of log returns, scaled)
             log_returns = np.log(close / close.shift())
-            volatility = log_returns.rolling(10).std() * np.sqrt(10)  # Scale to match volatility calculation
+            volatility = log_returns.rolling(10).std() * np.sqrt(
+                10
+            )  # Scale to match volatility calculation
 
             # Calculate raw trend strength with direction
             trend_strength_raw = momentum / (volatility + 1e-8)
@@ -249,13 +278,23 @@ class V444RegimeClassifier:
             bull_strength = trend_strength_smooth.clip(lower=0)
             bear_strength = (-trend_strength_smooth).clip(lower=0)
 
-            result_trend = float(trend_strength_smooth.iloc[-1]) if not trend_strength_smooth.empty else 0.0
-            result_bull = float(bull_strength.iloc[-1]) if not bull_strength.empty else 0.0
-            result_bear = float(bear_strength.iloc[-1]) if not bear_strength.empty else 0.0
+            result_trend = (
+                float(trend_strength_smooth.iloc[-1])
+                if not trend_strength_smooth.empty
+                else 0.0
+            )
+            result_bull = (
+                float(bull_strength.iloc[-1]) if not bull_strength.empty else 0.0
+            )
+            result_bear = (
+                float(bear_strength.iloc[-1]) if not bear_strength.empty else 0.0
+            )
 
             # Debug output
             scaled_volatility = volatility.iloc[-1] if not volatility.empty else 0.0
-            print(f"DEBUG TREND: momentum={momentum.iloc[-1]:.6f}, volatility={scaled_volatility:.6f}, trend_strength={result_trend:.6f}, bull_strength={result_bull:.6f}, bear_strength={result_bear:.6f}")
+            print(
+                f"DEBUG TREND: momentum={momentum.iloc[-1]:.6f}, volatility={scaled_volatility:.6f}, trend_strength={result_trend:.6f}, bull_strength={result_bull:.6f}, bear_strength={result_bear:.6f}"
+            )
 
             return result_trend, result_bull, result_bear
 
@@ -273,7 +312,11 @@ class V444RegimeClassifier:
             # Use more reasonable scaling to prevent over-amplification
             scaled_volatility = volatility * 10  # Reduced scaling
 
-            return float(scaled_volatility.iloc[-1]) if not scaled_volatility.empty else 0.0
+            return (
+                float(scaled_volatility.iloc[-1])
+                if not scaled_volatility.empty
+                else 0.0
+            )
 
         except Exception as e:
             logger.warning(f"Error calculating volatility: {e}")
@@ -305,7 +348,9 @@ class V444RegimeClassifier:
             logger.warning(f"Error calculating volume trend: {e}")
             return 0.0
 
-    def _calculate_price_range_ratio(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_price_range_ratio(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate price range ratio (volatility measure)"""
         try:
             price_range = (high - low) / close.shift(1)
@@ -317,7 +362,9 @@ class V444RegimeClassifier:
             logger.warning(f"Error calculating price range ratio: {e}")
             return 0.0
 
-    def _calculate_adx(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_adx(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate ADX (Average Directional Index)"""
         try:
             # Convert to pandas Series if not already
@@ -329,15 +376,22 @@ class V444RegimeClassifier:
                 close = pd.Series(close)
 
             # Calculate True Range
-            tr = np.maximum(high - low,
-                          np.maximum(abs(high - close.shift(1)),
-                                   abs(low - close.shift(1))))
+            tr = np.maximum(
+                high - low,
+                np.maximum(abs(high - close.shift(1)), abs(low - close.shift(1))),
+            )
 
             # Calculate Directional Movement
-            dm_plus = np.where((high - high.shift(1)) > (low.shift(1) - low),
-                             np.maximum(high - high.shift(1), 0), 0)
-            dm_minus = np.where((low.shift(1) - low) > (high - high.shift(1)),
-                              np.maximum(low.shift(1) - low, 0), 0)
+            dm_plus = np.where(
+                (high - high.shift(1)) > (low.shift(1) - low),
+                np.maximum(high - high.shift(1), 0),
+                0,
+            )
+            dm_minus = np.where(
+                (low.shift(1) - low) > (high - high.shift(1)),
+                np.maximum(low.shift(1) - low, 0),
+                0,
+            )
 
             # Convert to pandas Series for rolling operations
             tr_series = pd.Series(tr)
@@ -405,7 +459,9 @@ class V444RegimeClassifier:
             logger.warning(f"Error calculating Bollinger position: {e}")
             return 0.5
 
-    def _calculate_support_resistance_strength(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_support_resistance_strength(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate support/resistance strength"""
         try:
             # Simple support/resistance calculation
@@ -415,7 +471,9 @@ class V444RegimeClassifier:
             resistance_distance = (recent_high - close) / close
             support_distance = (close - recent_low) / close
 
-            strength = 1.0 - min(resistance_distance.iloc[-1], support_distance.iloc[-1])
+            strength = 1.0 - min(
+                resistance_distance.iloc[-1], support_distance.iloc[-1]
+            )
 
             return float(strength) if not np.isnan(strength) else 0.5
 
@@ -434,51 +492,98 @@ class V444RegimeClassifier:
             Tuple of (regime_type, confidence_score)
         """
         # Strong trend classification first (highest priority)
-        if metrics.bull_strength > self.thresholds['strong_trend_threshold'] and metrics.momentum > 0.001:
-            self.metrics['candidate_bull'] += 1
+        if (
+            metrics.bull_strength > self.thresholds["strong_trend_threshold"]
+            and metrics.momentum > 0.001
+        ):
+            self.metrics["candidate_bull"] += 1
             return RegimeType.STRONG_BULL_TREND, min(metrics.bull_strength, 0.95)
-        elif metrics.bear_strength > self.thresholds['strong_trend_threshold'] and metrics.momentum < -0.001:
-            self.metrics['candidate_bear'] += 1
+        elif (
+            metrics.bear_strength > self.thresholds["strong_trend_threshold"]
+            and metrics.momentum < -0.001
+        ):
+            self.metrics["candidate_bear"] += 1
             return RegimeType.STRONG_BEAR_TREND, min(metrics.bear_strength, 0.95)
 
         # Check for ranging regimes (high volatility with moderate trend strength)
         trend_strength_abs = abs(metrics.trend_strength)
-        if metrics.volatility > self.thresholds['extreme_volatility_threshold'] and trend_strength_abs < 6.0:
+        if (
+            metrics.volatility > self.thresholds["extreme_volatility_threshold"]
+            and trend_strength_abs < 6.0
+        ):
             return RegimeType.EXTREME_VOLATILITY, min(metrics.volatility * 0.8, 0.9)
-        elif metrics.volatility > self.thresholds['high_volatility_threshold'] and trend_strength_abs < 5.0:
-            return RegimeType.HIGH_VOLATILITY_RANGING, min(metrics.volatility * 0.7, 0.8)
-        elif metrics.volatility > self.thresholds['moderate_volatility_threshold'] and trend_strength_abs < 4.0:
-            return RegimeType.MODERATE_VOLATILITY_RANGING, min(metrics.volatility * 0.6, 0.7)
-        elif metrics.volatility > self.thresholds['consolidation_range_threshold'] and trend_strength_abs < 3.0:
+        elif (
+            metrics.volatility > self.thresholds["high_volatility_threshold"]
+            and trend_strength_abs < 5.0
+        ):
+            return RegimeType.HIGH_VOLATILITY_RANGING, min(
+                metrics.volatility * 0.7, 0.8
+            )
+        elif (
+            metrics.volatility > self.thresholds["moderate_volatility_threshold"]
+            and trend_strength_abs < 4.0
+        ):
+            return RegimeType.MODERATE_VOLATILITY_RANGING, min(
+                metrics.volatility * 0.6, 0.7
+            )
+        elif (
+            metrics.volatility > self.thresholds["consolidation_range_threshold"]
+            and trend_strength_abs < 3.0
+        ):
             return RegimeType.LOW_VOLATILITY_RANGING, min(metrics.volatility * 0.5, 0.6)
 
         # Moderate/weak trend classification
-        if metrics.bull_strength > self.thresholds['moderate_trend_threshold'] and metrics.momentum > 0.0005:
-            self.metrics['candidate_bull'] += 1
-            return RegimeType.MODERATE_BULL_TREND, min(metrics.bull_strength * 0.9, 0.85)
-        elif metrics.bull_strength > self.thresholds['weak_trend_threshold'] and metrics.momentum > 0.0002:
-            self.metrics['candidate_bull'] += 1
+        if (
+            metrics.bull_strength > self.thresholds["moderate_trend_threshold"]
+            and metrics.momentum > 0.0005
+        ):
+            self.metrics["candidate_bull"] += 1
+            return RegimeType.MODERATE_BULL_TREND, min(
+                metrics.bull_strength * 0.9, 0.85
+            )
+        elif (
+            metrics.bull_strength > self.thresholds["weak_trend_threshold"]
+            and metrics.momentum > 0.0002
+        ):
+            self.metrics["candidate_bull"] += 1
             return RegimeType.WEAK_BULL_TREND, min(metrics.bull_strength * 0.8, 0.75)
 
-        if metrics.bear_strength > self.thresholds['moderate_trend_threshold'] and metrics.momentum < -0.0005:
-            self.metrics['candidate_bear'] += 1
-            return RegimeType.MODERATE_BEAR_TREND, min(metrics.bear_strength * 0.9, 0.85)
-        elif metrics.bear_strength > self.thresholds['weak_trend_threshold'] and metrics.momentum < -0.0002:
-            self.metrics['candidate_bear'] += 1
+        if (
+            metrics.bear_strength > self.thresholds["moderate_trend_threshold"]
+            and metrics.momentum < -0.0005
+        ):
+            self.metrics["candidate_bear"] += 1
+            return RegimeType.MODERATE_BEAR_TREND, min(
+                metrics.bear_strength * 0.9, 0.85
+            )
+        elif (
+            metrics.bear_strength > self.thresholds["weak_trend_threshold"]
+            and metrics.momentum < -0.0002
+        ):
+            self.metrics["candidate_bear"] += 1
             return RegimeType.WEAK_BEAR_TREND, min(metrics.bear_strength * 0.8, 0.75)
 
         # Check for breakout/breakdown setups (lowest priority)
-        if metrics.bollinger_position > 0.8 and metrics.rsi > 70 and metrics.macd_signal > 0:
+        if (
+            metrics.bollinger_position > 0.8
+            and metrics.rsi > 70
+            and metrics.macd_signal > 0
+        ):
             return RegimeType.BREAKOUT_SETUP, 0.8
-        elif metrics.bollinger_position < 0.2 and metrics.rsi < 30 and metrics.macd_signal < 0:
+        elif (
+            metrics.bollinger_position < 0.2
+            and metrics.rsi < 30
+            and metrics.macd_signal < 0
+        ):
             return RegimeType.BREAKDOWN_SETUP, 0.8
 
         # Default to consolidation
-        self.metrics['consolidation_fallback'] += 1
+        self.metrics["consolidation_fallback"] += 1
         return RegimeType.CONSOLIDATION, 0.5
 
-    def _calculate_secondary_regimes(self, metrics: RegimeMetrics,
-                                   primary_regime: RegimeType) -> List[Tuple[RegimeType, float]]:
+    def _calculate_secondary_regimes(
+        self, metrics: RegimeMetrics, primary_regime: RegimeType
+    ) -> List[Tuple[RegimeType, float]]:
         """
         Calculate secondary regime possibilities with confidence scores
 
@@ -496,12 +601,17 @@ class V444RegimeClassifier:
 
         # Sort by confidence and exclude primary regime
         sorted_regimes = sorted(regime_scores.items(), key=lambda x: x[1], reverse=True)
-        secondary_regimes = [(regime, score) for regime, score in sorted_regimes
-                           if regime != primary_regime][:3]  # Top 3 secondary regimes
+        secondary_regimes = [
+            (regime, score)
+            for regime, score in sorted_regimes
+            if regime != primary_regime
+        ][:3]  # Top 3 secondary regimes
 
         return secondary_regimes
 
-    def _calculate_all_regime_scores(self, metrics: RegimeMetrics) -> Dict[RegimeType, float]:
+    def _calculate_all_regime_scores(
+        self, metrics: RegimeMetrics
+    ) -> Dict[RegimeType, float]:
         """Calculate confidence scores for all regime types"""
         scores = {}
 
@@ -525,8 +635,12 @@ class V444RegimeClassifier:
         scores[RegimeType.CONSOLIDATION] = min(range_factor * 0.8, 0.7)
 
         breakout_factor = abs(metrics.momentum) * metrics.support_resistance_strength
-        scores[RegimeType.BREAKOUT_SETUP] = min(breakout_factor * 1.5, 0.8) if metrics.momentum > 0 else 0
-        scores[RegimeType.BREAKDOWN_SETUP] = min(breakout_factor * 1.5, 0.8) if metrics.momentum < 0 else 0
+        scores[RegimeType.BREAKOUT_SETUP] = (
+            min(breakout_factor * 1.5, 0.8) if metrics.momentum > 0 else 0
+        )
+        scores[RegimeType.BREAKDOWN_SETUP] = (
+            min(breakout_factor * 1.5, 0.8) if metrics.momentum < 0 else 0
+        )
 
         return scores
 
@@ -544,7 +658,7 @@ class V444RegimeClassifier:
             rsi=50.0,
             macd_signal=0.0,
             bollinger_position=0.5,
-            support_resistance_strength=0.5
+            support_resistance_strength=0.5,
         )
 
     def get_regime_config(self, regime: RegimeType) -> Dict[str, Any]:
@@ -557,75 +671,83 @@ class V444RegimeClassifier:
         Returns:
             Dictionary with regime-specific parameters
         """
-        regime_configs = self.config.get('regime_configs', {})
+        regime_configs = self.config.get("regime_configs", {})
 
         # Default configurations for each regime
         default_configs = {
             RegimeType.STRONG_BULL_TREND: {
-                'action_balance_target': 0.95,
-                'entropy_regularization': 0.005,
-                'feature_weights': {'momentum': 1.2, 'trend': 1.1, 'volume': 0.9}
+                "action_balance_target": 0.95,
+                "entropy_regularization": 0.005,
+                "feature_weights": {"momentum": 1.2, "trend": 1.1, "volume": 0.9},
             },
             RegimeType.MODERATE_BULL_TREND: {
-                'action_balance_target': 0.85,
-                'entropy_regularization': 0.01,
-                'feature_weights': {'momentum': 1.1, 'trend': 1.0, 'volume': 0.95}
+                "action_balance_target": 0.85,
+                "entropy_regularization": 0.01,
+                "feature_weights": {"momentum": 1.1, "trend": 1.0, "volume": 0.95},
             },
             RegimeType.WEAK_BULL_TREND: {
-                'action_balance_target': 0.75,
-                'entropy_regularization': 0.015,
-                'feature_weights': {'momentum': 1.0, 'trend': 0.9, 'volume': 1.0}
+                "action_balance_target": 0.75,
+                "entropy_regularization": 0.015,
+                "feature_weights": {"momentum": 1.0, "trend": 0.9, "volume": 1.0},
             },
             RegimeType.STRONG_BEAR_TREND: {
-                'action_balance_target': 0.05,
-                'entropy_regularization': 0.005,
-                'feature_weights': {'momentum': 1.2, 'trend': 1.1, 'volume': 0.9}
+                "action_balance_target": 0.05,
+                "entropy_regularization": 0.005,
+                "feature_weights": {"momentum": 1.2, "trend": 1.1, "volume": 0.9},
             },
             RegimeType.MODERATE_BEAR_TREND: {
-                'action_balance_target': 0.15,
-                'entropy_regularization': 0.01,
-                'feature_weights': {'momentum': 1.1, 'trend': 1.0, 'volume': 0.95}
+                "action_balance_target": 0.15,
+                "entropy_regularization": 0.01,
+                "feature_weights": {"momentum": 1.1, "trend": 1.0, "volume": 0.95},
             },
             RegimeType.WEAK_BEAR_TREND: {
-                'action_balance_target': 0.25,
-                'entropy_regularization': 0.015,
-                'feature_weights': {'momentum': 1.0, 'trend': 0.9, 'volume': 1.0}
+                "action_balance_target": 0.25,
+                "entropy_regularization": 0.015,
+                "feature_weights": {"momentum": 1.0, "trend": 0.9, "volume": 1.0},
             },
             RegimeType.HIGH_VOLATILITY_RANGING: {
-                'action_balance_target': 0.5,
-                'entropy_regularization': 0.02,
-                'feature_weights': {'volatility': 1.3, 'momentum': 0.8, 'trend': 0.7}
+                "action_balance_target": 0.5,
+                "entropy_regularization": 0.02,
+                "feature_weights": {"volatility": 1.3, "momentum": 0.8, "trend": 0.7},
             },
             RegimeType.MODERATE_VOLATILITY_RANGING: {
-                'action_balance_target': 0.5,
-                'entropy_regularization': 0.018,
-                'feature_weights': {'volatility': 1.2, 'momentum': 0.9, 'trend': 0.8}
+                "action_balance_target": 0.5,
+                "entropy_regularization": 0.018,
+                "feature_weights": {"volatility": 1.2, "momentum": 0.9, "trend": 0.8},
             },
             RegimeType.LOW_VOLATILITY_RANGING: {
-                'action_balance_target': 0.5,
-                'entropy_regularization': 0.025,
-                'feature_weights': {'volatility': 0.8, 'momentum': 1.1, 'trend': 1.0}
+                "action_balance_target": 0.5,
+                "entropy_regularization": 0.025,
+                "feature_weights": {"volatility": 0.8, "momentum": 1.1, "trend": 1.0},
             },
             RegimeType.EXTREME_VOLATILITY: {
-                'action_balance_target': 0.5,
-                'entropy_regularization': 0.03,
-                'feature_weights': {'volatility': 1.5, 'momentum': 0.6, 'trend': 0.5}
+                "action_balance_target": 0.5,
+                "entropy_regularization": 0.03,
+                "feature_weights": {"volatility": 1.5, "momentum": 0.6, "trend": 0.5},
             },
             RegimeType.CONSOLIDATION: {
-                'action_balance_target': 0.5,
-                'entropy_regularization': 0.02,
-                'feature_weights': {'volatility': 0.9, 'momentum': 0.9, 'trend': 1.1}
+                "action_balance_target": 0.5,
+                "entropy_regularization": 0.02,
+                "feature_weights": {"volatility": 0.9, "momentum": 0.9, "trend": 1.1},
             },
             RegimeType.BREAKOUT_SETUP: {
-                'action_balance_target': 0.7,
-                'entropy_regularization': 0.012,
-                'feature_weights': {'momentum': 1.3, 'support_resistance': 1.2, 'volume': 1.1}
+                "action_balance_target": 0.7,
+                "entropy_regularization": 0.012,
+                "feature_weights": {
+                    "momentum": 1.3,
+                    "support_resistance": 1.2,
+                    "volume": 1.1,
+                },
             },
             RegimeType.BREAKDOWN_SETUP: {
-                'action_balance_target': 0.3,
-                'entropy_regularization': 0.012,
-                'feature_weights': {'momentum': 1.3, 'support_resistance': 1.2, 'volume': 1.1}
-            }
+                "action_balance_target": 0.3,
+                "entropy_regularization": 0.012,
+                "feature_weights": {
+                    "momentum": 1.3,
+                    "support_resistance": 1.2,
+                    "volume": 1.1,
+                },
+            },
         }
 
         # Merge with any custom config

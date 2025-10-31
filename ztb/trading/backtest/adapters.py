@@ -580,7 +580,9 @@ class ActionSignalGuideAdapter:
             # Generate signals from Action Signal Guide
             # Use the last index of current data (current bar)
             current_index = len(data) - 1
-            print(f"DEBUG: ActionSignalGuideAdapter.generate_signal called with data len={len(data)}, current_index={current_index}")
+            print(
+                f"DEBUG: ActionSignalGuideAdapter.generate_signal called with data len={len(data)}, current_index={current_index}"
+            )
             signals = self.guide.generate_signals(data, current_index)
 
             # Debug: print signal information (only for significant signals and not too frequently)

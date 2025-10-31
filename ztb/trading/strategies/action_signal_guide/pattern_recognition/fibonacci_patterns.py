@@ -300,7 +300,9 @@ class FibonacciRetracementRecognizer(CandlestickPatternRecognizer):
                 confidence = min(confidence, 0.4)  # Further reduced to 0.4
 
                 # Only generate signals for significant Fibonacci levels and good pattern completeness
-                if confidence < 0.25 or pattern_completeness < 0.8:  # Much stricter conditions
+                if (
+                    confidence < 0.25 or pattern_completeness < 0.8
+                ):  # Much stricter conditions
                     continue  # Skip weak signals
 
                 # Clamp direction to [-1.0, 1.0]

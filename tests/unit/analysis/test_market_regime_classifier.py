@@ -5,16 +5,17 @@ Tests the generic market regime classification system to ensure
 proper regime detection and adaptation functionality.
 """
 
-import pytest
-import pandas as pd
+from unittest.mock import patch
+
 import numpy as np
-from unittest.mock import Mock, patch
+import pandas as pd
+import pytest
 
 from ztb.analysis.market_regime_classifier import (
     MarketRegimeClassifier,
-    RegimeType,
+    RegimeDetectionResult,
     RegimeMetrics,
-    RegimeDetectionResult
+    RegimeType,
 )
 
 
@@ -24,7 +25,7 @@ class TestMarketRegimeClassifier:
     @pytest.fixture
     def sample_price_data(self):
         """Create sample price data for testing"""
-        dates = pd.date_range('2023-01-01', periods=100, freq='H')
+        dates = pd.date_range("2023-01-01", periods=100, freq="H")
         np.random.seed(42)
 
         # Create trending data (bull trend)
@@ -39,13 +40,16 @@ class TestMarketRegimeClassifier:
         open_price = close + np.random.normal(0, 0.5, 100)
         volume = np.random.uniform(1000, 10000, 100)
 
-        df = pd.DataFrame({
-            'open': open_price,
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': volume
-        }, index=dates)
+        df = pd.DataFrame(
+            {
+                "open": open_price,
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volume,
+            },
+            index=dates,
+        )
 
         return df
 
@@ -53,15 +57,15 @@ class TestMarketRegimeClassifier:
     def classifier(self):
         """Create a basic classifier instance"""
         config = {
-            'lookback_periods': {'short': 10, 'medium': 20, 'long': 50},
-            'regime_scheme': 'basic'
+            "lookback_periods": {"short": 10, "medium": 20, "long": 50},
+            "regime_scheme": "basic",
         }
         return MarketRegimeClassifier(config)
 
     def test_initialization(self, classifier):
         """Test classifier initialization"""
         assert classifier.config is not None
-        assert classifier.lookback_periods['short'] == 10
+        assert classifier.lookback_periods["short"] == 10
         assert len(classifier.regime_definitions) > 0
 
     def test_detect_regime_basic(self, classifier, sample_price_data):
@@ -86,36 +90,36 @@ class TestMarketRegimeClassifier:
     def test_regime_multiplier(self, classifier):
         """Test regime multiplier functionality"""
         # Test with default config (no adaptation)
-        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BULL, 'reward')
+        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BULL, "reward")
         assert multiplier == 1.0
 
         # Test with adaptation config
-        classifier.config['adaptation'] = {
-            'enabled': True,
-            'regime_reward_multipliers': {
-                RegimeType.STRONG_BULL: 1.5
-            }
+        classifier.config["adaptation"] = {
+            "enabled": True,
+            "regime_reward_multipliers": {RegimeType.STRONG_BULL: 1.5},
         }
 
-        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BULL, 'reward')
+        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BULL, "reward")
         assert multiplier == 1.5
 
         # Test penalty multiplier
-        classifier.config['adaptation']['regime_penalty_multipliers'] = {
+        classifier.config["adaptation"]["regime_penalty_multipliers"] = {
             RegimeType.STRONG_BEAR: 0.8
         }
 
-        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BEAR, 'penalty')
+        multiplier = classifier.get_regime_multiplier(RegimeType.STRONG_BEAR, "penalty")
         assert multiplier == 0.8
 
     def test_insufficient_data_handling(self, classifier):
         """Test handling of insufficient data"""
-        small_df = pd.DataFrame({
-            'close': [100, 101, 102],
-            'high': [101, 102, 103],
-            'low': [99, 100, 101],
-            'volume': [1000, 1100, 1200]
-        })
+        small_df = pd.DataFrame(
+            {
+                "close": [100, 101, 102],
+                "high": [101, 102, 103],
+                "low": [99, 100, 101],
+                "volume": [1000, 1100, 1200],
+            }
+        )
 
         result = classifier.detect_regime(small_df, 2)
         assert result.primary_regime == RegimeType.CONSOLIDATION  # Default fallback
@@ -123,20 +127,20 @@ class TestMarketRegimeClassifier:
     def test_custom_regime_definitions(self):
         """Test custom regime definitions"""
         custom_config = {
-            'regime_scheme': 'custom',
-            'custom_regime_definitions': [
+            "regime_scheme": "custom",
+            "custom_regime_definitions": [
                 {
-                    'name': 'Custom Bull',
-                    'regime_type': 'strong_bull',
-                    'conditions': {'trend_strength': {'min': 2.0}},
-                    'priority': 10
+                    "name": "Custom Bull",
+                    "regime_type": "strong_bull",
+                    "conditions": {"trend_strength": {"min": 2.0}},
+                    "priority": 10,
                 }
-            ]
+            ],
         }
 
         classifier = MarketRegimeClassifier(custom_config)
         assert len(classifier.regime_definitions) == 1
-        assert classifier.regime_definitions[0].name == 'Custom Bull'
+        assert classifier.regime_definitions[0].name == "Custom Bull"
 
     def test_regime_classification_logic(self, classifier):
         """Test regime classification logic with mock metrics"""
@@ -153,7 +157,7 @@ class TestMarketRegimeClassifier:
             rsi=70.0,
             macd_signal=0.5,
             bollinger_position=0.8,
-            support_resistance_strength=0.7
+            support_resistance_strength=0.7,
         )
 
         regime, confidence = classifier._classify_regime(strong_bull_metrics)
@@ -173,7 +177,7 @@ class TestMarketRegimeClassifier:
             rsi=50.0,
             macd_signal=0.0,
             bollinger_position=0.5,
-            support_resistance_strength=0.5
+            support_resistance_strength=0.5,
         )
 
         regime, confidence = classifier._classify_regime(high_vol_metrics)
@@ -193,22 +197,24 @@ class TestMarketRegimeClassifier:
             rsi=65.0,
             macd_signal=0.3,
             bollinger_position=0.7,
-            support_resistance_strength=0.6
+            support_resistance_strength=0.6,
         )
 
         primary_regime = RegimeType.STRONG_BULL
-        secondary_regimes = classifier._calculate_secondary_regimes(metrics, primary_regime)
+        secondary_regimes = classifier._calculate_secondary_regimes(
+            metrics, primary_regime
+        )
 
         assert isinstance(secondary_regimes, list)
         if secondary_regimes:
             assert len(secondary_regimes[0]) == 2  # (regime, confidence) tuple
 
-    @patch('ztb.analysis.market_regime_classifier.logger')
+    @patch("ztb.analysis.market_regime_classifier.logger")
     def test_error_handling(self, mock_logger, classifier, sample_price_data):
         """Test error handling in regime detection"""
         # Test with corrupted data
         bad_data = sample_price_data.copy()
-        bad_data['close'] = np.nan
+        bad_data["close"] = np.nan
 
         result = classifier.detect_regime(bad_data)
         # Should not crash and return some result
@@ -226,23 +232,21 @@ class TestMarketRegimeClassifier:
 
         # Test with full config
         full_config = {
-            'lookback_periods': {'short': 5, 'medium': 15, 'long': 30},
-            'thresholds': {
-                'strong_trend_threshold': 2.0,
-                'high_volatility_threshold': 0.20
+            "lookback_periods": {"short": 5, "medium": 15, "long": 30},
+            "thresholds": {
+                "strong_trend_threshold": 2.0,
+                "high_volatility_threshold": 0.20,
             },
-            'regime_scheme': 'comprehensive',
-            'adaptation': {
-                'enabled': True,
-                'regime_reward_multipliers': {
-                    RegimeType.STRONG_BULL: 1.2
-                }
-            }
+            "regime_scheme": "comprehensive",
+            "adaptation": {
+                "enabled": True,
+                "regime_reward_multipliers": {RegimeType.STRONG_BULL: 1.2},
+            },
         }
 
         classifier = MarketRegimeClassifier(full_config)
-        assert classifier.lookback_periods['short'] == 5
-        assert classifier.thresholds['strong_trend_threshold'] == 2.0
+        assert classifier.lookback_periods["short"] == 5
+        assert classifier.thresholds["strong_trend_threshold"] == 2.0
 
 
 class TestRegimeMetrics:
@@ -262,7 +266,7 @@ class TestRegimeMetrics:
             rsi=60.0,
             macd_signal=0.2,
             bollinger_position=0.6,
-            support_resistance_strength=0.7
+            support_resistance_strength=0.7,
         )
 
         assert metrics.trend_strength == 2.5
@@ -284,7 +288,7 @@ class TestRegimeMetrics:
             rsi=0.0,
             macd_signal=0.0,
             bollinger_position=0.0,
-            support_resistance_strength=0.0
+            support_resistance_strength=0.0,
         )
 
         assert metrics.trend_strength == 0.0
@@ -308,7 +312,7 @@ class TestRegimeDetectionResult:
             rsi=55.0,
             macd_signal=0.1,
             bollinger_position=0.5,
-            support_resistance_strength=0.6
+            support_resistance_strength=0.6,
         )
 
         result = RegimeDetectionResult(
@@ -316,8 +320,8 @@ class TestRegimeDetectionResult:
             confidence=0.85,
             secondary_regimes=[(RegimeType.LOW_VOLATILITY_RANGE, 0.3)],
             metrics=metrics,
-            detection_timestamp=pd.Timestamp('2023-01-01'),
-            lookback_period=20
+            detection_timestamp=pd.Timestamp("2023-01-01"),
+            lookback_period=20,
         )
 
         assert result.primary_regime == RegimeType.MODERATE_BULL

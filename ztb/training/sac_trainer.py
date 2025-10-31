@@ -21,8 +21,8 @@ project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.core.base import BaseTrainer
-from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.training.components.regime_adaptive_trainer import RegimeAdaptiveTrainerMixin
+from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
@@ -42,7 +42,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
         self.trainer = None
 
         # Initialize regime adaptation
-        regime_config = self.config_data.get('regime_adaptation', {})
+        regime_config = self.config_data.get("regime_adaptation", {})
         RegimeAdaptiveTrainerMixin.__init__(self, regime_config)
 
     def _load_config(self) -> Dict[str, Any]:
@@ -257,7 +257,6 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
         return SAC.load(path)
 
-
     # RegimeAdaptiveTrainerMixin abstract method implementations
     def apply_hyperparameter_adaptation(self, adapted_params: Dict[str, Any]):
         """
@@ -267,12 +266,14 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             adapted_params: Dictionary of parameters to apply
         """
         if not self.trainer:
-            logger.warning("No trainer initialized, cannot apply hyperparameter adaptation")
+            logger.warning(
+                "No trainer initialized, cannot apply hyperparameter adaptation"
+            )
             return
 
         try:
             # Apply parameters to the underlying trainer if it supports adaptation
-            if hasattr(self.trainer, 'update_hyperparameters'):
+            if hasattr(self.trainer, "update_hyperparameters"):
                 self.trainer.update_hyperparameters(adapted_params)
                 logger.info(f"Applied hyperparameter adaptation: {adapted_params}")
             else:
@@ -288,12 +289,12 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             DataFrame with market data or None
         """
         # Try to get data from trainer or config
-        if hasattr(self.trainer, 'get_current_data'):
+        if hasattr(self.trainer, "get_current_data"):
             return self.trainer.get_current_data()
 
         # Fallback to config data path
-        data_config = self.config_data.get('training', {}).get('data_config', {})
-        data_path = data_config.get('data_path') or data_config.get('csv_path')
+        data_config = self.config_data.get("training", {}).get("data_config", {})
+        data_path = data_config.get("data_path") or data_config.get("csv_path")
 
         if data_path and Path(data_path).exists():
             try:
@@ -310,11 +311,11 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
         Returns:
             Current step count
         """
-        if hasattr(self.trainer, 'get_step_count'):
+        if hasattr(self.trainer, "get_step_count"):
             return self.trainer.get_step_count()
 
         # Fallback to config
-        return self.config_data.get('training', {}).get('total_timesteps', 0)
+        return self.config_data.get("training", {}).get("total_timesteps", 0)
 
 
 def main():

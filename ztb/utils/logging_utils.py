@@ -4,20 +4,21 @@ Logging utilities for consistent logging setup across the codebase.
 """
 
 import logging
-import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 import time
+import json
 
 from ztb.types.common import ConfigDict
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 def setup_logging(
     level: int = logging.INFO,
     format_string: Optional[str] = None,
     log_file: Optional[str] = None,
-    max_bytes: int = 10 * 1024 * 1024,  # 10MB
+    max_bytes: int = 10 * BYTES_PER_MB,  # 10MB
     backup_count: int = 5,
 ) -> None:
     """
@@ -73,15 +74,17 @@ def setup_logging_from_config(config: ConfigDict) -> None:
         config: Configuration dictionary with logging settings
     """
     logging_config = config.get("logging", {})
+    logging_config = config.get("logging", {})
+    if not isinstance(logging_config, dict):
+        logging_config = {}
 
     level_str = logging_config.get("level", "INFO").upper()
     level = getattr(logging, level_str, logging.INFO)
 
     format_string = logging_config.get("format")
     log_file = logging_config.get("file")
-    max_bytes = logging_config.get("max_bytes", 10 * 1024 * 1024)
+    max_bytes = logging_config.get("max_bytes", 10 * BYTES_PER_MB)
     backup_count = logging_config.get("backup_count", 5)
-
     setup_logging(
         level=level,
         format_string=format_string,
@@ -109,20 +112,32 @@ def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance for the given name.
 
+    Logger names should follow the module hierarchy (e.g., 'ztb.trading.order') to enable granular log level control.
+    It is recommended to use fully qualified module paths for logger names to maintain consistency and leverage Python's logger hierarchy.
+
     Args:
-        name: Logger name
+        name: Logger name (use module path, e.g., 'ztb.trading.order')
 
     Returns:
         Logger instance
     """
     return logging.getLogger(name)
 
-
 class StructuredLogger:
     """
     Structured logging utility for consistent log formatting.
 
     Supports JSON output and contextual logging for better log analysis.
+
+    Example:
+        logger = StructuredLogger("trade", json_format=True)
+        logger.set_context(user_id=123, session="abc")
+        logger.info("Order executed", extra={"order_id": "xyz"})
+
+    Recommended Use Cases:
+        - When you need structured logs for downstream analysis (e.g., ELK stack, BigQuery)
+        - When you want to include contextual information (user/session/order IDs) in every log
+        - For services requiring both human-readable and machine-readable logs
     """
 
     def __init__(self, name: str, json_format: bool = False):
@@ -143,10 +158,7 @@ class StructuredLogger:
         log_data = {**self.context}
         if extra:
             log_data.update(extra)
-
         if self.json_format:
-            import json
-
             return json.dumps({
                 'message': message,
                 'timestamp': time.time(),
