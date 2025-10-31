@@ -13,6 +13,8 @@ import pandas as pd
 import psutil
 from numpy.typing import NDArray
 
+# Import v444 regime classifier for advanced market regime adaptation
+from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 # Import components for runtime use
@@ -68,9 +70,6 @@ from ztb.utils.errors import ConfigurationError, ValidationError
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_validation import TypeValidator
-
-# Import v444 regime classifier for advanced market regime adaptation
-from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
@@ -366,14 +365,20 @@ class HeavyTradingEnv(
 
         # Initialize v444 regime classifier for advanced market regime adaptation
         self.regime_classifier = None
-        advanced_regime_config = getattr(self.config, 'advanced_market_regime', None)
-        if advanced_regime_config and advanced_regime_config.get('enabled', False):
+        advanced_regime_config = getattr(self.config, "advanced_market_regime", None)
+        if advanced_regime_config and advanced_regime_config.get("enabled", False):
             # Use generic market regime classifier
-            classifier_config = advanced_regime_config.get('regime_classifier_config', {})
+            classifier_config = advanced_regime_config.get(
+                "regime_classifier_config", {}
+            )
             self.regime_classifier = MarketRegimeClassifier(classifier_config)
-            logger.info("Market Regime Classifier initialized for market regime adaptation")
+            logger.info(
+                "Market Regime Classifier initialized for market regime adaptation"
+            )
         else:
-            logger.info("Advanced market regime adaptation disabled (legacy configuration)")
+            logger.info(
+                "Advanced market regime adaptation disabled (legacy configuration)"
+            )
 
         self.portfolio_value_history = deque(maxlen=self.DEFAULT_MAX_HISTORY_LENGTH)
         self._previous_portfolio_value = None
@@ -475,7 +480,7 @@ class HeavyTradingEnv(
 
                 if end_idx - start_idx >= 10:  # Minimum data points needed
                     price_data = self.df.iloc[start_idx:end_idx].copy()
-                    if 'close' in price_data.columns:
+                    if "close" in price_data.columns:
                         regime_result = self.regime_classifier.detect_regime(price_data)
                         return regime_result.primary_regime.value
             except Exception as e:
@@ -572,16 +577,18 @@ class HeavyTradingEnv(
         )
 
         # Apply market regime adaptation to reward if enabled
-        if self.regime_classifier is not None and hasattr(self, 'regime_adaptation_config'):
+        if self.regime_classifier is not None and hasattr(
+            self, "regime_adaptation_config"
+        ):
             try:
                 current_regime = self._get_current_market_regime()
                 if current_regime != "unknown":
                     # Get regime-specific multiplier
                     reward_multiplier = self.regime_classifier.get_regime_multiplier(
-                        current_regime, 'reward'
+                        current_regime, "reward"
                     )
                     penalty_multiplier = self.regime_classifier.get_regime_multiplier(
-                        current_regime, 'penalty'
+                        current_regime, "penalty"
                     )
 
                     # Apply multipliers based on reward sign
@@ -598,15 +605,19 @@ class HeavyTradingEnv(
 
                     self.regime_stats["regime_counts"][current_regime] += 1
                     self.regime_stats["regime_rewards"][current_regime].append(reward)
-                    self.regime_stats["regime_actions"][current_regime].append(actual_action)
+                    self.regime_stats["regime_actions"][current_regime].append(
+                        actual_action
+                    )
 
                     # Track regime transitions
                     if self.regime_stats["current_regime"] != current_regime:
-                        self.regime_stats["regime_transitions"].append({
-                            "from": self.regime_stats["current_regime"],
-                            "to": current_regime,
-                            "step": self.current_step
-                        })
+                        self.regime_stats["regime_transitions"].append(
+                            {
+                                "from": self.regime_stats["current_regime"],
+                                "to": current_regime,
+                                "step": self.current_step,
+                            }
+                        )
                         self.regime_stats["current_regime"] = current_regime
 
             except Exception as e:
@@ -744,7 +755,7 @@ class HeavyTradingEnv(
     def enable_market_regime_adaptation(
         self,
         regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[Dict[str, Any]] = None
+        adaptation_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Enable market regime adaptation for the environment
@@ -849,7 +860,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
     def enable_market_regime_adaptation(
         self,
         regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[Dict[str, Any]] = None
+        adaptation_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         FlipHeavyTradingEnv 用: 市場レジーム適応を有効化します。

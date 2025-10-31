@@ -7,18 +7,20 @@ that can be used across different trading models and strategies.
 Supports multiple regime classification schemes and adaptive parameter tuning.
 """
 
+import logging
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any, Callable
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class RegimeType(Enum):
     """Generic regime type enumeration"""
+
     STRONG_BULL = "strong_bull"
     MODERATE_BULL = "moderate_bull"
     WEAK_BULL = "weak_bull"
@@ -37,6 +39,7 @@ class RegimeType(Enum):
 @dataclass
 class RegimeMetrics:
     """Container for regime detection metrics"""
+
     trend_strength: float
     bull_strength: float
     bear_strength: float
@@ -54,6 +57,7 @@ class RegimeMetrics:
 @dataclass
 class RegimeDetectionResult:
     """Result of regime detection analysis"""
+
     primary_regime: RegimeType
     confidence: float
     secondary_regimes: List[Tuple[RegimeType, float]]
@@ -65,6 +69,7 @@ class RegimeDetectionResult:
 @dataclass
 class RegimeDefinition:
     """Definition of a market regime with classification rules"""
+
     name: str
     regime_type: RegimeType
     conditions: Dict[str, Any]
@@ -88,53 +93,49 @@ class MarketRegimeClassifier:
             config: Configuration dictionary with regime parameters
         """
         self.config = config or self._get_default_config()
-        self.lookback_periods = self.config.get('lookback_periods', {
-            'short': 20,
-            'medium': 50,
-            'long': 100
-        })
+        self.lookback_periods = self.config.get(
+            "lookback_periods", {"short": 20, "medium": 50, "long": 100}
+        )
 
         # Initialize regime definitions
         self.regime_definitions = self._load_regime_definitions()
 
         # Thresholds for regime detection
-        self.thresholds = self.config.get('thresholds', self._get_default_thresholds())
+        self.thresholds = self.config.get("thresholds", self._get_default_thresholds())
 
-        logger.info(f"Market Regime Classifier initialized with {len(self.regime_definitions)} regime definitions")
+        logger.info(
+            f"Market Regime Classifier initialized with {len(self.regime_definitions)} regime definitions"
+        )
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration"""
         return {
-            'lookback_periods': {
-                'short': 20,
-                'medium': 50,
-                'long': 100
-            },
-            'regime_scheme': 'comprehensive',  # Options: 'basic', 'comprehensive', 'custom'
-            'use_multi_timeframe': True,
-            'confidence_threshold': 0.6
+            "lookback_periods": {"short": 20, "medium": 50, "long": 100},
+            "regime_scheme": "comprehensive",  # Options: 'basic', 'comprehensive', 'custom'
+            "use_multi_timeframe": True,
+            "confidence_threshold": 0.6,
         }
 
     def _get_default_thresholds(self) -> Dict[str, float]:
         """Get default threshold values"""
         return {
-            'strong_trend_threshold': 3.0,
-            'moderate_trend_threshold': 2.0,
-            'weak_trend_threshold': 1.0,
-            'high_volatility_threshold': 0.15,
-            'moderate_volatility_threshold': 0.10,
-            'extreme_volatility_threshold': 0.20,
-            'consolidation_range_threshold': 0.05,
-            'breakout_setup_threshold': 0.15
+            "strong_trend_threshold": 3.0,
+            "moderate_trend_threshold": 2.0,
+            "weak_trend_threshold": 1.0,
+            "high_volatility_threshold": 0.15,
+            "moderate_volatility_threshold": 0.10,
+            "extreme_volatility_threshold": 0.20,
+            "consolidation_range_threshold": 0.05,
+            "breakout_setup_threshold": 0.15,
         }
 
     def _load_regime_definitions(self) -> List[RegimeDefinition]:
         """Load regime definitions based on configuration"""
-        scheme = self.config.get('regime_scheme', 'comprehensive')
+        scheme = self.config.get("regime_scheme", "comprehensive")
 
-        if scheme == 'basic':
+        if scheme == "basic":
             return self._get_basic_regime_definitions()
-        elif scheme == 'comprehensive':
+        elif scheme == "comprehensive":
             return self._get_comprehensive_regime_definitions()
         else:
             # Custom regime definitions from config
@@ -147,42 +148,42 @@ class MarketRegimeClassifier:
                 name="Strong Bull Trend",
                 regime_type=RegimeType.STRONG_BULL,
                 conditions={
-                    'trend_strength': {'min': 3.0},
-                    'bull_strength': {'min': 2.0}
+                    "trend_strength": {"min": 3.0},
+                    "bull_strength": {"min": 2.0},
                 },
                 priority=10,
-                description="Strong upward trend"
+                description="Strong upward trend",
             ),
             RegimeDefinition(
                 name="Strong Bear Trend",
                 regime_type=RegimeType.STRONG_BEAR,
                 conditions={
-                    'trend_strength': {'max': -3.0},
-                    'bear_strength': {'min': 2.0}
+                    "trend_strength": {"max": -3.0},
+                    "bear_strength": {"min": 2.0},
                 },
                 priority=10,
-                description="Strong downward trend"
+                description="Strong downward trend",
             ),
             RegimeDefinition(
                 name="High Volatility Range",
                 regime_type=RegimeType.HIGH_VOLATILITY_RANGE,
                 conditions={
-                    'volatility': {'min': 0.15},
-                    'trend_strength': {'min': -2.0, 'max': 2.0}
+                    "volatility": {"min": 0.15},
+                    "trend_strength": {"min": -2.0, "max": 2.0},
                 },
                 priority=5,
-                description="High volatility sideways movement"
+                description="High volatility sideways movement",
             ),
             RegimeDefinition(
                 name="Consolidation",
                 regime_type=RegimeType.CONSOLIDATION,
                 conditions={
-                    'volatility': {'max': 0.05},
-                    'trend_strength': {'min': -1.0, 'max': 1.0}
+                    "volatility": {"max": 0.05},
+                    "trend_strength": {"min": -1.0, "max": 1.0},
                 },
                 priority=1,
-                description="Low volatility consolidation"
-            )
+                description="Low volatility consolidation",
+            ),
         ]
 
     def _get_comprehensive_regime_definitions(self) -> List[RegimeDefinition]:
@@ -193,165 +194,164 @@ class MarketRegimeClassifier:
                 name="Strong Bull Trend",
                 regime_type=RegimeType.STRONG_BULL,
                 conditions={
-                    'trend_strength': {'min': 3.0},
-                    'bull_strength': {'min': 2.5},
-                    'volatility': {'max': 0.15}
+                    "trend_strength": {"min": 3.0},
+                    "bull_strength": {"min": 2.5},
+                    "volatility": {"max": 0.15},
                 },
                 priority=12,
-                description="Strong upward momentum with high conviction"
+                description="Strong upward momentum with high conviction",
             ),
             RegimeDefinition(
                 name="Moderate Bull Trend",
                 regime_type=RegimeType.MODERATE_BULL,
                 conditions={
-                    'trend_strength': {'min': 2.0, 'max': 3.0},
-                    'bull_strength': {'min': 1.5, 'max': 2.5},
-                    'volatility': {'max': 0.20}
+                    "trend_strength": {"min": 2.0, "max": 3.0},
+                    "bull_strength": {"min": 1.5, "max": 2.5},
+                    "volatility": {"max": 0.20},
                 },
                 priority=11,
-                description="Moderate upward trend with steady gains"
+                description="Moderate upward trend with steady gains",
             ),
             RegimeDefinition(
                 name="Weak Bull Trend",
                 regime_type=RegimeType.WEAK_BULL,
                 conditions={
-                    'trend_strength': {'min': 1.0, 'max': 2.0},
-                    'bull_strength': {'min': 0.5, 'max': 1.5},
-                    'volatility': {'max': 0.25}
+                    "trend_strength": {"min": 1.0, "max": 2.0},
+                    "bull_strength": {"min": 0.5, "max": 1.5},
+                    "volatility": {"max": 0.25},
                 },
                 priority=10,
-                description="Weak upward movement with low momentum"
+                description="Weak upward movement with low momentum",
             ),
-
             # Bear trends
             RegimeDefinition(
                 name="Strong Bear Trend",
                 regime_type=RegimeType.STRONG_BEAR,
                 conditions={
-                    'trend_strength': {'max': -3.0},
-                    'bear_strength': {'min': 2.5},
-                    'volatility': {'max': 0.15}
+                    "trend_strength": {"max": -3.0},
+                    "bear_strength": {"min": 2.5},
+                    "volatility": {"max": 0.15},
                 },
                 priority=9,
-                description="Strong downward momentum with high conviction"
+                description="Strong downward momentum with high conviction",
             ),
             RegimeDefinition(
                 name="Moderate Bear Trend",
                 regime_type=RegimeType.MODERATE_BEAR,
                 conditions={
-                    'trend_strength': {'max': -2.0, 'min': -3.0},
-                    'bear_strength': {'min': 1.5, 'max': 2.5},
-                    'volatility': {'max': 0.20}
+                    "trend_strength": {"max": -2.0, "min": -3.0},
+                    "bear_strength": {"min": 1.5, "max": 2.5},
+                    "volatility": {"max": 0.20},
                 },
                 priority=8,
-                description="Moderate downward trend with steady losses"
+                description="Moderate downward trend with steady losses",
             ),
             RegimeDefinition(
                 name="Weak Bear Trend",
                 regime_type=RegimeType.WEAK_BEAR,
                 conditions={
-                    'trend_strength': {'max': -1.0, 'min': -2.0},
-                    'bear_strength': {'min': 0.5, 'max': 1.5},
-                    'volatility': {'max': 0.25}
+                    "trend_strength": {"max": -1.0, "min": -2.0},
+                    "bear_strength": {"min": 0.5, "max": 1.5},
+                    "volatility": {"max": 0.25},
                 },
                 priority=7,
-                description="Weak downward movement with low momentum"
+                description="Weak downward movement with low momentum",
             ),
-
             # Range conditions
             RegimeDefinition(
                 name="High Volatility Range",
                 regime_type=RegimeType.HIGH_VOLATILITY_RANGE,
                 conditions={
-                    'volatility': {'min': 0.15},
-                    'trend_strength': {'min': -2.0, 'max': 2.0}
+                    "volatility": {"min": 0.15},
+                    "trend_strength": {"min": -2.0, "max": 2.0},
                 },
                 priority=6,
-                description="High volatility sideways movement"
+                description="High volatility sideways movement",
             ),
             RegimeDefinition(
                 name="Moderate Volatility Range",
                 regime_type=RegimeType.MODERATE_VOLATILITY_RANGE,
                 conditions={
-                    'volatility': {'min': 0.10, 'max': 0.15},
-                    'trend_strength': {'min': -1.5, 'max': 1.5}
+                    "volatility": {"min": 0.10, "max": 0.15},
+                    "trend_strength": {"min": -1.5, "max": 1.5},
                 },
                 priority=5,
-                description="Moderate volatility consolidation"
+                description="Moderate volatility consolidation",
             ),
             RegimeDefinition(
                 name="Low Volatility Range",
                 regime_type=RegimeType.LOW_VOLATILITY_RANGE,
                 conditions={
-                    'volatility': {'max': 0.10},
-                    'trend_strength': {'min': -1.0, 'max': 1.0}
+                    "volatility": {"max": 0.10},
+                    "trend_strength": {"min": -1.0, "max": 1.0},
                 },
                 priority=4,
-                description="Low volatility tight range"
+                description="Low volatility tight range",
             ),
-
             # Special conditions
             RegimeDefinition(
                 name="Extreme Volatility",
                 regime_type=RegimeType.EXTREME_VOLATILITY,
-                conditions={
-                    'volatility': {'min': 0.20}
-                },
+                conditions={"volatility": {"min": 0.20}},
                 priority=3,
-                description="Extreme market volatility conditions"
+                description="Extreme market volatility conditions",
             ),
             RegimeDefinition(
                 name="Consolidation",
                 regime_type=RegimeType.CONSOLIDATION,
                 conditions={
-                    'volatility': {'max': 0.05},
-                    'trend_strength': {'min': -0.5, 'max': 0.5},
-                    'price_range_ratio': {'max': 0.02}
+                    "volatility": {"max": 0.05},
+                    "trend_strength": {"min": -0.5, "max": 0.5},
+                    "price_range_ratio": {"max": 0.02},
                 },
                 priority=2,
-                description="Market consolidation with balanced forces"
+                description="Market consolidation with balanced forces",
             ),
             RegimeDefinition(
                 name="Breakout Setup",
                 regime_type=RegimeType.BREAKOUT_SETUP,
                 conditions={
-                    'bollinger_position': {'min': 0.8},
-                    'support_resistance_strength': {'min': 0.7},
-                    'volatility': {'min': 0.12}
+                    "bollinger_position": {"min": 0.8},
+                    "support_resistance_strength": {"min": 0.7},
+                    "volatility": {"min": 0.12},
                 },
                 priority=1,
-                description="Potential breakout formation"
+                description="Potential breakout formation",
             ),
             RegimeDefinition(
                 name="Breakdown Setup",
                 regime_type=RegimeType.BREAKDOWN_SETUP,
                 conditions={
-                    'bollinger_position': {'max': 0.2},
-                    'support_resistance_strength': {'min': 0.7},
-                    'volatility': {'min': 0.12}
+                    "bollinger_position": {"max": 0.2},
+                    "support_resistance_strength": {"min": 0.7},
+                    "volatility": {"min": 0.12},
                 },
                 priority=1,
-                description="Potential breakdown formation"
-            )
+                description="Potential breakdown formation",
+            ),
         ]
 
     def _load_custom_regime_definitions(self) -> List[RegimeDefinition]:
         """Load custom regime definitions from config"""
-        custom_defs = self.config.get('custom_regime_definitions', [])
+        custom_defs = self.config.get("custom_regime_definitions", [])
         regime_definitions = []
 
         for def_config in custom_defs:
-            regime_definitions.append(RegimeDefinition(
-                name=def_config['name'],
-                regime_type=RegimeType(def_config['regime_type']),
-                conditions=def_config['conditions'],
-                priority=def_config.get('priority', 1),
-                description=def_config.get('description', '')
-            ))
+            regime_definitions.append(
+                RegimeDefinition(
+                    name=def_config["name"],
+                    regime_type=RegimeType(def_config["regime_type"]),
+                    conditions=def_config["conditions"],
+                    priority=def_config.get("priority", 1),
+                    description=def_config.get("description", ""),
+                )
+            )
 
         return regime_definitions
 
-    def detect_regime(self, data: pd.DataFrame, current_index: int = -1) -> RegimeDetectionResult:
+    def detect_regime(
+        self, data: pd.DataFrame, current_index: int = -1
+    ) -> RegimeDetectionResult:
         """
         Detect the current market regime from price data
 
@@ -380,10 +380,12 @@ class MarketRegimeClassifier:
             secondary_regimes=secondary_regimes,
             metrics=metrics,
             detection_timestamp=data.index[current_index],
-            lookback_period=self.lookback_periods['medium']
+            lookback_period=self.lookback_periods["medium"],
         )
 
-    def get_regime_multiplier(self, regime: RegimeType, multiplier_type: str = 'reward') -> float:
+    def get_regime_multiplier(
+        self, regime: RegimeType, multiplier_type: str = "reward"
+    ) -> float:
         """
         Get regime-specific multiplier for rewards/penalties
 
@@ -394,18 +396,24 @@ class MarketRegimeClassifier:
         Returns:
             Multiplier value (default 1.0)
         """
-        adaptation_config = self.config.get('adaptation', {})
-        if not adaptation_config.get('enabled', False):
+        adaptation_config = self.config.get("adaptation", {})
+        if not adaptation_config.get("enabled", False):
             return 1.0
 
-        if multiplier_type == 'reward':
-            return adaptation_config.get('regime_reward_multipliers', {}).get(regime, 1.0)
-        elif multiplier_type == 'penalty':
-            return adaptation_config.get('regime_penalty_multipliers', {}).get(regime, 1.0)
+        if multiplier_type == "reward":
+            return adaptation_config.get("regime_reward_multipliers", {}).get(
+                regime, 1.0
+            )
+        elif multiplier_type == "penalty":
+            return adaptation_config.get("regime_penalty_multipliers", {}).get(
+                regime, 1.0
+            )
 
         return 1.0
 
-    def _calculate_regime_metrics(self, data: pd.DataFrame, index: int) -> RegimeMetrics:
+    def _calculate_regime_metrics(
+        self, data: pd.DataFrame, index: int
+    ) -> RegimeMetrics:
         """
         Calculate comprehensive regime detection metrics
 
@@ -422,13 +430,27 @@ class MarketRegimeClassifier:
             return self._get_default_metrics()
 
         # Extract price data
-        close = data['close'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        high = data['high'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        low = data['low'].iloc[max(0, index - self.lookback_periods['long']):index + 1]
-        volume = data['volume'].iloc[max(0, index - self.lookback_periods['long']):index + 1] if 'volume' in data.columns else pd.Series([1.0] * len(close))
+        close = data["close"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        high = data["high"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        low = data["low"].iloc[
+            max(0, index - self.lookback_periods["long"]) : index + 1
+        ]
+        volume = (
+            data["volume"].iloc[
+                max(0, index - self.lookback_periods["long"]) : index + 1
+            ]
+            if "volume" in data.columns
+            else pd.Series([1.0] * len(close))
+        )
 
         # Calculate all metrics
-        trend_strength, bull_strength, bear_strength = self._calculate_trend_strength(high, low, close)
+        trend_strength, bull_strength, bear_strength = self._calculate_trend_strength(
+            high, low, close
+        )
         volatility = self._calculate_volatility(close)
         momentum = self._calculate_momentum(close)
         volume_trend = self._calculate_volume_trend(volume)
@@ -437,7 +459,9 @@ class MarketRegimeClassifier:
         rsi = self._calculate_rsi(close)
         macd_signal = self._calculate_macd_signal(close)
         bollinger_position = self._calculate_bollinger_position(close)
-        support_resistance_strength = self._calculate_support_resistance_strength(high, low, close)
+        support_resistance_strength = self._calculate_support_resistance_strength(
+            high, low, close
+        )
 
         return RegimeMetrics(
             trend_strength=trend_strength,
@@ -451,7 +475,7 @@ class MarketRegimeClassifier:
             rsi=rsi,
             macd_signal=macd_signal,
             bollinger_position=bollinger_position,
-            support_resistance_strength=support_resistance_strength
+            support_resistance_strength=support_resistance_strength,
         )
 
     def _get_default_metrics(self) -> RegimeMetrics:
@@ -468,10 +492,12 @@ class MarketRegimeClassifier:
             rsi=50.0,
             macd_signal=0.0,
             bollinger_position=0.5,
-            support_resistance_strength=0.0
+            support_resistance_strength=0.0,
         )
 
-    def _calculate_trend_strength(self, high: pd.Series, low: pd.Series, close: pd.Series) -> Tuple[float, float, float]:
+    def _calculate_trend_strength(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> Tuple[float, float, float]:
         """Calculate trend strength with directional components"""
         try:
             # Ensure we have enough data
@@ -495,9 +521,17 @@ class MarketRegimeClassifier:
             bull_strength = trend_strength_smooth.clip(lower=0)
             bear_strength = (-trend_strength_smooth).clip(lower=0)
 
-            result_trend = float(trend_strength_smooth.iloc[-1]) if not trend_strength_smooth.empty else 0.0
-            result_bull = float(bull_strength.iloc[-1]) if not bull_strength.empty else 0.0
-            result_bear = float(bear_strength.iloc[-1]) if not bear_strength.empty else 0.0
+            result_trend = (
+                float(trend_strength_smooth.iloc[-1])
+                if not trend_strength_smooth.empty
+                else 0.0
+            )
+            result_bull = (
+                float(bull_strength.iloc[-1]) if not bull_strength.empty else 0.0
+            )
+            result_bear = (
+                float(bear_strength.iloc[-1]) if not bear_strength.empty else 0.0
+            )
 
             return result_trend, result_bull, result_bear
 
@@ -512,7 +546,11 @@ class MarketRegimeClassifier:
             volatility = returns.rolling(20).std()
             scaled_volatility = volatility * 10
 
-            return float(scaled_volatility.iloc[-1]) if not scaled_volatility.empty else 0.0
+            return (
+                float(scaled_volatility.iloc[-1])
+                if not scaled_volatility.empty
+                else 0.0
+            )
 
         except Exception as e:
             logger.warning(f"Error calculating volatility: {e}")
@@ -543,7 +581,9 @@ class MarketRegimeClassifier:
             logger.warning(f"Error calculating volume trend: {e}")
             return 0.0
 
-    def _calculate_price_range_ratio(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_price_range_ratio(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate price range ratio"""
         try:
             price_range = (high - low) / close.shift(1)
@@ -555,7 +595,9 @@ class MarketRegimeClassifier:
             logger.warning(f"Error calculating price range ratio: {e}")
             return 0.0
 
-    def _calculate_adx(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_adx(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate ADX (Average Directional Index)"""
         try:
             # Simplified ADX calculation
@@ -567,14 +609,19 @@ class MarketRegimeClassifier:
 
             tr = np.maximum(
                 high - low,
-                np.maximum(
-                    abs(high - close.shift(1)),
-                    abs(low - close.shift(1))
-                )
+                np.maximum(abs(high - close.shift(1)), abs(low - close.shift(1))),
             )
 
-            plus_di = 100 * pd.Series(plus_dm).rolling(14).mean() / pd.Series(tr).rolling(14).mean()
-            minus_di = 100 * pd.Series(minus_dm).rolling(14).mean() / pd.Series(tr).rolling(14).mean()
+            plus_di = (
+                100
+                * pd.Series(plus_dm).rolling(14).mean()
+                / pd.Series(tr).rolling(14).mean()
+            )
+            minus_di = (
+                100
+                * pd.Series(minus_dm).rolling(14).mean()
+                / pd.Series(tr).rolling(14).mean()
+            )
 
             dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
             adx = dx.rolling(14).mean()
@@ -632,7 +679,9 @@ class MarketRegimeClassifier:
             logger.warning(f"Error calculating Bollinger position: {e}")
             return 0.5
 
-    def _calculate_support_resistance_strength(self, high: pd.Series, low: pd.Series, close: pd.Series) -> float:
+    def _calculate_support_resistance_strength(
+        self, high: pd.Series, low: pd.Series, close: pd.Series
+    ) -> float:
         """Calculate support/resistance strength"""
         try:
             # Simplified calculation - distance from recent highs/lows
@@ -659,18 +708,18 @@ class MarketRegimeClassifier:
         """
         # Convert metrics to dict for easier condition checking
         metrics_dict = {
-            'trend_strength': metrics.trend_strength,
-            'bull_strength': metrics.bull_strength,
-            'bear_strength': metrics.bear_strength,
-            'volatility': metrics.volatility,
-            'momentum': metrics.momentum,
-            'volume_trend': metrics.volume_trend,
-            'price_range_ratio': metrics.price_range_ratio,
-            'adx': metrics.adx,
-            'rsi': metrics.rsi,
-            'macd_signal': metrics.macd_signal,
-            'bollinger_position': metrics.bollinger_position,
-            'support_resistance_strength': metrics.support_resistance_strength
+            "trend_strength": metrics.trend_strength,
+            "bull_strength": metrics.bull_strength,
+            "bear_strength": metrics.bear_strength,
+            "volatility": metrics.volatility,
+            "momentum": metrics.momentum,
+            "volume_trend": metrics.volume_trend,
+            "price_range_ratio": metrics.price_range_ratio,
+            "adx": metrics.adx,
+            "rsi": metrics.rsi,
+            "macd_signal": metrics.macd_signal,
+            "bollinger_position": metrics.bollinger_position,
+            "support_resistance_strength": metrics.support_resistance_strength,
         }
 
         # Evaluate each regime definition
@@ -679,23 +728,28 @@ class MarketRegimeClassifier:
         best_score = 0
 
         for regime_def in self.regime_definitions:
-            score, confidence = self._evaluate_regime_conditions(metrics_dict, regime_def)
+            score, confidence = self._evaluate_regime_conditions(
+                metrics_dict, regime_def
+            )
 
             # Use priority as tiebreaker
-            if (confidence > best_confidence or
-                (confidence == best_confidence and regime_def.priority > best_score)):
+            if confidence > best_confidence or (
+                confidence == best_confidence and regime_def.priority > best_score
+            ):
                 best_regime = regime_def.regime_type
                 best_confidence = confidence
                 best_score = regime_def.priority
 
         # Default to consolidation if no regime matches well
-        if best_confidence < self.config.get('confidence_threshold', 0.6):
+        if best_confidence < self.config.get("confidence_threshold", 0.6):
             best_regime = RegimeType.CONSOLIDATION
             best_confidence = 0.5
 
         return best_regime, best_confidence
 
-    def _evaluate_regime_conditions(self, metrics: Dict[str, float], regime_def: RegimeDefinition) -> Tuple[int, float]:
+    def _evaluate_regime_conditions(
+        self, metrics: Dict[str, float], regime_def: RegimeDefinition
+    ) -> Tuple[int, float]:
         """
         Evaluate how well metrics match regime conditions
 
@@ -718,20 +772,24 @@ class MarketRegimeClassifier:
             condition_met = True
 
             # Check min/max conditions
-            if 'min' in conditions and metric_value < conditions['min']:
+            if "min" in conditions and metric_value < conditions["min"]:
                 condition_met = False
-            if 'max' in conditions and metric_value > conditions['max']:
+            if "max" in conditions and metric_value > conditions["max"]:
                 condition_met = False
 
             if condition_met:
                 matched_conditions += 1
                 score += 1
 
-        confidence = matched_conditions / total_conditions if total_conditions > 0 else 0.0
+        confidence = (
+            matched_conditions / total_conditions if total_conditions > 0 else 0.0
+        )
 
         return score, confidence
 
-    def _calculate_secondary_regimes(self, metrics: RegimeMetrics, primary_regime: RegimeType) -> List[Tuple[RegimeType, float]]:
+    def _calculate_secondary_regimes(
+        self, metrics: RegimeMetrics, primary_regime: RegimeType
+    ) -> List[Tuple[RegimeType, float]]:
         """
         Calculate secondary regime candidates
 
@@ -744,18 +802,18 @@ class MarketRegimeClassifier:
         """
         # Convert metrics to dict
         metrics_dict = {
-            'trend_strength': metrics.trend_strength,
-            'bull_strength': metrics.bull_strength,
-            'bear_strength': metrics.bear_strength,
-            'volatility': metrics.volatility,
-            'momentum': metrics.momentum,
-            'volume_trend': metrics.volume_trend,
-            'price_range_ratio': metrics.price_range_ratio,
-            'adx': metrics.adx,
-            'rsi': metrics.rsi,
-            'macd_signal': metrics.macd_signal,
-            'bollinger_position': metrics.bollinger_position,
-            'support_resistance_strength': metrics.support_resistance_strength
+            "trend_strength": metrics.trend_strength,
+            "bull_strength": metrics.bull_strength,
+            "bear_strength": metrics.bear_strength,
+            "volatility": metrics.volatility,
+            "momentum": metrics.momentum,
+            "volume_trend": metrics.volume_trend,
+            "price_range_ratio": metrics.price_range_ratio,
+            "adx": metrics.adx,
+            "rsi": metrics.rsi,
+            "macd_signal": metrics.macd_signal,
+            "bollinger_position": metrics.bollinger_position,
+            "support_resistance_strength": metrics.support_resistance_strength,
         }
 
         secondary_regimes = []
@@ -764,7 +822,9 @@ class MarketRegimeClassifier:
             if regime_def.regime_type == primary_regime:
                 continue
 
-            score, confidence = self._evaluate_regime_conditions(metrics_dict, regime_def)
+            score, confidence = self._evaluate_regime_conditions(
+                metrics_dict, regime_def
+            )
 
             if confidence > 0.3:  # Lower threshold for secondary regimes
                 secondary_regimes.append((regime_def.regime_type, confidence))
@@ -789,10 +849,8 @@ class MarketRegimeClassifier:
     def update_config(self, new_config: Dict[str, Any]):
         """Update configuration"""
         self.config.update(new_config)
-        self.thresholds = self.config.get('thresholds', self._get_default_thresholds())
-        self.lookback_periods = self.config.get('lookback_periods', {
-            'short': 20,
-            'medium': 50,
-            'long': 100
-        })
+        self.thresholds = self.config.get("thresholds", self._get_default_thresholds())
+        self.lookback_periods = self.config.get(
+            "lookback_periods", {"short": 20, "medium": 50, "long": 100}
+        )
         logger.info("Configuration updated")

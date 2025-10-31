@@ -10,7 +10,8 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 import numpy as np
 import pandas as pd
 
@@ -19,8 +20,9 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import SAC
-from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
 from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +42,7 @@ class SACV444Backtester:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from JSON file."""
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, "r") as f:
             return json.load(f)
 
     def _initialize_components(self):
@@ -53,8 +55,8 @@ class SACV444Backtester:
         self.regime_classifier = V444RegimeClassifier()
 
         # Load data for backtest
-        data_config = self.config.get('training', {}).get('data_config', {})
-        csv_path = data_config.get('csv_path', 'data/btc_jpy_real_dataset.csv')
+        data_config = self.config.get("training", {}).get("data_config", {})
+        csv_path = data_config.get("csv_path", "data/btc_jpy_real_dataset.csv")
 
         if not Path(csv_path).exists():
             raise FileNotFoundError(f"Data file not found: {csv_path}")
@@ -63,8 +65,8 @@ class SACV444Backtester:
         logger.info(f"Loaded data from {csv_path}, shape: {df.shape}")
 
         # Initialize environment with data and regime classifier
-        env_config = self.config.get('environment', {}).get('config', {})
-        env_config['advanced_market_regime'] = True
+        env_config = self.config.get("environment", {}).get("config", {})
+        env_config["advanced_market_regime"] = True
 
         self.env = HeavyTradingEnv(df=df, config=env_config)
         logger.info("Initialized environment with data and regime classifier")
@@ -96,27 +98,36 @@ class SACV444Backtester:
                 obs, reward, done, truncated, info = self.env.step(action)
 
                 # Record data
-                episode_portfolio_values.append(info.get('portfolio_value', 0))
-                episode_actions.append(float(action[0]) if isinstance(action, np.ndarray) else float(action))
-                episode_regimes.append(info.get('market_regime', 'unknown'))
+                episode_portfolio_values.append(info.get("portfolio_value", 0))
+                episode_actions.append(
+                    float(action[0])
+                    if isinstance(action, np.ndarray)
+                    else float(action)
+                )
+                episode_regimes.append(info.get("market_regime", "unknown"))
 
             portfolio_values.extend(episode_portfolio_values)
             actions_history.extend(episode_actions)
             regime_history.extend(episode_regimes)
 
         # Calculate metrics
-        metrics = self._calculate_metrics(portfolio_values, actions_history, regime_history)
+        metrics = self._calculate_metrics(
+            portfolio_values, actions_history, regime_history
+        )
 
         return {
-            'portfolio_values': portfolio_values,
-            'actions_history': actions_history,
-            'regime_history': regime_history,
-            'metrics': metrics
+            "portfolio_values": portfolio_values,
+            "actions_history": actions_history,
+            "regime_history": regime_history,
+            "metrics": metrics,
         }
 
-    def _calculate_metrics(self, portfolio_values: List[float],
-                          actions_history: List[float],
-                          regime_history: List[str]) -> Dict[str, Any]:
+    def _calculate_metrics(
+        self,
+        portfolio_values: List[float],
+        actions_history: List[float],
+        regime_history: List[str],
+    ) -> Dict[str, Any]:
         """Calculate backtest metrics."""
         if not portfolio_values:
             return {}
@@ -142,7 +153,11 @@ class SACV444Backtester:
         # Sharpe ratio (simplified - assuming daily returns)
         returns = np.diff(portfolio_values) / portfolio_values[:-1]
         if len(returns) > 0:
-            sharpe_ratio = np.mean(returns) / np.std(returns) * np.sqrt(252) if np.std(returns) > 0 else 0
+            sharpe_ratio = (
+                np.mean(returns) / np.std(returns) * np.sqrt(252)
+                if np.std(returns) > 0
+                else 0
+            )
         else:
             sharpe_ratio = 0
 
@@ -158,18 +173,18 @@ class SACV444Backtester:
         }
 
         return {
-            'total_return_pct': total_return,
-            'max_drawdown_pct': max_drawdown,
-            'sharpe_ratio': sharpe_ratio,
-            'initial_portfolio_value': initial_value,
-            'final_portfolio_value': final_value,
-            'total_trades': len(actions_history),
-            'regime_distribution': regime_distribution
+            "total_return_pct": total_return,
+            "max_drawdown_pct": max_drawdown,
+            "sharpe_ratio": sharpe_ratio,
+            "initial_portfolio_value": initial_value,
+            "final_portfolio_value": final_value,
+            "total_trades": len(actions_history),
+            "regime_distribution": regime_distribution,
         }
 
     def save_results(self, results: Dict[str, Any], output_path: str):
         """Save backtest results to JSON file."""
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(results, f, indent=2, default=str)
         logger.info(f"Saved backtest results to {output_path}")
 
@@ -219,7 +234,7 @@ def main():
         results = backtester.run_backtest(num_episodes=args.episodes)
 
         # Print summary
-        metrics = results['metrics']
+        metrics = results["metrics"]
         print("\n📊 Backtest Results Summary:")
         print(".2f")
         print(".2f")
@@ -229,7 +244,7 @@ def main():
         # Save results
         backtester.save_results(results, args.output)
 
-        print(f"\n✅ Backtest completed successfully!")
+        print("\n✅ Backtest completed successfully!")
         print(f"Results saved to: {args.output}")
 
         return True

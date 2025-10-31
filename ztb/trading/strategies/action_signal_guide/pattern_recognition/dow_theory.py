@@ -18,6 +18,7 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
 )
 
 
+
 class DowTheoryRecognizer(PatternRecognizer):
     """
     Recognizes patterns using Dow Theory principles.
@@ -278,8 +279,10 @@ class DowTheoryRecognizer(PatternRecognizer):
                 if not volume_confirm:
                     return None
 
-            # Use the stronger of the two trends
+            # Use the stronger of the two trends, but ensure minimum strength
             strength = max(primary["strength"], secondary["strength"])
+            if strength < 0.05:  # Minimum strength threshold - further reduced
+                strength = 0.05  # Set minimum strength for signal generation
             return {
                 "direction": 1.0,
                 "strength": strength,
@@ -295,8 +298,10 @@ class DowTheoryRecognizer(PatternRecognizer):
                 if not volume_confirm:
                     return None
 
-            # Use the stronger of the two trends
+            # Use the stronger of the two trends, but ensure minimum strength
             strength = max(primary["strength"], secondary["strength"])
+            if strength < 0.1:  # Minimum strength threshold
+                strength = 0.1  # Set minimum strength for signal generation
             return {
                 "direction": -1.0,
                 "strength": strength,

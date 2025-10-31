@@ -6,7 +6,7 @@ Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
 from collections import defaultdict, deque
-from typing import Dict, Deque
+from typing import Deque, Dict
 
 import numpy as np
 
@@ -117,7 +117,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
                 regime = "volatile"
             else:
                 regime = "sideways"
-            
+
             self.current_regime = regime
             self.logger.debug(
                 f"Market regime updated to: {regime} "

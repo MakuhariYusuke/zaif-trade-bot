@@ -8,7 +8,7 @@ Tests each pattern recognition system individually to validate functionality.
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -41,14 +41,16 @@ def create_test_data(n_points: int = 5000) -> pd.DataFrame:
         close = base_price + np.random.normal(0, base_price * volatility * 0.5)
         volume = np.random.randint(100, 10000)
 
-        data.append({
-            "timestamp": dates[i],
-            "open": open_price,
-            "high": high,
-            "low": low,
-            "close": close,
-            "volume": volume,
-        })
+        data.append(
+            {
+                "timestamp": dates[i],
+                "open": open_price,
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volume,
+            }
+        )
 
     df = pd.DataFrame(data)
     df.set_index("timestamp", inplace=True)
@@ -72,7 +74,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "FIBONACCI",
@@ -89,7 +91,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "GANN",
@@ -106,7 +108,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "WAVE",
@@ -123,7 +125,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "HARMONIC",
@@ -140,7 +142,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "OSCILLATOR",
@@ -157,7 +159,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "VOLUME",
@@ -174,7 +176,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "BOLLINGER",
@@ -191,7 +193,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "ADX",
@@ -208,7 +210,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "GRANVILLE",
@@ -225,7 +227,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": True,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "HEIKIN_ASHI",
@@ -242,7 +244,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": True,
             "enable_dow_theory_patterns": False,
-        }
+        },
     },
     {
         "name": "DOW_THEORY",
@@ -259,7 +261,7 @@ PATTERN_RECOGNIZERS = [
             "enable_granville_patterns": False,
             "enable_heikin_ashi_patterns": False,
             "enable_dow_theory_patterns": True,
-        }
+        },
     },
 ]
 
@@ -279,14 +281,16 @@ def run_individual_pattern_backtest(pattern_name: str, config_dict: Dict) -> Dic
         debug_short_mode=False,
         guidance_level=GuidanceLevel.WEAK,
         error_suppression_threshold=0,  # Suppress all error logs
-        **config_dict
+        **config_dict,
     )
 
     # Initialize ActionSignalGuide
     start_time = time.time()
     guide = ActionSignalGuide(config=config)
     init_time = time.time() - start_time
-    print(f"Initialized {pattern_name} with {len(guide.all_recognizers)} recognizers in {init_time:.2f}s")
+    print(
+        f"Initialized {pattern_name} with {len(guide.all_recognizers)} recognizers in {init_time:.2f}s"
+    )
 
     # Run backtest
     signals_generated = 0
@@ -313,7 +317,9 @@ def run_individual_pattern_backtest(pattern_name: str, config_dict: Dict) -> Dic
             if i % 500 == 0:
                 elapsed = time.time() - backtest_start
                 progress = (i - 100) / (len(data) - 100) * 100
-                print(f"Progress: {progress:.1f}% ({i}/{len(data)-1}) - Elapsed: {elapsed:.1f}s")
+                print(
+                    f"Progress: {progress:.1f}% ({i}/{len(data)-1}) - Elapsed: {elapsed:.1f}s"
+                )
 
         except Exception as e:
             print(f"Error at index {i}: {e}")
@@ -331,21 +337,25 @@ def run_individual_pattern_backtest(pattern_name: str, config_dict: Dict) -> Dic
         "hold_signals": hold_signals,
         "init_time": init_time,
         "backtest_time": backtest_time,
-        "signals_per_second": signals_generated / backtest_time if backtest_time > 0 else 0,
+        "signals_per_second": signals_generated / backtest_time
+        if backtest_time > 0
+        else 0,
     }
 
     print(f"\nResults for {pattern_name}:")
     print(f"  Recognizers: {results['recognizers_count']}")
     print(f"  Data points processed: {results['data_points']}")
     print(f"  Signals generated: {results['signals_generated']}")
-    print(f"  Buy/Sell/Hold: {results['buy_signals']}/{results['sell_signals']}/{results['hold_signals']}")
+    print(
+        f"  Buy/Sell/Hold: {results['buy_signals']}/{results['sell_signals']}/{results['hold_signals']}"
+    )
     print(f"  Backtest time: {results['backtest_time']:.2f}s")
     print(f"  Signals/second: {results['signals_per_second']:.2f}")
 
     return results
 
 
-def main():
+def main() -> None:
     """Run individual pattern validation for all pattern groups."""
     print("Starting Individual Pattern Validation...")
 
@@ -354,13 +364,13 @@ def main():
     for pattern_config in PATTERN_RECOGNIZERS:
         try:
             result = run_individual_pattern_backtest(
-                pattern_config["name"],
-                pattern_config["config"]
+                pattern_config["name"], pattern_config["config"]
             )
             all_results.append(result)
         except Exception as e:
             print(f"Failed to test {pattern_config['name']}: {e}")
             import traceback
+
             traceback.print_exc()
             continue
 
@@ -375,13 +385,21 @@ def main():
     print(f"Total patterns tested: {len(all_results)}")
     print(f"Total signals generated: {total_signals}")
     print(f"Total backtest time: {total_time:.2f}s")
-    print(f"Average signals/second: {total_signals/total_time:.2f}" if total_time > 0 else "N/A")
+    print(
+        f"Average signals/second: {total_signals/total_time:.2f}"
+        if total_time > 0
+        else "N/A"
+    )
 
-    print(f"\nDetailed Results:")
-    print(f"{'Pattern':<15} {'Recognizers':<12} {'Signals':<10} {'Time(s)':<10} {'Sig/s':<8}")
+    print("\nDetailed Results:")
+    print(
+        f"{'Pattern':<15} {'Recognizers':<12} {'Signals':<10} {'Time(s)':<10} {'Sig/s':<8}"
+    )
     print("-" * 65)
     for result in all_results:
-        print(f"{result['pattern_name']:<15} {result['recognizers_count']:<12} {result['signals_generated']:<10} {result['backtest_time']:<10.2f} {result['signals_per_second']:<8.2f}")
+        print(
+            f"{result['pattern_name']:<15} {result['recognizers_count']:<12} {result['signals_generated']:<10} {result['backtest_time']:<10.2f} {result['signals_per_second']:<8.2f}"
+        )
 
 
 if __name__ == "__main__":
