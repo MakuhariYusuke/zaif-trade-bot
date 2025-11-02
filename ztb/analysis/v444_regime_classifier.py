@@ -23,12 +23,22 @@ Regimes:
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+
+ConfigDict = Dict[str, Union[str, int, float, bool, Dict[str, Any], List[Any]]]
+
+
+class TimeFrame(Enum):
+    """Time frame definitions for multi-timeframe analysis"""
+    SHORT = "short"      # 5-15 minutes
+    MEDIUM = "medium"    # 1-4 hours
+    LONG = "long"        # Daily
 
 
 class RegimeType(Enum):
@@ -79,6 +89,17 @@ class RegimeDetectionResult:
     lookback_period: int
 
 
+@dataclass
+class MultiTimeFrameMetrics:
+    """Metrics from multiple timeframes"""
+    short_term: RegimeMetrics
+    medium_term: RegimeMetrics
+    long_term: RegimeMetrics
+    timeframe_weights: Dict[str, float]
+    integrated_regime: RegimeType
+    integration_confidence: float
+
+
 class V444RegimeClassifier:
     """
     Advanced regime classifier for SAC v444 with 12-regime detection
@@ -87,7 +108,7 @@ class V444RegimeClassifier:
     technical indicators to accurately identify market regimes.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[ConfigDict] = None):
         """
         Initialize the regime classifier
 
@@ -95,12 +116,12 @@ class V444RegimeClassifier:
             config: Configuration dictionary with regime parameters
         """
         self.config = config or {}
-        self.lookback_periods = self.config.get(
+        self.lookback_periods: Dict[str, int] = self.config.get(
             "lookback_periods", {"short": 20, "medium": 50, "long": 100}
-        )
+        )  # type: ignore
 
         # Regime detection thresholds
-        self.thresholds = self.config.get(
+        self.thresholds: Dict[str, float] = self.config.get(
             "thresholds",
             {
                 "strong_trend_threshold": 3.0,
@@ -112,9 +133,14 @@ class V444RegimeClassifier:
                 "consolidation_range_threshold": 0.05,  # Adjusted for very low volatility
                 "breakout_setup_threshold": 0.15,
             },
-        )
+        )  # type: ignore
 
         logger.info("V444 Regime Classifier initialized")
+
+        # Dynamic threshold adaptation
+        self.dynamic_thresholds_enabled = self.config.get("dynamic_thresholds", True)
+        self.adaptation_window = self.config.get("adaptation_window", 100)
+        self.market_stats_history = []
 
         # Debug metrics
         self.metrics = {
@@ -135,27 +161,55 @@ class V444RegimeClassifier:
 
         Returns:
             RegimeDetectionResult with detected regime and confidence
+
+        Raises:
+            ValueError: If data is invalid or insufficient
+            RuntimeError: If regime detection fails
         """
-        if current_index == -1:
-            current_index = len(data) - 1
+        try:
+            if data is None or data.empty:
+                raise ValueError("Input data cannot be None or empty")
 
-        # Calculate regime metrics
-        metrics = self._calculate_regime_metrics(data, current_index)
+            if current_index == -1:
+                current_index = len(data) - 1
 
-        # Determine primary regime
-        primary_regime, confidence = self._classify_regime(metrics)
+            if current_index < 0 or current_index >= len(data):
+                raise ValueError(f"Invalid current_index: {current_index}")
 
-        # Calculate secondary regimes
-        secondary_regimes = self._calculate_secondary_regimes(metrics, primary_regime)
+            # Calculate regime metrics
+            metrics = self._calculate_regime_metrics(data, current_index)
 
-        return RegimeDetectionResult(
-            primary_regime=primary_regime,
-            confidence=confidence,
-            secondary_regimes=secondary_regimes,
-            metrics=metrics,
-            detection_timestamp=data.index[current_index],
-            lookback_period=self.lookback_periods["medium"],
-        )
+            # Adapt thresholds based on market conditions if enabled
+            if self.dynamic_thresholds_enabled:
+                self._adapt_thresholds(data, current_index, metrics)
+
+            # Determine primary regime
+            primary_regime, confidence = self._classify_regime(metrics)
+
+            # Calculate secondary regimes
+            secondary_regimes = self._calculate_secondary_regimes(metrics, primary_regime)
+
+            return RegimeDetectionResult(
+                primary_regime=primary_regime,
+                confidence=confidence,
+                secondary_regimes=secondary_regimes,
+                metrics=metrics,
+                detection_timestamp=data.index[current_index] if hasattr(data, 'index') else pd.Timestamp.now(),
+                lookback_period=self.lookback_periods["medium"],
+            )
+
+        except Exception as e:
+            logger.error(f"Regime detection failed at index {current_index}: {e}")
+            # Return fallback result
+            fallback_metrics = self._get_default_metrics()
+            return RegimeDetectionResult(
+                primary_regime=RegimeType.CONSOLIDATION,
+                confidence=0.0,
+                secondary_regimes=[],
+                metrics=fallback_metrics,
+                detection_timestamp=pd.Timestamp.now(),
+                lookback_period=self.lookback_periods["medium"],
+            )
 
     def _calculate_regime_metrics(
         self, data: pd.DataFrame, index: int
@@ -756,3 +810,374 @@ class V444RegimeClassifier:
         regime_config.update(custom_config)
 
         return regime_config
+
+    def get_adaptive_feature_weights(
+        self, regime: RegimeType, base_features: List[str]
+    ) -> Dict[str, float]:
+        """
+        Get adaptive feature weights based on detected regime
+
+        Args:
+            regime: Detected market regime
+            base_features: List of base feature names
+
+        Returns:
+            Dictionary mapping feature categories to weights
+        """
+        try:
+            regime_config = self.get_regime_config(regime)
+
+            # Get base weights from regime config
+            base_weights = regime_config.get("feature_weights", {})
+
+            # Create adaptive weights for all feature categories
+            adaptive_weights = {}
+
+            # Map feature names to categories
+            feature_category_map = self._map_features_to_categories(base_features)
+
+            # Apply regime-specific weights
+            for feature, category in feature_category_map.items():
+                if category in base_weights:
+                    adaptive_weights[feature] = base_weights[category]
+                else:
+                    # Default weight for unmapped categories
+                    adaptive_weights[feature] = 1.0
+
+            # Apply market condition adjustments
+            adaptive_weights = self._apply_market_condition_adjustments(
+                adaptive_weights, regime
+            )
+
+            logger.debug(f"Adaptive feature weights for {regime.value}: {adaptive_weights}")
+            return adaptive_weights
+
+        except Exception as e:
+            logger.warning(f"Error getting adaptive feature weights: {e}")
+            return {feature: 1.0 for feature in base_features}
+
+    def _map_features_to_categories(self, features: List[str]) -> Dict[str, str]:
+        """
+        Map feature names to their categories
+
+        Args:
+            features: List of feature names
+
+        Returns:
+            Dictionary mapping feature names to categories
+        """
+        category_map = {}
+
+        for feature in features:
+            feature_lower = feature.lower()
+
+            # Momentum indicators
+            if any(keyword in feature_lower for keyword in ['rsi', 'stoch', 'williams', 'momentum', 'roc', 'macd']):
+                category_map[feature] = "momentum"
+
+            # Trend indicators
+            elif any(keyword in feature_lower for keyword in ['adx', 'trend', 'dmi', 'slope', 'linear']):
+                category_map[feature] = "trend"
+
+            # Volatility indicators
+            elif any(keyword in feature_lower for keyword in ['atr', 'bollinger', 'std', 'volatility', 'range']):
+                category_map[feature] = "volatility"
+
+            # Volume indicators
+            elif any(keyword in feature_lower for keyword in ['volume', 'obv', 'vwap', 'money_flow']):
+                category_map[feature] = "volume"
+
+            # Support/Resistance
+            elif any(keyword in feature_lower for keyword in ['support', 'resistance', 'pivot']):
+                category_map[feature] = "support_resistance"
+
+            # Default category
+            else:
+                category_map[feature] = "general"
+
+        return category_map
+
+    def _apply_market_condition_adjustments(
+        self, weights: Dict[str, float], regime: RegimeType
+    ) -> Dict[str, float]:
+        """
+        Apply additional market condition adjustments to feature weights
+
+        Args:
+            weights: Base feature weights
+            regime: Current market regime
+
+        Returns:
+            Adjusted feature weights
+        """
+        adjusted_weights = weights.copy()
+
+        # Get recent market statistics for additional adaptation
+        if len(self.market_stats_history) >= 10:
+            recent_stats = self.market_stats_history[-10:]
+            avg_volatility = np.mean([s["volatility"] for s in recent_stats])
+            avg_trend_strength = np.mean([s["trend_strength"] for s in recent_stats])
+
+            # Adjust weights based on recent market conditions
+            if regime in [RegimeType.STRONG_BULL_TREND, RegimeType.STRONG_BEAR_TREND]:
+                # In strong trends, emphasize trend-following features
+                for feature, category in self._map_features_to_categories(list(weights.keys())).items():
+                    if category == "trend":
+                        adjusted_weights[feature] *= 1.1
+                    elif category == "volatility":
+                        adjusted_weights[feature] *= 0.9
+
+            elif regime in [RegimeType.HIGH_VOLATILITY_RANGING, RegimeType.EXTREME_VOLATILITY]:
+                # In high volatility, emphasize volatility and momentum features
+                for feature, category in self._map_features_to_categories(list(weights.keys())).items():
+                    if category == "volatility":
+                        adjusted_weights[feature] *= 1.2
+                    elif category == "momentum":
+                        adjusted_weights[feature] *= 1.1
+
+            elif regime == RegimeType.CONSOLIDATION:
+                # In consolidation, balance all features
+                for feature in adjusted_weights:
+                    adjusted_weights[feature] = 1.0
+
+        return adjusted_weights
+
+    def detect_multi_timeframe_regime(
+        self, data: pd.DataFrame, current_index: int = -1
+    ) -> MultiTimeFrameMetrics:
+        """
+        Detect regime using multi-timeframe analysis
+
+        Args:
+            data: OHLCV DataFrame (should contain multiple timeframes)
+            current_index: Current index to analyze
+
+        Returns:
+            MultiTimeFrameMetrics with integrated analysis
+        """
+        try:
+            if current_index == -1:
+                current_index = len(data) - 1
+
+            # Calculate metrics for each timeframe
+            short_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.SHORT)
+            medium_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.MEDIUM)
+            long_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.LONG)
+
+            # Determine regime for each timeframe
+            short_regime, short_conf = self._classify_regime(short_metrics)
+            medium_regime, medium_conf = self._classify_regime(medium_metrics)
+            long_regime, long_conf = self._classify_regime(long_metrics)
+
+            # Integrate regimes across timeframes
+            integrated_regime, integration_confidence, timeframe_weights = self._integrate_timeframe_regimes(
+                short_regime, short_conf, medium_regime, medium_conf, long_regime, long_conf
+            )
+
+            return MultiTimeFrameMetrics(
+                short_term=short_metrics,
+                medium_term=medium_metrics,
+                long_term=long_metrics,
+                timeframe_weights=timeframe_weights,
+                integrated_regime=integrated_regime,
+                integration_confidence=integration_confidence
+            )
+
+        except Exception as e:
+            logger.warning(f"Multi-timeframe analysis failed: {e}")
+            # Return fallback with medium-term only
+            fallback_metrics = self._calculate_regime_metrics(data, current_index)
+            return MultiTimeFrameMetrics(
+                short_term=fallback_metrics,
+                medium_term=fallback_metrics,
+                long_term=fallback_metrics,
+                timeframe_weights={"short": 0.2, "medium": 0.6, "long": 0.2},
+                integrated_regime=RegimeType.CONSOLIDATION,
+                integration_confidence=0.5
+            )
+
+    def _calculate_timeframe_metrics(
+        self, data: pd.DataFrame, index: int, timeframe: TimeFrame
+    ) -> RegimeMetrics:
+        """
+        Calculate regime metrics for a specific timeframe
+
+        Args:
+            data: OHLCV DataFrame
+            index: Current index
+            timeframe: Time frame to analyze
+
+        Returns:
+            RegimeMetrics for the specified timeframe
+        """
+        # Adjust lookback periods based on timeframe
+        timeframe_multipliers = {
+            TimeFrame.SHORT: 0.5,   # Shorter lookback for short-term
+            TimeFrame.MEDIUM: 1.0,  # Standard lookback for medium-term
+            TimeFrame.LONG: 2.0     # Longer lookback for long-term
+        }
+
+        multiplier = timeframe_multipliers[timeframe]
+
+        # Temporarily adjust lookback periods
+        original_periods = self.lookback_periods.copy()
+        self.lookback_periods = {
+            "short": int(original_periods["short"] * multiplier),
+            "medium": int(original_periods["medium"] * multiplier),
+            "long": int(original_periods["long"] * multiplier)
+        }
+
+        try:
+            # Calculate metrics with adjusted periods
+            metrics = self._calculate_regime_metrics(data, index)
+            return metrics
+        finally:
+            # Restore original periods
+            self.lookback_periods = original_periods
+
+    def _integrate_timeframe_regimes(
+        self,
+        short_regime: RegimeType, short_conf: float,
+        medium_regime: RegimeType, medium_conf: float,
+        long_regime: RegimeType, long_conf: float
+    ) -> Tuple[RegimeType, float, Dict[str, float]]:
+        """
+        Integrate regime classifications from multiple timeframes
+
+        Args:
+            short_regime, medium_regime, long_regime: Regimes from each timeframe
+            short_conf, medium_conf, long_conf: Confidences from each timeframe
+
+        Returns:
+            Tuple of (integrated_regime, confidence, weights)
+        """
+        # Define timeframe weights (long-term has highest weight for stability)
+        base_weights = {
+            "short": 0.2,   # Short-term: 20% (entry/exit timing)
+            "medium": 0.3,  # Medium-term: 30% (trend direction)
+            "long": 0.5     # Long-term: 50% (market environment)
+        }
+
+        # Adjust weights based on regime stability
+        stability_scores = self._calculate_regime_stability_scores({
+            short_regime.value: {short_regime.value: short_conf},
+            medium_regime.value: {medium_regime.value: medium_conf},
+            long_regime.value: {long_regime.value: long_conf}
+        })
+
+        # Boost weight for more stable regimes
+        adjusted_weights = {}
+        for tf, base_weight in base_weights.items():
+            regime_name = locals()[f"{tf}_regime"].value
+            stability = stability_scores.get(regime_name, 0.5)
+            adjusted_weights[tf] = base_weight * (1 + stability * 0.5)
+
+        # Normalize weights
+        total_weight = sum(adjusted_weights.values())
+        normalized_weights = {tf: w / total_weight for tf, w in adjusted_weights.items()}
+
+        # Calculate weighted regime scores
+        regime_scores = {}
+        for regime in RegimeType:
+            score = (
+                normalized_weights["short"] * (1.0 if short_regime == regime else 0.0) * short_conf +
+                normalized_weights["medium"] * (1.0 if medium_regime == regime else 0.0) * medium_conf +
+                normalized_weights["long"] * (1.0 if long_regime == regime else 0.0) * long_conf
+            )
+            regime_scores[regime] = score
+
+        # Select regime with highest score
+        integrated_regime = max(regime_scores.keys(), key=lambda r: regime_scores[r])
+        integration_confidence = regime_scores[integrated_regime]
+
+        return integrated_regime, integration_confidence, normalized_weights
+
+    def _adapt_thresholds(
+        self, data: pd.DataFrame, current_index: int, metrics: RegimeMetrics
+    ) -> None:
+        """
+        Dynamically adapt classification thresholds based on market conditions
+
+        Args:
+            data: OHLCV DataFrame
+            current_index: Current index
+            metrics: Current regime metrics
+        """
+        try:
+            # Store market statistics for adaptation
+            market_stats = {
+                "volatility": metrics.volatility,
+                "trend_strength": abs(metrics.trend_strength),
+                "timestamp": data.index[current_index] if hasattr(data, 'index') else None,
+            }
+            self.market_stats_history.append(market_stats)
+
+            # Keep only recent history
+            if len(self.market_stats_history) > self.adaptation_window:
+                self.market_stats_history = self.market_stats_history[-self.adaptation_window:]
+
+            # Calculate adaptive thresholds based on recent market conditions
+            if len(self.market_stats_history) >= 20:  # Need minimum history
+                recent_volatilities = [s["volatility"] for s in self.market_stats_history[-50:]]
+                recent_trend_strengths = [s["trend_strength"] for s in self.market_stats_history[-50:]]
+
+                # Calculate percentile-based thresholds
+                vol_p25 = np.percentile(recent_volatilities, 25)
+                vol_p75 = np.percentile(recent_volatilities, 75)
+                trend_p75 = np.percentile(recent_trend_strengths, 75)
+
+                # Adapt thresholds based on market regime
+                volatility_regime = "normal"
+                if metrics.volatility > vol_p75 * 1.5:
+                    volatility_regime = "high"
+                elif metrics.volatility < vol_p25 * 0.7:
+                    volatility_regime = "low"
+
+                # Adjust thresholds based on volatility regime
+                if volatility_regime == "high":
+                    # In high volatility, require stronger signals
+                    self.thresholds["strong_trend_threshold"] = max(4.0, trend_p75 * 1.2)
+                    self.thresholds["moderate_trend_threshold"] = max(2.5, trend_p75 * 0.8)
+                    self.thresholds["weak_trend_threshold"] = max(1.5, trend_p75 * 0.4)
+                    self.thresholds["high_volatility_threshold"] = vol_p75 * 0.8
+                    self.thresholds["extreme_volatility_threshold"] = vol_p75 * 1.2
+
+                elif volatility_regime == "low":
+                    # In low volatility, be more sensitive to smaller signals
+                    self.thresholds["strong_trend_threshold"] = max(2.0, trend_p75 * 0.8)
+                    self.thresholds["moderate_trend_threshold"] = max(1.5, trend_p75 * 0.6)
+                    self.thresholds["weak_trend_threshold"] = max(0.8, trend_p75 * 0.3)
+                    self.thresholds["consolidation_range_threshold"] = vol_p25 * 0.8
+
+                else:  # normal volatility
+                    # Reset to baseline with slight adaptation
+                    base_strong = 3.0
+                    base_moderate = 2.0
+                    base_weak = 1.0
+
+                    self.thresholds["strong_trend_threshold"] = base_strong * (1 + (trend_p75 - 2.0) * 0.1)
+                    self.thresholds["moderate_trend_threshold"] = base_moderate * (1 + (trend_p75 - 1.5) * 0.1)
+                    self.thresholds["weak_trend_threshold"] = base_weak * (1 + (trend_p75 - 1.0) * 0.1)
+
+                logger.debug(
+                    f"Adapted thresholds for {volatility_regime} volatility regime: "
+                    f"strong={self.thresholds['strong_trend_threshold']:.2f}, "
+                    f"moderate={self.thresholds['moderate_trend_threshold']:.2f}, "
+                    f"weak={self.thresholds['weak_trend_threshold']:.2f}"
+                )
+
+        except Exception as e:
+            logger.warning(f"Error adapting thresholds: {e}")
+            # Keep default thresholds on error
+
+    def _calculate_regime_stability_scores(
+        self, transition_probabilities: Dict[str, Dict[str, float]]
+    ) -> Dict[str, float]:
+        """レジーム安定性スコア計算"""
+        stability_scores = {}
+        for regime, probabilities in transition_probabilities.items():
+            # 自己遷移確率が高いほど安定性が高い
+            self_transition_prob = probabilities.get(regime, 0.0)
+            stability_scores[regime] = self_transition_prob
+
+        return stability_scores

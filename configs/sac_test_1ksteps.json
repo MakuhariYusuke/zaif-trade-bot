@@ -1,5 +1,6 @@
 {
   "algorithm": "sac",
+  "model_name": "sac_test_1ksteps",
   "model": {
     "name": "sac_test_1ksteps",
     "version": "test_logger"
@@ -8,23 +9,23 @@
     "total_timesteps": 1000,
     "save_freq": 500,
     "log_interval": 100,
-    "seed": 42
-  },
-  "algorithm_params": {
-    "learning_rate": 0.0003,
-    "buffer_size": 50000,
-    "learning_starts": 100,
-    "batch_size": 256,
-    "tau": 0.005,
-    "gamma": 0.99,
-    "train_freq": 1,
-    "gradient_steps": 1,
-    "target_update_interval": 1,
-    "policy_kwargs": {
-      "net_arch": [
-        256,
-        256
-      ]
+    "seed": 42,
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 50000,
+      "learning_starts": 100,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "train_freq": 1,
+      "gradient_steps": 1,
+      "target_update_interval": 1,
+      "policy_kwargs": {
+        "net_arch": [
+          256,
+          256
+        ]
+      }
     }
   },
   "environment": {

@@ -1,8 +1,8 @@
 === Action Analysis for sac_v444_advanced_regime_adaptation ===
-Sample size: 1000
-Raw actions - Mean: 1.0000, Std: 0.0000, Min: 1.0000, Max: 1.0000
-Mapped actions - Mean: 1.0000, Std: 0.0000, Min: 1.0000, Max: 1.0000
-Action distribution - BUY: 1000, HOLD: 0, SELL: 0
-Buy threshold: 0.3333, Sell threshold: -0.3333
-Unique raw values: 1
-Unique mapped values: 1
+Sample size: 252
+Raw actions - Mean: -0.6349, Std: 0.7726, Min: -1.0000, Max: 1.0000
+Mapped actions - Mean: -0.6349, Std: 0.7726, Min: -1.0000, Max: 1.0000
+Action distribution - BUY: 46, HOLD: 0, SELL: 206
+Thresholds - Buy: 0.3333, Sell: -0.3333
+Unique raw values: 2
+Unique mapped values: 2

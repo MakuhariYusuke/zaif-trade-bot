@@ -1,12 +1,12 @@
 """Validation component for HeavyTradingEnv."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import numpy as np
-from numpy.typing import NDArray
 
-from ztb.utils.logging_utils import get_logger
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.errors import ValidationError
+from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
@@ -34,7 +34,9 @@ class ValidationManager:
         """
         # Handle continuous actions
         if isinstance(action, (float, np.ndarray)):
-            continuous_action = float(action) if isinstance(action, np.ndarray) else action
+            continuous_action = (
+                float(action) if isinstance(action, np.ndarray) else action
+            )
             if continuous_action > self.env.action_threshold:
                 return 1  # BUY
             elif continuous_action < self.env.negative_action_threshold:
@@ -46,8 +48,10 @@ class ValidationManager:
         if not isinstance(action, int):
             raise ValidationError(f"Action must be int or float, got {type(action)}")
 
-        if action not in [0, 1, 2]:
-            raise ValidationError(f"Invalid discrete action: {action}, must be 0, 1, or 2")
+        if action not in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
+            raise ValidationError(
+                f"Invalid discrete action: {action}, must be {ACTION_HOLD} (HOLD), {ACTION_BUY} (BUY), or {ACTION_SELL} (SELL)"
+            )
 
         return action
 
@@ -64,7 +68,9 @@ class ValidationManager:
             raise ValidationError(f"Step cannot be negative: {step}")
 
         if step >= self.env.n_steps:
-            raise ValidationError(f"Step {step} exceeds episode length {self.env.n_steps}")
+            raise ValidationError(
+                f"Step {step} exceeds episode length {self.env.n_steps}"
+            )
 
     def validate_position_size(self, position: float) -> None:
         """Validate position size is within bounds.
@@ -92,10 +98,14 @@ class ValidationManager:
             raise ValidationError(f"Price must be positive: {price}")
 
         # Check for extreme price changes (more than 50% in reasonable range)
-        if hasattr(self, '_last_validated_price') and self._last_validated_price:
-            change_ratio = abs(price - self._last_validated_price) / self._last_validated_price
+        if hasattr(self, "_last_validated_price") and self._last_validated_price:
+            change_ratio = (
+                abs(price - self._last_validated_price) / self._last_validated_price
+            )
             if change_ratio > 0.5:  # 50% change
-                self.logger.warning(f"Large price change detected: {change_ratio:.1%} from {self._last_validated_price} to {price}")
+                self.logger.warning(
+                    f"Large price change detected: {change_ratio:.1%} from {self._last_validated_price} to {price}"
+                )
 
         self._last_validated_price = price
 
@@ -141,7 +151,9 @@ class ValidationManager:
 
         # Check data availability
         if self.env.current_step >= self.env.n_steps:
-            issues.append(f"Step {self.env.current_step} exceeds episode length {self.env.n_steps}")
+            issues.append(
+                f"Step {self.env.current_step} exceeds episode length {self.env.n_steps}"
+            )
 
         # Check required arrays
         if self.env._feature_matrix is None:

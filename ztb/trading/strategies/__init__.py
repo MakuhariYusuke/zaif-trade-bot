@@ -5,6 +5,7 @@ This package provides trading strategies and signal guidance systems
 for reinforcement learning agents.
 """
 
+from .action_signal_guide import GuidanceMode
 from .action_signal_guide.action_signal_guide import ActionSignalGuide, GuidanceLevel
 from .signal_definitions import SignalDefinitions, SignalStrength, SignalType
 from .signal_evaluator import BacktestResult, SignalEvaluator, SignalPerformance
@@ -20,6 +21,7 @@ __all__ = [
     "SignalIntegration",
     # Enums and types
     "GuidanceLevel",
+    "GuidanceMode",
     "SignalType",
     "SignalStrength",
     # Data classes

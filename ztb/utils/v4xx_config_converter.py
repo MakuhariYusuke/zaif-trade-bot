@@ -184,6 +184,21 @@ class V4XXConfigConverter:
 
         if version == "v435":
             logger.info("Configuration already in unified format (v435)")
+            # Ensure regime_adaptation is mapped to advanced_market_regime for environment
+            if "regime_adaptation" in config and "advanced_market_regime" not in config:
+                # Add to training.environment.config section for environment access
+                if "training" not in config:
+                    config["training"] = {}
+                if "environment" not in config["training"]:
+                    config["training"]["environment"] = {}
+                if "config" not in config["training"]["environment"]:
+                    config["training"]["environment"]["config"] = {}
+                config["training"]["environment"]["config"][
+                    "advanced_market_regime"
+                ] = config["regime_adaptation"]
+                logger.info(
+                    "Mapped regime_adaptation to training.environment.config.advanced_market_regime for environment compatibility"
+                )
             return config
         elif version == "v427":
             return cls.convert_v427_to_unified(config)
@@ -193,6 +208,21 @@ class V4XXConfigConverter:
             logger.warning(
                 f"Unknown configuration version, assuming v435 format: {version}"
             )
+            # Ensure regime_adaptation is mapped to advanced_market_regime for environment
+            if "regime_adaptation" in config and "advanced_market_regime" not in config:
+                # Add to training.environment.config section for environment access
+                if "training" not in config:
+                    config["training"] = {}
+                if "environment" not in config["training"]:
+                    config["training"]["environment"] = {}
+                if "config" not in config["training"]["environment"]:
+                    config["training"]["environment"]["config"] = {}
+                config["training"]["environment"]["config"][
+                    "advanced_market_regime"
+                ] = config["regime_adaptation"]
+                logger.info(
+                    "Mapped regime_adaptation to training.environment.config.advanced_market_regime for environment compatibility"
+                )
             return config
 
     @classmethod

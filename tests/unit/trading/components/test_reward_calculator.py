@@ -25,17 +25,39 @@ def sample_config():
 def reward_settings():
     """Sample reward settings for testing."""
     return RewardSettings(
-        profit_bonus_multiplier=1.5,
-        loss_penalty_multiplier=2.0,
-        position_penalty_base=0.01,
-        stagnation_penalty=0.001,
-        drawdown_penalty_multiplier=1.0,
-        growth_bonus_multiplier=1.0,
-        win_streak_bonus=0.1,
         use_simple_reward=False,
-        eps=1e-8,
-        scale_adjustment_base=1.0,
-        forced_balance_scaling=1.0,
+        reward_scale=100.0,
+        trading_bonus=0.01,
+        profit_bonuses={"base": 1.5, "ultra": 2.0},
+        penalty_coefficients={"loss": 2.0, "position": 0.01, "stagnation": 0.001},
+        entropy_bonus=0.0,
+        custom_reward_params={},
+        balance_penalty=0.1,
+        balance_penalty_tolerance=0.05,
+        profit_weight=1.0,
+        risk_weight=0.5,
+        consistency_weight=0.2,
+        ultra_profit_multiplier=2.0,
+        ultra_risk_multiplier=0.5,
+        position_soft_cap=0.5,
+        position_penalty_scale=0.1,
+        position_penalty_exponent=2.0,
+        inventory_window=10,
+        inventory_penalty_scale=0.01,
+        trade_frequency_penalty=0.001,
+        trade_frequency_halflife=100.0,
+        trade_cooldown_steps=5,
+        trade_cooldown_penalty=0.01,
+        max_consecutive_trades=3,
+        consecutive_trade_penalty=0.05,
+        volatility_window=20,
+        volatility_penalty_scale=0.01,
+        sharpe_bonus_scale=0.01,
+        sortino_bonus_scale=0.01,
+        calmar_bonus_scale=0.005,
+        reward_clip_value=10.0,
+        profit_bonus_multipliers=[1.0, 1.5, 2.0],
+        enable_forced_diversity=False,
     )
 
 
@@ -66,14 +88,12 @@ class TestRewardCalculatorInitialization:
         """Test setting getter methods."""
         # Test get_setting_int
         assert (
-            reward_calculator.get_setting_int("profit_bonus_multiplier", 1) == 1
-        )  # default
+            reward_calculator.get_setting_int("max_consecutive_trades", 1) == 3
+        )  # from reward_settings
         assert reward_calculator.get_setting_int("nonexistent", 42) == 42
 
         # Test get_setting_float
-        assert (
-            reward_calculator.get_setting_float("profit_bonus_multiplier", 1.0) == 1.5
-        )
+        assert reward_calculator.get_setting_float("reward_scale", 1.0) == 100.0
         assert reward_calculator.get_setting_float("nonexistent", 3.14) == 3.14
 
         # Test get_setting_bool
@@ -86,12 +106,20 @@ class TestRewardCalculatorSimple:
 
     def test_calculate_reward_simple_profit(self, reward_calculator):
         """Test simple reward with profit."""
-        reward = reward_calculator.calculate_reward_simple(
-            pnl=1000.0,
-            portfolio_value=101000.0,
-            position=0.5,
-            old_position=0.0,
+        import numpy as np
+
+        reward = reward_calculator.calculate_reward(
             action=ACTION_BUY,
+            current_price=100.0,
+            position=0.5,
+            portfolio_value=101000.0,
+            atr=1.0,
+            transaction_cost=0.001,
+            reward_scaling=1.0,
+            pnl=1000.0,
+            old_position=0.0,
+            step=1,
+            observation=np.array([1.0, 2.0, 3.0]),
             reward_history=[0.1, 0.2],
             portfolio_value_history=[100000.0, 100500.0],
         )
@@ -100,12 +128,20 @@ class TestRewardCalculatorSimple:
 
     def test_calculate_reward_simple_loss(self, reward_calculator):
         """Test simple reward with loss."""
-        reward = reward_calculator.calculate_reward_simple(
-            pnl=-500.0,
-            portfolio_value=99500.0,
-            position=-0.3,
-            old_position=0.0,
+        import numpy as np
+
+        reward = reward_calculator.calculate_reward(
             action=ACTION_SELL,
+            current_price=100.0,
+            position=-0.3,
+            portfolio_value=99500.0,
+            atr=1.0,
+            transaction_cost=0.001,
+            reward_scaling=1.0,
+            pnl=-500.0,
+            old_position=0.0,
+            step=1,
+            observation=np.array([1.0, 2.0, 3.0]),
             reward_history=[0.1, -0.05],
             portfolio_value_history=[100000.0, 99750.0],
         )
@@ -168,7 +204,7 @@ class TestRewardCalculatorReset:
         reward_calculator._recent_actions = [ACTION_BUY, ACTION_SELL]
 
         # Reset
-        reward_calculator.reset()
+        reward_calculator.reset_episode_state()
 
         # Verify reset
         assert reward_calculator._action_counts == [0, 0, 0]

@@ -71,6 +71,13 @@ training:
     target_update_interval: 1
     target_entropy: 'auto'
     train_freq: 1
+    # Overfitting prevention parameters
+    dropout_rate: 0.1
+    l2_regularization: 1.0e-04
+    early_stopping:
+      enabled: true
+      patience: 10
+      min_delta: 0.001
 evaluation:
   thresholds:
     re_evaluate: 0.05

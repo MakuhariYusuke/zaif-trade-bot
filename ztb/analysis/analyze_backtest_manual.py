@@ -9,6 +9,12 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+from ztb.trading.environment.constants import (
+    ACTION_BUY,
+    ACTION_SELL,
+    continuous_to_discrete_action,
+)
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
@@ -22,18 +28,6 @@ def load_backtest_results(results_path: str) -> Dict:
         return json.load(f)
 
 
-def continuous_to_discrete_action(
-    continuous_value: float, threshold: float = 0.3333
-) -> int:
-    """Convert continuous action to discrete action using threshold."""
-    if continuous_value > threshold:
-        return 1  # BUY
-    elif continuous_value < -threshold:
-        return -1  # SELL
-    else:
-        return 0  # HOLD
-
-
 def analyze_trades(
     portfolio_history: List[float], actions_history: List[float]
 ) -> List[Dict]:
@@ -43,11 +37,6 @@ def analyze_trades(
     current_position = 0
     entry_price = None
     entry_step = None
-
-    # Constants for action mapping
-    ACTION_HOLD = 0
-    ACTION_BUY = 1
-    ACTION_SELL = -1
 
     for step, (portfolio_value, continuous_action) in enumerate(
         zip(portfolio_history, actions_history)

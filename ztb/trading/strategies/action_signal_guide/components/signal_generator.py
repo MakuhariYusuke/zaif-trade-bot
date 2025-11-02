@@ -6,7 +6,7 @@ Follows Single Responsibility Principle by focusing only on signal generation.
 """
 
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
 import pandas as pd
 
@@ -22,14 +22,14 @@ from ..pattern_recognition.base import PatternRecognizer
 from .interfaces import IPatternStatistics, IPerformanceTracker
 
 
-def _get_action_signal_class():
+def _get_action_signal_class() -> Type["ActionSignal"]:
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import ActionSignal
 
     return ActionSignal
 
 
-def _get_guidance_level_enum():
+def _get_guidance_level_enum() -> Type[Any]:
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import GuidanceLevel
 
@@ -296,11 +296,29 @@ class SignalGenerator(ISignalGenerator):
                     if current_index < lookback_period:
                         continue  # Skip this recognizer if not enough data
 
+                    # Debug log for HARMONIC and DOW_THEORY
+                    if (
+                        "harmonic" in recognizer.name.lower()
+                        or "dow" in recognizer.name.lower()
+                    ):
+                        self.logger.info(
+                            f"Running recognizer: {recognizer.name} at index {current_index}"
+                        )
+
                     signal_result = recognizer.recognize(
                         data,
                         index=current_index,
                         multi_timeframe_data=multi_timeframe_data,
                     )
+
+                    # Debug log for HARMONIC and DOW_THEORY
+                    if (
+                        "harmonic" in recognizer.name.lower()
+                        or "dow" in recognizer.name.lower()
+                    ):
+                        self.logger.info(
+                            f"Recognizer {recognizer.name} returned: {signal_result is not None}"
+                        )
 
                     if signal_result is not None:
                         # Create ActionSignal from pattern result
@@ -312,7 +330,9 @@ class SignalGenerator(ISignalGenerator):
                             strength=signal_result.strength,
                             confidence=signal_result.confidence
                             or signal_result.strength,
-                            signal_type=recognizer.pattern_type,
+                            signal_type=recognizer.__class__.__name__.lower().replace(
+                                "recognizer", ""
+                            ),
                             description=f"{recognizer.name}: {signal_result.description}",
                             metadata={
                                 **signal_result.metadata,
@@ -325,7 +345,9 @@ class SignalGenerator(ISignalGenerator):
                         )
 
                         all_signals.append(action_signal)
-                        pattern_type = recognizer.pattern_type
+                        pattern_type = recognizer.__class__.__name__.lower().replace(
+                            "recognizer", ""
+                        )
 
                         if pattern_type not in pattern_signals:
                             pattern_signals[pattern_type] = []
@@ -496,8 +518,10 @@ class SignalGenerator(ISignalGenerator):
             # Moderate to strong signals
             return [s for s in signals if s.strength >= 0.6 and s.confidence >= 0.6]
         elif self.guidance_level == GuidanceLevel.WEAK:
-            # Any detectable signals
-            return [s for s in signals if s.strength >= 0.3 and s.confidence >= 0.3]
+            # Lenient mode for testing and exploratory runs: accept weaker signals.
+            # Lower thresholds help surface recognizers that produce low-confidence
+            # or synthetic signals during debugging and integration testing.
+            return [s for s in signals if s.strength >= 0.05 and s.confidence >= 0.05]
         else:
             # Default to moderate
             return [s for s in signals if s.strength >= 0.6 and s.confidence >= 0.6]

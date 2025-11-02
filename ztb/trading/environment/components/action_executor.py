@@ -61,11 +61,15 @@ class ActionExecutor:
         try:
             if isinstance(action, np.ndarray):
                 if action.size != 1:
-                    raise ValueError(f"Continuous action must be 1D array with single value, got shape {action.shape}")
+                    raise ValueError(
+                        f"Continuous action must be 1D array with single value, got shape {action.shape}"
+                    )
 
                 continuous_value = float(action[0])
                 if not np.isfinite(continuous_value):
-                    raise ValueError(f"Continuous action value must be finite, got {continuous_value}")
+                    raise ValueError(
+                        f"Continuous action value must be finite, got {continuous_value}"
+                    )
 
                 discrete_action = continuous_to_discrete_action(
                     continuous_value,
@@ -77,17 +81,22 @@ class ActionExecutor:
                 action_int = int(action)
                 if action_int in (ACTION_HOLD, ACTION_BUY, ACTION_SELL):
                     return action_int, None
-                elif action_int in (0, 1, 2):
+                elif action_int in (-1, 0, 1, 2):
                     action_mapping = {
+                        -1: ACTION_SELL,
                         0: ACTION_HOLD,
                         1: ACTION_BUY,
                         2: ACTION_SELL,
                     }
                     return action_mapping[action_int], None
                 else:
-                    raise ValueError(f"Invalid discrete action: {action_int}. Must be 0, 1, 2, or ACTION_* constants")
+                    raise ValueError(
+                        f"Invalid discrete action: {action_int}. Must be -1, 0, 1, 2, or ACTION_* constants"
+                    )
             else:
-                raise TypeError(f"Unsupported action type: {type(action)}. Must be int or np.ndarray")
+                raise TypeError(
+                    f"Unsupported action type: {type(action)}. Must be int or np.ndarray"
+                )
         except Exception as e:
             logger.error(f"Failed to convert and validate action {action}: {e}")
             raise
@@ -107,7 +116,9 @@ class ActionExecutor:
         info = {
             "raw_action": action,
             "discrete_action": discrete_action,
-            "action_type": "continuous" if isinstance(action, np.ndarray) else "discrete",
+            "action_type": "continuous"
+            if isinstance(action, np.ndarray)
+            else "discrete",
         }
 
         if continuous_value is not None:

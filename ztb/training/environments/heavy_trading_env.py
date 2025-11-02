@@ -5,6 +5,7 @@ Heavy trading environment for reinforcement learning.
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+import dataclasses
 
 import gymnasium as gym
 import numpy as np
@@ -12,6 +13,7 @@ import pandas as pd
 from gymnasium import spaces
 
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.utils.config import RewardSettings
 
 from .environment_config import EnvironmentConfig
 
@@ -43,10 +45,14 @@ class HeavyTradingEnv(gym.Env):
 
         self.data = data.copy()
         # Clean data: fill NaN values with forward fill, then 0
-        self.data = self.data.fillna(method="ffill").fillna(0)
+        self.data = self.data.ffill().fillna(0)
         self.config = config
         self.feature_columns = feature_columns or []
         self.reward_settings = reward_settings or {}
+
+        logger.info(
+            f"HeavyTradingEnv initialized with {len(self.feature_columns)} feature columns: {self.feature_columns}"
+        )
 
         # Pre-compute trading thresholds so they can be reused in the hot path
         self.action_threshold = getattr(
@@ -74,10 +80,8 @@ class HeavyTradingEnv(gym.Env):
             low=np.array([-1.0]), high=np.array([1.0]), dtype=np.float32
         )
 
-        # Observation space
-        obs_dim = (
-            len(self.feature_columns) + 3
-        )  # features + balance + position + unrealized_pnl
+        # Observation space (features only, matching training environment)
+        obs_dim = len(self.feature_columns)  # features only (no account info)
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
@@ -94,12 +98,34 @@ class HeavyTradingEnv(gym.Env):
             "market_regime_penalty": True,
             "scalping_mode": True,
             "signal_guidance_integration": True,
+            # HOLD penalty adjustments to reduce SELL bias - moved to custom_reward_params
+            "custom_reward_params": {
+                "hold_penalty_base": 0.00001,  # Further reduced from 0.001
+                "hold_penalty_position_factor": 0.001,  # Further reduced from 0.01
+                "hold_penalty_multiplier": 0.01,  # Further reduced from 0.5
+            },
+            # HOLD profit bonus adjustment
+            "profit_bonus_multipliers": [1.0, 1.0, 1.0],  # HOLD gets same bonus as BUY/SELL
         }
         reward_defaults.update(self.reward_settings)
-        self.reward_settings = reward_defaults
+        # Filter reward_defaults to only include RewardSettings fields
+        reward_settings_fields = {field.name for field in dataclasses.fields(RewardSettings)}
+        filtered_reward_defaults = {k: v for k, v in reward_defaults.items() if k in reward_settings_fields}
+        self.reward_settings = RewardSettings(**filtered_reward_defaults)
+
+        # Create trading EnvironmentConfig from training EnvironmentConfig
+        from ztb.trading.environment.utils.config import EnvironmentConfig as TradingEnvironmentConfig
+        trading_config = TradingEnvironmentConfig(
+            initial_portfolio_value=self.config.initial_balance,
+            transaction_cost=self.config.commission,
+            max_position_size=self.config.max_position_size,
+            reward_scaling=self.config.reward_scaling,
+            feature_set=self.config.feature_set,
+            curriculum_stage=self.config.curriculum_stage,
+        )
 
         self.reward_calculator = RewardCalculator(
-            config=self.config,
+            config=trading_config,
             reward_settings=self.reward_settings,
             initial_portfolio_value=self.config.initial_balance,
         )
@@ -240,7 +266,7 @@ class HeavyTradingEnv(gym.Env):
         if np.isnan(new_position) or np.isinf(new_position):
             new_position = 0.0
 
-        current_price = self.data.iloc[self.current_step]["close"]
+        current_price = self.data.iloc[self.current_step]["close"].item()
 
         # Check for invalid price data
         if np.isnan(current_price) or np.isinf(current_price) or current_price <= 0:
@@ -306,7 +332,7 @@ class HeavyTradingEnv(gym.Env):
         if self.current_step >= len(self.data):
             return
 
-        current_price = self.data.iloc[self.current_step]["close"]
+        current_price = self.data.iloc[self.current_step]["close"].item()
 
         # Check for invalid price
         if np.isnan(current_price) or np.isinf(current_price) or current_price <= 0:
@@ -339,8 +365,21 @@ class HeavyTradingEnv(gym.Env):
             return 0.0
 
         # Calculate ATR (simplified)
-        atr = current_data.get("atr_14", current_data.get("volatility_10", 0.01))
+        logger.debug(
+            f"ATR calculation: current_data keys: {list(current_data.keys()) if hasattr(current_data, 'keys') else 'no keys'}"
+        )
+        logger.debug(f"ATR calculation: current_data type: {type(current_data)}")
+        if "atr_14" in current_data:
+            atr = current_data["atr_14"].item()
+            logger.debug(f"Using atr_14: {atr}")
+        elif "volatility_10" in current_data:
+            atr = current_data["volatility_10"].item()
+            logger.debug(f"Using volatility_10: {atr}")
+        else:
+            atr = 0.01
+            logger.debug(f"Using default atr: {atr}")
         if np.isnan(atr) or np.isinf(atr) or atr <= 0:
+            logger.debug(f"ATR was invalid ({atr}), setting to 0.01")
             atr = 0.01
 
         # Calculate current P&L
@@ -378,13 +417,13 @@ class HeavyTradingEnv(gym.Env):
 
             reward = self.reward_calculator.calculate_reward(
                 action=action,
-                current_price=current_price,
+                current_price=float(current_price),
                 position=self.position,
-                portfolio_value=portfolio_value,
+                portfolio_value=float(portfolio_value),
                 atr=atr,
                 transaction_cost=self.config.commission,
                 reward_scaling=self.config.reward_scaling,
-                pnl=current_pnl,
+                pnl=float(current_pnl),
                 old_position=getattr(self, "_old_position", 0.0),
                 step=self.current_step,
                 observation=observation,
@@ -406,7 +445,7 @@ class HeavyTradingEnv(gym.Env):
 
         # Reward based on P&L change
         prev_pnl = self.total_pnl
-        current_price = self.data.iloc[self.current_step]["close"]
+        current_price = self.data.iloc[self.current_step]["close"].item()
 
         if self.position != 0:
             # Calculate current unrealized P&L based on position direction
@@ -433,12 +472,12 @@ class HeavyTradingEnv(gym.Env):
         return reward
 
     def _get_observation(self) -> np.ndarray:
-        """Get current observation."""
+        """Get current observation (features only, matching training environment)."""
         if self.current_step >= len(self.data):
             # Return zero observation if beyond data
             return np.zeros(self.observation_space.shape[0], dtype=np.float32)
 
-        # Get feature values
+        # Get feature values only (no account information, matching training)
         features = []
         for col in self.feature_columns:
             if col in self.data.columns:
@@ -451,21 +490,7 @@ class HeavyTradingEnv(gym.Env):
             else:
                 features.append(0.0)
 
-        # Add account information
-        balance_norm = self.balance / self.config.initial_balance
-        position_norm = self.position
-        unrealized_norm = self.unrealized_pnl / self.config.initial_balance
-
-        # Check for NaN/inf in account info
-        if np.isnan(balance_norm) or np.isinf(balance_norm):
-            balance_norm = 1.0  # Default to initial balance
-        if np.isnan(position_norm) or np.isinf(position_norm):
-            position_norm = 0.0
-        if np.isnan(unrealized_norm) or np.isinf(unrealized_norm):
-            unrealized_norm = 0.0
-
-        features.extend([balance_norm, position_norm, unrealized_norm])
-
+        # Return only features (no account info: balance, position, unrealized_pnl)
         return np.array(features, dtype=np.float32)
 
     def render(self, mode: str = "human") -> None:

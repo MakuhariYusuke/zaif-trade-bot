@@ -168,19 +168,15 @@ class PatternRecognizer(ABC):
 
     def is_enabled(self) -> bool:
         """Check if this recognizer is enabled."""
-        return self.get_config_value("enabled", True)
+        return cast(bool, self.get_config_value("enabled", True))
 
     def get_min_confidence(self) -> float:
         """Get minimum confidence threshold."""
-        return self.get_config_value("min_confidence", 0.0)
-
-    def get_lookback_period(self) -> int:
-        """Get lookback period for analysis."""
-        return self.get_config_value("lookback_period", 20)
+        return cast(float, self.get_config_value("min_confidence", 0.0))
 
     def get_risk_level(self) -> str:
         """Get risk level for this recognizer."""
-        return self.get_config_value("risk_level", "medium")
+        return cast(str, self.get_config_value("risk_level", "medium"))
 
     def _validate_input_data(self, data: pd.DataFrame, index: int) -> None:
         """Validate input data and index for pattern recognition."""

@@ -23,6 +23,9 @@ import requests
 
 from ztb.utils.errors import safe_operation
 from ztb.utils.file_utils import safe_json_load
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +111,7 @@ def notify_ci_results(
         try:
             requests.post(webhook_url, json=payload, timeout=10)
         except Exception as e:
-            print(f"Failed to send Discord notification: {e}")
+            logger.error("Failed to send Discord notification: %s", e)
 
     elif channel.lower() == "slack":
         # Slack notification (placeholder)

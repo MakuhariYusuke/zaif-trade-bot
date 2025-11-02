@@ -10,6 +10,9 @@ from pathlib import Path
 
 import numpy as np
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
@@ -155,9 +158,10 @@ def run_enhanced_backtest(config_name="original"):
 
         # Action distribution
         actions = np.array(actions_history)
-        buy_actions = np.sum(actions > 0.3333)
-        sell_actions = np.sum(actions < -0.3333)
-        hold_actions = np.sum((actions >= -0.3333) & (actions <= 0.3333))
+        discrete_actions = [continuous_to_discrete_action(a) for a in actions]
+        buy_actions = discrete_actions.count(ACTION_BUY)
+        sell_actions = discrete_actions.count(ACTION_SELL)
+        hold_actions = discrete_actions.count(ACTION_HOLD)
 
         print(f"   BUY actions: {buy_actions} ({buy_actions/len(actions)*100:.1f}%)")
         print(f"   HOLD actions: {hold_actions} ({hold_actions/len(actions)*100:.1f}%)")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import gc
 import logging
 from collections import deque
@@ -239,6 +240,23 @@ class HeavyTradingEnv(
                 details={"df_provided": False, "pipeline_provided": False},
             )
 
+        # Diagnostic: record raw config received to trace conversion issues
+        try:
+            # Use INFO here so diagnostics are visible during test runs
+            logger.info(
+                "HeavyTradingEnv.__init__ raw config type=%s, repr_preview=%s",
+                type(config),
+                (config if isinstance(config, dict) else str(type(config))),
+            )
+            if isinstance(config, dict):
+                logger.info(
+                    "HeavyTradingEnv.__init__ raw dict contains use_continuous_actions=%s",
+                    config.get("use_continuous_actions", "NOT_PRESENT"),
+                )
+        except Exception:
+            # Ensure diagnostics never break initialization
+            logger.exception("Failed to log raw config diagnostic")
+
         if isinstance(config, EnvironmentConfig):
             self.config = config
         else:
@@ -270,7 +288,7 @@ class HeavyTradingEnv(
         self._process = psutil.Process()
         self.stream_to_bars_converter = stream_to_bars_converter
 
-        self.reward_settings: RewardSettings = {
+        self.reward_settings: Dict[str, Any] = {
             "position_soft_cap": self.config.reward_position_soft_cap,
             "position_penalty_scale": self.config.reward_position_penalty_scale,
             "position_penalty_exponent": self.config.reward_position_penalty_exponent,
@@ -291,17 +309,23 @@ class HeavyTradingEnv(
             "calmar_bonus_scale": getattr(
                 self.config, "reward_calmar_bonus_scale", 0.005
             ),
-            "reward_clip_value": self.config.reward_clip_value,
+            "reward_clip_value": getattr(self.config, "reward_clip_value", 20.0),
             "profit_bonus_multipliers": self.config.reward_profit_bonus_multipliers,
             "enable_forced_diversity": self.config.enable_forced_diversity,
+            "curriculum_stage": getattr(self.config, "curriculum_stage", "simple"),
         }
 
         if getattr(self.config, "reward_settings", None):
-            merged: RewardSettings = deep_merge_dict(
+            merged = deep_merge_dict(
                 self.reward_settings,
-                self.config.reward_settings,
+                dataclasses.asdict(self.config.reward_settings),
             )
             self.reward_settings = merged
+
+        # Create RewardSettings object for RewardCalculator
+        self.reward_settings_obj: RewardSettings = RewardSettings(
+            **self.reward_settings
+        )
 
         self.fee_model = ExchangeFeeModel()
         self.fee_model.set_exchange(self.config.exchange)
@@ -364,17 +388,37 @@ class HeavyTradingEnv(
         self._initialize_remaining_components()
 
         # Initialize v444 regime classifier for advanced market regime adaptation
+        # Support both dict-style and object-style configs (Pydantic/dataclass)
         self.regime_classifier = None
         advanced_regime_config = getattr(self.config, "advanced_market_regime", None)
-        if advanced_regime_config and advanced_regime_config.get("enabled", False):
-            # Use generic market regime classifier
-            classifier_config = advanced_regime_config.get(
-                "regime_classifier_config", {}
-            )
+
+        # Determine whether adaptation is enabled and extract classifier config
+        enabled = False
+        classifier_config = {}
+        try:
+            if isinstance(advanced_regime_config, dict):
+                enabled = bool(advanced_regime_config.get("enabled", False))
+                classifier_config = (
+                    advanced_regime_config.get("regime_classifier_config", {}) or {}
+                )
+            else:
+                # object-like (Pydantic/dataclass)
+                enabled = bool(getattr(advanced_regime_config, "enabled", False))
+                classifier_config = (
+                    getattr(advanced_regime_config, "regime_classifier_config", {})
+                    or {}
+                )
+        except Exception:
+            enabled = False
+            classifier_config = {}
+
+        if advanced_regime_config and enabled:
+            # Initialize generic market regime classifier with extracted config
             self.regime_classifier = MarketRegimeClassifier(classifier_config)
             logger.info(
                 "Market Regime Classifier initialized for market regime adaptation"
             )
+            logger.debug(f"Regime classifier config: {type(classifier_config)}")
         else:
             logger.info(
                 "Advanced market regime adaptation disabled (legacy configuration)"
@@ -383,6 +427,38 @@ class HeavyTradingEnv(
         self.portfolio_value_history = deque(maxlen=self.DEFAULT_MAX_HISTORY_LENGTH)
         self._previous_portfolio_value = None
         self._prev_unrealized_pnl = 0.0
+
+        # Initialize observation space based on feature set
+        # FeatureSetConfig lives in ztb.features.feature_set_config
+        from ztb.features import FeatureRegistry
+        from ztb.features.feature_set_config import FeatureSetConfig
+
+        FeatureRegistry.initialize()
+        feature_set = getattr(self.config, "feature_set", "high_quality")
+        feature_config = FeatureSetConfig()
+        feature_config.set_feature_set(feature_set)
+        excluded = feature_config.get_excluded_features()
+
+        # If features were already initialized earlier (data-driven discovery
+        # including multi-timeframe merges), prefer that set to avoid
+        # overwriting a validated feature list with registry defaults.
+        if hasattr(self, "features") and self.features:
+            logger.info(
+                "Features already initialized earlier with %s features; skipping FeatureRegistry override",
+                len(self.features),
+            )
+        else:
+            all_features = list(FeatureRegistry._registry.keys())
+            self.features = [
+                f for f in all_features if not any(ex in f for ex in excluded)
+            ]
+            obs_dim = len(self.features)
+            self.observation_space = gym.spaces.Box(
+                low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
+            )
+            logger.info(
+                f"Initialized observation space with {obs_dim} features from set '{feature_set}'"
+            )
 
     def reset(
         self,
@@ -498,14 +574,32 @@ class HeavyTradingEnv(
             int, np.ndarray
         ],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
-        # Validate and convert action using ValidationManager
-        actual_action = self.validation_manager.validate_action(action)
-
-        # Convert continuous action to discrete if necessary
+        # Convert action (continuous or discrete) to discrete representation
         (
-            actual_action,
+            discrete_action,
             continuous_action_value,
-        ) = self.action_executor.convert_and_validate_action(actual_action)
+        ) = self.action_executor.convert_and_validate_action(action)
+
+        # Validate the resulting discrete action
+        actual_action = self.validation_manager.validate_action(discrete_action)
+
+        # Debug logging for SAC continuous action output
+        if continuous_action_value is not None:
+            action_name = (
+                "HOLD"
+                if actual_action == 0
+                else "BUY"
+                if actual_action == 1
+                else "SELL"
+                if actual_action == -1
+                else f"UNKNOWN_{actual_action}"
+            )
+            logger.debug(
+                "SAC continuous action: %.6f, discrete action: %d (%s)",
+                continuous_action_value,
+                actual_action,
+                action_name,
+            )
 
         old_position = self.position_manager.position
         min_holding_period = getattr(self.config, "min_holding_period", 0)
@@ -626,6 +720,18 @@ class HeavyTradingEnv(
         # Validate reward using ValidationManager
         reward = self.validation_manager.validate_reward_calculation(reward)
 
+        # Enhanced debug logging for SAC continuous action and reward analysis
+        if continuous_action_value is not None:
+            logger.debug(
+                "continuous_action=%.6f, discrete_action=%d, reward=%.6f, step_pnl=%.6f, portfolio_return=%.4f%%, position=%.4f",
+                continuous_action_value,
+                actual_action,
+                reward,
+                step_pnl,
+                ((portfolio_value / self.initial_portfolio_value) - 1) * 100,
+                self.position,
+            )
+
         self.current_step += 1
         self.data_manager.ensure_data_available(self.current_step)
 
@@ -683,11 +789,24 @@ class HeavyTradingEnv(
 
     def _get_observation(self) -> Any:
         self.data_manager.ensure_data_available(self.current_step)
-        return self.observation_builder.get_observation(
+        obs = self.observation_builder.get_observation(
             self.current_step,
             self.n_steps,
             self.df,
         )
+
+        # Diagnostic: log environment observation_space and returned observation shape
+        try:
+            logger.debug(
+                "HeavyTradingEnv._get_observation: observation_space.shape=%s, returned_obs_shape=%s, optimizer_tracker_present=%s",
+                getattr(self.observation_space, "shape", None),
+                getattr(obs, "shape", None),
+                self.optimizer_tracker is not None,
+            )
+        except Exception:
+            pass
+
+        return obs
 
     def _get_info(self) -> Any:
         base_info = self.observation_builder.get_info(
