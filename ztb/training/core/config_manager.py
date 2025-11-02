@@ -9,6 +9,7 @@ Handles all configuration-related operations including:
 - Feature configuration
 """
 
+from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from ztb.utils.logging_utils import get_logger
@@ -79,49 +80,83 @@ class ConfigManager:
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
         # Check for nested training.environment structure
-        training_env = self.config.get("training", {}).get("environment", {})
+        training_env = deepcopy(self.config.get("training", {}).get("environment", {}))
+        nested_env = (
+            training_env.get("config", {}) if isinstance(training_env, dict) else {}
+        )
+        environment: Dict[str, Any] = {}
 
-        return {
-            "max_position_size": self._get_config_value(
-                "max_position_size",
-                ["environment"],
-                training_env.get(
-                    "max_position_size",
-                    DEFAULT_PPO_CONFIG.get("max_position_size", 1.0),
-                ),
-            ),
-            "initial_balance": self._get_config_value(
-                "initial_balance",
-                ["environment"],
-                training_env.get(
-                    "initial_balance",
-                    DEFAULT_PPO_CONFIG.get("initial_balance", 1000000),
-                ),
-            ),
-            "transaction_cost": self._get_config_value(
-                "transaction_cost",
-                ["environment"],
-                training_env.get(
-                    "transaction_cost",
-                    DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001),
-                ),
-            ),
-            "reward_scaling": self._get_config_value(
-                "reward_scaling",
-                ["environment"],
-                training_env.get(
-                    "reward_scaling", DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)
-                ),
-            ),
-            "use_continuous_actions": self._get_config_value(
+        if isinstance(nested_env, dict):
+            environment.update(nested_env)
+
+        # Include direct fields defined alongside the nested config (e.g. feature_set)
+        if isinstance(training_env, dict):
+            for key in [
+                "feature_set",
+                "csv_path",
                 "use_continuous_actions",
-                ["environment"],
-                training_env.get(
-                    "use_continuous_actions",
-                    DEFAULT_PPO_CONFIG.get("use_continuous_actions", False),
-                ),
+                "enable_action_masking",
+            ]:
+                if key in training_env and key not in environment:
+                    environment[key] = training_env[key]
+
+        # Apply top-level overrides/fallbacks
+        environment["max_position_size"] = self._get_config_value(
+            "max_position_size",
+            ["environment"],
+            environment.get(
+                "max_position_size", DEFAULT_PPO_CONFIG.get("max_position_size", 1.0)
             ),
-        }
+        )
+        environment["initial_balance"] = self._get_config_value(
+            "initial_balance",
+            ["environment"],
+            environment.get(
+                "initial_balance", DEFAULT_PPO_CONFIG.get("initial_balance", 1000000)
+            ),
+        )
+        environment["transaction_cost"] = self._get_config_value(
+            "transaction_cost",
+            ["environment"],
+            environment.get(
+                "transaction_cost", DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001)
+            ),
+        )
+        environment["reward_scaling"] = self._get_config_value(
+            "reward_scaling",
+            ["environment"],
+            environment.get(
+                "reward_scaling", DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)
+            ),
+        )
+        environment["reward_clip_value"] = self._get_config_value(
+            "reward_clip_value",
+            ["environment"],
+            environment.get(
+                "reward_clip_value", DEFAULT_PPO_CONFIG.get("reward_clip_value", 10.0)
+            ),
+        )
+        environment["use_continuous_actions"] = self._get_config_value(
+            "use_continuous_actions",
+            ["environment"],
+            environment.get(
+                "use_continuous_actions",
+                DEFAULT_PPO_CONFIG.get("use_continuous_actions", False),
+            ),
+        )
+
+        # Preserve reward_settings and behavior optimization blocks if present
+        if "reward_settings" in nested_env and "reward_settings" not in environment:
+            environment["reward_settings"] = nested_env["reward_settings"]
+        if (
+            "behavior_optimization" in nested_env
+            and "behavior_optimization" not in environment
+        ):
+            environment["behavior_optimization"] = nested_env["behavior_optimization"]
+        if "action_bonuses" in nested_env and "action_bonuses" not in environment:
+            environment["action_bonuses"] = nested_env["action_bonuses"]
+
+        return environment
 
     def get_ppo_core_config(self) -> Dict[str, Any]:
         """

@@ -11,10 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.analysis.market_regime_classifier import (
-    MarketRegimeClassifier,
-    RegimeType,
-)
+from ztb.analysis.market_regime_classifier import MarketRegimeClassifier, RegimeType
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 

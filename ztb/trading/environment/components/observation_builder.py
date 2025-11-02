@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -52,8 +53,9 @@ class ObservationBuilder:
                 and index not in self._nonfinite_warned_rows
             ):
                 if len(self._nonfinite_warned_rows) < 5 or index % 1000 == 0:
-                    print(
-                        f"Warning: Step {index} had non-finite feature values. Replaced with zeros for stability."
+                    logger.warning(
+                        "Step %d had non-finite feature values. Replaced with zeros for stability.",
+                        index,
                     )
                 self._nonfinite_warned_rows.add(index)
 
@@ -70,6 +72,16 @@ class ObservationBuilder:
                     list(optimizer_features.values()), dtype=np.float32
                 )
                 obs = np.concatenate([obs, optimizer_values])
+
+            # Diagnostic: log observation shape and optimizer tracker state
+            try:
+                logger.debug(
+                    "ObservationBuilder.get_observation: obs.shape=%s, optimizer_tracker_present=%s",
+                    obs.shape,
+                    self.optimizer_tracker is not None,
+                )
+            except Exception:
+                pass
 
             return obs
 
@@ -96,6 +108,16 @@ class ObservationBuilder:
             )
             obs = np.concatenate([obs, optimizer_values])
 
+        # Diagnostic: log observation shape and optimizer tracker state for fallback path
+        try:
+            logger.debug(
+                "ObservationBuilder.get_observation (fallback): obs.shape=%s, optimizer_tracker_present=%s",
+                obs.shape,
+                self.optimizer_tracker is not None,
+            )
+        except Exception:
+            pass
+
         return obs
 
     def get_info(
@@ -106,7 +128,7 @@ class ObservationBuilder:
         total_pnl: float,
         trades_count: int,
         features: List[str],
-        config: Any,
+        config: ConfigDict,
     ) -> Dict[str, Any]:
         """追加情報を取得"""
         return {

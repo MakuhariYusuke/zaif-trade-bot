@@ -3,16 +3,17 @@
 Logging utilities for consistent logging setup across the codebase.
 """
 
+import json
 import logging
+import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
-import time
-import json
 
 from ztb.types.common import ConfigDict
 
-from ztb.trading.environment.constants import BYTES_PER_MB
+BYTES_PER_MB = 1024 * 1024
+
 
 def setup_logging(
     level: int = logging.INFO,
@@ -74,9 +75,6 @@ def setup_logging_from_config(config: ConfigDict) -> None:
         config: Configuration dictionary with logging settings
     """
     logging_config = config.get("logging", {})
-    logging_config = config.get("logging", {})
-    if not isinstance(logging_config, dict):
-        logging_config = {}
 
     level_str = logging_config.get("level", "INFO").upper()
     level = getattr(logging, level_str, logging.INFO)
@@ -85,6 +83,7 @@ def setup_logging_from_config(config: ConfigDict) -> None:
     log_file = logging_config.get("file")
     max_bytes = logging_config.get("max_bytes", 10 * BYTES_PER_MB)
     backup_count = logging_config.get("backup_count", 5)
+
     setup_logging(
         level=level,
         format_string=format_string,
@@ -123,6 +122,7 @@ def get_logger(name: str) -> logging.Logger:
     """
     return logging.getLogger(name)
 
+
 class StructuredLogger:
     """
     Structured logging utility for consistent log formatting.
@@ -153,20 +153,21 @@ class StructuredLogger:
         """Clear all logging context."""
         self.context.clear()
 
-    def _format_message(self, message: str, extra: Optional[Dict[str, Any]] = None) -> str:
+    def _format_message(
+        self, message: str, extra: Optional[Dict[str, Any]] = None
+    ) -> str:
         """Format message with context and extra data."""
         log_data = {**self.context}
         if extra:
             log_data.update(extra)
+
         if self.json_format:
-            return json.dumps({
-                'message': message,
-                'timestamp': time.time(),
-                **log_data
-            })
+            return json.dumps(
+                {"message": message, "timestamp": time.time(), **log_data}
+            )
         else:
             if log_data:
-                context_str = ', '.join(f'{k}={v}' for k, v in log_data.items())
+                context_str = ", ".join(f"{k}={v}" for k, v in log_data.items())
                 return f"{message} [{context_str}]"
             return message
 

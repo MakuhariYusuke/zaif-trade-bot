@@ -531,23 +531,25 @@ if __name__ == "__main__":
     generator.save_dataset(dataset, "data/synthetic_multimodal")
 
     # 生成データの概要表示
-    print("=== 合成データセット概要 ===")
-    print(f"期間: {start_date.date()} - {end_date.date()}")
-    print(f"ニュース記事数: {len(dataset['news_data'])}")
-    print(f"経済指標データポイント数: {len(dataset['economic_indicators'])}")
-    print(f"日次感情データポイント数: {len(dataset['daily_sentiment'])}")
+    logger.info("=== 合成データセット概要 ===")
+    logger.info("期間: %s - %s", start_date.date(), end_date.date())
+    logger.info("ニュース記事数: %d", len(dataset["news_data"]))
+    logger.info("経済指標データポイント数: %d", len(dataset["economic_indicators"]))
+    logger.info("日次感情データポイント数: %d", len(dataset["daily_sentiment"]))
 
-    print("\n=== サンプルデータ ===")
-    print("\n経済指標（先頭5行）:")
-    print(dataset["economic_indicators"].head())
+    logger.info("\n=== サンプルデータ ===")
+    logger.info("\n経済指標（先頭5行）:")
+    logger.info(str(dataset["economic_indicators"].head()))
 
-    print("\nニュースデータ（先頭3件）:")
-    print(dataset["news_data"][["title", "sentiment_score", "market_state"]].head(3))
+    logger.info("\nニュースデータ（先頭3件）:")
+    logger.info(
+        str(dataset["news_data"][["title", "sentiment_score", "market_state"]].head(3))
+    )
 
-    print("\n日次感情データ（先頭5行）:")
-    print(dataset["daily_sentiment"].head())
+    logger.info("\n日次感情データ（先頭5行）:")
+    logger.info(str(dataset["daily_sentiment"].head()))
 
-    print(
+    logger.info(
         """
     🎯 合成データ生成の利点:
 

@@ -95,7 +95,9 @@ class DataManager:
             if episode_id_column and episode_id_column in df.columns:
                 self._episode_id_array = df[episode_id_column].values
 
-            logger.info(f"Initialized data with {self.n_steps} steps and {len(features)} features")
+            logger.info(
+                f"Initialized data with {self.n_steps} steps and {len(features)} features"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize data: {e}")
@@ -116,7 +118,7 @@ class DataManager:
 
             for feature in self.features:
                 if feature in row:
-                    value = row[feature]
+                    value = row.loc[feature]
                     if not np.isfinite(value):
                         has_nonfinite = True
                     row_features.append(float(value))
@@ -131,12 +133,12 @@ class DataManager:
         self._nonfinite_rows = nonfinite_rows
 
         # Build price buffers
-        if 'close' in self.df.columns:
-            self._close_array = self.df['close'].values.astype(np.float32)
-        if 'price' in self.df.columns:
-            self._price_array = self.df['price'].values.astype(np.float32)
-        if 'atr' in self.df.columns:
-            self._atr_array = self.df['atr'].values.astype(np.float32)
+        if "close" in self.df.columns:
+            self._close_array = self.df["close"].values.astype(np.float32)
+        if "price" in self.df.columns:
+            self._price_array = self.df["price"].values.astype(np.float32)
+        if "atr" in self.df.columns:
+            self._atr_array = self.df["atr"].values.astype(np.float32)
 
         logger.info("Built fast access buffers")
 
@@ -148,7 +150,9 @@ class DataManager:
             step: Step to check
         """
         if step >= self.n_steps:
-            raise IndexError(f"Step {step} exceeds available data (n_steps={self.n_steps})")
+            raise IndexError(
+                f"Step {step} exceeds available data (n_steps={self.n_steps})"
+            )
 
     def get_feature_matrix(self) -> Optional[NDArray[np.float32]]:
         """Get the feature matrix."""

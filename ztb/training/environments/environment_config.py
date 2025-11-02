@@ -28,6 +28,7 @@ class EnvironmentConfig:
     reward_scaling: float = 1.0
     observation_window: int = 60
     feature_names: Optional[list] = None
+    feature_set: str = "high_quality"
     curriculum_stage: str = "pnl_focused"  # Default for v439 scalping
     continuous_to_discrete_threshold: float = 0.02  # Lowered for frequent actions
     continuous_to_discrete_threshold_neg: Optional[float] = None
@@ -36,6 +37,7 @@ class EnvironmentConfig:
     scalping_optimization: Dict[str, Any] = field(default_factory=dict)
     use_continuous_actions: bool = False
     behavior_optimization: Optional[Dict[str, Any]] = None
+    action_bonuses: Optional[Dict[str, Any]] = None
     market_regime: Optional[Dict[str, Any]] = None
     dynamic_reward_shaping: Optional[Dict[str, Any]] = None
 
@@ -52,6 +54,7 @@ class EnvironmentConfig:
             "reward_scaling": self.reward_scaling,
             "observation_window": self.observation_window,
             "feature_names": self.feature_names,
+            "feature_set": self.feature_set,
             "curriculum_stage": self.curriculum_stage,
             "continuous_to_discrete_threshold": self.continuous_to_discrete_threshold,
             "continuous_to_discrete_threshold_neg": self.continuous_to_discrete_threshold_neg,
@@ -60,6 +63,7 @@ class EnvironmentConfig:
             "scalping_optimization": self.scalping_optimization,
             "use_continuous_actions": self.use_continuous_actions,
             "behavior_optimization": self.behavior_optimization,
+            "action_bonuses": self.action_bonuses,
             "market_regime": self.market_regime,
             "dynamic_reward_shaping": self.dynamic_reward_shaping,
         }

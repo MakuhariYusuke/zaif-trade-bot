@@ -125,15 +125,14 @@ class TestLoggingAndPrintFixes:
         from ztb.trading.environment.components.reward_calculator import (
             RewardCalculator,
         )
-        from ztb.training.environments.environment_config import EnvironmentConfig
+        from ztb.trading.environment.utils.config import (
+            EnvironmentConfig,
+            RewardSettings,
+        )
 
         # Create minimal config and reward settings
-        config = EnvironmentConfig(initial_balance=10000.0, commission=0.001)
-        reward_settings = {
-            "transaction_cost": 0.001,
-            "reward_scaling": 1.0,
-            "action_balance_target": 0.1,
-        }
+        config = EnvironmentConfig()
+        reward_settings = RewardSettings()
 
         calculator = RewardCalculator(
             config=config,
@@ -144,19 +143,22 @@ class TestLoggingAndPrintFixes:
         # Capture stdout
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             # Call methods that might print
-            calculator.calculate_reward_simple(
-                pnl=10.0,
-                portfolio_value=10010.0,
-                position=1.0,
-                old_position=0.0,
+            calculator.calculate_reward(
                 action=1,
+                current_price=100.0,
+                position=1.0,
+                portfolio_value=10010.0,
+                atr=1.0,
+                transaction_cost=0.001,
+                reward_scaling=1.0,
+                pnl=10.0,
+                old_position=0.0,
+                step=1,
+                observation=np.array([100.0, 1.0, 10.0]),
                 reward_history=[0.0, 1.0],
                 portfolio_value_history=[10000.0, 10010.0],
-                current_price=100.0,
-                step=1,
-                transaction_cost=0.001,
             )
-            calculator.get_current_regime(100.0, [99.0, 98.0, 101.0])
+            calculator.get_current_regime(100.0, 1)
 
             # Check that nothing was printed to stdout
             stdout_output = mock_stdout.getvalue()

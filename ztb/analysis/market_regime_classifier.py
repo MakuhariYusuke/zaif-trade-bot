@@ -34,6 +34,11 @@ class RegimeType(Enum):
     CONSOLIDATION = "consolidation"
     BREAKOUT_SETUP = "breakout_setup"
     BREAKDOWN_SETUP = "breakdown_setup"
+    # SELL特化レジーム（SELL bias対策）
+    SELL_BREAKDOWN = "sell_breakdown"
+    SELL_DIVERGENCE = "sell_divergence"
+    SELL_MOMENTUM_WEAK = "sell_momentum_weak"
+    SELL_VOLUME_SURGE = "sell_volume_surge"
 
 
 @dataclass
@@ -187,9 +192,59 @@ class MarketRegimeClassifier:
         ]
 
     def _get_comprehensive_regime_definitions(self) -> List[RegimeDefinition]:
-        """Get comprehensive 12-regime definitions"""
+        """Get comprehensive 16-regime definitions (enhanced for SELL bias correction)"""
         return [
-            # Bull trends
+            # SELL特化レジーム（最高優先度）
+            RegimeDefinition(
+                name="Sell Breakdown",
+                regime_type=RegimeType.SELL_BREAKDOWN,
+                conditions={
+                    "trend_strength": {"max": -2.5},
+                    "bear_strength": {"min": 1.8},
+                    "volatility": {"min": 0.08},
+                    "price_range_ratio": {"min": 0.02},
+                },
+                priority=16,
+                description="Strong breakdown pattern - SELL signal priority",
+            ),
+            RegimeDefinition(
+                name="Sell Divergence",
+                regime_type=RegimeType.SELL_DIVERGENCE,
+                conditions={
+                    "trend_strength": {"min": -1.5, "max": 1.5},
+                    "bear_strength": {"min": 1.2},
+                    "macd_signal": {"max": -0.5},
+                    "rsi": {"max": 65},
+                },
+                priority=15,
+                description="Bearish divergence detected - SELL opportunity",
+            ),
+            RegimeDefinition(
+                name="Sell Momentum Weak",
+                regime_type=RegimeType.SELL_MOMENTUM_WEAK,
+                conditions={
+                    "trend_strength": {"max": -1.0},
+                    "momentum": {"max": -0.3},
+                    "volatility": {"min": 0.05},
+                    "adx": {"min": 20},
+                },
+                priority=14,
+                description="Weakening momentum in downtrend - SELL reinforcement",
+            ),
+            RegimeDefinition(
+                name="Sell Volume Surge",
+                regime_type=RegimeType.SELL_VOLUME_SURGE,
+                conditions={
+                    "trend_strength": {"max": -1.2},
+                    "volume_trend": {"min": 0.15},
+                    "price_range_ratio": {"min": 0.015},
+                    "bollinger_position": {"max": 0.3},
+                },
+                priority=13,
+                description="Volume surge in downtrend - SELL confirmation",
+            ),
+
+            # Bull trends (優先度を下げる)
             RegimeDefinition(
                 name="Strong Bull Trend",
                 regime_type=RegimeType.STRONG_BULL,
@@ -223,14 +278,15 @@ class MarketRegimeClassifier:
                 priority=10,
                 description="Weak upward movement with low momentum",
             ),
-            # Bear trends
+
+            # Bear trends (SELL bias対策で条件を緩和)
             RegimeDefinition(
                 name="Strong Bear Trend",
                 regime_type=RegimeType.STRONG_BEAR,
                 conditions={
-                    "trend_strength": {"max": -3.0},
-                    "bear_strength": {"min": 2.5},
-                    "volatility": {"max": 0.15},
+                    "trend_strength": {"max": -2.8},  # より低い閾値
+                    "bear_strength": {"min": 2.2},    # より低い閾値
+                    "volatility": {"max": 0.18},      # より高い許容値
                 },
                 priority=9,
                 description="Strong downward momentum with high conviction",
@@ -239,9 +295,9 @@ class MarketRegimeClassifier:
                 name="Moderate Bear Trend",
                 regime_type=RegimeType.MODERATE_BEAR,
                 conditions={
-                    "trend_strength": {"max": -2.0, "min": -3.0},
-                    "bear_strength": {"min": 1.5, "max": 2.5},
-                    "volatility": {"max": 0.20},
+                    "trend_strength": {"max": -1.8, "min": -2.8},  # より低い閾値
+                    "bear_strength": {"min": 1.3, "max": 2.2},     # より低い閾値
+                    "volatility": {"max": 0.22},                   # より高い許容値
                 },
                 priority=8,
                 description="Moderate downward trend with steady losses",
@@ -250,13 +306,14 @@ class MarketRegimeClassifier:
                 name="Weak Bear Trend",
                 regime_type=RegimeType.WEAK_BEAR,
                 conditions={
-                    "trend_strength": {"max": -1.0, "min": -2.0},
-                    "bear_strength": {"min": 0.5, "max": 1.5},
-                    "volatility": {"max": 0.25},
+                    "trend_strength": {"max": -0.8, "min": -1.8},  # より低い閾値
+                    "bear_strength": {"min": 0.3, "max": 1.3},     # より低い閾値
+                    "volatility": {"max": 0.28},                   # より高い許容値
                 },
                 priority=7,
                 description="Weak downward movement with low momentum",
             ),
+
             # Range conditions
             RegimeDefinition(
                 name="High Volatility Range",
@@ -288,6 +345,7 @@ class MarketRegimeClassifier:
                 priority=4,
                 description="Low volatility tight range",
             ),
+
             # Special conditions
             RegimeDefinition(
                 name="Extreme Volatility",
@@ -300,36 +358,51 @@ class MarketRegimeClassifier:
                 name="Consolidation",
                 regime_type=RegimeType.CONSOLIDATION,
                 conditions={
-                    "volatility": {"max": 0.05},
-                    "trend_strength": {"min": -0.5, "max": 0.5},
-                    "price_range_ratio": {"max": 0.02},
+                    "volatility": {"max": 0.08},
+                    "trend_strength": {"min": -0.8, "max": 0.8},
                 },
                 priority=2,
-                description="Market consolidation with balanced forces",
+                description="Tight consolidation with minimal movement",
             ),
             RegimeDefinition(
                 name="Breakout Setup",
                 regime_type=RegimeType.BREAKOUT_SETUP,
                 conditions={
-                    "bollinger_position": {"min": 0.8},
+                    "volatility": {"max": 0.12},
+                    "trend_strength": {"min": -1.2, "max": 1.2},
                     "support_resistance_strength": {"min": 0.7},
-                    "volatility": {"min": 0.12},
                 },
                 priority=1,
-                description="Potential breakout formation",
+                description="Potential breakout from consolidation",
             ),
             RegimeDefinition(
                 name="Breakdown Setup",
                 regime_type=RegimeType.BREAKDOWN_SETUP,
                 conditions={
-                    "bollinger_position": {"max": 0.2},
+                    "volatility": {"max": 0.12},
+                    "trend_strength": {"min": -1.2, "max": 1.2},
                     "support_resistance_strength": {"min": 0.7},
-                    "volatility": {"min": 0.12},
                 },
                 priority=1,
-                description="Potential breakdown formation",
+                description="Potential breakdown from consolidation",
             ),
         ]
+
+    def _load_custom_regime_definitions(self) -> List[RegimeDefinition]:
+        """Load custom regime definitions from config"""
+        custom_defs = self.config.get("custom_regime_definitions", [])
+        regime_definitions = []
+
+        for def_config in custom_defs:
+            regime_definitions.append(
+                RegimeDefinition(
+                    name=def_config["name"],
+                    regime_type=RegimeType(def_config["regime_type"]),
+                    conditions=def_config["conditions"],
+                    priority=def_config.get("priority", 1),
+                    description=def_config.get("description", ""),
+                )
+            )
 
     def _load_custom_regime_definitions(self) -> List[RegimeDefinition]:
         """Load custom regime definitions from config"""

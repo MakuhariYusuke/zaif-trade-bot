@@ -8,6 +8,7 @@ from typing import Optional
 import pandas as pd
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
 
@@ -50,12 +51,12 @@ class MemoryManager:
             df_override (Optional[pd.DataFrame], optional): DataFrame whose memory usage will be logged instead of the default. Defaults to None.
         """
 
-        rss_mb = self._process.memory_info().rss / 1024 / 1024
+        rss_mb = self._process.memory_info().rss / BYTES_PER_MB
         target_df = df_override if df_override is not None else pd.DataFrame()
         # NOTE: memory_usage(deep=True) is expensive for large DataFrames.
         # Consider skipping or limiting frequency for performance.
         df_mem_mb = (
-            target_df.memory_usage(deep=True).sum() / 1024 / 1024
+            target_df.memory_usage(deep=True).sum() / BYTES_PER_MB
             if isinstance(target_df, pd.DataFrame)
             else 0.0
         )

@@ -1,0 +1,25 @@
+{
+  "total_timesteps": 5000,
+  "environment": "improved_trading_env",
+  "model_config": {
+    "learning_rate": 0.0003,
+    "buffer_size": 10000,
+    "batch_size": 64,
+    "net_arch": [
+      64,
+      64
+    ],
+    "ent_coef": 0.5,
+    "learning_starts": 50
+  },
+  "improvements": [
+    "Lowered action thresholds (0.05 instead of 0.1)",
+    "Added small penalty for inaction (-0.0001)",
+    "Increased entropy coefficient (0.5) for more exploration",
+    "Earlier learning start (50 steps)"
+  ],
+  "training_events": [],
+  "training_completed": true,
+  "model_path": "models/sac_improved_5000step_final.zip",
+  "final_status": "success"
+}

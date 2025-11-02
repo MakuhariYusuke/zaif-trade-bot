@@ -57,6 +57,7 @@ class RewardSettings(BaseModel):
     profit_bonuses: Dict[str, float] = Field(default_factory=dict)
     penalty_coefficients: Dict[str, float] = Field(default_factory=dict)
     entropy_bonus: float = 0.0
+    reward_clip_value: float = 2.0
 
 
 class EnvironmentConfig(BaseModel):
@@ -279,7 +280,7 @@ class RiskProfileConfig(BaseModel):
 class GlobalConfig(BaseModel):
     """Global configuration container."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     training: TrainingConfig = Field(default_factory=TrainingConfig)
     checkpoint: CheckpointConfig = Field(default_factory=CheckpointConfig)
@@ -363,7 +364,11 @@ class ZaifTradeBotConfig(BaseModel):
             raise ValueError(f"Unsupported configuration version: {v}")
         return v
 
-    model_config = ConfigDict(validate_assignment=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+        extra="allow",
+    )
 
 
 class ConfigLoader:

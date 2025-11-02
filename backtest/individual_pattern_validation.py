@@ -12,20 +12,16 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 # Debug mode configuration
-DEBUG_MODE = False  # Set to False for full testing
+DEBUG_MODE = True  # Set to False for full testing
 DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
-DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
+DEBUG_LOG_LEVEL = "DEBUG" if DEBUG_MODE else "INFO"
 
 # Patterns to test in debug mode (focus on problematic ones)
-DEBUG_PATTERNS = (
-    ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
-)
+DEBUG_PATTERNS = ["harmonic", "dow_theory"] if DEBUG_MODE else None
 
 # Configure logging for debug mode
 if DEBUG_MODE:
-    logging.basicConfig(
-        level=getattr(logging, DEBUG_LOG_LEVEL), format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 else:
     logging.basicConfig(
         level=logging.INFO,
@@ -62,12 +58,10 @@ PATTERN_RECOGNIZERS = [
 # Debug mode configuration
 DEBUG_MODE = True  # Set to False for full testing
 DEBUG_DATA_LENGTH = 1000 if DEBUG_MODE else 5000
-DEBUG_LOG_LEVEL = "WARNING" if DEBUG_MODE else "INFO"
+DEBUG_LOG_LEVEL = "DEBUG" if DEBUG_MODE else "INFO"
 
 # Patterns to test in debug mode (focus on problematic ones)
-DEBUG_PATTERNS = (
-    ["harmonic", "dow_theory", "fibonacci", "oscillator"] if DEBUG_MODE else None
-)
+DEBUG_PATTERNS = ["harmonic"] if DEBUG_MODE else None
 
 
 def run_individual_pattern_backtest(pattern_name: str) -> Dict[str, Any]:

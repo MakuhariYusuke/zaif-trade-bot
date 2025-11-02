@@ -11,6 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
@@ -145,13 +148,11 @@ def run_quick_backtest_test(config_path, name):
         # Analyze results
         actions = np.array(actions_taken)
 
-        # Count discrete actions
-        buy_threshold = 0.3333
-        sell_threshold = -0.3333
-
-        buy_actions = np.sum(actions > buy_threshold)
-        sell_actions = np.sum(actions < sell_threshold)
-        hold_actions = np.sum((actions >= sell_threshold) & (actions <= buy_threshold))
+        # Count discrete actions using the standard function
+        discrete_actions = [continuous_to_discrete_action(a) for a in actions]
+        buy_actions = discrete_actions.count(ACTION_BUY)
+        sell_actions = discrete_actions.count(ACTION_SELL)
+        hold_actions = discrete_actions.count(ACTION_HOLD)
 
         # Check portfolio changes (indicating trades)
         portfolio_changes = np.diff(portfolio_values)

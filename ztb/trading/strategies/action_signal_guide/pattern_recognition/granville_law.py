@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
 
-from ztb.features.volume.obv import compute_obv
+from ztb.features.generators.technical.volume.obv import compute_obv
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     PatternRecognizer,
     SignalResult,

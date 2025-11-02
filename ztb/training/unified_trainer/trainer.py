@@ -113,6 +113,7 @@ class UnifiedTrainer:
         stream_batch_size: int = 256,
         max_features: Optional[int] = None,
         total_timesteps: Optional[int] = None,
+        episodes: Optional[int] = None,
         gradient_accumulation_steps: int = 1,
         enable_distributed: bool = False,
         world_size: int = 1,
@@ -230,6 +231,7 @@ class UnifiedTrainer:
         self.stream_batch_size = stream_batch_size
         self.max_features = max_features
         self.total_timesteps = total_timesteps
+        self.episodes = episodes
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.enable_distributed = enable_distributed
         self.world_size = world_size
@@ -570,6 +572,132 @@ class UnifiedTrainer:
 
         self.memory_monitor_thread = None
 
+    def _validate_feature_consistency(self) -> bool:
+        """
+        Validate feature consistency between config and data file.
+
+        Checks if the number of features specified in config matches the actual data file.
+        Issues warnings and attempts fallback if inconsistencies are found.
+
+        Returns:
+            bool: True if validation passes or fallback succeeds, False if critical failure
+        """
+        try:
+            # Get data path from config
+            data_config = self.config.get("training", {}).get("data_config", {})
+            data_path = data_config.get("data_path")
+
+            if not data_path:
+                self.logger.warning("No data path specified in config - skipping feature validation")
+                return True
+
+            # Import pandas for data reading
+            import pandas as pd
+            from pathlib import Path
+
+            data_file = Path(data_path)
+            if not data_file.exists():
+                self.logger.error(f"Data file not found: {data_path}")
+                self.ui.print_error(f"Data file not found: {data_path}")
+                return False
+
+            # Read data file to get actual feature count
+            try:
+                # Read only header to get column count efficiently
+                df_header = pd.read_csv(data_file, nrows=0)
+                actual_feature_count = len(df_header.columns) - 1  # Exclude timestamp/index column
+            except Exception as e:
+                self.logger.error(f"Failed to read data file header: {e}")
+                self.ui.print_error(f"Failed to read data file: {e}")
+                return False
+
+            # Get configured feature count from config
+            features_config = self.config.get("features", {})
+            configured_feature_count = 0
+
+            if isinstance(features_config, dict):
+                # Count features in each category
+                for category, feature_list in features_config.items():
+                    if isinstance(feature_list, list):
+                        configured_feature_count += len(feature_list)
+                    elif isinstance(feature_list, str):
+                        configured_feature_count += 1
+            else:
+                self.logger.warning("Features config is not a dictionary - unable to validate")
+                return True
+
+            # Compare feature counts
+            if configured_feature_count == actual_feature_count:
+                self.logger.info(f"✅ Feature consistency validated: {configured_feature_count} features match data file")
+                return True
+
+            # Feature count mismatch detected
+            self.logger.warning(
+                f"Feature count mismatch detected! Config: {configured_feature_count}, Data: {actual_feature_count}"
+            )
+            self.ui.print_error(
+                f"⚠️  Feature Count Mismatch Detected!\n"
+                f"   Config specifies: {configured_feature_count} features\n"
+                f"   Data file contains: {actual_feature_count} features\n"
+                f"   Proceeding with fallback handling..."
+            )
+
+            # Attempt fallback: Update config to match actual data features
+            if actual_feature_count > configured_feature_count:
+                self.logger.info("Attempting to update config features to match data file")
+
+                # Read full data to get feature names
+                try:
+                    df_sample = pd.read_csv(data_file, nrows=5)  # Read sample for feature names
+                    actual_features = df_sample.columns[1:].tolist()  # Exclude timestamp
+
+                    # Update config with actual features (simplified mapping)
+                    updated_features = {
+                        "basic_features": actual_features[:7] if len(actual_features) > 7 else actual_features,
+                        "technical_indicators": actual_features[7:10] if len(actual_features) > 10 else [],
+                        "regime_features": actual_features[10:20] if len(actual_features) > 20 else [],
+                        "correlation_features": actual_features[20:30] if len(actual_features) > 30 else [],
+                        "ensemble_features": actual_features[30:40] if len(actual_features) > 40 else [],
+                        "risk_adjusted_features": actual_features[40:80] if len(actual_features) > 80 else [],
+                        "market_features": actual_features[80:90] if len(actual_features) > 90 else [],
+                        "padding_features": actual_features[90:] if len(actual_features) > 90 else [],
+                    }
+
+                    # Remove empty categories
+                    updated_features = {k: v for k, v in updated_features.items() if v}
+
+                    # Update config
+                    self.config["features"] = updated_features
+
+                    self.logger.info(f"Config updated with {len(updated_features)} feature categories")
+                    self.ui.print_success(f"✅ Config updated to match data: {sum(len(v) for v in updated_features.values())} features")
+
+                    return True
+
+                except Exception as e:
+                    self.logger.error(f"Failed to update config features: {e}")
+                    self.ui.print_error(f"Failed to update config features: {e}")
+                    return False
+
+            elif actual_feature_count < configured_feature_count:
+                self.logger.warning(
+                    f"Data file has fewer features ({actual_feature_count}) than config specifies ({configured_feature_count}). "
+                    "This may cause training issues."
+                )
+                self.ui.print_error(
+                    f"Data file has fewer features than configured. "
+                    "Consider updating your data file or reducing configured features."
+                )
+                # Continue with training despite mismatch
+                return True
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Feature consistency validation failed: {e}")
+            self.ui.print_error(f"Feature consistency validation failed: {e}")
+            return False
+
     def _execute_training(self) -> bool:
         """Execute the actual training."""
         algorithm = self.config.get("training", {}).get("algorithm", "").lower()
@@ -581,8 +709,67 @@ class UnifiedTrainer:
         self.logger.info(f"Initial memory stats: {initial_memory}")
 
         try:
+            # 特徴量不一致チェック - トレーニング開始前にデータ特徴量数を検証
+            if not self._validate_feature_consistency():
+                self.logger.warning("Feature consistency validation failed - proceeding with caution")
+                self.ui.print_warning("Feature consistency validation failed - proceeding with caution")
+
+            # If both episodes and total_timesteps specified via constructor/CLI, error out.
+            if self.episodes is not None and self.total_timesteps is not None:
+                raise ValueError(
+                    "Cannot specify both episodes and total_timesteps simultaneously. Use only one override."
+                )
+
+            # If episodes provided, compute total_timesteps and override config (CLI precedence).
+            if self.episodes is not None:
+                try:
+                    from ztb.training.reward_function_optimizer.constants import (
+                        DEFAULT_MAX_EPISODE_LENGTH,
+                    )
+
+                    cfg = self.config if isinstance(self.config, dict) else {}
+                    training_section = (
+                        cfg.get("training", {}) if isinstance(cfg, dict) else {}
+                    )
+                    env_section = (
+                        training_section.get("environment", {})
+                        if isinstance(training_section, dict)
+                        else {}
+                    )
+
+                    max_ep = None
+                    if isinstance(env_section, dict):
+                        inner_cfg = env_section.get("config", env_section)
+                        if isinstance(inner_cfg, dict):
+                            max_ep = inner_cfg.get(
+                                "max_episode_length"
+                            ) or inner_cfg.get("max_episode_steps")
+
+                    if max_ep is None:
+                        max_ep = (
+                            training_section.get("max_episode_length")
+                            if isinstance(training_section, dict)
+                            else None
+                        )
+
+                    if max_ep is None:
+                        max_ep = DEFAULT_MAX_EPISODE_LENGTH
+
+                    total_ts = int(self.episodes) * int(max_ep)
+
+                    if "training" not in self.config:
+                        self.config["training"] = {}
+                    self.config["training"]["episodes"] = int(self.episodes)
+                    self.config["training"]["total_timesteps"] = total_ts
+                    self.logger.info(
+                        f"Overriding config: episodes={self.episodes}, computed total_timesteps={total_ts} (max_episode_length={max_ep})"
+                    )
+                except Exception as e:
+                    self.logger.error(f"Failed to apply episodes override: {e}")
+                    raise
+
             # Override total_timesteps from command line if provided
-            if self.total_timesteps is not None:
+            elif self.total_timesteps is not None:
                 # Handle different config structures
                 if (
                     "training" in self.config
@@ -1564,11 +1751,26 @@ class UnifiedTrainer:
             )
 
             # 観測空間と行動空間の次元を取得（環境設定から）
-            env_config = (
-                self.config.get("environment", {})
-                if isinstance(self.config, dict)
-                else {}
-            )
+            # Extract environment config from multiple supported layouts:
+            # 1) top-level 'environment'
+            # 2) nested under 'training' -> 'environment' -> 'config'
+            if isinstance(self.config, dict):
+                env_config = self.config.get("environment", None)
+                if env_config is None:
+                    training_section = self.config.get("training", {})
+                    env_section = (
+                        training_section.get("environment", {})
+                        if isinstance(training_section, dict)
+                        else {}
+                    )
+                    # prefer inner 'config' dict if present
+                    env_config = (
+                        env_section.get("config", env_section)
+                        if isinstance(env_section, dict)
+                        else {}
+                    )
+            else:
+                env_config = {}
             observation_dim = env_config.get("observation_dim", 10)  # デフォルト値
             action_dim = env_config.get("action_dim", 3)  # デフォルト値
 
@@ -1786,7 +1988,7 @@ class UnifiedTrainer:
             # Create EnvironmentConfig from the features_config
             from ztb.trading.environment.utils.config import EnvironmentConfig
 
-            env_config_dict = env_config.copy()
+            env_config_dict = dict(env_config) if isinstance(env_config, dict) else {}
             features_config = self.config.get("features", {})
 
             # Add feature_set from features_config if available
@@ -1803,6 +2005,42 @@ class UnifiedTrainer:
                 env_config_dict["csv_path"] = self.config["data_path"]
 
             env_config_obj = EnvironmentConfig.from_dict(env_config_dict)
+
+            # Debug: log env config just before handing to HeavyTradingEnv so we can
+            # trace where `use_continuous_actions` may be lost/overwritten.
+            try:
+                self.logger.info(
+                    f"Creating HeavyTradingEnv with env_config_dict keys: {list(env_config_dict.keys())}"
+                )
+            except Exception:
+                self.logger.info(f"env_config_dict type: {type(env_config_dict)}")
+
+            try:
+                # If dict-like
+                if isinstance(env_config_dict, dict):
+                    preview = {
+                        k: env_config_dict.get(k, "NOT_FOUND")
+                        for k in ["use_continuous_actions", "action_space_type"]
+                    }
+                    self.logger.info(f"env_config_dict preview: {preview}")
+                else:
+                    self.logger.info(
+                        f"env_config_dict repr[:200]: {repr(env_config_dict)[:200]}"
+                    )
+            except Exception:
+                pass
+
+            try:
+                # For the constructed EnvironmentConfig object
+                ua = getattr(env_config_obj, "use_continuous_actions", "NOT_PRESENT")
+                at = getattr(env_config_obj, "action_space_type", "NOT_PRESENT")
+                self.logger.info(
+                    f"env_config_obj preview: use_continuous_actions={ua}, action_space_type={at}"
+                )
+            except Exception:
+                self.logger.info(
+                    f"Could not inspect env_config_obj (type={type(env_config_obj)})"
+                )
 
             env = HeavyTradingEnv(
                 config=env_config_obj,

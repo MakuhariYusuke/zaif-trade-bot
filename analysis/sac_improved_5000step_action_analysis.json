@@ -1,0 +1,27 @@
+{
+  "total_actions": 9990,
+  "action_stats": {
+    "mean": -0.003649721692154954,
+    "std": 0.019828737242516103,
+    "min": -0.029300451278686523,
+    "max": 0.04597163200378418,
+    "median": -0.012280523777008057
+  },
+  "action_distribution": {
+    "buy_signals": 0,
+    "sell_signals": 0,
+    "hold_signals": 9990,
+    "strong_buy": 0,
+    "strong_sell": 0
+  },
+  "reward_stats": {
+    "mean": -0.00010000000000000003,
+    "std": 2.710505431213761e-20,
+    "total": -0.9990000000000003
+  },
+  "bias_analysis": {
+    "buy_ratio": 0.0,
+    "sell_ratio": 0.0,
+    "buy_sell_ratio": 0.0
+  }
+}
