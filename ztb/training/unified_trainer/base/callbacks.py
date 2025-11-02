@@ -36,6 +36,7 @@ class TrainingProgressCallback(BaseCallback):
         self.lr_scheduler = lr_scheduler
         self.early_stopping = early_stopping
         self.trainer_ref = trainer_ref
+        self.trainer = trainer_ref  # Set trainer attribute for compatibility
 
         # Provide explicit type annotations so mypy can reason about these lists
         self.continuous_actions: List[float] = []
@@ -64,6 +65,20 @@ class TrainingProgressCallback(BaseCallback):
         ):
             self.optimizer_tracker = trainer_ref.optimizer_tracker
         # Note: If optimizer_tracker is None, optimizer features are disabled for this training run
+
+        # Early stopping parameters
+        self.early_stopping_enabled = False
+        self.early_stopping_patience = 10
+        self.early_stopping_min_delta = 0.001
+        self.best_reward = -float('inf')
+        self.early_stopping_counter = 0
+        self.early_stopping_triggered = False
+
+        # Initialize early stopping if configured
+        if early_stopping and isinstance(early_stopping, dict):
+            self.early_stopping_enabled = early_stopping.get("enabled", False)
+            self.early_stopping_patience = early_stopping.get("patience", 10)
+            self.early_stopping_min_delta = early_stopping.get("min_delta", 0.001)
 
     def _on_step(self) -> bool:
         # Record action taken (handle both PPO discrete and SAC continuous actions)
@@ -236,6 +251,10 @@ class TrainingProgressCallback(BaseCallback):
                 if self.verbose > 1:
                     logging.debug(f"Failed to update optimizer features: {e}")
 
+        # Check early stopping conditions
+        if self.early_stopping_enabled and self.n_calls % self.check_freq == 0:
+            self._check_early_stopping()
+
         return True
 
     def _continuous_to_discrete_action(
@@ -291,6 +310,49 @@ class TrainingProgressCallback(BaseCallback):
                 action_dist["SELL"] * 100.0,
                 len(self.reward_history),
             )
+
+            # Log continuous action statistics for SAC models
+            if self.continuous_actions and len(self.continuous_actions) > 100:
+                recent_continuous = self.continuous_actions[-1000:]  # Last 1000 actions
+                mean_action = np.mean(recent_continuous)
+                std_action = np.std(recent_continuous)
+                min_action = np.min(recent_continuous)
+                max_action = np.max(recent_continuous)
+                logging.info(
+                    "Continuous Action Stats - Mean: %.3f, Std: %.3f, Min: %.3f, Max: %.3f, Range: %.3f",
+                    mean_action,
+                    std_action,
+                    min_action,
+                    max_action,
+                    max_action - min_action,
+                )
+
+                # Log action distribution in ranges
+                ranges = [
+                    (-1.0, -0.8),
+                    (-0.8, -0.6),
+                    (-0.6, -0.4),
+                    (-0.4, -0.2),
+                    (-0.2, 0.0),
+                    (0.0, 0.2),
+                    (0.2, 0.4),
+                    (0.4, 0.6),
+                    (0.6, 0.8),
+                    (0.8, 1.0),
+                ]
+                range_counts = []
+                for r_min, r_max in ranges:
+                    count = sum(1 for x in recent_continuous if r_min <= x < r_max)
+                    range_counts.append(count)
+                total_in_ranges = sum(range_counts)
+                if total_in_ranges > 0:
+                    range_dist = [
+                        count / total_in_ranges * 100 for count in range_counts
+                    ]
+                    logging.info(
+                        "Action Range Distribution (%%): [-1,-0.8]: %.1f, [-0.8,-0.6]: %.1f, [-0.6,-0.4]: %.1f, [-0.4,-0.2]: %.1f, [-0.2,0]: %.1f, [0,0.2]: %.1f, [0.2,0.4]: %.1f, [0.4,0.6]: %.1f, [0.6,0.8]: %.1f, [0.8,1]: %.1f",
+                        *range_dist,
+                    )
 
             # Log per-regime action distribution for debugging
             if self.regime_action_counts:
@@ -414,3 +476,31 @@ class TrainingProgressCallback(BaseCallback):
                     tb_writer.writer.flush()
         except Exception as e:
             logging.debug(f"TensorBoard logging failed: {e}")
+
+    def _check_early_stopping(self):
+        """Check if early stopping conditions are met."""
+        if not self.early_stopping_enabled or not self.reward_history:
+            return
+
+        # Calculate recent average reward
+        recent_rewards = self.reward_history[-100:]  # Last 100 rewards
+        if len(recent_rewards) < 10:  # Need minimum samples
+            return
+
+        current_avg_reward = sum(recent_rewards) / len(recent_rewards)
+
+        # Check if improvement is significant
+        if current_avg_reward > self.best_reward + self.early_stopping_min_delta:
+            self.best_reward = current_avg_reward
+            self.early_stopping_counter = 0
+            logging.info(f"Early stopping: New best reward {current_avg_reward:.4f}")
+        else:
+            self.early_stopping_counter += 1
+            logging.debug(f"Early stopping counter: {self.early_stopping_counter}/{self.early_stopping_patience}")
+
+        # Trigger early stopping if patience exceeded
+        if self.early_stopping_counter >= self.early_stopping_patience:
+            self.early_stopping_triggered = True
+            logging.info(f"Early stopping triggered after {self.early_stopping_patience} steps without improvement")
+            # Note: We can't directly stop training from callback, but we can set a flag
+            # The training loop should check this flag

@@ -9,10 +9,11 @@ from typing import Any, Optional
 
 import numpy as np
 
-from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
+from ztb.trading.strategies.action_signal_guide import (
     ActionSignalGuide,
     ActionSignalGuideConfig,
     GuidanceLevel,
+    GuidanceMode,
 )
 from ztb.trading.strategies.signal_reward_integrator import SignalRewardIntegrator
 from ztb.utils.logging_utils import get_logger
@@ -34,7 +35,7 @@ class SignalIntegrator(ISignalIntegrator):
         self,
         config: Any,  # EnvironmentConfig
         enabled: bool = False,
-        guidance_level: str = "strong",
+        guidance_level: str = "full",
         signal_bonus_weight: float = 0.1,
         signal_penalty_weight: float = 0.05,
         granville_weight: float = 1.2,
@@ -88,10 +89,23 @@ class SignalIntegrator(ISignalIntegrator):
         """Initialize the action signal guide and integration."""
         try:
             # Initialize signal guide
-            feature_names = getattr(self.config, 'feature_names', None)
+            feature_names = getattr(self.config, "feature_names", None)
+            
+            # Convert string guidance_level to GuidanceMode enum
+            guidance_map = {
+                "full": GuidanceMode.FULL_GUIDANCE,
+                "partial": GuidanceMode.PARTIAL_GUIDANCE, 
+                "minimal": GuidanceMode.MINIMAL_GUIDANCE,
+                "fade_out": GuidanceMode.FADE_OUT,
+                "none": GuidanceMode.NO_GUIDANCE,
+                "strong": GuidanceMode.FULL_GUIDANCE,  # backward compatibility
+            }
+            
+            guidance_enum = guidance_map.get(guidance_level.lower(), GuidanceMode.FULL_GUIDANCE)
+            
             signal_guide_config = ActionSignalGuideConfig(
-                guidance_level=GuidanceLevel(guidance_level),
-                feature_names=feature_names
+                guidance_level=guidance_enum,
+                feature_names=feature_names,
             )
             self.signal_guide = ActionSignalGuide(config=signal_guide_config)
 
@@ -120,7 +134,9 @@ class SignalIntegrator(ISignalIntegrator):
             self.logger.error(f"Failed to initialize signal guide: {e}")
             self.enabled = False
 
-    def integrate_signal(self, reward: float, observation: Optional[np.ndarray], action: int, step: int) -> float:
+    def integrate_signal(
+        self, reward: float, observation: Optional[np.ndarray], action: int, step: int
+    ) -> float:
         """
         Apply signal integration to the reward if enabled.
 

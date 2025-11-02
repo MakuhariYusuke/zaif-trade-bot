@@ -15,8 +15,8 @@ Usage:
     saved_fingerprint = ConfigFingerprint.load("models/model_name/config_fingerprint.json")
 
     if not saved_fingerprint.matches(eval_fingerprint):
-        print("Config mismatch!")
-        print(saved_fingerprint.diff(eval_fingerprint))
+        logger.error("Config mismatch!")
+        logger.error(str(saved_fingerprint.diff(eval_fingerprint)))
         raise ValueError("Training/evaluation config mismatch")
 """
 
@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from ztb.types.common import ConfigDict
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

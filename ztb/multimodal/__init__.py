@@ -106,6 +106,11 @@ def get_version_info():
     }
 
 
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
+
 # 初期化完了メッセージ
-print(f"🤖 MultiModal Learning Module v{__version__} initialized")
-print("📊 Ready for multi-modal trading AI development")
+logger.info("🤖 MultiModal Learning Module v%s initialized", __version__)
+logger.info("📊 Ready for multi-modal trading AI development")

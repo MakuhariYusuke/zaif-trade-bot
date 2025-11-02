@@ -43,7 +43,7 @@
   "training": {
     "algorithm": "sac",
     "model_name": "sac_v444_advanced_regime_adaptation",
-    "total_timesteps": 5000,
+    "total_timesteps": 1000,
     "data_config": {
       "csv_path": "data/btc_jpy_featured_dataset.csv",
       "data_path": "data/btc_jpy_featured_dataset.csv",
@@ -61,7 +61,11 @@
       "target_update_interval": 1,
       "target_entropy": -2.0
     },
+    "features": {
+      "feature_set": "high_quality"
+    },
     "environment": {
+      "feature_set": "high_quality",
       "config": {
         "initial_balance": 200000.0,
         "commission": 0.001,
@@ -70,9 +74,10 @@
         "action_space_type": "continuous",
         "use_continuous_actions": true,
         "curriculum_stage": "advanced_regime_adaptation",
-        "continuous_to_discrete_threshold": 0.08,
+        "continuous_to_discrete_threshold": 0.5,
+        "feature_set": "high_quality",
         "behavior_optimization": {
-          "action_balance_target": 0.8,
+          "action_balance_target": 0.35,
           "entropy_regularization": 0.01,
           "action_smoothing": 0.1,
           "consistency_penalty": 0.05,
@@ -308,6 +313,14 @@
             }
           }
         },
+        "reward_settings": {
+          "use_simple_reward": true,
+          "behavior_optimization": {
+            "hold_penalty": 5.0,
+            "trade_bonus": 10.0,
+            "sell_penalty": 20.0
+          }
+        },
         "multi_timeframe_integration": {
           "enabled": true,
           "timeframes": [
@@ -393,61 +406,6 @@
         }
       }
     },
-    "features": {
-      "feature_set": "v444_adaptive",
-      "dynamic_feature_selection": true,
-      "regime_optimized_features": true,
-      "multi_timeframe_features": true,
-      "include_regime_indicators": true,
-      "include_volatility_features": true,
-      "include_momentum_features": true,
-      "include_volume_features": true,
-      "advanced_features": {
-        "momentum_indicators": [
-          "rsi",
-          "macd",
-          "stochastic",
-          "williams_r",
-          "cci",
-          "momentum",
-          "roc"
-        ],
-        "volatility_indicators": [
-          "bollinger_bands",
-          "atr",
-          "bb_width",
-          "historical_volatility",
-          "parkinson_volatility"
-        ],
-        "trend_indicators": [
-          "adx",
-          "dmi",
-          "ichimoku",
-          "supertrend",
-          "ema_slope",
-          "sma_slope"
-        ],
-        "volume_indicators": [
-          "volume_sma",
-          "volume_ratio",
-          "vwap",
-          "volume_price_trend",
-          "accumulation_distribution"
-        ],
-        "multi_timeframe_features": [
-          "higher_tf_trend",
-          "lower_tf_momentum",
-          "timeframe_alignment",
-          "cross_tf_correlation"
-        ]
-      },
-      "feature_engineering": {
-        "interaction_features": true,
-        "regime_specific_transforms": true,
-        "temporal_features": true,
-        "statistical_features": true
-      }
-    },
     "analysis": {
       "unified_analyzer_v444": {
         "enabled": true,
@@ -459,5 +417,25 @@
         "feature_importance_tracking": true
       }
     }
-  }
+  },
+  "asymmetric_reward_scaler": {
+    "long_position_reward_multiplier": 1.0,
+    "short_position_reward_multiplier": 1.0,
+    "long_position_penalty_multiplier": 1.0,
+    "short_position_penalty_multiplier": 1.0
+  },
+  "behavior_optimization": {
+    "hold_penalty": 0.2,
+    "trade_bonus": 0.3,
+    "sell_penalty": 0.1
+  },
+  "reward_settings": {
+    "behavior_optimization": {
+      "hold_penalty": 0.2,
+      "trade_bonus": 0.3,
+      "sell_penalty": 0.1
+    }
+  },
+  "action_balance_target": 0.35,
+  "continuous_to_discrete_threshold": 0.5
 }

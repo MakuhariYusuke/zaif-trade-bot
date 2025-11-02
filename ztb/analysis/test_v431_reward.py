@@ -7,6 +7,9 @@ import json
 import sys
 from pathlib import Path
 
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL
+from ztb.trading.environment.constants import continuous_to_discrete_action
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -52,18 +55,17 @@ def test_v431_reward_function():
 
     # Test actions
     actions = [-0.5, -0.2, 0.0, 0.2, 0.5]  # SELL, HOLD, BUY range
-    sell_threshold = action_thresh.get("sell_threshold", -0.3333)
-    buy_threshold = action_thresh.get("buy_threshold", 0.3333)
 
     sell_bonus = reward_func.get("sell_bonus", 0.25)
     hold_bonus = reward_func.get("hold_bonus", 0.0053)
     buy_bonus = reward_func.get("buy_bonus", 0.2)
 
     for action in actions:
-        if action <= sell_threshold:
+        discrete_action = continuous_to_discrete_action(action)
+        if discrete_action == ACTION_SELL:
             reward = sell_bonus
             action_type = "SELL"
-        elif action >= buy_threshold:
+        elif discrete_action == ACTION_BUY:
             reward = buy_bonus
             action_type = "BUY"
         else:

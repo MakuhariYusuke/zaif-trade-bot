@@ -1,0 +1,17 @@
+{
+  "total_timesteps": 5000,
+  "environment": "minimal_trading_env",
+  "model_config": {
+    "learning_rate": 0.0003,
+    "buffer_size": 10000,
+    "batch_size": 64,
+    "net_arch": [
+      64,
+      64
+    ]
+  },
+  "training_events": [],
+  "training_completed": true,
+  "model_path": "models/sac_minimal_5000step_final.zip",
+  "final_status": "success"
+}

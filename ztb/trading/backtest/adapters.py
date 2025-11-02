@@ -544,14 +544,14 @@ class ActionSignalGuideAdapter:
                 enable_fibonacci_patterns=False,
                 enable_gann_patterns=False,
                 enable_wave_patterns=False,
-                enable_harmonic_patterns=False,
+                enable_harmonic_patterns=True,  # Enable HARMONIC patterns
                 enable_oscillator_patterns=False,
                 enable_volume_patterns=False,
                 enable_bollinger_patterns=False,
                 enable_adx_patterns=False,
                 enable_granville_patterns=False,
                 enable_heikin_ashi_patterns=False,
-                enable_dow_theory_patterns=False,
+                enable_dow_theory_patterns=True,  # Enable DOW_THEORY patterns
             )
         self.guide = ActionSignalGuide(config=guide_config)
         print(
@@ -559,7 +559,7 @@ class ActionSignalGuideAdapter:
         )
         print(f"Debug mode: {guide_config.debug_short_mode}")
         self.hyperparameters = {
-            "confidence_threshold": 0.1,  # Very low threshold
+            "confidence_threshold": 0.0,  # Accept all signals regardless of confidence
             "signal_strength_threshold": 0.0,  # Accept any signal strength
             "max_signals_per_bar": 5,
         }
@@ -580,13 +580,10 @@ class ActionSignalGuideAdapter:
             # Generate signals from Action Signal Guide
             # Use the last index of current data (current bar)
             current_index = len(data) - 1
-            print(
-                f"DEBUG: ActionSignalGuideAdapter.generate_signal called with data len={len(data)}, current_index={current_index}"
-            )
             signals = self.guide.generate_signals(data, current_index)
 
             # Debug: print signal information (only for significant signals and not too frequently)
-            if signals and current_index % 100 == 0:  # Print only every 100 bars
+            if signals and current_index % 500 == 0:  # Print only every 500 bars
                 print(f"Generated {len(signals)} signals at index {current_index}")
                 for i, signal in enumerate(signals[:3]):  # Show only first 3 signals
                     print(
@@ -619,10 +616,10 @@ class ActionSignalGuideAdapter:
                 self.signal_stats["total_signals"] += 1
                 return {"action": "hold"}  # Hold if signal too weak
 
-            if direction > 0.1:  # Bullish
+            if direction > 0.0:  # Bullish (accept any positive direction)
                 action = "buy"
                 self.signal_stats["buy_signals"] += 1
-            elif direction < -0.1:  # Bearish
+            elif direction < 0.0:  # Bearish (accept any negative direction)
                 action = "sell"
                 self.signal_stats["sell_signals"] += 1
             else:  # Neutral
