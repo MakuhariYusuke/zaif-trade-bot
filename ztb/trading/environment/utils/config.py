@@ -5,9 +5,9 @@ This module contains configuration classes for the Heavy Trading Environment.
 """
 
 import dataclasses
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, Union
 
-from ztb.features.curated_features import get_feature_set
+from ztb.features.feature_set_manager import get_feature_set
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG
 from ztb.training.config.ppo_config import (
     DEFAULT_MAX_CONSECUTIVE_TRADES,
@@ -36,38 +36,48 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class RewardSettings(TypedDict, total=False):
+@dataclasses.dataclass
+class RewardSettings:
     """Type-safe reward settings configuration."""
 
-    position_soft_cap: float
-    position_penalty_scale: float
-    position_penalty_exp: float
-    inventory_window: int
-    inventory_penalty_scale: float
-    trade_frequency_penalty: float
-    trade_frequency_halflife: float
-    trade_cooldown_steps: int
-    trade_cooldown_penalty: float
-    max_consecutive_trades: int
-    consecutive_trade_penalty: float
-    volatility_window: int
-    volatility_penalty_scale: float
-    sharpe_bonus_scale: float
-    sortino_bonus_scale: float
-    calmar_bonus_scale: float
-    reward_clip_value: float
-    profit_bonus_multipliers: List[float]
-    enable_forced_diversity: bool
-    custom_reward_params: Dict[str, float]
-    balance_penalty: float
-    balance_penalty_tolerance: float
-
-    # Optimized reward function parameters
-    profit_weight: float
-    risk_weight: float
-    consistency_weight: float
-    ultra_profit_multiplier: float
-    ultra_risk_multiplier: float
+    use_simple_reward: bool = False
+    reward_scale: float = 100.0
+    trading_bonus: float = 0.01
+    profit_bonuses: Dict[str, float] = dataclasses.field(default_factory=dict)
+    penalty_coefficients: Dict[str, float] = dataclasses.field(default_factory=dict)
+    entropy_bonus: float = 0.0
+    custom_reward_params: Dict[str, float] = dataclasses.field(default_factory=dict)
+    balance_penalty: float = 0.1
+    balance_penalty_tolerance: float = 0.05
+    profit_weight: float = 1.0
+    risk_weight: float = 0.5
+    consistency_weight: float = 0.2
+    ultra_profit_multiplier: float = 2.0
+    ultra_risk_multiplier: float = 0.5
+    position_soft_cap: float = 0.5
+    position_penalty_scale: float = 0.1
+    position_penalty_exponent: float = 2.0
+    inventory_window: int = 10
+    inventory_penalty_scale: float = 0.01
+    trade_frequency_penalty: float = 0.001
+    trade_frequency_halflife: float = 100.0
+    trade_cooldown_steps: int = 5
+    trade_cooldown_penalty: float = 0.01
+    max_consecutive_trades: int = 3
+    consecutive_trade_penalty: float = 0.05
+    volatility_window: int = 20
+    volatility_penalty_scale: float = 0.01
+    sharpe_bonus_scale: float = 0.01
+    sortino_bonus_scale: float = 0.01
+    calmar_bonus_scale: float = 0.005
+    reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
+    reward_clip_min: float = -80.0
+    reward_clip_max: float = 80.0
+    profit_bonus_multipliers: List[float] = dataclasses.field(
+        default_factory=lambda: [1.0, 1.5, 2.0]
+    )
+    enable_forced_diversity: bool = False
+    curriculum_stage: str = "simple"
 
 
 @dataclasses.dataclass
@@ -139,6 +149,7 @@ class EnvironmentConfig:
 
     # Action space configuration
     use_continuous_actions: bool = False  # True for SAC, False for PPO
+    action_space_type: Optional[str] = None
     target_feature_count: Optional[
         int
     ] = None  # Desired observation feature count when reducing correlations
@@ -160,6 +171,7 @@ class EnvironmentConfig:
 
     # Market regime detection and adaptation settings (v443 enhancement)
     market_regime: Optional[Dict[str, Any]] = None
+    advanced_market_regime: Optional[Dict[str, Any]] = None
     dynamic_reward_shaping: Optional[Dict[str, Any]] = None
 
     # Adaptive feature selection settings
@@ -182,6 +194,28 @@ class EnvironmentConfig:
         """Create config from dictionary, with defaults for missing values."""
         if config_dict is None:
             return cls()
+
+        # Diagnostic logging: show whether the incoming dict explicitly contains use_continuous_actions
+        try:
+            logger.info(
+                "EnvironmentConfig.from_dict received config type=%s, contains_use_continuous=%s",
+                type(config_dict),
+                (
+                    "YES"
+                    if (
+                        isinstance(config_dict, dict)
+                        and "use_continuous_actions" in config_dict
+                    )
+                    else "NO"
+                ),
+            )
+            if isinstance(config_dict, dict):
+                logger.info(
+                    "EnvironmentConfig.from_dict preview use_continuous_actions=%s",
+                    config_dict.get("use_continuous_actions", "NOT_PRESENT"),
+                )
+        except Exception:
+            logger.exception("Failed to log EnvironmentConfig.from_dict diagnostic")
 
         # Convert dictionary to config, handling type conversions
         config_kwargs = {}
@@ -323,10 +357,30 @@ class EnvironmentConfig:
         # Handle nested training.environment section
         if "training" in config_dict and isinstance(config_dict["training"], dict):
             training_config = config_dict["training"]
+            # Support both flattened (training.environment.<fields>) and
+            # extra-nested (training.environment.config.<fields>) layouts.
+            env_section = None
             if "environment" in training_config and isinstance(
                 training_config["environment"], dict
             ):
-                env_config = training_config["environment"]
+                env_section = training_config["environment"]
+
+            # If there's an inner 'config' dict (v4xx converter sometimes nests under .config)
+            if (
+                env_section
+                and "config" in env_section
+                and isinstance(env_section["config"], dict)
+            ):
+                # Merge inner config taking precedence over direct env_section keys
+                inner = dict(env_section.get("config", {}))
+                # shallow-merge so inner config overrides
+                merged_env = dict(env_section)
+                merged_env.update(inner)
+                env_config = merged_env
+            else:
+                env_config = env_section
+
+            if isinstance(env_config, dict):
                 # Copy environment config values to top level for processing
                 for key, value in env_config.items():
                     if (
@@ -393,6 +447,36 @@ class EnvironmentConfig:
                 )
             except Exception as e:
                 logger.warning(f"Failed to load curated features: {e}")
+
+        # Handle reward_settings
+        if "reward_settings" in config_dict and isinstance(
+            config_dict["reward_settings"], dict
+        ):
+            reward_settings_dict = config_dict["reward_settings"]
+            try:
+                config_kwargs["reward_settings"] = RewardSettings(
+                    **reward_settings_dict
+                )
+            except TypeError:
+                # Be tolerant of extra/unknown keys in configs (forward compatibility)
+                rs = RewardSettings()
+                for k, v in reward_settings_dict.items():
+                    if hasattr(rs, k):
+                        try:
+                            setattr(rs, k, v)
+                        except Exception:
+                            # skip invalid assignments
+                            pass
+                    else:
+                        # Store unknown keys in custom_reward_params for inspection
+                        try:
+                            if isinstance(v, (int, float)):
+                                rs.custom_reward_params[k] = float(v)
+                            else:
+                                rs.custom_reward_params[k] = v
+                        except Exception:
+                            rs.custom_reward_params[k] = v
+                config_kwargs["reward_settings"] = rs
 
         return cls(**config_kwargs)  # type: ignore[arg-type]
 

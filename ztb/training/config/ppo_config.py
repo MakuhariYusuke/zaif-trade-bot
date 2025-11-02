@@ -200,6 +200,7 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "verbose": 1,
     # Trading-specific parameters
     "reward_scaling": DEFAULT_REWARD_SCALING,  # Optimized value from hyperparameter search
+    "reward_clip_value": DEFAULT_REWARD_CLIP_VALUE,
     "transaction_cost": 0.001,
     "position_penalty_scale": 0.01,
     "inventory_penalty_scale": 0.001,

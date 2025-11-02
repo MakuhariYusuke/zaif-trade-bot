@@ -31,6 +31,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class FeaturesSchema:
@@ -295,7 +299,9 @@ class FeaturesSchema:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(schema_dict, f, indent=2, ensure_ascii=False)
 
-        print(f"Feature schema saved to {path} (hash: {self.compute_hash()[:16]}...)")
+        logger.info(
+            "Feature schema saved to %s (hash: %s...)", path, self.compute_hash()[:16]
+        )
 
     @classmethod
     def load(cls, path: Path) -> FeaturesSchema:
@@ -342,7 +348,9 @@ class FeaturesSchema:
                 f"computed {computed_hash[:16]}..."
             )
 
-        print(f"Feature schema loaded from {path} (hash: {computed_hash[:16]}...)")
+        logger.info(
+            "Feature schema loaded from %s (hash: %s...)", path, computed_hash[:16]
+        )
         return schema
 
     @classmethod
@@ -379,7 +387,7 @@ class FeaturesSchema:
             if strict:
                 raise ValueError(error_msg)
             else:
-                print(f"WARNING: {error_msg}")
+                logger.warning("WARNING: %s", error_msg)
 
         return schema
 

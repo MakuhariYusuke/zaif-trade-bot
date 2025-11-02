@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.config.loader import ConfigLoader
 from ztb.features.optimizer_features import OptimizerFeatureTracker
 from ztb.training.core.unified_base import UnifiedBase
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
@@ -60,13 +61,27 @@ class V4XXUnifiedTrainer(UnifiedBase):
             # Load raw config
             raw_config = self.load_config(str(self.config_path))
 
+            # Validate config using pydantic loader
+            config_loader = ConfigLoader()
+            validated_config = config_loader.validate_config(raw_config)
+
             # Detect version if not provided
             if self.version is None:
-                self.version = V4XXConfigConverter.detect_config_version(raw_config)
+                self.version = V4XXConfigConverter.detect_config_version(
+                    validated_config
+                )
                 self.logger.info(f"Detected configuration version: {self.version}")
 
             # Convert to unified format
-            unified_config = V4XXConfigConverter.convert_to_unified(raw_config)
+            unified_config = V4XXConfigConverter.convert_to_unified(validated_config)
+
+            self.logger.debug("unified_config keys: %s", list(unified_config.keys()))
+            self.logger.debug(
+                "algorithm in unified_config: %s", "algorithm" in unified_config
+            )
+            self.logger.debug(
+                "model_name in unified_config: %s", "model_name" in unified_config
+            )
 
             # Add metadata
             unified_config["_metadata"] = {
@@ -180,11 +195,84 @@ def main():
         "--validate-only", action="store_true", help="Only validate configuration"
     )
 
+    # Mutually exclusive override options: specify episodes OR total_timesteps via CLI.
+    # If both are provided, argparse will enforce exclusivity and raise an error.
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--episodes",
+        type=int,
+        help=(
+            "Number of episodes to run (overrides config). "
+            "If provided, total_timesteps = episodes * max_episode_length"
+        ),
+    )
+    group.add_argument(
+        "--total-timesteps",
+        type=int,
+        help="Total timesteps to train for (overrides value in config)",
+    )
+
     args = parser.parse_args()
 
     try:
         # Initialize trainer
         trainer = V4XXUnifiedTrainer(args.config, args.version)
+
+        # CLI overrides: episodes or total_timesteps take precedence over config values.
+        # If episodes is provided, compute total_timesteps from max_episode_length (config or default).
+        if args.episodes is not None:
+            try:
+                from ztb.training.reward_function_optimizer.constants import (
+                    DEFAULT_MAX_EPISODE_LENGTH,
+                )
+
+                cfg = trainer.config if isinstance(trainer.config, dict) else {}
+                training_section = (
+                    cfg.get("training", {}) if isinstance(cfg, dict) else {}
+                )
+                env_section = (
+                    training_section.get("environment", {})
+                    if isinstance(training_section, dict)
+                    else {}
+                )
+
+                max_ep = None
+                if isinstance(env_section, dict):
+                    inner_cfg = env_section.get("config", env_section)
+                    if isinstance(inner_cfg, dict):
+                        max_ep = inner_cfg.get("max_episode_length") or inner_cfg.get(
+                            "max_episode_steps"
+                        )
+
+                if max_ep is None:
+                    max_ep = (
+                        training_section.get("max_episode_length")
+                        if isinstance(training_section, dict)
+                        else None
+                    )
+
+                if max_ep is None:
+                    max_ep = DEFAULT_MAX_EPISODE_LENGTH
+
+                total_ts = int(args.episodes) * int(max_ep)
+
+                if "training" not in trainer.config:
+                    trainer.config["training"] = {}
+                trainer.config["training"]["episodes"] = int(args.episodes)
+                trainer.config["training"]["total_timesteps"] = total_ts
+                trainer.logger.info(
+                    f"Overriding config: episodes={args.episodes}, computed total_timesteps={total_ts} (max_episode_length={max_ep})"
+                )
+            except Exception as e:
+                trainer.logger.error("Failed to apply --episodes override: %s", e)
+                sys.exit(1)
+        elif args.total_timesteps is not None:
+            if "training" not in trainer.config:
+                trainer.config["training"] = {}
+            trainer.config["training"]["total_timesteps"] = int(args.total_timesteps)
+            trainer.logger.info(
+                f"Overriding config: total_timesteps={args.total_timesteps}"
+            )
 
         # Validate configuration
         if not trainer.validate_config():
@@ -202,7 +290,7 @@ def main():
         trainer.train()
 
     except Exception as e:
-        print(f"❌ Training system failed: {e}")
+        trainer.logger.error("❌ Training system failed: %s", e)
         sys.exit(1)
 
 

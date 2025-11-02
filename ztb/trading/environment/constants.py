@@ -42,11 +42,9 @@ MAX_ACTION_HISTORY_LARGE = 512  # Large action history buffer for complex strate
 # Common batch sizes for training
 # BATCH_SIZE_* constants imported from training.constants
 from ztb.training.constants import (
-    BATCH_SIZE_SMALL,
     BATCH_SIZE_MEDIUM,
+    BATCH_SIZE_SMALL,
     BATCH_SIZE_STANDARD,
-    BATCH_SIZE_LARGE,
-    BATCH_SIZE_XLARGE,
 )
 
 # Common buffer/replay buffer sizes
@@ -84,6 +82,7 @@ BASIS_POINTS = 10000  # Basis points conversion factor (1% = 100 basis points)
 # Learning rates and optimization parameters
 # DEFAULT_LEARNING_RATE imported from training.constants
 from ztb.training.constants import DEFAULT_LEARNING_RATE
+
 DEFAULT_LAGRANGE_ETA_MIN = 0.001  # Minimum Lagrange multiplier
 DEFAULT_LAGRANGE_ETA_LR = 0.001  # Lagrange learning rate
 
@@ -300,7 +299,7 @@ def continuous_to_discrete_action(
             - Higher threshold = more HOLD actions, less BUY/SELL
 
     Returns:
-        Discrete action (0=HOLD, 1=BUY, 2=SELL)
+        Discrete action (0=HOLD, 1=BUY, -1=SELL)
     """
     if continuous_action > threshold:
         return ACTION_BUY
@@ -333,7 +332,7 @@ def discrete_to_continuous_action(discrete_action: int) -> float:
 # ============================================================================
 
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Environment detection
 ENVIRONMENT = os.getenv("TRADING_ENV", "dev").lower()
@@ -385,6 +384,7 @@ ENV_MAX_ACTION_HISTORY = CURRENT_ENV_CONFIG["max_action_history"]
 ENV_ENABLE_LOGGING = CURRENT_ENV_CONFIG["enable_logging"]
 ENV_ENABLE_MEMORY_PROFILING = CURRENT_ENV_CONFIG["enable_memory_profiling"]
 
+
 # Validation functions for environment configs
 def validate_environment_config() -> None:
     """
@@ -394,24 +394,37 @@ def validate_environment_config() -> None:
         ConfigurationError: If configuration is invalid
     """
     if ENVIRONMENT not in ENV_CONFIGS:
-        raise ConfigurationError(f"Invalid environment '{ENVIRONMENT}'. Must be one of: {list(ENV_CONFIGS.keys())}")
+        raise ConfigurationError(
+            f"Invalid environment '{ENVIRONMENT}'. Must be one of: {list(ENV_CONFIGS.keys())}"
+        )
 
     config = CURRENT_ENV_CONFIG
 
     if config["fee_rate"] <= 0 or config["fee_rate"] > 0.1:
-        raise ConfigurationError(f"Invalid fee_rate: {config['fee_rate']}. Must be between 0 and 0.1")
+        raise ConfigurationError(
+            f"Invalid fee_rate: {config['fee_rate']}. Must be between 0 and 0.1"
+        )
 
     if config["initial_balance"] <= 0:
-        raise ConfigurationError(f"Invalid initial_balance: {config['initial_balance']}. Must be positive")
+        raise ConfigurationError(
+            f"Invalid initial_balance: {config['initial_balance']}. Must be positive"
+        )
 
     if config["max_trade_size"] <= 0:
-        raise ConfigurationError(f"Invalid max_trade_size: {config['max_trade_size']}. Must be positive")
+        raise ConfigurationError(
+            f"Invalid max_trade_size: {config['max_trade_size']}. Must be positive"
+        )
 
     if config["buffer_size"] <= 0:
-        raise ConfigurationError(f"Invalid buffer_size: {config['buffer_size']}. Must be positive")
+        raise ConfigurationError(
+            f"Invalid buffer_size: {config['buffer_size']}. Must be positive"
+        )
 
     if config["batch_size"] <= 0:
-        raise ConfigurationError(f"Invalid batch_size: {config['batch_size']}. Must be positive")
+        raise ConfigurationError(
+            f"Invalid batch_size: {config['batch_size']}. Must be positive"
+        )
+
 
 # Validate on import
 validate_environment_config()

@@ -21,7 +21,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed import
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.algorithms import AlgorithmFactory
-from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.training.callbacks.advanced_callbacks import (
     BestModelCallback,
     EarlyStoppingCallback,
@@ -464,7 +463,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
                 "gamma": 0.99,
                 "ent_coef": 0.01,
                 "target_update_interval": 1,
-                "target_entropy": -2.0
+                "target_entropy": -2.0,
             }
             self.logger.warning(
                 "No SAC hyperparameters found in config, using defaults"
@@ -477,7 +476,23 @@ class SACAlgorithmTrainer(EnsembleMixin):
                 unified_config["sac_params"] = sac_config
 
         # 2. 環境を作成
-        raw_env_config = cfg.get("environment", {})
+        # Support multiple layout patterns: top-level 'environment' or
+        # nested under training.environment.config (legacy/converted configs)
+        raw_env_config = cfg.get("environment", None)
+        if raw_env_config is None:
+            # Try nested training.environment.config
+            training_section = cfg.get("training", {}) if isinstance(cfg, dict) else {}
+            env_section = (
+                training_section.get("environment", {})
+                if isinstance(training_section, dict)
+                else {}
+            )
+            raw_env_config = (
+                env_section.get("config", env_section)
+                if isinstance(env_section, dict)
+                else {}
+            )
+
         if isinstance(raw_env_config, EnvironmentConfig):
             env_config = raw_env_config.as_dict()
         elif isinstance(raw_env_config, dict):
@@ -498,7 +513,9 @@ class SACAlgorithmTrainer(EnsembleMixin):
         # ConfigManagerからデータを取得
         from ztb.utils.data_utils import load_csv_data_optimized
 
-        data_path = cfg.get("data_path") or cfg.get("training", {}).get("data_path", "btc_jpy_real_dataset.csv")
+        data_path = cfg.get("data_path") or cfg.get("training", {}).get(
+            "data_path", "btc_jpy_real_dataset.csv"
+        )
 
         df = load_csv_data_optimized(data_path)
 

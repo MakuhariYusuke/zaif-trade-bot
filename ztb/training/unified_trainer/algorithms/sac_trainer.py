@@ -12,6 +12,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.monitor import Monitor
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
@@ -81,8 +82,10 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.regime_statistics = self.regime_stats
 
             # Enable regime adaptation in the environment if it's a HeavyTradingEnv
-            if hasattr(self.env, 'enable_market_regime_adaptation'):
-                self.env.enable_market_regime_adaptation(self.regime_classifier, self.market_regime_adaptation)
+            if hasattr(self.env, "enable_market_regime_adaptation"):
+                self.env.enable_market_regime_adaptation(
+                    self.regime_classifier, self.market_regime_adaptation
+                )
         except Exception as e:
             self.logger.error(f"Failed to initialize market regime adaptation: {e}")
             raise
@@ -204,12 +207,16 @@ class SACTrainer(BaseAlgorithmTrainer):
 
             # Create callback for progress tracking if not provided
             if callback is None:
+                # Get early stopping configuration
+                early_stopping_config = self.config.get("training", {}).get("sac_hyperparameters", {}).get("early_stopping", {})
+
                 callback = TrainingProgressCallback(
                     check_freq=self.config.get("training", {}).get(
                         "log_interval", 1000
                     ),
                     verbose=1,
                     trainer_ref=self,
+                    early_stopping=early_stopping_config if early_stopping_config else None,
                 )
 
                 # Enable regime tracking if adaptation is enabled
@@ -233,17 +240,133 @@ class SACTrainer(BaseAlgorithmTrainer):
                 "environment", "creation", {"type": "HeavyTradingEnv"}
             )
             env_config = self.config.get("training", {}).get("environment", {})
-            # Extract the actual config from the environment section
+            # Extract the actual config from the environment section (could be nested)
             actual_env_config = env_config.get("config", env_config)
-            self.logger.info(
-                f"Environment config keys: {list(actual_env_config.keys())}"
-            )
-            self.logger.info(
-                f"use_continuous_actions in config: {actual_env_config.get('use_continuous_actions', 'NOT_FOUND')}"
-            )
+            # Log the exact object passed to the environment so we can trace
+            # where boolean flags like `use_continuous_actions` may be lost.
+            try:
+                self.logger.info(
+                    f"Environment config keys: {list(actual_env_config.keys())}"
+                )
+            except Exception:
+                self.logger.info(f"Environment config type: {type(actual_env_config)}")
+
+            # Provide a small preview depending on whether it's a dict or an object
+            if isinstance(actual_env_config, dict):
+                preview = {
+                    k: actual_env_config.get(k, "NOT_FOUND")
+                    for k in ["use_continuous_actions", "action_space_type"]
+                }
+                self.logger.info(f"Env config preview (dict): {preview}")
+                self.logger.info(
+                    f"use_continuous_actions in config (dict): {actual_env_config.get('use_continuous_actions', 'NOT_FOUND')}"
+                )
+            else:
+                try:
+                    ua = getattr(
+                        actual_env_config, "use_continuous_actions", "NOT_PRESENT"
+                    )
+                    at = getattr(actual_env_config, "action_space_type", "NOT_PRESENT")
+                    self.logger.info(
+                        f"Env config preview (obj): use_continuous_actions={ua}, action_space_type={at}"
+                    )
+                except Exception as e:
+                    self.logger.info(f"Could not introspect actual_env_config: {e}")
+
+            # Also log a short repr for manual inspection
+            try:
+                self.logger.info(
+                    f"repr(actual_env_config)[:200]: {repr(actual_env_config)[:200]}"
+                )
+            except Exception:
+                pass
+            # Convert whatever shape we received into an EnvironmentConfig instance
+            # EnvironmentConfig.from_dict can handle nested layouts (training.environment, training.environment.config)
+            try:
+                if isinstance(actual_env_config, EnvironmentConfig):
+                    env_config_obj = actual_env_config
+                elif isinstance(actual_env_config, dict):
+                    env_config_obj = EnvironmentConfig.from_dict(actual_env_config)
+                else:
+                    # Fallback: try converting the whole training section or full config
+                    env_config_obj = EnvironmentConfig.from_dict(self.config)
+
+                # Honor explicit flags from the original config dict if present.
+                # Some conversion paths may nest the fields; check common locations.
+                try:
+                    # Look into training.environment.config, training.environment, then top-level
+                    cfg = self.config if isinstance(self.config, dict) else {}
+                    training_section = (
+                        cfg.get("training", {}) if isinstance(cfg, dict) else {}
+                    )
+                    env_section_cfg = (
+                        training_section.get("environment", {})
+                        if isinstance(training_section, dict)
+                        else {}
+                    )
+                    inner_cfg = (
+                        env_section_cfg.get("config", env_section_cfg)
+                        if isinstance(env_section_cfg, dict)
+                        else {}
+                    )
+                    # Check both boolean and action_space_type string
+                    explicit_bool = None
+                    if isinstance(inner_cfg, dict):
+                        explicit_bool = inner_cfg.get("use_continuous_actions", None)
+                        action_space_type_val = inner_cfg.get("action_space_type", None)
+                    else:
+                        explicit_bool = None
+                        action_space_type_val = None
+
+                    if explicit_bool is None:
+                        # also check top-level trainer.environment keys
+                        explicit_bool = (
+                            env_section_cfg.get("use_continuous_actions", None)
+                            if isinstance(env_section_cfg, dict)
+                            else None
+                        )
+                        if explicit_bool is None:
+                            explicit_bool = (
+                                cfg.get("use_continuous_actions", None)
+                                if isinstance(cfg, dict)
+                                else None
+                            )
+
+                    # If action_space_type indicates continuous, treat as True
+                    if (
+                        (explicit_bool is True)
+                        or (
+                            isinstance(action_space_type_val, str)
+                            and str(action_space_type_val)
+                            .strip()
+                            .lower()
+                            .startswith("cont")
+                        )
+                        or (
+                            isinstance(env_section_cfg.get("action_space_type"), str)
+                            and str(env_section_cfg.get("action_space_type"))
+                            .strip()
+                            .lower()
+                            .startswith("cont")
+                        )
+                    ):
+                        setattr(env_config_obj, "use_continuous_actions", True)
+                        setattr(env_config_obj, "enable_action_masking", False)
+                except Exception:
+                    # Non-fatal: keep env_config_obj as-is but log for later debugging
+                    self.logger.debug(
+                        "Could not inspect original config for explicit action-space flags"
+                    )
+            except Exception as e:
+                # Log and re-raise so the test run fails loudly instead of silently forcing values
+                self.logger.error(
+                    f"Failed to normalize environment config to EnvironmentConfig: {e}"
+                )
+                raise
+
             env = HeavyTradingEnv(
                 df=df,
-                config=actual_env_config,
+                config=env_config_obj,
                 optimizer_tracker=self.optimizer_tracker,
             )
 
@@ -251,15 +374,22 @@ class SACTrainer(BaseAlgorithmTrainer):
             if self.regime_classifier is not None:
                 env.enable_market_regime_adaptation(
                     regime_classifier=self.regime_classifier,
-                    adaptation_config=self.market_regime_adaptation
+                    adaptation_config=self.market_regime_adaptation,
                 )
                 self.logger.info("Market regime adaptation enabled in environment")
             wrapped_env: Monitor = Monitor(env)
             self.logger.info(f"Environment observation space: {env.observation_space}")
-            self.logger.info(f"Environment action space: {env.action_space}")
+            print(f"Environment action space: {env.action_space}")
 
             # Get SAC hyperparameters
             sac_config = self.config.get("training", {}).get("sac_hyperparameters", {})
+
+            # Prepare policy kwargs with overfitting prevention parameters
+            policy_kwargs = {}
+            if "dropout_rate" in sac_config:
+                policy_kwargs["dropout_rate"] = sac_config["dropout_rate"]
+            if "l2_regularization" in sac_config:
+                policy_kwargs["weight_decay"] = sac_config["l2_regularization"]
 
             # Create SAC model
             self.log_structured_event(
@@ -278,6 +408,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 gradient_steps=sac_config.get("gradient_steps", 1),
                 ent_coef=sac_config.get("ent_coef", "auto"),
                 target_update_interval=sac_config.get("target_update_interval", 1),
+                policy_kwargs=policy_kwargs if policy_kwargs else None,
                 verbose=0,  # We'll handle logging ourselves
             )
 
@@ -981,7 +1112,7 @@ class SACTrainer(BaseAlgorithmTrainer):
 
             # Get regime statistics from environment if available
             regime_stats = {}
-            if hasattr(env, 'regime_stats') and env.regime_stats:
+            if hasattr(env, "regime_stats") and env.regime_stats:
                 regime_stats = env.regime_stats.copy()
 
             # Calculate training metrics
@@ -990,7 +1121,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                 "final_action_distribution": action_distribution,
                 "regime_distributions": regime_distributions,
                 "regime_stats": regime_stats,
-                "market_regime_adaptation": self.market_regime_adaptation.get("enabled", False),
+                "market_regime_adaptation": self.market_regime_adaptation.get(
+                    "enabled", False
+                ),
                 "total_training_steps": self.training_stats.get("total_steps", 0)
                 if hasattr(self, "training_stats")
                 else 0,

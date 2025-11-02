@@ -13,7 +13,7 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 from pandas.api import types as ptypes
 
-from ztb.features.adaptive_selection import AdaptiveFeatureSelector
+from ztb.features.generators.adaptive.selection import AdaptiveFeatureSelector
 from ztb.trading.environment.components import (
     ActionValidator,
     DataProcessor,
@@ -178,8 +178,20 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     # Check if features are specified in config (schema-based approach)
     config_features = getattr(self.config, "feature_names", None)
     correlation_reduction = getattr(self.config, "correlation_reduction", True)
+    # Debug config-derived diagnostics
+    try:
+        logger.debug(
+            "_initialize_features_and_spaces: config.feature_names_present=%s",
+            config_features is not None,
+        )
+        if config_features is not None:
+            logger.debug("config.feature_names (preview)=%s", config_features[:24])
+    except Exception:
+        pass
     logger.info(
-        f"Config features: {config_features is not None}, correlation_reduction: {correlation_reduction}"
+        "Config features: %s, correlation_reduction: %s",
+        config_features is not None,
+        correlation_reduction,
     )
     if config_features is not None:
         logger.info(f"Using schema-defined features: {len(config_features)}")
@@ -238,11 +250,34 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                 mtf_system = MultiTimeframeFeatureSystem()
                 mtf_data = mtf_system.process_multi_timeframe_data(self.df)
                 if not mtf_data.empty:
+                    # Merge the derived multi-timeframe features into the base dataframe
+                    # Align by index and avoid duplicate columns. This ensures that the
+                    # engineered features exist in `self.df` before we finalize
+                    # the selected feature list.
+                    mtf_to_add = [
+                        c for c in mtf_data.columns if c not in self.df.columns
+                    ]
+                    if mtf_to_add:
+                        # Only append new columns to avoid overwriting base data
+                        self.df = pd.concat(
+                            [
+                                self.df.reset_index(drop=True),
+                                mtf_data[mtf_to_add].reset_index(drop=True),
+                            ],
+                            axis=1,
+                        )
+                        # Recompute n_steps and base columns after merging
+                        self.n_steps = len(self.df)
+                        self._base_columns = list(self.df.columns)
+
                     mtf_features = [
                         col for col in mtf_data.columns if col not in all_features
                     ]
-                    all_features.extend(mtf_features)
-                    logger.info(f"Added {len(mtf_features)} multi-timeframe features")
+                    if mtf_features:
+                        all_features.extend(mtf_features)
+                        logger.info(
+                            f"Added {len(mtf_features)} multi-timeframe features and merged into dataframe"
+                        )
             except Exception as e:
                 logger.warning(f"Failed to add multi-timeframe features: {e}")
 
@@ -263,53 +298,44 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                 },
             )
             correlation_threshold = getattr(self.config, "correlation_threshold", 0.95)
-            try:
-                (
-                    optimized_features,
-                    reduction_stats,
-                ) = self._select_features_by_correlation_in_env(
-                    self.features,
-                    correlation_threshold,
-                    target_feature_count=target_feature_count,
-                )
-                if len(optimized_features) >= max(1, (target_feature_count or 1)):
-                    removed_count = len(self.features) - len(optimized_features)
-                    self.features = optimized_features
-                    if removed_count > 0:
-                        logger.info(
-                            "Applied correlation-based feature reduction",
-                            extra={
-                                "removed_count": removed_count,
-                                "remaining": len(self.features),
-                                "target": target_feature_count,
-                                "dropped_non_numeric": reduction_stats.get(
-                                    "non_numeric"
-                                ),
-                                "dropped_constant": reduction_stats.get("constant"),
-                                "dropped_correlated": reduction_stats.get("correlated"),
-                            },
-                        )
-                    else:
-                        logger.info(
-                            "Correlation reduction made no changes",
-                            extra={
-                                "remaining": len(self.features),
-                                "target": target_feature_count,
-                            },
-                        )
-                else:
-                    logger.warning(
-                        "Correlation reduction would leave too few features",
+            (
+                optimized_features,
+                reduction_stats,
+            ) = self._select_features_by_correlation_in_env(
+                self.features,
+                correlation_threshold,
+                target_feature_count=target_feature_count,
+            )
+            if len(optimized_features) >= max(1, (target_feature_count or 1)):
+                removed_count = len(self.features) - len(optimized_features)
+                self.features = optimized_features
+                if removed_count > 0:
+                    logger.info(
+                        "Applied correlation-based feature reduction",
                         extra={
-                            "optimized_count": len(optimized_features),
-                            "original_count": len(self.features),
+                            "removed_count": removed_count,
+                            "remaining": len(self.features),
+                            "target": target_feature_count,
+                            "dropped_non_numeric": reduction_stats.get("non_numeric"),
+                            "dropped_constant": reduction_stats.get("constant"),
+                            "dropped_correlated": reduction_stats.get("correlated"),
                         },
                     )
-            except Exception as exc:  # pragma: no cover - defensive logging
+                else:
+                    logger.info(
+                        "Correlation reduction made no changes",
+                        extra={
+                            "remaining": len(self.features),
+                            "target": target_feature_count,
+                        },
+                    )
+            else:
                 logger.warning(
-                    "Failed to apply correlation-based feature reduction: %s",
-                    exc,
-                    exc_info=True,
+                    "Correlation reduction would leave too few features",
+                    extra={
+                        "optimized_count": len(optimized_features),
+                        "original_count": len(self.features),
+                    },
                 )
 
         if max_features_limit and len(self.features) > max_features_limit:
@@ -395,7 +421,53 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         NUM_DISCRETE_ACTIONS,
     )
 
-    use_continuous_actions = getattr(self.config, "use_continuous_actions", False)
+    # Determine whether to use continuous actions. Support both explicit boolean
+    # flag (`use_continuous_actions`) and legacy/string flag (`action_space_type`).
+    # Treat any value that looks like 'continuous' as enabling continuous actions.
+    # Diagnostic logging: show what form the config is at runtime so we can
+    # diagnose why continuous actions may not be picked up.
+    try:
+        cfg_type = type(self.config)
+        if hasattr(self.config, "items") and not hasattr(self.config, "__dict__"):
+            # Likely a plain dict-like config
+            cfg_preview = {k: self.config.get(k) for k in list(self.config.keys())[:10]}
+        else:
+            # Object-like config (dataclass / pydantic model)
+            try:
+                cfg_preview = getattr(self.config, "__dict__", repr(self.config))
+            except Exception:
+                cfg_preview = repr(self.config)
+    except Exception:
+        cfg_type = type(self.config)
+        cfg_preview = repr(self.config)
+
+    # Log diagnostics explicitly so they appear in standard log output
+    try:
+        logger.info(
+            "Env config runtime diagnostics: type=%s, preview=%s, use_continuous_actions=%s, action_space_type=%s",
+            str(cfg_type),
+            repr(cfg_preview),
+            getattr(self.config, "use_continuous_actions", None),
+            getattr(self.config, "action_space_type", None),
+        )
+    except Exception:
+        logger.info("Env config runtime diagnostics: failed to stringify config")
+
+    explicit_continuous = getattr(self.config, "use_continuous_actions", False)
+    action_space_type = getattr(self.config, "action_space_type", "")
+    try:
+        action_space_type_str = (
+            str(action_space_type).strip().lower()
+            if action_space_type is not None
+            else ""
+        )
+    except Exception:
+        action_space_type_str = ""
+
+    use_continuous_actions = bool(explicit_continuous) or (
+        isinstance(action_space_type_str, str)
+        and action_space_type_str.startswith("cont")
+    )
 
     if use_continuous_actions:
         # Continuous action space for SAC and other continuous algorithms
@@ -493,9 +565,48 @@ def _initialize_remaining_components(self: Any) -> None:
 
     self.reward_calculator = RewardCalculator(
         config=self.config,
-        reward_settings=self.reward_settings,
+        reward_settings=self.reward_settings_obj,
         initial_portfolio_value=self.initial_portfolio_value,
     )
+    # Diagnostic: log features and feature_matrix shape to debug unexpected obs dims
+    try:
+        fm_shape = (
+            getattr(self, "_feature_matrix", None).shape
+            if getattr(self, "_feature_matrix", None) is not None
+            else None
+        )
+        df_cols = (
+            list(self.df.columns)[:50] if getattr(self, "df", None) is not None else []
+        )
+        logger.debug(
+            "Initializing ObservationBuilder: features_len=%d, feature_matrix_shape=%s, df_columns_preview=%s",
+            len(self.features),
+            fm_shape,
+            df_cols,
+        )
+    except Exception:
+        pass
+
+    # Ensure the feature matrix matches the final feature list. It's possible that
+    # downstream steps (adaptive selection, filtering, or schema injection)
+    # modified `self.features` after the initial buffer build. Rebuild here to
+    # guarantee consistency between `self.features` and `self._feature_matrix`.
+    try:
+        if not hasattr(self, "_feature_matrix") or self._feature_matrix is None:
+            self._build_fast_access_buffers()
+        elif len(self.features) != getattr(self, "_feature_matrix").shape[1]:
+            logger.warning(
+                "Feature list length (%s) does not match feature_matrix columns (%s). Rebuilding feature matrix.",
+                len(self.features),
+                getattr(self, "_feature_matrix").shape[1],
+            )
+            # Rebuild using the current self.features
+            self._build_fast_access_buffers()
+    except Exception:
+        logger.exception(
+            "Failed to ensure feature_matrix consistency before ObservationBuilder creation"
+        )
+
     self.observation_builder = ObservationBuilder(
         features=self.features,
         feature_matrix=self._feature_matrix,
@@ -505,6 +616,31 @@ def _initialize_remaining_components(self: Any) -> None:
         scaler_std=self.scaler_std,
         optimizer_tracker=self.optimizer_tracker,
     )
+
+    # Final consistency check: ensure observation builder feature matrix matches
+    # the finalized feature list. If mismatch is detected, attempt to rebuild
+    # the feature matrix and update the observation builder so runtime
+    # observations remain consistent.
+    try:
+        fm = getattr(self, "_feature_matrix", None)
+        if fm is None or fm.size == 0 or len(self.features) != fm.shape[1]:
+            logger.warning(
+                "Post-init feature mismatch detected (features=%s, feature_matrix_cols=%s). Rebuilding and updating ObservationBuilder.",
+                len(self.features),
+                fm.shape[1] if fm is not None else None,
+            )
+            self._build_fast_access_buffers()
+            # Update observation builder in-place
+            if (
+                hasattr(self, "observation_builder")
+                and self.observation_builder is not None
+            ):
+                self.observation_builder.update_features(self.features)
+                self.observation_builder.update_feature_matrix(
+                    self._feature_matrix, self._nonfinite_rows
+                )
+    except Exception:
+        logger.exception("Failed final feature/feature_matrix consistency check")
 
     self.action_validator = ActionValidator(
         config=self.config,
@@ -553,69 +689,65 @@ def _apply_curated_feature_filter(
     curated_features_spec: str, all_features: List[str]
 ) -> List[str]:
     """Apply curated feature whitelist if available."""
-    try:
-        if "::" not in curated_features_spec:
-            logger.warning(
-                "Invalid curated_features_list format",
-                extra={"curated_spec": curated_features_spec},
-            )
-            return all_features
-
-        module_path_str, var_name = curated_features_spec.split("::", maxsplit=1)
-        module_path = Path(module_path_str)
-        if not module_path.is_absolute():
-            module_path = safe_path_join(str(get_project_root()), module_path_str)
-        module_path = module_path.resolve()
-
-        if not module_path.exists():
-            logger.warning(
-                "Curated features module path does not exist",
-                extra={"module_path": str(module_path)},
-            )
-            return all_features
-
-        import importlib.util
-        import sys
-
-        spec = importlib.util.spec_from_file_location(
-            module_path.stem,
-            module_path.as_posix(),
+    if "::" not in curated_features_spec:
+        logger.warning(
+            "Invalid curated_features_list format",
+            extra={"curated_spec": curated_features_spec},
         )
-        if not spec or not spec.loader:
-            logger.warning(
-                "Failed to create module spec for curated features",
-                extra={"module_path": str(module_path)},
-            )
-            return all_features
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_path.stem] = module
-        spec.loader.exec_module(module)
-        curated_list = getattr(module, var_name, None)
-
-        if not curated_list:
-            logger.warning(
-                "Curated features variable not found in module",
-                extra={"module": module_path.stem, "variable": var_name},
-            )
-            return all_features
-
-        filtered = [feat for feat in curated_list if feat in all_features]
-        removed = len(all_features) - len(filtered)
-        logger.info(
-            "Applied curated features filter",
-            extra={
-                "original_count": len(all_features),
-                "kept": len(filtered),
-                "removed": removed,
-                "module": module_path.stem,
-                "variable": var_name,
-            },
-        )
-        return filtered
-    except Exception as exc:  # pragma: no cover - defensive logging
-        logger.warning("Failed to load curated features: %s", exc, exc_info=True)
         return all_features
+
+    module_path_str, var_name = curated_features_spec.split("::", maxsplit=1)
+    module_path = Path(module_path_str)
+    if not module_path.is_absolute():
+        module_path = safe_path_join(str(get_project_root()), module_path_str)
+    module_path = module_path.resolve()
+
+    if not module_path.exists():
+        logger.warning(
+            "Curated features module path does not exist",
+            extra={"module_path": str(module_path)},
+        )
+        return all_features
+
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location(
+        module_path.stem,
+        module_path.as_posix(),
+    )
+    if not spec or not spec.loader:
+        logger.warning(
+            "Failed to create module spec for curated features",
+            extra={"module_path": str(module_path)},
+        )
+        return all_features
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_path.stem] = module
+    spec.loader.exec_module(module)
+    curated_list = getattr(module, var_name, None)
+
+    if not curated_list:
+        logger.warning(
+            "Curated features variable not found in module",
+            extra={"module": module_path.stem, "variable": var_name},
+        )
+        return all_features
+
+    filtered = [feat for feat in curated_list if feat in all_features]
+    removed = len(all_features) - len(filtered)
+    logger.info(
+        "Applied curated features filter",
+        extra={
+            "original_count": len(all_features),
+            "kept": len(filtered),
+            "removed": removed,
+            "module": module_path.stem,
+            "variable": var_name,
+        },
+    )
+    return filtered
 
 
 def _resolve_max_features_limit(
@@ -706,6 +838,36 @@ def _build_fast_access_buffers(
     if feature_matrix.ndim == 1:
         feature_matrix = feature_matrix.reshape(-1, 1)
     self._feature_matrix = np.ascontiguousarray(feature_matrix)
+
+    # Diagnostic logging: confirm feature matrix shape and feature list
+    try:
+        logger.info(
+            "[DBG] _build_fast_access_buffers: feature_matrix.shape=%s, features_len=%s",
+            getattr(self, "_feature_matrix").shape,
+            len(getattr(self, "features", [])),
+        )
+        # Log a short preview of feature names and dataframe tail columns for mapping checks
+        logger.info(
+            "features preview=%s, df_columns_tail=%s",
+            getattr(self, "features", [])[:12],
+            list(self.df.columns[-6:]) if hasattr(self, "df") else None,
+        )
+        # Debug logging for fast access buffers
+        try:
+            logger.debug(
+                "_build_fast_access_buffers: feature_matrix.shape=%s, features_len=%d",
+                getattr(self, "_feature_matrix").shape,
+                len(getattr(self, "features", [])),
+            )
+            logger.debug(
+                "features preview=%s, df_columns_tail=%s",
+                getattr(self, "features", [])[:24],
+                list(self.df.columns[-12:]) if hasattr(self, "df") else None,
+            )
+        except Exception:
+            pass
+    except Exception:
+        logger.exception("Failed to emit debug diagnostics for feature matrix")
 
     mask = ~np.isfinite(self._feature_matrix)
     if np.any(mask):

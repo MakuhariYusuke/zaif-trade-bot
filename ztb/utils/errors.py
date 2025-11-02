@@ -309,7 +309,6 @@ def handle_error(
     try:
         logger.error(error_msg, exc_info=True)
     except Exception:
-        # Be defensive: logging should not crash the error handler
         pass
 
     if reraise:

@@ -2,7 +2,6 @@
 Redact sensitive data from content.
 """
 import re
-from typing import Any
 
 
 def is_safe_content(content: str) -> bool:
@@ -21,7 +20,7 @@ def is_safe_content(content: str) -> bool:
         r'(?i)(password|passwd|pwd)\s*[:=]\s*["\']?([^"\s]{8,})["\']?',
         r'(?i)(token|secret)\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,})["\']?',
         r'(?i)(bearer|authorization)\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,})["\']?',
-        r'[a-zA-Z0-9_-]{32,}',  # Long random strings that might be keys
+        r"[a-zA-Z0-9_-]{32,}",  # Long random strings that might be keys
     ]
 
     for pattern in patterns:

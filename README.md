@@ -20,6 +20,26 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Performance Optimized**: Memory-efficient data processing and CUDA optimizations
 - **Comprehensive Monitoring**: Logging, metrics, and alerting systems
 - **Advanced Reward System**: Modular reward calculator with clear bonus/penalty separation
+- **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
+
+## 🆕 Recent Updates (2025-11-02)
+
+### SAC v444 Advanced Market Regime Adaptation System 🚀
+- **12-Regime Classification**: Enhanced market state detection (strong/moderate/weak bull/bear trends, ranging markets, special states)
+- **Dynamic Threshold Adaptation**: Volatility-based regime threshold adjustment
+- **Multi-Timeframe Integration**: Hierarchical analysis across short/medium/long-term timeframes
+- **Regime-Specific Optimization**: Adaptive action balance, entropy regularization, and risk management per regime
+
+### Backtest Fixes and Normalization Improvements 📊
+- **Action Distribution Balance**: Fixed persistent single-action issues through normalization statistics regeneration
+- **Stochastic Prediction**: Implemented `deterministic=False` for balanced BUY/SELL/HOLD distributions (28.3%/36.6%/35.1%)
+- **Environment Consistency**: Unified training and backtest configurations with proper VecNormalize application
+- **Feature Count Alignment**: Resolved 68→212 feature mismatch through environment warmup and stat regeneration
+
+### Code Organization and Cleanup 🧹
+- **Directory Structure**: Organized root-level files into appropriate subdirectories (analysis/, debug/, scripts/, tests/)
+- **Documentation**: Updated CHANGELOG.md and README.md with comprehensive change history
+- **Type Safety**: Improved type annotations and error handling across backtest scripts
 
 ## 🏗️ Reward System Architecture
 

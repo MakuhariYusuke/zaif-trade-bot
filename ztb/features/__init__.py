@@ -7,7 +7,9 @@ from __future__ import annotations
 
 from types import ModuleType
 
-from .registry import FeatureRegistry
+from .core.registry import FeatureRegistry
+from .unified_feature import UnifiedFeatureEngineer, get_unified_feature_engineer, generate_features, get_available_features
+from .feature_set_manager import get_feature_manager, get_feature_set
 
 
 def get_feature_manager() -> type[FeatureRegistry]:
@@ -17,47 +19,42 @@ def get_feature_manager() -> type[FeatureRegistry]:
 
 # Lazy import feature modules - only import when needed
 _FEATURE_MODULES: dict[str, ModuleType | None] = {
-    "momentum": None,
-    "scalping": None,
+    "core": None,
+    "generators": None,
+    "processors": None,
+    "models": None,
     "time": None,
-    "trend": None,
     "utils": None,
-    "volatility": None,
-    "volume": None,
 }
 
 
 def _ensure_module_loaded(module_name: str) -> None:
     """Ensure a feature module is loaded"""
     if _FEATURE_MODULES[module_name] is None:
-        if module_name == "momentum":
-            from . import momentum
+        if module_name == "core":
+            from . import core
 
-            _FEATURE_MODULES[module_name] = momentum
-        elif module_name == "scalping":
-            from . import scalping
+            _FEATURE_MODULES[module_name] = core
+        elif module_name == "generators":
+            from . import generators
 
-            _FEATURE_MODULES[module_name] = scalping
+            _FEATURE_MODULES[module_name] = generators
+        elif module_name == "processors":
+            from . import processors
+
+            _FEATURE_MODULES[module_name] = processors
+        elif module_name == "models":
+            from . import models
+
+            _FEATURE_MODULES[module_name] = models
         elif module_name == "time":
             from . import time
 
             _FEATURE_MODULES[module_name] = time
-        elif module_name == "trend":
-            from . import trend
-
-            _FEATURE_MODULES[module_name] = trend
         elif module_name == "utils":
             from . import utils
 
             _FEATURE_MODULES[module_name] = utils
-        elif module_name == "volatility":
-            from . import volatility
-
-            _FEATURE_MODULES[module_name] = volatility
-        elif module_name == "volume":
-            from . import volume
-
-            _FEATURE_MODULES[module_name] = volume
 
 
 __all__ = ["FeatureRegistry", "get_feature_manager"]
