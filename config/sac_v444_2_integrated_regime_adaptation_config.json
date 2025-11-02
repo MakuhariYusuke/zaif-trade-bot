@@ -173,6 +173,13 @@
     "include_momentum_features": true,
     "include_volume_features": true,
     "include_trend_features": true,
+    "include_bearish_signal_features": true,
+    "sell_bias_mitigation": {
+      "enabled": true,
+      "bearish_signal_weight": 1.2,
+      "divergence_sensitivity": 0.8,
+      "pattern_recognition_threshold": 0.7
+    },
     "enhanced_features": {
       "enabled": true,
       "feature_engineering": {
@@ -183,12 +190,25 @@
         "momentum_features": true,
         "volatility_features": true,
         "volume_features": true,
-        "trend_features": true
+        "trend_features": true,
+        "bearish_signal_features": true,
+        "sell_signal_oscillators": true,
+        "bearish_volume_features": true
       },
       "advanced_indicators": [
         "rsi", "macd", "stochastic", "williams_r", "cci",
         "bollinger_bands", "atr", "ichimoku", "supertrend",
         "kama", "tema", "parabolic_sar"
+      ],
+      "bearish_indicators": [
+        "bearish_rsi_divergence",
+        "bearish_macd_divergence",
+        "bearish_engulfing",
+        "shooting_star",
+        "hammer_bearish",
+        "bearish_momentum_acceleration",
+        "bearish_trend_continuation",
+        "bearish_volatility_surge"
       ]
     },
     "correlation_reduction": {
