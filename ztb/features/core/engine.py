@@ -27,6 +27,7 @@ gc.set_threshold(100, 5, 5)  # Even more aggressive garbage collection
 # Import memory utilities
 try:
     from ztb.utils.memory.dtypes import optimize_dtypes
+
     MEMORY_OPTIMIZATION_AVAILABLE = True
 except ImportError:
     MEMORY_OPTIMIZATION_AVAILABLE = False

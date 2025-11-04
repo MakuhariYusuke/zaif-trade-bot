@@ -3,6 +3,8 @@
   "algorithm": "sac",
   "model_name": "sac_v444_2_integrated_regime_adaptation",
   "description": "SAC v444.2: Ultimate Integrated Configuration - Combining Advanced Regime Adaptation, Risk Management, Enhanced Features, and PnL Optimization",
+  "max_features": 120,
+  "min_features": 50,
 
   "regime_adaptation": {
     "enabled": true,
@@ -140,7 +142,7 @@
     },
     "curriculum_learning": {
       "enabled": true,
-      "curriculum_stage": "stability_optimized",
+      "curriculum_stage": "forced_balance",
       "stage_progression": ["exploration", "balanced", "strong_penalty_trading", "stability_optimized"],
       "stage_timesteps": [10000, 20000, 30000, 50000]
     }
@@ -157,12 +159,19 @@
     "random_start": true,
     "continuous_to_discrete_threshold": 0.08,
     "behavior_optimization": {
-      "action_balance_target": 0.8,
+      "action_balance_target": 0.333,
       "entropy_regularization": 0.01,
       "action_smoothing": 0.1,
       "consistency_penalty": 0.05,
-      "balance_penalty": 1.0
-    }
+      "balance_penalty": 1000000.0,
+      "redundant_trade_penalty": 5.0
+    },
+    "action_bonuses": {
+      "buy_action_bonus": 5.0,
+      "sell_action_bonus": 0.0,
+      "hold_action_bonus": 0.0
+    },
+    "base_action_penalty": 1.0
   },
 
   "features": {
@@ -316,5 +325,7 @@
   },
 
   "checkpoint_dir": "models/sac_v444_2_training_states",
-  "model_save_path": "models/sac_v444_2_final_model"
+  "model_save_path": "models/sac_v444_2_final_model",
+
+  "memory_threshold_mb": 600.0
 }

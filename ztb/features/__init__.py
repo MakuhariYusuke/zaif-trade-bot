@@ -8,8 +8,7 @@ from __future__ import annotations
 from types import ModuleType
 
 from .core.registry import FeatureRegistry
-from .unified_feature import UnifiedFeatureEngineer, get_unified_feature_engineer, generate_features, get_available_features
-from .feature_set_manager import get_feature_manager, get_feature_set
+from .feature_set_manager import get_feature_manager
 
 
 def get_feature_manager() -> type[FeatureRegistry]:

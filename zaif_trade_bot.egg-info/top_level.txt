@@ -1,4 +1,1 @@
-python
-src
-tests
 ztb

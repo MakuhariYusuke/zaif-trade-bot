@@ -6,10 +6,18 @@ and component initialization.
 """
 
 from typing import Any, List, Optional
+from collections import deque
 
 import numpy as np
 
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import (
+    ACTION_BUY,
+    ACTION_HOLD,
+    ACTION_SELL,
+    MULTIPLIER_INDEX_BUY,
+    MULTIPLIER_INDEX_HOLD,
+    MULTIPLIER_INDEX_SELL,
+)
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.utils.logging_utils import get_logger
 
@@ -52,14 +60,12 @@ class BaseRewardCalculator:
         self.logger = get_logger("ztb.trading.environment.reward")
 
         # Internal state for tracking
-        self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
+        self._action_counts: List[int] = [0, 0, 0]  # [BUY, SELL, HOLD]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
         self._loss_count = 0
-        self._recent_actions: List[
-            int
-        ] = []  # Track recent actions for frequency penalty
+        self._recent_actions = deque(maxlen=100)  # Track recent actions for frequency penalty
         self.last_signal_strength: float = 0.0
         self.last_signal_reward: float = 0.0
         self._previous_portfolio_value = initial_portfolio_value  # Track previous portfolio value for delta calculation
@@ -294,12 +300,12 @@ class BaseRewardCalculator:
 
     def update_action_counts(self, action: int):
         """Update action tracking statistics."""
-        if action == ACTION_HOLD:
-            self._action_counts[0] += 1
-        elif action == ACTION_BUY:
-            self._action_counts[1] += 1
+        if action == ACTION_BUY:
+            self._action_counts[MULTIPLIER_INDEX_BUY] += 1
         elif action == ACTION_SELL:
-            self._action_counts[2] += 1
+            self._action_counts[MULTIPLIER_INDEX_SELL] += 1
+        elif action == ACTION_HOLD:
+            self._action_counts[MULTIPLIER_INDEX_HOLD] += 1
 
         # Track recent actions
         self._recent_actions.append(action)
@@ -315,7 +321,7 @@ class BaseRewardCalculator:
 
     def reset_episode_state(self):
         """Reset episode-specific state."""
-        self._action_counts = [0, 0, 0]
+        self._action_counts = [0, 0, 0]  # [BUY, SELL, HOLD]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
@@ -323,3 +329,4 @@ class BaseRewardCalculator:
         self._recent_actions.clear()
         self.last_signal_strength = 0.0
         self.last_signal_reward = 0.0
+        self._previous_portfolio_value = self.initial_portfolio_value

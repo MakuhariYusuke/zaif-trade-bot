@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
@@ -41,10 +40,14 @@ class ChaikinAD(BaseFeature):
         """
         # Calculate Money Flow Multiplier
         # MFM = [(Close - Low) - (High - Close)] / (High - Low)
-        money_flow_multiplier = ((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"])
+        money_flow_multiplier = (
+            (df["close"] - df["low"]) - (df["high"] - df["close"])
+        ) / (df["high"] - df["low"])
 
         # Handle division by zero
-        money_flow_multiplier = money_flow_multiplier.replace([np.inf, -np.inf], 0).fillna(0)
+        money_flow_multiplier = money_flow_multiplier.replace(
+            [np.inf, -np.inf], 0
+        ).fillna(0)
 
         # Calculate Money Flow Volume
         # MFV = MFM * Volume

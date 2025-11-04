@@ -179,10 +179,24 @@ class TestSignalGenerator(unittest.TestCase):
 
         mock_signals = [
             ActionSignal(
-                direction=1.0, strength=1.0, confidence=1.0, signal_type="test"
+                timestamp=pd.Timestamp.now(),
+                direction=1.0,
+                strength=1.0,
+                confidence=1.0,
+                signal_type="test",
+                description="Test signal 1",
+                metadata={},
+                source_patterns=["test_pattern"]
             ),
             ActionSignal(
-                direction=-1.0, strength=0.8, confidence=0.8, signal_type="test"
+                timestamp=pd.Timestamp.now(),
+                direction=-1.0,
+                strength=0.8,
+                confidence=0.8,
+                signal_type="test",
+                description="Test signal 2",
+                metadata={},
+                source_patterns=["test_pattern"]
             ),
         ]
 
@@ -201,13 +215,34 @@ class TestSignalGenerator(unittest.TestCase):
 
         signals = [
             ActionSignal(
-                direction=1.0, strength=1.0, confidence=1.0, signal_type="strong"
+                timestamp=pd.Timestamp.now(),
+                direction=1.0,
+                strength=1.0,
+                confidence=1.0,
+                signal_type="strong",
+                description="Strong signal",
+                metadata={},
+                source_patterns=["strong_pattern"]
             ),
             ActionSignal(
-                direction=1.0, strength=0.5, confidence=0.5, signal_type="moderate"
+                timestamp=pd.Timestamp.now(),
+                direction=1.0,
+                strength=0.5,
+                confidence=0.5,
+                signal_type="moderate",
+                description="Moderate signal",
+                metadata={},
+                source_patterns=["moderate_pattern"]
             ),
             ActionSignal(
-                direction=1.0, strength=0.2, confidence=0.2, signal_type="weak"
+                timestamp=pd.Timestamp.now(),
+                direction=1.0,
+                strength=0.2,
+                confidence=0.2,
+                signal_type="weak",
+                description="Weak signal",
+                metadata={},
+                source_patterns=["weak_pattern"]
             ),
         ]
 

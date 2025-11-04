@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 from stable_baselines3 import SAC
 
 # Suppress warnings
@@ -19,94 +20,113 @@ warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.utils.logging_utils import setup_logging
+from ztb.utils.config_loader import safe_json_load
 
 # ロギング設定
 logging.basicConfig(
     level=logging.DEBUG,  # DEBUGレベルで詳細なログを表示
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+# 詳細なログ設定を追加
+setup_logging(level=logging.DEBUG)
 
 # 環境をインポート
 sys.path.append(str(Path(__file__).parent))
 
-from ztb.training.environments.environment_config import EnvironmentConfig
+from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
+from ztb.config.unified_config import UnifiedConfig
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.utils.analysis_formatters import print_formatted_metrics
-from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
+from backtest.data_generator import generate_synthetic_data
 
 
 def run_simple_backtest(model_name, config_path):
     """シンプルなバックテストを実行"""
     logger = logging.getLogger(__name__)
-    
-    logger.info(f"🚀 Simple SAC v444 Backtest")
+
+    logger.info("🚀 Simple SAC v444 Backtest")
     logger.info(f"🔍 Running simple backtest for {model_name}")
     logger.info(f"Config path: {config_path}")
 
     try:
-        # 設定読み込み
-        logger.info("Loading config...")
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        logger.info("✅ Config loaded successfully")
+        # UnifiedConfigを使って設定読み込み
+        logger.info("Loading config with UnifiedConfig...")
+        logger.debug(f"Config path: {config_path}")
+
+        try:
+            unified_config = UnifiedConfig.from_file(config_path)
+            logger.info("✅ UnifiedConfig loaded successfully")
+            logger.debug(f"Model name: {unified_config.model_name}")
+            logger.debug(f"Version: {unified_config.version}")
+            logger.debug(f"Algorithm: {unified_config.algorithm}")
+        except FileNotFoundError as e:
+            logger.error(f"❌ Config file not found: {config_path}")
+            logger.error(f"Error details: {e}")
+            raise
+        except (json.JSONDecodeError, yaml.YAMLError) as e:
+            logger.error(f"❌ Config file format error: {e}")
+            logger.error("Please check if the config file is valid JSON or YAML")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Failed to load config: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+
+        # Config validation
+        try:
+            validation_errors = unified_config.validate()
+            if validation_errors:
+                logger.warning("⚠️ Config validation warnings:")
+                for error in validation_errors:
+                    logger.warning(f"  - {error}")
+            else:
+                logger.info("✅ Config validation passed")
+        except Exception as e:
+            logger.error(f"❌ Config validation failed: {e}")
+            raise
+
+        # 後方互換性のため、従来のconfig形式も維持
+        config = unified_config.to_dict()
+        logger.info("✅ Config converted to dict format for compatibility")
 
         # データ読み込み
-        # Load data - use the same data the model was trained on
-        data_file = "data/btc_jpy_yahoo_real_20251021_featured.csv"  # より多くの特徴量を持つデータファイルを使用
+        # Load data - use synthetic data for backtesting
+        data_file = "data/btc_jpy_real_dataset.csv"  # Use synthetic data with realistic BTC prices
+        
+        # Generate synthetic data if file doesn't exist or is corrupted
+        if not Path(data_file).exists():
+            logger.info("Generating synthetic BTC price data...")
+            synthetic_df = generate_synthetic_data(n_periods=5000, start_price=50000.0, volatility=500)
+            synthetic_df.to_csv(data_file)
+            logger.info(f"✅ Synthetic data generated and saved to {data_file}")
+        
         df = pd.read_csv(data_file)
-        logger.info(f"✅ Data loaded: {len(df)} rows")
+        logger.info(f"✅ Data loaded: {len(df)} rows from {data_file}")
 
         # 環境作成 (reward_settingsを適用するため)
         reward_settings = config.get("reward_settings", {})
         logger.info(f"✅ Reward settings loaded: {reward_settings}")
 
-        # 特徴量エンジニアリングを使用して本物の特徴量を生成
-        # v444は高度なレジーム適応を使用するため、より多くの特徴量が必要
-        # モデルが212次元を期待しているので、トレーニング時と同じ特徴量生成を使用
-        feature_engineer = SACv427FeatureEngineer()
-        logger.info("Generating features using SAC v427 Feature Engineer...")
-
-        # 特徴量生成（トレーニング時と同じ方法）
-        try:
-            featured_df = feature_engineer.generate_v427_features(
-                df.copy(),
-                window_sizes=[3, 5, 7, 10, 14, 20, 30, 50],
-                feature_set="full"  # full feature setを使用
-            )
-            logger.info(f"✅ Features generated: {len(featured_df.columns)} columns")
-
-            # 数値特徴量のみを使用
-            numeric_cols = featured_df.select_dtypes(include=[np.number]).columns
-            available_features = list(numeric_cols)
-            logger.info(f"✅ Available numeric features: {len(available_features)}")
-
-            # モデルが212次元を期待している場合、特徴量数を調整
-            if len(available_features) > 212:
-                available_features = available_features[:212]
-            elif len(available_features) < 212:
-                # 不足分を既存の特徴量で埋める（重複を許容）
-                while len(available_features) < 212:
-                    available_features.extend(available_features[:212 - len(available_features)])
-
-            available_features = available_features[:212]  # 確実に212個に制限
-            logger.info(f"✅ Final feature count: {len(available_features)}")
-
-        except Exception as e:
-            logger.error(f"❌ Feature engineering failed: {e}")
-            logger.warning("Falling back to basic features...")
-            # フォールバック: 基本的な特徴量のみ
-            numeric_cols = df.select_dtypes(include=[np.number]).columns
-            available_features = list(numeric_cols)
+        # 特徴量エンジニアリングを使用せずに基本的な特徴量のみを使用
+        # 学習時と同じ観測空間にするため
+        basic_features = ['open', 'high', 'low', 'close', 'volume']
+        if all(col in df.columns for col in basic_features):
             featured_df = df.copy()
-            logger.info(f"✅ Using fallback features: {len(available_features)}")
-
-        if len(available_features) == 0:
-            logger.error("❌ No features available for backtest")
+            available_features = basic_features
+            logger.info(f"✅ Using basic features: {available_features}")
+        else:
+            logger.error("❌ Basic OHLCV features not found in data")
             return None
 
         # モデルロード
         model_path = f"models/{model_name}.zip"
+        logger.info(f"Loading model from {model_path}")
         model = SAC.load(model_path)
         logger.info(f"✅ Model loaded: {model_name}")
         logger.debug(f"   Observation space: {model.observation_space}")
@@ -114,18 +134,44 @@ def run_simple_backtest(model_name, config_path):
 
         # 環境設定を取得
         env_config = config.get("environment", {})
+        logger.info("Environment config extracted from main config")
+        logger.debug(f"env_config keys: {list(env_config.keys())}")
+        logger.debug(f"env_config action_bonuses: {env_config.get('action_bonuses', 'NOT_FOUND')}")
+        logger.debug(f"env_config base_action_penalty: {env_config.get('base_action_penalty', 'NOT_FOUND')}")
+        logger.debug(f"env_config curriculum_stage: {env_config.get('curriculum_stage', 'NOT_FOUND')}")
 
         # EnvironmentConfigオブジェクト作成
-        env_config_obj = EnvironmentConfig(**env_config)
+        logger.info("Creating EnvironmentConfig object...")
+        try:
+            env_config_obj = EnvironmentConfig.from_dict(env_config)
+            logger.info("✅ EnvironmentConfig created successfully")
+            logger.debug(f"env_config_obj.base_action_penalty: {env_config_obj.base_action_penalty}")
+            logger.debug(f"env_config_obj.action_bonuses: {env_config_obj.action_bonuses}")
+        except Exception as e:
+            logger.error(f"❌ Failed to create EnvironmentConfig: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
         # 環境作成 (reward_settingsとfeature_columnsを渡す)
-        env = HeavyTradingEnv(
-            data=featured_df,  # 特徴量生成済みのデータを使用
-            config=env_config_obj,
-            reward_settings=reward_settings,
-            feature_columns=available_features,
-        )
-        logger.info("✅ Environment created with reward_settings and feature_columns")
+        logger.info("Creating HeavyTradingEnv...")
+        try:
+            env = HeavyTradingEnv(
+                data=featured_df,  # 特徴量生成済みのデータを使用
+                config=env_config_obj,
+                reward_settings=reward_settings,
+                feature_columns=available_features,
+            )
+            logger.info("✅ HeavyTradingEnv created successfully")
+            logger.debug(f"Environment observation space: {env.observation_space}")
+            logger.debug(f"Environment action space: {env.action_space}")
+        except Exception as e:
+            logger.error(f"❌ Failed to create HeavyTradingEnv: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
         # 簡単なバックテスト実行
         initial_balance = 10000
@@ -362,23 +408,23 @@ def run_simple_backtest(model_name, config_path):
 def main():
     """メイン関数"""
     logger = logging.getLogger(__name__)
-    logger.info("🚀 Simple SAC v444 Backtest")
+    logger.info("🚀 Simple SAC v444.2 Backtest")
 
-    # モデル名と設定ファイル
-    model_name = "sac_v444_advanced_regime_adaptation"
-    config_path = "config/sac_v444_advanced_regime_adaptation_config.json"
+    # モデル名と設定ファイル - v444.2を使用
+    model_name = "sac_v444_2_final_model"
+    config_path = "config/sac_v444_2_integrated_regime_adaptation_config.json"
 
     # バックテスト実行
     result = run_simple_backtest(model_name, config_path)
 
     if result:
-        print_formatted_metrics(result, "SAC v444 Backtest Results")
+        print_formatted_metrics(result, "SAC v444.2 Backtest Results")
 
         # 結果をJSONファイルに保存
-        with open("backtest_results_sac_v444.json", "w") as f:
+        with open("backtest_results_sac_v444_2.json", "w") as f:
             json.dump(result, f, indent=2, default=str)
 
-        logger.info("✅ Results saved to backtest_results_sac_v444.json")
+        logger.info("✅ Results saved to backtest_results_sac_v444_2.json")
 
         # 目標チェック: 25% リターン改善
         if result["total_return_pct"] > 25:

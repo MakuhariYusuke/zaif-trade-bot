@@ -11,7 +11,12 @@ from typing import List, Optional
 import numpy as np
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.trading.environment.constants import EPSILON
+from ztb.trading.environment.constants import (
+    DEFAULT_ACTION_BALANCE_TARGET,
+    DEFAULT_BALANCE_PENALTY_SCALE,
+    DEFAULT_REDUNDANT_TRADE_PENALTY,
+    EPSILON,
+)
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.utils.logging_utils import get_logger
 
@@ -83,7 +88,7 @@ class RewardCalculator(BaseRewardCalculator):
         This method resets all internal state variables to their initial values.
         """
         # Reset action tracking
-        self._action_counts = [0, 0, 0]  # [HOLD, BUY, SELL]
+        self._action_counts = [0, 0, 0]  # [BUY, SELL, HOLD]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
@@ -92,6 +97,20 @@ class RewardCalculator(BaseRewardCalculator):
         self.last_signal_strength = 0.0
         self.last_signal_reward = 0.0
         self._previous_portfolio_value = self.initial_portfolio_value
+
+    def _get_behavior_opt(self, key: str, default: float) -> float:
+        """
+        Get behavior optimization setting with fallback to config and default.
+
+        Args:
+            key: Setting key
+            default: Default value
+
+        Returns:
+            Configured value
+        """
+        behavior_opts = getattr(self.config, "behavior_optimization", {}) or {}
+        return behavior_opts.get(key, getattr(self.config, key, default))
 
     def calculate_reward(
         self,
@@ -148,7 +167,9 @@ class RewardCalculator(BaseRewardCalculator):
             self._recent_actions.pop(0)
 
         # Get curriculum stage from config
-        curriculum_stage = self.config.curriculum_stage
+        curriculum_stage = getattr(self.config, "curriculum_stage", "simple")
+        behavior_opts = getattr(self.config, "behavior_optimization", {}) or {}
+        action_bonuses_cfg = getattr(self.config, "action_bonuses", {}) or {}
 
         # Calculate base reward using appropriate component
         if self.reward_settings.use_simple_reward or curriculum_stage == "pnl_focused":
@@ -203,20 +224,21 @@ class RewardCalculator(BaseRewardCalculator):
                 hold_count = counter[ACTION_HOLD]
 
                 # Target distribution: roughly 35% each for balance
-                target_ratio = 0.35
+                target_ratio = self._get_behavior_opt("action_balance_target", DEFAULT_ACTION_BALANCE_TARGET)
                 buy_ratio = buy_count / total_actions
                 sell_ratio = sell_count / total_actions
                 hold_ratio = hold_count / total_actions
 
                 # Penalize deviation from target distribution (stronger penalty)
+                balance_penalty_scale = self._get_behavior_opt("balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE)
                 balance_penalty = (
                     (
                         abs(buy_ratio - target_ratio)
                         + abs(sell_ratio - target_ratio)
                         + abs(hold_ratio - target_ratio)
                     )
-                    * 10000.0
-                )  # Increased scale from 1000.0 to 10000.0 for much stronger penalty
+                    * balance_penalty_scale
+                )  # Use configurable scale
 
                 # Debug logging
                 if (
@@ -226,16 +248,35 @@ class RewardCalculator(BaseRewardCalculator):
                         f"FORCED_BALANCE: total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, penalty={balance_penalty:.6f}"
                     )
 
+        redundant_trade_penalty = 0.0
+        redundant_trade_cost = self._get_behavior_opt("redundant_trade_penalty", DEFAULT_REDUNDANT_TRADE_PENALTY)
+        if redundant_trade_cost > 0.0:
+            max_position = getattr(self.config, "max_position_size", 1.0)
+            if (
+                action == ACTION_BUY
+                and old_position >= max_position - EPSILON
+                and position >= max_position - EPSILON
+            ):
+                redundant_trade_penalty = redundant_trade_cost
+            elif (
+                action == ACTION_SELL
+                and old_position <= -max_position + EPSILON
+                and position <= -max_position + EPSILON
+            ):
+                redundant_trade_penalty = redundant_trade_cost
+
         # Apply penalties and bonuses using components
-        base_action_penalty = self.get_setting_float("base_action_penalty", 0.015)
+        base_action_penalty = self.get_setting_float(
+            "base_action_penalty", getattr(self.config, "base_action_penalty", 0.015)
+        )
         buy_action_bonus = self.get_setting_float(
-            "action_bonuses.buy_action_bonus", 0.0
+            "action_bonuses.buy_action_bonus", action_bonuses_cfg.get("buy_action_bonus", 0.0)
         )
         sell_action_bonus = self.get_setting_float(
-            "action_bonuses.sell_action_bonus", 0.0
+            "action_bonuses.sell_action_bonus", action_bonuses_cfg.get("sell_action_bonus", 0.0)
         )
         hold_action_bonus = self.get_setting_float(
-            "action_bonuses.hold_action_bonus", 0.0
+            "action_bonuses.hold_action_bonus", action_bonuses_cfg.get("hold_action_bonus", 0.0)
         )
 
         action_penalty = self.action_penalty_calculator.calculate(
@@ -265,7 +306,7 @@ class RewardCalculator(BaseRewardCalculator):
 
         # Combine all components
         self.logger.debug(
-            f"Before total_reward calc: base_reward={base_reward:.6f}, balance_penalty={balance_penalty:.6f}, action_penalty={action_penalty:.6f}"
+            f"Before total_reward calc: base_reward={base_reward:.6f}, balance_penalty={balance_penalty:.6f}, redundant_trade_penalty={redundant_trade_penalty:.6f}, action_penalty={action_penalty:.6f}"
         )
         total_reward = (
             base_reward
@@ -278,6 +319,7 @@ class RewardCalculator(BaseRewardCalculator):
             + growth_bonus
             + win_streak_bonus
             - balance_penalty
+            - redundant_trade_penalty
         )
         self.logger.debug(f"After total_reward calc: total_reward={total_reward:.6f}")
 
@@ -297,7 +339,7 @@ class RewardCalculator(BaseRewardCalculator):
         # total_reward = np.clip(total_reward, reward_clip_min, reward_clip_max)
 
         self.logger.debug(
-            f"final reward={total_reward:.6f}, balance_penalty={balance_penalty:.6f}"
+            f"final reward={total_reward:.6f}, balance_penalty={balance_penalty:.6f}, redundant_trade_penalty={redundant_trade_penalty:.6f}"
         )
         return total_reward
 

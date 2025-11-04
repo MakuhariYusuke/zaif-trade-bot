@@ -60,7 +60,9 @@ class Supertrend(ParameterizedFeature):
 
         if atr_col not in df.columns:
             # Compute ATR if not present
-            from ztb.features.generators.technical.volatility.atr import compute_atr_simplified
+            from ztb.features.generators.technical.volatility.atr import (
+                compute_atr_simplified,
+            )
 
             atr_series = compute_atr_simplified(df, period)
             df = df.copy()

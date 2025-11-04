@@ -447,14 +447,22 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
             "Env config runtime diagnostics: type=%s, preview=%s, use_continuous_actions=%s, action_space_type=%s",
             str(cfg_type),
             repr(cfg_preview),
-            getattr(self.config, "use_continuous_actions", None),
-            getattr(self.config, "action_space_type", None),
+            getattr(self.config, "use_continuous_actions", None) if hasattr(self.config, "use_continuous_actions") else self.config.get("use_continuous_actions", None) if isinstance(self.config, dict) else None,
+            getattr(self.config, "action_space_type", None) if hasattr(self.config, "action_space_type") else self.config.get("action_space_type", None) if isinstance(self.config, dict) else None,
         )
     except Exception:
         logger.info("Env config runtime diagnostics: failed to stringify config")
 
-    explicit_continuous = getattr(self.config, "use_continuous_actions", False)
-    action_space_type = getattr(self.config, "action_space_type", "")
+    # Handle both dict and object-style configs
+    if isinstance(self.config, dict):
+        explicit_continuous = self.config.get("use_continuous_actions", False)
+        action_space_type = self.config.get("action_space_type", "")
+        logger.info(f"DEBUG: Config is dict, use_continuous_actions={explicit_continuous}")
+    else:
+        explicit_continuous = getattr(self.config, "use_continuous_actions", False)
+        action_space_type = getattr(self.config, "action_space_type", "")
+        logger.info(f"DEBUG: Config is object, use_continuous_actions={explicit_continuous}")
+    
     try:
         action_space_type_str = (
             str(action_space_type).strip().lower()
@@ -468,6 +476,8 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         isinstance(action_space_type_str, str)
         and action_space_type_str.startswith("cont")
     )
+
+    logger.info(f"DEBUG: Final use_continuous_actions={use_continuous_actions}")
 
     if use_continuous_actions:
         # Continuous action space for SAC and other continuous algorithms
@@ -666,7 +676,7 @@ def _initialize_remaining_components(self: Any) -> None:
     )
     self.reward_history = deque(maxlen=self._max_history_length)
     self.position_history = deque(maxlen=self._max_history_length)
-    self._action_counts = [0, 0, 0]
+    self._action_counts = [0, 0, 0]  # [BUY, SELL, HOLD]
     self._current_episode_actions = []
 
     action_history_limit = getattr(self.config, "max_action_history", None)

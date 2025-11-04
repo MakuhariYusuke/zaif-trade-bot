@@ -11,7 +11,6 @@ from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
@@ -31,7 +30,7 @@ def create_improved_trading_env():
     n_steps = 1000
 
     # Generate trending price data
-    t = np.linspace(0, 4*np.pi, n_steps)
+    t = np.linspace(0, 4 * np.pi, n_steps)
     trend = 0.1 * np.sin(t * 0.1)  # Long-term trend
     noise = np.random.normal(0, 0.005, n_steps)  # Short-term noise
     price_changes = trend + noise
@@ -42,7 +41,9 @@ def create_improved_trading_env():
     # Create simple observation space (price, trend, position)
     class ImprovedTradingEnv(gym.Env):
         def __init__(self):
-            self.action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+            self.action_space = gym.spaces.Box(
+                low=-1, high=1, shape=(1,), dtype=np.float32
+            )
             self.observation_space = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32
             )
@@ -82,7 +83,9 @@ def create_improved_trading_env():
 
             # Calculate improved reward (portfolio return percentage)
             current_portfolio_value = self.balance + self.position * price
-            portfolio_return = (current_portfolio_value - self.prev_portfolio_value) / self.prev_portfolio_value
+            portfolio_return = (
+                current_portfolio_value - self.prev_portfolio_value
+            ) / self.prev_portfolio_value
 
             # Add small penalty for no action to encourage exploration
             action_penalty = 0.0
@@ -100,14 +103,19 @@ def create_improved_trading_env():
         def _get_observation(self):
             price = self.prices[self.current_step]
             # Simple features: price, trend, position, balance_ratio, step_ratio
-            trend = (price - self.prices[max(0, self.current_step-10)]) / self.prices[max(0, self.current_step-10)]
-            return np.array([
-                price / 10000000,  # Normalized price
-                trend,  # Price trend
-                self.position,  # Current position
-                self.balance / self.initial_balance,  # Balance ratio
-                self.current_step / len(self.prices)  # Time progress
-            ], dtype=np.float32)
+            trend = (price - self.prices[max(0, self.current_step - 10)]) / self.prices[
+                max(0, self.current_step - 10)
+            ]
+            return np.array(
+                [
+                    price / 10000000,  # Normalized price
+                    trend,  # Price trend
+                    self.position,  # Current position
+                    self.balance / self.initial_balance,  # Balance ratio
+                    self.current_step / len(self.prices),  # Time progress
+                ],
+                dtype=np.float32,
+            )
 
     return ImprovedTradingEnv()
 
@@ -135,8 +143,8 @@ def main():
         verbose=1,
         # Exploration encouraging parameters
         policy_kwargs={
-            'net_arch': [64, 64],
-        }
+            "net_arch": [64, 64],
+        },
     )
 
     # Setup checkpoint callback
@@ -156,24 +164,22 @@ def main():
             "batch_size": 64,
             "net_arch": [64, 64],
             "ent_coef": 0.5,
-            "learning_starts": 50
+            "learning_starts": 50,
         },
         "improvements": [
             "Lowered action thresholds (0.05 instead of 0.1)",
             "Added small penalty for inaction (-0.0001)",
             "Increased entropy coefficient (0.5) for more exploration",
-            "Earlier learning start (50 steps)"
+            "Earlier learning start (50 steps)",
         ],
-        "training_events": []
+        "training_events": [],
     }
 
     # Train for 5000 steps
     logger.info("Starting improved training for 5000 steps...")
     try:
         model.learn(
-            total_timesteps=5000,
-            callback=checkpoint_callback,
-            progress_bar=True
+            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
         )
         logger.info("Training completed successfully")
 
@@ -183,19 +189,19 @@ def main():
         logger.info(f"Model saved to {model_path}")
 
         # Update training stats
-        training_stats.update({
-            "training_completed": True,
-            "model_path": model_path,
-            "final_status": "success"
-        })
+        training_stats.update(
+            {
+                "training_completed": True,
+                "model_path": model_path,
+                "final_status": "success",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Training failed: {e}")
-        training_stats.update({
-            "training_completed": False,
-            "error": str(e),
-            "final_status": "failed"
-        })
+        training_stats.update(
+            {"training_completed": False, "error": str(e), "final_status": "failed"}
+        )
 
     # Save training stats
     stats_path = "analysis/training_stats_5000step_improved.json"
@@ -204,16 +210,16 @@ def main():
     logger.info(f"Training stats saved to {stats_path}")
 
     # Print summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("IMPROVED 5000-STEP TRAINING SUMMARY")
-    print("="*50)
+    print("=" * 50)
     print(f"Status: {training_stats['final_status']}")
     print(f"Timesteps: {training_stats['total_timesteps']}")
     print(f"Model saved: {training_stats.get('model_path', 'N/A')}")
     print("\nImprovements applied:")
-    for improvement in training_stats['improvements']:
+    for improvement in training_stats["improvements"]:
         print(f"  - {improvement}")
-    print("="*50)
+    print("=" * 50)
 
 
 if __name__ == "__main__":

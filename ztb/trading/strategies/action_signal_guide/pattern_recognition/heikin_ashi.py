@@ -9,7 +9,9 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ztb.features.trend.heikin_ashi import HeikinAshi
+
+from ztb.features.generators.technical.trend.heikin_ashi import HeikinAshi
+
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     PatternRecognizer,
     SignalResult,

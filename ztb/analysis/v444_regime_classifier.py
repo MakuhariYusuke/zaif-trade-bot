@@ -36,9 +36,10 @@ ConfigDict = Dict[str, Union[str, int, float, bool, Dict[str, Any], List[Any]]]
 
 class TimeFrame(Enum):
     """Time frame definitions for multi-timeframe analysis"""
-    SHORT = "short"      # 5-15 minutes
-    MEDIUM = "medium"    # 1-4 hours
-    LONG = "long"        # Daily
+
+    SHORT = "short"  # 5-15 minutes
+    MEDIUM = "medium"  # 1-4 hours
+    LONG = "long"  # Daily
 
 
 class RegimeType(Enum):
@@ -92,6 +93,7 @@ class RegimeDetectionResult:
 @dataclass
 class MultiTimeFrameMetrics:
     """Metrics from multiple timeframes"""
+
     short_term: RegimeMetrics
     medium_term: RegimeMetrics
     long_term: RegimeMetrics
@@ -187,14 +189,18 @@ class V444RegimeClassifier:
             primary_regime, confidence = self._classify_regime(metrics)
 
             # Calculate secondary regimes
-            secondary_regimes = self._calculate_secondary_regimes(metrics, primary_regime)
+            secondary_regimes = self._calculate_secondary_regimes(
+                metrics, primary_regime
+            )
 
             return RegimeDetectionResult(
                 primary_regime=primary_regime,
                 confidence=confidence,
                 secondary_regimes=secondary_regimes,
                 metrics=metrics,
-                detection_timestamp=data.index[current_index] if hasattr(data, 'index') else pd.Timestamp.now(),
+                detection_timestamp=data.index[current_index]
+                if hasattr(data, "index")
+                else pd.Timestamp.now(),
                 lookback_period=self.lookback_periods["medium"],
             )
 
@@ -849,7 +855,9 @@ class V444RegimeClassifier:
                 adaptive_weights, regime
             )
 
-            logger.debug(f"Adaptive feature weights for {regime.value}: {adaptive_weights}")
+            logger.debug(
+                f"Adaptive feature weights for {regime.value}: {adaptive_weights}"
+            )
             return adaptive_weights
 
         except Exception as e:
@@ -872,23 +880,38 @@ class V444RegimeClassifier:
             feature_lower = feature.lower()
 
             # Momentum indicators
-            if any(keyword in feature_lower for keyword in ['rsi', 'stoch', 'williams', 'momentum', 'roc', 'macd']):
+            if any(
+                keyword in feature_lower
+                for keyword in ["rsi", "stoch", "williams", "momentum", "roc", "macd"]
+            ):
                 category_map[feature] = "momentum"
 
             # Trend indicators
-            elif any(keyword in feature_lower for keyword in ['adx', 'trend', 'dmi', 'slope', 'linear']):
+            elif any(
+                keyword in feature_lower
+                for keyword in ["adx", "trend", "dmi", "slope", "linear"]
+            ):
                 category_map[feature] = "trend"
 
             # Volatility indicators
-            elif any(keyword in feature_lower for keyword in ['atr', 'bollinger', 'std', 'volatility', 'range']):
+            elif any(
+                keyword in feature_lower
+                for keyword in ["atr", "bollinger", "std", "volatility", "range"]
+            ):
                 category_map[feature] = "volatility"
 
             # Volume indicators
-            elif any(keyword in feature_lower for keyword in ['volume', 'obv', 'vwap', 'money_flow']):
+            elif any(
+                keyword in feature_lower
+                for keyword in ["volume", "obv", "vwap", "money_flow"]
+            ):
                 category_map[feature] = "volume"
 
             # Support/Resistance
-            elif any(keyword in feature_lower for keyword in ['support', 'resistance', 'pivot']):
+            elif any(
+                keyword in feature_lower
+                for keyword in ["support", "resistance", "pivot"]
+            ):
                 category_map[feature] = "support_resistance"
 
             # Default category
@@ -921,15 +944,22 @@ class V444RegimeClassifier:
             # Adjust weights based on recent market conditions
             if regime in [RegimeType.STRONG_BULL_TREND, RegimeType.STRONG_BEAR_TREND]:
                 # In strong trends, emphasize trend-following features
-                for feature, category in self._map_features_to_categories(list(weights.keys())).items():
+                for feature, category in self._map_features_to_categories(
+                    list(weights.keys())
+                ).items():
                     if category == "trend":
                         adjusted_weights[feature] *= 1.1
                     elif category == "volatility":
                         adjusted_weights[feature] *= 0.9
 
-            elif regime in [RegimeType.HIGH_VOLATILITY_RANGING, RegimeType.EXTREME_VOLATILITY]:
+            elif regime in [
+                RegimeType.HIGH_VOLATILITY_RANGING,
+                RegimeType.EXTREME_VOLATILITY,
+            ]:
                 # In high volatility, emphasize volatility and momentum features
-                for feature, category in self._map_features_to_categories(list(weights.keys())).items():
+                for feature, category in self._map_features_to_categories(
+                    list(weights.keys())
+                ).items():
                     if category == "volatility":
                         adjusted_weights[feature] *= 1.2
                     elif category == "momentum":
@@ -960,9 +990,15 @@ class V444RegimeClassifier:
                 current_index = len(data) - 1
 
             # Calculate metrics for each timeframe
-            short_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.SHORT)
-            medium_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.MEDIUM)
-            long_metrics = self._calculate_timeframe_metrics(data, current_index, TimeFrame.LONG)
+            short_metrics = self._calculate_timeframe_metrics(
+                data, current_index, TimeFrame.SHORT
+            )
+            medium_metrics = self._calculate_timeframe_metrics(
+                data, current_index, TimeFrame.MEDIUM
+            )
+            long_metrics = self._calculate_timeframe_metrics(
+                data, current_index, TimeFrame.LONG
+            )
 
             # Determine regime for each timeframe
             short_regime, short_conf = self._classify_regime(short_metrics)
@@ -970,8 +1006,17 @@ class V444RegimeClassifier:
             long_regime, long_conf = self._classify_regime(long_metrics)
 
             # Integrate regimes across timeframes
-            integrated_regime, integration_confidence, timeframe_weights = self._integrate_timeframe_regimes(
-                short_regime, short_conf, medium_regime, medium_conf, long_regime, long_conf
+            (
+                integrated_regime,
+                integration_confidence,
+                timeframe_weights,
+            ) = self._integrate_timeframe_regimes(
+                short_regime,
+                short_conf,
+                medium_regime,
+                medium_conf,
+                long_regime,
+                long_conf,
             )
 
             return MultiTimeFrameMetrics(
@@ -980,7 +1025,7 @@ class V444RegimeClassifier:
                 long_term=long_metrics,
                 timeframe_weights=timeframe_weights,
                 integrated_regime=integrated_regime,
-                integration_confidence=integration_confidence
+                integration_confidence=integration_confidence,
             )
 
         except Exception as e:
@@ -993,7 +1038,7 @@ class V444RegimeClassifier:
                 long_term=fallback_metrics,
                 timeframe_weights={"short": 0.2, "medium": 0.6, "long": 0.2},
                 integrated_regime=RegimeType.CONSOLIDATION,
-                integration_confidence=0.5
+                integration_confidence=0.5,
             )
 
     def _calculate_timeframe_metrics(
@@ -1012,9 +1057,9 @@ class V444RegimeClassifier:
         """
         # Adjust lookback periods based on timeframe
         timeframe_multipliers = {
-            TimeFrame.SHORT: 0.5,   # Shorter lookback for short-term
+            TimeFrame.SHORT: 0.5,  # Shorter lookback for short-term
             TimeFrame.MEDIUM: 1.0,  # Standard lookback for medium-term
-            TimeFrame.LONG: 2.0     # Longer lookback for long-term
+            TimeFrame.LONG: 2.0,  # Longer lookback for long-term
         }
 
         multiplier = timeframe_multipliers[timeframe]
@@ -1024,7 +1069,7 @@ class V444RegimeClassifier:
         self.lookback_periods = {
             "short": int(original_periods["short"] * multiplier),
             "medium": int(original_periods["medium"] * multiplier),
-            "long": int(original_periods["long"] * multiplier)
+            "long": int(original_periods["long"] * multiplier),
         }
 
         try:
@@ -1037,9 +1082,12 @@ class V444RegimeClassifier:
 
     def _integrate_timeframe_regimes(
         self,
-        short_regime: RegimeType, short_conf: float,
-        medium_regime: RegimeType, medium_conf: float,
-        long_regime: RegimeType, long_conf: float
+        short_regime: RegimeType,
+        short_conf: float,
+        medium_regime: RegimeType,
+        medium_conf: float,
+        long_regime: RegimeType,
+        long_conf: float,
     ) -> Tuple[RegimeType, float, Dict[str, float]]:
         """
         Integrate regime classifications from multiple timeframes
@@ -1053,17 +1101,19 @@ class V444RegimeClassifier:
         """
         # Define timeframe weights (long-term has highest weight for stability)
         base_weights = {
-            "short": 0.2,   # Short-term: 20% (entry/exit timing)
+            "short": 0.2,  # Short-term: 20% (entry/exit timing)
             "medium": 0.3,  # Medium-term: 30% (trend direction)
-            "long": 0.5     # Long-term: 50% (market environment)
+            "long": 0.5,  # Long-term: 50% (market environment)
         }
 
         # Adjust weights based on regime stability
-        stability_scores = self._calculate_regime_stability_scores({
-            short_regime.value: {short_regime.value: short_conf},
-            medium_regime.value: {medium_regime.value: medium_conf},
-            long_regime.value: {long_regime.value: long_conf}
-        })
+        stability_scores = self._calculate_regime_stability_scores(
+            {
+                short_regime.value: {short_regime.value: short_conf},
+                medium_regime.value: {medium_regime.value: medium_conf},
+                long_regime.value: {long_regime.value: long_conf},
+            }
+        )
 
         # Boost weight for more stable regimes
         adjusted_weights = {}
@@ -1074,15 +1124,23 @@ class V444RegimeClassifier:
 
         # Normalize weights
         total_weight = sum(adjusted_weights.values())
-        normalized_weights = {tf: w / total_weight for tf, w in adjusted_weights.items()}
+        normalized_weights = {
+            tf: w / total_weight for tf, w in adjusted_weights.items()
+        }
 
         # Calculate weighted regime scores
         regime_scores = {}
         for regime in RegimeType:
             score = (
-                normalized_weights["short"] * (1.0 if short_regime == regime else 0.0) * short_conf +
-                normalized_weights["medium"] * (1.0 if medium_regime == regime else 0.0) * medium_conf +
-                normalized_weights["long"] * (1.0 if long_regime == regime else 0.0) * long_conf
+                normalized_weights["short"]
+                * (1.0 if short_regime == regime else 0.0)
+                * short_conf
+                + normalized_weights["medium"]
+                * (1.0 if medium_regime == regime else 0.0)
+                * medium_conf
+                + normalized_weights["long"]
+                * (1.0 if long_regime == regime else 0.0)
+                * long_conf
             )
             regime_scores[regime] = score
 
@@ -1108,18 +1166,26 @@ class V444RegimeClassifier:
             market_stats = {
                 "volatility": metrics.volatility,
                 "trend_strength": abs(metrics.trend_strength),
-                "timestamp": data.index[current_index] if hasattr(data, 'index') else None,
+                "timestamp": data.index[current_index]
+                if hasattr(data, "index")
+                else None,
             }
             self.market_stats_history.append(market_stats)
 
             # Keep only recent history
             if len(self.market_stats_history) > self.adaptation_window:
-                self.market_stats_history = self.market_stats_history[-self.adaptation_window:]
+                self.market_stats_history = self.market_stats_history[
+                    -self.adaptation_window :
+                ]
 
             # Calculate adaptive thresholds based on recent market conditions
             if len(self.market_stats_history) >= 20:  # Need minimum history
-                recent_volatilities = [s["volatility"] for s in self.market_stats_history[-50:]]
-                recent_trend_strengths = [s["trend_strength"] for s in self.market_stats_history[-50:]]
+                recent_volatilities = [
+                    s["volatility"] for s in self.market_stats_history[-50:]
+                ]
+                recent_trend_strengths = [
+                    s["trend_strength"] for s in self.market_stats_history[-50:]
+                ]
 
                 # Calculate percentile-based thresholds
                 vol_p25 = np.percentile(recent_volatilities, 25)
@@ -1136,16 +1202,24 @@ class V444RegimeClassifier:
                 # Adjust thresholds based on volatility regime
                 if volatility_regime == "high":
                     # In high volatility, require stronger signals
-                    self.thresholds["strong_trend_threshold"] = max(4.0, trend_p75 * 1.2)
-                    self.thresholds["moderate_trend_threshold"] = max(2.5, trend_p75 * 0.8)
+                    self.thresholds["strong_trend_threshold"] = max(
+                        4.0, trend_p75 * 1.2
+                    )
+                    self.thresholds["moderate_trend_threshold"] = max(
+                        2.5, trend_p75 * 0.8
+                    )
                     self.thresholds["weak_trend_threshold"] = max(1.5, trend_p75 * 0.4)
                     self.thresholds["high_volatility_threshold"] = vol_p75 * 0.8
                     self.thresholds["extreme_volatility_threshold"] = vol_p75 * 1.2
 
                 elif volatility_regime == "low":
                     # In low volatility, be more sensitive to smaller signals
-                    self.thresholds["strong_trend_threshold"] = max(2.0, trend_p75 * 0.8)
-                    self.thresholds["moderate_trend_threshold"] = max(1.5, trend_p75 * 0.6)
+                    self.thresholds["strong_trend_threshold"] = max(
+                        2.0, trend_p75 * 0.8
+                    )
+                    self.thresholds["moderate_trend_threshold"] = max(
+                        1.5, trend_p75 * 0.6
+                    )
                     self.thresholds["weak_trend_threshold"] = max(0.8, trend_p75 * 0.3)
                     self.thresholds["consolidation_range_threshold"] = vol_p25 * 0.8
 
@@ -1155,9 +1229,15 @@ class V444RegimeClassifier:
                     base_moderate = 2.0
                     base_weak = 1.0
 
-                    self.thresholds["strong_trend_threshold"] = base_strong * (1 + (trend_p75 - 2.0) * 0.1)
-                    self.thresholds["moderate_trend_threshold"] = base_moderate * (1 + (trend_p75 - 1.5) * 0.1)
-                    self.thresholds["weak_trend_threshold"] = base_weak * (1 + (trend_p75 - 1.0) * 0.1)
+                    self.thresholds["strong_trend_threshold"] = base_strong * (
+                        1 + (trend_p75 - 2.0) * 0.1
+                    )
+                    self.thresholds["moderate_trend_threshold"] = base_moderate * (
+                        1 + (trend_p75 - 1.5) * 0.1
+                    )
+                    self.thresholds["weak_trend_threshold"] = base_weak * (
+                        1 + (trend_p75 - 1.0) * 0.1
+                    )
 
                 logger.debug(
                     f"Adapted thresholds for {volatility_regime} volatility regime: "

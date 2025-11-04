@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import torch
 
-from ztb.trading.environment.constants import DEFAULT_LEARNING_RATE
+from ztb.training.constants import DEFAULT_LEARNING_RATE
 from ztb.types.common import (
     AnomalyDetectorProtocol,
     BaseAlgorithmTrainer,
@@ -466,6 +466,11 @@ class UnifiedTrainer:
 
             if is_valid:
                 self.ui.print_success("Configuration validation passed")
+                
+                # Additional feature consistency validation
+                if not self._validate_feature_consistency():
+                    return False
+                    
                 return True
             else:
                 self.ui.print_error("Configuration validation failed")
@@ -588,12 +593,15 @@ class UnifiedTrainer:
             data_path = data_config.get("data_path")
 
             if not data_path:
-                self.logger.warning("No data path specified in config - skipping feature validation")
+                self.logger.warning(
+                    "No data path specified in config - skipping feature validation"
+                )
                 return True
 
             # Import pandas for data reading
-            import pandas as pd
             from pathlib import Path
+
+            import pandas as pd
 
             data_file = Path(data_path)
             if not data_file.exists():
@@ -605,30 +613,22 @@ class UnifiedTrainer:
             try:
                 # Read only header to get column count efficiently
                 df_header = pd.read_csv(data_file, nrows=0)
-                actual_feature_count = len(df_header.columns) - 1  # Exclude timestamp/index column
+                actual_feature_count = (
+                    len(df_header.columns) - 1
+                )  # Exclude timestamp/index column
             except Exception as e:
                 self.logger.error(f"Failed to read data file header: {e}")
                 self.ui.print_error(f"Failed to read data file: {e}")
                 return False
 
             # Get configured feature count from config
-            features_config = self.config.get("features", {})
-            configured_feature_count = 0
-
-            if isinstance(features_config, dict):
-                # Count features in each category
-                for category, feature_list in features_config.items():
-                    if isinstance(feature_list, list):
-                        configured_feature_count += len(feature_list)
-                    elif isinstance(feature_list, str):
-                        configured_feature_count += 1
-            else:
-                self.logger.warning("Features config is not a dictionary - unable to validate")
-                return True
+            configured_feature_count = self.config.get("max_features", actual_feature_count) or actual_feature_count
 
             # Compare feature counts
             if configured_feature_count == actual_feature_count:
-                self.logger.info(f"✅ Feature consistency validated: {configured_feature_count} features match data file")
+                self.logger.info(
+                    f"✅ Feature consistency validated: {configured_feature_count} features match data file"
+                )
                 return True
 
             # Feature count mismatch detected
@@ -644,23 +644,45 @@ class UnifiedTrainer:
 
             # Attempt fallback: Update config to match actual data features
             if actual_feature_count > configured_feature_count:
-                self.logger.info("Attempting to update config features to match data file")
+                self.logger.info(
+                    "Attempting to update config features to match data file"
+                )
 
                 # Read full data to get feature names
                 try:
-                    df_sample = pd.read_csv(data_file, nrows=5)  # Read sample for feature names
-                    actual_features = df_sample.columns[1:].tolist()  # Exclude timestamp
+                    df_sample = pd.read_csv(
+                        data_file, nrows=5
+                    )  # Read sample for feature names
+                    actual_features = df_sample.columns[
+                        1:
+                    ].tolist()  # Exclude timestamp
 
                     # Update config with actual features (simplified mapping)
                     updated_features = {
-                        "basic_features": actual_features[:7] if len(actual_features) > 7 else actual_features,
-                        "technical_indicators": actual_features[7:10] if len(actual_features) > 10 else [],
-                        "regime_features": actual_features[10:20] if len(actual_features) > 20 else [],
-                        "correlation_features": actual_features[20:30] if len(actual_features) > 30 else [],
-                        "ensemble_features": actual_features[30:40] if len(actual_features) > 40 else [],
-                        "risk_adjusted_features": actual_features[40:80] if len(actual_features) > 80 else [],
-                        "market_features": actual_features[80:90] if len(actual_features) > 90 else [],
-                        "padding_features": actual_features[90:] if len(actual_features) > 90 else [],
+                        "basic_features": actual_features[:7]
+                        if len(actual_features) > 7
+                        else actual_features,
+                        "technical_indicators": actual_features[7:10]
+                        if len(actual_features) > 10
+                        else [],
+                        "regime_features": actual_features[10:20]
+                        if len(actual_features) > 20
+                        else [],
+                        "correlation_features": actual_features[20:30]
+                        if len(actual_features) > 30
+                        else [],
+                        "ensemble_features": actual_features[30:40]
+                        if len(actual_features) > 40
+                        else [],
+                        "risk_adjusted_features": actual_features[40:80]
+                        if len(actual_features) > 80
+                        else [],
+                        "market_features": actual_features[80:90]
+                        if len(actual_features) > 90
+                        else [],
+                        "padding_features": actual_features[90:]
+                        if len(actual_features) > 90
+                        else [],
                     }
 
                     # Remove empty categories
@@ -669,8 +691,12 @@ class UnifiedTrainer:
                     # Update config
                     self.config["features"] = updated_features
 
-                    self.logger.info(f"Config updated with {len(updated_features)} feature categories")
-                    self.ui.print_success(f"✅ Config updated to match data: {sum(len(v) for v in updated_features.values())} features")
+                    self.logger.info(
+                        f"Config updated with {len(updated_features)} feature categories"
+                    )
+                    self.ui.print_success(
+                        f"✅ Config updated to match data: {sum(len(v) for v in updated_features.values())} features"
+                    )
 
                     return True
 
@@ -685,7 +711,7 @@ class UnifiedTrainer:
                     "This may cause training issues."
                 )
                 self.ui.print_error(
-                    f"Data file has fewer features than configured. "
+                    "Data file has fewer features than configured. "
                     "Consider updating your data file or reducing configured features."
                 )
                 # Continue with training despite mismatch
@@ -711,8 +737,12 @@ class UnifiedTrainer:
         try:
             # 特徴量不一致チェック - トレーニング開始前にデータ特徴量数を検証
             if not self._validate_feature_consistency():
-                self.logger.warning("Feature consistency validation failed - proceeding with caution")
-                self.ui.print_warning("Feature consistency validation failed - proceeding with caution")
+                self.logger.warning(
+                    "Feature consistency validation failed - proceeding with caution"
+                )
+                self.ui.print_warning(
+                    "Feature consistency validation failed - proceeding with caution"
+                )
 
             # If both episodes and total_timesteps specified via constructor/CLI, error out.
             if self.episodes is not None and self.total_timesteps is not None:
@@ -1968,7 +1998,7 @@ class UnifiedTrainer:
             import importlib
 
             try:
-                mod = importlib.import_module("ztb.trading.environment.heavy_env.core")
+                mod = importlib.import_module("ztb.training.environments.heavy_trading_env")
                 HeavyTradingEnv = getattr(mod, "HeavyTradingEnv", None)
             except Exception:
                 HeavyTradingEnv = None
@@ -2005,6 +2035,20 @@ class UnifiedTrainer:
                 env_config_dict["csv_path"] = self.config["data_path"]
 
             env_config_obj = EnvironmentConfig.from_dict(env_config_dict)
+
+            # Load data from csv_path
+            import pandas as pd
+            data_path = env_config_obj.csv_path
+            if not data_path:
+                self.logger.error("No csv_path specified in environment config")
+                return None
+            
+            try:
+                data = pd.read_csv(data_path)
+                self.logger.info(f"Loaded data from {data_path}, shape: {data.shape}")
+            except Exception as e:
+                self.logger.error(f"Failed to load data from {data_path}: {e}")
+                return None
 
             # Debug: log env config just before handing to HeavyTradingEnv so we can
             # trace where `use_continuous_actions` may be lost/overwritten.
@@ -2043,8 +2087,8 @@ class UnifiedTrainer:
                 )
 
             env = HeavyTradingEnv(
+                data=data,
                 config=env_config_obj,
-                max_features=self.max_features,
             )
 
             self.logger.info("V433 training environment created successfully")

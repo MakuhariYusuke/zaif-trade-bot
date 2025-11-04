@@ -4,21 +4,20 @@ Unit tests for Unified Evaluation Framework
 統合評価フレームワークの単体テスト
 """
 
-import json
 import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
 from ztb.evaluation.unified_evaluation import (
-    UnifiedEvaluator,
     ComprehensiveEvaluation,
-    EvaluationResult,
     EvaluationMetric,
-    EvaluationType
+    EvaluationResult,
+    EvaluationType,
+    UnifiedEvaluator,
 )
 
 
@@ -31,9 +30,9 @@ class TestUnifiedEvaluator(unittest.TestCase):
 
         # サンプルデータファイルの作成
         self.sample_data = {
-            'timestamp': pd.date_range('2023-01-01', periods=100, freq='D'),
-            'returns': [0.01] * 50 + [-0.005] * 50,
-            'price': [100 + i * 0.1 for i in range(100)]
+            "timestamp": pd.date_range("2023-01-01", periods=100, freq="D"),
+            "returns": [0.01] * 50 + [-0.005] * 50,
+            "price": [100 + i * 0.1 for i in range(100)],
         }
         self.df = pd.DataFrame(self.sample_data)
 
@@ -48,20 +47,20 @@ class TestUnifiedEvaluator(unittest.TestCase):
         evaluator = UnifiedEvaluator(config)
         self.assertEqual(evaluator.config, config)
 
-    @patch('pandas.read_csv')
+    @patch("pandas.read_csv")
     def test_evaluate_model_basic(self, mock_read_csv):
         """基本的なモデル評価テスト"""
         # モックデータの設定
         mock_read_csv.return_value = self.df
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             temp_data_path = Path(f.name)
 
         # 評価実行
         result = self.evaluator.evaluate_model(
             model_path="dummy_model",
             data_path=temp_data_path,
-            evaluation_type=EvaluationType.BACKTEST
+            evaluation_type=EvaluationType.BACKTEST,
         )
 
         # 検証
@@ -79,7 +78,7 @@ class TestUnifiedEvaluator(unittest.TestCase):
             metric=EvaluationMetric.SHARPE_RATIO,
             value=1.5,
             confidence_interval=(1.2, 1.8),
-            benchmark_comparison=0.3
+            benchmark_comparison=0.3,
         )
 
         self.assertEqual(result.metric, EvaluationMetric.SHARPE_RATIO)
@@ -93,20 +92,18 @@ class TestUnifiedEvaluator(unittest.TestCase):
 
         results = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             ),
             EvaluationMetric.MAX_DRAWDOWN: EvaluationResult(
-                metric=EvaluationMetric.MAX_DRAWDOWN,
-                value=0.15
-            )
+                metric=EvaluationMetric.MAX_DRAWDOWN, value=0.15
+            ),
         }
 
         evaluation = ComprehensiveEvaluation(
             model_name="test_model",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=timestamp,
-            results=results
+            results=results,
         )
 
         self.assertEqual(evaluation.model_name, "test_model")
@@ -118,8 +115,7 @@ class TestUnifiedEvaluator(unittest.TestCase):
         """指標値取得テスト"""
         results = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             )
         }
 
@@ -127,38 +123,36 @@ class TestUnifiedEvaluator(unittest.TestCase):
             model_name="test_model",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=datetime.now(),
-            results=results
+            results=results,
         )
 
-        self.assertEqual(evaluation.get_metric_value(EvaluationMetric.SHARPE_RATIO), 1.5)
+        self.assertEqual(
+            evaluation.get_metric_value(EvaluationMetric.SHARPE_RATIO), 1.5
+        )
         self.assertIsNone(evaluation.get_metric_value(EvaluationMetric.MAX_DRAWDOWN))
 
     def test_comprehensive_evaluation_get_summary_score(self):
         """サマリースコア計算テスト"""
         results = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             ),
             EvaluationMetric.SORTINO_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SORTINO_RATIO,
-                value=1.2
+                metric=EvaluationMetric.SORTINO_RATIO, value=1.2
             ),
             EvaluationMetric.CALMAR_RATIO: EvaluationResult(
-                metric=EvaluationMetric.CALMAR_RATIO,
-                value=1.8
+                metric=EvaluationMetric.CALMAR_RATIO, value=1.8
             ),
             EvaluationMetric.MAX_DRAWDOWN: EvaluationResult(
-                metric=EvaluationMetric.MAX_DRAWDOWN,
-                value=0.15
-            )
+                metric=EvaluationMetric.MAX_DRAWDOWN, value=0.15
+            ),
         }
 
         evaluation = ComprehensiveEvaluation(
             model_name="test_model",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=datetime.now(),
-            results=results
+            results=results,
         )
 
         score = evaluation.get_summary_score()
@@ -173,7 +167,7 @@ class TestUnifiedEvaluator(unittest.TestCase):
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
                 metric=EvaluationMetric.SHARPE_RATIO,
                 value=1.5,
-                confidence_interval=(1.2, 1.8)
+                confidence_interval=(1.2, 1.8),
             )
         }
 
@@ -183,7 +177,7 @@ class TestUnifiedEvaluator(unittest.TestCase):
             timestamp=timestamp,
             results=results,
             summary_stats={"test": "value"},
-            risk_metrics={"volatility": 0.02}
+            risk_metrics={"volatility": 0.02},
         )
 
         data = evaluation.to_dict()
@@ -199,8 +193,7 @@ class TestUnifiedEvaluator(unittest.TestCase):
         """評価結果の保存・読み込みテスト"""
         results = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             )
         }
 
@@ -208,10 +201,10 @@ class TestUnifiedEvaluator(unittest.TestCase):
             model_name="test_model",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=datetime.now(),
-            results=results
+            results=results,
         )
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_path = Path(f.name)
 
         try:
@@ -223,7 +216,9 @@ class TestUnifiedEvaluator(unittest.TestCase):
 
             # 検証
             self.assertEqual(loaded_evaluation.model_name, evaluation.model_name)
-            self.assertEqual(loaded_evaluation.evaluation_type, evaluation.evaluation_type)
+            self.assertEqual(
+                loaded_evaluation.evaluation_type, evaluation.evaluation_type
+            )
             self.assertEqual(len(loaded_evaluation.results), len(evaluation.results))
 
         finally:
@@ -234,39 +229,35 @@ class TestUnifiedEvaluator(unittest.TestCase):
         # 評価結果1
         results1 = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             ),
             EvaluationMetric.MAX_DRAWDOWN: EvaluationResult(
-                metric=EvaluationMetric.MAX_DRAWDOWN,
-                value=0.15
-            )
+                metric=EvaluationMetric.MAX_DRAWDOWN, value=0.15
+            ),
         }
 
         evaluation1 = ComprehensiveEvaluation(
             model_name="model1",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=datetime.now(),
-            results=results1
+            results=results1,
         )
 
         # 評価結果2
         results2 = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.8
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.8
             ),
             EvaluationMetric.MAX_DRAWDOWN: EvaluationResult(
-                metric=EvaluationMetric.MAX_DRAWDOWN,
-                value=0.12
-            )
+                metric=EvaluationMetric.MAX_DRAWDOWN, value=0.12
+            ),
         }
 
         evaluation2 = ComprehensiveEvaluation(
             model_name="model2",
             evaluation_type=EvaluationType.BACKTEST,
             timestamp=datetime.now(),
-            results=results2
+            results=results2,
         )
 
         # 比較
@@ -305,9 +296,7 @@ class TestEvaluationMetrics(unittest.TestCase):
         metadata = {"confidence_level": 0.95, "sample_size": 1000}
 
         result = EvaluationResult(
-            metric=EvaluationMetric.SHARPE_RATIO,
-            value=1.5,
-            metadata=metadata
+            metric=EvaluationMetric.SHARPE_RATIO, value=1.5, metadata=metadata
         )
 
         self.assertEqual(result.metadata, metadata)
@@ -316,8 +305,7 @@ class TestEvaluationMetrics(unittest.TestCase):
         """全フィールド付きComprehensiveEvaluationテスト"""
         results = {
             EvaluationMetric.SHARPE_RATIO: EvaluationResult(
-                metric=EvaluationMetric.SHARPE_RATIO,
-                value=1.5
+                metric=EvaluationMetric.SHARPE_RATIO, value=1.5
             )
         }
 
@@ -330,7 +318,7 @@ class TestEvaluationMetrics(unittest.TestCase):
             risk_metrics={"var_95": -0.05},
             performance_metrics={"win_rate": 0.55},
             market_regime_analysis={"bull_performance": 0.18},
-            robustness_tests={"parameter_sensitivity": "low"}
+            robustness_tests={"parameter_sensitivity": "low"},
         )
 
         self.assertEqual(evaluation.summary_stats["total_tests"], 100)
@@ -340,5 +328,5 @@ class TestEvaluationMetrics(unittest.TestCase):
         self.assertEqual(evaluation.robustness_tests["parameter_sensitivity"], "low")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

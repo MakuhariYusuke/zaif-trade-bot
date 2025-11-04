@@ -7,31 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-31
 
-### Configuration Documentation and Development Workflow Enhancement 📚→⚡
-
-#### Complete Parameter Investigation and Documentation
-- **Comprehensive Config Analysis**: 461個の設定JSONファイルを調査し、12077個の一意パラメータを完全収集
-  - SAC/PPOハイパーパラメータ: 113個 (SAC: 37個, PPO: 76個)
-  - 環境設定パラメータ: 752個
-  - 報酬関数パラメータ: 411個
-  - データ処理パラメータ: 184個
-  - トレーニング設定: 336個
-  - レジーム適応パラメータ: 142個
-  - チェックポイント設定: 21個
-  - 分析パラメータ: 73個
-- **Automated Documentation Generation**: `docs/sac_ppo_complete_parameter_reference.md`作成
-  - カテゴリ別パラメータ整理と使用例記載
-  - 各パラメータの使用ファイル数と説明
-  - 設定ファイル間のパラメータ重複分析
-
-#### Development Workflow Optimization
-- **Pre-commit Hook Optimization**: mypyチェックをコミット時スキップ設定
-  - `.pre-commit-config.yaml`でmypy hookをコメントアウト
-  - コミット速度向上と開発効率改善
-- **Parameter Collection Automation**: `scripts/collect_all_config_parameters.py`作成
-  - 再帰的JSON解析とパラメータカテゴライズ
-  - エラーハンドリングとUTF-8 BOM対応
-
 ### SAC v444.1 Feature Alignment and Unified System Architecture 🚀→🔧
 
 #### Feature Configuration Overhaul
@@ -43,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - アンサンブル特徴量: ensemble_confidence_bull/bear/sideways, ensemble_pred_hold等
   - リスク調整特徴量: rsi_risk_adjusted_5-50, macd_risk_adjusted_5-50等
   - 市場特徴量: price_impact, order_flow_toxicity, spread_proxy等
+
+#### Reward System Enhancement
+- **Balance Penalty Scale Adjustment**: 過度なペナルティ（10000000.0）から適切な値（1000.0）へ調整
+- **Reward Clipping Expansion**: クリッピング範囲を-2.0/+2.0から-10000.0/+10000.0へ拡大し、強力な学習信号を可能に
+- **Penalty Calculation Verification**: 単体テストでペナルティ計算の正確性を確認（all-SELL時のペナルティ=1333.0）
   - パディング特徴量: padding_noise_0-54, padding_sine/cosine/trend_0-54
 
 #### Unified Trainer Migration

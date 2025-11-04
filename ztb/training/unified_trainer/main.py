@@ -53,6 +53,11 @@ def main() -> None:
         type=int,
         help="Override total_timesteps from config",
     )
+    parser.add_argument(
+        "--timesteps",
+        type=int,
+        help="Alias for --total-timesteps: Override total_timesteps from config",
+    )
 
     args = parser.parse_args()
 
@@ -68,11 +73,16 @@ def main() -> None:
             # Process config using ConfigManager to build unified config
             from ztb.training.core.config_manager import ConfigManager
 
+            # Determine timesteps override (prefer --total-timesteps over --timesteps)
+            timesteps_override = args.total_timesteps
+            if timesteps_override is None:
+                timesteps_override = args.timesteps
+
             config_manager = ConfigManager(raw_config)
             config = config_manager.build_unified_config(
                 enable_streaming=args.enable_streaming,
                 stream_batch_size=args.stream_batch_size,
-                total_timesteps_override=args.total_timesteps,
+                total_timesteps_override=timesteps_override,
             )
             print(f"DEBUG: Unified config environment: {config.get('environment', {})}")
             print(f"DEBUG: Unified config keys: {list(config.keys())}")
@@ -97,7 +107,7 @@ def main() -> None:
         enable_streaming=args.enable_streaming,
         stream_batch_size=args.stream_batch_size,
         max_features=args.max_features,
-        total_timesteps=args.total_timesteps,
+        total_timesteps=timesteps_override,
     )
 
     success = trainer.run()
