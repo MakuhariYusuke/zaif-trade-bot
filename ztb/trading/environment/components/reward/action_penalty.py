@@ -57,8 +57,10 @@ class ActionPenaltyCalculator:
             penalty *= 1.0  # hold_penalty_multiplier
             return penalty + hold_action_bonus
         elif action == ACTION_BUY:
-            return base_action_penalty + buy_action_bonus
+            penalty = base_action_penalty + buy_action_bonus
+            return max(0.0, penalty)
         elif action == ACTION_SELL:
-            return base_action_penalty + sell_action_bonus
+            penalty = base_action_penalty + sell_action_bonus
+            return max(0.0, penalty)
 
         return 0.0

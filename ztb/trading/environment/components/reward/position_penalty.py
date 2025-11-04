@@ -45,6 +45,10 @@ class PositionPenaltyCalculator:
         # effective_max_position is not needed here as position is already scaled
         position_utilisation = abs(position)
 
+        # If position is very small (close to 0), no penalty
+        if position_utilisation < 0.01:  # Near-zero position threshold
+            return 0.0
+
         if position_utilisation > self.soft_cap:
             overuse = position_utilisation - self.soft_cap
             # Prevent math range error by clamping exponent * overuse

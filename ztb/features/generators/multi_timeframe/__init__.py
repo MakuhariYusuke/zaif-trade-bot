@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 from ztb.features.feature_set_config import get_feature_config
-from ztb.features.multi_timeframe.config import MultiTimeframeConfig
-from ztb.features.multi_timeframe.data_pipeline import MultiTimeframeDataPipeline
-from ztb.features.multi_timeframe.engine import MultiTimeframeFeatureEngineer
+from ztb.features.generators.multi_timeframe.config import MultiTimeframeConfig
+from ztb.features.generators.multi_timeframe.data_pipeline import MultiTimeframeDataPipeline
+from ztb.features.generators.multi_timeframe.engine import MultiTimeframeFeatureEngineer
 from ztb.features.timeframe import Timeframe
 from ztb.utils.logging_utils import get_logger
 

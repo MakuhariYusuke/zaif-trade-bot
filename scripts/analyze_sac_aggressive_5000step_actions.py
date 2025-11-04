@@ -11,7 +11,6 @@ from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 from stable_baselines3 import SAC
 
 # Setup logging
@@ -30,7 +29,7 @@ def create_aggressive_trading_env():
     n_steps = 1000
 
     # Generate trending price data
-    t = np.linspace(0, 4*np.pi, n_steps)
+    t = np.linspace(0, 4 * np.pi, n_steps)
     trend = 0.1 * np.sin(t * 0.1)  # Long-term trend
     noise = np.random.normal(0, 0.005, n_steps)  # Short-term noise
     price_changes = trend + noise
@@ -41,7 +40,9 @@ def create_aggressive_trading_env():
     # Create simple observation space (price, trend, position)
     class AggressiveTradingEnv(gym.Env):
         def __init__(self):
-            self.action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+            self.action_space = gym.spaces.Box(
+                low=-1, high=1, shape=(1,), dtype=np.float32
+            )
             self.observation_space = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32
             )
@@ -81,7 +82,9 @@ def create_aggressive_trading_env():
 
             # Calculate reward with stronger exploration encouragement
             current_portfolio_value = self.balance + self.position * price
-            portfolio_return = (current_portfolio_value - self.prev_portfolio_value) / self.prev_portfolio_value
+            portfolio_return = (
+                current_portfolio_value - self.prev_portfolio_value
+            ) / self.prev_portfolio_value
 
             # Stronger penalty for no action to force exploration
             action_penalty = 0.0
@@ -102,14 +105,19 @@ def create_aggressive_trading_env():
         def _get_observation(self):
             price = self.prices[self.current_step]
             # Simple features: price, trend, position, balance_ratio, step_ratio
-            trend = (price - self.prices[max(0, self.current_step-10)]) / self.prices[max(0, self.current_step-10)]
-            return np.array([
-                price / 10000000,  # Normalized price
-                trend,  # Price trend
-                self.position,  # Current position
-                self.balance / self.initial_balance,  # Balance ratio
-                self.current_step / len(self.prices)  # Time progress
-            ], dtype=np.float32)
+            trend = (price - self.prices[max(0, self.current_step - 10)]) / self.prices[
+                max(0, self.current_step - 10)
+            ]
+            return np.array(
+                [
+                    price / 10000000,  # Normalized price
+                    trend,  # Price trend
+                    self.position,  # Current position
+                    self.balance / self.initial_balance,  # Balance ratio
+                    self.current_step / len(self.prices),  # Time progress
+                ],
+                dtype=np.float32,
+            )
 
     return AggressiveTradingEnv()
 
@@ -162,35 +170,40 @@ def analyze_aggressive_action_distribution(model_path, n_episodes=10):
             "std": float(np.std(actions)),
             "min": float(np.min(actions)),
             "max": float(np.max(actions)),
-            "median": float(np.median(actions))
+            "median": float(np.median(actions)),
         },
         "action_distribution": {
             "buy_signals": int(np.sum(actions > 0.02)),  # Very low threshold
             "sell_signals": int(np.sum(actions < -0.02)),  # Very low threshold
             "hold_signals": int(np.sum((actions >= -0.02) & (actions <= 0.02))),
             "strong_buy": int(np.sum(actions > 0.5)),
-            "strong_sell": int(np.sum(actions < -0.5))
+            "strong_sell": int(np.sum(actions < -0.5)),
         },
         "reward_stats": {
             "mean": float(np.mean(rewards)),
             "std": float(np.std(rewards)),
-            "total": float(np.sum(rewards))
-        }
+            "total": float(np.sum(rewards)),
+        },
     }
 
     # Calculate bias ratios
-    total_signals = analysis["action_distribution"]["buy_signals"] + analysis["action_distribution"]["sell_signals"]
+    total_signals = (
+        analysis["action_distribution"]["buy_signals"]
+        + analysis["action_distribution"]["sell_signals"]
+    )
     if total_signals > 0:
         analysis["bias_analysis"] = {
             "buy_ratio": analysis["action_distribution"]["buy_signals"] / total_signals,
-            "sell_ratio": analysis["action_distribution"]["sell_signals"] / total_signals,
-            "buy_sell_ratio": analysis["action_distribution"]["buy_signals"] / max(analysis["action_distribution"]["sell_signals"], 1)
+            "sell_ratio": analysis["action_distribution"]["sell_signals"]
+            / total_signals,
+            "buy_sell_ratio": analysis["action_distribution"]["buy_signals"]
+            / max(analysis["action_distribution"]["sell_signals"], 1),
         }
     else:
         analysis["bias_analysis"] = {
             "buy_ratio": 0.0,
             "sell_ratio": 0.0,
-            "buy_sell_ratio": 0.0
+            "buy_sell_ratio": 0.0,
         }
 
     return analysis, actions, rewards, observations
@@ -215,9 +228,9 @@ def main():
     logger.info(f"Analysis saved to {analysis_path}")
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("AGGRESSIVE EXPLORATION SAC 5000-STEP ACTION DISTRIBUTION ANALYSIS")
-    print("="*60)
+    print("=" * 60)
     print(f"Total Actions Analyzed: {analysis['total_actions']}")
     print(f"Mean Action: {analysis['action_stats']['mean']:.4f}")
     print(f"Action Std: {analysis['action_stats']['std']:.4f}")
@@ -226,7 +239,9 @@ def main():
     print("Action Distribution (thresholds: ±0.02):")
     print(f"  Buy Signals (>0.02): {analysis['action_distribution']['buy_signals']}")
     print(f"  Sell Signals (<-0.02): {analysis['action_distribution']['sell_signals']}")
-    print(f"  Hold Signals (-0.02 to 0.02): {analysis['action_distribution']['hold_signals']}")
+    print(
+        f"  Hold Signals (-0.02 to 0.02): {analysis['action_distribution']['hold_signals']}"
+    )
     print(f"  Strong Buy (>0.5): {analysis['action_distribution']['strong_buy']}")
     print(f"  Strong Sell (<-0.5): {analysis['action_distribution']['strong_sell']}")
     print()
@@ -241,30 +256,36 @@ def main():
     print(f"  Mean Reward: {analysis['reward_stats']['mean']:.6f}")
     print(f"  Reward Std: {analysis['reward_stats']['std']:.6f}")
     print(f"  Total Reward: {analysis['reward_stats']['total']:.4f}")
-    print("="*60)
+    print("=" * 60)
 
     # Issue detection with aggressive thresholds
     issues = []
-    if analysis['bias_analysis']['sell_ratio'] > 0.8:
+    if analysis["bias_analysis"]["sell_ratio"] > 0.8:
         issues.append("極端なSELLバイアス: SELLシグナルの割合が80%以上")
-    if analysis['bias_analysis']['buy_ratio'] < 0.05:
+    if analysis["bias_analysis"]["buy_ratio"] < 0.05:
         issues.append("極端なBUY不足: BUYシグナルの割合が5%未満")
-    if analysis['action_stats']['std'] < 0.02:
+    if analysis["action_stats"]["std"] < 0.02:
         issues.append("極端な探索不足: アクションの分散が小さい（<0.02）")
-    if analysis['reward_stats']['mean'] < -0.002:
+    if analysis["reward_stats"]["mean"] < -0.002:
         issues.append("極端な低パフォーマンス: 平均報酬が-0.002未満")
-    if analysis['action_distribution']['hold_signals'] > analysis['total_actions'] * 0.98:
+    if (
+        analysis["action_distribution"]["hold_signals"]
+        > analysis["total_actions"] * 0.98
+    ):
         issues.append("極端な保守性: HOLDシグナルが98%以上")
 
     # Success criteria
     success_criteria = []
-    if analysis['action_distribution']['buy_signals'] > 0:
+    if analysis["action_distribution"]["buy_signals"] > 0:
         success_criteria.append("BUYアクションが発生")
-    if analysis['action_distribution']['sell_signals'] > 0:
+    if analysis["action_distribution"]["sell_signals"] > 0:
         success_criteria.append("SELLアクションが発生")
-    if analysis['action_stats']['std'] > 0.05:
+    if analysis["action_stats"]["std"] > 0.05:
         success_criteria.append("適切なアクション分散（>0.05）")
-    if analysis['action_distribution']['hold_signals'] < analysis['total_actions'] * 0.9:
+    if (
+        analysis["action_distribution"]["hold_signals"]
+        < analysis["total_actions"] * 0.9
+    ):
         success_criteria.append("HOLDシグナルが90%未満")
 
     if issues:
@@ -281,7 +302,7 @@ def main():
     else:
         print("\n成功基準を満たしていません")
 
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

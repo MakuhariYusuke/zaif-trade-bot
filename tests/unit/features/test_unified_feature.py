@@ -5,10 +5,9 @@ Unit tests for Unified Feature Engineering Interface
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
-from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
-import numpy as np
 
 from ztb.features.unified_feature import UnifiedFeatureEngineer
 
@@ -19,16 +18,18 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         # サンプルデータ
-        self.sample_data = pd.DataFrame({
-            'open': [100, 101, 102, 103, 104],
-            'high': [105, 106, 107, 108, 109],
-            'low': [95, 96, 97, 98, 99],
-            'close': [102, 103, 104, 105, 106],
-            'volume': [1000, 1100, 1200, 1300, 1400]
-        })
+        self.sample_data = pd.DataFrame(
+            {
+                "open": [100, 101, 102, 103, 104],
+                "high": [105, 106, 107, 108, 109],
+                "low": [95, 96, 97, 98, 99],
+                "close": [102, 103, 104, 105, 106],
+                "volume": [1000, 1100, 1200, 1300, 1400],
+            }
+        )
 
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
     def test_unified_feature_engineer_creation(self, mock_sac_engineer, mock_registry):
         """UnifiedFeatureEngineerの作成テスト"""
         # モックの設定
@@ -48,9 +49,11 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         mock_sac_engineer.assert_called_once_with(config_path=None)
         mock_registry_instance.initialize.assert_called_once()
 
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_unified_feature_engineer_creation_custom_config(self, mock_sac_engineer, mock_registry):
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_unified_feature_engineer_creation_custom_config(
+        self, mock_sac_engineer, mock_registry
+    ):
         """カスタム設定パスでのUnifiedFeatureEngineer作成テスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -67,10 +70,12 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertEqual(engineer.config_path, custom_path)
         mock_sac_engineer.assert_called_once_with(config_path=custom_path)
 
-    @patch('ztb.features.unified_feature.compute_features_batch')
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_compute_features_basic(self, mock_sac_engineer, mock_registry, mock_compute):
+    @patch("ztb.features.unified_feature.compute_features_batch")
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_compute_features_basic(
+        self, mock_sac_engineer, mock_registry, mock_compute
+    ):
         """基本的な特徴量計算テスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -91,11 +96,13 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertIsInstance(result, pd.DataFrame)
         mock_compute.assert_called_once()
 
-    @patch('ztb.features.unified_feature.get_feature_set')
-    @patch('ztb.features.unified_feature.compute_features_batch')
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_compute_features_with_feature_sets(self, mock_sac_engineer, mock_registry, mock_compute, mock_get_feature_set):
+    @patch("ztb.features.unified_feature.get_feature_set")
+    @patch("ztb.features.unified_feature.compute_features_batch")
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_compute_features_with_feature_sets(
+        self, mock_sac_engineer, mock_registry, mock_compute, mock_get_feature_set
+    ):
         """指定された特徴量セットでの計算テスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -117,14 +124,15 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertIsInstance(result, pd.DataFrame)
         mock_get_feature_set.assert_called_once_with("technical")
         mock_compute.assert_called_once_with(
-            self.sample_data,
-            feature_names=["rsi", "macd"]
+            self.sample_data, feature_names=["rsi", "macd"]
         )
 
-    @patch('ztb.features.unified_feature.get_feature_set')
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_get_feature_sets(self, mock_sac_engineer, mock_registry, mock_get_feature_set):
+    @patch("ztb.features.unified_feature.get_feature_set")
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_get_feature_sets(
+        self, mock_sac_engineer, mock_registry, mock_get_feature_set
+    ):
         """特徴量セット取得テスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -138,7 +146,7 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
             sets = {
                 "curated": ["rsi", "macd"],
                 "full": ["rsi", "macd", "sma"],
-                "minimal": ["rsi"]
+                "minimal": ["rsi"],
             }
             return sets.get(set_name, [])
 
@@ -154,12 +162,12 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         expected = {
             "curated": ["rsi", "macd"],
             "full": ["rsi", "macd", "sma"],
-            "minimal": ["rsi"]
+            "minimal": ["rsi"],
         }
         self.assertEqual(result, expected)
 
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
     def test_engineer_sac_features(self, mock_sac_engineer, mock_registry):
         """SACモデル向け特徴量エンジニアリングテスト"""
         # モックの設定
@@ -178,12 +186,16 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
 
         # 検証
         self.assertIsInstance(result, pd.DataFrame)
-        mock_sac_instance.generate_v427_features.assert_called_once_with(self.sample_data)
+        mock_sac_instance.generate_v427_features.assert_called_once_with(
+            self.sample_data
+        )
 
-    @patch('ztb.features.unified_feature.get_feature_set')
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_list_available_feature_sets(self, mock_sac_engineer, mock_registry, mock_get_feature_set):
+    @patch("ztb.features.unified_feature.get_feature_set")
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_list_available_feature_sets(
+        self, mock_sac_engineer, mock_registry, mock_get_feature_set
+    ):
         """利用可能な特徴量セット一覧テスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -197,7 +209,7 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
             sets = {
                 "curated": ["rsi", "macd"],
                 "full": ["rsi", "macd", "sma"],
-                "minimal": ["rsi"]
+                "minimal": ["rsi"],
             }
             return sets.get(set_name, [])
 
@@ -213,12 +225,12 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         expected = {
             "curated": ["rsi", "macd"],
             "full": ["rsi", "macd", "sma"],
-            "minimal": ["rsi"]
+            "minimal": ["rsi"],
         }
         self.assertEqual(result, expected)
 
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
     def test_validate_feature_config(self, mock_sac_engineer, mock_registry):
         """特徴量設定検証テスト"""
         # モックの設定
@@ -242,8 +254,8 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertEqual(errors, [])
         mock_registry_instance.validate_config.assert_called_once_with(config)
 
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
     def test_get_feature_metadata(self, mock_sac_engineer, mock_registry):
         """特徴量メタデータ取得テスト"""
         # モックの設定
@@ -268,11 +280,13 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertEqual(metadata, expected)
         mock_registry_instance.get_feature_metadata.assert_called_once_with("rsi")
 
-    @patch('ztb.features.unified_feature.get_feature_set')
-    @patch('ztb.features.unified_feature.compute_features_batch')
-    @patch('ztb.features.unified_feature.FeatureRegistry')
-    @patch('ztb.features.unified_feature.SACv427FeatureEngineer')
-    def test_compute_features_error_handling(self, mock_sac_engineer, mock_registry, mock_compute, mock_get_feature_set):
+    @patch("ztb.features.unified_feature.get_feature_set")
+    @patch("ztb.features.unified_feature.compute_features_batch")
+    @patch("ztb.features.unified_feature.FeatureRegistry")
+    @patch("ztb.features.unified_feature.SACv427FeatureEngineer")
+    def test_compute_features_error_handling(
+        self, mock_sac_engineer, mock_registry, mock_compute, mock_get_feature_set
+    ):
         """特徴量計算時のエラーハンドリングテスト"""
         # モックの設定
         mock_registry_instance = MagicMock()
@@ -294,8 +308,10 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
 
     def test_empty_dataframe_handling(self):
         """空のDataFrame処理テスト"""
-        with patch('ztb.features.unified_feature.FeatureRegistry') as mock_registry:
-            with patch('ztb.features.unified_feature.SACv427FeatureEngineer') as mock_sac:
+        with patch("ztb.features.unified_feature.FeatureRegistry") as mock_registry:
+            with patch(
+                "ztb.features.unified_feature.SACv427FeatureEngineer"
+            ) as mock_sac:
                 # モックの設定
                 mock_registry_instance = MagicMock()
                 mock_registry.return_value = mock_registry_instance
@@ -309,7 +325,9 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
                 # 空のDataFrameでテスト
                 empty_df = pd.DataFrame()
 
-                with patch('ztb.features.unified_feature.compute_features_batch') as mock_compute:
+                with patch(
+                    "ztb.features.unified_feature.compute_features_batch"
+                ) as mock_compute:
                     mock_compute.return_value = empty_df
 
                     result = engineer.generate_features(empty_df)
@@ -317,11 +335,15 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
 
     def test_feature_engineer_initialization_error(self):
         """初期化エラーテスト"""
-        with patch('ztb.features.unified_feature.FeatureRegistry') as mock_registry:
-            with patch('ztb.features.unified_feature.SACv427FeatureEngineer') as mock_sac:
+        with patch("ztb.features.unified_feature.FeatureRegistry") as mock_registry:
+            with patch(
+                "ztb.features.unified_feature.SACv427FeatureEngineer"
+            ) as mock_sac:
                 # Registryの初期化でエラーを発生
                 mock_registry_instance = MagicMock()
-                mock_registry_instance.initialize.side_effect = Exception("Registry init failed")
+                mock_registry_instance.initialize.side_effect = Exception(
+                    "Registry init failed"
+                )
                 mock_registry.return_value = mock_registry_instance
 
                 mock_sac_instance = MagicMock()
@@ -337,11 +359,16 @@ class TestUnifiedFeatureEngineerIntegration(unittest.TestCase):
 
     def test_feature_engineer_workflow(self):
         """特徴量エンジニアリングのワークフローテスト"""
-        with patch('ztb.features.unified_feature.FeatureRegistry') as mock_registry:
-            with patch('ztb.features.unified_feature.SACv427FeatureEngineer') as mock_sac:
-                with patch('ztb.features.unified_feature.compute_features_batch') as mock_compute:
-                    with patch('ztb.features.unified_feature.get_feature_set') as mock_get_set:
-
+        with patch("ztb.features.unified_feature.FeatureRegistry") as mock_registry:
+            with patch(
+                "ztb.features.unified_feature.SACv427FeatureEngineer"
+            ) as mock_sac:
+                with patch(
+                    "ztb.features.unified_feature.compute_features_batch"
+                ) as mock_compute:
+                    with patch(
+                        "ztb.features.unified_feature.get_feature_set"
+                    ) as mock_get_set:
                         # モックの設定
                         mock_registry_instance = MagicMock()
                         mock_registry.return_value = mock_registry_instance
@@ -350,20 +377,22 @@ class TestUnifiedFeatureEngineerIntegration(unittest.TestCase):
                         mock_sac.return_value = mock_sac_instance
 
                         # サンプルデータ
-                        input_data = pd.DataFrame({
-                            'open': [100, 101, 102],
-                            'high': [105, 106, 107],
-                            'low': [95, 96, 97],
-                            'close': [102, 103, 104],
-                            'volume': [1000, 1100, 1200]
-                        })
+                        input_data = pd.DataFrame(
+                            {
+                                "open": [100, 101, 102],
+                                "high": [105, 106, 107],
+                                "low": [95, 96, 97],
+                                "close": [102, 103, 104],
+                                "volume": [1000, 1100, 1200],
+                            }
+                        )
 
                         enhanced_data = input_data.copy()
-                        enhanced_data['rsi'] = [30, 40, 50]
-                        enhanced_data['macd'] = [0.1, 0.2, 0.3]
+                        enhanced_data["rsi"] = [30, 40, 50]
+                        enhanced_data["macd"] = [0.1, 0.2, 0.3]
 
                         mock_compute.return_value = enhanced_data
-                        mock_get_set.return_value = ['rsi', 'macd']
+                        mock_get_set.return_value = ["rsi", "macd"]
 
                         # ワークフロー実行
                         engineer = UnifiedFeatureEngineer()
@@ -372,16 +401,18 @@ class TestUnifiedFeatureEngineerIntegration(unittest.TestCase):
                         available_sets = engineer.get_feature_sets()
 
                         # 2. 特定の特徴量セットの取得
-                        features = available_sets.get('technical', [])
+                        features = available_sets.get("technical", [])
 
                         # 3. 特徴量計算
-                        result = engineer.generate_features(input_data, feature_set='technical')
+                        result = engineer.generate_features(
+                            input_data, feature_set="technical"
+                        )
 
                         # 検証
                         self.assertIsInstance(result, pd.DataFrame)
-                        self.assertIn('rsi', result.columns)
-                        self.assertIn('macd', result.columns)
+                        self.assertIn("rsi", result.columns)
+                        self.assertIn("macd", result.columns)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

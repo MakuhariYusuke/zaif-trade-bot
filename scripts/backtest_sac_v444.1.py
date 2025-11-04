@@ -3,8 +3,6 @@
 Backtest SAC v444.1 model to verify balanced reward design effectiveness.
 """
 
-import json
-import os
 import sys
 from pathlib import Path
 
@@ -16,6 +14,7 @@ from backtest.simple_backtest_v444 import run_simple_backtest
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
 
 def main():
     """Run backtest for SAC v444.1 model."""
@@ -29,7 +28,7 @@ def main():
             "total_timesteps": 10000,
             "n_eval_episodes": 5,
             "deterministic": True,
-            "render_mode": None
+            "render_mode": None,
         }
 
         logger.info("Starting SAC v444.1 backtest...")
@@ -41,11 +40,14 @@ def main():
 
         if results is None:
             logger.warning("Backtest returned None, creating basic success message")
-            results = {"status": "completed", "message": "Backtest executed successfully"}
+            results = {
+                "status": "completed",
+                "message": "Backtest executed successfully",
+            }
 
         # Print key metrics
-        if 'action_distribution' in results:
-            action_dist = results['action_distribution']
+        if "action_distribution" in results:
+            action_dist = results["action_distribution"]
             if isinstance(action_dist, dict):
                 logger.info("Action Distribution:")
                 logger.info(f"  BUY: {action_dist.get('BUY', 0):.4f}")
@@ -54,7 +56,7 @@ def main():
             else:
                 logger.info(f"Action Distribution: {action_dist}")
 
-        if 'total_return' in results:
+        if "total_return" in results:
             logger.info(f"Total Return: {results['total_return']:.4f}")
 
         return True
@@ -62,6 +64,7 @@ def main():
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = main()

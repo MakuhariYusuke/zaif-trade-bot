@@ -208,7 +208,11 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Create callback for progress tracking if not provided
             if callback is None:
                 # Get early stopping configuration
-                early_stopping_config = self.config.get("training", {}).get("sac_hyperparameters", {}).get("early_stopping", {})
+                early_stopping_config = (
+                    self.config.get("training", {})
+                    .get("sac_hyperparameters", {})
+                    .get("early_stopping", {})
+                )
 
                 callback = TrainingProgressCallback(
                     check_freq=self.config.get("training", {}).get(
@@ -216,7 +220,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                     ),
                     verbose=1,
                     trainer_ref=self,
-                    early_stopping=early_stopping_config if early_stopping_config else None,
+                    early_stopping=early_stopping_config
+                    if early_stopping_config
+                    else None,
                 )
 
                 # Enable regime tracking if adaptation is enabled
@@ -325,6 +331,13 @@ class SACTrainer(BaseAlgorithmTrainer):
                             if isinstance(env_section_cfg, dict)
                             else None
                         )
+                        if explicit_bool is None:
+                            # check unified_trainer style environment.use_continuous_actions
+                            explicit_bool = (
+                                cfg.get("environment", {}).get("use_continuous_actions", None)
+                                if isinstance(cfg, dict)
+                                else None
+                            )
                         if explicit_bool is None:
                             explicit_bool = (
                                 cfg.get("use_continuous_actions", None)
@@ -1104,9 +1117,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                             total_regime_actions = sum(counts)
                             if total_regime_actions > 0:
                                 regime_distributions[regime] = {
-                                    "HOLD": counts[0] / total_regime_actions,
-                                    "BUY": counts[1] / total_regime_actions,
-                                    "SELL": counts[2] / total_regime_actions,
+                                    "BUY": counts[0] / total_regime_actions,
+                                    "SELL": counts[1] / total_regime_actions,
+                                    "HOLD": counts[2] / total_regime_actions,
                                     "total_actions": total_regime_actions,
                                 }
 

@@ -3,9 +3,9 @@ from typing import Any, Optional
 import numpy as np
 import pandas as pd
 
-from ..base import BaseFeature
-from ..registry import FeatureRegistry
-from ..timeframe import Timeframe
+from ....core.base import BaseFeature
+from ....core.registry import FeatureRegistry
+from ....timeframe import Timeframe
 
 
 @FeatureRegistry.register("HeikinAshi_Color")

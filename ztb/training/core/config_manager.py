@@ -156,6 +156,11 @@ class ConfigManager:
         if "action_bonuses" in nested_env and "action_bonuses" not in environment:
             environment["action_bonuses"] = nested_env["action_bonuses"]
 
+        # Add curriculum stage from curriculum_learning
+        curriculum_learning = self.config.get("curriculum_learning", {})
+        if isinstance(curriculum_learning, dict) and "curriculum_stage" in curriculum_learning:
+            environment["curriculum_stage"] = curriculum_learning["curriculum_stage"]
+
         return environment
 
     def get_ppo_core_config(self) -> Dict[str, Any]:
@@ -362,6 +367,7 @@ class ConfigManager:
             "memory_optimization": memory_opt,
             "environment": environment,
             "features": features,
+            "training": self.config.get("training", {}),  # Include training config
             # Performance settings
             "enable_streaming": enable_streaming,
             "stream_batch_size": stream_batch_size,

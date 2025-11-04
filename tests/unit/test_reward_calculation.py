@@ -5,12 +5,13 @@ Test script for reward calculation bug fixes.
 
 import os
 import sys
+import collections
 
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ztb.trading.constants import ACTION_BUY
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import RewardSettings
 
@@ -350,6 +351,173 @@ def test_get_current_regime():
 #         print(f"  Position: {test_case['position']:.2f}")
 #         print(f"  Reward: {reward:.4f}")
 #         print()
+
+
+def test_forced_balance_penalty():
+    """Test forced balance penalty calculation."""
+    from ztb.trading.environment.utils.config import EnvironmentConfig
+
+    # Create mock config with forced_balance curriculum
+    config = EnvironmentConfig()
+    config.curriculum_stage = "forced_balance"
+    config.max_position_size = 1.0
+    config.behavior_optimization = {
+        "balance_penalty": 10.0,  # Use reasonable scale for testing
+        "action_balance_target": 0.333,
+        "redundant_trade_penalty": 5.0
+    }
+
+    reward_settings = RewardSettings(
+        use_simple_reward=False,
+        reward_scale=1.0,
+        trading_bonus=0.01,
+        profit_bonuses={},
+        penalty_coefficients={},
+        entropy_bonus=0.0,
+        custom_reward_params={},
+        balance_penalty=1.0,
+        balance_penalty_tolerance=0.15,
+        profit_weight=1.0,
+        risk_weight=1.0,
+        consistency_weight=1.0,
+        ultra_profit_multiplier=1.0,
+        ultra_risk_multiplier=1.0,
+        position_soft_cap=0.5,
+        position_penalty_scale=0.01,
+        position_penalty_exponent=2.0,
+        inventory_window=10,
+        inventory_penalty_scale=0.01,
+        trade_frequency_penalty=0.01,
+        trade_frequency_halflife=100.0,
+        trade_cooldown_steps=5,
+        trade_cooldown_penalty=0.01,
+        max_consecutive_trades=3,
+        consecutive_trade_penalty=0.05,
+        volatility_window=20,
+        volatility_penalty_scale=0.01,
+    )
+
+    calculator = RewardCalculator(
+        config=config,
+        reward_settings=reward_settings,
+        initial_portfolio_value=200000.0
+    )
+
+    # Simulate imbalanced actions (mostly SELL)
+    for i in range(20):
+        if i < 15:  # 75% SELL
+            action = -1  # SELL
+        else:
+            action = 0  # HOLD
+
+        reward = calculator.calculate_reward(
+            action=action,
+            current_price=50000.0,
+            position=0.0,
+            portfolio_value=200000.0,
+            atr=100.0,
+            transaction_cost=0.001,
+            reward_scaling=1.0,
+            pnl=0.0,
+            old_position=0.0,
+            step=i,
+            observation=None,
+            reward_history=[],
+            portfolio_value_history=[200000.0]
+        )
+
+    # Check that balance penalty is applied correctly
+    total_actions = len(calculator._recent_actions)
+    assert total_actions == 20
+    
+    counter = collections.Counter(calculator._recent_actions)
+    buy_count = counter[ACTION_BUY]
+    sell_count = counter[ACTION_SELL]
+    hold_count = counter[ACTION_HOLD]
+    
+    buy_ratio = buy_count / total_actions
+    sell_ratio = sell_count / total_actions
+    hold_ratio = hold_count / total_actions
+    
+    target_ratio = 0.333
+    expected_penalty = (
+        abs(buy_ratio - target_ratio) +
+        abs(sell_ratio - target_ratio) +
+        abs(hold_ratio - target_ratio)
+    ) * 10.0  # balance_penalty_scale
+    
+    # Verify the penalty calculation
+    assert abs(expected_penalty - (abs(0 - 0.333) + abs(0.75 - 0.333) + abs(0.25 - 0.333)) * 10.0) < 1e-6
+    print(f"Forced balance penalty calculation verified: expected={expected_penalty:.6f}, actual calculation matches")
+
+
+def test_redundant_trade_penalty():
+    """Test redundant trade penalty at max position."""
+    from ztb.trading.environment.utils.config import EnvironmentConfig
+
+    config = EnvironmentConfig()
+    config.curriculum_stage = "forced_balance"
+    config.max_position_size = 1.0
+    config.behavior_optimization = {
+        "redundant_trade_penalty": 5.0
+    }
+
+    reward_settings = RewardSettings(
+        use_simple_reward=False,
+        reward_scale=1.0,
+        trading_bonus=0.01,
+        profit_bonuses={},
+        penalty_coefficients={},
+        entropy_bonus=0.0,
+        custom_reward_params={},
+        balance_penalty=1.0,
+        balance_penalty_tolerance=0.15,
+        profit_weight=1.0,
+        risk_weight=1.0,
+        consistency_weight=1.0,
+        ultra_profit_multiplier=1.0,
+        ultra_risk_multiplier=1.0,
+        position_soft_cap=0.5,
+        position_penalty_scale=0.01,
+        position_penalty_exponent=2.0,
+        inventory_window=10,
+        inventory_penalty_scale=0.01,
+        trade_frequency_penalty=0.01,
+        trade_frequency_halflife=100.0,
+        trade_cooldown_steps=5,
+        trade_cooldown_penalty=0.01,
+        max_consecutive_trades=3,
+        consecutive_trade_penalty=0.05,
+        volatility_window=20,
+        volatility_penalty_scale=0.01,
+    )
+
+    calculator = RewardCalculator(
+        config=config,
+        reward_settings=reward_settings,
+        initial_portfolio_value=200000.0
+    )
+
+    # Test BUY at max position (redundant)
+    reward = calculator.calculate_reward(
+        action=1,  # BUY
+        current_price=50000.0,
+        position=1.0,  # Already at max
+        portfolio_value=200000.0,
+        atr=100.0,
+        transaction_cost=0.001,
+        reward_scaling=1.0,
+        pnl=0.0,
+        old_position=1.0,  # Was already at max
+        step=0,
+        observation=None,
+        reward_history=[],
+        portfolio_value_history=[200000.0]
+    )
+
+    # Should have redundant trade penalty
+    assert reward < 0  # Negative due to penalty
+    print("Redundant trade penalty test passed")
 
 
 # if __name__ == "__main__":

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
     ActionSignalGuide,
     ActionSignalGuideConfig,
+    RecognizerConfig,
 )
 
 
@@ -71,7 +72,7 @@ def test_pattern_validation():
         enable_gann_patterns=False,
         enable_wave_patterns=False,
         enable_harmonic_patterns=False,
-        enable_oscillator_patterns=True,
+        enable_oscillator_patterns=True,  # Enable ATR patterns
         enable_volume_patterns=True,
         enable_bollinger_patterns=True,
         enable_adx_patterns=False,
@@ -81,10 +82,17 @@ def test_pattern_validation():
         max_signals_per_bar=5,
         enable_caching=True,
         cache_size=1000,
+        oscillator_patterns=[
+            RecognizerConfig("cci", group="oscillator"),
+            RecognizerConfig("stochastic", group="oscillator"),
+            RecognizerConfig("williamsr", group="oscillator"),
+            RecognizerConfig("mfi", group="oscillator"),
+            RecognizerConfig("atr", group="oscillator"),  # Add ATR pattern
+        ],
     )
 
     # Create Action Signal Guide
-    guide = ActionSignalGuide(config)
+    guide = ActionSignalGuide(config=config)
     print("Created ActionSignalGuide with selective pattern enabling")
 
     # Generate signals for multiple bars

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.trading.constants import get_action_count_index
 from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ class StateManager:
 
         # Episode tracking
         self.env._current_episode_actions.clear()
-        self.env._action_counts = self.env.ACTION_COUNTS_INITIAL.copy()
+        self.env._action_counts = [0, 0, 0]  # [BUY, SELL, HOLD]
 
         # Streaming state
         self.env._stream_last_timestamp = None
@@ -81,8 +82,9 @@ class StateManager:
             self.env._consecutive_trade_steps = 0
 
         # Update action counts
-        if 0 <= action < len(self.env._action_counts):
-            self.env._action_counts[action] += 1
+        action_index = get_action_count_index(action)
+        if 0 <= action_index < len(self.env._action_counts):
+            self.env._action_counts[action_index] += 1
 
     def update_portfolio_state(self, trade_pnl: float, unrealized_pnl: float) -> None:
         """Update portfolio-related state.

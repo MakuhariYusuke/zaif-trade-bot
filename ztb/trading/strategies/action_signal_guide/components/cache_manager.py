@@ -7,7 +7,7 @@ Follows Single Responsibility Principle by focusing only on caching operations.
 
 import time
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -79,27 +79,27 @@ class CacheManager(ICacheManager):
         """
         self._put_in_cache(self.observation_cache, key, observation)
 
-    def get_cached_signal(self, key: str) -> Optional["ActionSignal"]:
+    def get_cached_signal(self, cache_key: str) -> Optional[Union["ActionSignal", List["ActionSignal"]]]:
         """
         Retrieve cached signal.
 
         Args:
-            key: Cache key
+            cache_key: Cache key
 
         Returns:
             Cached signal or None if not found/expired
         """
-        return self._get_from_cache(self.signal_cache, key)
+        return self._get_from_cache(self.signal_cache, cache_key)
 
-    def cache_signal(self, key: str, signal: "ActionSignal") -> None:
+    def cache_signal(self, cache_key: str, signal: Union["ActionSignal", List["ActionSignal"]]) -> None:
         """
         Cache signal data.
 
         Args:
             key: Cache key
-            signal: Signal to cache
+            signal: Signal or list of signals to cache
         """
-        self._put_in_cache(self.signal_cache, key, signal)
+        self._put_in_cache(self.signal_cache, cache_key, signal)
 
     def get_cached_computation(self, key: str) -> Optional[Any]:
         """
