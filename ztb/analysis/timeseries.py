@@ -4,15 +4,19 @@ Timeseries Analysis Module
 時系列分析機能を提供するモジュール
 """
 
-from typing import Dict, List, Optional
-import pandas as pd
+from typing import Dict, List
+
 import numpy as np
+import pandas as pd
+
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def compute_lag_correlations(frames: Dict[str, pd.DataFrame], max_lags: int = 10) -> List[Dict]:
+def compute_lag_correlations(
+    frames: Dict[str, pd.DataFrame], max_lags: int = 10
+) -> List[Dict]:
     """
     複数のデータフレーム間のラグ相関係数を計算
 
@@ -32,7 +36,9 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame], max_lags: int = 10
         combined_df = pd.concat(frames.values(), axis=1, keys=frames.keys())
 
         # MultiIndexをプレフィックス付きカラム名に変換
-        combined_df.columns = [f"{level0}_{level1}" for level0, level1 in combined_df.columns]
+        combined_df.columns = [
+            f"{level0}_{level1}" for level0, level1 in combined_df.columns
+        ]
 
         # 数値列のみを選択
         numeric_df = combined_df.select_dtypes(include=[np.number])
@@ -68,12 +74,14 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame], max_lags: int = 10
                     # ラグ相関係数を計算
                     corr = series1.corr(series2.shift(lag))
                     if not np.isnan(corr):
-                        results.append({
-                            "feature1": col1,
-                            "feature2": col2,
-                            "lag": lag,
-                            "correlation": float(corr)
-                        })
+                        results.append(
+                            {
+                                "feature1": col1,
+                                "feature2": col2,
+                                "lag": lag,
+                                "correlation": float(corr),
+                            }
+                        )
 
         # 相関係数の絶対値でソートし、上位10個を返す
         results.sort(key=lambda x: abs(x["correlation"]), reverse=True)

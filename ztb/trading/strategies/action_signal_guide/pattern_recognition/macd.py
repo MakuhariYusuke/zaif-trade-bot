@@ -7,10 +7,11 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ztb.features.momentum.macd import compute_macd
+from ztb.features.generators.technical.momentum.macd import compute_macd
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     PatternRecognizer,
     SignalResult,
+    MultiTimeframeData,
 )
 
 
@@ -26,6 +27,11 @@ class MACDPatternRecognizer(PatternRecognizer):
         self.slow_period = self.config.get("slow_period", 26)
         self.signal_period = self.config.get("signal_period", 9)
         self.histogram_threshold = self.config.get("histogram_threshold", 0.0)
+
+        # Multi-timeframe settings
+        self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
+        self.mtf_weight = self.config.get("mtf_weight", 0.3)
+        self.regime_aware = self.config.get("regime_aware", True)
 
     def recognize(
         self,
@@ -93,6 +99,16 @@ class MACDPatternRecognizer(PatternRecognizer):
             macd_hist.iloc[index - 1] if index > 0 and index - 1 < len(macd_hist) else 0
         )
 
+        # Multi-timeframe analysis for enhanced signal reliability
+        mtf_confidence = self._analyze_multi_timeframe_macd_alignment(
+            current_hist, previous_hist, multi_timeframe_data
+        )
+
+        # Market regime awareness - adjust thresholds based on regime
+        regime_adjusted_thresholds = self._adjust_thresholds_for_regime(
+            multi_timeframe_data
+        )
+
         # Zero line cross signals
         if previous_hist <= 0 and current_hist > 0:
             # MACD histogram crossed above zero - bullish signal
@@ -103,22 +119,25 @@ class MACDPatternRecognizer(PatternRecognizer):
             direction_factor = cross_strength * (0.8 + trend_strength * 0.2)
             direction = min(1.0, direction_factor)
 
-            # Adaptive strength with volatility boost
+            # Adaptive strength with volatility boost and MTF confidence
             volatility_boost = min(0.2, volatility_ratio * 0.1)
-            strength = min(1.0, base_strength + volatility_boost)
+            strength = min(1.0, base_strength + volatility_boost) * mtf_confidence
 
             return SignalResult(
-                signal_type="MACD_zero_cross_bullish",
+                signal_type="MACD_zero_cross_bullish_mtf",
                 strength=strength,
                 direction=direction,
-                description=f"MACD histogram zero line cross up (Hist: {current_hist:.6f})",
-                confidence=min(0.8, strength * 0.8),
+                description=f"MACD histogram zero line cross up MTF (Hist: {current_hist:.6f}, MTF: {mtf_confidence:.2f})",
                 metadata={
                     "histogram_value": current_hist,
                     "volatility_ratio": volatility_ratio,
                     "trend_strength": trend_strength,
                     "cross_strength": cross_strength,
+                    "mtf_confidence": mtf_confidence,
+                    "regime_adjusted": True,
                 },
+                validity_period=4,
+                risk_level="medium",
             )
 
         elif previous_hist >= 0 and current_hist < 0:
@@ -130,22 +149,25 @@ class MACDPatternRecognizer(PatternRecognizer):
             direction_factor = -cross_strength * (0.8 + trend_strength * 0.2)
             direction = max(-1.0, direction_factor)
 
-            # Adaptive strength with volatility boost
+            # Adaptive strength with volatility boost and MTF confidence
             volatility_boost = min(0.2, volatility_ratio * 0.1)
-            strength = min(1.0, base_strength + volatility_boost)
+            strength = min(1.0, base_strength + volatility_boost) * mtf_confidence
 
             return SignalResult(
-                signal_type="MACD_zero_cross_bearish",
+                signal_type="MACD_zero_cross_bearish_mtf",
                 strength=strength,
                 direction=direction,
-                description=f"MACD histogram zero line cross down (Hist: {current_hist:.6f})",
-                confidence=min(0.8, strength * 0.8),
+                description=f"MACD histogram zero line cross down MTF (Hist: {current_hist:.6f}, MTF: {mtf_confidence:.2f})",
                 metadata={
                     "histogram_value": current_hist,
                     "volatility_ratio": volatility_ratio,
                     "trend_strength": trend_strength,
                     "cross_strength": cross_strength,
+                    "mtf_confidence": mtf_confidence,
+                    "regime_adjusted": True,
                 },
+                validity_period=4,
+                risk_level="medium",
             )
 
         # Histogram momentum signals
@@ -162,22 +184,25 @@ class MACDPatternRecognizer(PatternRecognizer):
                     0.8, direction_factor
                 )  # Cap at 0.8 for momentum signals
 
-                # Adaptive strength with volatility boost
+                # Adaptive strength with volatility boost and MTF confidence
                 volatility_boost = min(0.1, volatility_ratio * 0.05)
-                strength = min(0.7, base_strength + volatility_boost)
+                strength = min(0.7, base_strength + volatility_boost) * mtf_confidence
 
                 return SignalResult(
-                    signal_type="MACD_bullish_momentum",
+                    signal_type="MACD_bullish_momentum_mtf",
                     strength=strength,
                     direction=direction,
-                    description=f"MACD bullish momentum (Change: {hist_change:.6f})",
-                    confidence=min(0.7, strength * 1.4),
+                    description=f"MACD bullish momentum MTF (Change: {hist_change:.6f}, MTF: {mtf_confidence:.2f})",
                     metadata={
                         "histogram_change": hist_change,
                         "volatility_ratio": volatility_ratio,
                         "trend_strength": trend_strength,
                         "momentum_factor": momentum_factor,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjusted": True,
                     },
+                    validity_period=3,
+                    risk_level="low",
                 )
             elif hist_change < 0 and current_hist < 0:
                 # Increasing bearish momentum
@@ -190,22 +215,25 @@ class MACDPatternRecognizer(PatternRecognizer):
                     -0.8, direction_factor
                 )  # Cap at -0.8 for momentum signals
 
-                # Adaptive strength with volatility boost
+                # Adaptive strength with volatility boost and MTF confidence
                 volatility_boost = min(0.1, volatility_ratio * 0.05)
-                strength = min(0.7, base_strength + volatility_boost)
+                strength = min(0.7, base_strength + volatility_boost) * mtf_confidence
 
                 return SignalResult(
-                    signal_type="MACD_bearish_momentum",
+                    signal_type="MACD_bearish_momentum_mtf",
                     strength=strength,
                     direction=direction,
-                    description=f"MACD bearish momentum (Change: {hist_change:.6f})",
-                    confidence=min(0.7, strength * 1.4),
+                    description=f"MACD bearish momentum MTF (Change: {hist_change:.6f}, MTF: {mtf_confidence:.2f})",
                     metadata={
                         "histogram_change": hist_change,
                         "volatility_ratio": volatility_ratio,
                         "trend_strength": trend_strength,
                         "momentum_factor": momentum_factor,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjusted": True,
                     },
+                    validity_period=3,
+                    risk_level="low",
                 )
 
         # Convergence/divergence signals
@@ -319,3 +347,80 @@ class MACDPatternRecognizer(PatternRecognizer):
             )
 
         return None
+
+    def _analyze_multi_timeframe_macd_alignment(
+        self,
+        current_hist: float,
+        previous_hist: float,
+        multi_timeframe_data: Optional[Dict[str, Any]]
+    ) -> float:
+        """
+        Analyze multi-timeframe MACD alignment for enhanced signal confidence.
+
+        Args:
+            current_hist: Current MACD histogram value
+            previous_hist: Previous MACD histogram value
+            multi_timeframe_data: Multi-timeframe data
+
+        Returns:
+            Confidence multiplier (0.5 to 1.5)
+        """
+        if not multi_timeframe_data:
+            return 1.0  # No multi-timeframe data, use base confidence
+
+        confidence: float = 1.0
+
+        # Higher timeframe momentum alignment
+        higher_momentum = multi_timeframe_data.get("higher_timeframe_momentum", 0)
+        hist_change = current_hist - previous_hist
+
+        if higher_momentum > 0.7 and hist_change > 0:
+            confidence *= 1.2  # Strong alignment with higher timeframe momentum
+        elif higher_momentum < 0.3 and hist_change < 0:
+            confidence *= 1.1  # Alignment with lower momentum
+
+        # Timeframe alignment score
+        tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
+        confidence *= (0.8 + tf_alignment * 0.4)  # 0.8 to 1.2 range
+
+        # Market regime consideration
+        regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
+        if regime_cluster == 2:  # High volatility regime
+            confidence *= 1.1  # Increase confidence in volatile markets
+
+        return min(1.5, max(0.5, confidence))
+
+    def _adjust_thresholds_for_regime(
+        self, multi_timeframe_data: Optional[MultiTimeframeData], pattern_type: str = "general"
+    ) -> Dict[str, Any]:
+        """
+        Adjust MACD thresholds based on market regime.
+
+        Args:
+            multi_timeframe_data: Multi-timeframe data containing regime info
+
+        Returns:
+            Adjusted thresholds dictionary
+        """
+        base_thresholds = {
+            "histogram_threshold": self.histogram_threshold,
+        }
+
+        if not multi_timeframe_data:
+            return base_thresholds
+
+        # Adjust based on market regime (from regime clustering)
+        regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
+
+        if regime_cluster == 0:  # Trending regime
+            # Lower thresholds for more signals in trending markets
+            return {
+                "histogram_threshold": max(0.0, self.histogram_threshold * 0.8),
+            }
+        elif regime_cluster == 2:  # Volatile/high-risk regime
+            # Higher thresholds for more conservative signals
+            return {
+                "histogram_threshold": min(0.1, self.histogram_threshold * 1.5),
+            }
+        else:  # Neutral/mixed regime (cluster 1)
+            return base_thresholds

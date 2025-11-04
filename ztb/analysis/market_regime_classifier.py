@@ -243,7 +243,6 @@ class MarketRegimeClassifier:
                 priority=13,
                 description="Volume surge in downtrend - SELL confirmation",
             ),
-
             # Bull trends (優先度を下げる)
             RegimeDefinition(
                 name="Strong Bull Trend",
@@ -278,15 +277,14 @@ class MarketRegimeClassifier:
                 priority=10,
                 description="Weak upward movement with low momentum",
             ),
-
             # Bear trends (SELL bias対策で条件を緩和)
             RegimeDefinition(
                 name="Strong Bear Trend",
                 regime_type=RegimeType.STRONG_BEAR,
                 conditions={
                     "trend_strength": {"max": -2.8},  # より低い閾値
-                    "bear_strength": {"min": 2.2},    # より低い閾値
-                    "volatility": {"max": 0.18},      # より高い許容値
+                    "bear_strength": {"min": 2.2},  # より低い閾値
+                    "volatility": {"max": 0.18},  # より高い許容値
                 },
                 priority=9,
                 description="Strong downward momentum with high conviction",
@@ -296,8 +294,8 @@ class MarketRegimeClassifier:
                 regime_type=RegimeType.MODERATE_BEAR,
                 conditions={
                     "trend_strength": {"max": -1.8, "min": -2.8},  # より低い閾値
-                    "bear_strength": {"min": 1.3, "max": 2.2},     # より低い閾値
-                    "volatility": {"max": 0.22},                   # より高い許容値
+                    "bear_strength": {"min": 1.3, "max": 2.2},  # より低い閾値
+                    "volatility": {"max": 0.22},  # より高い許容値
                 },
                 priority=8,
                 description="Moderate downward trend with steady losses",
@@ -307,13 +305,12 @@ class MarketRegimeClassifier:
                 regime_type=RegimeType.WEAK_BEAR,
                 conditions={
                     "trend_strength": {"max": -0.8, "min": -1.8},  # より低い閾値
-                    "bear_strength": {"min": 0.3, "max": 1.3},     # より低い閾値
-                    "volatility": {"max": 0.28},                   # より高い許容値
+                    "bear_strength": {"min": 0.3, "max": 1.3},  # より低い閾値
+                    "volatility": {"max": 0.28},  # より高い許容値
                 },
                 priority=7,
                 description="Weak downward movement with low momentum",
             ),
-
             # Range conditions
             RegimeDefinition(
                 name="High Volatility Range",
@@ -345,7 +342,6 @@ class MarketRegimeClassifier:
                 priority=4,
                 description="Low volatility tight range",
             ),
-
             # Special conditions
             RegimeDefinition(
                 name="Extreme Volatility",

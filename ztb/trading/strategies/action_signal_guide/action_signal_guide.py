@@ -17,9 +17,11 @@ import pandas as pd
 from .components.cache_manager import CacheManager
 
 # Import components
+from .components.cache_manager import CacheManager
 from .components.pattern_statistics import PatternStatistics
 from .components.performance_tracker import PerformanceTracker
 from .components.signal_generator import SignalGenerator
+from .analysis.signal_performance_analyzer import SignalPerformanceAnalyzer
 from .pattern_recognition.base import PatternRecognizer
 from .pattern_recognition.candlestick_patterns import (
     BearishEngulfingRecognizer,
@@ -174,6 +176,7 @@ class ActionSignalGuideConfig:
     cache_size: int = 1000
     lazy_loading: bool = False
     feature_names: Optional[List[str]] = None
+    value: Optional[Any] = None  # For backward compatibility
 
     # Short / debug mode for fast unit tests and debugging
     debug_short_mode: bool = False
@@ -296,7 +299,19 @@ class ActionSignalGuideConfig:
 
         if self.adx_patterns is None:
             self.adx_patterns = [
-                RecognizerConfig("adx", group="adx"),
+                RecognizerConfig(
+                    "adx",
+                    group="adx",
+                    config={
+                        "enable_multi_timeframe": True,
+                        "mtf_weight": 0.3,
+                        "regime_aware": True,
+                        "period": 14,
+                        "strong_trend_threshold": 25,
+                        "weak_trend_threshold": 20,
+                        "di_cross_threshold": 1.0,
+                    }
+                ),
             ]
 
 
@@ -363,9 +378,15 @@ class ActionSignalGuide:
 
         self.pattern_statistics = PatternStatistics(max_history_size=10000)
 
+        # Initialize signal performance analyzer for SAC learning correlation analysis
+        self.signal_performance_analyzer = SignalPerformanceAnalyzer(
+            performance_tracker=self.performance_tracker,
+            pattern_statistics=self.pattern_statistics,
+        )
+
         # Initialize signal generator with dependencies
         self.signal_generator = SignalGenerator(
-            config=self.config,
+            config=cast(ActionSignalGuideConfig, self.config),
             performance_tracker=self.performance_tracker,
             pattern_statistics=self.pattern_statistics,
         )
@@ -406,6 +427,9 @@ class ActionSignalGuide:
             StochasticRecognizer,
             WilliamsRRecognizer,
         )
+        from .pattern_recognition.atr import ATRPatternRecognizer
+        from .pattern_recognition.rsi import RSIPatternRecognizer
+        from .pattern_recognition.macd import MACDPatternRecognizer
         from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 
         # Recognizer factory mapping
@@ -454,6 +478,9 @@ class ActionSignalGuide:
             "stochastic": lambda config: StochasticRecognizer(config),
             "williams_r": lambda config: WilliamsRRecognizer(config),
             "mfi": lambda config: MFIRecognizer(config),
+            "atr": lambda config: ATRPatternRecognizer(config),
+            "rsi": lambda config: RSIPatternRecognizer(config),
+            "macd": lambda config: MACDPatternRecognizer(config),
             # Volume patterns
             "chaikin_ad": lambda config: ChaikinADRecognizer(config),
             # Bollinger Bands patterns
@@ -726,7 +753,11 @@ class ActionSignalGuide:
                 self.performance_tracker.record_cache_operation(
                     processing_time, hit=True
                 )
-                return cached_signals
+                # Ensure cached_signals is always a list
+                if isinstance(cached_signals, list):
+                    return cached_signals
+                else:
+                    return [cached_signals]
 
         # Convert DataFrame row to observation array for SignalGenerator
         try:
@@ -741,24 +772,23 @@ class ActionSignalGuide:
 
         # Generate multi-timeframe features if available
         multi_timeframe_data = None
-        # Temporarily disable multi-timeframe features
-        # if self.use_multi_timeframe and self.multi_timeframe_system:
-        #     try:
-        #         # Generate multi-timeframe features for enhanced pattern validation
-        #         mtf_features = self.multi_timeframe_system.process_multi_timeframe_data(
-        #             data,
-        #             current_timeframe="1h",  # Assume 1h, could be parameterized
-        #         )
-        #         multi_timeframe_data = {
-        #             "higher_timeframe_trend": mtf_features.get("trend_strength", 0),
-        #             "multi_timeframe_support": mtf_features.get(
-        #                 "support_resistance", {}
-        #             ),
-        #             "timeframe_alignment": mtf_features.get("timeframe_alignment", 0.5),
-        #         }
-        #     except Exception as e:
-        #         self.logger.warning(f"Failed to generate multi-timeframe features: {e}")
-        #         multi_timeframe_data = None
+        if self.use_multi_timeframe and self.multi_timeframe_system:
+            try:
+                # Generate multi-timeframe features for enhanced pattern validation
+                mtf_features = self.multi_timeframe_system.process_multi_timeframe_data(
+                    data,
+                    current_timeframe="1h",  # Assume 1h, could be parameterized
+                )
+                multi_timeframe_data = {
+                    "higher_timeframe_trend": mtf_features.get("trend_strength", 0),
+                    "multi_timeframe_support": mtf_features.get(
+                        "support_resistance", {}
+                    ),
+                    "timeframe_alignment": mtf_features.get("timeframe_alignment", 0.5),
+                }
+            except Exception as e:
+                self.logger.warning(f"Failed to generate multi-timeframe features: {e}")
+                multi_timeframe_data = None
 
         # Generate signal using SignalGenerator component
         try:
@@ -1221,3 +1251,209 @@ class ActionSignalGuide:
                 }
 
         return analysis
+
+    def analyze_pattern_effectiveness(self, trading_results: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """
+        Analyze the effectiveness of different pattern recognizers.
+
+        Returns:
+            Dictionary containing pattern effectiveness analysis
+        """
+        enabled_patterns = []
+        disabled_patterns = []
+        pattern_stats = {}
+
+        # Ensure recognizers are loaded for lazy loading mode
+        self._ensure_recognizers_loaded()
+
+        # Collect enabled/disabled patterns and their statistics
+        pattern_groups = [
+            'candlestick', 'fibonacci', 'gann', 'wave', 'harmonic',
+            'oscillator', 'volume', 'bollinger', 'adx', 'granville',
+            'heikin_ashi', 'dow_theory'
+        ]
+
+        for pattern_group in pattern_groups:
+            attr_name = f'{pattern_group}_recognizers'
+            recognizers = getattr(self, attr_name, [])
+
+            # Check if pattern group is enabled
+            enable_flag = getattr(self.config, f'enable_{pattern_group}_patterns', True)
+
+            # Ensure recognizers is a list
+            if not isinstance(recognizers, list):
+                recognizers = []
+
+            for recognizer in recognizers:
+                pattern_name = getattr(recognizer, '__class__', type(recognizer)).__name__.replace('Recognizer', '').lower()
+
+                if enable_flag:
+                    enabled_patterns.append(pattern_name)
+                else:
+                    disabled_patterns.append(pattern_name)
+
+                # Initialize pattern stats
+                if pattern_name not in pattern_stats:
+                    pattern_stats[pattern_name] = {
+                        'signals_generated': 0,
+                        'enabled': enable_flag
+                    }
+
+        # Count signals generated by each pattern from signal history
+        for signal in self.signal_history:
+            for pattern in signal.source_patterns:
+                pattern_name = pattern.lower()
+                if pattern_name in pattern_stats:
+                    pattern_stats[pattern_name]['signals_generated'] += 1
+
+        # If trading results provided, analyze correlations
+        correlations = {}
+        if trading_results:
+            for pattern_name in pattern_stats.keys():
+                pattern_trades = []
+                for result in trading_results:
+                    for signal in result.get("signals", []):
+                        if pattern_name in [p.lower() for p in signal.get("source_patterns", [])]:
+                            pattern_trades.append(result["profit"])
+
+                if pattern_trades:
+                    avg_profit = sum(pattern_trades) / len(pattern_trades)
+                    win_rate = sum(1 for p in pattern_trades if p > 0) / len(pattern_trades)
+                    correlations[pattern_name] = {
+                        "average_profit": avg_profit,
+                        "win_rate": win_rate,
+                        "total_trades": len(pattern_trades)
+                    }
+
+        result = {
+            'total_signals': len(self.signal_history),
+            'enabled_patterns': enabled_patterns,
+            'disabled_patterns': disabled_patterns,
+            'pattern_stats': pattern_stats
+        }
+
+        if correlations:
+            result['correlations'] = correlations
+
+        return result
+
+    def generate_validation_report(self) -> str:
+        """
+        Generate a validation report for the ActionSignalGuide.
+
+        Returns:
+            String containing the validation report
+        """
+        analysis = self.analyze_pattern_effectiveness()
+
+        report_lines = []
+        report_lines.append("ActionSignalGuide Validation Report")
+        report_lines.append("=" * 40)
+        report_lines.append("")
+
+        report_lines.append(f"Total Signals Generated: {analysis['total_signals']}")
+        report_lines.append(f"Enabled Pattern Groups: {len(analysis['enabled_patterns'])}")
+        report_lines.append(f"Disabled Pattern Groups: {len(analysis['disabled_patterns'])}")
+        report_lines.append("")
+
+        report_lines.append("Pattern Statistics:")
+        report_lines.append("-" * 20)
+
+        for pattern, stats in analysis['pattern_stats'].items():
+            status = "ENABLED" if stats['enabled'] else "DISABLED"
+            signals = stats['signals_generated']
+            report_lines.append(f"  {pattern} ({status}): {signals} signals")
+
+        report_lines.append("")
+        report_lines.append("Configuration:")
+        report_lines.append(f"  Max signals per bar: {getattr(self.config, 'max_signals_per_bar', 'N/A')}")
+        report_lines.append(f"  Caching enabled: {getattr(self.config, 'enable_caching', 'N/A')}")
+        report_lines.append(f"  Parallel processing: {getattr(self.config, 'enable_parallel_processing', 'N/A')}")
+
+        return "\n".join(report_lines)
+
+    def analyze_sac_learning_correlation(
+        self,
+        sac_learning_logs: Optional[List[Dict[str, Any]]] = None,
+        correlation_window: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Analyze correlation between SAC learning performance and signal quality.
+
+        Args:
+            sac_learning_logs: SAC learning metrics (rewards, losses, etc.)
+            correlation_window: Rolling window size for correlation analysis
+
+        Returns:
+            Dictionary containing correlation analysis results
+        """
+        return self.signal_performance_analyzer.analyze_sac_learning_correlation(
+            sac_learning_logs, correlation_window
+        )
+
+    def calculate_signal_quality_score(
+        self,
+        signal_strength: float,
+        signal_confidence: float,
+        pattern_type: str,
+        historical_success_rate: Optional[float] = None,
+        consistency_score: Optional[float] = None
+    ) -> float:
+        """
+        Calculate comprehensive signal quality score.
+
+        Args:
+            signal_strength: Signal strength (0-1)
+            signal_confidence: Signal confidence (0-1)
+            pattern_type: Type of pattern
+            historical_success_rate: Historical success rate for this pattern
+            consistency_score: Signal consistency score
+
+        Returns:
+            Quality score (0-1)
+        """
+        # Get historical success rate from pattern statistics if not provided
+        if historical_success_rate is None:
+            pattern_stats = self.pattern_statistics.get_pattern_statistics(pattern_type)
+            historical_success_rate = pattern_stats.get('success_rate', 0.5)
+
+        # Calculate consistency score if not provided
+        if consistency_score is None:
+            consistency_score = self._calculate_signal_consistency(pattern_type)
+
+        return self.signal_performance_analyzer.calculate_signal_quality_score(
+            signal_strength, signal_confidence, pattern_type,
+            historical_success_rate, consistency_score
+        )
+
+    def generate_signal_performance_report(self) -> Dict[str, Any]:
+        """
+        Generate comprehensive signal performance report.
+
+        Returns:
+            Dictionary containing performance analysis and recommendations
+        """
+        return self.signal_performance_analyzer.generate_performance_report()
+
+    def _calculate_signal_consistency(self, pattern_type: str) -> float:
+        """
+        Calculate signal consistency score for a pattern type.
+
+        Args:
+            pattern_type: Pattern type to analyze
+
+        Returns:
+            Consistency score (0-1)
+        """
+        pattern_stats = self.pattern_statistics.get_pattern_statistics(pattern_type)
+
+        # Use variance in success rates as inverse consistency measure
+        success_rates = pattern_stats.get('success_rate_history', [])
+        if len(success_rates) < 2:
+            return 0.5  # Default moderate consistency
+
+        # Lower variance = higher consistency
+        variance = np.var(success_rates) if success_rates else 0.25
+        consistency = max(0.0, 1.0 - variance * 4)  # Scale variance to 0-1 range
+
+        return consistency

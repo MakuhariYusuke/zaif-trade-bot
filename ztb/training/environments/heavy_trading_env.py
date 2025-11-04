@@ -3,9 +3,9 @@
 Heavy trading environment for reinforcement learning.
 """
 
+import dataclasses
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-import dataclasses
 
 import gymnasium as gym
 import numpy as np
@@ -15,7 +15,7 @@ from gymnasium import spaces
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import RewardSettings
 
-from .environment_config import EnvironmentConfig
+from ztb.trading.environment.utils.config import EnvironmentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -105,29 +105,42 @@ class HeavyTradingEnv(gym.Env):
                 "hold_penalty_multiplier": 0.01,  # Further reduced from 0.5
             },
             # HOLD profit bonus adjustment
-            "profit_bonus_multipliers": [1.0, 1.0, 1.0],  # HOLD gets same bonus as BUY/SELL
+            "profit_bonus_multipliers": [
+                1.0,
+                1.0,
+                1.0,
+            ],  # HOLD gets same bonus as BUY/SELL
         }
         reward_defaults.update(self.reward_settings)
         # Filter reward_defaults to only include RewardSettings fields
-        reward_settings_fields = {field.name for field in dataclasses.fields(RewardSettings)}
-        filtered_reward_defaults = {k: v for k, v in reward_defaults.items() if k in reward_settings_fields}
+        reward_settings_fields = {
+            field.name for field in dataclasses.fields(RewardSettings)
+        }
+        filtered_reward_defaults = {
+            k: v for k, v in reward_defaults.items() if k in reward_settings_fields
+        }
         self.reward_settings = RewardSettings(**filtered_reward_defaults)
 
         # Create trading EnvironmentConfig from training EnvironmentConfig
-        from ztb.trading.environment.utils.config import EnvironmentConfig as TradingEnvironmentConfig
+        from ztb.trading.environment.utils.config import (
+            EnvironmentConfig as TradingEnvironmentConfig,
+        )
+
         trading_config = TradingEnvironmentConfig(
-            initial_portfolio_value=self.config.initial_balance,
+            initial_portfolio_value=self.config.initial_portfolio_value,
             transaction_cost=self.config.commission,
             max_position_size=self.config.max_position_size,
             reward_scaling=self.config.reward_scaling,
             feature_set=self.config.feature_set,
             curriculum_stage=self.config.curriculum_stage,
+            base_action_penalty=self.config.base_action_penalty,
+            action_bonuses=self.config.action_bonuses,
         )
 
         self.reward_calculator = RewardCalculator(
             config=trading_config,
             reward_settings=self.reward_settings,
-            initial_portfolio_value=self.config.initial_balance,
+            initial_portfolio_value=self.config.initial_portfolio_value,
         )
 
         # Initialize state
@@ -139,7 +152,7 @@ class HeavyTradingEnv(gym.Env):
             super().reset(seed=seed)
 
         self.current_step = 0
-        self.balance = self.config.initial_balance
+        self.balance = self.config.initial_portfolio_value
         self.position = 0.0  # Current position size
         self.entry_price = 0.0
         self.unrealized_pnl = 0.0
@@ -223,7 +236,7 @@ class HeavyTradingEnv(gym.Env):
         # Check if episode is done
         terminated = (
             self.current_step >= len(self.data) - 1
-            or self.current_step >= self.config.max_steps
+            or (self.config.max_steps is not None and self.current_step >= self.config.max_steps)
         )
         truncated = False  # Not using truncation in this simple environment
 

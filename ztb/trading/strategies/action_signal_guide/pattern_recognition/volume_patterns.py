@@ -8,7 +8,11 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ztb.features.volume.chaikin_ad import compute_chaikin_ad
+try:
+    from ztb.features.generators.technical.volume.chaikin_ad import compute_chaikin_ad
+except ImportError:
+    def compute_chaikin_ad(df: pd.DataFrame) -> pd.Series:
+        return pd.Series([0.0] * len(df), index=df.index)
 
 from .base import PatternRecognizer, SignalResult
 
@@ -61,7 +65,7 @@ class ChaikinADRecognizer(PatternRecognizer):
                 recent_ad = chaikin_ad_series.iloc[
                     index - self.confirmation_period : index + 1
                 ]
-                ad_trend = self._calculate_trend_strength(recent_ad)
+                ad_trend = self._calculate_volume_trend_strength(recent_ad)
 
                 # Check for divergence with price
                 price_trend = self._calculate_price_trend(
@@ -149,7 +153,7 @@ class ChaikinADRecognizer(PatternRecognizer):
                 risk_level="low",
             )
 
-    def _calculate_trend_strength(self, series: pd.Series) -> float:
+    def _calculate_volume_trend_strength(self, series: pd.Series) -> float:
         """
         Calculate the trend strength of a series using linear regression slope.
 

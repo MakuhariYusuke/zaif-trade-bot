@@ -343,9 +343,9 @@ class PPOTrainer(BaseAlgorithmTrainer):
                             total_regime_actions = sum(counts)
                             if total_regime_actions > 0:
                                 regime_distributions[regime] = {
-                                    "HOLD": counts[0] / total_regime_actions,
-                                    "BUY": counts[1] / total_regime_actions,
-                                    "SELL": counts[2] / total_regime_actions,
+                                    "BUY": counts[0] / total_regime_actions,
+                                    "SELL": counts[1] / total_regime_actions,
+                                    "HOLD": counts[2] / total_regime_actions,
                                     "total_actions": total_regime_actions,
                                 }
 

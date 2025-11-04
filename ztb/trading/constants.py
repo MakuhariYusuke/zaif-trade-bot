@@ -56,18 +56,21 @@ def get_action_name(action: int) -> str:
     return ACTION_NAMES[action]
 
 
-def normalize_action(action: int) -> int:
+def get_action_count_index(action: int) -> int:
     """
-    Normalize action value to current standard.
-
-    Legacy support: converts old ACTION_SELL=2 to new ACTION_SELL=-1.
+    Get the index for action counts array [BUY, SELL, HOLD].
 
     Args:
-        action: Action value (may be legacy format)
+        action: Action value (ACTION_HOLD=0, ACTION_BUY=1, ACTION_SELL=-1)
 
     Returns:
-        Normalized action value
+        Index in action counts array (0=BUY, 1=SELL, 2=HOLD)
     """
-    if action == 2:  # Legacy ACTION_SELL
-        return ACTION_SELL
-    return action
+    if action == ACTION_BUY:
+        return MULTIPLIER_INDEX_BUY
+    elif action == ACTION_SELL:
+        return MULTIPLIER_INDEX_SELL
+    elif action == ACTION_HOLD:
+        return MULTIPLIER_INDEX_HOLD
+    else:
+        return 0  # Default to BUY index

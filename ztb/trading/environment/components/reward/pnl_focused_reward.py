@@ -49,73 +49,23 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
         step: int,
     ) -> float:
         """Calculate PnL-focused reward with trend analysis and fair action penalties."""
-        # Base profit bonus
-        base_profit_bonus = (
-            max(
-                0.0,
-                self.get_setting_float("base_profit_bonus_atr_coeff", 1.5)
-                * atr_normalised
-                + self.get_setting_float("base_profit_bonus_portfolio_coeff", 1.2)
-                * portfolio_return,
-            )
-            if pnl > 0
-            else 0.0
-        )
+        # Simplified reward: focus on portfolio return with small action penalty
+        # Remove complex profit_bonus and position_penalty calculations
 
-        # Trend analysis if observation available
-        trend_multiplier = self._calculate_trend_multiplier(action, observation)
+        # Base reward from portfolio return (scaled appropriately)
+        base_reward = portfolio_return * 10.0  # Scale up portfolio return
 
-        # Fair profit bonus multipliers (same for BUY and SELL)
-        multipliers_raw = self.reward_settings.custom_reward_params.get(
-            "profit_bonus_multipliers", [1.0, 1.0, 0.8]
-        )
-        if isinstance(multipliers_raw, list) and len(multipliers_raw) >= 3:
-            multipliers = [float(x) for x in multipliers_raw[:3]]
-        else:
-            multipliers = [1.0, 1.0, 0.8]
-
-        self.logger.debug(f"Profit bonus multipliers: {multipliers}")
-
-        if action == ACTION_BUY:
-            profit_bonus = (
-                base_profit_bonus * multipliers[MULTIPLIER_INDEX_BUY] * trend_multiplier
-            )
-        elif action == ACTION_SELL:
-            profit_bonus = (
-                base_profit_bonus
-                * multipliers[MULTIPLIER_INDEX_SELL]
-                * trend_multiplier
-            )
-        else:  # HOLD
-            profit_bonus = (
-                base_profit_bonus
-                * multipliers[MULTIPLIER_INDEX_HOLD]
-                * trend_multiplier
-            )
-
-        # Fair action penalties (same for BUY and SELL)
+        # Calculate fair action penalty using config values
         action_penalty = self._calculate_fair_action_penalty(
             action, position, effective_max_position, current_price, atr
         )
 
-        # Loss penalty
-        loss_penalty = (
-            self.get_setting_float("loss_penalty_coeff", -0.2) * abs(atr_normalised)
-            if pnl < 0
-            else 0.0
-        )
-
-        # Position penalty
-        position_penalty = self.position_penalty_calculator.calculate(
-            position, effective_max_position
-        )
-
-        reward = profit_bonus - action_penalty + loss_penalty - position_penalty
+        # Final reward
+        reward = base_reward - action_penalty
 
         self.logger.debug(
-            f"PnL focused reward components: profit_bonus={profit_bonus:.4f}, "
-            f"action_penalty={action_penalty:.4f}, loss_penalty={loss_penalty:.4f}, "
-            f"position_penalty={position_penalty:.4f}, final={reward:.4f}"
+            f"PnL focused reward components: base_reward={base_reward:.4f}, "
+            f"action_penalty={action_penalty:.4f}, final={reward:.4f}"
         )
 
         return reward
@@ -173,19 +123,13 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
     ) -> float:
         """Calculate fair action penalties (same for BUY and SELL)."""
         # Get action bonuses settings
-        buy_action_bonus = self.get_setting_float(
-            "action_bonuses.buy_action_bonus", 0.0
-        )
-        sell_action_bonus = self.get_setting_float(
-            "action_bonuses.sell_action_bonus", 0.0
-        )
-        hold_action_bonus = self.get_setting_float(
-            "action_bonuses.hold_action_bonus", 0.0
-        )
+        buy_action_bonus = self.config.action_bonuses.get("buy_action_bonus", 0.0)
+        sell_action_bonus = self.config.action_bonuses.get("sell_action_bonus", 0.0)
+        hold_action_bonus = self.config.action_bonuses.get("hold_action_bonus", 0.0)
 
         # Base action penalties (legacy behavior)
         base_action_penalty = (
-            self.get_setting_float("base_action_penalty", 0.015)
+            self.config.base_action_penalty
             if action in [ACTION_BUY, ACTION_SELL]
             else 0.0
         )
@@ -195,8 +139,10 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
             hold_penalty_base = self.reward_settings.custom_reward_params.get(
                 "hold_penalty_base", 0.01
             )
-            hold_penalty_position_factor = self.reward_settings.custom_reward_params.get(
-                "hold_penalty_position_factor", 0.04
+            hold_penalty_position_factor = (
+                self.reward_settings.custom_reward_params.get(
+                    "hold_penalty_position_factor", 0.04
+                )
             )
             hold_penalty_multiplier = self.reward_settings.custom_reward_params.get(
                 "hold_penalty_multiplier", 1.0

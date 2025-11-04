@@ -25,7 +25,7 @@ class TypeValidator:
 
     @staticmethod
     def validate_type(
-        value: Any, expected_type: Type[Any], name: str = "value"
+        value: Any, expected_type: Any, name: str = "value"
     ) -> None:
         """
         Validate that a value matches the expected type at runtime.
@@ -63,7 +63,7 @@ class TypeValidator:
             )
 
     @staticmethod
-    def _check_type(value: Any, expected_type: Type[Any]) -> bool:
+    def _check_type(value: Any, expected_type: Any) -> bool:
         """Check if value matches expected type, handling generics."""
         # Handle None
         if value is None:

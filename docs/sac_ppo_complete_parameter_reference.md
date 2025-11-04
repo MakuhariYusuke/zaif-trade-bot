@@ -12152,4 +12152,3 @@
 | `vf_coef` | 価値関数係数 | 10 | `0.5` |
 | `volatility_penalty` | 詳細不明 | 1 | `0.02` |
 | `volatility_penalty_coeff` | 詳細不明 | 1 | `-0.5` |
-

@@ -5,20 +5,19 @@ Test reward calculation for different actions
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 
 
 # Create reward calculator with default settings
-class Config:
-    curriculum_stage = "strong_penalty_trading"
-    max_position_size = 1.0
-
-
-config = Config()
-reward_settings = {
-    "reward_scale": 100.0,
-    "trading_bonus": 0.01,
-    "use_simple_reward": False,
-}
+config = EnvironmentConfig(
+    curriculum_stage="strong_penalty_trading",
+    max_position_size=1.0,
+)
+reward_settings = RewardSettings(
+    reward_scale=100.0,
+    trading_bonus=0.01,
+    use_simple_reward=False,
+)
 calculator = RewardCalculator(config, reward_settings, 200000.0)
 
 # Test different actions with same conditions

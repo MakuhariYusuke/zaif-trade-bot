@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from ztb.features.timeframe import Timeframe
 from ztb.utils.logging_utils import get_logger
@@ -42,12 +42,14 @@ class MultiTimeframeConfig:
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from file."""
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
             logger.info(f"Loaded multi-timeframe config from {self.config_path}")
             return config
         except FileNotFoundError:
-            logger.warning(f"Config file not found at {self.config_path}, using defaults")
+            logger.warning(
+                f"Config file not found at {self.config_path}, using defaults"
+            )
             return self._get_default_config()
         except Exception as e:
             logger.error(f"Failed to load config: {e}, using defaults")
@@ -56,59 +58,57 @@ class MultiTimeframeConfig:
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration."""
         return {
-            "enabled_timeframes": [
-                "1min", "5min", "15min", "1hour", "4hour", "1day"
-            ],
+            "enabled_timeframes": ["1min", "5min", "15min", "1hour", "4hour", "1day"],
             "base_timeframe": "5min",
             "feature_sets": {
                 "1min": {
                     "feature_set": "minimal",
                     "window_sizes": [3, 5, 7, 10],
-                    "max_features": 50
+                    "max_features": 50,
                 },
                 "5min": {
                     "feature_set": "full",
                     "window_sizes": [5, 10, 15, 20, 30],
-                    "max_features": 100
+                    "max_features": 100,
                 },
                 "15min": {
                     "feature_set": "full",
                     "window_sizes": [10, 20, 30, 50, 100],
-                    "max_features": 150
+                    "max_features": 150,
                 },
                 "1hour": {
                     "feature_set": "full",
                     "window_sizes": [20, 50, 100, 200],
-                    "max_features": 200
+                    "max_features": 200,
                 },
                 "4hour": {
                     "feature_set": "high_quality",
                     "window_sizes": [50, 100, 200, 400],
-                    "max_features": 250
+                    "max_features": 250,
                 },
                 "1day": {
                     "feature_set": "high_quality",
                     "window_sizes": [100, 200, 400, 800],
-                    "max_features": 300
-                }
+                    "max_features": 300,
+                },
             },
             "integration": {
                 "include_timeframe_indicators": True,
                 "timeframe_alignment_method": "forward_fill",
                 "max_timeframe_lag": "4hour",
-                "feature_prefixing": True
+                "feature_prefixing": True,
             },
             "quality_control": {
                 "max_nan_rate": 0.10,
                 "min_variance": 1e-8,
                 "max_correlation": 0.95,
-                "remove_outliers": True
+                "remove_outliers": True,
             },
             "performance": {
                 "parallel_processing": True,
                 "cache_features": True,
-                "memory_limit_mb": 2048
-            }
+                "memory_limit_mb": 2048,
+            },
         }
 
     def get_enabled_timeframes(self) -> List[Timeframe]:
@@ -139,9 +139,7 @@ class MultiTimeframeConfig:
         return self.config.get("performance", {})
 
     def update_timeframe_config(
-        self,
-        timeframe: Timeframe,
-        config_updates: Dict[str, Any]
+        self, timeframe: Timeframe, config_updates: Dict[str, Any]
     ) -> None:
         """Update configuration for specific timeframe."""
         if "feature_sets" not in self.config:
@@ -180,7 +178,7 @@ class MultiTimeframeConfig:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(save_path, 'w', encoding='utf-8') as f:
+            with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
             logger.info(f"Saved config to {save_path}")
         except Exception as e:

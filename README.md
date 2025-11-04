@@ -5,6 +5,7 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![Type Checking](https://img.shields.io/badge/mypy-strict-green.svg)](https://mypy-lang.org)
 [![Security](https://img.shields.io/badge/security-bandit+safety-green.svg)](https://github.com/PyCQA/bandit)
+[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen.svg)](https://github.com)
 [![Coverage](https://img.shields.io/badge/coverage-40%25-yellow.svg)](https://coverage.readthedocs.io)
 
 ## 🚀 Features
@@ -23,6 +24,12 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
 
 ## 🆕 Recent Updates (2025-11-02)
+
+### Action Signal Guide Testing Suite ✅
+- **Comprehensive Unit Tests**: 66 test cases covering all Action Signal Guide components (100% pass rate)
+- **Component Coverage**: SAC Integration (14 tests), Market Regime Analysis (21 tests), Validation Utils (21 tests), Core Logic (10 tests)
+- **Test Infrastructure**: Mock objects, edge case handling, and CI/CD integration with JUnit XML reporting
+- **Quality Assurance**: Fixed existing test failures, implemented missing test coverage, and validated component interactions
 
 ### SAC v444 Advanced Market Regime Adaptation System 🚀
 - **12-Regime Classification**: Enhanced market state detection (strong/moderate/weak bull/bear trends, ranging markets, special states)

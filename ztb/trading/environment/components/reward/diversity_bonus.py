@@ -28,7 +28,7 @@ class DiversityBonusCalculator:
         if len(recent_actions) < 3:
             return 0.1  # Small bonus for early exploration
 
-        unique_recent = len(set(recent_actions[-10:]))  # Last 10 actions
+        unique_recent = len(set(list(recent_actions)[-10:]))  # Last 10 actions
         diversity_score = unique_recent / 3.0  # Normalize by action types
 
         # Bonus for maintaining diversity

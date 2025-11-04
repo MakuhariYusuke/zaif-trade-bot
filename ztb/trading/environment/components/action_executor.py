@@ -86,12 +86,12 @@ class ActionExecutor:
                         -1: ACTION_SELL,
                         0: ACTION_HOLD,
                         1: ACTION_BUY,
-                        2: ACTION_SELL,
+                        2: ACTION_SELL,  # Alias for compatibility
                     }
                     return action_mapping[action_int], None
                 else:
                     raise ValueError(
-                        f"Invalid discrete action: {action_int}. Must be -1, 0, 1, 2, or ACTION_* constants"
+                        f"Invalid discrete action: {action_int}. Must be -1, 0, 1, or ACTION_* constants"
                     )
             else:
                 raise TypeError(

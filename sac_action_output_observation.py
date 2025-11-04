@@ -118,7 +118,7 @@ def main():
         ent_coef="auto",
         target_entropy="auto",
         verbose=1,
-        tensorboard_log="./sac_action_test_logs"
+        tensorboard_log="./sac_action_test_logs",
     )
 
     # Train for 5000 steps
@@ -149,10 +149,18 @@ def main():
         print(f"Unique values: {analysis['unique_values_count']}")
 
         print("\n=== Boundary Value Analysis ===")
-        print(f"Exact -1.0 values: {analysis['exact_minus_1_count']} ({analysis['exact_minus_1_percentage']:.2f}%)")
-        print(f"Exact +1.0 values: {analysis['exact_plus_1_count']} ({analysis['exact_plus_1_percentage']:.2f}%)")
-        print(f"Near -1.0 values (≥-1.0, ≤-0.9): {analysis['near_minus_1_count']} ({analysis['near_minus_1_percentage']:.2f}%)")
-        print(f"Near +1.0 values (≤1.0, ≥0.9): {analysis['near_plus_1_count']} ({analysis['near_plus_1_percentage']:.2f}%)")
+        print(
+            f"Exact -1.0 values: {analysis['exact_minus_1_count']} ({analysis['exact_minus_1_percentage']:.2f}%)"
+        )
+        print(
+            f"Exact +1.0 values: {analysis['exact_plus_1_count']} ({analysis['exact_plus_1_percentage']:.2f}%)"
+        )
+        print(
+            f"Near -1.0 values (≥-1.0, ≤-0.9): {analysis['near_minus_1_count']} ({analysis['near_minus_1_percentage']:.2f}%)"
+        )
+        print(
+            f"Near +1.0 values (≤1.0, ≥0.9): {analysis['near_plus_1_count']} ({analysis['near_plus_1_percentage']:.2f}%)"
+        )
 
         # Show distribution of observed actions
         print("\nObserved action values (last 20):")
@@ -161,11 +169,13 @@ def main():
 
         # Save results to file
         import json
+
         with open("sac_action_output_analysis.json", "w") as f:
-            json.dump({
-                "analysis": analysis,
-                "observed_actions": observed_actions
-            }, f, indent=2)
+            json.dump(
+                {"analysis": analysis, "observed_actions": observed_actions},
+                f,
+                indent=2,
+            )
 
         logger.info("Analysis saved to sac_action_output_analysis.json")
 

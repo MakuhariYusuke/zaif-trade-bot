@@ -6,7 +6,7 @@ following SOLID principles for better maintainability and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import pandas as pd
 
@@ -48,7 +48,7 @@ class ICacheManager(ABC):
     """Interface for signal caching."""
 
     @abstractmethod
-    def get_cached_signal(self, cache_key: str) -> Optional["ActionSignal"]:
+    def get_cached_signal(self, cache_key: str) -> Optional[Union["ActionSignal", List["ActionSignal"]]]:
         """
         Get cached signal if available and valid.
 
@@ -56,18 +56,18 @@ class ICacheManager(ABC):
             cache_key: Cache key for the signal
 
         Returns:
-            Cached signal or None if not available/expired
+            Cached signal or list of signals, or None if not available/expired
         """
         pass
 
     @abstractmethod
-    def cache_signal(self, cache_key: str, signal: "ActionSignal") -> None:
+    def cache_signal(self, cache_key: str, signal: Union["ActionSignal", List["ActionSignal"]]) -> None:
         """
         Cache a signal.
 
         Args:
             cache_key: Cache key for the signal
-            signal: Signal to cache
+            signal: Signal or list of signals to cache
         """
         pass
 

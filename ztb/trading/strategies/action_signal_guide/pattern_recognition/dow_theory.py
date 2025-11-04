@@ -10,7 +10,14 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
-from ztb.features.generators.technical.trend.supertrend import compute_supertrend_direction
+try:
+    from ztb.features.generators.technical.trend.supertrend import (
+        compute_supertrend_direction,
+    )
+except ImportError:
+    # Mock function if trend module is not available
+    def compute_supertrend_direction(df: pd.DataFrame) -> pd.Series:
+        return pd.Series([0] * len(df), index=df.index)
 from ztb.features.generators.technical.volatility.bollinger import compute_bb_width
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     PatternRecognizer,

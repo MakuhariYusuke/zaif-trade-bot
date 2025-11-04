@@ -6,7 +6,9 @@ Follows Single Responsibility Principle by focusing only on signal generation.
 """
 
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import pandas as pd
 
@@ -20,6 +22,11 @@ if TYPE_CHECKING:
 
 from ..pattern_recognition.base import PatternRecognizer
 from .interfaces import IPatternStatistics, IPerformanceTracker
+
+# Import adaptive components
+from .sac_integration import SACSignalValidator, SACDecisionIntegrator, SACPerformanceMonitor
+from .market_regime import MarketRegimeDetector, RegimeAdaptiveSignalProcessor, MarketConditionAnalyzer
+from .validation import SignalValidator, DataSanitizer, PerformanceTracker
 
 
 def _get_action_signal_class() -> Type["ActionSignal"]:
@@ -70,8 +77,57 @@ class SignalGenerator(ISignalGenerator):
         # Internal error tracking to avoid log spam for repeated identical errors
         self._error_counts: Dict[str, int] = {}
 
-        # Initialize recognizers
+        # Adaptive algorithm components
+        self.adaptive_weights: Dict[str, float] = {}
+        self.pattern_performance_history: Dict[str, List[float]] = defaultdict(list)
+        self.market_regime_detector: Optional['MarketRegimeDetector'] = None
+        self.regime_processor: Optional['RegimeAdaptiveSignalProcessor'] = None
+        self.market_analyzer: Optional['MarketConditionAnalyzer'] = None
+        self.sac_validator: Optional['SACSignalValidator'] = None
+        self.sac_integrator: Optional['SACDecisionIntegrator'] = None
+        self.sac_monitor: Optional['SACPerformanceMonitor'] = None
+        self.signal_validator: Optional['SignalValidator'] = None
+        self.data_sanitizer: Optional['DataSanitizer'] = None
+        self.performance_tracker: Optional['PerformanceTracker'] = None
+
+        # Initialize recognizers first
         self.initialize_recognizers()
+
+        # Initialize adaptive components
+        self._initialize_adaptive_components()
+
+        # Parallel processing settings (after recognizers are initialized)
+        self.enable_parallel = getattr(config, 'enable_parallel_processing', False)
+        self.max_workers = min(4, len(self.all_recognizers) // 2) if self.enable_parallel else 1
+
+    def _initialize_adaptive_components(self) -> None:
+        """Initialize adaptive algorithm components."""
+        # Initialize market regime detection and processing
+        if getattr(self.config, 'enable_adaptive_algorithms', True):
+            self.market_regime_detector = MarketRegimeDetector()
+            self.regime_processor = RegimeAdaptiveSignalProcessor()
+
+        # Initialize market condition analysis
+        if getattr(self.config, 'enable_market_analysis', True):
+            self.market_analyzer = MarketConditionAnalyzer()
+
+        # Initialize SAC integration components
+        if getattr(self.config, 'enable_sac_integration', True):
+            self.sac_validator = SACSignalValidator()
+            self.sac_integrator = SACDecisionIntegrator()
+            self.sac_monitor = SACPerformanceMonitor()
+
+        # Initialize validation and utility components
+        if getattr(self.config, 'enable_signal_validation', True):
+            self.signal_validator = SignalValidator()
+
+        if getattr(self.config, 'enable_data_sanitization', True):
+            self.data_sanitizer = DataSanitizer()
+
+        if getattr(self.config, 'enable_performance_tracking', True):
+            self.performance_tracker = PerformanceTracker()
+
+        self.logger.info("Adaptive components initialized successfully")
 
     def initialize_recognizers(self) -> None:
         """Initialize all pattern recognition systems."""
@@ -249,6 +305,206 @@ class SignalGenerator(ISignalGenerator):
             self.logger.error(f"Failed to initialize recognizers: {e}")
             self.all_recognizers = []
 
+    def initialize_adaptive_components(
+        self,
+        enable_adaptive_weights: bool = True,
+        enable_regime_adaptation: bool = True,
+        enable_quality_filtering: bool = True,
+        enable_quality_evaluation: bool = True,
+        enable_multi_timeframe_analysis: bool = True
+    ) -> None:
+        """
+        Initialize adaptive algorithm components.
+
+        Args:
+            enable_adaptive_weights: Enable adaptive pattern weighting
+            enable_regime_adaptation: Enable market regime-based adaptation
+            enable_quality_filtering: Enable signal quality filtering
+            enable_quality_evaluation: Enable comprehensive signal quality evaluation
+            enable_multi_timeframe_analysis: Enable multi-timeframe signal analysis
+        """
+        if enable_adaptive_weights:
+            self._initialize_adaptive_weights()
+
+        if enable_regime_adaptation:
+            self.market_regime_adapter = MarketRegimeAdapter()
+
+        if enable_quality_filtering:
+            self.signal_quality_filter = SignalQualityFilter()
+
+        if enable_quality_evaluation:
+            self.signal_quality_evaluator = SignalQualityEvaluator()
+
+        if enable_multi_timeframe_analysis:
+            self.multi_timeframe_analyzer = MultiTimeframeAnalyzer()
+
+        self.logger.info("Adaptive components initialized")
+
+    def _initialize_adaptive_weights(self) -> None:
+        """Initialize adaptive weights for pattern recognizers."""
+        # Start with equal weights for all patterns
+        all_patterns = []
+        for group in self.recognizer_groups.values():
+            all_patterns.extend(group.keys())
+
+        initial_weight = 1.0 / len(all_patterns) if all_patterns else 1.0
+        for pattern in all_patterns:
+            self.adaptive_weights[pattern] = initial_weight
+
+    def adapt_to_market_conditions(
+        self,
+        current_data: pd.DataFrame,
+        recent_performance: Dict[str, float],
+        market_regime: Optional[str] = None
+    ) -> None:
+        """
+        Adapt signal generation based on market conditions and recent performance.
+
+        Args:
+            current_data: Current market data
+            recent_performance: Recent performance metrics by pattern
+            market_regime: Current market regime
+        """
+        # Update pattern weights based on performance
+        self._update_adaptive_weights(recent_performance)
+
+        # Adapt to market regime
+        if self.market_regime_adapter and market_regime:
+            self.market_regime_adapter.adapt_for_regime(market_regime, self.adaptive_weights)
+
+        # Update signal quality thresholds
+        if self.signal_quality_filter:
+            self.signal_quality_filter.update_thresholds(current_data, recent_performance)
+
+    def _update_adaptive_weights(self, recent_performance: Dict[str, float]) -> None:
+        """
+        Update adaptive weights based on recent pattern performance.
+
+        Args:
+            recent_performance: Performance scores by pattern
+        """
+        if not recent_performance:
+            return
+
+        # Exponential moving average for weight updates
+        alpha = 0.1  # Learning rate
+
+        for pattern, performance in recent_performance.items():
+            if pattern in self.adaptive_weights:
+                # Store performance history
+                self.pattern_performance_history[pattern].append(performance)
+
+                # Keep only recent history
+                if len(self.pattern_performance_history[pattern]) > 100:
+                    self.pattern_performance_history[pattern].pop(0)
+
+                # Update weight using exponential moving average
+                current_weight = self.adaptive_weights[pattern]
+                avg_performance = sum(self.pattern_performance_history[pattern]) / len(self.pattern_performance_history[pattern])
+
+                # Higher performance -> higher weight
+                target_weight = max(0.1, min(2.0, avg_performance))
+                new_weight = current_weight * (1 - alpha) + target_weight * alpha
+
+                self.adaptive_weights[pattern] = new_weight
+
+        # Normalize weights
+        total_weight = sum(self.adaptive_weights.values())
+        if total_weight > 0:
+            self.adaptive_weights = {k: v/total_weight for k, v in self.adaptive_weights.items()}
+
+    def apply_adaptive_filtering(
+        self,
+        signals: List["ActionSignal"],
+        current_data: pd.DataFrame,
+        market_context: Optional[Dict[str, Union[str, int, float]]] = None,
+        multi_timeframe_data: Optional[Dict[str, Any]] = None
+    ) -> List["ActionSignal"]:
+        """
+        Apply adaptive filtering to generated signals.
+
+        Args:
+            signals: Raw generated signals
+            current_data: Current market data
+            market_context: Additional market context
+            multi_timeframe_data: Multi-timeframe market data
+
+        Returns:
+            Filtered signals
+        """
+        filtered_signals = signals.copy()
+
+        # Apply multi-timeframe analysis first
+        if self.multi_timeframe_analyzer and multi_timeframe_data:
+            filtered_signals = self.multi_timeframe_analyzer.analyze_multi_timeframe_alignment(
+                filtered_signals, multi_timeframe_data
+            )
+
+        # Apply regime-based filtering
+        if self.market_regime_adapter and market_context:
+            regime = market_context.get("regime")
+            if regime:
+                filtered_signals = self.market_regime_adapter.filter_signals_for_regime(
+                    filtered_signals, regime
+                )
+
+        # Apply quality filtering
+        if self.signal_quality_filter:
+            filtered_signals = self.signal_quality_filter.filter_by_quality(
+                filtered_signals, current_data
+            )
+
+        # Apply quality evaluation and ranking
+        if self.signal_quality_evaluator and market_context:
+            filtered_signals = self._apply_quality_evaluation(
+                filtered_signals, current_data, market_context
+            )
+
+        # Apply adaptive weighting
+        filtered_signals = self._apply_adaptive_weighting(filtered_signals)
+
+        return filtered_signals
+
+    def _apply_adaptive_weighting(self, signals: List["ActionSignal"]) -> List["ActionSignal"]:
+        """
+        Apply adaptive weighting to signals.
+
+        Args:
+            signals: Input signals
+
+        Returns:
+            Weighted signals
+        """
+        for signal in signals:
+            pattern_name = getattr(signal, 'pattern_type', None) or 'unknown'
+            if pattern_name in self.adaptive_weights:
+                # Adjust confidence based on adaptive weight
+                weight = self.adaptive_weights[pattern_name]
+                signal.confidence *= weight
+
+                # Add metadata about weighting
+                if not hasattr(signal, 'metadata'):
+                    signal.metadata = {}
+                signal.metadata['adaptive_weight'] = weight
+                signal.metadata['adjusted_confidence'] = signal.confidence
+
+        return signals
+
+    def get_adaptive_statistics(self) -> Dict[str, Union[float, dict, list]]:
+        """
+        Get statistics about adaptive algorithm performance.
+
+        Returns:
+            Adaptive algorithm statistics
+        """
+        return {
+            "adaptive_weights": self.adaptive_weights.copy(),
+            "pattern_performance_history": dict(self.pattern_performance_history),
+            "total_patterns_tracked": len(self.adaptive_weights),
+            "regime_adapter_active": self.market_regime_adapter is not None,
+            "quality_filter_active": self.signal_quality_filter is not None,
+        }
+
     def generate_signal(
         self,
         data: pd.DataFrame,
@@ -268,9 +524,13 @@ class SignalGenerator(ISignalGenerator):
         """
         start_time = time.time()
 
+        # Store current context for adaptive filtering
+        self._current_data = data
+        self._current_multi_timeframe_data = multi_timeframe_data
+
         try:
             # Generate signals from all recognizers
-            all_signals = []
+            all_signals: list = []
             pattern_signals: Dict[str, List[Any]] = {}
 
             # Respect debug/short mode: only run a subset of recognizers when enabled
@@ -287,83 +547,15 @@ class SignalGenerator(ISignalGenerator):
 
             ActionSignal = _get_action_signal_class()
 
-            for recognizer in recognizers_to_run:
-                try:
-                    # Check if we have enough data for this recognizer
-                    lookback_period = getattr(
-                        recognizer, "get_lookback_period", lambda: 20
-                    )()
-                    if current_index < lookback_period:
-                        continue  # Skip this recognizer if not enough data
-
-                    # Debug log for HARMONIC and DOW_THEORY
-                    if (
-                        "harmonic" in recognizer.name.lower()
-                        or "dow" in recognizer.name.lower()
-                    ):
-                        self.logger.info(
-                            f"Running recognizer: {recognizer.name} at index {current_index}"
-                        )
-
-                    signal_result = recognizer.recognize(
-                        data,
-                        index=current_index,
-                        multi_timeframe_data=multi_timeframe_data,
-                    )
-
-                    # Debug log for HARMONIC and DOW_THEORY
-                    if (
-                        "harmonic" in recognizer.name.lower()
-                        or "dow" in recognizer.name.lower()
-                    ):
-                        self.logger.info(
-                            f"Recognizer {recognizer.name} returned: {signal_result is not None}"
-                        )
-
-                    if signal_result is not None:
-                        # Create ActionSignal from pattern result
-                        import pandas as pd
-
-                        action_signal = ActionSignal(
-                            timestamp=pd.Timestamp.now(),
-                            direction=signal_result.direction,
-                            strength=signal_result.strength,
-                            confidence=signal_result.confidence
-                            or signal_result.strength,
-                            signal_type=recognizer.__class__.__name__.lower().replace(
-                                "recognizer", ""
-                            ),
-                            description=f"{recognizer.name}: {signal_result.description}",
-                            metadata={
-                                **signal_result.metadata,
-                                "confidence": signal_result.confidence
-                                or signal_result.strength,
-                                "risk_level": signal_result.risk_level,
-                                "validity_period": signal_result.validity_period,
-                            },
-                            source_patterns=[recognizer.name],
-                        )
-
-                        all_signals.append(action_signal)
-                        pattern_type = recognizer.__class__.__name__.lower().replace(
-                            "recognizer", ""
-                        )
-
-                        if pattern_type not in pattern_signals:
-                            pattern_signals[pattern_type] = []
-                        pattern_signals[pattern_type].append(action_signal)
-
-                        # Record pattern statistics
-                        if self.pattern_statistics:
-                            self.pattern_statistics.record_pattern_signal(
-                                pattern_type, action_signal
-                            )
-
-                except Exception as e:
-                    # Avoid spamming the same error message repeatedly
-                    msg = f"Recognizer {recognizer.name} failed: {e}"
-                    self._record_error(msg)
-                    continue
+            # Generate signals using parallel or sequential processing
+            if self.enable_parallel and len(recognizers_to_run) > 3:
+                all_signals, pattern_signals = self._generate_signals_parallel(
+                    recognizers_to_run, data, current_index, multi_timeframe_data, ActionSignal
+                )
+            else:
+                all_signals, pattern_signals = self._generate_signals_sequential(
+                    recognizers_to_run, data, current_index, multi_timeframe_data, ActionSignal
+                )
 
             # Aggregate signals based on guidance level
             final_signal = self._aggregate_signals(all_signals, pattern_signals)
@@ -434,6 +626,26 @@ class SignalGenerator(ISignalGenerator):
 
         # Filter signals based on guidance level
         filtered_signals = self._filter_by_guidance_level(all_signals)
+
+        if not filtered_signals:
+            return ActionSignal.neutral()
+
+        # Apply adaptive filtering if enabled
+        if hasattr(self, 'market_regime_adapter') or hasattr(self, 'signal_quality_filter') or hasattr(self, 'signal_quality_evaluator') or hasattr(self, 'multi_timeframe_analyzer'):
+            # Create market context from available data
+            market_context = {}
+            if hasattr(self, '_current_market_regime'):
+                market_context["regime"] = self._current_market_regime
+            if hasattr(self, '_current_sac_decision'):
+                market_context["sac_decision"] = self._current_sac_decision
+
+            # Apply adaptive filtering
+            filtered_signals = self.apply_adaptive_filtering(
+                filtered_signals,
+                self._current_data if hasattr(self, '_current_data') else pd.DataFrame(),
+                market_context,
+                self._current_multi_timeframe_data if hasattr(self, '_current_multi_timeframe_data') else None
+            )
 
         if not filtered_signals:
             return ActionSignal.neutral()
@@ -525,3 +737,236 @@ class SignalGenerator(ISignalGenerator):
         else:
             # Default to moderate
             return [s for s in signals if s.strength >= 0.6 and s.confidence >= 0.6]
+
+    def _generate_signals_parallel(
+        self,
+        recognizers: list,
+        data: pd.DataFrame,
+        current_index: int,
+        multi_timeframe_data: Optional[dict],
+        ActionSignal: type
+    ) -> tuple[list, dict]:
+        """Generate signals using parallel processing with ThreadPoolExecutor."""
+        all_signals: list = []
+        pattern_signals: dict = {}
+
+        def process_recognizer(recognizer: Any) -> tuple[Optional[Any], Optional[str]]:
+            """Process a single recognizer and return results."""
+            try:
+                # Check if we have enough data for this recognizer
+                lookback_period = getattr(
+                    recognizer, "get_lookback_period", lambda: 20
+                )()
+                if current_index < lookback_period:
+                    return None, None  # Skip this recognizer if not enough data
+
+                # Debug log for HARMONIC and DOW_THEORY
+                if (
+                    "harmonic" in recognizer.name.lower()
+                    or "dow" in recognizer.name.lower()
+                ):
+                    self.logger.info(
+                        f"Running recognizer: {recognizer.name} at index {current_index}"
+                    )
+
+                signal_result = recognizer.recognize(
+                    data, current_index, multi_timeframe_data
+                )
+
+                # Debug log for HARMONIC and DOW_THEORY
+                if (
+                    "harmonic" in recognizer.name.lower()
+                    or "dow" in recognizer.name.lower()
+                ):
+                    self.logger.info(
+                        f"Recognizer {recognizer.name} returned: {signal_result is not None}"
+                    )
+
+                if signal_result is not None:
+                    # Create ActionSignal from pattern result
+                    action_signal = ActionSignal(
+                        timestamp=pd.Timestamp.now(),
+                        direction=signal_result.direction,
+                        strength=signal_result.strength,
+                        confidence=signal_result.confidence or signal_result.strength,
+                        signal_type=recognizer.__class__.__name__.lower().replace(
+                            "recognizer", ""
+                        ),
+                        description=f"{recognizer.name}: {signal_result.description}",
+                        metadata={
+                            **signal_result.metadata,
+                            "confidence": signal_result.confidence or signal_result.strength,
+                            "risk_level": signal_result.risk_level,
+                            "validity_period": signal_result.validity_period,
+                        },
+                        source_patterns=[recognizer.name],
+                    )
+
+                    pattern_type = recognizer.__class__.__name__.lower().replace(
+                        "recognizer", ""
+                    )
+
+                    return action_signal, pattern_type
+                return None, None
+
+            except Exception as e:
+                # Avoid spamming the same error message repeatedly
+                msg = f"Recognizer {recognizer.name} failed: {e}"
+                self._record_error(msg)
+                return None, None
+
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [executor.submit(process_recognizer, recognizer) for recognizer in recognizers]
+
+            for future in futures:
+                action_signal, pattern_type = future.result()
+                if action_signal is not None:
+                    all_signals.append(action_signal)
+
+                    if pattern_type not in pattern_signals:
+                        pattern_signals[pattern_type] = []
+                    pattern_signals[pattern_type].append(action_signal)
+
+                    # Record pattern statistics
+                    if self.pattern_statistics and pattern_type is not None:
+                        self.pattern_statistics.record_pattern_signal(
+                            pattern_type, action_signal
+                        )
+
+        return all_signals, pattern_signals
+
+    def _generate_signals_sequential(
+        self,
+        recognizers: list,
+        data: pd.DataFrame,
+        current_index: int,
+        multi_timeframe_data: Optional[dict],
+        ActionSignal: type
+    ) -> tuple[list, dict]:
+        """Generate signals using sequential processing (fallback method)."""
+        all_signals: list = []
+        pattern_signals: dict = {}
+
+        for recognizer in recognizers:
+            try:
+                # Check if we have enough data for this recognizer
+                lookback_period = getattr(
+                    recognizer, "get_lookback_period", lambda: 20
+                )()
+                if current_index < lookback_period:
+                    continue  # Skip this recognizer if not enough data
+
+                # Debug log for HARMONIC and DOW_THEORY
+                if (
+                    "harmonic" in recognizer.name.lower()
+                    or "dow" in recognizer.name.lower()
+                ):
+                    self.logger.info(
+                        f"Running recognizer: {recognizer.name} at index {current_index}"
+                    )
+
+                signal_result = recognizer.recognize(
+                    data, current_index, multi_timeframe_data
+                )
+
+                # Debug log for HARMONIC and DOW_THEORY
+                if (
+                    "harmonic" in recognizer.name.lower()
+                    or "dow" in recognizer.name.lower()
+                ):
+                    self.logger.info(
+                        f"Recognizer {recognizer.name} returned: {signal_result is not None}"
+                    )
+
+                if signal_result is not None:
+                    # Create ActionSignal from pattern result
+                    action_signal = ActionSignal(
+                        timestamp=pd.Timestamp.now(),
+                        direction=signal_result.direction,
+                        strength=signal_result.strength,
+                        confidence=signal_result.confidence or signal_result.strength,
+                        signal_type=recognizer.__class__.__name__.lower().replace(
+                            "recognizer", ""
+                        ),
+                        description=f"{recognizer.name}: {signal_result.description}",
+                        metadata={
+                            **signal_result.metadata,
+                            "confidence": signal_result.confidence or signal_result.strength,
+                            "risk_level": signal_result.risk_level,
+                            "validity_period": signal_result.validity_period,
+                        },
+                        source_patterns=[recognizer.name],
+                    )
+
+                    all_signals.append(action_signal)
+                    pattern_type = recognizer.__class__.__name__.lower().replace(
+                        "recognizer", ""
+                    )
+
+                    if pattern_type not in pattern_signals:
+                        pattern_signals[pattern_type] = []
+                    pattern_signals[pattern_type].append(action_signal)
+
+                    # Record pattern statistics
+                    if self.pattern_statistics and pattern_type is not None:
+                        self.pattern_statistics.record_pattern_signal(
+                            pattern_type, action_signal
+                        )
+
+            except Exception as e:
+                # Avoid spamming the same error message repeatedly
+                msg = f"Recognizer {recognizer.name} failed: {e}"
+                self._record_error(msg)
+                continue
+
+        return all_signals, pattern_signals
+
+    def _apply_quality_evaluation(
+        self,
+        signals: List["ActionSignal"],
+        current_data: pd.DataFrame,
+        market_context: Dict[str, Union[str, int, float]]
+    ) -> List["ActionSignal"]:
+        """
+        Apply quality evaluation to signals and filter based on quality scores.
+
+        Args:
+            signals: Signals to evaluate
+            current_data: Current market data
+            market_context: Market context information
+
+        Returns:
+            Quality-evaluated and filtered signals
+        """
+        if not self.signal_quality_evaluator:
+            return signals
+
+        evaluated_signals = []
+
+        for signal in signals:
+            # Evaluate signal quality
+            quality_scores = self.signal_quality_evaluator.evaluate_signal_quality(
+                signal=signal,
+                market_data=current_data,
+                sac_decision=market_context.get("sac_decision"),
+                market_regime=market_context.get("regime")
+            )
+
+            # Calculate overall quality score
+            overall_quality = self.signal_quality_evaluator.get_overall_quality_score(quality_scores)
+
+            # Add quality information to signal
+            if not hasattr(signal, 'quality_scores'):
+                signal.quality_scores = {}
+            signal.quality_scores.update(quality_scores)
+            signal.overall_quality = overall_quality
+
+            # Filter based on minimum quality threshold
+            if overall_quality >= 0.4:  # Minimum quality threshold
+                evaluated_signals.append(signal)
+
+        # Sort by overall quality (highest first)
+        evaluated_signals.sort(key=lambda s: getattr(s, 'overall_quality', 0), reverse=True)
+
+        return evaluated_signals

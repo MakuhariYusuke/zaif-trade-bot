@@ -8,6 +8,11 @@ from numpy.typing import NDArray
 
 from ztb.utils.logging_utils import get_logger
 
+from ztb.trading.constants import (
+    ACTION_BUY,
+    ACTION_HOLD,
+    ACTION_SELL,
+)
 if TYPE_CHECKING:
     from ztb.trading.environment.utils.config import EnvironmentConfig
 
@@ -46,7 +51,7 @@ class ActionValidator:
         transaction_cost = self.config.transaction_cost
 
         # HOLDは常に合法
-        legal[0] = 1
+        legal[ACTION_HOLD] = 1
 
         # 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）
         exchange = getattr(self.config, "exchange", "coincheck").lower()
@@ -60,10 +65,10 @@ class ActionValidator:
                     # 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）
                     if position > 0:
                         # ロングポジション保有中: SELLでクローズ可能
-                        legal[2] = 1
+                        legal[ACTION_SELL] = 1
                     elif position < 0:
                         # ショートポジション保有中: BUYでクローズ可能
-                        legal[1] = 1
+                        legal[ACTION_BUY] = 1
                     # その他の新規建ては制限
                     return legal
 
@@ -72,9 +77,9 @@ class ActionValidator:
             if consecutive_trade_steps >= max_consecutive_trades:
                 # 連続取引上限に達した場合もポジションクローズは許可
                 if position > 0:
-                    legal[2] = 1  # SELL to close long
+                    legal[ACTION_SELL] = 1  # SELL to close long
                 elif position < 0:
-                    legal[1] = 1  # BUY to close short
+                    legal[ACTION_BUY] = 1  # BUY to close short
                 return legal
 
         # 市場ボラティリティチェック（高ボラティリティ時は取引制限）
@@ -105,7 +110,7 @@ class ActionValidator:
 
             # 条件: 理想サイズが買えるか、または最小単位以上が買える
             if portfolio_value >= ideal_buy_cost or affordable_size >= min_trade_size:
-                legal[1] = 1
+                legal[ACTION_BUY] = 1
 
         # SELL: ロングまたはフラットの場合
         # 🔧 CRITICAL FIX: ショートポジション判定の簡素化
@@ -119,12 +124,12 @@ class ActionValidator:
             min_trade_size = 0.0001  # 最小取引単位
 
             if portfolio_value >= ideal_sell_value or affordable_size >= min_trade_size:
-                legal[2] = 1
+                legal[ACTION_SELL] = 1
 
         # Safety check: ensure at least one action is legal (HOLD should always be legal)
         if not np.any(legal):
             # This should never happen since HOLD is always legal, but add safety
-            legal[0] = 1  # Force HOLD to be legal
+            legal[ACTION_HOLD] = 1  # Force HOLD to be legal
 
         return legal
 
