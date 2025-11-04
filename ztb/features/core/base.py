@@ -7,8 +7,7 @@ from typing import Any, Dict, List, Optional, Protocol, Set, TypeVar
 
 import pandas as pd
 
-from ztb.utils.logging_utils import get_logger
-from ztb.features.utils.rolling import rolling_mean, rolling_std, ffill, bfill
+from ztb.features.utils.rolling import rolling_mean, rolling_std
 
 # Define ConfigDict locally to avoid circular imports
 ConfigDict = Dict[str, Any]
@@ -103,7 +102,9 @@ class ParameterizedFeature(BaseFeature):
         return self._compute_with_params(df, **merged_params)
 
     @abstractmethod
-    def _compute_with_params(self, df: pd.DataFrame, **params: ConfigDict) -> pd.DataFrame:
+    def _compute_with_params(
+        self, df: pd.DataFrame, **params: ConfigDict
+    ) -> pd.DataFrame:
         """Actual computation with parameters"""
 
 

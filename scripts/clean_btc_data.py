@@ -3,9 +3,9 @@
 Clean BTC JPY data by removing NaN values and ensuring data integrity.
 """
 
+
 import pandas as pd
-import numpy as np
-from pathlib import Path
+
 
 def clean_btc_data(input_path: str, output_path: str):
     """Clean BTC data by removing NaN values."""
@@ -20,7 +20,7 @@ def clean_btc_data(input_path: str, output_path: str):
     print(f"NaN counts per column:\n{nan_counts[nan_counts > 0]}")
 
     # Remove rows with NaN in critical columns
-    critical_columns = ['open', 'high', 'low', 'close', 'volume']
+    critical_columns = ["open", "high", "low", "close", "volume"]
     before_clean = len(df)
 
     # Drop rows where critical columns are NaN
@@ -31,7 +31,7 @@ def clean_btc_data(input_path: str, output_path: str):
     print(f"Clean data shape: {df_clean.shape}")
 
     # Forward fill any remaining NaN values in other columns
-    df_clean = df_clean.fillna(method='ffill')
+    df_clean = df_clean.fillna(method="ffill")
 
     # Ensure we have enough data
     if len(df_clean) < 1000:
@@ -46,6 +46,7 @@ def clean_btc_data(input_path: str, output_path: str):
     print(f"Final NaN count: {final_nan}")
 
     return df_clean
+
 
 if __name__ == "__main__":
     input_file = "data/btc_jpy_yahoo_real_20251021_featured_corrected.csv"

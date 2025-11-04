@@ -12,7 +12,6 @@ import numpy as np
 from ztb.trading.strategies.action_signal_guide import (
     ActionSignalGuide,
     ActionSignalGuideConfig,
-    GuidanceLevel,
     GuidanceMode,
 )
 from ztb.trading.strategies.signal_reward_integrator import SignalRewardIntegrator
@@ -90,19 +89,21 @@ class SignalIntegrator(ISignalIntegrator):
         try:
             # Initialize signal guide
             feature_names = getattr(self.config, "feature_names", None)
-            
+
             # Convert string guidance_level to GuidanceMode enum
             guidance_map = {
                 "full": GuidanceMode.FULL_GUIDANCE,
-                "partial": GuidanceMode.PARTIAL_GUIDANCE, 
+                "partial": GuidanceMode.PARTIAL_GUIDANCE,
                 "minimal": GuidanceMode.MINIMAL_GUIDANCE,
                 "fade_out": GuidanceMode.FADE_OUT,
                 "none": GuidanceMode.NO_GUIDANCE,
                 "strong": GuidanceMode.FULL_GUIDANCE,  # backward compatibility
             }
-            
-            guidance_enum = guidance_map.get(guidance_level.lower(), GuidanceMode.FULL_GUIDANCE)
-            
+
+            guidance_enum = guidance_map.get(
+                guidance_level.lower(), GuidanceMode.FULL_GUIDANCE
+            )
+
             signal_guide_config = ActionSignalGuideConfig(
                 guidance_level=guidance_enum,
                 feature_names=feature_names,

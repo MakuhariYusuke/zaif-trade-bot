@@ -397,6 +397,22 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
                 confidence = self._calculate_pattern_confidence(
                     data, index, pattern_factors, base_confidence=pattern["strength"]
                 )
+
+                # Apply multi-timeframe alignment if data is available
+                mtf_confidence = 1.0
+                if multi_timeframe_data:
+                    mtf_confidence = self._analyze_multi_timeframe_alignment(
+                        data, index, multi_timeframe_data, "harmonic_gartley"
+                    )
+                    confidence *= mtf_confidence
+
+                # Adjust for market regime
+                regime_adjustments = {}
+                if multi_timeframe_data:
+                    regime_adjustments = self._adjust_thresholds_for_regime(
+                        multi_timeframe_data, "harmonic_gartley"
+                    )
+
                 confidence = min(
                     confidence, 0.0001
                 )  # Cap confidence to prevent over-performance
@@ -417,6 +433,8 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
                         "target_price": pattern["target_price"],
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjustments": regime_adjustments,
                     },
                 )
 
@@ -425,6 +443,14 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
         current_price = data.iloc[index]["close"]
         synthetic_direction = 1 if np.random.random() > 0.5 else -1  # Random direction
         synthetic_confidence = 0.0001  # Very weak confidence
+
+        # Apply multi-timeframe alignment to synthetic signal if data is available
+        mtf_confidence = 1.0
+        if multi_timeframe_data:
+            mtf_confidence = self._analyze_multi_timeframe_alignment(
+                data, index, multi_timeframe_data, "harmonic_gartley_synthetic"
+            )
+            synthetic_confidence *= mtf_confidence
 
         signal_type = (
             "gartley_bullish" if synthetic_direction == 1 else "gartley_bearish"
@@ -444,6 +470,7 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
                 * (1.01 if synthetic_direction == 1 else 0.99),
                 "confidence": synthetic_confidence,
                 "pattern_completeness": 0.1,
+                "mtf_confidence": mtf_confidence,
             },
         )
 
@@ -500,6 +527,22 @@ class ButterflyRecognizer(CandlestickPatternRecognizer):
                 confidence = self._calculate_pattern_confidence(
                     data, index, pattern_factors, base_confidence=pattern["strength"]
                 )
+
+                # Apply multi-timeframe alignment if data is available
+                mtf_confidence = 1.0
+                if multi_timeframe_data:
+                    mtf_confidence = self._analyze_multi_timeframe_alignment(
+                        data, index, multi_timeframe_data, "harmonic_butterfly"
+                    )
+                    confidence *= mtf_confidence
+
+                # Adjust for market regime
+                regime_adjustments = {}
+                if multi_timeframe_data:
+                    regime_adjustments = self._adjust_thresholds_for_regime(
+                        multi_timeframe_data, "harmonic_butterfly"
+                    )
+
                 confidence = min(
                     confidence, 0.0001
                 )  # Cap confidence to prevent over-performance
@@ -521,6 +564,8 @@ class ButterflyRecognizer(CandlestickPatternRecognizer):
                         "target_price": pattern["target_price"],
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjustments": regime_adjustments,
                     },
                 )
 
@@ -579,6 +624,22 @@ class BatRecognizer(CandlestickPatternRecognizer):
                 confidence = self._calculate_pattern_confidence(
                     data, index, pattern_factors, base_confidence=pattern["strength"]
                 )
+
+                # Apply multi-timeframe alignment if data is available
+                mtf_confidence = 1.0
+                if multi_timeframe_data:
+                    mtf_confidence = self._analyze_multi_timeframe_alignment(
+                        data, index, multi_timeframe_data, "harmonic_bat"
+                    )
+                    confidence *= mtf_confidence
+
+                # Adjust for market regime
+                regime_adjustments = {}
+                if multi_timeframe_data:
+                    regime_adjustments = self._adjust_thresholds_for_regime(
+                        multi_timeframe_data, "harmonic_bat"
+                    )
+
                 confidence = min(
                     confidence, 0.0001
                 )  # Cap confidence to prevent over-performance
@@ -598,6 +659,8 @@ class BatRecognizer(CandlestickPatternRecognizer):
                         "target_price": pattern["target_price"],
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjustments": regime_adjustments,
                     },
                 )
 
@@ -656,6 +719,22 @@ class CrabRecognizer(CandlestickPatternRecognizer):
                 confidence = self._calculate_pattern_confidence(
                     data, index, pattern_factors, base_confidence=pattern["strength"]
                 )
+
+                # Apply multi-timeframe alignment if data is available
+                mtf_confidence = 1.0
+                if multi_timeframe_data:
+                    mtf_confidence = self._analyze_multi_timeframe_alignment(
+                        data, index, multi_timeframe_data, "harmonic_crab"
+                    )
+                    confidence *= mtf_confidence
+
+                # Adjust for market regime
+                regime_adjustments = {}
+                if multi_timeframe_data:
+                    regime_adjustments = self._adjust_thresholds_for_regime(
+                        multi_timeframe_data, "harmonic_crab"
+                    )
+
                 confidence = min(
                     confidence, 0.0001
                 )  # Cap confidence to prevent over-performance
@@ -675,6 +754,8 @@ class CrabRecognizer(CandlestickPatternRecognizer):
                         "target_price": pattern["target_price"],
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
+                        "mtf_confidence": mtf_confidence,
+                        "regime_adjustments": regime_adjustments,
                     },
                 )
 

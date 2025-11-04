@@ -8,26 +8,26 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ztb.features.trend.ichimoku.ichimoku import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku import (
     compute_ichimoku_cross,
     compute_ichimoku_diff_norm,
 )
-from ztb.features.trend.ichimoku.ichimoku_cloud_expansion import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_cloud_expansion import (
     compute_ichimoku_cloud_expansion,
 )
-from ztb.features.trend.ichimoku.ichimoku_momentum_confirmation import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_momentum_confirmation import (
     compute_ichimoku_momentum_confirmation,
 )
-from ztb.features.trend.ichimoku.ichimoku_sanyaku_kouten import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_sanyaku_kouten import (
     compute_ichimoku_sanyaku_kouten,
 )
-from ztb.features.trend.ichimoku.ichimoku_time_theory import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_time_theory import (
     compute_ichimoku_time_theory,
 )
-from ztb.features.trend.ichimoku.ichimoku_value_measurement import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_value_measurement import (
     compute_ichimoku_value_measurement,
 )
-from ztb.features.trend.ichimoku.ichimoku_wave_theory import (
+from ztb.features.generators.technical.trend.ichimoku.ichimoku_wave_theory import (
     compute_ichimoku_wave_theory,
 )
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (

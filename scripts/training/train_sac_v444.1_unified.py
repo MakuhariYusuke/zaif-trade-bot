@@ -55,12 +55,13 @@ def main():
 
         # Load configuration
         import json
-        with open(args.config, 'r') as f:
+
+        with open(args.config, "r") as f:
             config = json.load(f)
 
         # Override timesteps if specified
         if args.total_timesteps:
-            config['total_timesteps'] = args.total_timesteps
+            config["total_timesteps"] = args.total_timesteps
 
         print("📋 Configuration loaded:")
         print(f"  - Model: {config.get('model_name', 'Unknown')}")
@@ -69,9 +70,11 @@ def main():
         print(f"  - Timesteps: {config.get('total_timesteps', 'Default'):,}")
 
         # Count features
-        features = config.get('features', {})
-        total_features = sum(len(feature_list) if isinstance(feature_list, list) else 1
-                           for feature_list in features.values())
+        features = config.get("features", {})
+        total_features = sum(
+            len(feature_list) if isinstance(feature_list, list) else 1
+            for feature_list in features.values()
+        )
         print(f"  - Features: {total_features} categories")
 
         if args.dry_run:
@@ -80,11 +83,7 @@ def main():
             return
 
         # Initialize unified trainer
-        trainer = UnifiedTrainer(
-            config=config,
-            force=args.force,
-            dry_run=args.dry_run
-        )
+        trainer = UnifiedTrainer(config=config, force=args.force, dry_run=args.dry_run)
 
         print("🎯 Starting training...")
         print("-" * 65)

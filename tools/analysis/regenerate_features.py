@@ -12,16 +12,13 @@ Usage:
 import argparse
 import logging
 import sys
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -31,13 +28,15 @@ class FeatureRegenerator:
 
     def __init__(self):
         self.stats = {
-            'original_features': 0,
-            'generated_features': 0,
-            'total_features': 0,
-            'rows_processed': 0
+            "original_features": 0,
+            "generated_features": 0,
+            "total_features": 0,
+            "rows_processed": 0,
         }
 
-    def regenerate_features(self, df: pd.DataFrame, feature_set: str = "full") -> pd.DataFrame:
+    def regenerate_features(
+        self, df: pd.DataFrame, feature_set: str = "full"
+    ) -> pd.DataFrame:
         """
         Re-generate features from corrected data
 
@@ -51,27 +50,30 @@ class FeatureRegenerator:
         logger.info(f"Starting feature re-generation with {feature_set} feature set...")
 
         # Validate required columns
-        required_columns = ['open', 'high', 'low', 'close', 'volume']
+        required_columns = ["open", "high", "low", "close", "volume"]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        self.stats['rows_processed'] = len(df)
-        self.stats['original_features'] = len(df.columns)
+        self.stats["rows_processed"] = len(df)
+        self.stats["original_features"] = len(df.columns)
 
         try:
             # Import the feature engineering system
-            from ztb.features.sac_v427_feature_engineering import generate_v427_quality_filtered_features
+            from ztb.features.sac_v427_feature_engineering import (
+                generate_v427_quality_filtered_features,
+            )
 
             # Generate features
             logger.info("Generating v427 quality-filtered features...")
             featured_df = generate_v427_quality_filtered_features(
-                df.copy(),
-                feature_set=feature_set
+                df.copy(), feature_set=feature_set
             )
 
-            self.stats['total_features'] = len(featured_df.columns)
-            self.stats['generated_features'] = self.stats['total_features'] - self.stats['original_features']
+            self.stats["total_features"] = len(featured_df.columns)
+            self.stats["generated_features"] = (
+                self.stats["total_features"] - self.stats["original_features"]
+            )
 
             logger.info("Feature re-generation completed.")
             logger.info(f"Statistics: {self.stats}")
@@ -85,7 +87,9 @@ class FeatureRegenerator:
             logger.error(f"Error during feature generation: {e}")
             raise
 
-    def validate_features(self, featured_df: pd.DataFrame, original_df: pd.DataFrame) -> dict:
+    def validate_features(
+        self, featured_df: pd.DataFrame, original_df: pd.DataFrame
+    ) -> dict:
         """
         Validate generated features
 
@@ -97,31 +101,35 @@ class FeatureRegenerator:
             Validation results dictionary
         """
         validation_results = {
-            'feature_count': {
-                'original': len(original_df.columns),
-                'generated': len(featured_df.columns) - len(original_df.columns),
-                'total': len(featured_df.columns)
+            "feature_count": {
+                "original": len(original_df.columns),
+                "generated": len(featured_df.columns) - len(original_df.columns),
+                "total": len(featured_df.columns),
             },
-            'data_integrity': {},
-            'feature_quality': {}
+            "data_integrity": {},
+            "feature_quality": {},
         }
 
         # Check data integrity
-        validation_results['data_integrity'] = {
-            'rows_match': len(featured_df) == len(original_df),
-            'index_preserved': featured_df.index.equals(original_df.index),
-            'price_columns_preserved': all(
-                col in featured_df.columns for col in ['open', 'high', 'low', 'close']
-            )
+        validation_results["data_integrity"] = {
+            "rows_match": len(featured_df) == len(original_df),
+            "index_preserved": featured_df.index.equals(original_df.index),
+            "price_columns_preserved": all(
+                col in featured_df.columns for col in ["open", "high", "low", "close"]
+            ),
         }
 
         # Basic feature quality checks
         numeric_columns = featured_df.select_dtypes(include=[np.number]).columns
-        validation_results['feature_quality'] = {
-            'numeric_features': len(numeric_columns),
-            'features_with_nan': featured_df.isna().any().sum(),
-            'features_with_inf': np.isinf(featured_df.select_dtypes(include=[np.number])).any().any(),
-            'constant_features': (featured_df.std() == 0).sum()
+        validation_results["feature_quality"] = {
+            "numeric_features": len(numeric_columns),
+            "features_with_nan": featured_df.isna().any().sum(),
+            "features_with_inf": np.isinf(
+                featured_df.select_dtypes(include=[np.number])
+            )
+            .any()
+            .any(),
+            "constant_features": (featured_df.std() == 0).sum(),
         }
 
         return validation_results
@@ -129,14 +137,32 @@ class FeatureRegenerator:
 
 def main():
     """Main function"""
-    parser = argparse.ArgumentParser(description='Re-generate features from corrected volume data')
-    parser.add_argument('--input', '-i', required=True, help='Input CSV file path (corrected data)')
-    parser.add_argument('--output', '-o', required=True, help='Output CSV file path (featured data)')
-    parser.add_argument('--feature-set', default='full', choices=['minimal', 'high_quality', 'no_harmful', 'full'],
-                       help='Feature set to generate')
-    parser.add_argument('--validate', action='store_true', help='Perform validation after feature generation')
-    parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-                       help='Set logging level')
+    parser = argparse.ArgumentParser(
+        description="Re-generate features from corrected volume data"
+    )
+    parser.add_argument(
+        "--input", "-i", required=True, help="Input CSV file path (corrected data)"
+    )
+    parser.add_argument(
+        "--output", "-o", required=True, help="Output CSV file path (featured data)"
+    )
+    parser.add_argument(
+        "--feature-set",
+        default="full",
+        choices=["minimal", "high_quality", "no_harmful", "full"],
+        help="Feature set to generate",
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Perform validation after feature generation",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Set logging level",
+    )
 
     args = parser.parse_args()
 
@@ -176,12 +202,16 @@ def main():
             logger.info(f"Feature quality: {validation_results['feature_quality']}")
 
             # Check for issues
-            if validation_results['feature_quality']['features_with_nan'] > 0:
-                logger.warning(f"Found {validation_results['feature_quality']['features_with_nan']} features with NaN values")
-            if validation_results['feature_quality']['features_with_inf'] > 0:
-                logger.warning(f"Found features with infinite values")
-            if validation_results['feature_quality']['constant_features'] > 0:
-                logger.warning(f"Found {validation_results['feature_quality']['constant_features']} constant features")
+            if validation_results["feature_quality"]["features_with_nan"] > 0:
+                logger.warning(
+                    f"Found {validation_results['feature_quality']['features_with_nan']} features with NaN values"
+                )
+            if validation_results["feature_quality"]["features_with_inf"] > 0:
+                logger.warning("Found features with infinite values")
+            if validation_results["feature_quality"]["constant_features"] > 0:
+                logger.warning(
+                    f"Found {validation_results['feature_quality']['constant_features']} constant features"
+                )
 
         logger.info("✅ Feature re-generation completed successfully!")
 
@@ -190,5 +220,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

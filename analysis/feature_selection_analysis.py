@@ -7,17 +7,17 @@ SELL bias対策で追加された特徴量の影響を評価し、
 過学習リスクを軽減するための特徴量削減を実施
 """
 
-import pandas as pd
-import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import yaml
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
 
 from ztb.utils.logging_utils import get_logger
 
@@ -35,11 +35,12 @@ class FeatureSelector:
 
     def _load_feature_sets(self) -> Dict:
         """特徴量セット設定を読み込み"""
-        with open(self.config_path, 'r', encoding='utf-8') as f:
+        with open(self.config_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def analyze_feature_correlations(self, data: pd.DataFrame,
-                                   threshold: float = 0.95) -> Dict[str, List[str]]:
+    def analyze_feature_correlations(
+        self, data: pd.DataFrame, threshold: float = 0.95
+    ) -> Dict[str, List[str]]:
         """
         特徴量間の相関分析を行い、高相関特徴量を特定
 
@@ -59,13 +60,15 @@ class FeatureSelector:
         # 高相関ペアの特定
         high_corr_pairs = []
         for i in range(len(corr_matrix.columns)):
-            for j in range(i+1, len(corr_matrix.columns)):
+            for j in range(i + 1, len(corr_matrix.columns)):
                 if corr_matrix.iloc[i, j] > threshold:
-                    high_corr_pairs.append((
-                        corr_matrix.columns[i],
-                        corr_matrix.columns[j],
-                        corr_matrix.iloc[i, j]
-                    ))
+                    high_corr_pairs.append(
+                        (
+                            corr_matrix.columns[i],
+                            corr_matrix.columns[j],
+                            corr_matrix.iloc[i, j],
+                        )
+                    )
 
         # 相関グループの作成
         correlation_groups = {}
@@ -78,11 +81,14 @@ class FeatureSelector:
             correlation_groups[feat1].append(feat2)
             correlation_groups[feat2].append(feat1)
 
-        logger.info(f"Found {len(high_corr_pairs)} high correlation pairs (>{threshold})")
+        logger.info(
+            f"Found {len(high_corr_pairs)} high correlation pairs (>{threshold})"
+        )
         return correlation_groups
 
-    def select_features_by_importance(self, X: pd.DataFrame, y: pd.Series,
-                                    top_k: int = 50) -> List[str]:
+    def select_features_by_importance(
+        self, X: pd.DataFrame, y: pd.Series, top_k: int = 50
+    ) -> List[str]:
         """
         ランダムフォレストによる特徴量重要度ランキング
 
@@ -99,21 +105,21 @@ class FeatureSelector:
         rf.fit(X, y)
 
         # 重要度ランキング
-        feature_importance = pd.DataFrame({
-            'feature': X.columns,
-            'importance': rf.feature_importances_
-        }).sort_values('importance', ascending=False)
+        feature_importance = pd.DataFrame(
+            {"feature": X.columns, "importance": rf.feature_importances_}
+        ).sort_values("importance", ascending=False)
 
         # 上位特徴量の選択
-        selected_features = feature_importance.head(top_k)['feature'].tolist()
+        selected_features = feature_importance.head(top_k)["feature"].tolist()
 
         logger.info(f"Selected top {top_k} features by importance")
         logger.info(f"Top 5 features: {selected_features[:5]}")
 
         return selected_features
 
-    def apply_pca_reduction(self, X: pd.DataFrame,
-                          variance_threshold: float = 0.95) -> Tuple[pd.DataFrame, PCA]:
+    def apply_pca_reduction(
+        self, X: pd.DataFrame, variance_threshold: float = 0.95
+    ) -> Tuple[pd.DataFrame, PCA]:
         """
         PCAによる次元削減
 
@@ -133,7 +139,7 @@ class FeatureSelector:
         X_pca = pca.fit_transform(X_scaled)
 
         # DataFrameに変換
-        pca_columns = [f'PC_{i+1}' for i in range(X_pca.shape[1])]
+        pca_columns = [f"PC_{i+1}" for i in range(X_pca.shape[1])]
         X_pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=X.index)
 
         explained_variance = np.sum(pca.explained_variance_ratio_)
@@ -142,9 +148,12 @@ class FeatureSelector:
 
         return X_pca_df, pca
 
-    def create_reduced_feature_set(self, original_features: List[str],
-                                 selected_features: List[str],
-                                 output_path: str = "configs/features/reduced_feature_set.yaml") -> None:
+    def create_reduced_feature_set(
+        self,
+        original_features: List[str],
+        selected_features: List[str],
+        output_path: str = "configs/features/reduced_feature_set.yaml",
+    ) -> None:
         """
         削減された特徴量セットを作成
 
@@ -154,32 +163,36 @@ class FeatureSelector:
             output_path: 出力ファイルパス
         """
         reduced_config = {
-            'description': '過学習防止のための削減特徴量セット',
-            'feature_sets': {
-                'reduced': {
-                    'description': f'重要度ベースで選択された{len(selected_features)}個の特徴量',
-                    'enabled': True,
-                    'features': selected_features
+            "description": "過学習防止のための削減特徴量セット",
+            "feature_sets": {
+                "reduced": {
+                    "description": f"重要度ベースで選択された{len(selected_features)}個の特徴量",
+                    "enabled": True,
+                    "features": selected_features,
                 },
-                'original_curated': {
-                    'description': f'元の{len(original_features)}個の特徴量セット',
-                    'enabled': False,
-                    'features': original_features
-                }
-            }
+                "original_curated": {
+                    "description": f"元の{len(original_features)}個の特徴量セット",
+                    "enabled": False,
+                    "features": original_features,
+                },
+            },
         }
 
         # ファイル出力
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             yaml.dump(reduced_config, f, allow_unicode=True, default_flow_style=False)
 
         logger.info(f"Reduced feature set saved to {output_path}")
 
-    def plot_feature_importance(self, X: pd.DataFrame, y: pd.Series,
-                              save_path: str = "analysis/feature_importance.png") -> None:
+    def plot_feature_importance(
+        self,
+        X: pd.DataFrame,
+        y: pd.Series,
+        save_path: str = "analysis/feature_importance.png",
+    ) -> None:
         """
         特徴量重要度の可視化
 
@@ -192,18 +205,19 @@ class FeatureSelector:
         rf.fit(X, y)
 
         # 重要度の上位20個をプロット
-        feature_importance = pd.DataFrame({
-            'feature': X.columns,
-            'importance': rf.feature_importances_
-        }).sort_values('importance', ascending=False).head(20)
+        feature_importance = (
+            pd.DataFrame({"feature": X.columns, "importance": rf.feature_importances_})
+            .sort_values("importance", ascending=False)
+            .head(20)
+        )
 
         plt.figure(figsize=(12, 8))
-        sns.barplot(data=feature_importance, x='importance', y='feature')
-        plt.title('Top 20 Feature Importance (Random Forest)')
-        plt.xlabel('Importance')
-        plt.ylabel('Features')
+        sns.barplot(data=feature_importance, x="importance", y="feature")
+        plt.title("Top 20 Feature Importance (Random Forest)")
+        plt.xlabel("Importance")
+        plt.ylabel("Features")
         plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.close()
 
         logger.info(f"Feature importance plot saved to {save_path}")
@@ -221,7 +235,7 @@ def main():
     # 特徴量データのシミュレーション
     X = pd.DataFrame(
         np.random.randn(n_samples, n_features),
-        columns=[f'feature_{i}' for i in range(n_features)]
+        columns=[f"feature_{i}" for i in range(n_features)],
     )
 
     # アクションラベルのシミュレーション（SELL biasを考慮）

@@ -4,20 +4,15 @@ Collect all parameters from SAC/PPO config JSON files
 全ての設定JSONファイルからパラメータを収集
 """
 
+import glob
 import json
 import os
-from pathlib import Path
 from collections import defaultdict
-import glob
+
 
 def collect_all_parameters():
     """Collect all parameters from all config JSON files"""
-    config_dirs = [
-        "config",
-        "configs",
-        "ztb/config",
-        "ztb/config/versions"
-    ]
+    config_dirs = ["config", "configs", "ztb/config", "ztb/config/versions"]
 
     all_params = defaultdict(set)
     file_count = 0
@@ -33,7 +28,7 @@ def collect_all_parameters():
 
         for json_file in json_files:
             try:
-                with open(json_file, 'r', encoding='utf-8') as f:
+                with open(json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
                 # Recursively collect all parameter paths
@@ -58,6 +53,7 @@ def collect_all_parameters():
     print(f"\nTotal files processed: {file_count}")
     return all_params
 
+
 def categorize_parameters(all_params):
     """Categorize parameters by their structure"""
     categories = {
@@ -71,11 +67,14 @@ def categorize_parameters(all_params):
         "regime_adaptation": [],
         "checkpoint": [],
         "analysis": [],
-        "other": []
+        "other": [],
     }
 
     for param in sorted(all_params.keys()):
-        if any(keyword in param.lower() for keyword in ["model_name", "algorithm", "version", "description"]):
+        if any(
+            keyword in param.lower()
+            for keyword in ["model_name", "algorithm", "version", "description"]
+        ):
             categories["basic"].append(param)
         elif param.startswith("sac_hyperparameters") or "sac." in param.lower():
             categories["sac_hyperparams"].append(param)
@@ -99,6 +98,7 @@ def categorize_parameters(all_params):
             categories["other"].append(param)
 
     return categories
+
 
 def generate_documentation(all_params, categories):
     """Generate comprehensive documentation"""
@@ -132,7 +132,7 @@ def generate_documentation(all_params, categories):
         "regime_adaptation": "市場レジーム適応パラメータ",
         "checkpoint": "チェックポイントパラメータ",
         "analysis": "分析パラメータ",
-        "other": "その他パラメータ"
+        "other": "その他パラメータ",
     }
 
     for category, params in categories.items():
@@ -149,18 +149,20 @@ def generate_documentation(all_params, categories):
             example = "N/A"
             for json_file in list(all_params[param])[:1]:  # Just use first file
                 try:
-                    with open(json_file, 'r', encoding='utf-8') as f:
+                    with open(json_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     value = data
-                    for key in param.split('.'):
-                        if '[' in key and ']' in key:
+                    for key in param.split("."):
+                        if "[" in key and "]" in key:
                             # Handle array indices
-                            base_key = key.split('[')[0]
-                            index = int(key.split('[')[1].split(']')[0])
+                            base_key = key.split("[")[0]
+                            index = int(key.split("[")[1].split("]")[0])
                             value = value[base_key][index]
                         else:
                             value = value[key]
-                    example = str(value)[:50] + "..." if len(str(value)) > 50 else str(value)
+                    example = (
+                        str(value)[:50] + "..." if len(str(value)) > 50 else str(value)
+                    )
                 except:
                     example = "N/A"
 
@@ -169,6 +171,7 @@ def generate_documentation(all_params, categories):
         doc += "\n"
 
     return doc
+
 
 def get_parameter_description(param):
     """Get description for a parameter"""
@@ -212,7 +215,7 @@ def get_parameter_description(param):
         "eta": "イータ値",
         "eta_min": "イータ最小値",
         "eta_max": "イータ最大値",
-        "eta_lr": "イータ学習率"
+        "eta_lr": "イータ学習率",
     }
 
     # Try exact match first
@@ -226,6 +229,7 @@ def get_parameter_description(param):
 
     return "詳細不明"
 
+
 if __name__ == "__main__":
     print("Collecting all parameters from config files...")
     all_params = collect_all_parameters()
@@ -237,7 +241,7 @@ if __name__ == "__main__":
     doc = generate_documentation(all_params, categories)
 
     output_file = "docs/sac_ppo_complete_parameter_reference.md"
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         f.write(doc)
 
     print(f"Documentation generated: {output_file}")

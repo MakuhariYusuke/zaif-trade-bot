@@ -15,15 +15,16 @@ sys.path.insert(0, str(project_root))
 
 import numpy as np
 import pandas as pd
+
+from ztb.features.feature_set_config import get_feature_config
 from ztb.features.multi_timeframe import MultiTimeframeFeatureSystem
 from ztb.features.timeframe import Timeframe
-from ztb.features.feature_set_config import get_feature_config
 
 
 def create_sample_data():
     """Create sample data for testing."""
     # Create sample 5-minute data
-    dates = pd.date_range('2024-01-01', periods=1000, freq='5min')
+    dates = pd.date_range("2024-01-01", periods=1000, freq="5min")
 
     # Generate synthetic OHLCV data
     np.random.seed(42)
@@ -47,14 +48,16 @@ def create_sample_data():
 
         volume = np.random.uniform(0.1, 10.0)
 
-        data.append({
-            'timestamp': timestamp,
-            'open': round(open_price, 2),
-            'high': round(high, 2),
-            'low': round(low, 2),
-            'close': round(close, 2),
-            'volume': round(volume, 4),
-        })
+        data.append(
+            {
+                "timestamp": timestamp,
+                "open": round(open_price, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "close": round(close, 2),
+                "volume": round(volume, 4),
+            }
+        )
 
     df = pd.DataFrame(data)
     return df
@@ -129,7 +132,9 @@ def test_with_config(feature_config, config_type):
                 feature_set="minimal",
             )
             if features_df.empty:
-                print("✓ Multi-timeframe features correctly disabled - returned empty DataFrame")
+                print(
+                    "✓ Multi-timeframe features correctly disabled - returned empty DataFrame"
+                )
                 return True
             else:
                 print("✗ Multi-timeframe features not properly disabled")
@@ -154,9 +159,11 @@ def test_with_config(feature_config, config_type):
         # Get data quality report
         print("\nData Quality Report:")
         quality_report = system.get_data_quality_report()
-        if 'timeframes' in quality_report:
-            for tf, report in quality_report['timeframes'].items():
-                print(f"  {tf}: {report['row_count']} rows, {report['data_quality']['valid_ohlc']:.1%} valid OHLC")
+        if "timeframes" in quality_report:
+            for tf, report in quality_report["timeframes"].items():
+                print(
+                    f"  {tf}: {report['row_count']} rows, {report['data_quality']['valid_ohlc']:.1%} valid OHLC"
+                )
         else:
             print(f"  Status: {quality_report.get('status', 'unknown')}")
 
@@ -176,18 +183,22 @@ def test_with_config(feature_config, config_type):
         else:
             print("✓ No validation issues found")
 
-        print(f"\n✓ Multi-timeframe feature engineering system test ({config_type}) completed successfully!")
+        print(
+            f"\n✓ Multi-timeframe feature engineering system test ({config_type}) completed successfully!"
+        )
         return True
 
     except Exception as e:
         print(f"\n✗ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
     finally:
         # Clean up
         import shutil
+
         if data_dir.exists():
             shutil.rmtree(data_dir)
             print(f"\nCleaned up test data directory: {data_dir}")

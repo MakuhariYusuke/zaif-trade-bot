@@ -571,7 +571,7 @@ class WaveIRecognizer(CandlestickPatternRecognizer):
                 abs(p2.price - p1.price)
                 > data["close"].iloc[index - self.lookback_period : index].std() * 2
             ):
-                direction = 1 if p2.price > p1.price else -1
+                direction: float = 1.0 if p2.price > p1.price else -1.0
 
                 # Calculate wave strength based on size relative to recent volatility
                 wave_size = abs(p2.price - p1.price)
@@ -884,7 +884,7 @@ class WavePRecognizer(CandlestickPatternRecognizer):
                     end.price - start.price
                 )
                 if overshoot_ratio > 1.2:  # More than 20% overshoot
-                    direction = -1 if end.price < start.price else 1
+                    direction: float = -1.0 if end.price < start.price else 1.0
 
                     # Calculate dynamic confidence based on overshoot severity
                     pattern_completeness = min(
@@ -991,7 +991,7 @@ class WaveNRecognizer(CandlestickPatternRecognizer):
                         direction_changes += 1
 
                 if direction_changes >= 2:  # At least 2 direction changes
-                    direction = 1 if p5.price > p1.price else -1
+                    direction: float = 1.0 if p5.price > p1.price else -1.0
 
                     # Calculate dynamic confidence based on complexity
                     pattern_completeness = min(
@@ -1089,7 +1089,7 @@ class WaveSRecognizer(CandlestickPatternRecognizer):
             # Secondary corrections are typically 50-80% of the prior move
             if 0.5 < correction_depth < 0.8:
                 # Check if it's a secondary correction (following a primary move)
-                prior_trend = 1 if start.price < end.price else -1
+                prior_trend: float = 1.0 if start.price < end.price else -1.0
                 correction_direction = 1 if middle.price > start.price else -1
 
                 if (

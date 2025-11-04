@@ -11,7 +11,6 @@ from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
@@ -31,7 +30,7 @@ def create_aggressive_trading_env():
     n_steps = 1000
 
     # Generate trending price data
-    t = np.linspace(0, 4*np.pi, n_steps)
+    t = np.linspace(0, 4 * np.pi, n_steps)
     trend = 0.1 * np.sin(t * 0.1)  # Long-term trend
     noise = np.random.normal(0, 0.005, n_steps)  # Short-term noise
     price_changes = trend + noise
@@ -42,7 +41,9 @@ def create_aggressive_trading_env():
     # Create simple observation space (price, trend, position)
     class AggressiveTradingEnv(gym.Env):
         def __init__(self):
-            self.action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+            self.action_space = gym.spaces.Box(
+                low=-1, high=1, shape=(1,), dtype=np.float32
+            )
             self.observation_space = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32
             )
@@ -82,7 +83,9 @@ def create_aggressive_trading_env():
 
             # Calculate reward with stronger exploration encouragement
             current_portfolio_value = self.balance + self.position * price
-            portfolio_return = (current_portfolio_value - self.prev_portfolio_value) / self.prev_portfolio_value
+            portfolio_return = (
+                current_portfolio_value - self.prev_portfolio_value
+            ) / self.prev_portfolio_value
 
             # Stronger penalty for no action to force exploration
             action_penalty = 0.0
@@ -103,14 +106,19 @@ def create_aggressive_trading_env():
         def _get_observation(self):
             price = self.prices[self.current_step]
             # Simple features: price, trend, position, balance_ratio, step_ratio
-            trend = (price - self.prices[max(0, self.current_step-10)]) / self.prices[max(0, self.current_step-10)]
-            return np.array([
-                price / 10000000,  # Normalized price
-                trend,  # Price trend
-                self.position,  # Current position
-                self.balance / self.initial_balance,  # Balance ratio
-                self.current_step / len(self.prices)  # Time progress
-            ], dtype=np.float32)
+            trend = (price - self.prices[max(0, self.current_step - 10)]) / self.prices[
+                max(0, self.current_step - 10)
+            ]
+            return np.array(
+                [
+                    price / 10000000,  # Normalized price
+                    trend,  # Price trend
+                    self.position,  # Current position
+                    self.balance / self.initial_balance,  # Balance ratio
+                    self.current_step / len(self.prices),  # Time progress
+                ],
+                dtype=np.float32,
+            )
 
     return AggressiveTradingEnv()
 
@@ -138,8 +146,8 @@ def main():
         verbose=1,
         # Maximum exploration parameters
         policy_kwargs={
-            'net_arch': [64, 64],
-        }
+            "net_arch": [64, 64],
+        },
     )
 
     # Setup checkpoint callback
@@ -159,7 +167,7 @@ def main():
             "batch_size": 64,
             "net_arch": [64, 64],
             "ent_coef": 1.0,
-            "learning_starts": 25
+            "learning_starts": 25,
         },
         "aggressive_improvements": [
             "Very low action thresholds (±0.02)",
@@ -167,18 +175,16 @@ def main():
             "Added bonus for taking actions (+0.0005)",
             "Maximum entropy coefficient (1.0)",
             "Higher learning rate (5e-4)",
-            "Very early learning start (25 steps)"
+            "Very early learning start (25 steps)",
         ],
-        "training_events": []
+        "training_events": [],
     }
 
     # Train for 5000 steps
     logger.info("Starting aggressive exploration training for 5000 steps...")
     try:
         model.learn(
-            total_timesteps=5000,
-            callback=checkpoint_callback,
-            progress_bar=True
+            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
         )
         logger.info("Training completed successfully")
 
@@ -188,19 +194,19 @@ def main():
         logger.info(f"Model saved to {model_path}")
 
         # Update training stats
-        training_stats.update({
-            "training_completed": True,
-            "model_path": model_path,
-            "final_status": "success"
-        })
+        training_stats.update(
+            {
+                "training_completed": True,
+                "model_path": model_path,
+                "final_status": "success",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Training failed: {e}")
-        training_stats.update({
-            "training_completed": False,
-            "error": str(e),
-            "final_status": "failed"
-        })
+        training_stats.update(
+            {"training_completed": False, "error": str(e), "final_status": "failed"}
+        )
 
     # Save training stats
     stats_path = "analysis/training_stats_5000step_aggressive.json"
@@ -209,16 +215,16 @@ def main():
     logger.info(f"Training stats saved to {stats_path}")
 
     # Print summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("AGGRESSIVE EXPLORATION 5000-STEP TRAINING SUMMARY")
-    print("="*50)
+    print("=" * 50)
     print(f"Status: {training_stats['final_status']}")
     print(f"Timesteps: {training_stats['total_timesteps']}")
     print(f"Model saved: {training_stats.get('model_path', 'N/A')}")
     print("\nAggressive improvements applied:")
-    for improvement in training_stats['aggressive_improvements']:
+    for improvement in training_stats["aggressive_improvements"]:
         print(f"  - {improvement}")
-    print("="*50)
+    print("=" * 50)
 
 
 if __name__ == "__main__":

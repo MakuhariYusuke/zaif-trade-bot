@@ -78,6 +78,12 @@ class RewardSettings:
     )
     enable_forced_diversity: bool = False
     curriculum_stage: str = "simple"
+    asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(default_factory=lambda: {
+        "long_position_reward_multiplier": 1.3,
+        "short_position_reward_multiplier": 0.7,
+        "long_position_penalty_multiplier": 0.9,
+        "short_position_penalty_multiplier": 0.95
+    })
 
 
 @dataclasses.dataclass
@@ -87,6 +93,9 @@ class EnvironmentConfig:
     # Core settings
     reward_scaling: float = DEFAULT_REWARD_SCALING
     transaction_cost: float = 0.0
+    commission: float = 0.0  # Alias for transaction_cost for backward compatibility
+    slippage: float = 0.0  # Slippage cost
+    max_steps: Optional[int] = None  # Maximum steps per episode
     max_position_size: float = 1.0
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
@@ -122,6 +131,15 @@ class EnvironmentConfig:
     reward_sharpe_bonus_scale: float = DEFAULT_REWARD_SHARPE_BONUS_SCALE
     reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
     enable_forced_diversity: bool = False
+
+    # Action bonuses and penalties
+    action_bonuses: Dict[str, float] = dataclasses.field(default_factory=lambda: {
+        "buy_action_bonus": 0.0,
+        "sell_action_bonus": 0.0,
+        "hold_action_bonus": 0.0
+    })
+    base_action_penalty: float = 0.015
+    behavior_optimization: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
     # 🔧 CRITICAL FIX: 現実的な資金設定
     # Bitcoin価格 ≈ 18,000,000円 を考慮した設定
@@ -257,6 +275,7 @@ class EnvironmentConfig:
                     "reward_max_consecutive_trades",
                     "reward_volatility_window",
                     "target_feature_count",
+                    "max_steps",
                 ] and isinstance(value, (float, str)):
                     try:
                         value = int(float(value))
@@ -265,6 +284,8 @@ class EnvironmentConfig:
                 elif field.name in [
                     "reward_scaling",
                     "transaction_cost",
+                    "commission",
+                    "slippage",
                     "max_position_size",
                     "risk_free_rate",
                     "stop_loss_threshold",
@@ -347,11 +368,31 @@ class EnvironmentConfig:
                     "signal_penalty_weight",
                     "signal_weight",
                     "guidance_decay",
+                    "base_action_penalty",
+                    "commission",
+                    "slippage",
                 ] and isinstance(value, str):
                     try:
                         value = float(value)
                     except (ValueError, TypeError):
                         pass  # Keep original value
+                elif key == "max_steps" and isinstance(value, (float, str)):
+                    try:
+                        value = int(float(value)) if value is not None else None
+                    except (ValueError, TypeError):
+                        pass  # Keep original value
+                elif key == "action_bonuses" and isinstance(value, dict):
+                    # Convert action_bonuses dict values to float
+                    converted_bonuses = {}
+                    for bonus_key, bonus_value in value.items():
+                        if isinstance(bonus_value, (int, float, str)):
+                            try:
+                                converted_bonuses[bonus_key] = float(bonus_value)
+                            except (ValueError, TypeError):
+                                converted_bonuses[bonus_key] = bonus_value
+                        else:
+                            converted_bonuses[bonus_key] = bonus_value
+                    value = converted_bonuses
                 config_kwargs[key] = value
 
         # Handle nested training.environment section
@@ -479,6 +520,53 @@ class EnvironmentConfig:
                 config_kwargs["reward_settings"] = rs
 
         return cls(**config_kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
+        """
+        Create EnvironmentConfig from dictionary.
+        
+        Args:
+            config_dict: Configuration dictionary
+            
+        Returns:
+            EnvironmentConfig instance
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.debug(f"EnvironmentConfig.from_dict called with config_dict keys: {list(config_dict.keys())}")
+        
+        # Create instance with defaults
+        instance = cls()
+        
+        # Update fields from config_dict
+        for key, value in config_dict.items():
+            if hasattr(instance, key):
+                logger.debug(f"Setting {key} = {value}")
+                try:
+                    if key == "action_bonuses" and isinstance(value, dict):
+                        # Handle action_bonuses dict
+                        converted_bonuses = {}
+                        for bonus_key, bonus_value in value.items():
+                            converted_bonuses[bonus_key] = float(bonus_value)
+                        setattr(instance, key, converted_bonuses)
+                    elif key in ["base_action_penalty", "commission", "slippage"]:
+                        # Handle float fields
+                        setattr(instance, key, float(value))
+                    elif key == "max_steps":
+                        # Handle int fields
+                        setattr(instance, key, int(float(value)) if value is not None else None)
+                    else:
+                        # Default assignment
+                        setattr(instance, key, value)
+                except Exception as e:
+                    logger.error(f"Failed to set {key} = {value}: {e}")
+            else:
+                logger.warning(f"Unknown config key: {key}")
+        
+        logger.debug(f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}")
+        return instance
 
     @staticmethod
     def _as_bool(
