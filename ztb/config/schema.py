@@ -63,6 +63,8 @@ class RewardSettings(BaseModel):
 class EnvironmentConfig(BaseModel):
     """Trading environment configuration."""
 
+    model_config = ConfigDict(extra="allow")
+    
     initial_balance: float = DEFAULT_INITIAL_BALANCE
     transaction_cost: float = DEFAULT_TRANSACTION_COST
     max_position_size: float = 1.0
@@ -74,6 +76,17 @@ class EnvironmentConfig(BaseModel):
     feature_set: str = "default"
     csv_path: Optional[str] = None
     reward_settings: RewardSettings = Field(default_factory=RewardSettings)
+
+
+class CurriculumLearningConfig(BaseModel):
+    """Curriculum learning configuration."""
+
+    model_config = ConfigDict(extra="allow")
+    
+    enabled: bool = False
+    curriculum_stage: str = "pnl_focused"
+    stage_progression: List[str] = Field(default_factory=list)
+    stage_timesteps: List[int] = Field(default_factory=list)
 
 
 class SACHyperparameters(BaseModel):
@@ -108,12 +121,15 @@ class PPOHyperparameters(BaseModel):
 class TrainingConfig(BaseModel):
     """Training configuration."""
 
+    model_config = ConfigDict(extra="allow")
+
     model_name: str
     algorithm: str = Field(..., pattern="^(sac|ppo)$")
     total_timesteps: int = 10000
     data_config: DataConfig = Field(default_factory=DataConfig)
     environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
+    curriculum_learning: Optional[CurriculumLearningConfig] = Field(default=None, description="Curriculum learning configuration")
     sac_hyperparameters: Optional[SACHyperparameters] = None
     ppo_hyperparameters: Optional[PPOHyperparameters] = None
 

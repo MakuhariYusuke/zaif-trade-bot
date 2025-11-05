@@ -210,9 +210,16 @@ class RewardCalculator(BaseRewardCalculator):
             )
 
         # Apply forced balance penalty if in forced_balance curriculum stage
+        # Support multiple curriculum stage names that enable balance penalty
         balance_penalty = 0.0
-        if curriculum_stage == "forced_balance":
-            self.logger.debug("forced_balance stage detected")
+        balance_penalty_enabled_stages = (
+            "forced_balance",
+            "balanced_penalty",
+            "balance_optimization",
+            "balance_penalty",
+        )
+        if curriculum_stage in balance_penalty_enabled_stages:
+            self.logger.debug(f"Balance penalty stage detected: {curriculum_stage}")
             # Calculate action distribution imbalance
             total_actions = len(self._recent_actions)
             if (
@@ -229,23 +236,16 @@ class RewardCalculator(BaseRewardCalculator):
                 sell_ratio = sell_count / total_actions
                 hold_ratio = hold_count / total_actions
 
-                # Penalize deviation from target distribution (stronger penalty)
+                # Penalize BUY/SELL imbalance (fix for balance penalty bug)
                 balance_penalty_scale = self._get_behavior_opt("balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE)
-                balance_penalty = (
-                    (
-                        abs(buy_ratio - target_ratio)
-                        + abs(sell_ratio - target_ratio)
-                        + abs(hold_ratio - target_ratio)
-                    )
-                    * balance_penalty_scale
-                )  # Use configurable scale
+                balance_penalty = abs(buy_ratio - sell_ratio) * balance_penalty_scale
 
                 # Debug logging
                 if (
                     total_actions % 10 == 0
                 ):  # Changed from 50 to 10 for more frequent logging
                     self.logger.info(
-                        f"FORCED_BALANCE: total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, penalty={balance_penalty:.6f}"
+                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, penalty={balance_penalty:.6f}"
                     )
 
         redundant_trade_penalty = 0.0

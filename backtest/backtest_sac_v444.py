@@ -22,6 +22,8 @@ sys.path.insert(0, str(project_root))
 from stable_baselines3 import SAC
 
 from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.logging_utils import get_logger
 
@@ -65,7 +67,7 @@ class SACV444Backtester:
         logger.info(f"Loaded data from {csv_path}, shape: {df.shape}")
 
         # Initialize environment with data and regime classifier
-        env_config = self.config.get("environment", {}).get("config", {})
+        env_config = self.config.get("environment", {})
         env_config["advanced_market_regime"] = True
         # If the trained model expects a specific, fixed feature ordering/size,
         # allow overriding feature selection here to ensure the backtest env
@@ -216,6 +218,18 @@ class SACV444Backtester:
             for regime, count in regime_counts.items()
         }
 
+        # Action distribution
+        discrete_actions = [continuous_to_discrete_action(action) for action in actions_history]
+        buy_count = discrete_actions.count(ACTION_BUY)
+        sell_count = discrete_actions.count(ACTION_SELL)
+        hold_count = discrete_actions.count(ACTION_HOLD)
+        total_actions = len(discrete_actions)
+        action_distribution = {
+            "BUY": buy_count / total_actions * 100 if total_actions > 0 else 0,
+            "SELL": sell_count / total_actions * 100 if total_actions > 0 else 0,
+            "HOLD": hold_count / total_actions * 100 if total_actions > 0 else 0,
+        }
+
         return {
             "total_return_pct": total_return,
             "max_drawdown_pct": max_drawdown,
@@ -224,6 +238,7 @@ class SACV444Backtester:
             "final_portfolio_value": final_value,
             "total_trades": len(actions_history),
             "regime_distribution": regime_distribution,
+            "action_distribution": action_distribution,
         }
 
     def save_results(self, results: Dict[str, Any], output_path: str):
@@ -284,6 +299,7 @@ def main():
         logger.info("Sharpe Ratio: %.2f", metrics["sharpe_ratio"])
         logger.info("Max Drawdown: %.2f%%", metrics["max_drawdown_pct"])
         logger.info("Regime Distribution: %s", metrics["regime_distribution"])
+        logger.info("Action Distribution: %s", metrics["action_distribution"])
 
         # Save results
         backtester.save_results(results, args.output)
