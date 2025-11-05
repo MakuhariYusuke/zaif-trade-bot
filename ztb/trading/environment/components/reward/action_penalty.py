@@ -38,12 +38,12 @@ class ActionPenaltyCalculator:
             current_price: Current asset price
             atr: Average true range
             base_action_penalty: Base penalty for trading actions
-            buy_action_bonus: Bonus for BUY action (applied as negative penalty)
-            sell_action_bonus: Bonus for SELL action (applied as negative penalty)
-            hold_action_bonus: Bonus for HOLD action (applied as negative penalty)
+            buy_action_bonus: Bonus for BUY action (applied as negative penalty, resulting in reward)
+            sell_action_bonus: Bonus for SELL action (applied as negative penalty, resulting in reward)
+            hold_action_bonus: Bonus for HOLD action (applied as negative penalty, resulting in reward)
 
         Returns:
-            Action penalty (positive = penalty, negative = bonus)
+            Action penalty (positive = penalty, negative = bonus reward)
         """
         if action == ACTION_HOLD:
             position_size_factor = abs(position) / max(effective_max_position, EPSILON)
@@ -55,18 +55,21 @@ class ActionPenaltyCalculator:
                 * volatility_factor  # hold_penalty_base  # hold_penalty_position_factor
             )
             penalty *= 1.0  # hold_penalty_multiplier
-            # Apply hold bonus as negative penalty (bonus reduces penalty)
+            # Apply hold bonus as negative penalty (results in negative penalty = bonus reward)
+            # Allow negative values to represent bonuses
             penalty = penalty - hold_action_bonus
-            return max(0.0, penalty)
+            return penalty
         elif action == ACTION_BUY:
             penalty = base_action_penalty
-            # Apply buy bonus as negative penalty (bonus reduces penalty)
+            # Apply buy bonus as negative penalty (results in negative penalty = bonus reward)
+            # Allow negative values to represent bonuses
             penalty = penalty - buy_action_bonus
-            return max(0.0, penalty)
+            return penalty
         elif action == ACTION_SELL:
             penalty = base_action_penalty
-            # Apply sell bonus as negative penalty (bonus reduces penalty)
+            # Apply sell bonus as negative penalty (results in negative penalty = bonus reward)
+            # Allow negative values to represent bonuses
             penalty = penalty - sell_action_bonus
-            return max(0.0, penalty)
+            return penalty
 
         return 0.0

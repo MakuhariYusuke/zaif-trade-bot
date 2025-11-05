@@ -333,8 +333,12 @@ class RewardCalculator(BaseRewardCalculator):
 
         # Combine all components
         self.logger.debug(
-            f"Before total_reward calc: base_reward={base_reward:.6f}, balance_penalty={balance_penalty:.6f}, redundant_trade_penalty={redundant_trade_penalty:.6f}, action_penalty={action_penalty:.6f}"
+            f"Reward breakdown: base={base_reward:.6f}, action_penalty={action_penalty:.6f}, position_penalty={position_penalty:.6f}, "
+            f"diversity_bonus={diversity_bonus:.6f}, win_rate_bonus={win_rate_bonus:.6f}, drawdown_penalty={drawdown_penalty:.6f}, "
+            f"stagnation_penalty={stagnation_penalty:.6f}, growth_bonus={growth_bonus:.6f}, win_streak_bonus={win_streak_bonus:.6f}, "
+            f"balance_penalty={balance_penalty:.6f}, redundant_trade_penalty={redundant_trade_penalty:.6f}"
         )
+        
         total_reward = (
             base_reward
             - action_penalty
@@ -348,6 +352,20 @@ class RewardCalculator(BaseRewardCalculator):
             - balance_penalty
             - redundant_trade_penalty
         )
+        
+        # Log action-specific statistics periodically
+        if step % 100 == 0:
+            total_actions = len(self._recent_actions) if hasattr(self, '_recent_actions') else 0
+            if total_actions > 0:
+                action_dist = {}
+                for act in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
+                    action_dist[act] = self._recent_actions.count(act) / total_actions * 100
+                self.logger.info(
+                    f"Action distribution (step {step}, last {total_actions} actions): "
+                    f"HOLD={action_dist.get(0, 0):.1f}%, BUY={action_dist.get(1, 0):.1f}%, SELL={action_dist.get(-1, 0):.1f}% | "
+                    f"total_reward_before_clip={total_reward:.6f}"
+                )
+        
         self.logger.debug(f"After total_reward calc: total_reward={total_reward:.6f}")
 
         # Apply asymmetric scaling
