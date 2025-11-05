@@ -148,10 +148,6 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
                 "hold_penalty_multiplier", 1.0
             )
 
-            self.logger.debug(
-                f"HOLD penalty settings - base: {hold_penalty_base}, position_factor: {hold_penalty_position_factor}, multiplier: {hold_penalty_multiplier}"
-            )
-
             position_size_factor = abs(position) / max(effective_max_position, EPSILON)
             volatility_factor = min(atr / (current_price * 0.01), 1.0)
             base_action_penalty = (
@@ -161,13 +157,18 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
                 * volatility_factor
             )
             base_action_penalty *= hold_penalty_multiplier
-            # Add action bonus for HOLD
+            # WARNING: Adding bonus here acts as penalty in PnL stage
+            # HOLD: base + 2.0 bonus = total penalty
             return base_action_penalty + hold_action_bonus
         elif action == ACTION_BUY:
-            # Apply action bonus for BUY
-            return base_action_penalty + buy_action_bonus
+            # WARNING: In PnL stage, bonus becomes penalty! BUY gets +10 penalty
+            # Config: buy_action_bonus=10.0, so BUY is penalized heavily
+            total_penalty = base_action_penalty + buy_action_bonus
+            return total_penalty
         elif action == ACTION_SELL:
-            # Apply action bonus for SELL
-            return base_action_penalty + sell_action_bonus
+            # WARNING: In PnL stage, bonus becomes penalty! SELL gets +5 penalty
+            # Config: sell_action_bonus=5.0, so SELL is less penalized than BUY
+            total_penalty = base_action_penalty + sell_action_bonus
+            return total_penalty
 
         return 0.0
