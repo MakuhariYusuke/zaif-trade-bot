@@ -1,0 +1,117 @@
+================================================================================
+🎯 SAC v444 PARAMETER TUNING RECOMMENDATIONS
+================================================================================
+
+1️⃣ BALANCE PENALTY IMPACT ANALYSIS:
+--------------------------------------------------------------------------------
+
+  ORIGINAL:
+    • Penalty Scale: 1000.0
+    • Buy Ratio 0.0: Penalty = 500.0, Total Reward = -600.0
+    • Buy Ratio 0.1: Penalty = 400.0, Total Reward = -500.0
+    • Buy Ratio 0.2: Penalty = 300.0, Total Reward = -400.0
+
+  SCALE_200:
+    • Penalty Scale: 200.0
+    • Buy Ratio 0.0: Penalty = 100.0, Total Reward = -200.0
+    • Buy Ratio 0.1: Penalty = 80.0, Total Reward = -180.0
+    • Buy Ratio 0.2: Penalty = 60.0, Total Reward = -160.0
+
+  SCALE_300:
+    • Penalty Scale: 300.0
+    • Buy Ratio 0.0: Penalty = 150.0, Total Reward = -250.0
+    • Buy Ratio 0.1: Penalty = 120.0, Total Reward = -220.0
+    • Buy Ratio 0.2: Penalty = 90.0, Total Reward = -190.0
+
+  SCALE_500:
+    • Penalty Scale: 500.0
+    • Buy Ratio 0.0: Penalty = 250.0, Total Reward = -350.0
+    • Buy Ratio 0.1: Penalty = 200.0, Total Reward = -300.0
+    • Buy Ratio 0.2: Penalty = 150.0, Total Reward = -250.0
+
+
+2️⃣ ACTION BONUSES COMPARISON:
+--------------------------------------------------------------------------------
+
+  ORIGINAL:
+    • BUY:     5.0
+    • SELL:    0.0
+    • HOLD:    0.0
+    • TOTAL:    5.0
+
+  SCALE_200:
+    • BUY:    10.0
+    • SELL:    5.0
+    • HOLD:    2.0
+    • TOTAL:   17.0
+
+  SCALE_300:
+    • BUY:    15.0
+    • SELL:   10.0
+    • HOLD:    3.0
+    • TOTAL:   28.0
+
+  SCALE_500:
+    • BUY:    20.0
+    • SELL:   15.0
+    • HOLD:    5.0
+    • TOTAL:   40.0
+
+
+3️⃣ RECOMMENDED TESTING STRATEGY:
+--------------------------------------------------------------------------------
+
+  Phase 1: Test scale_200 (Minimal Penalty)
+    → Objective: Check if reward becomes positive/less negative
+    → Expected: Reward -5000 to -2000, More balanced actions
+    → Time: 3000 steps
+    
+  Phase 2: Test scale_300 (Moderate Penalty)
+    → Objective: Find optimal balance between penalty and bonuses
+    → Expected: Reward -4000 to -1500, BUY 30-45%, SELL 30-45%
+    → Time: 3000 steps
+    
+  Phase 3: Test scale_500 (Higher Penalty)
+    → Objective: Maximize action balance enforcement
+    → Expected: Reward -3000 to -500, BUY 35-50%, SELL 35-50%
+    → Time: 3000 steps
+        
+
+4️⃣ SUCCESS CRITERIA (優先度順):
+--------------------------------------------------------------------------------
+
+  ✅ Priority 1: Mean Reward Improvement
+     • Current: -9845
+     • Target: > -5000 (50% improvement)
+     • Metric: Reward not collapsing due to balance penalty
+  
+  ✅ Priority 2: BUY/SELL Balance
+     • Current: BUY 18%, SELL 66.85% (Diff: 48.85%)
+     • Target: BUY 30-40%, SELL 30-40% (Diff: < 10%)
+     • Metric: |BUY_ratio - SELL_ratio| < 0.1
+  
+  ✅ Priority 3: HOLD Action Increase
+     • Current: 15.15%
+     • Target: 20-30%
+     • Metric: More stable trading behavior
+  
+  ✅ Priority 4: Continuous Action Distribution
+     • Current: Mean -0.4968 (SELL biased)
+     • Target: Mean closer to 0 (balanced)
+     • Metric: Reduced negative skew
+        
+
+5️⃣ IMPLEMENTATION NOTES:
+--------------------------------------------------------------------------------
+
+  • Penalties are cumulative: Each step, the balance penalty is applied
+  • Current issue: -1000 * 0.4885 = -488.5 penalty EVERY STEP
+  • With scale_200: -200 * similar_imbalance ≈ -100 penalty per step
+  • This should allow positive PnL to emerge
+  
+  • Action bonuses provide positive incentive to diverse actions
+  • SELL bias comes from strong negative continuous action distribution
+  • Need to monitor if regime-specific targets help
+        
+
+================================================================================

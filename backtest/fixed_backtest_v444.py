@@ -7,6 +7,10 @@ import logging
 import sys
 from pathlib import Path
 
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
@@ -26,7 +30,7 @@ sys.path.append(str(Path(__file__).parent))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.utils.v4xx_config_converter import V4XXConfigConverter
+from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 
 
 def run_backtest():
@@ -34,113 +38,105 @@ def run_backtest():
     print("🚀 Fixed SAC v444 Backtest")
 
     try:
-        # 設定読み込み (学習時と同じ)
-        config_path = "config/sac_v444_advanced_regime_adaptation_config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        print("✅ Config loaded successfully")
-
-        # データ読み込み (学習時と同じ)
-        data_file = "data/btc_jpy_featured_dataset.csv"
-        df = pd.read_csv(data_file)
+        # 設定ファイルのパス
+        config_path = "config/sac_v444_3_balanced_penalty_scale_200.json"
+        
+        # V4XXUnifiedTrainerを使って環境を作成（学習時と同じ）
+        print(f"Loading config: {config_path}")
+        trainer = V4XXUnifiedTrainer(config_path=config_path)
+        
+        # 設定を検証
+        if not trainer.validate_config():
+            raise ValueError("Configuration validation failed")
+        
+        # トレーニングデータを取得するためにtrainerの内部データを使用
+        # trainer.configからデータパスを取得
+        data_config = trainer.config.get("training", {}).get("data_config", {})
+        data_path = data_config.get("data_path", "data/btc_jpy_featured_dataset.csv")
+        
+        if not Path(data_path).exists():
+            raise FileNotFoundError(f"Data file not found: {data_path}")
+        
+        print(f"✅ Data loaded: {data_path}")
+        df = pd.read_csv(data_path)
         print(f"✅ Data loaded: {len(df)} rows")
-
-        # configを学習時と同じ形式に変換
-        converter = V4XXConfigConverter()
-        unified_config = converter.convert_to_unified(config)
-
-        # 環境設定を取得 (変換後のconfigを使用)
-        env_config = unified_config.get("environment", {})
-
-        # SACモデル用にcontinuous action spaceを強制設定
-        env_config["use_continuous_actions"] = True
-
-        # 学習時と同じcurriculum_stageを設定
-        env_config["curriculum_stage"] = "forced_balance"
-
-        # EnvironmentConfigオブジェクト作成
-        env_config_obj = EnvironmentConfig(**env_config)
-
-        # 報酬設定を取得
-        reward_settings = unified_config.get("reward_settings", {})
-
-        # 学習時と同じcurriculum_stageを設定
-        reward_settings["curriculum_stage"] = "forced_balance"
-
-        # reward clipping範囲を広げてbalance_penaltyが効くようにする
-        reward_settings["reward_clip_min"] = -10000.0
-        reward_settings["reward_clip_max"] = 10000.0
-
-        # 環境作成 (学習時と同じ方法で)
-        base_env = HeavyTradingEnv(
+        
+        # trainerを使って環境を作成（学習時と同じ方法）
+        # trainerの内部メソッドを呼び出して環境を取得
+        from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+        
+        # SAC trainerを作成
+        sac_trainer = SACTrainer(trainer.config, logger=trainer.logger)
+        
+        # 環境設定を取得
+        env_config = trainer.config.get("training", {}).get("environment", {})
+        actual_env_config = env_config.get("config", env_config)
+        
+        # EnvironmentConfigに変換
+        from ztb.trading.environment.utils.config import EnvironmentConfig
+        if isinstance(actual_env_config, EnvironmentConfig):
+            env_config_obj = actual_env_config
+        elif isinstance(actual_env_config, dict):
+            env_config_obj = EnvironmentConfig.from_dict(actual_env_config)
+        else:
+            env_config_obj = EnvironmentConfig.from_dict(trainer.config)
+        
+        # HeavyTradingEnvを作成
+        env = HeavyTradingEnv(
             df=df,
             config=env_config_obj,
+            optimizer_tracker=trainer.optimizer_tracker,
         )
-        print("✅ Base environment created with same settings as training")
-
-        # VecNormalize 用に DummyVecEnv でラップし、訓練時の正規化統計を適用する
-        vec = DummyVecEnv([lambda: base_env])
-        vec_norm = VecNormalize(vec, norm_obs=True, norm_reward=False, clip_obs=10.0)
-
-        # ウォームアップを実行して正規化統計を収集
-        print("🔄 Warming up environment to collect normalization statistics...")
-        warmup_steps = 5000  # 十分なステップ数で統計を収集
-        obs = vec_norm.reset()
-        for _ in range(warmup_steps):
-            # ランダムアクションで環境をステップ
-            action = vec_norm.action_space.sample()
-            obs, _, done, _ = vec_norm.step([action])
-            if done:
-                obs = vec_norm.reset()
-        print("✅ Environment warmed up, normalization statistics collected")
-
-        # 正規化統計を保存
-        from ztb.utils.normalization import NormalizationStats
-
-        try:
-            # 特徴量名を取得（環境から）
-            feature_names = getattr(base_env, "feature_names", None)
-            if feature_names is None:
-                # デフォルトの特徴量名を生成
-                obs_shape = vec_norm.observation_space.shape[0]
-                feature_names = [f"feature_{i}" for i in range(obs_shape)]
-
-            # NormalizationStats を作成
-            stats = NormalizationStats.from_vec_normalize(
-                vec_norm, feature_names=feature_names
-            )
-
-            # 保存
-            stats.save(Path("models") / "scaler_v444_regenerated.npz")
-            print(
-                "✅ Saved regenerated normalization statistics to models/scaler_v444_regenerated.npz"
-            )
-
-            # 統計を適用
-            stats.apply_to_vec_normalize(vec_norm, strict=False)
-            print("✅ Applied regenerated normalization stats to VecNormalize wrapper")
-        except Exception as e:
-            print(f"⚠️ Failed to regenerate normalization stats: {e}")
-
-        # モデルディレクトリに保存された scaler.npz があれば適用する（フォールバック）
-        try:
-            stats = load_scaler(Path("models"), strict=False)
-            if stats is not None:
-                stats.apply_to_vec_normalize(vec_norm, strict=False)
-                print("✅ Applied saved normalization stats to VecNormalize wrapper")
-            else:
-                print(
-                    "⚠️ No normalization stats found (models/scaler.npz). Proceeding without applying stats."
+        
+        # 市場レジーム適応を有効化（設定されている場合）
+        market_regime_config = trainer.config.get("training", {}).get("market_regime_adaptation", {})
+        if market_regime_config.get("enabled", False):
+            try:
+                from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+                regime_classifier = MarketRegimeClassifier(config=market_regime_config)
+                env.enable_market_regime_adaptation(
+                    regime_classifier=regime_classifier,
+                    adaptation_config=market_regime_config,
                 )
+                print("✅ Market regime adaptation enabled in environment")
+            except Exception as e:
+                print(f"⚠️ Failed to enable market regime adaptation: {e}")
+        
+        print(f"✅ Base environment created with observation space: {env.observation_space}")
+        print(f"✅ Base environment created with action space: {env.action_space}")
+
+        # VecNormalize でラップ
+        from stable_baselines3.common.vec_env import DummyVecEnv
+        from stable_baselines3.common.vec_env import VecNormalize
+        
+        vec = DummyVecEnv([lambda: env])
+        vec_norm = VecNormalize(vec, norm_obs=True, norm_reward=False, clip_obs=10.0)
+        
+        # モデルディレクトリに保存された scaler.npz があれば適用する
+        try:
+            from ztb.utils.normalization import NormalizationStats
+            
+            # まずトレーニング時に保存されたscaler_v444_regenerated.npzを試す
+            scaler_path = Path("models") / "scaler_v444_regenerated.npz"
+            if scaler_path.exists():
+                stats = NormalizationStats.load(scaler_path)
+                stats.apply_to_vec_normalize(vec_norm, strict=False)
+                print(f"✅ Applied regenerated normalization stats from {scaler_path}")
+            else:
+                # フォールバックとして通常のscaler.npzを試す
+                stats = load_scaler(Path("models"), strict=False)
+                if stats is not None:
+                    stats.apply_to_vec_normalize(vec_norm, strict=False)
+                    print("✅ Applied saved normalization stats to VecNormalize wrapper")
+                else:
+                    print(
+                        "⚠️ No normalization stats found. Proceeding without applying stats."
+                    )
         except Exception as e:
             print(f"⚠️ Failed to apply normalization stats: {e}")
 
-        # 最終的にモデルには正規化済み vec 環境を使う
-        env = vec_norm
-        print("✅ Environment wrapped with VecNormalize")
-
         # モデル読み込み
-        model_path = "models/sac_v444_advanced_regime_adaptation.zip"
+        model_path = "models/sac_v444_3_balanced_penalty_scale_200.zip"
         model = SAC.load(model_path)
         print(f"✅ Model loaded: {model_path}")
         print(f"   Observation space: {model.observation_space}")
@@ -149,7 +145,7 @@ def run_backtest():
         # アクション分析
         print("Starting action analysis...")
         # VecNormalize の reset は配列を返す (batched)
-        obs = env.reset()
+        obs = vec_norm.reset()
         # obs は形 (1, n) なので model.predict に渡すために 1 次元配列に変換
         if isinstance(obs, (list, tuple)):
             # 古い env.reset() の戻り値に対応（念のため）
@@ -209,7 +205,7 @@ def run_backtest():
                 if np.ndim(action_raw) == 0
                 else np.array([action_raw])
             )
-            step_obs = env.step(step_action)
+            step_obs = vec_norm.step(step_action)
             # VecEnv.step -> (obs, rewards, dones, infos)
             if len(step_obs) == 4:
                 obs, rewards, dones, infos = step_obs
@@ -225,7 +221,7 @@ def run_backtest():
             if i > 0 and i % 100 == 0:
                 # VecNormalize ラッパの下の env にアクセスする
                 underlying_env = (
-                    getattr(env, "venv", None) or getattr(env, "envs", None) or env
+                    getattr(vec_norm, "venv", None) or getattr(vec_norm, "envs", None) or vec_norm
                 )
                 try:
                     # attempt to find base env with reward_calculator

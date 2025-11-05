@@ -6,13 +6,9 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.trading.environment.constants import BTC_MIN_UNIT   # 最小取引単位 (0.01 mBTC, 約1,800円相当)
 from ztb.utils.logging_utils import get_logger
 
-from ztb.trading.constants import (
-    ACTION_BUY,
-    ACTION_HOLD,
-    ACTION_SELL,
-)
 if TYPE_CHECKING:
     from ztb.trading.environment.utils.config import EnvironmentConfig
 
@@ -46,12 +42,18 @@ class ActionValidator:
         legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
 
         current_price = self._resolve_price(current_step, price_array, df)
+        if current_price == 0.0:
+            logger.warning(f"Price information could not be resolved at step {current_step}. Returning only HOLD as legal action.")
+            legal = np.zeros(3, dtype=np.int_)
+            legal[0] = 1
+            return legal
+
         portfolio_value = self.initial_portfolio_value + total_pnl
         position_size = self.config.max_position_size
         transaction_cost = self.config.transaction_cost
 
         # HOLDは常に合法
-        legal[ACTION_HOLD] = 1
+        legal[0] = 1
 
         # 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）
         exchange = getattr(self.config, "exchange", "coincheck").lower()
@@ -65,10 +67,10 @@ class ActionValidator:
                     # 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）
                     if position > 0:
                         # ロングポジション保有中: SELLでクローズ可能
-                        legal[ACTION_SELL] = 1
+                        legal[2] = 1
                     elif position < 0:
                         # ショートポジション保有中: BUYでクローズ可能
-                        legal[ACTION_BUY] = 1
+                        legal[1] = 1
                     # その他の新規建ては制限
                     return legal
 
@@ -77,9 +79,9 @@ class ActionValidator:
             if consecutive_trade_steps >= max_consecutive_trades:
                 # 連続取引上限に達した場合もポジションクローズは許可
                 if position > 0:
-                    legal[ACTION_SELL] = 1  # SELL to close long
+                    legal[2] = 1  # SELL to close long
                 elif position < 0:
-                    legal[ACTION_BUY] = 1  # BUY to close short
+                    legal[1] = 1  # BUY to close short
                 return legal
 
         # 市場ボラティリティチェック（高ボラティリティ時は取引制限）
@@ -106,11 +108,10 @@ class ActionValidator:
             affordable_size = (
                 portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
             )
-            min_trade_size = 0.0001  # 最小取引単位 (0.01 mBTC, 約1,800円相当)
 
             # 条件: 理想サイズが買えるか、または最小単位以上が買える
-            if portfolio_value >= ideal_buy_cost or affordable_size >= min_trade_size:
-                legal[ACTION_BUY] = 1
+            if portfolio_value >= ideal_buy_cost or affordable_size >= BTC_MIN_UNIT:
+                legal[1] = 1
 
         # SELL: ロングまたはフラットの場合
         # 🔧 CRITICAL FIX: ショートポジション判定の簡素化
@@ -121,16 +122,10 @@ class ActionValidator:
 
             # 🔧 少額取引対応: BUYと同様に柔軟に判定
             affordable_size = portfolio_value * 0.9 / current_price
-            min_trade_size = 0.0001  # 最小取引単位
+            if portfolio_value >= ideal_sell_value or affordable_size >= BTC_MIN_UNIT:
+                legal[2] = 1
 
-            if portfolio_value >= ideal_sell_value or affordable_size >= min_trade_size:
-                legal[ACTION_SELL] = 1
-
-        # Safety check: ensure at least one action is legal (HOLD should always be legal)
-        if not np.any(legal):
-            # This should never happen since HOLD is always legal, but add safety
-            legal[ACTION_HOLD] = 1  # Force HOLD to be legal
-
+        # HOLDは常に合法なので、全て0になることはない
         return legal
 
     def _resolve_price(
@@ -184,25 +179,17 @@ class ActionValidator:
         elif df is not None:
             try:
                 recent_prices = df.iloc[start_idx:end_idx]["close"]
-                if len(recent_prices) > 1:
-                    price_slice = recent_prices.to_numpy(dtype=np.float32, copy=False)
-            except Exception:
-                price_slice = None
-
-        if price_slice is not None and price_slice.size > 1:
-            finite_mask = np.isfinite(price_slice)
-            if np.count_nonzero(finite_mask) > 1:
-                valid_prices = price_slice[finite_mask]
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    denominators = valid_prices[:-1]
-                    returns = np.diff(valid_prices) / np.where(
+                    denominators = recent_prices[:-1]
+                    returns = np.diff(recent_prices) / np.where(
                         denominators == 0.0, np.nan, denominators
                     )
                 returns = returns[np.isfinite(returns)]
                 if returns.size:
                     current_volatility = float(np.std(returns))
                     return current_volatility > threshold
-
+            except (IndexError, KeyError):
+                pass
         return False
 
     def action_mask(self, legal_actions: NDArray[np.int_]) -> NDArray[np.bool_]:

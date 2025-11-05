@@ -58,6 +58,7 @@ class BacktestEngine:
         enable_adaptation: bool = False,
         adaptation_config: Optional[Dict[str, Any]] = None,
         max_position_size: float = 1.0,
+        signal_performance_analyzer: Optional[Any] = None,
     ) -> None:
         """Initialize backtest engine."""
         self.initial_capital = initial_capital
@@ -70,6 +71,7 @@ class BacktestEngine:
         self.correlation_id = correlation_id or generate_correlation_id()
         self.enable_adaptation = enable_adaptation and ADAPTATION_AVAILABLE
         self.max_position_size = max_position_size
+        self.signal_performance_analyzer = signal_performance_analyzer
 
         # Initialize position sizer
         if target_vol and RISK_AVAILABLE and PositionSizer:
@@ -238,6 +240,18 @@ class BacktestEngine:
             # Generate signal
             signal = strategy.generate_signal(current_data, position)
 
+            # Track signal with performance analyzer if available
+            if self.signal_performance_analyzer:
+                try:
+                    self.signal_performance_analyzer.track_signal(
+                        timestamp=timestamp,
+                        signal_data=signal,
+                        market_data=row.to_dict(),
+                        position=position
+                    )
+                except Exception as e:
+                    print(f"Warning: Signal tracking failed: {e}")
+
             # Memory management: clear feature cache periodically to prevent memory leaks
             if hasattr(strategy, "clear_feature_cache") and i % 100 == 0 and i > 0:
                 strategy.clear_feature_cache()
@@ -300,8 +314,36 @@ class BacktestEngine:
                         position = 1
                         capital -= shares * effective_price  # Deduct from capital
                         orders.append(order)
+
+                        # Record trade outcome with signal performance analyzer
+                        if self.signal_performance_analyzer:
+                            try:
+                                self.signal_performance_analyzer.record_trade_outcome(
+                                    signal_timestamp=timestamp,
+                                    trade_data=order,
+                                    outcome="executed"
+                                )
+                            except Exception as e:
+                                print(f"Warning: Trade outcome recording failed: {e}")
                     else:
                         print(f"Insufficient capital for buy order at {timestamp}")
+
+                        # Record failed trade with signal performance analyzer
+                        if self.signal_performance_analyzer:
+                            try:
+                                self.signal_performance_analyzer.record_trade_outcome(
+                                    signal_timestamp=timestamp,
+                                    trade_data={
+                                        "timestamp": timestamp,
+                                        "action": "buy",
+                                        "price": effective_price,
+                                        "shares": shares,
+                                        "reason": "insufficient_capital"
+                                    },
+                                    outcome="failed"
+                                )
+                            except Exception as e:
+                                print(f"Warning: Failed trade recording failed: {e}")
 
                 elif signal["action"] == "sell" and position >= 0:
                     # Sell to short or close long
@@ -335,6 +377,17 @@ class BacktestEngine:
                             shares * effective_price - commission
                         )  # Add proceeds minus commission
                         orders.append(order)
+
+                        # Record trade outcome with signal performance analyzer
+                        if self.signal_performance_analyzer:
+                            try:
+                                self.signal_performance_analyzer.record_trade_outcome(
+                                    signal_timestamp=timestamp,
+                                    trade_data=order,
+                                    outcome="executed"
+                                )
+                            except Exception as e:
+                                print(f"Warning: Trade outcome recording failed: {e}")
 
             # Record equity
             if position == 0:
@@ -401,7 +454,15 @@ class BacktestEngine:
                 else {},
             }
 
-        return equity_series, orders_df, adaptation_summary
+        # Prepare signal performance summary if analyzer was provided
+        signal_performance_summary = None
+        if self.signal_performance_analyzer:
+            try:
+                signal_performance_summary = self.signal_performance_analyzer.get_performance_report()
+            except Exception as e:
+                print(f"Warning: Failed to generate signal performance summary: {e}")
+
+        return equity_series, orders_df, adaptation_summary, signal_performance_summary
 
 
 def main() -> None:

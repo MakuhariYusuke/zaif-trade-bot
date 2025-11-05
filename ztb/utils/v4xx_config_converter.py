@@ -145,6 +145,95 @@ class V4XXConfigConverter:
         return unified_config
 
     @staticmethod
+    def convert_v444_to_unified(config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert v444-style configuration to unified trainer format.
+
+        Args:
+            config: v444 configuration dictionary
+
+        Returns:
+            Unified trainer configuration dictionary
+        """
+        # Start with the base config structure
+        unified_config = {
+            "algorithm": config.get("algorithm", "sac"),
+            "model_name": config.get("model_name", "sac_v444_converted"),
+            "version": "4.4.4",
+            "training": {
+                "data_config": {
+                    "data_path": config.get("data_path", "data/btc_jpy_featured_dataset.csv"),
+                    "validation_split": config.get("validation_split", 0.2),
+                    "test_split": config.get("test_split", 0.1),
+                },
+                "total_timesteps": config.get("total_timesteps", 10000),
+                "sac_hyperparameters": config.get("sac_hyperparameters", {}),
+                "environment": {},
+                "reward_function": config.get("reward_function", {}),
+                "checkpoint_dir": config.get("checkpoint_dir", "models/training_states"),
+            },
+        }
+
+        # Copy environment settings and expand behavior_optimization and action_bonuses
+        env_config = config.get("environment", {})
+        unified_env = unified_config["training"]["environment"]
+
+        # Copy all environment settings
+        for key, value in env_config.items():
+            if key not in ["behavior_optimization", "action_bonuses"]:
+                unified_env[key] = value
+
+        # Expand behavior_optimization and action_bonuses to top level for environment access
+        if "behavior_optimization" in env_config:
+            unified_env.update(env_config["behavior_optimization"])
+            logger.info("Expanded behavior_optimization parameters to environment config")
+
+        if "action_bonuses" in env_config:
+            unified_env.update(env_config["action_bonuses"])
+            logger.info("Expanded action_bonuses parameters to environment config")
+
+        # Handle regime_adaptation if present
+        if "regime_adaptation" in config:
+            if "config" not in unified_env:
+                unified_env["config"] = {}
+            unified_env["config"]["advanced_market_regime"] = config["regime_adaptation"]
+            logger.info("Mapped regime_adaptation to training.environment.config.advanced_market_regime")
+
+        # Extract curriculum_stage from training.curriculum_learning and add to environment config
+        # This is CRITICAL for balance_penalty to work correctly
+        training_config = config.get("training", {})
+        curriculum_learning = training_config.get("curriculum_learning", {})
+        if "curriculum_stage" in curriculum_learning:
+            curriculum_stage = curriculum_learning["curriculum_stage"]
+            unified_env["curriculum_stage"] = curriculum_stage
+            logger.info(f"Mapped curriculum_stage '{curriculum_stage}' to training.environment config")
+        
+        # Also ensure curriculum_learning is preserved for other components that may need it
+        if "curriculum_learning" in training_config:
+            unified_config["training"]["curriculum_learning"] = training_config["curriculum_learning"]
+            logger.info("Preserved curriculum_learning configuration in training section")
+
+        # Ensure required SAC hyperparameters
+        sac_params = unified_config["training"]["sac_hyperparameters"]
+        defaults = {
+            "learning_rate": 0.0003,
+            "buffer_size": 1000000,
+            "learning_starts": 1000,
+            "batch_size": 256,
+            "tau": 0.005,
+            "gamma": 0.99,
+            "ent_coef": 0.01,
+            "target_update_interval": 1,
+        }
+
+        for key, default_value in defaults.items():
+            if key not in sac_params:
+                sac_params[key] = default_value
+
+        logger.info("Converted v444 configuration to unified format")
+        return unified_config
+
+    @staticmethod
     def detect_config_version(config: Dict[str, Any]) -> str:
         """
         Detect configuration version from structure.
@@ -153,8 +242,15 @@ class V4XXConfigConverter:
             config: Configuration dictionary
 
         Returns:
-            Version string (e.g., "v427", "v435", "v440")
+            Version string (e.g., "v427", "v435", "v440", "v444")
         """
+        # Check for v444 structure (has environment section with behavior_optimization and action_bonuses)
+        if ("environment" in config and
+            isinstance(config["environment"], dict) and
+            "behavior_optimization" in config["environment"] and
+            "action_bonuses" in config["environment"]):
+            return "v444"
+
         # Check for v435 structure (has training section)
         if "training" in config and "sac_hyperparameters" in config["training"]:
             return "v435"
@@ -182,7 +278,11 @@ class V4XXConfigConverter:
         """
         version = cls.detect_config_version(config)
 
-        if version == "v435":
+        if version == "v444":
+            logger.info("Converting v444 configuration to unified format")
+            unified_config = cls.convert_v444_to_unified(config)
+            return unified_config
+        elif version == "v435":
             logger.info("Configuration already in unified format (v435)")
             # Ensure regime_adaptation is mapped to advanced_market_regime for environment
             if "regime_adaptation" in config and "advanced_market_regime" not in config:
