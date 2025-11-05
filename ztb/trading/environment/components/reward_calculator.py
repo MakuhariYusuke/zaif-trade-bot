@@ -239,25 +239,27 @@ class RewardCalculator(BaseRewardCalculator):
                 hold_ratio = hold_count / total_actions
 
                 # Penalize actions that deviate from target balanced distribution
-                # Target: action_balance_target for each action type (e.g., 0.333 = 33.3% each)
+                # Use asymmetric targets to favor BUY: BUY=0.4, SELL=0.25, HOLD=0.35
+                # This creates asymmetric penalties where SELL-heavy distributions get higher penalties
                 balance_penalty_scale = self._get_behavior_opt(
                     "balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE
                 )
 
-                # Calculate deviation from target ratio for each action
-                deviation_buy = abs(buy_ratio - target_ratio)
-                deviation_sell = abs(sell_ratio - target_ratio)
-                deviation_hold = abs(hold_ratio - target_ratio)
+                # Use asymmetric targets to break symmetry and favor BUY
+                # BUY target higher (0.4), SELL lower (0.25), HOLD middle (0.35)
+                # This means:
+                # ALL_SELL: |0-0.4| + |1-0.25| + |0-0.35| = 0.4 + 0.75 + 0.35 = 1.5 ← HIGH penalty
+                # ALL_BUY:  |1-0.4| + |0-0.25| + |0-0.35| = 0.6 + 0.25 + 0.35 = 1.2 ← LOW penalty
+                # Balanced: |0.4-0.4| + |0.25-0.25| + |0.35-0.35| = 0.0 ← NO penalty (ideal)
+                buy_target = 0.4
+                sell_target = 0.25
+                hold_target = 0.35
 
-                # FIXED: Use asymmetric formula that penalizes both excess and deficit
-                # This penalizes different distributions asymmetrically:
-                # ALL_SELL: |0-0.333| + |1-0.333| + |0-0.333| = 0.333 + 0.667 + 0.333 = 1.333
-                # ALL_BUY:  |1-0.333| + |0-0.333| + |0-0.333| = 0.667 + 0.333 + 0.333 = 1.333
-                # ALL_HOLD: |0-0.333| + |0-0.333| + |1-0.333| = 0.333 + 0.333 + 0.667 = 1.333
-                # (All equal due to constraint that sum=1, but each action type gets direct penalty)
-                # Add BUY/SELL balance asymmetry factor to break symmetry
-                buy_sell_imbalance = abs(buy_ratio - sell_ratio)
-                total_deviation = deviation_buy + deviation_sell + deviation_hold + buy_sell_imbalance * 0.5
+                deviation_buy = abs(buy_ratio - buy_target)
+                deviation_sell = abs(sell_ratio - sell_target)
+                deviation_hold = abs(hold_ratio - hold_target)
+
+                total_deviation = deviation_buy + deviation_sell + deviation_hold
                 balance_penalty = total_deviation * balance_penalty_scale
 
                 # Debug logging
@@ -265,7 +267,7 @@ class RewardCalculator(BaseRewardCalculator):
                     total_actions % 10 == 0
                 ):  # Changed from 50 to 10 for more frequent logging
                     self.logger.info(
-                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], buy_sell_imbalance={buy_sell_imbalance:.3f}, total_dev={total_deviation:.3f}, penalty={balance_penalty:.6f}"
+                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, targets=[BUY:{buy_target:.3f}, SELL:{sell_target:.3f}, HOLD:{hold_target:.3f}], deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], total_dev={total_deviation:.3f}, penalty={balance_penalty:.6f}"
                     )
 
         redundant_trade_penalty = 0.0
