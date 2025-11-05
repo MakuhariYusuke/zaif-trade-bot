@@ -115,13 +115,14 @@
   },
 
   "environment": {
+    "curriculum_stage": "balance_penalty",
     "continuous_to_discrete_threshold": 0.08,
     "behavior_optimization": {
       "action_balance_target": 0.333,
       "entropy_regularization": 0.022,
       "action_smoothing": 0.1,
       "consistency_penalty": 0.05,
-      "balance_penalty": 175.0,
+      "balance_penalty": 30.0,
       "redundant_trade_penalty": 3.5
     },
     "action_bonuses": {

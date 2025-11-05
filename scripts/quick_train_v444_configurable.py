@@ -89,9 +89,9 @@ class DirectTrainer:
         """Prepare environment config by expanding nested parameters."""
         env_config = self.config['environment'].copy()
 
-        # Expand nested configs
-        if 'behavior_optimization' in env_config:
-            env_config.update(env_config['behavior_optimization'])
+        # Expand nested configs - but keep behavior_optimization nested for proper mapping
+        # if 'behavior_optimization' in env_config:
+        #     env_config.update(env_config['behavior_optimization'])
 
         if 'action_bonuses' in env_config:
             env_config.update(env_config['action_bonuses'])
@@ -129,9 +129,68 @@ class DirectTrainer:
 
             # Train for 2000 steps
             self.logger.info("Training for 2000 timesteps...")
-            model.learn(total_timesteps=2000)
-
-            self.logger.info("✅ Training completed")
+            
+            # Track training history
+            training_history = []
+            obs, _ = env.reset()
+            
+            # Get maximum available steps from environment
+            max_steps = env.data_manager.n_steps
+            train_steps = min(2000, max_steps - 10)  # Leave some buffer
+            
+            self.logger.info(f"Training for {train_steps} timesteps (data allows up to {max_steps})")
+            
+            for step in range(train_steps):
+                action, _ = model.predict(obs, deterministic=False)
+                obs, reward, terminated, truncated, info = env.step(action)
+                
+                # Record step data
+                # Get balance_penalty from reward_calculator if available
+                balance_penalty = 0.0
+                if hasattr(env, 'reward_calculator') and hasattr(env.reward_calculator, '_get_behavior_opt'):
+                    try:
+                        balance_penalty = env.reward_calculator._get_behavior_opt('balance_penalty', 0.0)
+                        # Debug: log what the method returns
+                        self.logger.info(f"Step {step}: _get_behavior_opt returned balance_penalty={balance_penalty}")
+                    except Exception as e:
+                        self.logger.info(f"Could not get balance_penalty from reward_calculator: {e}")
+                        self.logger.info(f"Exception type: {type(e).__name__}")
+                
+                # Additional debug: log balance_penalty before creating step_data
+                self.logger.info(f"Step {step}: balance_penalty before step_data creation: {balance_penalty}")
+                
+                step_data = {
+                    'step': step,
+                    'action': int(action),
+                    'reward': float(reward),
+                    'balance_penalty': float(balance_penalty),
+                    'portfolio_return': float(info.get('portfolio_return', 0.0)),
+                    'position': float(info.get('position', 0.0))
+                }
+                
+                # Additional debug: log step_data balance_penalty
+                self.logger.info(f"Step {step}: step_data balance_penalty: {step_data['balance_penalty']}")
+                
+                training_history.append(step_data)
+                
+                if step % 500 == 0:
+                    self.logger.info(f"Step {step}: action={action}, reward={reward:.2f}, balance_penalty={step_data['balance_penalty']:.2f}")
+            
+            # Save training results
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            results_file = f"results/sac_v444_training_results_{timestamp}.json"
+            
+            results_data = {
+                'config': self.config,
+                'training_history': training_history,
+                'total_steps': train_steps,
+                'timestamp': timestamp
+            }
+            
+            with open(results_file, 'w') as f:
+                json.dump(results_data, f, indent=2, default=str)
+            
+            self.logger.info(f"✅ Training completed - results saved to {results_file}")
             return True
 
         except Exception as e:
