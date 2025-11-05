@@ -236,16 +236,25 @@ class RewardCalculator(BaseRewardCalculator):
                 sell_ratio = sell_count / total_actions
                 hold_ratio = hold_count / total_actions
 
-                # Penalize BUY/SELL imbalance (fix for balance penalty bug)
+                # Penalize actions that deviate from target balanced distribution
+                # Target: action_balance_target for each action type (e.g., 0.333 = 33.3% each)
                 balance_penalty_scale = self._get_behavior_opt("balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE)
-                balance_penalty = abs(buy_ratio - sell_ratio) * balance_penalty_scale
+                
+                # Calculate deviation from target ratio for each action
+                deviation_buy = abs(buy_ratio - target_ratio)
+                deviation_sell = abs(sell_ratio - target_ratio)
+                deviation_hold = abs(hold_ratio - target_ratio)
+                
+                # Max deviation indicates how imbalanced the distribution is
+                max_deviation = max(deviation_buy, deviation_sell, deviation_hold)
+                balance_penalty = max_deviation * balance_penalty_scale
 
                 # Debug logging
                 if (
                     total_actions % 10 == 0
                 ):  # Changed from 50 to 10 for more frequent logging
                     self.logger.info(
-                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, penalty={balance_penalty:.6f}"
+                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], max_dev={max_deviation:.3f}, penalty={balance_penalty:.6f}"
                     )
 
         redundant_trade_penalty = 0.0
