@@ -346,22 +346,18 @@ class RewardCalculator(BaseRewardCalculator):
             - redundant_trade_penalty
         )
         
-        # Log comprehensive statistics every 500 steps to avoid spam
-        if step % 500 == 0 and step > 0:
+        # Log comprehensive statistics every 1000 steps (reduced from 500 to avoid spam)
+        if step % 1000 == 0 and step > 0:
             total_actions = len(self._recent_actions) if hasattr(self, '_recent_actions') else 0
             if total_actions > 0:
                 action_dist = {}
                 for act in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
                     action_dist[act] = self._recent_actions.count(act) / total_actions * 100
                 
-                # Calculate average rewards for each action type
-                action_rewards = {0: [], 1: [], -1: []}
-                # Note: We need to track rewards by action, for now just report distribution
-                
                 self.logger.info(
                     f"[Step {step:5d}] Action: HOLD={action_dist.get(0, 0):5.1f}% | BUY={action_dist.get(1, 0):5.1f}% | SELL={action_dist.get(-1, 0):5.1f}% | "
-                    f"Penalties: balance={balance_penalty:7.2f} | action={action_penalty:6.2f} | "
-                    f"Rewards: base={base_reward:7.2f} | total={total_reward:7.2f}"
+                    f"balance_penalty={balance_penalty:7.2f} | action_penalty={action_penalty:6.2f} | "
+                    f"base_reward={base_reward:7.2f} | total_reward={total_reward:7.2f}"
                 )
 
         self.logger.debug(f"Reward calc step {step}: total_reward={total_reward:.6f}, balance_penalty={balance_penalty:.2f}")
