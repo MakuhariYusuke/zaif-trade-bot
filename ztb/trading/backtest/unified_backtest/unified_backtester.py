@@ -20,6 +20,7 @@ from ..adapters import StrategyAdapter
 from ..metrics import BacktestMetrics, MetricsCalculator
 from ..report import ReportGenerator
 from ...utils.logging_utils import get_logger
+from .signal_performance import BacktestSignalPerformanceAnalyzer
 
 logger = get_logger(__name__)
 
@@ -116,6 +117,9 @@ class UnifiedBacktester:
         self.strategies: Dict[str, Union[TradingStrategy, StrategyAdapter]] = {}
         self.active_strategy: Optional[Union[TradingStrategy, StrategyAdapter]] = None
 
+        # Signal performance analyzer
+        self.signal_performance_analyzer = BacktestSignalPerformanceAnalyzer()
+
     def register_strategy(
         self,
         name: str,
@@ -199,7 +203,7 @@ class UnifiedBacktester:
                 "backtest_config": config.__dict__,
             })
 
-            self.logger.info(".2f"
+            self.logger.info(f"Backtest completed in {execution_time:.2f} seconds")
             # Save results if requested
             if save_results:
                 self.results_manager.save_result(result)
@@ -233,10 +237,10 @@ class UnifiedBacktester:
         # Create backtest engine with configuration
         engine = BacktestEngine(
             initial_capital=config.initial_capital,
-            commission=config.commission,
-            slippage=config.slippage,
+            commission_bps=config.commission * 10000,  # Convert to bps
+            slippage_bps=config.slippage * 10000,  # Convert to bps
             max_position_size=config.max_position_size,
-            enable_shorting=config.enable_shorting,
+            signal_performance_analyzer=self.signal_performance_analyzer,
         )
 
         # Convert strategy to adapter if needed
@@ -248,10 +252,12 @@ class UnifiedBacktester:
 
         # Run backtest using existing engine
         try:
-            results = engine.run_backtest(data, adapter)
+            equity_series, orders_df, adaptation_summary, signal_performance_summary = engine.run_backtest(adapter, data)
 
             # Convert results to unified format
-            return self._convert_to_unified_result(results, strategy.name, config)
+            return self._convert_to_unified_result(
+                equity_series, orders_df, adaptation_summary, signal_performance_summary, strategy.name, config
+            )
 
         except Exception as e:
             self.logger.error(f"Backtest execution failed: {e}")
@@ -259,7 +265,10 @@ class UnifiedBacktester:
 
     def _convert_to_unified_result(
         self,
-        engine_results: Dict[str, Union[BacktestMetrics, list, dict]],
+        equity_series: pd.Series,
+        orders_df: pd.DataFrame,
+        adaptation_summary: Optional[Dict[str, Any]],
+        signal_performance_summary: Optional[Dict[str, Any]],
         strategy_name: str,
         config: BacktestConfig
     ) -> BacktestResult:
@@ -267,37 +276,42 @@ class UnifiedBacktester:
         Convert BacktestEngine results to unified format.
 
         Args:
-            engine_results: Results from BacktestEngine
+            equity_series: Equity curve from backtest
+            orders_df: Trade orders DataFrame
+            adaptation_summary: Adaptation system results
+            signal_performance_summary: Signal performance analysis results
             strategy_name: Name of the strategy
             config: Backtest configuration
 
         Returns:
             BacktestResult in unified format
         """
-        # Extract components from engine results
-        metrics = engine_results.get("metrics")
-        if not isinstance(metrics, BacktestMetrics):
-            # Create default metrics if not available
-            metrics = BacktestMetrics(
-                sharpe_ratio=0.0, sortino_ratio=0.0, calmar_ratio=0.0,
-                total_return=0.0, cagr=0.0, annualized_return=0.0,
-                max_drawdown=0.0, volatility=0.0,
-                total_trades=0, win_rate=0.0, avg_win=0.0, avg_loss=0.0,
-                profit_factor=0.0, turnover=0.0, estimated_slippage_bps=0.0
-            )
+        # Calculate metrics from equity series and orders
+        from ..metrics import MetricsCalculator
+        metrics_calculator = MetricsCalculator()
+        metrics = metrics_calculator.calculate_metrics(equity_series, orders_df)
 
-        trade_history = engine_results.get("orders", [])
-        portfolio_values = engine_results.get("equity_curve", [])
-        metadata = engine_results.get("metadata", {})
+        # Convert orders DataFrame to list of dicts
+        trade_history = orders_df.to_dict('records') if not orders_df.empty else []
+
+        # Convert equity series to list of values
+        portfolio_values = equity_series.tolist()
+
+        # Prepare metadata
+        metadata = {}
+        if adaptation_summary:
+            metadata["adaptation"] = adaptation_summary
+        if signal_performance_summary:
+            metadata["signal_performance"] = signal_performance_summary
 
         return BacktestResult(
             strategy_name=strategy_name,
             config={"backtest_config": config.__dict__},
             performance_metrics=metrics,
             trade_history=trade_history,
-            portfolio_values=portfolio_values if isinstance(portfolio_values, list) else [],
+            portfolio_values=portfolio_values,
             execution_time=0.0,  # Will be set by caller
-            metadata=metadata if isinstance(metadata, dict) else {}
+            metadata=metadata
         )
 
     def compare_strategies(

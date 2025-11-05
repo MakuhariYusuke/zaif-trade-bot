@@ -397,7 +397,7 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
     # Add optimizer features dimension if tracker is available
     if hasattr(self, "optimizer_tracker") and self.optimizer_tracker is not None:
-        from ztb.features.optimizer_features import OptimizerFeatureTracker
+        from ztb.features.processors.optimization.features import OptimizerFeatureTracker
 
         if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
             obs_dim += len(self.optimizer_tracker.get_feature_names())

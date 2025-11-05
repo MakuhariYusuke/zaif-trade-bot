@@ -155,24 +155,46 @@ class SignalPerformanceAnalyzer:
 
     def analyze_sac_learning_correlation(
         self,
-        sac_rewards: List[float],
-        signal_qualities: List[float],
-        time_windows: List[Tuple[int, int]]
+        sac_learning_logs: Optional[List[Dict[str, Any]]] = None,
+        correlation_window: int = 100
     ) -> Dict[str, Any]:
         """
         Analyze correlation between SAC learning performance and signal quality.
 
         Args:
-            sac_rewards: SAC episode rewards
-            signal_qualities: Corresponding signal quality scores
-            time_windows: Time windows for analysis
+            sac_learning_logs: SAC learning metrics (rewards, losses, etc.)
+            correlation_window: Rolling window size for correlation analysis
 
         Returns:
             Correlation analysis results
         """
-        if len(sac_rewards) != len(signal_qualities):
-            self.logger.warning("SAC rewards and signal qualities length mismatch")
-            return {}
+        # Get SAC learning data from logs or use stored data
+        if sac_learning_logs:
+            sac_rewards = [log.get('reward', 0) for log in sac_learning_logs]
+            sac_losses = [log.get('loss', 0) for log in sac_learning_logs]
+            sac_timesteps = [log.get('timestep', i) for i, log in enumerate(sac_learning_logs)]
+        else:
+            # Use stored SAC learning curves if no logs provided
+            if not self.sac_learning_curves:
+                return {"error": "No SAC learning data available"}
+            sac_rewards = [curve.get('reward', 0) for curve in self.sac_learning_curves]
+            sac_losses = [curve.get('loss', 0) for curve in self.sac_learning_curves]
+            sac_timesteps = list(range(len(sac_rewards)))
+
+        # Get signal quality data from history
+        if not self.signal_quality_history:
+            return {"error": "No signal quality data available"}
+
+        signal_qualities = [record.get('quality_score', 0) for record in self.signal_quality_history]
+        signal_timestamps = [record.get('timestamp', i) for i, record in enumerate(self.signal_quality_history)]
+
+        # Align time series (simple approach: use available data points)
+        min_length = min(len(sac_rewards), len(signal_qualities))
+        sac_rewards = sac_rewards[-min_length:]
+        signal_qualities = signal_qualities[-min_length:]
+
+        if len(sac_rewards) < 2:
+            return {"error": "Insufficient data for correlation analysis"}
 
         # Calculate Pearson correlation
         try:
@@ -181,17 +203,21 @@ class SignalPerformanceAnalyzer:
             self.logger.error(f"Correlation calculation failed: {e}")
             correlation, p_value = 0.0, 1.0
 
-        # Calculate rolling correlations for different time windows
+        # Calculate rolling correlations
         rolling_correlations = {}
-        for window_size in [10, 50, 100, 500]:
+        for window_size in [correlation_window // 4, correlation_window // 2, correlation_window]:
             if len(sac_rewards) >= window_size:
-                rolling_corr = pd.Series(sac_rewards).rolling(window_size).corr(
-                    pd.Series(signal_qualities)
-                ).dropna().mean()
-                rolling_correlations[f'rolling_{window_size}'] = rolling_corr
+                try:
+                    rolling_corr = pd.Series(sac_rewards).rolling(window_size).corr(
+                        pd.Series(signal_qualities)
+                    ).dropna().mean()
+                    rolling_correlations[f'rolling_{window_size}'] = rolling_corr
+                except Exception as e:
+                    self.logger.warning(f"Rolling correlation calculation failed for window {window_size}: {e}")
+                    rolling_correlations[f'rolling_{window_size}'] = 0.0
 
         # Signal contribution analysis
-        high_quality_threshold = np.percentile(signal_qualities, 75)
+        high_quality_threshold = np.percentile(signal_qualities, 75) if signal_qualities else 0.5
         high_quality_rewards = [
             reward for reward, quality in zip(sac_rewards, signal_qualities)
             if quality >= high_quality_threshold
@@ -200,6 +226,39 @@ class SignalPerformanceAnalyzer:
             reward for reward, quality in zip(sac_rewards, signal_qualities)
             if quality < high_quality_threshold
         ]
+
+        contribution_analysis = {
+            'high_quality_avg_reward': np.mean(high_quality_rewards) if high_quality_rewards else 0,
+            'low_quality_avg_reward': np.mean(low_quality_rewards) if low_quality_rewards else 0,
+            'quality_threshold': high_quality_threshold,
+            'high_quality_count': len(high_quality_rewards),
+            'low_quality_count': len(low_quality_rewards)
+        }
+
+        # Store correlation results
+        correlation_record = {
+            'timestamp': pd.Timestamp.now(),
+            'correlation': correlation,
+            'p_value': p_value,
+            'rolling_correlations': rolling_correlations,
+            'contribution_analysis': contribution_analysis,
+            'data_points': len(sac_rewards)
+        }
+        self.signal_sac_correlations.append(correlation_record)
+
+        # Keep history size manageable
+        if len(self.signal_sac_correlations) > self.max_history_size:
+            self.signal_sac_correlations = self.signal_sac_correlations[-self.max_history_size:]
+
+        return {
+            'correlation_coefficient': correlation,
+            'p_value': p_value,
+            'correlation_strength': self._interpret_correlation_strength(correlation),
+            'rolling_correlations': rolling_correlations,
+            'contribution_analysis': contribution_analysis,
+            'data_points': len(sac_rewards),
+            'correlation_trend': self._calculate_trend([c['correlation'] for c in self.signal_sac_correlations[-10:]])
+        }
 
         contribution_analysis = {
             'high_quality_avg_reward': np.mean(high_quality_rewards) if high_quality_rewards else 0,
@@ -338,10 +397,10 @@ class SignalPerformanceAnalyzer:
         recent_correlations = self.signal_sac_correlations[-10:]  # Last 10 analyses
 
         correlation_metrics = {
-            'average_correlation': np.mean([c['overall_correlation'] for c in recent_correlations]),
-            'correlation_trend': self._calculate_trend([c['overall_correlation'] for c in recent_correlations]),
-            'strongest_correlation': max(recent_correlations, key=lambda x: abs(x['overall_correlation'])),
-            'correlation_stability': np.std([c['overall_correlation'] for c in recent_correlations])
+            'average_correlation': np.mean([c.get('correlation', 0) for c in recent_correlations]),
+            'correlation_trend': self._calculate_trend([c.get('correlation', 0) for c in recent_correlations]),
+            'strongest_correlation': max(recent_correlations, key=lambda x: abs(x.get('correlation', 0))),
+            'correlation_stability': np.std([c.get('correlation', 0) for c in recent_correlations])
         }
 
         return correlation_metrics
@@ -360,22 +419,6 @@ class SignalPerformanceAnalyzer:
                 }
 
         return effectiveness
-
-    def _calculate_trend(self, values: List[float]) -> str:
-        """Calculate trend direction from values."""
-        if len(values) < 5:
-            return "insufficient_data"
-
-        # Simple linear trend
-        x = np.arange(len(values))
-        slope, _, _, _, _ = stats.linregress(x, values)
-
-        if slope > 0.01:
-            return "improving"
-        elif slope < -0.01:
-            return "declining"
-        else:
-            return "stable"
 
     def _generate_recommendations(self) -> List[str]:
         """Generate recommendations based on performance analysis."""
@@ -401,3 +444,12 @@ class SignalPerformanceAnalyzer:
             recommendations.append(f"Consider reducing weight for underperforming patterns: {', '.join(underperforming_patterns)}")
 
         return recommendations
+
+    def analyze_correlation(self) -> Dict[str, Any]:
+        """
+        Analyze correlation between signals and performance.
+
+        Returns:
+            Correlation analysis results
+        """
+        return self.analyze_sac_learning_correlation()

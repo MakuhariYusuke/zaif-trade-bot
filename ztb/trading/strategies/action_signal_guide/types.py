@@ -35,18 +35,18 @@ GuidanceInput = Union["GuidanceLevel", str, None]  # type: ignore
 # Type aliases for multi-timeframe data structures
 MultiTimeframeData = Dict[str, Dict[str, Any]]  # timeframe -> {'data': DataFrame, ...}
 
-# More specific type aliases for pattern recognition
+# More specific type aliases for pattern recognition components
 PatternThresholds = Dict[str, Union[int, float, None]]
 PatternMetrics = Dict[str, Union[int, float, str]]
 PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
 
-# Type aliases for analysis results and multi-timeframe analysis
+# Type aliases for analysis results and multi-timeframe analysis structures
 AnalysisResult = Dict[str, Union[float, str, bool, Dict[str, float]]]
 MultiTimeframeAnalysis = Dict[str, AnalysisResult]
 
-# Type aliases for regime adjustments
+# Type aliases for regime adjustments structures
 RegimeAdjustment = Dict[str, Union[int, float, str]]
 
-# Type aliases for validation and error handling
+# Type aliases for validation and error handling structures
 ValidationResult = Dict[str, Union[bool, str, List[str]]]
 ErrorInfo = Dict[str, Union[str, int, Dict[str, Any]]]
