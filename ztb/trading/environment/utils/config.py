@@ -540,6 +540,12 @@ class EnvironmentConfig:
         # Create instance with defaults
         instance = cls()
         
+        # First pass: collect individual action bonus keys at root level
+        root_level_bonuses = {}
+        for bonus_key in ["buy_action_bonus", "sell_action_bonus", "hold_action_bonus"]:
+            if bonus_key in config_dict:
+                root_level_bonuses[bonus_key] = float(config_dict[bonus_key])
+        
         # Update fields from config_dict
         for key, value in config_dict.items():
             if hasattr(instance, key):
@@ -562,8 +568,16 @@ class EnvironmentConfig:
                         setattr(instance, key, value)
                 except Exception as e:
                     logger.error(f"Failed to set {key} = {value}: {e}")
-            else:
+            elif key not in ["buy_action_bonus", "sell_action_bonus", "hold_action_bonus"]:
+                # Skip individual bonus keys (they're handled separately)
                 logger.warning(f"Unknown config key: {key}")
+        
+        # Merge root-level bonuses into action_bonuses if they were found
+        if root_level_bonuses:
+            logger.debug(f"Merging root-level action bonuses: {root_level_bonuses}")
+            if not instance.action_bonuses:
+                instance.action_bonuses = {}
+            instance.action_bonuses.update(root_level_bonuses)
         
         logger.debug(f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}")
         return instance
