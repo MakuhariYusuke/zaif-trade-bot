@@ -93,18 +93,15 @@ class ActionValidator:
         ):
             return legal
 
-        # BUY: ショートまたはフラットの場合、かつ十分な残高がある場合
-        # 🔧 CRITICAL FIX: 少額取引対応
-        # - 実口座では1 mBTC (0.001 BTC ≈ 18,000円) 程度の少額取引が必要
-        # - max_position_size はフル購入時のサイズだが、実際は利用可能資金に応じて調整
-        # - 最小取引単位を考慮して柔軟に判定
-        if position <= 0:
+        # BUY: フラットまたはロング中の場合、かつ十分な残高がある場合
+        # ロング中のBUYはロングの増し増し
+        # フラット中のBUYは新規ロング建て
+        # ショート中のBUYはショートのクローズ
+        if position >= -0.0001:  # Flat or Long (allow small tolerance)
             # 理想的な購入コスト（フルサイズ）
             ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
 
-            # 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
-            # これにより、資金がmax_position_size分に満たなくても、
-            # 持っている資金の範囲内で取引できるようになる
+            # 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
             affordable_size = (
                 portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
             )
@@ -113,14 +110,15 @@ class ActionValidator:
             if portfolio_value >= ideal_buy_cost or affordable_size >= BTC_MIN_UNIT:
                 legal[1] = 1
 
-        # SELL: ロングまたはフラットの場合
-        # 🔧 CRITICAL FIX: ショートポジション判定の簡素化
-        # - 実取引ではショートは使わないケースが多いため、判定を緩和
-        if position >= 0:
+        # SELL: フラットまたはショート中の場合、かつ十分な残高がある場合
+        # ショート中のSELLはショートの増し増し
+        # フラット中のSELLは新規ショート建て
+        # ロング中のSELLはロングのクローズ
+        if position <= 0.0001:  # Flat or Short (allow small tolerance)
             # ショートポジションを開く場合、ポジションサイズ分の価値が必要
             ideal_sell_value = position_size * current_price
 
-            # 🔧 少額取引対応: BUYと同様に柔軟に判定
+            # 少額取引対応: BUYと同様に柔軟に判定
             affordable_size = portfolio_value * 0.9 / current_price
             if portfolio_value >= ideal_sell_value or affordable_size >= BTC_MIN_UNIT:
                 legal[2] = 1
