@@ -120,6 +120,7 @@ class TestSACDecisionIntegrator(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.integrator = SACDecisionIntegrator()
+        self.validator = SACSignalValidator()
 
     def test_initialization(self):
         """Test integrator initialization."""

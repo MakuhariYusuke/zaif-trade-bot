@@ -178,6 +178,13 @@ class ConfigurableTrainer:
         if 'action_bonuses' in env_config:
             env_config.update(env_config['action_bonuses'])
         
+        # Add curriculum_stage from training config if available
+        if 'training' in self.config and 'curriculum_learning' in self.config['training']:
+            curriculum_config = self.config['training']['curriculum_learning']
+            if 'curriculum_stage' in curriculum_config:
+                env_config['curriculum_stage'] = curriculum_config['curriculum_stage']
+                self.logger.info(f"Curriculum stage set to: {curriculum_config['curriculum_stage']}")
+        
         return env_config
     
     def _save_model(self, model) -> str:

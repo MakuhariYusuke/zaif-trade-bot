@@ -29,7 +29,7 @@ class ActionPenaltyCalculator:
         hold_action_bonus: float = 0.0,
     ) -> float:
         """
-        Calculate fair action penalty.
+        Calculate fair action penalty with bonus adjustments.
 
         Args:
             action: Action taken (HOLD=0, BUY=1, SELL=-1)
@@ -38,9 +38,9 @@ class ActionPenaltyCalculator:
             current_price: Current asset price
             atr: Average true range
             base_action_penalty: Base penalty for trading actions
-            buy_action_bonus: Bonus for BUY action
-            sell_action_bonus: Bonus for SELL action
-            hold_action_bonus: Bonus for HOLD action
+            buy_action_bonus: Bonus for BUY action (applied as negative penalty)
+            sell_action_bonus: Bonus for SELL action (applied as negative penalty)
+            hold_action_bonus: Bonus for HOLD action (applied as negative penalty)
 
         Returns:
             Action penalty (positive = penalty, negative = bonus)
@@ -55,12 +55,18 @@ class ActionPenaltyCalculator:
                 * volatility_factor  # hold_penalty_base  # hold_penalty_position_factor
             )
             penalty *= 1.0  # hold_penalty_multiplier
-            return penalty + hold_action_bonus
+            # Apply hold bonus as negative penalty (bonus reduces penalty)
+            penalty = penalty - hold_action_bonus
+            return max(0.0, penalty)
         elif action == ACTION_BUY:
-            penalty = base_action_penalty + buy_action_bonus
+            penalty = base_action_penalty
+            # Apply buy bonus as negative penalty (bonus reduces penalty)
+            penalty = penalty - buy_action_bonus
             return max(0.0, penalty)
         elif action == ACTION_SELL:
-            penalty = base_action_penalty + sell_action_bonus
+            penalty = base_action_penalty
+            # Apply sell bonus as negative penalty (bonus reduces penalty)
+            penalty = penalty - sell_action_bonus
             return max(0.0, penalty)
 
         return 0.0
