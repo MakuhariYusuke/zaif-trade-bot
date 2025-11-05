@@ -62,7 +62,7 @@ def quick_train():
     """Quick training for backtest"""
     # Set up logging
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('logs/quick_train_v444_debug.log'),
@@ -70,6 +70,24 @@ def quick_train():
         ]
     )
     logger = logging.getLogger(__name__)
+    
+    # Suppress verbose debug loggers
+    verbose_loggers = [
+        'ztb.trading.environment.reward',
+        'ztb.trading.environment.heavy_env.core',
+        'ztb.trading.environment.heavy_env.mixins.initialization',
+        'ztb.trading.environment.components.observation_builder',
+        'ztb.trading.environment.components.position_manager',
+        'ztb.trading.environment.components.data_manager',
+        'ztb.trading.environment.asymmetric_reward_scaler',
+        'ztb.trading.environment.signal_integrator',
+        'ztb.trading.environment.heavy_env.core',
+        'ztb.risk.risk_manager',
+        'ztb.risk.dynamic_position_sizer',
+        'ztb.risk.drawdown_controller',
+    ]
+    for logger_name in verbose_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
     
     logger.info("Starting quick training...")
     print("Creating sample data...")
@@ -87,6 +105,31 @@ def quick_train():
     }
 
     env = HeavyTradingEnv(df, config)
+    
+    # Collect episode data for analysis
+    episode_data = []
+    
+    class TrainingCallback:
+        def __init__(self):
+            self.episode_rewards = []
+            self.episode_steps = []
+            
+        def __call__(self, locals_, globals_):
+            if "done" in locals_ and locals_["done"]:
+                episode_rewards = locals_.get("episode_reward", 0)
+                episode_steps = locals_.get("episode", 0)
+                self.episode_rewards.append(episode_rewards)
+                self.episode_steps.append(episode_steps)
+            return True
+    
+    # Simple data collection from environment
+    class DataCollector:
+        def __init__(self):
+            self.states = []
+            self.actions = []
+            self.rewards = []
+            self.positions = []
+            self.portfolio_returns = []
 
     print("Creating SAC model...")
     model = SAC(

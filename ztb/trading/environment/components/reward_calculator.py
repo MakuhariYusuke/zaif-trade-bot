@@ -110,8 +110,25 @@ class RewardCalculator(BaseRewardCalculator):
         Returns:
             Configured value
         """
+        # First check reward_settings (for behavior_optimization values mapped to RewardSettings)
+        if hasattr(self.config, 'reward_settings') and self.config.reward_settings:
+            if hasattr(self.config.reward_settings, key):
+                value = getattr(self.config.reward_settings, key)
+                if value is not None:
+                    return float(value)
+        
+        # Then check config directly (for expanded behavior_optimization)
+        if hasattr(self.config, key):
+            value = getattr(self.config, key)
+            if value is not None:
+                return float(value)
+        
+        # Then check behavior_optimization dict
         behavior_opts = getattr(self.config, "behavior_optimization", {}) or {}
-        return behavior_opts.get(key, getattr(self.config, key, default))
+        if key in behavior_opts:
+            return float(behavior_opts[key])
+        
+        return default
 
     def calculate_reward(
         self,
