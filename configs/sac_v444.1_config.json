@@ -7,6 +7,7 @@
 
   "training": {
     "algorithm": "sac",
+    "curriculum_stage": "balanced_penalty",
     "data_config": {
       "data_path": "data/btc_jpy_yahoo_real_20251021_featured_corrected.csv",
       "validation_split": 0.2,
