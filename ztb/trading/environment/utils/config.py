@@ -546,9 +546,33 @@ class EnvironmentConfig:
             if bonus_key in config_dict:
                 root_level_bonuses[bonus_key] = float(config_dict[bonus_key])
         
+        # Handle behavior_optimization dict (flattened keys from config)
+        if "behavior_optimization" in config_dict and isinstance(config_dict["behavior_optimization"], dict):
+            logger.debug(f"Processing behavior_optimization: {config_dict['behavior_optimization']}")
+            if not instance.reward_settings:
+                instance.reward_settings = RewardSettings()
+            
+            behavior_opt = config_dict["behavior_optimization"]
+            # Map behavior_optimization keys to reward_settings
+            if "action_balance_target" in behavior_opt:
+                instance.reward_settings.action_balance_target = float(behavior_opt["action_balance_target"])
+            if "balance_penalty" in behavior_opt:
+                instance.reward_settings.balance_penalty = float(behavior_opt["balance_penalty"])
+            if "entropy_regularization" in behavior_opt:
+                instance.reward_settings.entropy_regularization = float(behavior_opt["entropy_regularization"])
+            if "action_smoothing" in behavior_opt:
+                instance.reward_settings.action_smoothing = float(behavior_opt["action_smoothing"])
+            if "consistency_penalty" in behavior_opt:
+                instance.reward_settings.consistency_penalty = float(behavior_opt["consistency_penalty"])
+            if "redundant_trade_penalty" in behavior_opt:
+                instance.reward_settings.redundant_trade_penalty = float(behavior_opt["redundant_trade_penalty"])
+
         # Update fields from config_dict
         for key, value in config_dict.items():
-            if hasattr(instance, key):
+            if key == "behavior_optimization":
+                # Already handled above
+                continue
+            elif hasattr(instance, key):
                 logger.debug(f"Setting {key} = {value}")
                 try:
                     if key == "action_bonuses" and isinstance(value, dict):
@@ -557,6 +581,13 @@ class EnvironmentConfig:
                         for bonus_key, bonus_value in value.items():
                             converted_bonuses[bonus_key] = float(bonus_value)
                         setattr(instance, key, converted_bonuses)
+                    elif key == "reward_settings" and isinstance(value, dict):
+                        # Handle reward_settings dict
+                        if not instance.reward_settings:
+                            instance.reward_settings = RewardSettings()
+                        for rs_key, rs_value in value.items():
+                            if hasattr(instance.reward_settings, rs_key):
+                                setattr(instance.reward_settings, rs_key, rs_value)
                     elif key in ["base_action_penalty", "commission", "slippage"]:
                         # Handle float fields
                         setattr(instance, key, float(value))
@@ -570,7 +601,7 @@ class EnvironmentConfig:
                     logger.error(f"Failed to set {key} = {value}: {e}")
             elif key not in ["buy_action_bonus", "sell_action_bonus", "hold_action_bonus"]:
                 # Skip individual bonus keys (they're handled separately)
-                logger.warning(f"Unknown config key: {key}")
+                logger.debug(f"Skipping config key (not in EnvironmentConfig): {key}")
         
         # Merge root-level bonuses into action_bonuses if they were found
         if root_level_bonuses:
