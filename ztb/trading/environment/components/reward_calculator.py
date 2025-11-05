@@ -93,7 +93,8 @@ class RewardCalculator(BaseRewardCalculator):
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
         self._loss_count = 0
-        self._recent_actions = []  # Clear recent actions history
+        # Reset recent actions to deque to track last 100 actions
+        self._recent_actions = collections.deque(maxlen=100)
         self.last_signal_strength = 0.0
         self.last_signal_reward = 0.0
         self._previous_portfolio_value = self.initial_portfolio_value
@@ -160,11 +161,8 @@ class RewardCalculator(BaseRewardCalculator):
             self._loss_count += 1
 
         # Track recent actions for frequency penalty
+        # _recent_actions is a deque with maxlen=100, so old items are automatically removed
         self._recent_actions.append(action)
-        if (
-            len(self._recent_actions) > 20
-        ):  # Increased from 10 to 20 for forced_balance penalty
-            self._recent_actions.pop(0)
 
         # Get curriculum stage from config
         curriculum_stage = getattr(self.config, "curriculum_stage", "simple")
