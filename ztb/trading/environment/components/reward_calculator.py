@@ -262,12 +262,14 @@ class RewardCalculator(BaseRewardCalculator):
                 total_deviation = deviation_buy + deviation_sell + deviation_hold
                 balance_penalty = total_deviation * balance_penalty_scale
 
-                # Debug logging
-                if (
-                    total_actions % 10 == 0
-                ):  # Changed from 50 to 10 for more frequent logging
-                    self.logger.info(
-                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, targets=[BUY:{buy_target:.3f}, SELL:{sell_target:.3f}, HOLD:{hold_target:.3f}], deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], total_dev={total_deviation:.3f}, penalty={balance_penalty:.6f}"
+                # Log balance penalty stats only every 500 steps to avoid spam
+                if total_actions % 500 == 0 and total_actions > 0:
+                    self.logger.debug(
+                        f"BALANCE_PENALTY ({curriculum_stage}): "
+                        f"step_actions={total_actions}, "
+                        f"distribution=[BUY:{buy_ratio:.1%}, SELL:{sell_ratio:.1%}, HOLD:{hold_ratio:.1%}] "
+                        f"vs targets=[BUY:{buy_target:.1%}, SELL:{sell_target:.1%}, HOLD:{hold_target:.1%}], "
+                        f"total_dev={total_deviation:.4f}, penalty={balance_penalty:.2f}"
                     )
 
         redundant_trade_penalty = 0.0
@@ -332,13 +334,6 @@ class RewardCalculator(BaseRewardCalculator):
         win_streak_bonus = self.win_streak_bonus_calculator.calculate(reward_history)
 
         # Combine all components
-        self.logger.debug(
-            f"Reward breakdown: base={base_reward:.6f}, action_penalty={action_penalty:.6f}, position_penalty={position_penalty:.6f}, "
-            f"diversity_bonus={diversity_bonus:.6f}, win_rate_bonus={win_rate_bonus:.6f}, drawdown_penalty={drawdown_penalty:.6f}, "
-            f"stagnation_penalty={stagnation_penalty:.6f}, growth_bonus={growth_bonus:.6f}, win_streak_bonus={win_streak_bonus:.6f}, "
-            f"balance_penalty={balance_penalty:.6f}, redundant_trade_penalty={redundant_trade_penalty:.6f}"
-        )
-        
         total_reward = (
             base_reward
             - action_penalty
@@ -353,20 +348,25 @@ class RewardCalculator(BaseRewardCalculator):
             - redundant_trade_penalty
         )
         
-        # Log action-specific statistics periodically
-        if step % 100 == 0:
+        # Log comprehensive statistics every 500 steps to avoid spam
+        if step % 500 == 0 and step > 0:
             total_actions = len(self._recent_actions) if hasattr(self, '_recent_actions') else 0
             if total_actions > 0:
                 action_dist = {}
                 for act in [ACTION_HOLD, ACTION_BUY, ACTION_SELL]:
                     action_dist[act] = self._recent_actions.count(act) / total_actions * 100
+                
+                # Calculate average rewards for each action type
+                action_rewards = {0: [], 1: [], -1: []}
+                # Note: We need to track rewards by action, for now just report distribution
+                
                 self.logger.info(
-                    f"Action distribution (step {step}, last {total_actions} actions): "
-                    f"HOLD={action_dist.get(0, 0):.1f}%, BUY={action_dist.get(1, 0):.1f}%, SELL={action_dist.get(-1, 0):.1f}% | "
-                    f"total_reward_before_clip={total_reward:.6f}"
+                    f"[Step {step:5d}] Action: HOLD={action_dist.get(0, 0):5.1f}% | BUY={action_dist.get(1, 0):5.1f}% | SELL={action_dist.get(-1, 0):5.1f}% | "
+                    f"Penalties: balance={balance_penalty:7.2f} | action={action_penalty:6.2f} | "
+                    f"Rewards: base={base_reward:7.2f} | total={total_reward:7.2f}"
                 )
-        
-        self.logger.debug(f"After total_reward calc: total_reward={total_reward:.6f}")
+
+        self.logger.debug(f"Reward calc step {step}: total_reward={total_reward:.6f}, balance_penalty={balance_penalty:.2f}")
 
         # Apply asymmetric scaling
         total_reward = self.asymmetric_reward_scaler.scale_reward(
