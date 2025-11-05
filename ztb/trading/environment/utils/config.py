@@ -489,11 +489,26 @@ class EnvironmentConfig:
             except Exception as e:
                 logger.warning(f"Failed to load curated features: {e}")
 
-        # Handle reward_settings
+        # Handle reward_settings - try from explicit reward_settings first, then behavior_optimization
+        reward_settings_dict = None
         if "reward_settings" in config_dict and isinstance(
             config_dict["reward_settings"], dict
         ):
             reward_settings_dict = config_dict["reward_settings"]
+        elif "behavior_optimization" in config_dict and isinstance(
+            config_dict["behavior_optimization"], dict
+        ):
+            # Map behavior_optimization to reward_settings keys
+            behavior_opt = config_dict["behavior_optimization"]
+            reward_settings_dict = {}
+            if "action_balance_target" in behavior_opt:
+                reward_settings_dict["action_balance_target"] = behavior_opt["action_balance_target"]
+            if "balance_penalty" in behavior_opt:
+                reward_settings_dict["balance_penalty"] = behavior_opt["balance_penalty"]
+            if "entropy_regularization" in behavior_opt:
+                reward_settings_dict["entropy_regularization"] = behavior_opt["entropy_regularization"]
+        
+        if reward_settings_dict:
             try:
                 config_kwargs["reward_settings"] = RewardSettings(
                     **reward_settings_dict
@@ -546,13 +561,24 @@ class EnvironmentConfig:
             if bonus_key in config_dict:
                 root_level_bonuses[bonus_key] = float(config_dict[bonus_key])
         
-        # Handle behavior_optimization dict (flattened keys from config)
-        if "behavior_optimization" in config_dict and isinstance(config_dict["behavior_optimization"], dict):
-            logger.debug(f"Processing behavior_optimization: {config_dict['behavior_optimization']}")
+        # Extract behavior_optimization from nested environment config if present
+        behavior_opt = None
+        if "environment" in config_dict and isinstance(config_dict["environment"], dict):
+            env_config = config_dict["environment"]
+            if "behavior_optimization" in env_config and isinstance(env_config["behavior_optimization"], dict):
+                behavior_opt = env_config["behavior_optimization"]
+                logger.debug(f"Found behavior_optimization in environment: {behavior_opt}")
+        
+        # Also check for behavior_optimization at root level (backward compatibility)
+        if behavior_opt is None and "behavior_optimization" in config_dict and isinstance(config_dict["behavior_optimization"], dict):
+            behavior_opt = config_dict["behavior_optimization"]
+            logger.debug(f"Found behavior_optimization at root level: {behavior_opt}")
+        
+        # Handle behavior_optimization dict
+        if behavior_opt is not None:
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
             
-            behavior_opt = config_dict["behavior_optimization"]
             # Map behavior_optimization keys to reward_settings
             if "action_balance_target" in behavior_opt:
                 instance.reward_settings.action_balance_target = float(behavior_opt["action_balance_target"])
@@ -569,7 +595,33 @@ class EnvironmentConfig:
 
         # Update fields from config_dict
         for key, value in config_dict.items():
-            if key == "behavior_optimization":
+            if key == "environment" and isinstance(value, dict):
+                # Special handling for nested environment config
+                logger.debug(f"Processing nested environment config")
+                for env_key, env_value in value.items():
+                    if env_key == "behavior_optimization":
+                        # Already handled above
+                        continue
+                    elif env_key == "action_bonuses" and isinstance(env_value, dict):
+                        # Handle nested action_bonuses
+                        if not root_level_bonuses:  # Don't override root-level if present
+                            converted_bonuses = {}
+                            for bonus_key, bonus_value in env_value.items():
+                                converted_bonuses[bonus_key] = float(bonus_value)
+                            instance.action_bonuses = converted_bonuses
+                    elif hasattr(instance, env_key):
+                        # Map other environment keys to instance
+                        try:
+                            if env_key in ["base_action_penalty", "commission", "slippage"]:
+                                setattr(instance, env_key, float(env_value))
+                            elif env_key == "max_position_size":
+                                setattr(instance, env_key, float(env_value))
+                            else:
+                                setattr(instance, env_key, env_value)
+                            logger.debug(f"Set environment.{env_key} = {env_value}")
+                        except Exception as e:
+                            logger.debug(f"Could not set environment.{env_key}: {e}")
+            elif key == "behavior_optimization":
                 # Already handled above
                 continue
             elif hasattr(instance, key):
