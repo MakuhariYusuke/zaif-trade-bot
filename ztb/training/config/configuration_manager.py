@@ -368,7 +368,15 @@ class ConfigurationManager:
 
             # Create typed objects
             data_config = DataConfig(**data_config_dict)
-            env_config = EnvironmentConfig(**env_config_dict)
+            
+            # Filter env_config_dict to only include fields that EnvironmentConfig accepts
+            # This prevents initialization errors from unknown keys like 'initial_balance'
+            from dataclasses import fields as dataclass_fields
+            valid_env_keys = {f.name for f in dataclass_fields(EnvironmentConfig)}
+            filtered_env_config_dict = {
+                k: v for k, v in env_config_dict.items() if k in valid_env_keys
+            }
+            env_config = EnvironmentConfig(**filtered_env_config_dict)
 
             # Create training config
             training_config = TrainingConfig(
