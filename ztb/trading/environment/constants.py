@@ -157,7 +157,7 @@ DEFAULT_ACTION_DIVERSITY_BONUS = 0.0
 MODERATE_ACTION_DIVERSITY_BONUS = 0.1
 
 # Balance penalty constants
-DEFAULT_BALANCE_PENALTY_SCALE = 1000.0  # Strong penalty for action imbalance (increased from 10.0)
+DEFAULT_BALANCE_PENALTY_SCALE = 175.0  # Strong penalty for action imbalance (increased from 10.0)
 DEFAULT_ACTION_BALANCE_TARGET = 0.333  # Target 33.3% for each action
 DEFAULT_REDUNDANT_TRADE_PENALTY = 10.0  # Penalty for redundant trades at max position (increased from 5.0)
 

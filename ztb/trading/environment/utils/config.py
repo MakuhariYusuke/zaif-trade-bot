@@ -104,7 +104,7 @@ class EnvironmentConfig:
         List[str]
     ] = None  # Explicit feature list (overrides feature_set)
     correlation_reduction: bool = True
-    curriculum_stage: str = "forced_balance"
+    curriculum_stage: Optional[str] = None  # Set from training.curriculum_learning
     feature_storage_dtype: str = "float16"
     precision_columns: List[str] = dataclasses.field(
         default_factory=lambda: ["close", "open", "high", "low", "volume"]
