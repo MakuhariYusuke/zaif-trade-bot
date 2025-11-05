@@ -231,34 +231,47 @@ class RewardCalculator(BaseRewardCalculator):
                 hold_count = counter[ACTION_HOLD]
 
                 # Target distribution: roughly 35% each for balance
-                target_ratio = self._get_behavior_opt("action_balance_target", DEFAULT_ACTION_BALANCE_TARGET)
+                target_ratio = self._get_behavior_opt(
+                    "action_balance_target", DEFAULT_ACTION_BALANCE_TARGET
+                )
                 buy_ratio = buy_count / total_actions
                 sell_ratio = sell_count / total_actions
                 hold_ratio = hold_count / total_actions
 
                 # Penalize actions that deviate from target balanced distribution
                 # Target: action_balance_target for each action type (e.g., 0.333 = 33.3% each)
-                balance_penalty_scale = self._get_behavior_opt("balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE)
-                
+                balance_penalty_scale = self._get_behavior_opt(
+                    "balance_penalty", DEFAULT_BALANCE_PENALTY_SCALE
+                )
+
                 # Calculate deviation from target ratio for each action
                 deviation_buy = abs(buy_ratio - target_ratio)
                 deviation_sell = abs(sell_ratio - target_ratio)
                 deviation_hold = abs(hold_ratio - target_ratio)
-                
-                # Max deviation indicates how imbalanced the distribution is
-                max_deviation = max(deviation_buy, deviation_sell, deviation_hold)
-                balance_penalty = max_deviation * balance_penalty_scale
+
+                # FIXED: Use asymmetric formula that penalizes both excess and deficit
+                # This penalizes different distributions asymmetrically:
+                # ALL_SELL: |0-0.333| + |1-0.333| + |0-0.333| = 0.333 + 0.667 + 0.333 = 1.333
+                # ALL_BUY:  |1-0.333| + |0-0.333| + |0-0.333| = 0.667 + 0.333 + 0.333 = 1.333
+                # ALL_HOLD: |0-0.333| + |0-0.333| + |1-0.333| = 0.333 + 0.333 + 0.667 = 1.333
+                # (All equal due to constraint that sum=1, but each action type gets direct penalty)
+                # Add BUY/SELL balance asymmetry factor to break symmetry
+                buy_sell_imbalance = abs(buy_ratio - sell_ratio)
+                total_deviation = deviation_buy + deviation_sell + deviation_hold + buy_sell_imbalance * 0.5
+                balance_penalty = total_deviation * balance_penalty_scale
 
                 # Debug logging
                 if (
                     total_actions % 10 == 0
                 ):  # Changed from 50 to 10 for more frequent logging
                     self.logger.info(
-                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], max_dev={max_deviation:.3f}, penalty={balance_penalty:.6f}"
+                        f"BALANCE_PENALTY ({curriculum_stage}): total_actions={total_actions}, buy={buy_ratio:.3f}, sell={sell_ratio:.3f}, hold={hold_ratio:.3f}, deviations=[{deviation_buy:.3f}, {deviation_sell:.3f}, {deviation_hold:.3f}], buy_sell_imbalance={buy_sell_imbalance:.3f}, total_dev={total_deviation:.3f}, penalty={balance_penalty:.6f}"
                     )
 
         redundant_trade_penalty = 0.0
-        redundant_trade_cost = self._get_behavior_opt("redundant_trade_penalty", DEFAULT_REDUNDANT_TRADE_PENALTY)
+        redundant_trade_cost = self._get_behavior_opt(
+            "redundant_trade_penalty", DEFAULT_REDUNDANT_TRADE_PENALTY
+        )
         if redundant_trade_cost > 0.0:
             max_position = getattr(self.config, "max_position_size", 1.0)
             if (
@@ -279,13 +292,16 @@ class RewardCalculator(BaseRewardCalculator):
             "base_action_penalty", getattr(self.config, "base_action_penalty", 0.015)
         )
         buy_action_bonus = self.get_setting_float(
-            "action_bonuses.buy_action_bonus", action_bonuses_cfg.get("buy_action_bonus", 0.0)
+            "action_bonuses.buy_action_bonus",
+            action_bonuses_cfg.get("buy_action_bonus", 0.0),
         )
         sell_action_bonus = self.get_setting_float(
-            "action_bonuses.sell_action_bonus", action_bonuses_cfg.get("sell_action_bonus", 0.0)
+            "action_bonuses.sell_action_bonus",
+            action_bonuses_cfg.get("sell_action_bonus", 0.0),
         )
         hold_action_bonus = self.get_setting_float(
-            "action_bonuses.hold_action_bonus", action_bonuses_cfg.get("hold_action_bonus", 0.0)
+            "action_bonuses.hold_action_bonus",
+            action_bonuses_cfg.get("hold_action_bonus", 0.0),
         )
 
         action_penalty = self.action_penalty_calculator.calculate(
