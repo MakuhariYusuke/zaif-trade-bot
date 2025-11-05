@@ -1,0 +1,82 @@
+{
+  "version": "1.1",
+  "algorithm": "sac",
+  "model_name": "sac_v444_asymmetric_targets_2k_test",
+  "description": "Test asymmetric balance_penalty targets - 2000 steps",
+  "max_features": 120,
+  "min_features": 50,
+
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 0.001,
+    "commission": 0.001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "continuous_to_discrete_threshold": 0.08,
+    "behavior_optimization": {
+      "action_balance_target": 0.333,
+      "entropy_regularization": 0.01,
+      "action_smoothing": 0.1,
+      "consistency_penalty": 0.05,
+      "balance_penalty": 200.0,
+      "redundant_trade_penalty": 5.0
+    },
+    "action_bonuses": {
+      "buy_action_bonus": 10.0,
+      "sell_action_bonus": 5.0,
+      "hold_action_bonus": 2.0
+    },
+    "base_action_penalty": 1.0
+  },
+
+  "features": {
+    "feature_set": "v443_enhanced",
+    "target_dimensions": 150,
+    "include_regime_indicators": true,
+    "dynamic_feature_selection": true,
+    "correlation_analysis": true
+  },
+
+  "training": {
+    "algorithm": "sac",
+    "total_timesteps": 2000,
+    "data_config": {
+      "data_path": "data/btc_jpy_yahoo_real_20251021_featured_corrected.csv",
+      "validation_split": 0.2,
+      "test_split": 0.1,
+      "shuffle": true
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "batch_size": 256,
+      "buffer_size": 1000000,
+      "learning_starts": 100,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": "auto",
+      "target_entropy": "auto"
+    }
+  },
+
+  "validation": {
+    "enabled": true,
+    "validation_freq": 500,
+    "n_eval_episodes": 3,
+    "deterministic_eval": true
+  },
+
+  "logging": {
+    "tensorboard_log": "./tensorboard/sac_v444_asymmetric_2k",
+    "verbose": 2,
+    "log_interval": 50
+  },
+
+  "checkpoint": {
+    "save_freq": 2000,
+    "save_path": "./checkpoints",
+    "save_replay_buffer": false
+  }
+}
