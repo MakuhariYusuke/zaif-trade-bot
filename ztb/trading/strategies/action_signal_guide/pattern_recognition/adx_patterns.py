@@ -3,7 +3,7 @@ ADX (Average Directional Index) Pattern Recognizer
 ADXパターン認識 - トレンド強度と方向性分析
 """
 
-from typing import Any, Dict, Optional
+from typing import Dict, Optional, Union
 
 import pandas as pd
 
@@ -12,11 +12,13 @@ try:
 except ImportError:
     # Mock functions if trend module is not available
     def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
-        return pd.Series([25.0] * len(df), index=df.index)
+        raise ImportError("ztb.features.trend.adx.compute_adx is not available. Please ensure the trend module is installed.")
+
     def compute_minus_di(df: pd.DataFrame, period: int = 14) -> pd.Series:
-        return pd.Series([20.0] * len(df), index=df.index)
+        raise ImportError("ztb.features.trend.adx.compute_minus_di is not available. Please ensure the trend module is installed.")
+
     def compute_plus_di(df: pd.DataFrame, period: int = 14) -> pd.Series:
-        return pd.Series([20.0] * len(df), index=df.index)
+        raise ImportError("ztb.features.trend.adx.compute_plus_di is not available. Please ensure the trend module is installed.")
 
 from ztb.utils.performance_utils import timed
 
@@ -29,7 +31,7 @@ class ADXRecognizer(PatternRecognizer):
     ADXベースのパターン認識 - トレンド強度と方向性分析
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Union[int, float, bool, str, Dict]]] = None):
         super().__init__(config)
         self.pattern_type = "adx"
         self.period = self.config.get("period", 14)
@@ -48,7 +50,7 @@ class ADXRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize ADX patterns with multi-timeframe support.
@@ -313,7 +315,7 @@ class ADXRecognizer(PatternRecognizer):
         current_adx: float,
         current_plus_di: float,
         current_minus_di: float,
-        multi_timeframe_data: Optional[Dict[str, Any]]
+        multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]]
     ) -> float:
         """
         Analyze multi-timeframe alignment for enhanced signal confidence.
@@ -352,8 +354,8 @@ class ADXRecognizer(PatternRecognizer):
         return min(1.5, max(0.5, confidence))
 
     def _adjust_thresholds_for_regime(
-        self, multi_timeframe_data: Optional[MultiTimeframeData], pattern_type: str = "general"
-    ) -> Dict[str, Any]:
+        self, multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]], pattern_type: str = "general"
+    ) -> Dict[str, Union[float, int]]:
         """
         Adjust ADX thresholds based on market regime.
 

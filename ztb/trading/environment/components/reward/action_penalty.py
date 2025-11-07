@@ -43,7 +43,7 @@ class ActionPenaltyCalculator:
             hold_action_bonus: Bonus for HOLD action (applied as negative penalty, resulting in reward)
 
         Returns:
-            Action penalty (positive = penalty, negative = bonus reward)
+            Action penalty (always positive, bonuses are handled separately)
         """
         if action == ACTION_HOLD:
             position_size_factor = abs(position) / max(effective_max_position, EPSILON)
@@ -55,21 +55,13 @@ class ActionPenaltyCalculator:
                 * volatility_factor  # hold_penalty_base  # hold_penalty_position_factor
             )
             penalty *= 1.0  # hold_penalty_multiplier
-            # Apply hold bonus as negative penalty (results in negative penalty = bonus reward)
-            # Allow negative values to represent bonuses
-            penalty = penalty - hold_action_bonus
-            return penalty
+            # Return base penalty only - bonuses are handled separately in RewardCalculator
+            return max(0.0, penalty)  # Ensure non-negative
         elif action == ACTION_BUY:
-            penalty = base_action_penalty
-            # Apply buy bonus as negative penalty (results in negative penalty = bonus reward)
-            # Allow negative values to represent bonuses
-            penalty = penalty - buy_action_bonus
-            return penalty
+            # Return base penalty only - bonuses are handled separately in RewardCalculator
+            return max(0.0, base_action_penalty)
         elif action == ACTION_SELL:
-            penalty = base_action_penalty
-            # Apply sell bonus as negative penalty (results in negative penalty = bonus reward)
-            # Allow negative values to represent bonuses
-            penalty = penalty - sell_action_bonus
-            return penalty
+            # Return base penalty only - bonuses are handled separately in RewardCalculator
+            return max(0.0, base_action_penalty)
 
         return 0.0
