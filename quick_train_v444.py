@@ -5,6 +5,8 @@ Quick training script for V444 backtest
 
 import logging
 import sys
+import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -58,7 +60,7 @@ def create_sample_data():
     return df.ffill().bfill()
 
 
-def quick_train():
+def quick_train(config_path=None, total_timesteps=2000):
     """Quick training for backtest"""
     # Set up logging
     logging.basicConfig(
@@ -94,6 +96,7 @@ def quick_train():
     df = create_sample_data()
 
     print("Setting up environment...")
+    # Load config if provided
     config = {
         "initial_balance": 100000.0,
         "commission": 0.001,
@@ -103,6 +106,17 @@ def quick_train():
         "use_continuous_actions": True,
         "feature_set": "minimal",
     }
+    
+    if config_path:
+        with open(config_path, 'r') as f:
+            loaded_config = json.load(f)
+        # Merge loaded config with defaults
+        config.update(loaded_config.get("environment", {}))
+        # Add other sections that might be needed
+        if "reward_settings" in loaded_config:
+            config["reward_settings"] = loaded_config["reward_settings"]
+        if "behavior_optimization" in loaded_config:
+            config["behavior_optimization"] = loaded_config["behavior_optimization"]
 
     env = HeavyTradingEnv(df, config)
     
@@ -147,9 +161,9 @@ def quick_train():
         verbose=2,  # Increased verbosity
     )
 
-    print("Training model (2000 steps)...")
-    logger.info("Starting training with 2000 steps")
-    model.learn(total_timesteps=2000)
+    print(f"Training model ({total_timesteps} steps)...")
+    logger.info(f"Starting training with {total_timesteps} steps")
+    model.learn(total_timesteps=total_timesteps)
     logger.info("Training completed")
 
     # Save model
@@ -168,8 +182,14 @@ def quick_train():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Quick training for V444")
+    parser.add_argument("--config", type=str, help="Path to config file")
+    parser.add_argument("--total-timesteps", type=int, default=2000, help="Total training timesteps")
+    
+    args = parser.parse_args()
+    
     try:
-        model_path, data_path = quick_train()
+        model_path, data_path = quick_train(args.config, args.total_timesteps)
         print("Quick training completed!")
         print(f"Model: {model_path}")
         print(f"Data: {data_path}")

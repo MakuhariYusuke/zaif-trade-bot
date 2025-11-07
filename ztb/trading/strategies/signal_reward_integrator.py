@@ -251,9 +251,11 @@ class SignalRewardIntegrator:
             # Update tracking
             self._update_advanced_tracking(pattern_analysis)
 
-            self.logger.debug(
-                f"Advanced integration: modifier={reward_modifier:.4f}, "
-                f"patterns={len(individual_signals)}"
+            # Log reward modifier by action type for analysis
+            action_name = {0: 'HOLD', 1: 'BUY', -1: 'SELL'}[action]
+            self.logger.info(
+                f"SignalRewardIntegrator: action={action_name}, reward_modifier={reward_modifier:.4f}, "
+                f"base_reward={reward:.4f}, modified_reward={modified_reward:.4f}"
             )
 
             self.total_steps += 1

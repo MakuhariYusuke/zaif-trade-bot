@@ -49,6 +49,10 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
         step: int,
     ) -> float:
         """Calculate PnL-focused reward with trend analysis and fair action penalties."""
+        # Log curriculum stage for debugging
+        curriculum_stage = getattr(self.config, 'curriculum_stage', None)
+        self.logger.info(f"PnLFocusedRewardCalculator: curriculum_stage={curriculum_stage}, step={step}")
+
         # Simplified reward: focus on portfolio return with small action penalty
         # Remove complex profit_bonus and position_penalty calculations
 

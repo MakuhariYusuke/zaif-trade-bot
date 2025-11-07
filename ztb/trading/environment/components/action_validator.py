@@ -93,37 +93,57 @@ class ActionValidator:
         ):
             return legal
 
-        # BUY: フラットまたはロング中の場合、かつ十分な残高がある場合
-        # ロング中のBUYはロングの増し増し
-        # フラット中のBUYは新規ロング建て
-        # ショート中のBUYはショートのクローズ
-        if position >= -0.0001:  # Flat or Long (allow small tolerance)
-            # 理想的な購入コスト（フルサイズ）
-            ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
+        # Initialize variables to avoid UnboundLocalError
+        ideal_buy_cost = 0.0
+        ideal_sell_value = 0.0
+        affordable_size = 0.0
 
-            # 少額取引対応: 利用可能資金の90%以上あれば取引可能とする
-            affordable_size = (
-                portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
-            )
+        # BUY: 常に許可（資金があれば）
+        # 🔧 CRITICAL FIX: アクションバイアスを排除するため常に許可
+        # - 実際の取引ではポジションに関係なくBUY可能
+        # - 資金があればいつでも買える
+        ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
+        affordable_size = portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+        min_purchase_amount = 10000.0
+        min_affordable_value = affordable_size * current_price
+        if (portfolio_value >= ideal_buy_cost or
+            (affordable_size >= BTC_MIN_UNIT and min_affordable_value >= min_purchase_amount)):
+            legal[1] = 1
 
-            # 条件: 理想サイズが買えるか、または最小単位以上が買える
-            if portfolio_value >= ideal_buy_cost or affordable_size >= BTC_MIN_UNIT:
-                legal[1] = 1
-
-        # SELL: フラットまたはショート中の場合、かつ十分な残高がある場合
-        # ショート中のSELLはショートの増し増し
-        # フラット中のSELLは新規ショート建て
-        # ロング中のSELLはロングのクローズ
-        if position <= 0.0001:  # Flat or Short (allow small tolerance)
-            # ショートポジションを開く場合、ポジションサイズ分の価値が必要
-            ideal_sell_value = position_size * current_price
-
-            # 少額取引対応: BUYと同様に柔軟に判定
-            affordable_size = portfolio_value * 0.9 / current_price
-            if portfolio_value >= ideal_sell_value or affordable_size >= BTC_MIN_UNIT:
-                legal[2] = 1
+        # SELL: 常に許可（資金があれば）
+        # 🔧 CRITICAL FIX: アクションバイアスを排除するため常に許可
+        # - 実際の取引ではポジションに関係なくSELL可能
+        # - 資金があればいつでも売れる
+        ideal_sell_value = position_size * current_price
+        affordable_size = portfolio_value * 0.9 / current_price
+        min_sell_amount = 10000.0
+        min_affordable_value = affordable_size * current_price
+        if (portfolio_value >= ideal_sell_value or
+            (affordable_size >= BTC_MIN_UNIT and min_affordable_value >= min_sell_amount)):
+            legal[2] = 1
 
         # HOLDは常に合法なので、全て0になることはない
+        logger.info(
+            # legal_actions: [HOLD, BUY, SELL] の合法性
+            # affordable_size: 現在資金で購入可能なBTC量
+            # ideal_buy_cost: 理想的なBUY時の必要資金
+            # ideal_sell_value: 理想的なSELL時の必要資金
+            # portfolio_value: 現在のポートフォリオ価値
+            # position: 現在のポジションサイズ
+            # current_price: 現在価格
+            f"ActionValidator: legal_actions={[bool(x) for x in legal]}, "  # [HOLD, BUY, SELL] の合法性
+            f"affordable_size={affordable_size:.6f}, "                     # 購入可能BTC量
+            f"ideal_buy_cost={ideal_buy_cost:.2f}, "                       # BUY時必要資金
+            f"ideal_sell_value={ideal_sell_value:.2f}, "                   # SELL時必要資金
+            f"portfolio_value={portfolio_value:.2f}, "                     # ポートフォリオ価値
+            f"position={position:.6f}, "                                   # ポジションサイズ
+        """
+        Resolve current price for action validation.
+
+        Returns:
+            float: The resolved price for the current step. If the price cannot be obtained, returns 0.0.
+        """
+        )
         return legal
 
     def _resolve_price(

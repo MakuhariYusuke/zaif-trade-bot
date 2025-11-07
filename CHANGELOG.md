@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-31
 
+### SELL-Lock Bug Fix and ActionValidator Logic Correction 🔧→✅
+
+#### Critical ActionValidator Bug Resolution
+- **SELL-Lock Root Cause Fixed**: 完全に逆転していたBUY/SELLマスキングロジックを修正
+  - 問題: BUY条件 `position >= -0.0001` (ロングポジションのみ), SELL条件 `position <= 0.0001` (ショートポジションのみ)
+  - 修正: BUY/SELLを資金充足時に常に許可（ポジション方向に関係なく）
+  - 結果: ショートポジションでもBUY/SELL/HOLDがすべて許可されるようになり、SELL-lockが根本解決
+
+#### ActionValidator Logic Overhaul
+- **Funds-Based Action Validation**: ポジション方向ベースから資金充足ベースへのロジック変更
+  - BUY: `portfolio_value >= ideal_cost` または `affordable_size >= BTC_MIN_UNIT` の場合許可
+  - SELL: `portfolio_value >= ideal_cost` または `affordable_size >= BTC_MIN_UNIT` の場合許可
+  - HOLD: 常に許可
+  - 資金不足時のみBUY/SELLがブロックされる
+
+#### Comprehensive Test Suite Updates
+- **Unit Test Corrections**: 古いロジック前提のテストを新ロジックに完全更新
+  - `test_long_position_allows_all_actions_with_funds`: ロングポジションでも全アクション許可
+  - `test_short_position_allows_all_actions_with_funds`: ショートポジションでも全アクション許可
+  - `test_sell_lock_fix_short_position_allows_all_actions`: SELL-lock修正検証テスト更新
+  - `test_buy_sell_logic_inversion_prevention`: 全ポジションで資金充足時全アクション許可
+  - 全14テスト通過（100%成功率）
+
+#### Quality Assurance Validation
+- **Regression Testing**: 既存機能への影響なしを確認
+  - 資金不足時のBUY/SELLブロック機能維持
+  - 最小取引サイズ検証機能維持
+  - 取引クールダウン機能維持
+  - 連続取引制限機能維持
+  - ボラティリティフィルタリング機能維持
+
 ### SignalPerformanceAnalyzer Integration and Testing Suite 📊→🧪
 
 #### Signal Performance Analysis System
