@@ -245,7 +245,10 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.log_structured_event(
                 "environment", "creation", {"type": "HeavyTradingEnv"}
             )
-            env_config = self.config.get("training", {}).get("environment", {})
+            # Check for environment config in multiple locations (top-level or training section)
+            env_config = self.config.get("environment", {})
+            if not env_config:
+                env_config = self.config.get("training", {}).get("environment", {})
             # Extract the actual config from the environment section (could be nested)
             actual_env_config = env_config.get("config", env_config)
             # Log the exact object passed to the environment so we can trace

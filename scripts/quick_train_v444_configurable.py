@@ -15,6 +15,12 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -175,6 +181,46 @@ class DirectTrainer:
                 
                 if step % 500 == 0:
                     self.logger.info(f"Step {step}: action={action}, reward={reward:.2f}, balance_penalty={step_data['balance_penalty']:.2f}")
+                    
+                    # Check SAC model parameters for exploration analysis
+                    try:
+                        if hasattr(model, 'actor') and hasattr(model.actor, 'log_std'):
+                            log_std = model.actor.log_std.detach().cpu().numpy()
+                            log_std_mean = float(np.mean(log_std))
+                            log_std_std = float(np.std(log_std))
+                            self.logger.info(f"Step {step}: SAC log_std mean={log_std_mean:.4f}, std={log_std_std:.4f}")
+                            
+                            # Check if exploration is collapsed (log_std values close to -20)
+                            if log_std_mean < -15:
+                                self.logger.warning(f"Step {step}: SAC exploration may be collapsed (log_std={log_std_mean:.4f})")
+                        
+                        # Check entropy coefficient if available
+                        if hasattr(model, 'ent_coef') and model.ent_coef is not None:
+                            if hasattr(model.ent_coef, 'item'):
+                                ent_coef = model.ent_coef.item()
+                            else:
+                                ent_coef = float(model.ent_coef)
+                            self.logger.info(f"Step {step}: SAC ent_coef={ent_coef:.6f}")
+                            
+                            if ent_coef < 0.001:
+                                self.logger.warning(f"Step {step}: SAC ent_coef very low ({ent_coef:.6f}), exploration may be limited")
+                        
+                        # Check actor mu (mean action) if available
+                        if TORCH_AVAILABLE and hasattr(model, 'actor') and hasattr(model.actor, 'mu'):
+                            try:
+                                # Get a sample observation to check mu output
+                                obs_sample = env.reset()
+                                if isinstance(obs_sample, tuple):
+                                    obs_sample = obs_sample[0]
+                                mu_output = model.actor.mu(torch.tensor(obs_sample, dtype=torch.float32).unsqueeze(0))
+                                mu_mean = float(torch.mean(mu_output).detach().cpu().numpy())
+                                mu_std = float(torch.std(mu_output).detach().cpu().numpy())
+                                self.logger.info(f"Step {step}: SAC actor mu mean={mu_mean:.4f}, std={mu_std:.4f}")
+                            except Exception as e:
+                                self.logger.debug(f"Could not check actor mu: {e}")
+                                
+                    except Exception as e:
+                        self.logger.debug(f"Could not check SAC parameters: {e}")
             
             # Save training results
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
