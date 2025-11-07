@@ -156,10 +156,18 @@ class ConfigManager:
         if "action_bonuses" in nested_env and "action_bonuses" not in environment:
             environment["action_bonuses"] = nested_env["action_bonuses"]
 
-        # Add curriculum stage from curriculum_learning
+        # Add curriculum stage from curriculum_learning or environment section
         curriculum_learning = self.config.get("curriculum_learning", {})
         if isinstance(curriculum_learning, dict) and "curriculum_stage" in curriculum_learning:
             environment["curriculum_stage"] = curriculum_learning["curriculum_stage"]
+        # Also check for curriculum_stage directly in environment section
+        elif self._get_config_value("curriculum_stage", ["environment"]):
+            environment["curriculum_stage"] = self._get_config_value("curriculum_stage", ["environment"])
+        else:
+            # Check top-level curriculum_learning
+            top_curriculum = self.config.get("training", {}).get("curriculum_learning", {})
+            if isinstance(top_curriculum, dict) and "curriculum_stage" in top_curriculum:
+                environment["curriculum_stage"] = top_curriculum["curriculum_stage"]
 
         return environment
 

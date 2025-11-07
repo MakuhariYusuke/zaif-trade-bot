@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "algorithm": "sac",
-  "model_name": "sac_v444_6_optimized",
+  "algorithm": "ppo",
+  "model_name": "ppo_v444_6_optimized",
   "description": "SAC v444.6: Optimized Configuration - Balanced Parameters for Stable Training with Enhanced Action Balance",
   "max_features": 120,
   "min_features": 50,
@@ -116,19 +116,19 @@
 
   "environment": {
     "curriculum_stage": "balance_penalty",
-    "continuous_to_discrete_threshold": 0.08,
+    "continuous_to_discrete_threshold": 0.0,
     "behavior_optimization": {
       "action_balance_target": 0.333,
       "entropy_regularization": 0.022,
       "action_smoothing": 0.1,
       "consistency_penalty": 0.05,
-      "balance_penalty": 30.0,
+      "balance_penalty": 100.0,
       "redundant_trade_penalty": 3.5
     },
     "action_bonuses": {
-      "buy_action_bonus": 11.0,
-      "sell_action_bonus": 1.5,
-      "hold_action_bonus": 0.75
+      "buy_action_bonus": 15.0,
+      "sell_action_bonus": 10.0,
+      "hold_action_bonus": 5.0
     },
     "base_action_penalty": 0.4,
     "use_continuous_actions": true,
@@ -213,11 +213,11 @@
     "sac_hyperparameters": {
       "learning_rate": 0.0003,
       "buffer_size": 1000000,
-      "learning_starts": 1000,
-      "batch_size": 256,
+      "learning_starts": 500,
+      "batch_size": 128,
       "tau": 0.005,
       "gamma": 0.99,
-      "ent_coef": "auto",
+      "ent_coef": 2.0,
       "target_update_interval": 1
     }
   },
