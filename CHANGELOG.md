@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-31
 
-### Market Regime Detection Refactoring and Code Deduplication 🏗️→🔄
+### Market Regime Type Definitions Consolidation 📋→🔄
+
+#### Common Type Definitions Extraction
+- **New Module**: `ztb/analysis/market_regime_types.py` を作成し、共通の型定義を抽出
+  - `MarketRegime(Enum)`: 13種類の市場レジーム定義を共通化
+  - `RegimeDetectionResult(dataclass)`: レジーム検出結果の標準化（`classification_path`フィールドをオプション化）
+  - 結果: コード重複の解消と型定義の一貫性確保
+
+#### Module Interface Updates
+- **market_analysis/__init__.py**: 型定義のインポート元を`market_regime_types`に変更
+- **regime/__init__.py**: 同様に型定義のインポート元を更新
+- **analysis/__init__.py**: 共通型定義をトップレベルでエクスポート
+- 結果: クリーンなパブリックAPIと一貫したインポート経路
+
+#### Backward Compatibility Preservation
+- **Enhanced RegimeDetectionResult**: `classification_path`フィールドをオプション化し、後方互換性を維持
+- **Unified Enum Definition**: 両ファイルで同一の`MarketRegime`定義を使用
+- 結果: 既存コードの破綻なし、機能完全維持
+
+#### Quality Assurance Validation
+- **Import Testing**: 全モジュールの正常インポートを確認
+- **Functionality Testing**: レジーム検出機能の完全動作を確認
+- **Type Consistency**: 両実装での型定義統一を確認
+- 結果: 型安全性の向上と保守性の改善
 
 #### EnhancedRegimeAnalyzer Code Quality Improvements
 - **Eliminated Code Duplication**: EnhancedTechnicalIndicatorsクラスを削除し、既存のフィーチャージェネレータを使用するようリファクタリング

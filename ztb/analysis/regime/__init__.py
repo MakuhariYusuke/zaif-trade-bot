@@ -5,12 +5,8 @@ This package provides various market regime detection capabilities
 for adaptive trading strategies.
 """
 
-from .advanced_regime_detector import (
-    AdvancedRegimeDetector,
-    MarketRegime,
-    TechnicalIndicators,
-    RegimeDetectionResult
-)
+from ..market_regime_types import MarketRegime, RegimeDetectionResult
+from .advanced_regime_detector import AdvancedRegimeDetector, TechnicalIndicators
 from .basic_regime_detector import MarketRegimeDetector
 
 __all__ = [
