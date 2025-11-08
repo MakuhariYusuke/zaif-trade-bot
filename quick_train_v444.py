@@ -3,10 +3,10 @@
 Quick training script for V444 backtest
 """
 
-import logging
-import sys
 import argparse
 import json
+import logging
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -65,32 +65,32 @@ def quick_train(config_path=None, total_timesteps=2000):
     # Set up logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler('logs/quick_train_v444_debug.log'),
-            logging.StreamHandler()
-        ]
+            logging.FileHandler("logs/quick_train_v444_debug.log"),
+            logging.StreamHandler(),
+        ],
     )
     logger = logging.getLogger(__name__)
-    
+
     # Suppress verbose debug loggers
     verbose_loggers = [
-        'ztb.trading.environment.reward',
-        'ztb.trading.environment.heavy_env.core',
-        'ztb.trading.environment.heavy_env.mixins.initialization',
-        'ztb.trading.environment.components.observation_builder',
-        'ztb.trading.environment.components.position_manager',
-        'ztb.trading.environment.components.data_manager',
-        'ztb.trading.environment.asymmetric_reward_scaler',
-        'ztb.trading.environment.signal_integrator',
-        'ztb.trading.environment.heavy_env.core',
-        'ztb.risk.risk_manager',
-        'ztb.risk.dynamic_position_sizer',
-        'ztb.risk.drawdown_controller',
+        "ztb.trading.environment.reward",
+        "ztb.trading.environment.heavy_env.core",
+        "ztb.trading.environment.heavy_env.mixins.initialization",
+        "ztb.trading.environment.components.observation_builder",
+        "ztb.trading.environment.components.position_manager",
+        "ztb.trading.environment.components.data_manager",
+        "ztb.trading.environment.asymmetric_reward_scaler",
+        "ztb.trading.environment.signal_integrator",
+        "ztb.trading.environment.heavy_env.core",
+        "ztb.risk.risk_manager",
+        "ztb.risk.dynamic_position_sizer",
+        "ztb.risk.drawdown_controller",
     ]
     for logger_name in verbose_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARNING)
-    
+
     logger.info("Starting quick training...")
     print("Creating sample data...")
     df = create_sample_data()
@@ -105,10 +105,17 @@ def quick_train(config_path=None, total_timesteps=2000):
         "action_space_type": "continuous",
         "use_continuous_actions": True,
         "feature_set": "minimal",
+        "curriculum_stage": "opportunity_cost",  # Enable opportunity_cost curriculum
+        "reward_settings": {
+            "balance_penalty": 50.0,  # Strong penalty for imbalance
+        },
+        "behavior_optimization": {
+            "balance_penalty": 50.0,  # Strong penalty for imbalance
+        },
     }
-    
+
     if config_path:
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             loaded_config = json.load(f)
         # Merge loaded config with defaults
         config.update(loaded_config.get("environment", {}))
@@ -119,15 +126,15 @@ def quick_train(config_path=None, total_timesteps=2000):
             config["behavior_optimization"] = loaded_config["behavior_optimization"]
 
     env = HeavyTradingEnv(df, config)
-    
+
     # Collect episode data for analysis
     episode_data = []
-    
+
     class TrainingCallback:
         def __init__(self):
             self.episode_rewards = []
             self.episode_steps = []
-            
+
         def __call__(self, locals_, globals_):
             if "done" in locals_ and locals_["done"]:
                 episode_rewards = locals_.get("episode_reward", 0)
@@ -135,7 +142,7 @@ def quick_train(config_path=None, total_timesteps=2000):
                 self.episode_rewards.append(episode_rewards)
                 self.episode_steps.append(episode_steps)
             return True
-    
+
     # Simple data collection from environment
     class DataCollector:
         def __init__(self):
@@ -184,10 +191,12 @@ def quick_train(config_path=None, total_timesteps=2000):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Quick training for V444")
     parser.add_argument("--config", type=str, help="Path to config file")
-    parser.add_argument("--total-timesteps", type=int, default=2000, help="Total training timesteps")
-    
+    parser.add_argument(
+        "--total-timesteps", type=int, default=2000, help="Total training timesteps"
+    )
+
     args = parser.parse_args()
-    
+
     try:
         model_path, data_path = quick_train(args.config, args.total_timesteps)
         print("Quick training completed!")

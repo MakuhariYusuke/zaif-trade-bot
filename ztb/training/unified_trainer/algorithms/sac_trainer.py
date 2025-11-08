@@ -337,7 +337,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                         if explicit_bool is None:
                             # check unified_trainer style environment.use_continuous_actions
                             explicit_bool = (
-                                cfg.get("environment", {}).get("use_continuous_actions", None)
+                                cfg.get("environment", {}).get(
+                                    "use_continuous_actions", None
+                                )
                                 if isinstance(cfg, dict)
                                 else None
                             )
@@ -406,6 +408,12 @@ class SACTrainer(BaseAlgorithmTrainer):
                 policy_kwargs["dropout_rate"] = sac_config["dropout_rate"]
             if "l2_regularization" in sac_config:
                 policy_kwargs["weight_decay"] = sac_config["l2_regularization"]
+            if sac_config.get("net_arch"):
+                self.logger.info(f"Applying net_arch from config: {sac_config['net_arch']}")
+                policy_kwargs["net_arch"] = sac_config["net_arch"]
+            if sac_config.get("net_arch"):
+                self.logger.info(f"Applying net_arch from config: {sac_config['net_arch']}")
+                policy_kwargs["net_arch"] = sac_config["net_arch"]
 
             # Create SAC model
             self.log_structured_event(

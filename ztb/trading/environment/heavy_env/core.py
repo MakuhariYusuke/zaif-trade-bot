@@ -7,15 +7,21 @@ import gc
 import logging
 from collections import deque
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from dataclasses import asdict
 
 import gymnasium as gym
 import numpy as np
 import pandas as pd
 import psutil
+import torch
 from numpy.typing import NDArray
 
 # Import v444 regime classifier for advanced market regime adaptation
-from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+from ztb.analysis.market_regime_classifier import (
+    MarketRegimeClassifier,
+    RegimeType as GenericRegimeType,
+)
+from ztb.analysis.v444_regime_classifier import RegimeType as V444RegimeType
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 # Import components for runtime use
@@ -41,6 +47,7 @@ from ztb.trading.environment.heavy_env.mixins.initialization import (
     _extract_numeric_column,
     _initialize_components,
     _initialize_data,
+    _initialize_data_manager,
     _initialize_data_structures,
     _initialize_features_and_spaces,
     _initialize_remaining_components,
@@ -121,6 +128,81 @@ class HeavyTradingEnv(
     DEFAULT_STREAM_BATCH_SIZE = 256
     DEFAULT_PREPROCESS_CHUNK_SIZE = 32
 
+    # --- START: Debug Methods ---
+    def enable_debug_mode(self, model: Optional[Any] = None) -> None:
+        """Enable debug mode to get detailed info from the environment."""
+        self._model = model
+        self._debug_mode = True
+        if hasattr(self, "logger"):
+            self.logger.info("Debug mode enabled.")
+
+    def _get_debug_info(self, observation: np.ndarray) -> Dict[str, Any]:
+        """モデルの内部状態を抽出してデバッグ情報を取得する。"""
+        if not self.config.debug_internal_state or not hasattr(self, "_model") or self._model is None:
+            return {}
+        
+        try:
+
+            # Ensure observation is a PyTorch tensor
+            obs_tensor = torch.as_tensor(observation).to(self._model.device)
+            if obs_tensor.ndimension() == 1:
+                obs_tensor = obs_tensor.unsqueeze(0)
+
+            debug_info = {}
+
+            # Use torch.no_grad() to prevent gradient calculations
+            with torch.no_grad():
+                # --- Feature Extraction ---
+                features_extractor = None
+                if hasattr(self._model.policy, "features_extractor") and self._model.policy.features_extractor is not None:
+                    features_extractor = self._model.policy.features_extractor
+                elif hasattr(self._model.policy, "actor") and hasattr(self._model.policy.actor, "features_extractor"):
+                    features_extractor = self._model.policy.actor.features_extractor
+                
+                if features_extractor:
+                    features = features_extractor(obs_tensor)
+                    debug_info["features_mean"] = features.mean().item()
+                    debug_info["features_std"] = features.std().item()
+
+                    # --- Actor Latents ---
+                    if hasattr(self._model.policy, "actor") and hasattr(self._model.policy.actor, "latent_pi"):
+                        latent_pi = self._model.policy.actor.latent_pi(features)
+                        debug_info["actor_latent_mean"] = latent_pi.mean().item()
+                        debug_info["actor_latent_std"] = latent_pi.std().item()
+
+                        # --- Actor Action Distribution Parameters ---
+                        if hasattr(self._model.policy.actor, "action_dist"):
+                            mean_actions, log_std, _ = self._model.policy.actor.get_action_dist_params(features)
+                            debug_info["debug_actor_pre_tanh"] = mean_actions.cpu().numpy().flatten().tolist()
+                            debug_info["debug_actor_log_std"] = log_std.cpu().numpy().flatten().tolist()
+
+                    # --- Critic Latents and Q-Values ---
+                    if hasattr(self._model.policy, "critic") and hasattr(self._model.policy.critic, "qf0"):
+                        action_dim = self._model.policy.action_space.shape[-1]
+                        dummy_action = torch.zeros(features.shape[0], action_dim).to(self._model.device)
+                        
+                        # --- Critic Latents ---
+                        critic_input = torch.cat([features, dummy_action], dim=1)
+                        
+                        critic_latent_features = critic_input
+                        qf0_layers = list(self._model.policy.critic.qf0.children())
+                        if len(qf0_layers) > 2:
+                            for layer in qf0_layers[:-1]:
+                                critic_latent_features = layer(critic_latent_features)
+                            
+                            debug_info["critic_latent_mean"] = critic_latent_features.mean().item()
+                            debug_info["critic_latent_std"] = critic_latent_features.std().item()
+
+                        # --- Critic Q-Values ---
+                        q_values = self._model.policy.critic.qf0(critic_input)
+                        debug_info["debug_critic_q1_values"] = q_values.cpu().numpy().flatten().tolist()
+
+            return debug_info
+        except Exception as e:
+            self.logger.error(f"Error in _get_debug_info: {e}", exc_info=True)
+            return {}
+    # --- END: Debug Methods ---
+
     # Component types (具体的な型を指定して型安全性向上)
     memory_manager: "MemoryManager"
     data_processor: "DataProcessor"
@@ -172,6 +254,7 @@ class HeavyTradingEnv(
     initial_portfolio_value: float
 
     # Bind helper functions as methods
+    _initialize_data_manager = _initialize_data_manager
     _initialize_components = _initialize_components
     _initialize_data_structures = _initialize_data_structures
     _initialize_data = _initialize_data
@@ -200,17 +283,21 @@ class HeavyTradingEnv(
 
     def __init__(
         self,
-        df: Optional[pd.DataFrame] = None,
-        config: Optional[Union[EnvironmentConfig, Dict[str, Any]]] = None,
-        *,
-        random_start: bool = False,
+        df: pd.DataFrame,
+        config: Union[Dict[str, Any], EnvironmentConfig],
+        initial_balance: float = 100_000.0,
+        transaction_cost: float = 0.00075,
+        max_position_size: float = 1.0,
+        use_continuous_actions: bool = False,
+        action_space_type: Optional[str] = None,
         streaming_pipeline: Optional["StreamingPipeline"] = None,
-        stream_batch_size: int = DEFAULT_STREAM_BATCH_SIZE,
         stream_to_bars_converter: Optional["StreamToBarsConverter"] = None,
-        max_features: Optional[int] = None,
-        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+        fee_model: Optional[ExchangeFeeModel] = None,
+        **kwargs: Any,
     ) -> None:
+        """Initialize the trading environment."""
         super().__init__()
+        self.logger = get_logger(self.__class__.__name__)
 
         if df is not None:
             TypeValidator.validate_type(df, pd.DataFrame, "df")
@@ -218,7 +305,35 @@ class HeavyTradingEnv(
         if config is not None and not isinstance(config, EnvironmentConfig):
             TypeValidator.validate_type(config, Dict[str, Any], "config")
 
+        # Diagnostic: record raw config received to trace conversion issues
+        try:
+            self.logger.info(
+                "HeavyTradingEnv.__init__ raw config type=%s, repr_preview=%s",
+                type(config),
+                (config if isinstance(config, dict) else str(type(config))),
+            )
+            if isinstance(config, dict):
+                self.logger.info(
+                    "HeavyTradingEnv.__init__ raw dict contains use_continuous_actions=%s",
+                    config.get("use_continuous_actions", "NOT_PRESENT"),
+                )
+        except Exception:
+            self.logger.exception("Failed to log raw config diagnostic")
+
+        if isinstance(config, EnvironmentConfig):
+            self.config = config
+        else:
+            self.config = EnvironmentConfig.from_dict(config)
+
+        # Extract values from config for validation and use.
+        # kwargs can override some runtime parameters.
+        random_start = self.config.random_start
+        stream_batch_size = kwargs.get("stream_batch_size", self.DEFAULT_STREAM_BATCH_SIZE)
+        max_features = self.config.target_feature_count
+        optimizer_tracker = kwargs.get("optimizer_tracker") # Can be None
+
         TypeValidator.validate_type(random_start, bool, "random_start")
+        TypeValidator.validate_type(stream_batch_size, int, "stream_batch_size")
         TypeValidator.validate_type(stream_batch_size, int, "stream_batch_size")
         if stream_batch_size <= 0:
             raise ValidationError(
@@ -240,29 +355,8 @@ class HeavyTradingEnv(
                 details={"df_provided": False, "pipeline_provided": False},
             )
 
-        # Diagnostic: record raw config received to trace conversion issues
-        try:
-            # Use INFO here so diagnostics are visible during test runs
-            logger.info(
-                "HeavyTradingEnv.__init__ raw config type=%s, repr_preview=%s",
-                type(config),
-                (config if isinstance(config, dict) else str(type(config))),
-            )
-            if isinstance(config, dict):
-                logger.info(
-                    "HeavyTradingEnv.__init__ raw dict contains use_continuous_actions=%s",
-                    config.get("use_continuous_actions", "NOT_PRESENT"),
-                )
-        except Exception:
-            # Ensure diagnostics never break initialization
-            logger.exception("Failed to log raw config diagnostic")
-
-        if isinstance(config, EnvironmentConfig):
-            self.config = config
-        else:
-            self.config = EnvironmentConfig.from_dict(config)
-
         self.random_start = random_start
+        self.optimizer_tracker = optimizer_tracker
 
         # Get continuous-to-discrete action conversion threshold from config
         # Default to environment constant if not specified in config
@@ -316,11 +410,16 @@ class HeavyTradingEnv(
         }
 
         if getattr(self.config, "reward_settings", None):
-            merged = deep_merge_dict(
-                self.reward_settings,
-                dataclasses.asdict(self.config.reward_settings),
-            )
-            self.reward_settings = merged
+            reward_settings_dict = self.config.reward_settings
+            if dataclasses.is_dataclass(reward_settings_dict):
+                reward_settings_dict = dataclasses.asdict(reward_settings_dict)
+            
+            if reward_settings_dict:
+                merged = deep_merge_dict(
+                    self.reward_settings,
+                    reward_settings_dict,
+                )
+                self.reward_settings = merged
 
         # Create RewardSettings object for RewardCalculator
         self.reward_settings_obj: RewardSettings = RewardSettings(
@@ -350,6 +449,9 @@ class HeavyTradingEnv(
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
 
+        self._debug_mode = False
+        self._model = None
+
         self._timestamp_column = None
         self._episode_id_column = None
         self._stream_last_timestamp = None
@@ -363,28 +465,22 @@ class HeavyTradingEnv(
         if self.feature_names:
             logger.info(f"Using schema-defined features: {len(self.feature_names)}")
 
-        self._initialize_components(streaming_pipeline, stream_batch_size, df)
+        # Initialize components
         self._initialize_data_structures()
-
-        # Initialize optimizer feature tracker BEFORE feature initialization
-        self.optimizer_tracker = optimizer_tracker
-
-        # Initialize new component classes
-        self.action_executor = ActionExecutor(
-            action_threshold=self.action_threshold,
-            negative_action_threshold=self.negative_action_threshold,
-        )
-        self.data_manager = DataManager()
-        self.statistics_calculator = StatisticsCalculator()
-        self.state_manager = StateManager(self)
-        self.validation_manager = ValidationManager(self)
-
-        # Initialize adaptive feature selector (will be set during feature initialization if enabled)
-        self.adaptive_feature_selector = None
+        self._initialize_components(streaming_pipeline, stream_batch_size, df)
         self._initialize_data(df)
         self._initialize_features_and_spaces(max_features)
-        self._setup_scaler()
+        self._initialize_data_manager(streaming_pipeline, stream_batch_size, df)
 
+        # データリークを防ぐため、訓練/検証の分割インデックスを取得
+        train_end_index = self.config.train_end_index
+
+        # スケーラーを計算
+        self._setup_scaler()
+        if self.scaler_mean is None:
+            self._compute_scaler_from_data(train_end_index=train_end_index)
+
+        # 残りのコンポーネントを初期化
         self._initialize_remaining_components()
 
         # Initialize v444 regime classifier for advanced market regime adaptation
@@ -542,8 +638,9 @@ class HeavyTradingEnv(
     def get_action_masks(self) -> Any:
         return self.action_mask()
 
-    def _get_current_market_regime(self) -> str:
-        """Get current market regime using v444 classifier if available, fallback to legacy."""
+    def _get_current_market_regime(self) -> V444RegimeType:
+        """Get current market regime, returning a RegimeType enum member."""
+        regime_str: str = "unknown"
         if self.regime_classifier is not None:
             try:
                 # Get recent price data for regime classification
@@ -557,16 +654,35 @@ class HeavyTradingEnv(
                 if end_idx - start_idx >= 10:  # Minimum data points needed
                     price_data = self.df.iloc[start_idx:end_idx].copy()
                     if "close" in price_data.columns:
+                        # Convert to DataFrame if it's a Series
+                        if isinstance(price_data, pd.Series):
+                            price_data = price_data.to_frame()
                         regime_result = self.regime_classifier.detect_regime(price_data)
-                        return regime_result.primary_regime.value
+                        # Cast the result to the correct type
+                        return V444RegimeType(regime_result.primary_regime.value)
             except Exception as e:
-                logger.warning(f"Failed to classify regime with v444 classifier: {e}")
+                self.logger.warning(f"Failed to classify regime with v444 classifier: {e}")
+                regime_str = "unknown"
 
         # Fallback to legacy regime detector
         try:
-            return self.reward_calculator.market_regime_detector.current_regime
+            regime_str = self.reward_calculator.market_regime_detector.current_regime
         except Exception:
-            return "unknown"
+            regime_str = "unknown"
+
+        # Convert string to RegimeType, with a safe fallback.
+        # Map known alternative names to standard regime names
+        regime_mapping = {
+            "sideways": "consolidation",
+            # Add other mappings as needed
+        }
+        regime_str = regime_mapping.get(regime_str, regime_str)
+        
+        try:
+            return V444RegimeType(regime_str)
+        except ValueError:
+            self.logger.warning(f"Unknown regime string '{regime_str}', falling back to CONSOLIDATION.")
+            return V444RegimeType.CONSOLIDATION
 
     def step(
         self,
@@ -583,23 +699,36 @@ class HeavyTradingEnv(
         # Validate the resulting discrete action
         actual_action = self.validation_manager.validate_action(discrete_action)
 
+        # Get observation for debug info
+        current_obs = self._get_observation()
+        debug_info = self._get_debug_info(current_obs)
+
+
         # Debug logging for SAC continuous action output
         if continuous_action_value is not None:
             action_name = (
                 "HOLD"
-                if actual_action == 0
+                if actual_action == ACTION_HOLD
                 else "BUY"
-                if actual_action == 1
+                if actual_action == ACTION_BUY
                 else "SELL"
-                if actual_action == -1
+                if actual_action == ACTION_SELL
                 else f"UNKNOWN_{actual_action}"
             )
-            logger.debug(
-                "SAC continuous action: %.6f, discrete action: %d (%s)",
-                continuous_action_value,
-                actual_action,
-                action_name,
-            )
+            log_data = {
+                "step": self.current_step,
+                "continuous_action": f"{continuous_action_value:.6f}",
+                "discrete_action": actual_action,
+                "action_name": action_name,
+                "position": f"{self.position:.4f}",
+            }
+            if debug_info:
+                log_data.update({
+                    "actor_pre_tanh": debug_info.get('debug_actor_pre_tanh', []),
+                    "actor_log_std": debug_info.get('debug_actor_log_std', []),
+                    "critic_q1": debug_info.get('debug_critic_q1_values', []),
+                })
+            logger.debug(log_data)
 
         old_position = self.position_manager.position
         min_holding_period = getattr(self.config, "min_holding_period", 0)
@@ -678,11 +807,13 @@ class HeavyTradingEnv(
                 current_regime = self._get_current_market_regime()
                 if current_regime != "unknown":
                     # Get regime-specific multiplier
+                    # Cast V444RegimeType to the generic RegimeType expected by the classifier
+                    generic_regime = GenericRegimeType(current_regime.value)
                     reward_multiplier = self.regime_classifier.get_regime_multiplier(
-                        current_regime, "reward"
+                        generic_regime, "reward"
                     )
                     penalty_multiplier = self.regime_classifier.get_regime_multiplier(
-                        current_regime, "penalty"
+                        generic_regime, "penalty"
                     )
 
                     # Apply multipliers based on reward sign
@@ -720,17 +851,24 @@ class HeavyTradingEnv(
         # Validate reward using ValidationManager
         reward = self.validation_manager.validate_reward_calculation(reward)
 
+        # Add raw reward components to info for debugging
+        info = self._get_info()
+        info.update(self.reward_calculator.get_last_reward_components())
+        info.update(debug_info)
+
+
         # Enhanced debug logging for SAC continuous action and reward analysis
         if continuous_action_value is not None:
-            logger.debug(
-                "continuous_action=%.6f, discrete_action=%d, reward=%.6f, step_pnl=%.6f, portfolio_return=%.4f%%, position=%.4f",
-                continuous_action_value,
-                actual_action,
-                reward,
-                step_pnl,
-                ((portfolio_value / self.initial_portfolio_value) - 1) * 100,
-                self.position,
-            )
+            log_data = {
+                "step": self.current_step,
+                "continuous_action": f"{continuous_action_value:.6f}",
+                "discrete_action": actual_action,
+                "reward": f"{reward:.6f}",
+                "step_pnl": f"{step_pnl:.6f}",
+                "portfolio_return": f"{((portfolio_value / self.initial_portfolio_value) - 1) * 100:.4f}%",
+                "position": f"{self.position:.4f}",
+            }
+            logger.debug(log_data)
 
         self.current_step += 1
         self.data_manager.ensure_data_available(self.current_step)
@@ -743,7 +881,7 @@ class HeavyTradingEnv(
 
         next_obs = self._get_observation()
 
-        info = self._get_info()
+        # Update info dictionary
         position_utilisation = abs(self.position) / max(
             POSITION_EPSILON, self.config.max_position_size
         )
@@ -816,14 +954,12 @@ class HeavyTradingEnv(
             self.total_pnl,
             self.trades_count,
             self.features,
-            self.config,
+            dataclasses.asdict(self.config),
         )
 
         # Add market regime for regime-aware diagnostics
         current_price = self.data_manager.get_price_at_step(self.current_step)
-        market_regime = self.reward_calculator.get_current_regime(
-            current_price, self.current_step
-        )
+        market_regime = self._get_current_market_regime()
 
         base_info["market_regime"] = market_regime
         return base_info
@@ -1016,7 +1152,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
             }
             logger.debug(f"Regime_stats set: {hasattr(self, 'regime_stats')}")
 
-            logger.info("Market regime adaptation enabled in environment")
+            logger.info("Market regime adaptation enabled in FLIPPED environment")
         except Exception as e:
             logger.debug(f"Exception in enable_market_regime_adaptation: {e}")
             raise

@@ -1,0 +1,25 @@
+{
+  "risk_metrics": {
+    "total_return": 0.03286552747351656,
+    "sharpe_ratio": 3.2416840764392094,
+    "max_drawdown": -0.08697885851072419,
+    "volatility": 0.7044533993532872,
+    "sortino_ratio": 37.116118433900425,
+    "win_rate": 0.0,
+    "profit_factor": 0.0
+  },
+  "temporal_patterns": {},
+  "market_conditions": {},
+  "trading_frequency": {
+    "action_distribution": {
+      "0": 247,
+      "1": 2519,
+      "-1": 2214
+    },
+    "trade_frequency": 0.9504016064257028,
+    "avg_trade_interval": 0,
+    "min_trade_interval": 0,
+    "max_trade_interval": 0,
+    "total_trades": 4733
+  }
+}

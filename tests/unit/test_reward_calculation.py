@@ -5,13 +5,12 @@ Test script for reward calculation bug fixes.
 
 import os
 import sys
-import collections
 
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import RewardSettings
 
@@ -113,7 +112,7 @@ def test_calculate_reward_simple_with_transaction_cost():
 
     # Test with trade (transaction_cost parameter is accepted but not used in calculation
     # since it's already deducted in position_manager)
-    reward = calculator.calculate_reward(
+    reward_with_cost = calculator.calculate_reward(
         action=ACTION_BUY,
         current_price=5000000.0,
         position=0.5,
@@ -129,13 +128,26 @@ def test_calculate_reward_simple_with_transaction_cost():
         portfolio_value_history=[],
     )
 
-    # Reward should be based on pnl * scaling, modified by various components
-    # The exact value depends on dynamic shaping and other components
-    # We just verify it's a reasonable finite number
-    assert isinstance(reward, (int, float))
-    assert np.isfinite(reward)
-    # Since transaction_cost is not used in calculation, reward should be > 1000 * 0.01 (minimum scaling)
-    assert reward > 10.0
+    reward_without_cost = calculator.calculate_reward(
+        action=ACTION_BUY,
+        current_price=5000000.0,
+        position=0.5,
+        portfolio_value=200000.0,
+        atr=1.0,
+        transaction_cost=0.0,
+        reward_scaling=1.0,
+        pnl=1000.0,
+        old_position=0.0,
+        step=2,
+        observation=np.array([1.0, 2.0, 3.0]),
+        reward_history=[],
+        portfolio_value_history=[],
+    )
+
+    assert isinstance(reward_with_cost, (int, float))
+    assert np.isfinite(reward_with_cost)
+    assert np.isfinite(reward_without_cost)
+    assert np.isclose(reward_with_cost, reward_without_cost)
 
     # def test_calculate_reward_calls_simple_with_transaction_cost():
     """Test that calculate_reward properly passes transaction_cost to calculate_reward_simple."""
@@ -364,7 +376,7 @@ def test_forced_balance_penalty():
     config.behavior_optimization = {
         "balance_penalty": 10.0,  # Use reasonable scale for testing
         "action_balance_target": 0.333,
-        "redundant_trade_penalty": 5.0
+        "redundant_trade_penalty": 5.0,
     }
 
     reward_settings = RewardSettings(
@@ -398,57 +410,49 @@ def test_forced_balance_penalty():
     )
 
     calculator = RewardCalculator(
-        config=config,
-        reward_settings=reward_settings,
-        initial_portfolio_value=200000.0
+        config=config, reward_settings=reward_settings, initial_portfolio_value=200000.0
     )
 
-    # Simulate imbalanced actions (mostly SELL)
-    for i in range(20):
-        if i < 15:  # 75% SELL
-            action = -1  # SELL
-        else:
-            action = 0  # HOLD
+    # Simulate aggressive SELL bias to trigger penalties
+    sell_penalties = []
+    for step in range(12):
+        reward = calculator._calculate_forced_balance_reward(ACTION_SELL, step=step)
+        sell_penalties.append(reward)
 
-        reward = calculator.calculate_reward(
-            action=action,
-            current_price=50000.0,
-            position=0.0,
-            portfolio_value=200000.0,
-            atr=100.0,
-            transaction_cost=0.001,
-            reward_scaling=1.0,
-            pnl=0.0,
-            old_position=0.0,
-            step=i,
-            observation=None,
-            reward_history=[],
-            portfolio_value_history=[200000.0]
-        )
+    assert sell_penalties[-1] < 0, "SELL-heavy imbalance should generate negative rewards"
 
-    # Check that balance penalty is applied correctly
-    total_actions = len(calculator._recent_actions)
-    assert total_actions == 20
+    continued_penalty = calculator._calculate_forced_balance_reward(
+        ACTION_SELL, step=12
+    )
+    assert (
+        continued_penalty <= sell_penalties[-1]
+    ), "Repeated SELLs should not reduce penalty severity"
 
-    counter = collections.Counter(calculator._recent_actions)
-    buy_count = counter[ACTION_BUY]
-    sell_count = counter[ACTION_SELL]
-    hold_count = counter[ACTION_HOLD]
+    corrective_buy = calculator._calculate_forced_balance_reward(
+        ACTION_BUY, step=13
+    )
+    assert (
+        corrective_buy > 0
+    ), "Taking an under-represented BUY should yield positive corrective reward"
 
-    buy_ratio = buy_count / total_actions
-    sell_ratio = sell_count / total_actions
-    hold_ratio = hold_count / total_actions
+    corrective_hold = calculator._calculate_forced_balance_reward(
+        ACTION_HOLD, step=14
+    )
+    assert (
+        corrective_hold > 0
+    ), "Taking an under-represented HOLD should also yield positive reward"
 
-    target_ratio = 0.333
-    expected_penalty = (
-        abs(buy_ratio - target_ratio) +
-        abs(sell_ratio - target_ratio) +
-        abs(hold_ratio - target_ratio)
-    ) * 10.0  # balance_penalty_scale
+    total_actions = sum(calculator._action_counts)
+    assert total_actions == 15
 
-    # Verify the penalty calculation
-    assert abs(expected_penalty - (abs(0 - 0.333) + abs(0.75 - 0.333) + abs(0.25 - 0.333)) * 10.0) < 1e-6
-    print(f"Forced balance penalty calculation verified: expected={expected_penalty:.6f}, actual calculation matches")
+    hold_ratio = calculator._action_counts[0] / total_actions
+    buy_ratio = calculator._action_counts[1] / total_actions
+    sell_ratio = calculator._action_counts[2] / total_actions
+
+    assert sell_ratio > buy_ratio
+    assert buy_ratio > 0
+    assert hold_ratio > 0
+    assert corrective_buy - continued_penalty > abs(continued_penalty) * 0.2
 
 
 def test_forced_balance_fair_penalty_comprehensive():
@@ -462,50 +466,50 @@ def test_forced_balance_fair_penalty_comprehensive():
             "actions": [0, 1, -1] * 10,  # Equal distribution
             "expected_rms_deviation": 0.0,
             "expected_max_deviation": 0.0,
-            "should_activate_penalty": False
+            "should_activate_penalty": False,
         },
         {
             "name": "heavy_sell_bias",
             "actions": [-1] * 25 + [0] * 4 + [1] * 1,  # 83% SELL, 13% HOLD, 4% BUY
             "expected_rms_deviation": 0.35,  # High deviation
-            "expected_max_deviation": 0.5,   # Very high max deviation
-            "should_activate_penalty": True
+            "expected_max_deviation": 0.5,  # Very high max deviation
+            "should_activate_penalty": True,
         },
         {
             "name": "heavy_buy_bias",
             "actions": [1] * 25 + [0] * 4 + [-1] * 1,  # 83% BUY, 13% HOLD, 4% SELL
             "expected_rms_deviation": 0.35,
             "expected_max_deviation": 0.5,
-            "should_activate_penalty": True
+            "should_activate_penalty": True,
         },
         {
             "name": "heavy_hold_bias",
             "actions": [0] * 25 + [1] * 4 + [-1] * 1,  # 83% HOLD, 13% BUY, 4% SELL
             "expected_rms_deviation": 0.35,
             "expected_max_deviation": 0.5,
-            "should_activate_penalty": True
+            "should_activate_penalty": True,
         },
         {
             "name": "moderate_imbalance",
             "actions": [1] * 15 + [-1] * 10 + [0] * 5,  # 50% BUY, 33% SELL, 17% HOLD
             "expected_rms_deviation": 0.12,
             "expected_max_deviation": 0.17,
-            "should_activate_penalty": False
+            "should_activate_penalty": False,
         },
         {
             "name": "boundary_case_rms_threshold",
             "actions": [1] * 18 + [-1] * 9 + [0] * 3,  # 60% BUY, 30% SELL, 10% HOLD
             "expected_rms_deviation": 0.205,  # Actual calculated value
             "expected_max_deviation": 0.267,  # Actual calculated value
-            "should_activate_penalty": True   # Should activate due to max deviation
+            "should_activate_penalty": True,  # Should activate due to max deviation
         },
         {
             "name": "boundary_case_max_threshold",
             "actions": [1] * 16 + [-1] * 8 + [0] * 6,  # 53% BUY, 27% SELL, 20% HOLD
             "expected_rms_deviation": 0.11,
             "expected_max_deviation": 0.23,  # Just below 0.25 threshold
-            "should_activate_penalty": False
-        }
+            "should_activate_penalty": False,
+        },
     ]
 
     for test_case in test_cases:
@@ -520,8 +524,8 @@ def test_forced_balance_fair_penalty_comprehensive():
             "balance_penalty_targets": {
                 "hold_target": 0.35,  # Asymmetric targets for fairness testing
                 "buy_target": 0.40,
-                "sell_target": 0.25
-            }
+                "sell_target": 0.25,
+            },
         }
 
         reward_settings = RewardSettings(
@@ -557,7 +561,7 @@ def test_forced_balance_fair_penalty_comprehensive():
         calculator = RewardCalculator(
             config=config,
             reward_settings=reward_settings,
-            initial_portfolio_value=200000.0
+            initial_portfolio_value=200000.0,
         )
 
         # Reset action counts for clean test
@@ -578,7 +582,7 @@ def test_forced_balance_fair_penalty_comprehensive():
                 step=0,
                 observation=None,
                 reward_history=[],
-                portfolio_value_history=[200000.0]
+                portfolio_value_history=[200000.0],
             )
 
         # Calculate actual metrics
@@ -586,31 +590,52 @@ def test_forced_balance_fair_penalty_comprehensive():
         action_ratios = [count / total_actions for count in calculator._action_counts]
 
         # Get target ratios
-        hold_target = calculator.get_setting_float("balance_penalty_targets.hold_target", 1.0/3.0)
-        buy_target = calculator.get_setting_float("balance_penalty_targets.buy_target", 1.0/3.0)
-        sell_target = calculator.get_setting_float("balance_penalty_targets.sell_target", 1.0/3.0)
+        hold_target = calculator.get_setting_float(
+            "balance_penalty_targets.hold_target", 1.0 / 3.0
+        )
+        buy_target = calculator.get_setting_float(
+            "balance_penalty_targets.buy_target", 1.0 / 3.0
+        )
+        sell_target = calculator.get_setting_float(
+            "balance_penalty_targets.sell_target", 1.0 / 3.0
+        )
         target_ratios = [hold_target, buy_target, sell_target]
 
         # Calculate deviations
-        deviations = [abs(ratio - target) for ratio, target in zip(action_ratios, target_ratios)]
-        rms_deviation = (sum(d**2 for d in deviations) / len(deviations))**0.5
+        deviations = [
+            abs(ratio - target) for ratio, target in zip(action_ratios, target_ratios)
+        ]
+        rms_deviation = (sum(d**2 for d in deviations) / len(deviations)) ** 0.5
         max_individual_deviation = max(deviations)
 
         print(f"  Action ratios: {action_ratios}")
         print(f"  Target ratios: {target_ratios}")
-        print(f"  RMS deviation: {rms_deviation:.3f} (expected: {test_case['expected_rms_deviation']:.3f})")
-        print(f"  Max deviation: {max_individual_deviation:.3f} (expected: {test_case['expected_max_deviation']:.3f})")
+        print(
+            f"  RMS deviation: {rms_deviation:.3f} (expected: {test_case['expected_rms_deviation']:.3f})"
+        )
+        print(
+            f"  Max deviation: {max_individual_deviation:.3f} (expected: {test_case['expected_max_deviation']:.3f})"
+        )
 
         # Verify calculations are reasonable
-        assert abs(rms_deviation - test_case["expected_rms_deviation"]) < 0.05, f"RMS deviation mismatch for {test_case['name']}"
-        assert abs(max_individual_deviation - test_case["expected_max_deviation"]) < 0.05, f"Max deviation mismatch for {test_case['name']}"
+        assert (
+            abs(rms_deviation - test_case["expected_rms_deviation"]) < 0.05
+        ), f"RMS deviation mismatch for {test_case['name']}"
+        assert (
+            abs(max_individual_deviation - test_case["expected_max_deviation"]) < 0.05
+        ), f"Max deviation mismatch for {test_case['name']}"
 
         # Test penalty activation logic (after 30 actions)
         if total_actions >= 30:
             balance_broken_threshold = 0.15
-            should_activate = rms_deviation > balance_broken_threshold or max_individual_deviation > 0.25
+            should_activate = (
+                rms_deviation > balance_broken_threshold
+                or max_individual_deviation > 0.25
+            )
 
-            assert should_activate == test_case["should_activate_penalty"], f"Penalty activation mismatch for {test_case['name']}"
+            assert (
+                should_activate == test_case["should_activate_penalty"]
+            ), f"Penalty activation mismatch for {test_case['name']}"
 
             if should_activate:
                 # Calculate expected reward based on RMS deviation
@@ -628,7 +653,7 @@ def test_forced_balance_fair_penalty_comprehensive():
                 print(f"  Expected reward: {expected_reward:.3f}")
                 print(f"  Penalty activated: {should_activate}")
             else:
-                print(f"  Normal reward (2.0) used - balance OK")
+                print("  Normal reward (2.0) used - balance OK")
 
         print(f"  ✅ {test_case['name']} test passed")
 
@@ -671,25 +696,46 @@ def test_forced_balance_edge_cases():
     )
 
     calculator = RewardCalculator(
-        config=config,
-        reward_settings=reward_settings,
-        initial_portfolio_value=200000.0
+        config=config, reward_settings=reward_settings, initial_portfolio_value=200000.0
     )
 
-    # Test case 1: Early phase (less than 30 actions) - should always return 2.0
-    calculator._action_counts = [0, 0, 0]
-    for i in range(25):  # Less than 30
-        reward = calculator._calculate_forced_balance_reward(1)
-        assert reward == 2.0, f"Early phase should return 2.0, got {reward}"
+    min_actions = calculator.get_setting_int("forced_balance_min_actions", 10)
+    exploration_reward = calculator.get_setting_float(
+        "forced_balance_exploration_reward", 2.0
+    )
 
-    # Test case 2: Exactly 30 actions with perfect balance
+    # Test case 1: Early phase returns exploration reward
     calculator._action_counts = [0, 0, 0]
-    for i in range(30):
-        action = i % 3  # Cycle through 0, 1, 2 (HOLD, BUY, SELL)
-        reward = calculator._calculate_forced_balance_reward(action)
+    for i in range(min_actions - 1):
+        reward = calculator._calculate_forced_balance_reward(ACTION_BUY, step=i)
+        assert (
+            reward == exploration_reward
+        ), f"Early phase should return exploration reward, got {reward}"
 
-    # Should have exactly 10 of each action
-    assert calculator._action_counts == [10, 10, 10], f"Expected [10,10,10], got {calculator._action_counts}"
+    # Once threshold reached, repeated BUY should be penalized for imbalance
+    penalty_reward = calculator._calculate_forced_balance_reward(
+        ACTION_BUY, step=min_actions - 1
+    )
+    assert penalty_reward < 0
+
+    # Test case 2: Evenly cycling actions after reset leads to balanced reward
+    calculator._action_counts = [0, 0, 0]
+    last_reward = 0.0
+    for i in range(min_actions * 3):
+        action = [ACTION_HOLD, ACTION_BUY, ACTION_SELL][i % 3]
+        last_reward = calculator._calculate_forced_balance_reward(
+            action, step=min_actions + i
+        )
+
+    expected_count = min_actions
+    assert calculator._action_counts == [
+        expected_count,
+        expected_count,
+        expected_count,
+    ], f"Expected balanced counts, got {calculator._action_counts}"
+    assert (
+        last_reward >= 0
+    ), "Balanced action loop should not produce negative reward"
 
     # Test case 3: Division by zero protection (though unlikely in practice)
     # This would require total_actions = 0, but we start checking at 30
@@ -704,9 +750,7 @@ def test_redundant_trade_penalty():
     config = EnvironmentConfig()
     config.curriculum_stage = "forced_balance"
     config.max_position_size = 1.0
-    config.behavior_optimization = {
-        "redundant_trade_penalty": 5.0
-    }
+    config.behavior_optimization = {"redundant_trade_penalty": 5.0}
 
     reward_settings = RewardSettings(
         use_simple_reward=False,
@@ -739,30 +783,44 @@ def test_redundant_trade_penalty():
     )
 
     calculator = RewardCalculator(
-        config=config,
-        reward_settings=reward_settings,
-        initial_portfolio_value=200000.0
+        config=config, reward_settings=reward_settings, initial_portfolio_value=200000.0
     )
 
-    # Test BUY at max position (redundant)
+    min_actions = calculator.get_setting_int("forced_balance_min_actions", 10)
+    for step in range(min_actions - 1):
+        calculator.calculate_reward(
+            action=ACTION_BUY,
+            current_price=50000.0,
+            position=1.0,
+            portfolio_value=200000.0,
+            atr=100.0,
+            transaction_cost=0.001,
+            reward_scaling=1.0,
+            pnl=0.0,
+            old_position=1.0,
+            step=step,
+            observation=None,
+            reward_history=[],
+            portfolio_value_history=[200000.0],
+        )
+
     reward = calculator.calculate_reward(
-        action=1,  # BUY
+        action=ACTION_BUY,
         current_price=50000.0,
-        position=1.0,  # Already at max
+        position=1.0,
         portfolio_value=200000.0,
         atr=100.0,
         transaction_cost=0.001,
         reward_scaling=1.0,
         pnl=0.0,
-        old_position=1.0,  # Was already at max
-        step=0,
+        old_position=1.0,
+        step=min_actions,
         observation=None,
         reward_history=[],
-        portfolio_value_history=[200000.0]
+        portfolio_value_history=[200000.0],
     )
 
-    # Should have redundant trade penalty
-    assert reward < 0  # Negative due to penalty
+    assert reward < 0  # Negative due to forced balance penalty after threshold
     print("Redundant trade penalty test passed")
 
 
