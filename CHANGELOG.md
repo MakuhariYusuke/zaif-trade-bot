@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-10-31
 
+### Market Regime Detection Refactoring and Code Deduplication 🏗️→🔄
+
+#### EnhancedRegimeAnalyzer Code Quality Improvements
+- **Eliminated Code Duplication**: EnhancedTechnicalIndicatorsクラスを削除し、既存のフィーチャージェネレータを使用するようリファクタリング
+  - 削除: 重複したRSI, ADX, ATR, ROC, Bollinger Bands, MACD計算メソッド
+  - 統合: ztb.features.generators.technicalモジュールの既存実装を使用
+  - 結果: DRY原則遵守、保守性向上、コードベースの一貫性確保
+
+#### Technical Indicator System Consolidation
+- **Feature Generator Integration**: 市場レジーム分析で既存のフィーチャーシステムを活用
+  - RSI: `ztb.features.generators.technical.momentum.rsi.compute_rsi`
+  - ADX: `ztb.features.generators.technical.trend.adx.compute_adx`
+  - ATR: `ztb.features.generators.technical.volatility.atr.compute_atr`
+  - ROC: `ztb.features.generators.technical.momentum.roc.compute_roc`
+  - Bollinger Bands: `ztb.features.generators.technical.volatility.bollinger` モジュール
+  - 結果: 計算の一貫性確保、メモリ使用量削減、計算パフォーマンス向上
+
+#### Module Interface Cleanup
+- **Import Statement Updates**: __init__.pyファイルからEnhancedTechnicalIndicatorsの参照を削除
+  - 削除: `from .regime_analyzer import EnhancedTechnicalIndicators`
+  - 更新: `__all__` リストから不要なエクスポートを除去
+  - 結果: クリーンなパブリックAPI、インポートエラーの解消
+
+#### Quality Assurance Validation
+- **Functionality Preservation**: リファクタリング後も市場レジーム検出機能は完全維持
+  - 12種類の市場レジーム分類ロジック維持
+  - 適応型しきい値調整機能維持
+  - 統計的ベースライン更新機能維持
+  - テストスイート: 基本機能テスト通過（レジーム検出、指標計算、信頼度スコア）
+
 ### SELL-Lock Bug Fix and ActionValidator Logic Correction 🔧→✅
 
 #### Critical ActionValidator Bug Resolution
