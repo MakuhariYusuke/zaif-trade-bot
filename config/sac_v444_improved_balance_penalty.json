@@ -27,7 +27,7 @@
     "action_space_type": "continuous",
     "use_continuous_actions": true,
     "feature_set": "minimal",
-    "curriculum_stage": "forced_balance",
+    "curriculum_stage": "opportunity_cost",
     "continuous_to_discrete_threshold": 0.2,
     "continuous_to_discrete_threshold_neg": -0.2
   },
@@ -38,7 +38,14 @@
       "buy_target": 0.333,
       "sell_target": 0.333,
       "hold_target": 0.334
-    }
+    },
+    "unrealized_loss_penalty_enabled": true,
+    "unrealized_loss_penalty_base": 1.05,
+    "unrealized_loss_penalty_max_steps": 100,
+    "opportunity_cost_penalty_enabled": true,
+    "opportunity_cost_penalty_base": 0.01,
+    "opportunity_cost_penalty_increase_rate": 0.005,
+    "opportunity_cost_max_steps": 50
   },
   "behavior_optimization": {
     "balance_penalty": 50.0,

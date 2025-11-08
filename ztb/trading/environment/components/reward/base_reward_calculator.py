@@ -23,7 +23,7 @@ from ztb.utils.logging_utils import get_logger
 
 from ..asymmetric_reward_scaler import AsymmetricRewardScaler
 from ..dynamic_reward_shaper import DynamicRewardShaper
-from ..market_regime_detector import MarketRegimeDetector
+from ztb.trading.strategies.action_signal_guide.components.market_regime import MarketRegimeDetector
 from ..signal_integrator import SignalIntegrator
 
 
@@ -95,13 +95,7 @@ class BaseRewardCalculator:
             "dynamic_reward_shaping.trend_coefficients.trend_strength_threshold", 0.001
         )
 
-        self.market_regime_detector = MarketRegimeDetector(
-            regime_detection_window=regime_detection_window,
-            adaptation_frequency=adaptation_frequency,
-            high_volatility_threshold=high_volatility_threshold,
-            low_volatility_threshold=low_volatility_threshold,
-            trend_strength_threshold=trend_strength_threshold,
-        )
+        self.market_regime_detector = MarketRegimeDetector()
 
         # 2. Dynamic Reward Shaper
         dynamic_reward_shaping_enabled = self.get_setting_bool(
