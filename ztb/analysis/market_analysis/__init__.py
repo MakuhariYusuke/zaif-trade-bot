@@ -7,11 +7,8 @@ This package provides advanced market analysis capabilities including:
 - Performance analysis and validation
 """
 
-from .regime_analyzer import (
-    EnhancedRegimeAnalyzer,
-    MarketRegime,
-    RegimeDetectionResult
-)
+from ..market_regime_types import MarketRegime, RegimeDetectionResult
+from .regime_analyzer import EnhancedRegimeAnalyzer
 
 from .statistical_analyzer import (
     StatisticalAnalyzer,
