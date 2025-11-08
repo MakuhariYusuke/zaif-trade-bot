@@ -78,6 +78,9 @@ class RewardSettings:
     )
     enable_forced_diversity: bool = False
     curriculum_stage: str = "simple"
+    unrealized_loss_penalty_enabled: bool = False
+    unrealized_loss_penalty_base: float = 1.1
+    unrealized_loss_penalty_max_steps: int = 10
     asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(default_factory=lambda: {
         "long_position_reward_multiplier": 1.3,
         "short_position_reward_multiplier": 0.7,
@@ -96,6 +99,8 @@ class EnvironmentConfig:
     commission: float = 0.0  # Alias for transaction_cost for backward compatibility
     slippage: float = 0.0  # Slippage cost
     max_steps: Optional[int] = None  # Maximum steps per episode
+    train_end_index: Optional[int] = None  # End index for training data subset
+    debug_internal_state: bool = False  # Enable debug information in step output
     max_position_size: float = 1.0
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"

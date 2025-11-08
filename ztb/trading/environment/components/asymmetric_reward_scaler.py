@@ -5,6 +5,7 @@ This component applies asymmetric reward scaling based on position direction.
 Follows Single Responsibility Principle by focusing only on asymmetric scaling.
 """
 
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IAsymmetricRewardScaler
@@ -20,28 +21,37 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
     - Profit/loss based scaling
     """
 
-    def __init__(
-        self,
-        long_position_reward_multiplier: float = 1.3,
-        short_position_reward_multiplier: float = 0.7,
-        long_position_penalty_multiplier: float = 0.9,
-        short_position_penalty_multiplier: float = 0.95,
-    ):
+    def __init__(self, env_config: EnvironmentConfig):
         """
         Initialize AsymmetricRewardScaler.
 
         Args:
-            long_position_reward_multiplier: Multiplier for long position rewards
-            short_position_reward_multiplier: Multiplier for short position rewards
-            long_position_penalty_multiplier: Multiplier for long position penalties
-            short_position_penalty_multiplier: Multiplier for short position penalties
+            env_config: Environment configuration object
         """
-        self.long_position_reward_multiplier = long_position_reward_multiplier
-        self.short_position_reward_multiplier = short_position_reward_multiplier
-        self.long_position_penalty_multiplier = long_position_penalty_multiplier
-        self.short_position_penalty_multiplier = short_position_penalty_multiplier
-
+        self._config = env_config
         self.logger = get_logger("ztb.trading.environment.asymmetric_reward_scaler")
+        self._load_settings()
+
+    def _load_settings(self):
+        """Load settings from the environment configuration."""
+        if self._config.reward_settings is None:
+            # Default settings when reward_settings is None
+            self.long_pos_reward_multiplier = 1.3
+            self.short_pos_reward_multiplier = 0.7
+            self.long_pos_penalty_multiplier = 0.9
+            self.short_pos_penalty_multiplier = 0.95
+        else:
+            settings = self._config.reward_settings.asymmetric_reward_scaling
+            self.long_pos_reward_multiplier = settings.get("long_position_reward_multiplier", 1.3)
+            self.short_pos_reward_multiplier = settings.get("short_position_reward_multiplier", 0.7)
+            self.long_pos_penalty_multiplier = settings.get("long_position_penalty_multiplier", 0.9)
+            self.short_pos_penalty_multiplier = settings.get("short_position_penalty_multiplier", 0.95)
+        
+        # Thresholds are not part of asymmetric_reward_scaling dict, let's assume they are hardcoded for now
+        # or need to be added to the config structure. For now, keep them as they were.
+        # This can be a point of future improvement.
+        self.long_pos_threshold = 0.01
+        self.short_pos_threshold = -0.01
 
     def _get_position_direction(self, position: float) -> str:
         """
@@ -53,9 +63,9 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
         Returns:
             'long', 'short', or 'neutral'
         """
-        if position > 0.01:  # Long position threshold
+        if position > self.long_pos_threshold:  # Long position threshold
             return "long"
-        elif position < -0.01:  # Short position threshold
+        elif position < self.short_pos_threshold:  # Short position threshold
             return "short"
         else:
             return "neutral"
@@ -85,25 +95,25 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
         # Apply asymmetric scaling based on profit/loss and position direction
         if pnl > 0:  # Profitable trade
             if position_direction == "long":
-                reward *= self.long_position_reward_multiplier
+                reward *= self.long_pos_reward_multiplier
                 self.logger.debug(
-                    f"Applied long position reward boost: {self.long_position_reward_multiplier}x"
+                    f"Applied long position reward boost: {self.long_pos_reward_multiplier}x"
                 )
             elif position_direction == "short":
-                reward *= self.short_position_reward_multiplier
+                reward *= self.short_pos_reward_multiplier
                 self.logger.debug(
-                    f"Applied short position reward reduction: {self.short_position_reward_multiplier}x"
+                    f"Applied short position reward reduction: {self.short_pos_reward_multiplier}x"
                 )
         else:  # Loss trade
             if position_direction == "long":
-                reward *= self.long_position_penalty_multiplier
+                reward *= self.long_pos_penalty_multiplier
                 self.logger.debug(
-                    f"Applied long position penalty reduction: {self.long_position_penalty_multiplier}x"
+                    f"Applied long position penalty reduction: {self.long_pos_penalty_multiplier}x"
                 )
             elif position_direction == "short":
-                reward *= self.short_position_penalty_multiplier
+                reward *= self.short_pos_penalty_multiplier
                 self.logger.debug(
-                    f"Applied short position penalty boost: {self.short_position_penalty_multiplier}x"
+                    f"Applied short position penalty boost: {self.short_pos_penalty_multiplier}x"
                 )
 
         return reward
