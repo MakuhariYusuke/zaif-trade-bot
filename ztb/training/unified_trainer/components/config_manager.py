@@ -146,7 +146,50 @@ class TrainingConfigManager:
             if key not in training_config:
                 raise ValueError(f"Missing required training config key: {key}")
 
+        # Process advanced market regime configuration
+        if "advanced_market_regime" in config:
+            self._process_advanced_market_regime_config(config)
+
         return config
+
+    def _process_advanced_market_regime_config(self, config: Dict[str, Any]) -> None:
+        """Process advanced market regime configuration."""
+        regime_config = config["advanced_market_regime"]
+
+        # Validate required fields
+        if not isinstance(regime_config, dict):
+            raise TypeError("advanced_market_regime config must be dict")
+
+        required_fields = ["enabled", "detector_type", "detection_window", "adaptation_frequency"]
+        for field in required_fields:
+            if field not in regime_config:
+                raise ValueError(f"Missing required advanced_market_regime field: {field}")
+
+        # Validate detector type
+        valid_detector_types = ["basic", "advanced"]
+        if regime_config["detector_type"] not in valid_detector_types:
+            raise ValueError(f"Invalid detector_type. Must be one of: {valid_detector_types}")
+
+        # Validate regime-specific parameters if present
+        if "regime_specific_params" in regime_config:
+            params = regime_config["regime_specific_params"]
+            if not isinstance(params, dict):
+                raise TypeError("regime_specific_params must be dict")
+
+            # Validate that all required regimes are present for advanced detector
+            if regime_config["detector_type"] == "advanced":
+                required_regimes = [
+                    "strong_bull_trend", "moderate_bull_trend", "weak_bull_trend",
+                    "strong_bear_trend", "moderate_bear_trend", "weak_bear_trend",
+                    "high_volatility_ranging", "moderate_volatility_ranging", "low_volatility_ranging",
+                    "extreme_volatility", "consolidation", "breakout_setup", "breakdown_setup"
+                ]
+
+                for regime in required_regimes:
+                    if regime not in params:
+                        raise ValueError(f"Missing regime parameters for: {regime}")
+
+        self.logger.info("Advanced market regime configuration validated successfully")
 
     def get_algorithm_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """

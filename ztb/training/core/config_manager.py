@@ -13,6 +13,8 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from ztb.utils.logging_utils import get_logger
+from ztb.training.algorithms.sac.sac_algorithm import DEFAULT_SAC_CONFIG
+from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
 logger = get_logger(__name__)
 
@@ -77,8 +79,6 @@ class ConfigManager:
             Dict containing environment settings like max_position_size,
             initial_balance, transaction_cost, etc.
         """
-        from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-
         # Check for nested training.environment structure
         training_env = deepcopy(self.config.get("training", {}).get("environment", {}))
         nested_env = (
@@ -158,15 +158,25 @@ class ConfigManager:
 
         # Add curriculum stage from curriculum_learning or environment section
         curriculum_learning = self.config.get("curriculum_learning", {})
-        if isinstance(curriculum_learning, dict) and "curriculum_stage" in curriculum_learning:
+        if (
+            isinstance(curriculum_learning, dict)
+            and "curriculum_stage" in curriculum_learning
+        ):
             environment["curriculum_stage"] = curriculum_learning["curriculum_stage"]
         # Also check for curriculum_stage directly in environment section
         elif self._get_config_value("curriculum_stage", ["environment"]):
-            environment["curriculum_stage"] = self._get_config_value("curriculum_stage", ["environment"])
+            environment["curriculum_stage"] = self._get_config_value(
+                "curriculum_stage", ["environment"]
+            )
         else:
             # Check top-level curriculum_learning
-            top_curriculum = self.config.get("training", {}).get("curriculum_learning", {})
-            if isinstance(top_curriculum, dict) and "curriculum_stage" in top_curriculum:
+            top_curriculum = self.config.get("training", {}).get(
+                "curriculum_learning", {}
+            )
+            if (
+                isinstance(top_curriculum, dict)
+                and "curriculum_stage" in top_curriculum
+            ):
                 environment["curriculum_stage"] = top_curriculum["curriculum_stage"]
 
         return environment
@@ -178,8 +188,6 @@ class ConfigManager:
         Returns:
             Dict containing PPO hyperparameters (learning_rate, n_steps, etc.)
         """
-        from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-
         return {
             "learning_rate": self._get_config_value(
                 "learning_rate",
@@ -252,10 +260,8 @@ class ConfigManager:
             "target_kl": self._get_config_value(
                 "target_kl", ["ppo_hyperparameters", "ppo"]
             ),
-            "verbose": self._get_config_value(
-                "verbose",
-                ["ppo_hyperparameters", "ppo"],
-                DEFAULT_PPO_CONFIG.get("verbose", 1),
+            "policy_kwargs": self._get_config_value(
+                "policy_kwargs", ["ppo_hyperparameters", "ppo"]
             ),
         }
 
@@ -266,34 +272,87 @@ class ConfigManager:
         Returns:
             Dict containing SAC hyperparameters
         """
-        sections = ["sac_hyperparameters", "sac_params", "sac", "training"]
-
+        sections = ["sac_hyperparameters", "sac"]
         return {
-            "learning_rate": self._get_config_value("learning_rate", sections, 3e-4),
-            "buffer_size": self._get_config_value("buffer_size", sections, 50000),
+            "learning_rate": self._get_config_value(
+                "learning_rate", sections, DEFAULT_SAC_CONFIG.get("learning_rate", 3e-4)
+            ),
+            "buffer_size": self._get_config_value(
+                "buffer_size", sections, DEFAULT_SAC_CONFIG.get("buffer_size", 1_000_000)
+            ),
             "learning_starts": self._get_config_value(
-                "learning_starts", sections, 1000
+                "learning_starts",
+                sections,
+                DEFAULT_SAC_CONFIG.get("learning_starts", 100),
             ),
-            "batch_size": self._get_config_value("batch_size", sections, 256),
-            "tau": self._get_config_value("tau", sections, 0.005),
-            "gamma": self._get_config_value("gamma", sections, 0.99),
-            "train_freq": self._get_config_value("train_freq", sections, 1),
-            "gradient_steps": self._get_config_value("gradient_steps", sections, 1),
+            "batch_size": self._get_config_value(
+                "batch_size", sections, DEFAULT_SAC_CONFIG.get("batch_size", 256)
+            ),
+            "tau": self._get_config_value(
+                "tau", sections, DEFAULT_SAC_CONFIG.get("tau", 0.005)
+            ),
+            "gamma": self._get_config_value(
+                "gamma", sections, DEFAULT_SAC_CONFIG.get("gamma", 0.99)
+            ),
+            "train_freq": self._get_config_value(
+                "train_freq", sections, DEFAULT_SAC_CONFIG.get("train_freq", (1, "step"))
+            ),
+            "gradient_steps": self._get_config_value(
+                "gradient_steps",
+                sections,
+                DEFAULT_SAC_CONFIG.get("gradient_steps", 1),
+            ),
+            "ent_coef": self._get_config_value(
+                "ent_coef", sections, DEFAULT_SAC_CONFIG.get("ent_coef", "auto")
+            ),
             "target_update_interval": self._get_config_value(
-                "target_update_interval", sections, 1
+                "target_update_interval",
+                sections,
+                DEFAULT_SAC_CONFIG.get("target_update_interval", 1),
             ),
-            "ent_coef": self._get_config_value("ent_coef", sections, "auto"),
             "target_entropy": self._get_config_value(
-                "target_entropy", sections, "auto"
+                "target_entropy",
+                sections,
+                DEFAULT_SAC_CONFIG.get("target_entropy", "auto"),
             ),
-            "use_sde": self._get_config_value("use_sde", sections, False),
-            "sde_sample_freq": self._get_config_value("sde_sample_freq", sections, -1),
+            "use_sde": self._get_config_value(
+                "use_sde", sections, DEFAULT_SAC_CONFIG.get("use_sde", False)
+            ),
+            "sde_sample_freq": self._get_config_value(
+                "sde_sample_freq",
+                sections,
+                DEFAULT_SAC_CONFIG.get("sde_sample_freq", -1),
+            ),
             "use_sde_at_warmup": self._get_config_value(
-                "use_sde_at_warmup", sections, False
+                "use_sde_at_warmup",
+                sections,
+                DEFAULT_SAC_CONFIG.get("use_sde_at_warmup", False),
             ),
+            "net_arch": self._get_config_value("net_arch", sections, None),
             "policy_kwargs": self._get_config_value("policy_kwargs", sections, None),
-            "device": self._get_config_value("device", sections, "auto"),
-            "verbose": self._get_config_value("verbose", sections, 1),
+        }
+
+    def get_curriculum_config(self) -> Dict[str, Any]:
+        sections = ["curriculum_learning", "curriculum"]
+        return {
+            "curriculum_stage": self._get_config_value(
+                "curriculum_stage", sections, 0
+            ),
+            "curriculum_threshold": self._get_config_value(
+                "curriculum_threshold", sections, 0.0
+            ),
+            "curriculum_speed": self._get_config_value(
+                "curriculum_speed", sections, 1.0
+            ),
+            "curriculum_min_level": self._get_config_value(
+                "curriculum_min_level", sections, 0
+            ),
+            "curriculum_max_level": self._get_config_value(
+                "curriculum_max_level", sections, 100
+            ),
+            "curriculum_level": self._get_config_value(
+                "curriculum_level", sections, 0
+            ),
         }
 
     def get_feature_config(self) -> Dict[str, Any]:
@@ -322,6 +381,7 @@ class ConfigManager:
         enable_streaming: bool = False,
         stream_batch_size: int = 256,
         total_timesteps_override: Optional[int] = None,
+        debug_internal_state: bool = False,
     ) -> Dict[str, Any]:
         """
         Build a unified configuration dict with all settings properly organized.
@@ -330,6 +390,7 @@ class ConfigManager:
             enable_streaming: Whether streaming is enabled
             stream_batch_size: Batch size for streaming
             total_timesteps_override: Override for total_timesteps
+            debug_internal_state: Enable debugging of internal model states
 
         Returns:
             Unified config dict with structure:
@@ -340,8 +401,6 @@ class ConfigManager:
                 ... (all other top-level settings for backward compatibility)
             }
         """
-        from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-
         # Build structured config
         ppo_core = self.get_ppo_core_config()
         sac_core = self.get_sac_core_config()
@@ -401,5 +460,8 @@ class ConfigManager:
         unified["total_timesteps"] = total_timesteps
         unified["ppo"]["total_timesteps"] = total_timesteps
         unified["sac"]["total_timesteps"] = total_timesteps
+
+        # Add debug flag to the environment config
+        unified["environment"]["debug_internal_state"] = debug_internal_state
 
         return unified

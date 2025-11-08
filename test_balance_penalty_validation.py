@@ -25,7 +25,7 @@ def test_balance_penalty_formula():
         max_position_size=1.0,
         enable_action_masking=True,
         use_continuous_actions=True,
-        curriculum_stage='balanced_penalty',
+        curriculum_stage="balanced_penalty",
     )
 
     # RewardSettings を作成
@@ -41,19 +41,19 @@ def test_balance_penalty_formula():
     # テストケース
     test_cases = [
         {
-            'name': '100% BUY (最大アンバランス)',
-            'actions': [1.0] * 100,  # 全て BUY
-            'expected_penalty_range': (100, 200),  # balance_scale=200なので
+            "name": "100% BUY (最大アンバランス)",
+            "actions": [1.0] * 100,  # 全て BUY
+            "expected_penalty_range": (100, 200),  # balance_scale=200なので
         },
         {
-            'name': '33%/33%/33% (完全バランス)',
-            'actions': [1.0] * 33 + [-1.0] * 33 + [0.0] * 34,
-            'expected_penalty_range': (0, 10),  # ほぼ 0
+            "name": "33%/33%/33% (完全バランス)",
+            "actions": [1.0] * 33 + [-1.0] * 33 + [0.0] * 34,
+            "expected_penalty_range": (0, 10),  # ほぼ 0
         },
         {
-            'name': '50% BUY / 30% SELL / 20% HOLD',
-            'actions': [1.0] * 50 + [-1.0] * 30 + [0.0] * 20,
-            'expected_penalty_range': (20, 40),  # max_dev=0.167
+            "name": "50% BUY / 30% SELL / 20% HOLD",
+            "actions": [1.0] * 50 + [-1.0] * 30 + [0.0] * 20,
+            "expected_penalty_range": (20, 40),  # max_dev=0.167
         },
     ]
 
@@ -66,16 +66,19 @@ def test_balance_penalty_formula():
         print(f"   Actions: {len(test_case['actions'])} total")
 
         # Calculate distribution
-        buy_count = sum(1 for a in test_case['actions'] if a > 0.0)
-        sell_count = sum(1 for a in test_case['actions'] if a < 0.0)
-        hold_count = sum(1 for a in test_case['actions'] if a == 0.0)
+        buy_count = sum(1 for a in test_case["actions"] if a > 0.0)
+        sell_count = sum(1 for a in test_case["actions"] if a < 0.0)
+        hold_count = sum(1 for a in test_case["actions"] if a == 0.0)
 
-        total = len(test_case['actions'])
+        total = len(test_case["actions"])
         buy_ratio = buy_count / total if total > 0 else 0
         sell_ratio = sell_count / total if total > 0 else 0
         hold_ratio = hold_count / total if total > 0 else 0
 
-        print(f"   Distribution: BUY={buy_ratio:.2%}, SELL={sell_ratio:.2%}, HOLD={hold_ratio:.2%}")
+        print(
+            f"   Distribution: BUY={buy_ratio:.2%}, SELL={sell_ratio:.2%}, HOLD={hold_ratio:.2%}"
+        )
+
 
 def test_balance_penalty_formula():
     """修正されたbalance_penalty formulaをテスト"""
@@ -87,7 +90,7 @@ def test_balance_penalty_formula():
         max_position_size=1.0,
         enable_action_masking=True,
         use_continuous_actions=True,
-        curriculum_stage='balanced_penalty',
+        curriculum_stage="balanced_penalty",
     )
 
     # RewardSettings を作成
@@ -103,19 +106,19 @@ def test_balance_penalty_formula():
     # テストケース
     test_cases = [
         {
-            'name': '100% BUY (最大アンバランス)',
-            'actions': [1.0] * 100,  # 全て BUY
-            'expected_penalty_range': (100, 200),  # balance_scale=200なので
+            "name": "100% BUY (最大アンバランス)",
+            "actions": [1.0] * 100,  # 全て BUY
+            "expected_penalty_range": (100, 200),  # balance_scale=200なので
         },
         {
-            'name': '33%/33%/33% (完全バランス)',
-            'actions': [1.0] * 33 + [-1.0] * 33 + [0.0] * 34,
-            'expected_penalty_range': (0, 10),  # ほぼ 0
+            "name": "33%/33%/33% (完全バランス)",
+            "actions": [1.0] * 33 + [-1.0] * 33 + [0.0] * 34,
+            "expected_penalty_range": (0, 10),  # ほぼ 0
         },
         {
-            'name': '50% BUY / 30% SELL / 20% HOLD',
-            'actions': [1.0] * 50 + [-1.0] * 30 + [0.0] * 20,
-            'expected_penalty_range': (20, 40),  # max_dev=0.167
+            "name": "50% BUY / 30% SELL / 20% HOLD",
+            "actions": [1.0] * 50 + [-1.0] * 30 + [0.0] * 20,
+            "expected_penalty_range": (20, 40),  # max_dev=0.167
         },
     ]
 
@@ -128,16 +131,18 @@ def test_balance_penalty_formula():
         print(f"   Actions: {len(test_case['actions'])} total")
 
         # Calculate distribution
-        buy_count = sum(1 for a in test_case['actions'] if a > 0.0)
-        sell_count = sum(1 for a in test_case['actions'] if a < 0.0)
-        hold_count = sum(1 for a in test_case['actions'] if a == 0.0)
+        buy_count = sum(1 for a in test_case["actions"] if a > 0.0)
+        sell_count = sum(1 for a in test_case["actions"] if a < 0.0)
+        hold_count = sum(1 for a in test_case["actions"] if a == 0.0)
 
-        total = len(test_case['actions'])
+        total = len(test_case["actions"])
         buy_ratio = buy_count / total if total > 0 else 0
         sell_ratio = sell_count / total if total > 0 else 0
         hold_ratio = hold_count / total if total > 0 else 0
 
-        print(f"   Distribution: BUY={buy_ratio:.2%}, SELL={sell_ratio:.2%}, HOLD={hold_ratio:.2%}")
+        print(
+            f"   Distribution: BUY={buy_ratio:.2%}, SELL={sell_ratio:.2%}, HOLD={hold_ratio:.2%}"
+        )
 
         # Simulate action counts for balanced_transition_reward
         calc._action_counts = [hold_count, buy_count, sell_count]  # [HOLD, BUY, SELL]
@@ -164,7 +169,7 @@ def test_balance_penalty_formula():
         print(f"   Expected range: {test_case['expected_penalty_range']}")
 
         # Note: This test is mainly for validation, not strict range checking
-        print(f"   ✅ Test completed")
+        print("   ✅ Test completed")
 
     print("\n" + "=" * 80)
     print("✅ Balance penalty formula validation complete")
@@ -183,7 +188,7 @@ def test_curriculum_stage_integration():
     print("=" * 80)
 
     config = EnvironmentConfig(
-        curriculum_stage='balanced_penalty',
+        curriculum_stage="balanced_penalty",
     )
 
     print(f"\n✓ EnvironmentConfig.curriculum_stage: {config.curriculum_stage}")
@@ -196,11 +201,13 @@ def test_curriculum_stage_integration():
     print(f"✓ RewardCalculator.config.curriculum_stage: {calc.config.curriculum_stage}")
 
     # Check if balance penalty calculation is enabled for this stage
-    balance_penalty_enabled_stages = ['balanced_penalty', 'full_curriculum']
+    balance_penalty_enabled_stages = ["balanced_penalty", "full_curriculum"]
     is_enabled = calc.config.curriculum_stage in balance_penalty_enabled_stages
 
     if is_enabled:
-        print(f"✅ Balance penalty IS ENABLED for curriculum_stage='{calc.config.curriculum_stage}'")
+        print(
+            f"✅ Balance penalty IS ENABLED for curriculum_stage='{calc.config.curriculum_stage}'"
+        )
     else:
         print(
             f"❌ Balance penalty NOT enabled for curriculum_stage='{calc.config.curriculum_stage}'"
@@ -209,6 +216,6 @@ def test_curriculum_stage_integration():
     print("\n" + "=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_balance_penalty_formula()
     test_curriculum_stage_integration()

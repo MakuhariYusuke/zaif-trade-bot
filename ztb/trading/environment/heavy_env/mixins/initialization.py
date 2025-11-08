@@ -23,6 +23,10 @@ from ztb.trading.environment.components import (
     RewardCalculator,
     StreamingHandler,
 )
+from ztb.trading.environment.components.action_executor import ActionExecutor
+from ztb.trading.environment.components.statistics_calculator import StatisticsCalculator
+from ztb.trading.environment.heavy_env.components.state_manager import StateManager
+from ztb.trading.environment.heavy_env.components.validation_manager import ValidationManager
 from ztb.utils.errors import ValidationError
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root, safe_path_join
@@ -92,6 +96,26 @@ def _initialize_components(
         stream_batch_size=max(1, int(stream_batch_size)),
         timestamp_column=timestamp_column,
         episode_id_column=episode_id_column,
+    )
+
+
+def _initialize_data_manager(
+    self: Any,
+    streaming_pipeline: Optional["StreamingPipeline"],
+    stream_batch_size: int,
+    df: Optional[pd.DataFrame],
+) -> None:
+    """Initialize the DataManager component."""
+    from ztb.trading.environment.components.data_manager import DataManager
+
+    if df is None:
+        raise ValueError("DataFrame cannot be None when initializing DataManager")
+    self.data_manager = DataManager()
+    self.data_manager.initialize_data(
+        df=df,
+        features=self.features,
+        timestamp_column=self._timestamp_column,
+        episode_id_column=self._episode_id_column,
     )
 
 
@@ -494,19 +518,6 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         self.action_space = spaces.Discrete(NUM_DISCRETE_ACTIONS)
         logger.info("Using discrete action space (PPO-compatible)")
 
-    # Initialize data manager with features
-    timestamp_column = getattr(self, "_timestamp_column", None)
-    episode_id_column = getattr(self, "_episode_id_column", None)
-    self.data_manager.initialize_data(
-        self.df,
-        self.features,
-        timestamp_column,
-        episode_id_column,
-    )
-
-    # Build fast access buffers for data manager
-    self.data_manager.build_fast_access_buffers()
-
 
 def _setup_scaler(self: Any) -> None:
     """Setup feature scaler from config or schema data."""
@@ -526,8 +537,13 @@ def _setup_scaler(self: Any) -> None:
         logger.info("No scaler data provided")
 
 
-def _compute_scaler_from_data(self: Any) -> None:
-    """データからスケーラーを計算（標準化用の平均・標準偏差）"""
+def _compute_scaler_from_data(
+    self: Any, train_end_index: Optional[int] = None
+) -> None:
+    """
+    データからスケーラーを計算（標準化用の平均・標準偏差）。
+    データリークを防ぐため、訓練データのみを使用する。
+    """
     # Ensure fast access buffers are built
     self._build_fast_access_buffers()
 
@@ -546,10 +562,25 @@ def _compute_scaler_from_data(self: Any) -> None:
         self.scaler_std = None
         return
 
-    # 特徴量行列全体から平均・標準偏差を計算
+    # データリークを防ぐため、訓練データのみでスケーラーを計算
+    if train_end_index is not None and train_end_index < self._feature_matrix.shape[0]:
+        scaler_features = self._feature_matrix[:train_end_index]
+        logger.info(f"Computing scaler using data up to index {train_end_index}")
+    else:
+        scaler_features = self._feature_matrix
+        if train_end_index is None:
+            logger.warning(
+                "train_end_index not provided. Computing scaler on the entire dataset. "
+                "This may cause data leakage if the dataset includes validation/test data."
+            )
+        else:
+            logger.info("train_end_index is beyond data length. Using entire dataset for scaler.")
+
+
+    # 特徴量行列の訓練データ部分から平均・標準偏差を計算
     # axis=0: 各特徴量ごとに計算（列方向）
-    self.scaler_mean = np.mean(self._feature_matrix, axis=0).astype(np.float32)
-    self.scaler_std = np.std(self._feature_matrix, axis=0).astype(np.float32)
+    self.scaler_mean = np.mean(scaler_features, axis=0).astype(np.float32)
+    self.scaler_std = np.std(scaler_features, axis=0).astype(np.float32)
 
     # 標準偏差が極端に小さい特徴量を検出（ログ記録）
     near_zero_std = np.sum(self.scaler_std < 1e-8)
@@ -656,6 +687,17 @@ def _initialize_remaining_components(self: Any) -> None:
         config=self.config,
         initial_portfolio_value=self.initial_portfolio_value,
     )
+
+    self.statistics_calculator = StatisticsCalculator()
+
+    self.state_manager = StateManager(self)
+
+    self.action_executor = ActionExecutor(
+        action_threshold=self.action_threshold,
+        negative_action_threshold=self.negative_action_threshold,
+    )
+
+    self.validation_manager = ValidationManager(self)
 
     self._timestamp_column = "timestamp" if "timestamp" in self.df.columns else None
     self._episode_id_column = "episode_id" if "episode_id" in self.df.columns else None

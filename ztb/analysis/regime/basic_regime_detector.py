@@ -12,7 +12,7 @@ import numpy as np
 
 from ztb.utils.logging_utils import get_logger
 
-from .interfaces import IMarketRegimeDetector
+from ztb.trading.environment.components.interfaces import IMarketRegimeDetector
 
 
 class MarketRegimeDetector(IMarketRegimeDetector):
