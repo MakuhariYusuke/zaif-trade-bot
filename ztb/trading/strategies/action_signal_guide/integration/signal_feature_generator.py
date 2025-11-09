@@ -160,5 +160,4 @@ class SignalFeatureGenerator:
             "volume_confirmation",
             "multitimeframe_consistency",
             "signal_freshness"
-        ]</content>
-<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\integration\signal_feature_generator.py
+        ]
