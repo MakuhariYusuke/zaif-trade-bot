@@ -5,7 +5,7 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![Type Checking](https://img.shields.io/badge/mypy-strict-green.svg)](https://mypy-lang.org)
 [![Security](https://img.shields.io/badge/security-bandit+safety-green.svg)](https://github.com/PyCQA/bandit)
-[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen.svg)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-40%20passed-brightgreen.svg)](https://github.com)
 [![Coverage](https://img.shields.io/badge/coverage-40%25-yellow.svg)](https://coverage.readthedocs.io)
 
 ## 🚀 Features
@@ -24,6 +24,13 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
 
 ## 🆕 Recent Updates (2025-11-10)
+
+### Phase 3-1: シグナル品質向上 - 単体テスト構造化完了 ✅
+- **構造化テスト実装**: TestDataFactory, TestUtilities, BaseSignalQualityTest基底クラスによる統一テスト基盤
+- **コンポーネントカバー**: SignalQualityAnalyzer, ConfidenceScoringEngine, MultiTimeFrameValidator, VolumeFilter, PriceActionFilter, IntegratedSignalFilter
+- **テスト品質向上**: 40 test cases, エラー処理強化, 無効入力対応, エッジケース検証
+- **堅牢性強化**: コンポーネント間連携テスト, メモリ管理検証, プロファイラ統合確認
+- **次フェーズ準備**: Phase 3-2パラメータ最適化に向けた安定したテスト基盤確立
 
 ### Phase 2 実市場データバックテスト完了 🚀
 - **実市場性能検証**: BTC/JPY 1時間足データを使用した完全バックテスト

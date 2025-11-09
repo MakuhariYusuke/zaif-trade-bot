@@ -52,6 +52,7 @@ from ztb.adaptation.continual_learning import (
 )
 from ztb.adaptation.meta_learning import MarketMetaLearner
 from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
+from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager
 from ztb.training.distillation.distiller import *
 
 # Import distributed training utilities
@@ -118,6 +119,7 @@ class UnifiedTrainer:
         enable_distributed: bool = False,
         world_size: int = 1,
         distributed_backend: str = "gloo",
+        resume: bool = False,
     ):
         """
         Initialize UnifiedTrainer.
@@ -140,6 +142,7 @@ class UnifiedTrainer:
         self.config_manager = TrainingConfigManager()
         self.ui_manager = TrainingUIManager(self.logger)
         self.reporter = reporting.TrainingReporter(self.logger)
+        self.resume = resume
 
         # Process configuration using TrainingConfigManager
         try:
@@ -466,11 +469,11 @@ class UnifiedTrainer:
 
             if is_valid:
                 self.ui.print_success("Configuration validation passed")
-                
+
                 # Additional feature consistency validation
                 if not self._validate_feature_consistency():
                     return False
-                    
+
                 return True
             else:
                 self.ui.print_error("Configuration validation failed")
@@ -622,7 +625,10 @@ class UnifiedTrainer:
                 return False
 
             # Get configured feature count from config
-            configured_feature_count = self.config.get("max_features", actual_feature_count) or actual_feature_count
+            configured_feature_count = (
+                self.config.get("max_features", actual_feature_count)
+                or actual_feature_count
+            )
 
             # Compare feature counts
             if configured_feature_count == actual_feature_count:
@@ -860,6 +866,32 @@ class UnifiedTrainer:
             )
             # Assign after local narrowing
             self.algorithm_trainer = alg_trainer_local
+
+            # Resume from checkpoint if requested
+            if self.resume:
+                checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
+                checkpoint_manager = TrainingCheckpointManager(save_dir=checkpoint_dir)
+                snapshot = checkpoint_manager.load_latest()
+                if snapshot:
+                    self.logger.info(
+                        f"Resuming from checkpoint at step {snapshot.step}"
+                    )
+                    if self.algorithm_trainer and hasattr(
+                        self.algorithm_trainer, "model"
+                    ):
+                        # Restore model state
+                        model_state = snapshot.payload.get("model_state")
+                        if model_state:
+                            self.algorithm_trainer.model.load_state_dict(model_state)
+                            self.logger.info("Model state restored from checkpoint")
+                        else:
+                            self.logger.warning("No model state found in checkpoint")
+                    else:
+                        self.logger.warning(
+                            "Algorithm trainer has no model attribute for checkpoint restore"
+                        )
+                else:
+                    self.logger.warning("No checkpoint found for resume")
 
             # Apply system optimizations before training
             self.logger.info("Applying system-level optimizations...")
@@ -1998,7 +2030,9 @@ class UnifiedTrainer:
             import importlib
 
             try:
-                mod = importlib.import_module("ztb.training.environments.heavy_trading_env")
+                mod = importlib.import_module(
+                    "ztb.training.environments.heavy_trading_env"
+                )
                 HeavyTradingEnv = getattr(mod, "HeavyTradingEnv", None)
             except Exception:
                 HeavyTradingEnv = None
@@ -2038,11 +2072,12 @@ class UnifiedTrainer:
 
             # Load data from csv_path
             import pandas as pd
+
             data_path = env_config_obj.csv_path
             if not data_path:
                 self.logger.error("No csv_path specified in environment config")
                 return None
-            
+
             try:
                 data = pd.read_csv(data_path)
                 self.logger.info(f"Loaded data from {data_path}, shape: {data.shape}")

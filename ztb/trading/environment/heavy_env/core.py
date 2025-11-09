@@ -7,7 +7,6 @@ import gc
 import logging
 from collections import deque
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
-from dataclasses import asdict
 
 import gymnasium as gym
 import numpy as np
@@ -17,10 +16,8 @@ import torch
 from numpy.typing import NDArray
 
 # Import v444 regime classifier for advanced market regime adaptation
-from ztb.analysis.market_regime_classifier import (
-    MarketRegimeClassifier,
-    RegimeType as GenericRegimeType,
-)
+from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+from ztb.analysis.market_regime_classifier import RegimeType as GenericRegimeType
 from ztb.analysis.v444_regime_classifier import RegimeType as V444RegimeType
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
@@ -36,10 +33,6 @@ from ztb.trading.environment.constants import (
     RANDOM_START_BUFFER_RATIO,
     RANDOM_START_MAX_BUFFER,
     RANDOM_START_MIN_BUFFER,
-)
-from ztb.trading.environment.heavy_env.components.state_manager import StateManager
-from ztb.trading.environment.heavy_env.components.validation_manager import (
-    ValidationManager,
 )
 from ztb.trading.environment.heavy_env.mixins.initialization import (
     _build_fast_access_buffers,
@@ -80,8 +73,8 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_validation import TypeValidator
 
 if TYPE_CHECKING:
+    from ztb.adaptation.adaptive_selection import AdaptiveFeatureSelector
     from ztb.data.streaming_pipeline import StreamingPipeline
-    from ztb.features.adaptive_selection import AdaptiveFeatureSelector
     from ztb.trading.environment.components.action_validator import ActionValidator
     from ztb.trading.environment.components.data_processor import DataProcessor
     from ztb.trading.environment.components.memory_manager import MemoryManager
@@ -138,11 +131,14 @@ class HeavyTradingEnv(
 
     def _get_debug_info(self, observation: np.ndarray) -> Dict[str, Any]:
         """モデルの内部状態を抽出してデバッグ情報を取得する。"""
-        if not self.config.debug_internal_state or not hasattr(self, "_model") or self._model is None:
+        if (
+            not self.config.debug_internal_state
+            or not hasattr(self, "_model")
+            or self._model is None
+        ):
             return {}
-        
-        try:
 
+        try:
             # Ensure observation is a PyTorch tensor
             obs_tensor = torch.as_tensor(observation).to(self._model.device)
             if obs_tensor.ndimension() == 1:
@@ -154,53 +150,81 @@ class HeavyTradingEnv(
             with torch.no_grad():
                 # --- Feature Extraction ---
                 features_extractor = None
-                if hasattr(self._model.policy, "features_extractor") and self._model.policy.features_extractor is not None:
+                if (
+                    hasattr(self._model.policy, "features_extractor")
+                    and self._model.policy.features_extractor is not None
+                ):
                     features_extractor = self._model.policy.features_extractor
-                elif hasattr(self._model.policy, "actor") and hasattr(self._model.policy.actor, "features_extractor"):
+                elif hasattr(self._model.policy, "actor") and hasattr(
+                    self._model.policy.actor, "features_extractor"
+                ):
                     features_extractor = self._model.policy.actor.features_extractor
-                
+
                 if features_extractor:
                     features = features_extractor(obs_tensor)
                     debug_info["features_mean"] = features.mean().item()
                     debug_info["features_std"] = features.std().item()
 
                     # --- Actor Latents ---
-                    if hasattr(self._model.policy, "actor") and hasattr(self._model.policy.actor, "latent_pi"):
+                    if hasattr(self._model.policy, "actor") and hasattr(
+                        self._model.policy.actor, "latent_pi"
+                    ):
                         latent_pi = self._model.policy.actor.latent_pi(features)
                         debug_info["actor_latent_mean"] = latent_pi.mean().item()
                         debug_info["actor_latent_std"] = latent_pi.std().item()
 
                         # --- Actor Action Distribution Parameters ---
                         if hasattr(self._model.policy.actor, "action_dist"):
-                            mean_actions, log_std, _ = self._model.policy.actor.get_action_dist_params(features)
-                            debug_info["debug_actor_pre_tanh"] = mean_actions.cpu().numpy().flatten().tolist()
-                            debug_info["debug_actor_log_std"] = log_std.cpu().numpy().flatten().tolist()
+                            (
+                                mean_actions,
+                                log_std,
+                                _,
+                            ) = self._model.policy.actor.get_action_dist_params(
+                                features
+                            )
+                            debug_info["debug_actor_pre_tanh"] = (
+                                mean_actions.cpu().numpy().flatten().tolist()
+                            )
+                            debug_info["debug_actor_log_std"] = (
+                                log_std.cpu().numpy().flatten().tolist()
+                            )
 
                     # --- Critic Latents and Q-Values ---
-                    if hasattr(self._model.policy, "critic") and hasattr(self._model.policy.critic, "qf0"):
+                    if hasattr(self._model.policy, "critic") and hasattr(
+                        self._model.policy.critic, "qf0"
+                    ):
                         action_dim = self._model.policy.action_space.shape[-1]
-                        dummy_action = torch.zeros(features.shape[0], action_dim).to(self._model.device)
-                        
+                        dummy_action = torch.zeros(features.shape[0], action_dim).to(
+                            self._model.device
+                        )
+
                         # --- Critic Latents ---
                         critic_input = torch.cat([features, dummy_action], dim=1)
-                        
+
                         critic_latent_features = critic_input
                         qf0_layers = list(self._model.policy.critic.qf0.children())
                         if len(qf0_layers) > 2:
                             for layer in qf0_layers[:-1]:
                                 critic_latent_features = layer(critic_latent_features)
-                            
-                            debug_info["critic_latent_mean"] = critic_latent_features.mean().item()
-                            debug_info["critic_latent_std"] = critic_latent_features.std().item()
+
+                            debug_info[
+                                "critic_latent_mean"
+                            ] = critic_latent_features.mean().item()
+                            debug_info[
+                                "critic_latent_std"
+                            ] = critic_latent_features.std().item()
 
                         # --- Critic Q-Values ---
                         q_values = self._model.policy.critic.qf0(critic_input)
-                        debug_info["debug_critic_q1_values"] = q_values.cpu().numpy().flatten().tolist()
+                        debug_info["debug_critic_q1_values"] = (
+                            q_values.cpu().numpy().flatten().tolist()
+                        )
 
             return debug_info
         except Exception as e:
             self.logger.error(f"Error in _get_debug_info: {e}", exc_info=True)
             return {}
+
     # --- END: Debug Methods ---
 
     # Component types (具体的な型を指定して型安全性向上)
@@ -328,9 +352,11 @@ class HeavyTradingEnv(
         # Extract values from config for validation and use.
         # kwargs can override some runtime parameters.
         random_start = self.config.random_start
-        stream_batch_size = kwargs.get("stream_batch_size", self.DEFAULT_STREAM_BATCH_SIZE)
+        stream_batch_size = kwargs.get(
+            "stream_batch_size", self.DEFAULT_STREAM_BATCH_SIZE
+        )
         max_features = self.config.target_feature_count
-        optimizer_tracker = kwargs.get("optimizer_tracker") # Can be None
+        optimizer_tracker = kwargs.get("optimizer_tracker")  # Can be None
 
         TypeValidator.validate_type(random_start, bool, "random_start")
         TypeValidator.validate_type(stream_batch_size, int, "stream_batch_size")
@@ -413,7 +439,7 @@ class HeavyTradingEnv(
             reward_settings_dict = self.config.reward_settings
             if dataclasses.is_dataclass(reward_settings_dict):
                 reward_settings_dict = dataclasses.asdict(reward_settings_dict)
-            
+
             if reward_settings_dict:
                 merged = deep_merge_dict(
                     self.reward_settings,
@@ -661,7 +687,9 @@ class HeavyTradingEnv(
                         # Cast the result to the correct type
                         return V444RegimeType(regime_result.primary_regime.value)
             except Exception as e:
-                self.logger.warning(f"Failed to classify regime with v444 classifier: {e}")
+                self.logger.warning(
+                    f"Failed to classify regime with v444 classifier: {e}"
+                )
                 regime_str = "unknown"
 
         # Fallback to legacy regime detector
@@ -674,14 +702,17 @@ class HeavyTradingEnv(
         # Map known alternative names to standard regime names
         regime_mapping = {
             "sideways": "consolidation",
+            "unknown": "consolidation",  # Map unknown to consolidation to avoid warnings
             # Add other mappings as needed
         }
         regime_str = regime_mapping.get(regime_str, regime_str)
-        
+
         try:
             return V444RegimeType(regime_str)
         except ValueError:
-            self.logger.warning(f"Unknown regime string '{regime_str}', falling back to CONSOLIDATION.")
+            self.logger.info(
+                f"Unknown regime string '{regime_str}', falling back to CONSOLIDATION."
+            )
             return V444RegimeType.CONSOLIDATION
 
     def step(
@@ -703,7 +734,6 @@ class HeavyTradingEnv(
         current_obs = self._get_observation()
         debug_info = self._get_debug_info(current_obs)
 
-
         # Debug logging for SAC continuous action output
         if continuous_action_value is not None:
             action_name = (
@@ -723,11 +753,13 @@ class HeavyTradingEnv(
                 "position": f"{self.position:.4f}",
             }
             if debug_info:
-                log_data.update({
-                    "actor_pre_tanh": debug_info.get('debug_actor_pre_tanh', []),
-                    "actor_log_std": debug_info.get('debug_actor_log_std', []),
-                    "critic_q1": debug_info.get('debug_critic_q1_values', []),
-                })
+                log_data.update(
+                    {
+                        "actor_pre_tanh": debug_info.get("debug_actor_pre_tanh", []),
+                        "actor_log_std": debug_info.get("debug_actor_log_std", []),
+                        "critic_q1": debug_info.get("debug_critic_q1_values", []),
+                    }
+                )
             logger.debug(log_data)
 
         old_position = self.position_manager.position
@@ -855,7 +887,6 @@ class HeavyTradingEnv(
         info = self._get_info()
         info.update(self.reward_calculator.get_last_reward_components())
         info.update(debug_info)
-
 
         # Enhanced debug logging for SAC continuous action and reward analysis
         if continuous_action_value is not None:

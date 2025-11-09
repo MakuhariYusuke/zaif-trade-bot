@@ -38,6 +38,7 @@ class BacktestConfig:
     max_position_size: float = 0.1  # 最大ポジションサイズ（残高の10%）
     risk_per_trade: float = 0.02  # 1トレードあたりのリスク（2%）
     data_source: str = "historical"  # データソース
+    initial_btc: float = 0.0  # 初期BTC保有量
 
 
 @dataclass
@@ -68,6 +69,12 @@ class BacktestResult:
     trade_log: List[Dict[str, Any]] = field(default_factory=list)
     monthly_returns: Dict[str, float] = field(default_factory=dict)
     drawdown_periods: List[Dict[str, Any]] = field(default_factory=list)
+    # BTC関連フィールド
+    initial_btc: float = 0.0
+    final_btc: float = 0.0
+    btc_return: float = 0.0
+    btc_holdings_history: List[float] = field(default_factory=list)
+    net_btc_gained: float = 0.0
     execution_time: float = 0.0
 
 
@@ -651,6 +658,20 @@ class BacktestEngine:
             monthly_returns_pct = monthly_equity.pct_change()
             monthly_returns = monthly_returns_pct.to_dict()["equity"]
 
+        # BTC関連指標の計算
+        # 簡易的なBTC分析（実際の実装ではポジション追跡が必要）
+        initial_btc = getattr(
+            config, "initial_btc", 0.0
+        )  # configにinitial_btcがなければデフォルト0
+        final_btc = initial_btc  # 簡易実装では変化なし
+
+        # BTC保有履歴（簡易実装）
+        btc_holdings_history = [initial_btc] * len(self.equity_curve)
+
+        # BTCリターン計算
+        btc_return = 0.0  # 簡易実装
+        net_btc_gained = final_btc - initial_btc
+
         return BacktestResult(
             config=config,
             total_return=total_return,
@@ -674,6 +695,11 @@ class BacktestEngine:
             monthly_returns=monthly_returns,
             drawdown_periods=drawdown_periods,
             execution_time=execution_time,
+            initial_btc=initial_btc,
+            final_btc=final_btc,
+            btc_return=btc_return,
+            btc_holdings_history=btc_holdings_history,
+            net_btc_gained=net_btc_gained,
         )
 
 

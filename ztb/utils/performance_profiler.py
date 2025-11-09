@@ -9,6 +9,7 @@ import io
 import pstats
 import time
 from contextlib import contextmanager
+from functools import wraps
 from typing import Any, Callable, Dict, Generator, List, Optional
 
 import pandas as pd
@@ -23,6 +24,18 @@ class PerformanceProfiler:
     def __init__(self) -> None:
         self.process = psutil.Process()
         self._profile_stats: Optional[pstats.Stats] = None
+
+    @classmethod
+    def profile(cls, func: Callable) -> Callable:
+        """Decorator for profiling functions"""
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            profiler = cls()
+            with profiler.profile_context(func.__name__):
+                return func(*args, **kwargs)
+
+        return wrapper
 
     @contextmanager
     def profile_context(self, name: str = "operation") -> Generator[None, None, None]:
@@ -306,8 +319,10 @@ class MemoryProfiler:
 
     def __init__(self):
         try:
-            import psutil
             import tracemalloc
+
+            import psutil
+
             self.psutil_available = True
             self.tracemalloc_available = True
             self.process = psutil.Process()
@@ -338,11 +353,14 @@ class MemoryProfiler:
 
         if self.tracemalloc_available:
             import tracemalloc
+
             current, peak = tracemalloc.get_traced_memory()
-            stats.update({
-                "current_traced_mb": current / 1024 / 1024,
-                "peak_traced_mb": peak / 1024 / 1024,
-            })
+            stats.update(
+                {
+                    "current_traced_mb": current / 1024 / 1024,
+                    "peak_traced_mb": peak / 1024 / 1024,
+                }
+            )
 
         return stats
 
@@ -363,20 +381,22 @@ class MemoryProfiler:
 
         # Get top memory allocations
         snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
+        top_stats = snapshot.statistics("lineno")
 
         leaks = []
         for stat in top_stats[:10]:  # Top 10 allocations
             if stat.size / 1024 / 1024 > threshold_mb:
-                leaks.append({
-                    "size_mb": stat.size / 1024 / 1024,
-                    "count": stat.count,
-                    "traceback": str(stat.traceback)
-                })
+                leaks.append(
+                    {
+                        "size_mb": stat.size / 1024 / 1024,
+                        "count": stat.count,
+                        "traceback": str(stat.traceback),
+                    }
+                )
 
         return {
             "potential_leaks": leaks,
-            "total_traced_mb": sum(stat.size for stat in top_stats) / 1024 / 1024
+            "total_traced_mb": sum(stat.size for stat in top_stats) / 1024 / 1024,
         }
 
     def profile_memory_usage(self, func: Callable, *args, **kwargs) -> Dict[str, Any]:
@@ -398,6 +418,7 @@ class MemoryProfiler:
 
         if self.tracemalloc_available:
             import tracemalloc
+
             tracemalloc.reset_peak()
 
         # Execute function
@@ -417,10 +438,13 @@ class MemoryProfiler:
 
         if self.tracemalloc_available:
             import tracemalloc
+
             current, peak = tracemalloc.get_traced_memory()
-            profile_result.update({
-                "peak_memory_mb": peak / 1024 / 1024,
-                "current_memory_mb": current / 1024 / 1024,
-            })
+            profile_result.update(
+                {
+                    "peak_memory_mb": peak / 1024 / 1024,
+                    "current_memory_mb": current / 1024 / 1024,
+                }
+            )
 
         return profile_result

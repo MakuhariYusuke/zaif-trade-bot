@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import pandas as pd
+
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IPerformanceTracker
@@ -69,20 +70,6 @@ class PerformanceTracker(IPerformanceTracker):
         self.signal_sac_correlation_data: List[Dict[str, Union[str, int, float]]] = []
         self.regime_performance_correlation: Dict[str, List[float]] = defaultdict(list)
 
-    def record_signal_generation(self, duration: float) -> None:
-        """
-        Record signal generation performance.
-
-        Args:
-            duration: Time taken for signal generation
-        """
-        self.signal_generation_times.append(duration)
-        self.total_signals_generated += 1
-
-        # Keep only recent samples for memory efficiency
-        if len(self.signal_generation_times) > 1000:
-            self.signal_generation_times = self.signal_generation_times[-500:]
-
     def record_pattern_recognition(
         self, pattern_type: str, duration: float, success: bool
     ) -> None:
@@ -109,6 +96,22 @@ class PerformanceTracker(IPerformanceTracker):
         self.pattern_success_rates[pattern_type]["total"] += 1
         if success:
             self.pattern_success_rates[pattern_type]["success"] += 1
+
+    def record_signal_generation(self, duration: float) -> None:
+        """
+        Record signal generation performance.
+
+        Args:
+            duration: Time taken for signal generation
+        """
+        if self.enable_detailed_tracking:
+            self.signal_generation_times.append(duration)
+
+            # Keep only recent samples
+            if len(self.signal_generation_times) > 100:
+                self.signal_generation_times = self.signal_generation_times[-50:]
+
+        self.total_signals_generated += 1
 
     def record_pattern_signal(
         self, pattern_type: str, strength: float, confidence: float
@@ -185,7 +188,7 @@ class PerformanceTracker(IPerformanceTracker):
         signal: "ActionSignal",
         sac_action: Optional[Union[int, float]] = None,
         market_regime: Optional[str] = None,
-        portfolio_state: Optional[Dict[str, Union[int, float]]] = None
+        portfolio_state: Optional[Dict[str, Union[int, float]]] = None,
     ) -> None:
         """
         Track correlation between Action Signal Guide signals and SAC actions.
@@ -201,13 +204,19 @@ class PerformanceTracker(IPerformanceTracker):
 
         correlation_entry = {
             "timestamp": time.time(),
-            "signal_action": signal.action.value if hasattr(signal.action, 'value') else str(signal.action),
+            "signal_action": signal.action.value
+            if hasattr(signal.action, "value")
+            else str(signal.action),
             "signal_confidence": signal.confidence,
             "signal_reason": signal.reason,
             "sac_action": sac_action,
             "market_regime": market_regime or "unknown",
-            "portfolio_value": portfolio_state.get("value", 0.0) if portfolio_state else 0.0,
-            "position_size": portfolio_state.get("position", 0.0) if portfolio_state else 0.0,
+            "portfolio_value": portfolio_state.get("value", 0.0)
+            if portfolio_state
+            else 0.0,
+            "position_size": portfolio_state.get("position", 0.0)
+            if portfolio_state
+            else 0.0,
         }
 
         self.signal_sac_correlation_data.append(correlation_entry)
@@ -217,8 +226,14 @@ class PerformanceTracker(IPerformanceTracker):
             regime_key = f"{market_regime}_{signal.action}"
             if sac_action is not None:
                 # Calculate correlation strength (simplified)
-                correlation_strength = abs(signal.confidence - abs(sac_action)) if signal.confidence else 0.0
-                self.regime_performance_correlation[regime_key].append(correlation_strength)
+                correlation_strength = (
+                    abs(signal.confidence - abs(sac_action))
+                    if signal.confidence
+                    else 0.0
+                )
+                self.regime_performance_correlation[regime_key].append(
+                    correlation_strength
+                )
 
         # Maintain history size limit
         if len(self.signal_sac_correlation_data) > self.max_history_size:
@@ -464,7 +479,8 @@ class PerformanceTracker(IPerformanceTracker):
 
         analysis = {
             "total_correlation_points": len(df),
-            "correlation_period_days": (df["timestamp"].max() - df["timestamp"].min()) / 86400,
+            "correlation_period_days": (df["timestamp"].max() - df["timestamp"].min())
+            / 86400,
             "signal_distribution": self._analyze_signal_distribution(df),
             "sac_action_distribution": self._analyze_sac_action_distribution(df),
             "regime_correlation": self._analyze_regime_correlation(df),
@@ -474,18 +490,26 @@ class PerformanceTracker(IPerformanceTracker):
 
         return analysis
 
-    def _analyze_signal_distribution(self, df: pd.DataFrame) -> Dict[str, Union[int, float]]:
+    def _analyze_signal_distribution(
+        self, df: pd.DataFrame
+    ) -> Dict[str, Union[int, float]]:
         """Analyze signal distribution in correlation data."""
         signal_counts = df["signal_action"].value_counts().to_dict()
         total_signals = len(df)
 
         return {
             "signal_counts": signal_counts,
-            "signal_percentages": {k: v/total_signals for k, v in signal_counts.items()},
-            "most_common_signal": max(signal_counts.items(), key=lambda x: x[1])[0] if signal_counts else None,
+            "signal_percentages": {
+                k: v / total_signals for k, v in signal_counts.items()
+            },
+            "most_common_signal": max(signal_counts.items(), key=lambda x: x[1])[0]
+            if signal_counts
+            else None,
         }
 
-    def _analyze_sac_action_distribution(self, df: pd.DataFrame) -> Dict[str, Union[int, float]]:
+    def _analyze_sac_action_distribution(
+        self, df: pd.DataFrame
+    ) -> Dict[str, Union[int, float]]:
         """Analyze SAC action distribution."""
         sac_actions = df["sac_action"].dropna()
 
@@ -501,7 +525,9 @@ class PerformanceTracker(IPerformanceTracker):
             "strong_sell_signals": int((sac_actions < -0.7).sum()),
         }
 
-    def _analyze_regime_correlation(self, df: pd.DataFrame) -> Dict[str, Union[int, float, dict]]:
+    def _analyze_regime_correlation(
+        self, df: pd.DataFrame
+    ) -> Dict[str, Union[int, float, dict]]:
         """Analyze correlation by market regime."""
         regime_groups = df.groupby("market_regime")
 
@@ -510,19 +536,29 @@ class PerformanceTracker(IPerformanceTracker):
             valid_data = group.dropna(subset=["sac_action", "signal_confidence"])
 
             if len(valid_data) > 1:
-                correlation = valid_data["signal_confidence"].corr(valid_data["sac_action"])
+                correlation = valid_data["signal_confidence"].corr(
+                    valid_data["sac_action"]
+                )
                 regime_analysis[regime] = {
-                    "correlation_coefficient": float(correlation) if not pd.isna(correlation) else 0.0,
+                    "correlation_coefficient": float(correlation)
+                    if not pd.isna(correlation)
+                    else 0.0,
                     "sample_size": len(valid_data),
-                    "avg_signal_confidence": float(valid_data["signal_confidence"].mean()),
+                    "avg_signal_confidence": float(
+                        valid_data["signal_confidence"].mean()
+                    ),
                     "avg_sac_action": float(valid_data["sac_action"].mean()),
                 }
             else:
-                regime_analysis[regime] = {"error": "Insufficient data for correlation analysis"}
+                regime_analysis[regime] = {
+                    "error": "Insufficient data for correlation analysis"
+                }
 
         return regime_analysis
 
-    def _analyze_performance_correlation(self, df: pd.DataFrame) -> Dict[str, Union[int, float]]:
+    def _analyze_performance_correlation(
+        self, df: pd.DataFrame
+    ) -> Dict[str, Union[int, float]]:
         """Analyze correlation between signals and portfolio performance."""
         # Calculate forward returns (simplified approach)
         df_sorted = df.sort_values("timestamp").copy()
@@ -534,30 +570,45 @@ class PerformanceTracker(IPerformanceTracker):
             return {"error": "Insufficient data for performance correlation"}
 
         # Simple correlation analysis (in practice, you'd want more sophisticated forward-looking analysis)
-        confidence_correlation = valid_data["signal_confidence"].corr(valid_data["portfolio_value"])
+        confidence_correlation = valid_data["signal_confidence"].corr(
+            valid_data["portfolio_value"]
+        )
 
         return {
-            "signal_confidence_portfolio_correlation": float(confidence_correlation) if not pd.isna(confidence_correlation) else 0.0,
+            "signal_confidence_portfolio_correlation": float(confidence_correlation)
+            if not pd.isna(confidence_correlation)
+            else 0.0,
             "sample_size": len(valid_data),
-            "correlation_strength": self._interpret_correlation_strength(confidence_correlation),
+            "correlation_strength": self._interpret_correlation_strength(
+                confidence_correlation
+            ),
         }
 
-    def _analyze_temporal_correlation_patterns(self, df: pd.DataFrame) -> Dict[str, Union[int, float, list]]:
+    def _analyze_temporal_correlation_patterns(
+        self, df: pd.DataFrame
+    ) -> Dict[str, Union[int, float, list]]:
         """Analyze temporal patterns in correlation data."""
         df_sorted = df.sort_values("timestamp").copy()
         df_sorted["hour"] = pd.to_datetime(df_sorted["timestamp"], unit="s").dt.hour
-        df_sorted["day_of_week"] = pd.to_datetime(df_sorted["timestamp"], unit="s").dt.dayofweek
+        df_sorted["day_of_week"] = pd.to_datetime(
+            df_sorted["timestamp"], unit="s"
+        ).dt.dayofweek
 
-        hourly_patterns = df_sorted.groupby("hour").agg({
-            "signal_confidence": "mean",
-            "sac_action": "mean"
-        }).to_dict()
+        hourly_patterns = (
+            df_sorted.groupby("hour")
+            .agg({"signal_confidence": "mean", "sac_action": "mean"})
+            .to_dict()
+        )
 
         return {
             "hourly_signal_confidence": hourly_patterns["signal_confidence"],
             "hourly_sac_action": hourly_patterns["sac_action"],
-            "best_signal_hour": max(hourly_patterns["signal_confidence"].items(), key=lambda x: x[1])[0],
-            "best_sac_hour": max(hourly_patterns["sac_action"].items(), key=lambda x: x[1])[0],
+            "best_signal_hour": max(
+                hourly_patterns["signal_confidence"].items(), key=lambda x: x[1]
+            )[0],
+            "best_sac_hour": max(
+                hourly_patterns["sac_action"].items(), key=lambda x: x[1]
+            )[0],
         }
 
     def _interpret_correlation_strength(self, correlation: float) -> str:

@@ -76,8 +76,8 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
     ) -> Optional[SignalResult]:
         """Recognize Sakata's Five Methods pattern at the given index."""
         try:
-            # Validate inputs using common method
-            index = self.validate_recognition_inputs(data, index, required_length=5)
+            # Validate inputs using common method - Sakata's Five Methods requires more data
+            index = self.validate_recognition_inputs(data, index, required_length=15)
 
             # Check for uptrend
             if not self._is_uptrend(data, index, lookback=5):
@@ -190,13 +190,16 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
                     data, index, 0.8
                 ),
                 "pattern_completeness": pattern_completeness,
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
             return confidence
 
@@ -311,13 +314,16 @@ class MorningStarRecognizer(CandlestickPatternRecognizer):
                     / characteristics["avg_body_size"]
                     * 2,
                 ),  # Smaller star body = more complete pattern
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -428,13 +434,16 @@ class EveningStarRecognizer(CandlestickPatternRecognizer):
                     / characteristics["avg_body_size"]
                     * 2,
                 ),  # Smaller star body = more complete pattern
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -536,13 +545,16 @@ class HammerRecognizer(CandlestickPatternRecognizer):
                 ),  # Moderate movement
                 "pattern_completeness": min(1.0, shadow_ratio / 3.0)
                 * min(1.0, body_position),  # Shadow ratio and position
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -643,13 +655,16 @@ class HangingManRecognizer(CandlestickPatternRecognizer):
                 ),  # Moderate movement
                 "pattern_completeness": min(1.0, shadow_ratio / 3.0)
                 * min(1.0, body_position),  # Shadow ratio and position
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -770,13 +785,16 @@ class ThreeBlackCrowsRecognizer(CandlestickPatternRecognizer):
                     data, index, 1.0
                 ),  # Significant movement
                 "pattern_completeness": pattern_completeness,  # How well candles fit the pattern
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -897,13 +915,16 @@ class ThreeWhiteSoldiersRecognizer(CandlestickPatternRecognizer):
                     data, index, 1.0
                 ),  # Significant movement
                 "pattern_completeness": pattern_completeness,  # How well candles fit the pattern
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -1012,13 +1033,16 @@ class RisingThreeMethodsRecognizer(CandlestickPatternRecognizer):
                     / characteristics["avg_body_size"]
                     * 0.5,
                 ),  # Large final candle
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -1120,13 +1144,16 @@ class BullishEngulfingRecognizer(CandlestickPatternRecognizer):
                 "pattern_completeness": min(
                     1.0, engulfing_ratio / 2.0
                 ),  # How complete the engulfing is
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -1233,13 +1260,16 @@ class BearishEngulfingRecognizer(CandlestickPatternRecognizer):
                 "pattern_completeness": min(
                     1.0, engulfing_ratio / 2.0
                 ),  # How complete the engulfing is
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
@@ -1346,13 +1376,16 @@ class PiercingPatternRecognizer(CandlestickPatternRecognizer):
                 "pattern_completeness": min(
                     1.0, penetration
                 ),  # How deep the penetration is
-                            "volume": self._calculate_volume_confidence(
+                "volume": self._calculate_volume_confidence(
                     data, index, 1.2
                 ),  # Expect volume increase for reversal
             }
 
             confidence = self._calculate_pattern_confidence(
-                data, index, pattern_factors, base_confidence=self.get_base_confidence_for_pattern(self.pattern_type)
+                data,
+                index,
+                pattern_factors,
+                base_confidence=self.get_base_confidence_for_pattern(self.pattern_type),
             )
 
             # Apply multi-timeframe alignment adjustment if data is available
