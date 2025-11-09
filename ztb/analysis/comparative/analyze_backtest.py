@@ -20,15 +20,47 @@ from ztb.data.btc_data_augmentation import BTCBiasDetector
 from ztb.metrics.metrics import (
     calculate_all_metrics,
     classify_market_regime,
+    max_drawdown,
     multi_market_backtest_analysis,
+    profit_factor,
     seasonality_analysis,
+    sharpe_ratio,
+    sortino_ratio,
 )
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
 
+# Import type definitions
+from .backtest_analysis_types import (
+    ActionAveragesResult,
+    AnalysisResult,
+    AutocorrelationResult,
+    CorrelationAnalysisResult,
+    MarketConditionResult,
+    NormalityTestResult,
+    PerformanceMetricsResult,
+    RiskAdjustedMetricsResult,
+    RobustnessAnalysisResult,
+    StatisticalTestResult,
+    TemporalPatternsResult,
+    TradingFrequencyResult,
+    VolatilityClusteringResult,
+)
+
 logger = get_logger(__name__)
+
+
+# Utility function for coefficient of variation calculation
+def _calculate_coefficient_of_variation(values: np.ndarray) -> float:
+    """変動係数（Coefficient of Variation）を計算"""
+    if len(values) == 0:
+        return 0.0
+    mean_val = np.mean(values)
+    if mean_val == 0:
+        return 0.0
+    return np.std(values) / mean_val
 
 
 class BacktestAnalyzer(BaseAnalyzer):
@@ -86,10 +118,27 @@ class BacktestAnalyzer(BaseAnalyzer):
         """Validate that required data fields are present."""
         required_fields = ["total_steps", "initial_portfolio", "final_portfolio"]
         missing_fields = [field for field in required_fields if field not in self.data]
+
+        # If primary fields are missing, check for alternative field names
+        if "initial_portfolio" not in self.data and "initial_balance" in self.data:
+            self.data["initial_portfolio"] = self.data["initial_balance"]
+        if "final_portfolio" not in self.data and "final_portfolio_value" in self.data:
+            self.data["final_portfolio"] = self.data["final_portfolio_value"]
+
+        # BTC-related field mapping
+        if "initial_btc" not in self.data and "initial_btc_balance" in self.data:
+            self.data["initial_btc"] = self.data["initial_btc_balance"]
+        if "final_btc" not in self.data and "final_btc_balance" in self.data:
+            self.data["final_btc"] = self.data["final_btc_balance"]
+        if "btc_holdings" not in self.data and "btc_history" in self.data:
+            self.data["btc_holdings"] = self.data["btc_history"]
+
+        # Re-check after mapping alternative fields
+        missing_fields = [field for field in required_fields if field not in self.data]
         if missing_fields:
             raise ValueError(f"Missing required fields in results: {missing_fields}")
 
-    def analyze(self, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def analyze(self, data: Optional[Dict[str, Any]] = None) -> AnalysisResult:
         """Perform comprehensive backtest analysis."""
         if data:
             self.data = data
@@ -100,6 +149,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             "temporal_patterns": self.analyze_temporal_patterns(),
             "market_conditions": self.analyze_market_conditions(),
             "trading_frequency": self.analyze_trading_frequency(),
+            "btc_analysis": self.analyze_btc_performance(),
         }
 
         self.results = results
@@ -124,18 +174,16 @@ class BacktestAnalyzer(BaseAnalyzer):
             current_day = None
             day_start_value = None
 
-            for ts, value in zip(timestamps, portfolio_values):
+            for i, (ts, value) in enumerate(zip(timestamps, portfolio_values)):
                 day = ts.date()
                 if current_day != day:
-                    if day_start_value is not None:
+                    if day_start_value is not None and i > 0:
                         daily_return = (
                             portfolio_values[i - 1] - day_start_value
                         ) / day_start_value
                         daily_returns.append(daily_return)
                     current_day = day
                     day_start_value = value
-                i = len(daily_returns) + 1
-
             if day_start_value is not None and len(portfolio_values) > 0:
                 daily_return = (
                     portfolio_values[-1] - day_start_value
@@ -162,46 +210,31 @@ class BacktestAnalyzer(BaseAnalyzer):
                 "volatility": 0.0,
             }
 
-        # シャープレシオ（無リスク金利を0%として）
-        risk_free_rate = 0.0
-        excess_returns = (
-            daily_returns - risk_free_rate / TRADING_DAYS_PER_YEAR
-        )  # 日次無リスク金利
-        if np.std(excess_returns) > 0:
-            sharpe_ratio = (
-                np.mean(excess_returns)
-                / np.std(excess_returns)
-                * np.sqrt(TRADING_DAYS_PER_YEAR)
-            )
-        else:
-            sharpe_ratio = 0.0
+        # metrics.pyの関数を使用して指標を計算
+
+        # シャープレシオ
+        sharpe_ratio_value = sharpe_ratio(daily_returns)
 
         # 最大ドローダウン
-        peak = np.maximum.accumulate(portfolio_values)
-        drawdown = (portfolio_values - peak) / peak
-        max_drawdown = np.min(drawdown)
+        max_drawdown_value = max_drawdown(portfolio_values)
 
         # ボラティリティ（年率化）
         volatility = np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
 
         # ソルティーノレシオ
-        downside_returns = daily_returns[daily_returns < 0]
-        if len(downside_returns) > 0 and np.std(downside_returns) > 0:
-            sortino_ratio = (
-                np.mean(daily_returns)
-                / np.std(downside_returns)
-                * np.sqrt(TRADING_DAYS_PER_YEAR)
-            )
-        else:
-            sortino_ratio = 0.0
+        sortino_ratio_value = sortino_ratio(daily_returns)
 
         return {
             "total_return": total_return,
-            "sharpe_ratio": sharpe_ratio,
-            "max_drawdown": max_drawdown,
+            "sharpe_ratio": sharpe_ratio_value,
+            "max_drawdown": max_drawdown_value,
             "volatility": volatility,
-            "sortino_ratio": sortino_ratio,
-            "win_rate": self.data.get("win_rate", 0) / 100.0,
+            "sortino_ratio": sortino_ratio_value,
+            "win_rate": (
+                self.data.get("win_rate", 0) / 100.0
+                if self.data.get("win_rate", 0) > 1
+                else self.data.get("win_rate", 0)
+            ),
             "profit_factor": self._calculate_profit_factor(),
         }
 
@@ -211,20 +244,281 @@ class BacktestAnalyzer(BaseAnalyzer):
             return 0.0
 
         pnls = np.array(self.data["trade_pnls"])
-        winning_trades = pnls[pnls > 0]
-        losing_trades = pnls[pnls < 0]
+        return profit_factor(pnls)
 
-        if len(winning_trades) == 0:
+    def calculate_enhanced_statistics(self) -> Dict[str, Any]:
+        """改善された統計分析を実行"""
+        if "portfolio_history" not in self.data:
+            return {}
+
+        portfolio_values = np.array(self.data["portfolio_history"])
+
+        # 基本リターンの計算
+        if len(portfolio_values) < 2:
+            return {"error": "Insufficient data for enhanced statistics"}
+
+        # リターンの計算
+        returns = np.diff(portfolio_values) / portfolio_values[:-1]
+
+        # 分布分析
+        distribution_stats = {
+            "mean_return": float(np.mean(returns)),
+            "median_return": float(np.median(returns)),
+            "std_return": float(np.std(returns)),
+            "skewness": float(self._calculate_skewness(returns)),
+            "kurtosis": float(self._calculate_kurtosis(returns)),
+            "return_percentiles": {
+                "1%": float(np.percentile(returns, 1)),
+                "5%": float(np.percentile(returns, 5)),
+                "25%": float(np.percentile(returns, 25)),
+                "75%": float(np.percentile(returns, 75)),
+                "95%": float(np.percentile(returns, 95)),
+                "99%": float(np.percentile(returns, 99)),
+            },
+        }
+
+        # 正規性検定
+        normality_tests = self._test_normality(returns)
+
+        # 自己相関分析
+        autocorrelation = self._calculate_autocorrelation(returns, lags=20)
+
+        # ボラティリティ・クラスタリング分析
+        volatility_clustering = self._analyze_volatility_clustering(returns)
+
+        # リスク調整リターン指標
+        risk_adjusted_metrics = self._calculate_risk_adjusted_metrics(returns)
+
+        # 統計的有意性検定
+        statistical_tests = self._perform_statistical_tests(returns)
+
+        return {
+            "distribution_analysis": distribution_stats,
+            "normality_tests": normality_tests,
+            "autocorrelation": autocorrelation,
+            "volatility_clustering": volatility_clustering,
+            "risk_adjusted_metrics": risk_adjusted_metrics,
+            "statistical_tests": statistical_tests,
+        }
+
+    def _calculate_skewness(self, returns: np.ndarray) -> float:
+        """歪度を計算"""
+        if len(returns) < 3:
             return 0.0
-        if len(losing_trades) == 0:
-            return float("inf")
+        mean = np.mean(returns)
+        std = np.std(returns)
+        if std == 0:
+            return 0.0
+        return np.mean(((returns - mean) / std) ** 3)
 
-        gross_profit = np.sum(winning_trades)
-        gross_loss = abs(np.sum(losing_trades))
+    def _calculate_kurtosis(self, returns: np.ndarray) -> float:
+        """尖度を計算"""
+        if len(returns) < 4:
+            return 0.0
+        mean = np.mean(returns)
+        std = np.std(returns)
+        if std == 0:
+            return 0.0
+        return np.mean(((returns - mean) / std) ** 4) - 3
 
-        return gross_profit / gross_loss if gross_loss > 0 else float("inf")
+    def _test_normality(self, returns: np.ndarray) -> NormalityTestResult:
+        """正規性検定を実行"""
+        try:
+            from scipy import stats
 
-    def analyze_temporal_patterns(self) -> Dict[str, Any]:
+            # Shapiro-Wilk検定
+            if len(returns) >= 3 and len(returns) <= 5000:
+                shapiro_stat, shapiro_p = stats.shapiro(returns)
+            else:
+                shapiro_stat, shapiro_p = None, None
+
+            # Kolmogorov-Smirnov検定
+            ks_stat, ks_p = stats.kstest(
+                returns, "norm", args=(np.mean(returns), np.std(returns))
+            )
+
+            # Jarque-Bera検定
+            jb_stat, jb_p = stats.jarque_bera(returns)
+
+            return {
+                "shapiro_wilk": {
+                    "statistic": float(shapiro_stat) if shapiro_stat else None,
+                    "p_value": float(shapiro_p) if shapiro_p else None,
+                    "is_normal": (shapiro_p or 0) > 0.05,
+                },
+                "kolmogorov_smirnov": {
+                    "statistic": float(ks_stat),
+                    "p_value": float(ks_p),
+                    "is_normal": ks_p > 0.05,
+                },
+                "jarque_bera": {
+                    "statistic": float(jb_stat),
+                    "p_value": float(jb_p),
+                    "is_normal": jb_p > 0.05,
+                },
+            }
+        except ImportError:
+            return {"error": "scipy not available for normality tests"}
+        except Exception as e:
+            return {"error": f"Normality test failed: {str(e)}"}
+
+    def _calculate_autocorrelation(
+        self, returns: np.ndarray, lags: int = 20
+    ) -> AutocorrelationResult:
+        """自己相関を計算"""
+        try:
+            autocorr = {}
+            for lag in range(1, min(lags + 1, len(returns))):
+                corr = np.corrcoef(returns[:-lag], returns[lag:])[0, 1]
+                autocorr[f"lag_{lag}"] = float(corr) if not np.isnan(corr) else 0.0
+
+            # Ljung-Box検定
+            try:
+                from scipy import stats
+
+                lb_stat, lb_p = stats.acorr_ljungbox(
+                    returns, lags=[lags], return_df=False
+                )
+                ljung_box = {
+                    "statistic": float(lb_stat[0]),
+                    "p_value": float(lb_p[0]),
+                    "no_autocorrelation": lb_p[0] > 0.05,
+                }
+            except:
+                ljung_box = {"error": "Ljung-Box test failed"}
+
+            return {"autocorrelations": autocorr, "ljung_box_test": ljung_box}
+        except Exception as e:
+            return {"error": f"Autocorrelation calculation failed: {str(e)}"}
+
+    def _analyze_volatility_clustering(
+        self, returns: np.ndarray
+    ) -> VolatilityClusteringResult:
+        """ボラティリティ・クラスタリングを分析"""
+        try:
+            # 絶対リターンの自己相関
+            abs_returns = np.abs(returns)
+            autocorr_abs = {}
+            for lag in range(1, min(11, len(abs_returns))):
+                corr = np.corrcoef(abs_returns[:-lag], abs_returns[lag:])[0, 1]
+                autocorr_abs[f"lag_{lag}"] = float(corr) if not np.isnan(corr) else 0.0
+
+            # 条件付き分散の変化
+            rolling_volatility = []
+            window_size = min(50, len(returns) // 4)
+            if window_size >= 10:
+                for i in range(window_size, len(returns)):
+                    window_returns = returns[i - window_size : i]
+                    vol = np.std(window_returns)
+                    rolling_volatility.append(float(vol))
+
+            return {
+                "absolute_return_autocorrelation": autocorr_abs,
+                "rolling_volatility": rolling_volatility,
+                "volatility_persistence": float(
+                    np.mean(list(autocorr_abs.values())[:5])
+                )
+                if autocorr_abs
+                else 0.0,
+            }
+        except Exception as e:
+            return {"error": f"Volatility clustering analysis failed: {str(e)}"}
+
+    def _calculate_risk_adjusted_metrics(
+        self, returns: np.ndarray
+    ) -> RiskAdjustedMetricsResult:
+        """リスク調整リターン指標を計算"""
+        if len(returns) == 0:
+            return {}
+
+        try:
+            # Calmarレシオ（最大ドローダウンに対する年間リターン）
+            cumulative = np.cumprod(1 + returns)
+            peak = np.maximum.accumulate(cumulative)
+            drawdown = (cumulative - peak) / peak
+            max_dd = np.min(drawdown) if len(drawdown) > 0 else 0
+
+            # 年間リターンの推定（日次リターンを仮定）
+            annual_return = np.mean(returns) * TRADING_DAYS_PER_YEAR  # 252取引日
+            calmar_ratio = annual_return / abs(max_dd) if max_dd != 0 else 0
+
+            # Omegaレシオ
+            threshold = 0.0  # 無リスク金利
+            gains = returns[returns > threshold]
+            losses = returns[returns <= threshold]
+            omega_ratio = (
+                (np.sum(gains) / len(gains)) / (abs(np.sum(losses)) / len(losses))
+                if len(losses) > 0 and len(gains) > 0
+                else 0
+            )
+
+            # Kappaレシオ（kappa = 3）
+            kappa = 3
+            downside_deviation = np.sqrt(np.mean(np.minimum(returns, 0) ** 2))
+            kappa_ratio = (
+                np.mean(returns) / (downside_deviation**kappa)
+                if downside_deviation > 0
+                else 0
+            )
+
+            return {
+                "calmar_ratio": float(calmar_ratio),
+                "omega_ratio": float(omega_ratio),
+                "kappa_ratio": float(kappa_ratio),
+                "annual_return": float(annual_return),
+                "max_drawdown": float(max_dd),
+            }
+        except Exception as e:
+            return {"error": f"Risk-adjusted metrics calculation failed: {str(e)}"}
+
+    def _perform_statistical_tests(self, returns: np.ndarray) -> StatisticalTestResult:
+        """統計的有意性検定を実行"""
+        try:
+            from scipy import stats
+
+            # t検定（平均リターンが0と異なるか）
+            t_stat, t_p = stats.ttest_1samp(returns, 0)
+
+            # Mann-Whitney U検定（中央値が0と異なるか）
+            try:
+                u_stat, u_p = stats.mannwhitneyu(
+                    returns, np.zeros(len(returns)), alternative="two-sided"
+                )
+            except:
+                u_stat, u_p = None, None
+
+            # Levene検定（分散の等質性 - ここでは自己比較）
+            # 代わりにBartlett検定を使用
+            try:
+                bartlett_stat, bartlett_p = stats.bartlett(
+                    returns[: len(returns) // 2], returns[len(returns) // 2 :]
+                )
+            except:
+                bartlett_stat, bartlett_p = None, None
+
+            return {
+                "t_test": {
+                    "statistic": float(t_stat),
+                    "p_value": float(t_p),
+                    "mean_significantly_different_from_zero": t_p < 0.05,
+                },
+                "mann_whitney_u": {
+                    "statistic": float(u_stat) if u_stat else None,
+                    "p_value": float(u_p) if u_p else None,
+                    "median_significantly_different_from_zero": (u_p or 1) < 0.05,
+                },
+                "bartlett_test": {
+                    "statistic": float(bartlett_stat) if bartlett_stat else None,
+                    "p_value": float(bartlett_p) if bartlett_p else None,
+                    "variance_homogeneous": (bartlett_p or 1) > 0.05,
+                },
+            }
+        except ImportError:
+            return {"error": "scipy not available for statistical tests"}
+        except Exception as e:
+            return {"error": f"Statistical tests failed: {str(e)}"}
+
+    def analyze_temporal_patterns(self) -> TemporalPatternsResult:
         """時間帯別の分析"""
         if "timestamps" not in self.data or "portfolio_history" not in self.data:
             return {}
@@ -261,10 +555,10 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return {"hourly_returns": hourly_returns, "weekday_returns": weekday_returns}
 
-    def analyze_market_conditions(self) -> Dict[str, Any]:
+    def analyze_market_conditions(self) -> MarketConditionResult:
         """市場環境別の分析"""
         if "price_history" not in self.data or "portfolio_history" not in self.data:
-            return {}
+            return MarketConditionResult(uptrend=None, downtrend=None, sideways=None)
 
         prices = np.array(self.data["price_history"])
         portfolio_values = np.array(self.data["portfolio_history"])
@@ -306,12 +600,12 @@ class BacktestAnalyzer(BaseAnalyzer):
 
             return results
 
-        return {}
+        return MarketConditionResult(uptrend=None, downtrend=None, sideways=None)
 
-    def analyze_trading_frequency(self) -> Dict[str, Any]:
+    def analyze_trading_frequency(self) -> TradingFrequencyResult:
         """取引頻度分析"""
         if "actions" not in self.data:
-            return {}
+            return TradingFrequencyResult()
 
         actions = np.array(self.data["actions"])
         total_steps = len(actions)
@@ -342,6 +636,136 @@ class BacktestAnalyzer(BaseAnalyzer):
             "max_trade_interval": max_trade_interval,
             "total_trades": len(trade_actions),
         }
+
+    def analyze_btc_performance(self) -> Dict[str, Any]:
+        """BTCパフォーマンス分析"""
+        btc_analysis = {}
+
+        # BTC保有量の初期値と最終値
+        initial_btc = self.data.get("initial_btc", 0.0)
+        final_btc = self.data.get("final_btc", 0.0)
+
+        btc_analysis["initial_btc"] = initial_btc
+        btc_analysis["final_btc"] = final_btc
+        btc_analysis["net_btc_gained"] = final_btc - initial_btc
+
+        # BTCリターン計算
+        if initial_btc > 0:
+            btc_return = (final_btc - initial_btc) / initial_btc * 100
+        else:
+            btc_return = 0.0
+        btc_analysis["btc_return_pct"] = btc_return
+
+        # BTC保有履歴の分析
+        if "btc_holdings" in self.data and len(self.data["btc_holdings"]) > 0:
+            btc_history = np.array(self.data["btc_holdings"])
+
+            # BTC保有量の統計
+            btc_analysis["btc_mean_holding"] = np.mean(btc_history)
+            btc_analysis["btc_max_holding"] = np.max(btc_history)
+            btc_analysis["btc_min_holding"] = np.min(btc_history)
+            btc_analysis["btc_holding_volatility"] = np.std(btc_history)
+
+            # BTC保有量の変化分析
+            if len(btc_history) > 1:
+                btc_changes = np.diff(btc_history)
+                btc_positive_changes = np.sum(btc_changes > 0)
+                btc_negative_changes = np.sum(btc_changes < 0)
+                btc_analysis["btc_positive_changes"] = int(btc_positive_changes)
+                btc_analysis["btc_negative_changes"] = int(btc_negative_changes)
+
+                # BTC取引頻度
+                btc_trade_frequency = (
+                    btc_positive_changes + btc_negative_changes
+                ) / len(btc_history)
+                btc_analysis["btc_trade_frequency"] = btc_trade_frequency
+
+        # USD vs BTC パフォーマンス比較
+        usd_return = self.data.get("total_return_pct", 0.0)
+        btc_analysis["usd_return_pct"] = usd_return
+
+        if abs(btc_return) > 0.01:  # ゼロ除算を避ける
+            btc_vs_usd_ratio = (
+                usd_return / btc_return if btc_return != 0 else float("inf")
+            )
+            btc_analysis["btc_vs_usd_performance_ratio"] = btc_vs_usd_ratio
+        else:
+            btc_analysis["btc_vs_usd_performance_ratio"] = 0.0
+
+        # BTCポジションの安定性分析
+        if "btc_holdings" in self.data and len(self.data["btc_holdings"]) > 1:
+            btc_history = np.array(self.data["btc_holdings"])
+            # ポジションの変化率
+            btc_change_rates = np.abs(np.diff(btc_history)) / (btc_history[:-1] + 1e-8)
+            btc_analysis["btc_position_stability"] = 1.0 - np.mean(
+                btc_change_rates
+            )  # 安定性指標（1=非常に安定、0=非常に不安定）
+
+        return btc_analysis
+
+    def analyze_action_averages(self) -> ActionAveragesResult:
+        """アクション平均分析"""
+        if "actions" not in self.data:
+            return {}
+
+        actions = np.array(self.data["actions"])
+        if len(actions) == 0:
+            return {}
+
+        # 基本的なアクション統計
+        action_mean = np.mean(actions)
+        action_std = np.std(actions)
+        action_median = np.median(actions)
+        action_mode = (
+            float(pd.Series(actions).mode().iloc[0]) if len(actions) > 0 else 0.0
+        )
+
+        # アクションの時間的変化（トレンド）
+        if len(actions) > 10:
+            # 移動平均でアクションのトレンドを分析
+            window_size = min(50, len(actions) // 10)
+            action_ma = pd.Series(actions).rolling(window=window_size).mean()
+            action_trend = (
+                action_ma.iloc[-1] - action_ma.iloc[0] if len(action_ma) > 1 else 0
+            )
+        else:
+            action_trend = 0
+
+        # アクションの安定性（変動係数）
+        action_cv = action_std / action_mean if action_mean != 0 else 0
+
+        # アクションの偏り分析
+        from scipy import stats
+
+        action_skewness = stats.skew(actions)
+        action_kurtosis = stats.kurtosis(actions)
+
+        # アクションの遷移確率
+        transitions = {}
+        for i in range(len(actions) - 1):
+            current = int(actions[i])
+            next_action = int(actions[i + 1])
+            key = f"{current}->{next_action}"
+            transitions[key] = transitions.get(key, 0) + 1
+
+        # 最も頻繁な遷移
+        most_common_transition = (
+            max(transitions.items(), key=lambda x: x[1]) if transitions else ("N/A", 0)
+        )
+
+        return ActionAveragesResult(
+            action_mean=float(action_mean),
+            action_std=float(action_std),
+            action_median=float(action_median),
+            action_mode=float(action_mode),
+            action_trend=float(action_trend),
+            action_cv=float(action_cv),
+            action_skewness=action_skewness,
+            action_kurtosis=action_kurtosis,
+            most_common_transition=most_common_transition[0],
+            transition_frequency=most_common_transition[1],
+            total_transitions=sum(transitions.values()),
+        )
 
     def generate_comprehensive_report(self) -> str:
         """包括的な分析レポートを生成"""
@@ -635,11 +1059,11 @@ class BacktestAnalyzer(BaseAnalyzer):
                     ):
                         for action_name, count in actions.items():
                             pct = (
-                                count * 100
-                                if isinstance(count, float) and count <= 1.0
-                                else count / total_actions * 100
+                                count / total_actions * 100 if total_actions > 0 else 0
                             )
-                            report_lines.append(f"  {action_name}: {count:.1%}")
+                            report_lines.append(
+                                f"  {action_name}: {count}回 ({pct:.1f}%)"
+                            )
                     else:
                         # 従来の数値キー形式
                         for action_id, count in actions.items():
@@ -654,6 +1078,45 @@ class BacktestAnalyzer(BaseAnalyzer):
                             )
                     report_lines.append("")
 
+                # アクション平均分析
+                action_averages = self.analyze_action_averages()
+                if action_averages:
+                    report_lines.append("=== アクション平均分析 ===")
+                    report_lines.append(
+                        f"アクション平均: {action_averages.get('action_mean', 0):.3f} → 平均アクション値（0=HOLD, 1=BUY, 2=SELL）"
+                    )
+                    report_lines.append(
+                        f"アクション標準偏差: {action_averages.get('action_std', 0):.3f} → アクションの変動性"
+                    )
+                    report_lines.append(
+                        f"アクション中央値: {action_averages.get('action_median', 0):.1f} → アクションの中央値"
+                    )
+                    report_lines.append(
+                        f"アクション最頻値: {action_averages.get('action_mode', 0):.1f} → 最も頻繁なアクション"
+                    )
+                    report_lines.append(
+                        f"アクション変動係数: {action_averages.get('action_cv', 0):.3f} → アクションの相対的変動性"
+                    )
+                    report_lines.append(
+                        f"アクション歪度: {action_averages.get('action_skewness', 0):.3f} → アクション分布の歪み"
+                    )
+                    report_lines.append(
+                        f"アクション尖度: {action_averages.get('action_kurtosis', 0):.3f} → アクション分布の尖り具合"
+                    )
+                    if action_averages.get("action_trend", 0) != 0:
+                        trend_desc = (
+                            "上昇傾向"
+                            if action_averages.get("action_trend", 0) > 0
+                            else "下降傾向"
+                        )
+                        report_lines.append(
+                            f"アクショントレンド: {action_averages.get('action_trend', 0):.3f} ({trend_desc}) → アクションの時間的変化"
+                        )
+                    report_lines.append(
+                        f"最も一般的な遷移: {action_averages.get('most_common_transition', 'N/A')} ({action_averages.get('transition_frequency', 0)}回)"
+                    )
+                    report_lines.append("")
+
                 # 取引頻度分析
                 trading_freq = self.analyze_trading_frequency()
                 if trading_freq:
@@ -666,21 +1129,94 @@ class BacktestAnalyzer(BaseAnalyzer):
                     )
                     if trading_freq.get("avg_trade_interval", 0) > 0:
                         report_lines.append(
-                            f"平均取引間隔: {trading_freq['avg_trade_interval']:.1f}ステップ"
+                            f"平均取引間隔: {trading_freq.get('avg_trade_interval', 0):.1f}ステップ"
                         )
                         report_lines.append(
-                            f"最小取引間隔: {trading_freq['min_trade_interval']}ステップ"
+                            f"最小取引間隔: {trading_freq.get('min_trade_interval', 0)}ステップ"
                         )
                         report_lines.append(
-                            f"最大取引間隔: {trading_freq['max_trade_interval']}ステップ"
+                            f"最大取引間隔: {trading_freq.get('max_trade_interval', 0)}ステップ"
                         )
+                    report_lines.append("")
+
+                # BTCパフォーマンス分析
+                btc_analysis = self.analyze_btc_performance()
+                if btc_analysis:
+                    report_lines.append("=== BTCパフォーマンス分析 ===")
+                    report_lines.append(
+                        f"初期BTC保有量: {btc_analysis.get('initial_btc', 0):.6f} BTC"
+                    )
+                    report_lines.append(
+                        f"最終BTC保有量: {btc_analysis.get('final_btc', 0):.6f} BTC"
+                    )
+                    report_lines.append(
+                        f"純BTC獲得量: {btc_analysis.get('net_btc_gained', 0):+.6f} BTC"
+                    )
+                    report_lines.append(
+                        f"BTCリターン: {btc_analysis.get('btc_return_pct', 0):+.2f}%"
+                    )
+                    report_lines.append(
+                        f"USDリターン: {btc_analysis.get('usd_return_pct', 0):+.2f}%"
+                    )
+
+                    btc_vs_usd_ratio = btc_analysis.get(
+                        "btc_vs_usd_performance_ratio", 0
+                    )
+                    if btc_vs_usd_ratio != 0:
+                        report_lines.append(
+                            f"BTC/USDパフォーマンス比: {btc_vs_usd_ratio:.2f}"
+                        )
+
+                    # BTC保有統計（利用可能な場合）
+                    if "btc_mean_holding" in btc_analysis:
+                        report_lines.append(
+                            f"平均BTC保有量: {btc_analysis.get('btc_mean_holding', 0):.6f} BTC"
+                        )
+                        report_lines.append(
+                            f"最大BTC保有量: {btc_analysis.get('btc_max_holding', 0):.6f} BTC"
+                        )
+                        report_lines.append(
+                            f"最小BTC保有量: {btc_analysis.get('btc_min_holding', 0):.6f} BTC"
+                        )
+                        report_lines.append(
+                            f"BTC保有ボラティリティ: {btc_analysis.get('btc_holding_volatility', 0):.6f}"
+                        )
+
+                    # BTC取引分析
+                    if "btc_trade_frequency" in btc_analysis:
+                        report_lines.append(
+                            f"BTC取引頻度: {btc_analysis.get('btc_trade_frequency', 0):.3f} (取引/ステップ)"
+                        )
+                        report_lines.append(
+                            f"BTCポジション増加回数: {btc_analysis.get('btc_positive_changes', 0)}回"
+                        )
+                        report_lines.append(
+                            f"BTCポジション減少回数: {btc_analysis.get('btc_negative_changes', 0)}回"
+                        )
+
+                    # BTCポジション安定性
+                    if "btc_position_stability" in btc_analysis:
+                        stability = btc_analysis.get("btc_position_stability", 0)
+                        stability_desc = (
+                            "非常に安定"
+                            if stability > 0.8
+                            else "安定"
+                            if stability > 0.6
+                            else "不安定"
+                            if stability > 0.4
+                            else "非常に不安定"
+                        )
+                        report_lines.append(
+                            f"BTCポジション安定性: {stability:.2f} ({stability_desc})"
+                        )
+
                     report_lines.append("")
 
                 # 時間帯別分析
                 temporal = self.analyze_temporal_patterns()
                 if temporal and temporal.get("hourly_returns"):
                     report_lines.append("=== 時間帯別リターン (上位/下位3件) ===")
-                    hourly = temporal["hourly_returns"]
+                    hourly = temporal.get("hourly_returns", {})
                     sorted_hourly = sorted(
                         hourly.items(), key=lambda x: x[1], reverse=True
                     )
@@ -699,9 +1235,14 @@ class BacktestAnalyzer(BaseAnalyzer):
                 if market_cond:
                     report_lines.append("=== 市場環境別分析 ===")
                     for condition, data in market_cond.items():
-                        report_lines.append(f"{data['name']}:")
-                        report_lines.append(f"  リターン: {data['return']:.2%}")
-                        report_lines.append(f"  期間数: {data['periods']}")
+                        if data is not None and isinstance(data, dict):
+                            report_lines.append(f"{data.get('name', condition)}:")
+                            report_lines.append(
+                                f"  リターン: {data.get('return', 0):.2%}"
+                            )
+                            report_lines.append(f"  期間数: {data.get('periods', 0)}")
+                    report_lines.append("")
+                    report_lines.append("")
                     report_lines.append("")
 
                 # 連続アクション分析
@@ -903,12 +1444,14 @@ class BacktestAnalyzer(BaseAnalyzer):
                                     if x[1]
                                     else 0,
                                 )
-                                report_lines.append(
-                                    f"  最適時間帯: {best_hour[0]}時 (シャープ {best_hour[1].get('sharpe_ratio', 0):.3f})"
-                                )
-                                report_lines.append(
-                                    f"  最悪時間帯: {worst_hour[0]}時 (シャープ {worst_hour[1].get('sharpe_ratio', 0):.3f})"
-                                )
+                                if best_hour[1] and isinstance(best_hour[1], dict):
+                                    report_lines.append(
+                                        f"  最適時間帯: {best_hour[0]}時 (シャープ {best_hour[1].get('sharpe_ratio', 0):.3f})"
+                                    )
+                                if worst_hour[1] and isinstance(worst_hour[1], dict):
+                                    report_lines.append(
+                                        f"  最悪時間帯: {worst_hour[0]}時 (シャープ {worst_hour[1].get('sharpe_ratio', 0):.3f})"
+                                    )
 
                         report_lines.append("")
                     else:
@@ -1135,13 +1678,29 @@ class BacktestAnalyzer(BaseAnalyzer):
                 logger.error(f"レポート生成中にエラーが発生しました: {e}")
                 return f"エラーが発生しました: {e}"
 
-    def analyze_robustness(self) -> Dict[str, Any]:
+    def analyze_robustness(self) -> RobustnessAnalysisResult:
         """多様な市場条件下でのロバストネス分析"""
         with self.performance_monitor:
             robustness_metrics = {}
 
             if "pnls" not in self.data and "portfolio_history" not in self.data:
-                return {"error": "No PnL or portfolio data available"}
+                # Return default robustness result for error case
+                default_metrics = PerformanceMetricsResult(
+                    total_return=0.0,
+                    volatility=0.0,
+                    sharpe_ratio=0.0,
+                    max_drawdown=0.0,
+                    win_rate=0.0,
+                    num_trades=0,
+                )
+                return RobustnessAnalysisResult(
+                    overall_performance=default_metrics,
+                    volatility_analysis=None,
+                    trend_analysis=None,
+                    drawdown_analysis=None,
+                    seasonal_analysis=None,
+                    robustness_score=0.0,
+                )
 
             # PnLデータの準備
             if "pnls" in self.data:
@@ -1150,7 +1709,23 @@ class BacktestAnalyzer(BaseAnalyzer):
                 portfolio_values = np.array(self.data["portfolio_history"])
                 pnls = np.diff(portfolio_values) / portfolio_values[:-1]
             else:
-                return {"error": "Unable to calculate PnL data"}
+                # Return default robustness result for error case
+                default_metrics = PerformanceMetricsResult(
+                    total_return=0.0,
+                    volatility=0.0,
+                    sharpe_ratio=0.0,
+                    max_drawdown=0.0,
+                    win_rate=0.0,
+                    num_trades=0,
+                )
+                return RobustnessAnalysisResult(
+                    overall_performance=default_metrics,
+                    volatility_analysis=None,
+                    trend_analysis=None,
+                    drawdown_analysis=None,
+                    seasonal_analysis=None,
+                    robustness_score=0.0,
+                )
 
             # 様々な市場条件下での分析
             robustness_metrics[
@@ -1198,38 +1773,54 @@ class BacktestAnalyzer(BaseAnalyzer):
                 }
 
             # ロバストネススコアの計算
-            robustness_metrics["robustness_score"] = self._calculate_robustness_score(
-                robustness_metrics
+            robustness_score = self._calculate_robustness_score(robustness_metrics)
+
+            return RobustnessAnalysisResult(
+                overall_performance=robustness_metrics["overall_performance"],
+                volatility_analysis=robustness_metrics.get("volatility_analysis"),
+                trend_analysis=robustness_metrics.get("trend_analysis"),
+                drawdown_analysis=robustness_metrics.get("drawdown_analysis"),
+                seasonal_analysis=robustness_metrics.get("seasonal_analysis"),
+                robustness_score=robustness_score,
             )
 
-            return robustness_metrics
-
-    def _calculate_performance_metrics(self, pnls: np.ndarray) -> Dict[str, float]:
+    def _calculate_performance_metrics(
+        self, pnls: np.ndarray
+    ) -> PerformanceMetricsResult:
         """基本的なパフォーマンス指標を計算"""
         if len(pnls) == 0:
-            return {}
+            return PerformanceMetricsResult(
+                total_return=0.0,
+                volatility=0.0,
+                sharpe_ratio=0.0,
+                max_drawdown=0.0,
+                win_rate=0.0,
+                num_trades=0,
+            )
+
+        # metrics.pyの関数を使用して指標を計算
+        from ztb.metrics.metrics import max_drawdown, sharpe_ratio, win_rate
 
         total_return = np.prod(1 + pnls) - 1
         volatility = np.std(pnls)
-        sharpe_ratio = total_return / volatility if volatility > 0 else 0
-        max_drawdown = self._calculate_max_drawdown_from_returns(pnls)
-        win_rate = np.sum(pnls > 0) / len(pnls)
+
+        # 既存のmetrics関数を使用
+        sharpe_ratio_value = sharpe_ratio(pnls)
+
+        # returnsからequity_curveを計算してmax_drawdownを計算
+        equity_curve = np.cumprod(1 + pnls)
+        max_drawdown_value = max_drawdown(equity_curve)
+
+        win_rate_value = win_rate(pnls)
 
         return {
             "total_return": total_return,
             "volatility": volatility,
-            "sharpe_ratio": sharpe_ratio,
-            "max_drawdown": max_drawdown,
-            "win_rate": win_rate,
+            "sharpe_ratio": sharpe_ratio_value,
+            "max_drawdown": max_drawdown_value,
+            "win_rate": win_rate_value,
             "num_trades": len(pnls),
         }
-
-    def _calculate_max_drawdown_from_returns(self, returns: np.ndarray) -> float:
-        """リターン配列から最大ドローダウンを計算"""
-        cumulative = np.cumprod(1 + returns)
-        peak = np.maximum.accumulate(cumulative)
-        drawdown = (cumulative - peak) / peak
-        return np.min(drawdown)
 
     def _analyze_by_volatility_regimes(self, pnls: np.ndarray) -> Dict[str, Any]:
         """ボラティリティレジーム別の分析"""
@@ -1368,14 +1959,8 @@ class BacktestAnalyzer(BaseAnalyzer):
             return 0.0
 
         # シャープレシオと勝率の変動係数を計算
-        sharpe_cv = (
-            np.std(sharpe_ratios) / np.mean(sharpe_ratios)
-            if np.mean(sharpe_ratios) != 0
-            else 1
-        )
-        win_rate_cv = (
-            np.std(win_rates) / np.mean(win_rates) if np.mean(win_rates) != 0 else 1
-        )
+        sharpe_cv = _calculate_coefficient_of_variation(sharpe_ratios)
+        win_rate_cv = _calculate_coefficient_of_variation(win_rates)
 
         # 一貫性スコア（低い変動係数 = 高い一貫性）
         consistency_score = 1 / (1 + sharpe_cv + win_rate_cv)
@@ -1392,8 +1977,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             hourly_sharpes = [m.get("sharpe_ratio", 0) for m in hourly.values() if m]
             if len(hourly_sharpes) > 1:
                 seasonal_scores.append(
-                    1
-                    / (1 + np.std(hourly_sharpes) / max(np.mean(hourly_sharpes), 0.01))
+                    1 / (1 + _calculate_coefficient_of_variation(hourly_sharpes))
                 )
 
         # 曜日別一貫性
@@ -1401,11 +1985,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             weekday_sharpes = [m.get("sharpe_ratio", 0) for m in weekday.values() if m]
             if len(weekday_sharpes) > 1:
                 seasonal_scores.append(
-                    1
-                    / (
-                        1
-                        + np.std(weekday_sharpes) / max(np.mean(weekday_sharpes), 0.01)
-                    )
+                    1 / (1 + _calculate_coefficient_of_variation(weekday_sharpes))
                 )
 
         # 月別一貫性
@@ -1413,11 +1993,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             monthly_sharpes = [m.get("sharpe_ratio", 0) for m in monthly.values() if m]
             if len(monthly_sharpes) > 1:
                 seasonal_scores.append(
-                    1
-                    / (
-                        1
-                        + np.std(monthly_sharpes) / max(np.mean(monthly_sharpes), 0.01)
-                    )
+                    1 / (1 + _calculate_coefficient_of_variation(monthly_sharpes))
                 )
 
         return np.mean(seasonal_scores) if seasonal_scores else 0.0
@@ -1495,10 +2071,15 @@ class BacktestAnalyzer(BaseAnalyzer):
             "SELL": sell_count / total_actions,
         }
 
-    def analyze_correlation_and_dependencies(self) -> Dict[str, Any]:
+    def analyze_correlation_and_dependencies(self) -> CorrelationAnalysisResult:
         """相関分析と依存関係の分析"""
         if "portfolio_history" not in self.data or "price_history" not in self.data:
-            return {}
+            return CorrelationAnalysisResult(
+                price_portfolio_correlation=0.0,
+                lag_correlations={},
+                beta=0.0,
+                action_price_relationships={},
+            )
 
         portfolio_values = np.array(self.data["portfolio_history"])
         price_values = np.array(self.data["price_history"])
@@ -1579,6 +2160,8 @@ class BacktestAnalyzer(BaseAnalyzer):
             self.training_data.get("configuration", {})
             .get("environment", {})
             .get("transaction_cost", 0.00001)
+            if self.training_data
+            else 0.00001
         )
 
         # 取引が発生したステップを特定
@@ -1729,15 +2312,9 @@ class BacktestAnalyzer(BaseAnalyzer):
                 walk_forward_metrics[f"window_{window_size}"] = {
                     "mean_return": np.mean(window_returns),
                     "volatility": np.std(window_returns),
-                    "sharpe_ratio": np.mean(window_returns) / np.std(window_returns)
-                    if np.std(window_returns) > 0
-                    else 0,
+                    "sharpe_ratio": sharpe_ratio(window_returns),
                     "consistency_score": 1.0
-                    / (
-                        1.0
-                        + np.std(window_returns)
-                        / max(abs(np.mean(window_returns)), 0.001)
-                    ),
+                    / (1.0 + _calculate_coefficient_of_variation(window_returns)),
                 }
 
         # アダプティブ能力の評価（後半のパフォーマンス vs 前半）
@@ -1875,210 +2452,124 @@ class BacktestAnalyzer(BaseAnalyzer):
             print(f"データセット作成エラー: {e}")
             return None
 
-    def implement_adaptive_reward_system(self):
-        """適応的報酬システムの実装"""
-        print("=== 適応的報酬システム設計 ===")
 
-        # 既存のRewardCalculatorを拡張
-        reward_suggestions = {
-            "dynamic_penalty_adjustment": {
-                "description": "アクション分布に基づく動的ペナルティ調整",
-                "implementation": "SELL比率 > 50%の場合、transaction_penaltyを段階的に増加",
-                "expected_impact": "SELLバイアス67% → 均衡分布へ是正",
-            },
-            "market_regime_aware_rewards": {
-                "description": "市場レジームに応じた報酬調整",
-                "implementation": "上昇トレンド時はBUY優位、下降トレンド時はSELL優位",
-                "expected_impact": "市場適応性向上、レジーム間一貫性改善",
-            },
-            "correlation_based_bonuses": {
-                "description": "価格相関に基づくボーナス/ペナルティ",
-                "implementation": "価格変動とポジション変化の相関が低い場合ペナルティ",
-                "expected_impact": "市場連動性改善（β値0.017 → 適切な値へ）",
-            },
-        }
+def main():
+    """メイン関数 - コマンドラインからバックテスト分析を実行"""
+    import argparse
 
-        for key, details in reward_suggestions.items():
-            print(f"\n{key}:")
-            print(f"  説明: {details['description']}")
-            print(f"  実装: {details['implementation']}")
-            print(f"  期待効果: {details['expected_impact']}")
+    parser = argparse.ArgumentParser(description="バックテスト分析ツール")
+    parser.add_argument(
+        "--results-path",
+        type=str,
+        required=True,
+        help="バックテスト結果JSONファイルのパス",
+    )
+    parser.add_argument(
+        "--training-report",
+        type=str,
+        default=None,
+        help="トレーニングレポートJSONファイルのパス",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="analysis_results",
+        help="分析結果出力ディレクトリ",
+    )
+    parser.add_argument(
+        "--enhanced-stats", action="store_true", help="改善された統計機能を有効化"
+    )
 
-    def enhance_feature_engineering(self):
-        """特徴量エンジニアリングの強化"""
-        print("=== 特徴量エンジニアリング強化案 ===")
+    args = parser.parse_args()
 
-        feature_improvements = {
-            "price_momentum_features": {
-                "description": "価格モメンタム特徴量の追加",
-                "features": ["roc_1", "roc_5", "roc_20", "momentum_1d", "momentum_1w"],
-                "expected_impact": "短期価格変動の捕捉改善",
-            },
-            "volatility_regime_features": {
-                "description": "ボラティリティレジーム特徴量",
-                "features": [
-                    "volatility_ratio",
-                    "volatility_trend",
-                    "regime_stability",
-                ],
-                "expected_impact": "ボラティリティ適応性の向上",
-            },
-            "market_microstructure_features": {
-                "description": "市場マイクロストラクチャー特徴量",
-                "features": ["spread_estimate", "liquidity_proxy", "order_flow"],
-                "expected_impact": "取引コストと流動性の考慮",
-            },
-            "correlation_aware_features": {
-                "description": "相関意識型特徴量",
-                "features": [
-                    "price_position_corr",
-                    "action_price_corr",
-                    "regime_alignment",
-                ],
-                "expected_impact": "市場連動性の直接的改善",
-            },
-        }
-
-        for key, details in feature_improvements.items():
-            print(f"\n{key}:")
-            print(f"  説明: {details['description']}")
-            print(f"  特徴量: {', '.join(details['features'])}")
-            print(f"  期待効果: {details['expected_impact']}")
-
-    def implement_curriculum_learning_v2(self):
-        """カリキュラム学習V2の実装"""
-        print("=== カリキュラム学習V2設計 ===")
-
-        curriculum_stages = {
-            "data_bias_awareness": {
-                "description": "データバイアス意識段階",
-                "focus": "BTCBiasDetectorを活用したバイアス検出と修正",
-                "duration": "初期1000ステップ",
-                "reward_structure": "バイアス是正を優先",
-            },
-            "market_regime_adaptation": {
-                "description": "市場レジーム適応段階",
-                "focus": "多様な市場条件でのロバストネス獲得",
-                "duration": "次の2000ステップ",
-                "reward_structure": "レジーム間一貫性重視",
-            },
-            "correlation_optimization": {
-                "description": "相関最適化段階",
-                "focus": "価格連動性の最大化",
-                "duration": "次の3000ステップ",
-                "reward_structure": "β値と相関係数ベースの報酬",
-            },
-            "scalping_fine_tuning": {
-                "description": "スキャルピング微調整段階",
-                "focus": "低レイテンシー・高頻度取引の最適化",
-                "duration": "最終ステップ",
-                "reward_structure": "取引効率とコスト意識",
-            },
-        }
-
-        for stage, details in curriculum_stages.items():
-            print(f"\n{stage}:")
-            print(f"  説明: {details['description']}")
-            print(f"  重点: {details['focus']}")
-            print(f"  期間: {details['duration']}")
-            print(f"  報酬構造: {details['reward_structure']}")
-
-    def create_comprehensive_validation_suite(self):
-        """包括的検証スイート作成"""
-        print("=== 包括的検証スイート ===")
-
-        validation_tests = {
-            "bias_detection_validation": {
-                "description": "バイアス検出の妥当性検証",
-                "method": "BTCBiasDetectorの結果を複数データセットで検証",
-                "thresholds": "SELLバイアス < 40%, 時間周期バイアス検出済み",
-            },
-            "correlation_validation": {
-                "description": "相関性の実質的検証",
-                "method": "価格変動に対するポジション変化のラグ相関分析",
-                "thresholds": "β値 > 0.1, 価格相関 > 0.05",
-            },
-            "robustness_validation": {
-                "description": "ロバストネスの包括的検証",
-                "method": "複数市場条件でのバックテスト",
-                "thresholds": "ロバストネススコア > 0.5, レジーム間一貫性 > 0.3",
-            },
-            "adaptation_validation": {
-                "description": "適応能力の検証",
-                "method": "ウォークフォワード分析と学習曲線評価",
-                "thresholds": "学習効率 > 0.1, 適応比率 > -1.0",
-            },
-        }
-
-        for test, details in validation_tests.items():
-            print(f"\n{test}:")
-            print(f"  説明: {details['description']}")
-            print(f"  方法: {details['method']}")
-            print(f"  閾値: {details['thresholds']}")
-
-    def generate_v425_improvement_plan(self):
-        """v425改善計画の生成"""
-        print("\n" + "=" * 80)
-        print("🎯 v425改善計画 - 既存システム最大活用版")
-        print("=" * 80)
-
-        improvement_plan = {
-            "phase_1_data_foundation": {
-                "title": "Phase 1: データ基盤強化（1-2日）",
-                "actions": [
-                    "BTCDataAugmentorで市場条件バランスデータセット作成",
-                    "BTCBiasDetectorでバイアス分析の自動化",
-                    "既存データに多様なレジームデータを追加（5万サンプル）",
-                ],
-                "expected_outcome": "時間周期バイアス解消、レジーム分布均衡化",
-            },
-            "phase_2_feature_engineering": {
-                "title": "Phase 2: 特徴量エンジニアリング強化（2-3日）",
-                "actions": [
-                    "相関意識型特徴量の追加（price_position_corr, action_price_corr）",
-                    "市場マイクロストラクチャー特徴量の実装",
-                    "ボラティリティレジーム特徴量の統合",
-                ],
-                "expected_outcome": "価格相関0.019 → 0.1以上、β値適切化",
-            },
-            "phase_3_reward_system": {
-                "title": "Phase 3: 適応的報酬システム（3-4日）",
-                "actions": [
-                    "RewardCalculator拡張：動的ペナルティ調整",
-                    "市場レジーム対応報酬の実装",
-                    "相関ベースボーナスの追加",
-                ],
-                "expected_outcome": "SELLバイアス67% → 均衡分布、ロバストネススコア向上",
-            },
-            "phase_4_curriculum_v2": {
-                "title": "Phase 4: カリキュラム学習V2（2-3日）",
-                "actions": [
-                    "4段階カリキュラムの実装（バイアス意識→レジーム適応→相関最適化→スキャルピング）",
-                    "段階的難易度上昇の自動化",
-                    "進捗評価と自動遷移ロジック",
-                ],
-                "expected_outcome": "学習効率0.000 → 0.2以上、適応比率改善",
-            },
-            "phase_5_validation_integration": {
-                "title": "Phase 5: 包括的検証統合（2-3日）",
-                "actions": [
-                    "analyze_backtest.pyの自動検証機能拡張",
-                    "トレーニング中のリアルタイムバイアス監視",
-                    "複数メトリクスでの早期停止判定",
-                ],
-                "expected_outcome": "問題の早期検知と是正、安定した学習プロセス",
-            },
-        }
-
-        for phase, details in improvement_plan.items():
-            print(f"\n{details['title']}")
-            print("アクション:")
-            for action in details["actions"]:
-                print(f"  • {action}")
-            print(f"期待成果: {details['expected_outcome']}")
-
-        print("\n総工期: 10-15日")
-        print(
-            "既存活用率: 85%（BTCDataAugmentor, BTCBiasDetector, RewardCalculator, analyze_backtest.py）"
+    try:
+        # 分析器の初期化
+        analyzer = BacktestAnalyzer(
+            results_path=args.results_path, training_report_path=args.training_report
         )
-        print("新規開発: 15%（拡張機能のみ）")
+
+        print("=== バックテスト分析開始 ===")
+        print(f"結果ファイル: {args.results_path}")
+        if args.training_report:
+            print(f"トレーニングレポート: {args.training_report}")
+
+        # 基本分析実行
+        results = analyzer.analyze()
+
+        # 改善された統計機能（オプション）
+        if args.enhanced_stats:
+            print("\n=== 改善された統計分析実行 ===")
+
+            # テンポラルパターン分析
+            temporal_results = analyzer.analyze_temporal_patterns()
+            results["temporal_analysis"] = temporal_results
+
+            # 市場条件分析
+            market_results = analyzer.analyze_market_conditions()
+            results["market_condition_analysis"] = market_results
+
+            # 取引頻度分析
+            frequency_results = analyzer.analyze_trading_frequency()
+            results["trading_frequency_analysis"] = frequency_results
+
+            # ロバストネス分析
+            robustness_results = analyzer.analyze_robustness()
+            results["robustness_analysis"] = robustness_results
+
+            # 相関・依存関係分析
+            correlation_results = analyzer.analyze_correlation_and_dependencies()
+            results["correlation_analysis"] = correlation_results
+
+            # 取引コスト影響分析
+            cost_results = analyzer.analyze_transaction_cost_impact()
+            results["transaction_cost_analysis"] = cost_results
+
+            # ウォークフォワード効率分析
+            walk_forward_results = analyzer.analyze_walk_forward_efficiency()
+            results["walk_forward_analysis"] = walk_forward_results
+
+            # マイクロストラクチャ効果分析
+            microstructure_results = analyzer.analyze_microstructure_effects()
+            results["microstructure_analysis"] = microstructure_results
+
+        # 出力ディレクトリの作成
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(exist_ok=True)
+
+        # タイムスタンプ付きファイル名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = output_dir / f"backtest_analysis_{timestamp}.json"
+
+        # 結果の保存
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+
+        print("\n=== 分析完了 ===")
+        print(f"結果ファイル: {output_file}")
+
+        # 主要メトリクスの表示
+        if "summary" in results:
+            summary = results["summary"]
+            print(
+                """
+=== 主要メトリクス ==="""
+            )
+            print(f"総リターン: {summary.get('total_return', 'N/A')}")
+            print(f"年間リターン: {summary.get('annual_return', 'N/A')}")
+            print(f"シャープレシオ: {summary.get('sharpe_ratio', 'N/A')}")
+            print(f"最大ドローダウン: {summary.get('max_drawdown', 'N/A')}")
+            print(f"勝率: {summary.get('win_rate', 'N/A')}")
+
+    except Exception as e:
+        print("エラーが発生しました。詳細は下記をご確認ください。")
+        print(f"分析実行エラー: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())

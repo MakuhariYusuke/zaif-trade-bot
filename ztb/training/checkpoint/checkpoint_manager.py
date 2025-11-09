@@ -73,7 +73,6 @@ class TrainingCheckpointManager:
             save_dir=str(self.save_dir),
             keep_last=self.config.keep_last,
             compress=self.config.compress,
-            enable_wal=True,  # Enable WAL for crash recovery
         )
 
     # ------------------------------------------------------------------

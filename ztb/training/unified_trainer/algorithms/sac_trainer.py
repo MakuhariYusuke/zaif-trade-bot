@@ -228,6 +228,43 @@ class SACTrainer(BaseAlgorithmTrainer):
                 # Enable regime tracking if adaptation is enabled
                 if self.regime_classifier is not None:
                     callback.enable_regime_tracking = True
+
+                # Add checkpoint callback
+                from stable_baselines3.common.callbacks import (
+                    CallbackList,
+                    CheckpointCallback,
+                )
+
+                checkpoint_interval = self.config.get("checkpoint_interval", 10000)
+                checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
+                os.makedirs(checkpoint_dir, exist_ok=True)
+                checkpoint_callback = CheckpointCallback(
+                    save_freq=checkpoint_interval,
+                    save_path=checkpoint_dir,
+                    name_prefix="sac_checkpoint",
+                    verbose=1,
+                )
+                callback = CallbackList([callback, checkpoint_callback])
+            else:
+                # If callback is provided, add checkpoint callback to it
+                from stable_baselines3.common.callbacks import (
+                    CallbackList,
+                    CheckpointCallback,
+                )
+
+                checkpoint_interval = self.config.get("checkpoint_interval", 10000)
+                checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
+                os.makedirs(checkpoint_dir, exist_ok=True)
+                checkpoint_callback = CheckpointCallback(
+                    save_freq=checkpoint_interval,
+                    save_path=checkpoint_dir,
+                    name_prefix="sac_checkpoint",
+                    verbose=1,
+                )
+                if isinstance(callback, CallbackList):
+                    callback.callbacks.append(checkpoint_callback)
+                else:
+                    callback = CallbackList([callback, checkpoint_callback])
             # Load and prepare data
             data_config = self.config.get("training", {}).get("data_config", {})
             data_path = data_config.get(
@@ -409,10 +446,14 @@ class SACTrainer(BaseAlgorithmTrainer):
             if "l2_regularization" in sac_config:
                 policy_kwargs["weight_decay"] = sac_config["l2_regularization"]
             if sac_config.get("net_arch"):
-                self.logger.info(f"Applying net_arch from config: {sac_config['net_arch']}")
+                self.logger.info(
+                    f"Applying net_arch from config: {sac_config['net_arch']}"
+                )
                 policy_kwargs["net_arch"] = sac_config["net_arch"]
             if sac_config.get("net_arch"):
-                self.logger.info(f"Applying net_arch from config: {sac_config['net_arch']}")
+                self.logger.info(
+                    f"Applying net_arch from config: {sac_config['net_arch']}"
+                )
                 policy_kwargs["net_arch"] = sac_config["net_arch"]
 
             # Create SAC model
@@ -502,6 +543,23 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Training completed
             training_time = time.time() - start_time
 
+            # DEBUG: Log detailed training completion statistics
+            if hasattr(model, "logger") and model.logger:
+                try:
+                    logger_values = getattr(model.logger, "name_to_value", {})
+                    final_actor_loss = logger_values.get("train/actor_loss", 0)
+                    final_critic_loss = logger_values.get("train/critic_loss", 0)
+                    final_ent_coef = logger_values.get("train/ent_coef", 0)
+
+                    self.logger.debug(
+                        f"SAC training completed: Time={training_time:.1f}s | "
+                        f"Steps={total_timesteps} | SPS={total_timesteps/training_time:.1f} | "
+                        f"Final ActorLoss={final_actor_loss:.4f} | CriticLoss={final_critic_loss:.4f} | "
+                        f"EntCoef={final_ent_coef:.4f}"
+                    )
+                except Exception as e:
+                    self.logger.debug(f"Failed to log final training metrics: {e}")
+
             # Save training state for potential resume
             if self.config.get("training", {}).get("save_training_state", True):
                 try:
@@ -541,8 +599,11 @@ class SACTrainer(BaseAlgorithmTrainer):
                 total_timesteps=total_timesteps,
                 model_path=model_path,
                 steps_per_second=total_timesteps / training_time,
-                final_reward=callback.reward_history[-1]
-                if callback.reward_history
+                final_reward=callback.callbacks[0].reward_history[-1]
+                if hasattr(callback, "callbacks")
+                and callback.callbacks[0].reward_history
+                else callback.reward_history[-1]
+                if hasattr(callback, "reward_history") and callback.reward_history
                 else 0,
                 action_distribution=self._calculate_final_action_distribution(callback),
             )
@@ -734,11 +795,13 @@ class SACTrainer(BaseAlgorithmTrainer):
             traceback.print_exc()
             return False
 
-    def _calculate_final_action_distribution(
-        self, callback: TrainingProgressCallback
-    ) -> Dict[str, float]:
+    def _calculate_final_action_distribution(self, callback) -> Dict[str, float]:
         """Calculate final action distribution from callback data."""
-        if not callback.discrete_actions:
+        # Handle CallbackList
+        if hasattr(callback, "callbacks"):
+            callback = callback.callbacks[0]
+
+        if not hasattr(callback, "discrete_actions") or not callback.discrete_actions:
             return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
 
         total_actions = len(callback.discrete_actions)

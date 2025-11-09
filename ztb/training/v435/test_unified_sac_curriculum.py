@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 # Add the project root to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+project_root = Path(__file__).parent.parent.parent.parent
+print(f"Project root: {project_root}")
+sys.path.insert(0, str(project_root))
 
 from ztb.training.unified_trainer.algorithms import SACTrainer
 
@@ -19,7 +21,7 @@ def main():
     unified_config = {
         "training": {
             "algorithm": "sac",
-            "total_timesteps": 1000000,
+            "total_timesteps": 1000,
             "curriculum_learning": True,
             "sac_hyperparameters": {
                 "learning_rate": 3e-4,

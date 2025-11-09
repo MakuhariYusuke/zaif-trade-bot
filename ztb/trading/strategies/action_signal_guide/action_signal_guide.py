@@ -14,14 +14,13 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
-from .components.cache_manager import CacheManager
+from .analysis.signal_performance_analyzer import SignalPerformanceAnalyzer
 
 # Import components
 from .components.cache_manager import CacheManager
 from .components.pattern_statistics import PatternStatistics
 from .components.performance_tracker import PerformanceTracker
 from .components.signal_generator import SignalGenerator
-from .analysis.signal_performance_analyzer import SignalPerformanceAnalyzer
 from .pattern_recognition.base import PatternRecognizer
 from .pattern_recognition.candlestick_patterns import (
     BearishEngulfingRecognizer,
@@ -310,7 +309,7 @@ class ActionSignalGuideConfig:
                         "strong_trend_threshold": 25,
                         "weak_trend_threshold": 20,
                         "di_cross_threshold": 1.0,
-                    }
+                    },
                 ),
             ]
 
@@ -419,17 +418,17 @@ class ActionSignalGuide:
     def _initialize_recognizers(self) -> None:
         """Initialize all pattern recognition systems using configuration."""
         from .pattern_recognition.adx_patterns import ADXRecognizer
+        from .pattern_recognition.atr import ATRPatternRecognizer
         from .pattern_recognition.bollinger_patterns import BollingerBandsRecognizer
         from .pattern_recognition.heikin_ashi import HeikinAshiRecognizer
+        from .pattern_recognition.macd import MACDPatternRecognizer
         from .pattern_recognition.oscillator_patterns import (
             CCIRecognizer,
             MFIRecognizer,
             StochasticRecognizer,
             WilliamsRRecognizer,
         )
-        from .pattern_recognition.atr import ATRPatternRecognizer
         from .pattern_recognition.rsi import RSIPatternRecognizer
-        from .pattern_recognition.macd import MACDPatternRecognizer
         from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 
         # Recognizer factory mapping
@@ -742,6 +741,17 @@ class ActionSignalGuide:
         if current_index >= len(data):
             return []
 
+        # Early return if insufficient data for pattern recognition
+        # Most demanding patterns require at least 25 data points
+        min_required_data = 25
+        if len(data) < min_required_data:
+            self.logger.debug(
+                f"Insufficient data for pattern recognition: {len(data)} < {min_required_data} at index {current_index}"
+            )
+            processing_time = time.time() - start_time
+            self.performance_tracker.record_cache_operation(processing_time, hit=False)
+            return []
+
         # Check cache first using CacheManager
         cache_key = self._get_cache_key(data, current_index)
         if self.config.enable_caching:
@@ -817,9 +827,35 @@ class ActionSignalGuide:
             return action_signals
 
         except Exception as e:
-            self.logger.error(f"Error generating signals at index {current_index}: {e}")
+            # Enhanced error handling with classification and recovery
+            error_type = type(e).__name__
+            error_msg = str(e)
+
+            # Classify error for appropriate handling
+            if "insufficient" in error_msg.lower() or "length" in error_msg.lower():
+                error_category = "data_insufficient"
+                self.logger.debug(
+                    f"Data insufficient for signal generation at index {current_index}: {error_msg}"
+                )
+            elif "memory" in error_msg.lower():
+                error_category = "memory_error"
+                self.logger.error(f"Memory error during signal generation: {error_msg}")
+            elif "timeout" in error_msg.lower():
+                error_category = "timeout_error"
+                self.logger.warning(f"Signal generation timeout: {error_msg}")
+            elif "validation" in error_msg.lower():
+                error_category = "validation_error"
+                self.logger.warning(f"Signal validation error: {error_msg}")
+            else:
+                error_category = "signal_generation_error"
+                self.logger.error(
+                    f"Signal generation failed ({error_type}): {error_msg}"
+                )
+
             processing_time = time.time() - start_time
-            self.performance_tracker.record_error("signal_generation", str(e))
+            self.performance_tracker.record_error(error_category, error_msg)
+
+            # Return empty list on error (graceful degradation)
             return []
 
     def _convert_to_observation(
@@ -1252,7 +1288,9 @@ class ActionSignalGuide:
 
         return analysis
 
-    def analyze_pattern_effectiveness(self, trading_results: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def analyze_pattern_effectiveness(
+        self, trading_results: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
         """
         Analyze the effectiveness of different pattern recognizers.
 
@@ -1268,24 +1306,37 @@ class ActionSignalGuide:
 
         # Collect enabled/disabled patterns and their statistics
         pattern_groups = [
-            'candlestick', 'fibonacci', 'gann', 'wave', 'harmonic',
-            'oscillator', 'volume', 'bollinger', 'adx', 'granville',
-            'heikin_ashi', 'dow_theory'
+            "candlestick",
+            "fibonacci",
+            "gann",
+            "wave",
+            "harmonic",
+            "oscillator",
+            "volume",
+            "bollinger",
+            "adx",
+            "granville",
+            "heikin_ashi",
+            "dow_theory",
         ]
 
         for pattern_group in pattern_groups:
-            attr_name = f'{pattern_group}_recognizers'
+            attr_name = f"{pattern_group}_recognizers"
             recognizers = getattr(self, attr_name, [])
 
             # Check if pattern group is enabled
-            enable_flag = getattr(self.config, f'enable_{pattern_group}_patterns', True)
+            enable_flag = getattr(self.config, f"enable_{pattern_group}_patterns", True)
 
             # Ensure recognizers is a list
             if not isinstance(recognizers, list):
                 recognizers = []
 
             for recognizer in recognizers:
-                pattern_name = getattr(recognizer, '__class__', type(recognizer)).__name__.replace('Recognizer', '').lower()
+                pattern_name = (
+                    getattr(recognizer, "__class__", type(recognizer))
+                    .__name__.replace("Recognizer", "")
+                    .lower()
+                )
 
                 if enable_flag:
                     enabled_patterns.append(pattern_name)
@@ -1295,8 +1346,8 @@ class ActionSignalGuide:
                 # Initialize pattern stats
                 if pattern_name not in pattern_stats:
                     pattern_stats[pattern_name] = {
-                        'signals_generated': 0,
-                        'enabled': enable_flag
+                        "signals_generated": 0,
+                        "enabled": enable_flag,
                     }
 
         # Count signals generated by each pattern from signal history
@@ -1304,7 +1355,7 @@ class ActionSignalGuide:
             for pattern in signal.source_patterns:
                 pattern_name = pattern.lower()
                 if pattern_name in pattern_stats:
-                    pattern_stats[pattern_name]['signals_generated'] += 1
+                    pattern_stats[pattern_name]["signals_generated"] += 1
 
         # If trading results provided, analyze correlations
         correlations = {}
@@ -1313,27 +1364,31 @@ class ActionSignalGuide:
                 pattern_trades = []
                 for result in trading_results:
                     for signal in result.get("signals", []):
-                        if pattern_name in [p.lower() for p in signal.get("source_patterns", [])]:
+                        if pattern_name in [
+                            p.lower() for p in signal.get("source_patterns", [])
+                        ]:
                             pattern_trades.append(result["profit"])
 
                 if pattern_trades:
                     avg_profit = sum(pattern_trades) / len(pattern_trades)
-                    win_rate = sum(1 for p in pattern_trades if p > 0) / len(pattern_trades)
+                    win_rate = sum(1 for p in pattern_trades if p > 0) / len(
+                        pattern_trades
+                    )
                     correlations[pattern_name] = {
                         "average_profit": avg_profit,
                         "win_rate": win_rate,
-                        "total_trades": len(pattern_trades)
+                        "total_trades": len(pattern_trades),
                     }
 
         result = {
-            'total_signals': len(self.signal_history),
-            'enabled_patterns': enabled_patterns,
-            'disabled_patterns': disabled_patterns,
-            'pattern_stats': pattern_stats
+            "total_signals": len(self.signal_history),
+            "enabled_patterns": enabled_patterns,
+            "disabled_patterns": disabled_patterns,
+            "pattern_stats": pattern_stats,
         }
 
         if correlations:
-            result['correlations'] = correlations
+            result["correlations"] = correlations
 
         return result
 
@@ -1352,30 +1407,40 @@ class ActionSignalGuide:
         report_lines.append("")
 
         report_lines.append(f"Total Signals Generated: {analysis['total_signals']}")
-        report_lines.append(f"Enabled Pattern Groups: {len(analysis['enabled_patterns'])}")
-        report_lines.append(f"Disabled Pattern Groups: {len(analysis['disabled_patterns'])}")
+        report_lines.append(
+            f"Enabled Pattern Groups: {len(analysis['enabled_patterns'])}"
+        )
+        report_lines.append(
+            f"Disabled Pattern Groups: {len(analysis['disabled_patterns'])}"
+        )
         report_lines.append("")
 
         report_lines.append("Pattern Statistics:")
         report_lines.append("-" * 20)
 
-        for pattern, stats in analysis['pattern_stats'].items():
-            status = "ENABLED" if stats['enabled'] else "DISABLED"
-            signals = stats['signals_generated']
+        for pattern, stats in analysis["pattern_stats"].items():
+            status = "ENABLED" if stats["enabled"] else "DISABLED"
+            signals = stats["signals_generated"]
             report_lines.append(f"  {pattern} ({status}): {signals} signals")
 
         report_lines.append("")
         report_lines.append("Configuration:")
-        report_lines.append(f"  Max signals per bar: {getattr(self.config, 'max_signals_per_bar', 'N/A')}")
-        report_lines.append(f"  Caching enabled: {getattr(self.config, 'enable_caching', 'N/A')}")
-        report_lines.append(f"  Parallel processing: {getattr(self.config, 'enable_parallel_processing', 'N/A')}")
+        report_lines.append(
+            f"  Max signals per bar: {getattr(self.config, 'max_signals_per_bar', 'N/A')}"
+        )
+        report_lines.append(
+            f"  Caching enabled: {getattr(self.config, 'enable_caching', 'N/A')}"
+        )
+        report_lines.append(
+            f"  Parallel processing: {getattr(self.config, 'enable_parallel_processing', 'N/A')}"
+        )
 
         return "\n".join(report_lines)
 
     def analyze_sac_learning_correlation(
         self,
         sac_learning_logs: Optional[List[Dict[str, Any]]] = None,
-        correlation_window: int = 100
+        correlation_window: int = 100,
     ) -> Dict[str, Any]:
         """
         Analyze correlation between SAC learning performance and signal quality.
@@ -1397,7 +1462,7 @@ class ActionSignalGuide:
         signal_confidence: float,
         pattern_type: str,
         historical_success_rate: Optional[float] = None,
-        consistency_score: Optional[float] = None
+        consistency_score: Optional[float] = None,
     ) -> float:
         """
         Calculate comprehensive signal quality score.
@@ -1415,15 +1480,18 @@ class ActionSignalGuide:
         # Get historical success rate from pattern statistics if not provided
         if historical_success_rate is None:
             pattern_stats = self.pattern_statistics.get_pattern_statistics(pattern_type)
-            historical_success_rate = pattern_stats.get('success_rate', 0.5)
+            historical_success_rate = pattern_stats.get("success_rate", 0.5)
 
         # Calculate consistency score if not provided
         if consistency_score is None:
             consistency_score = self._calculate_signal_consistency(pattern_type)
 
         return self.signal_performance_analyzer.calculate_signal_quality_score(
-            signal_strength, signal_confidence, pattern_type,
-            historical_success_rate, consistency_score
+            signal_strength,
+            signal_confidence,
+            pattern_type,
+            historical_success_rate,
+            consistency_score,
         )
 
     def generate_signal_performance_report(self) -> Dict[str, Any]:
@@ -1448,7 +1516,7 @@ class ActionSignalGuide:
         pattern_stats = self.pattern_statistics.get_pattern_statistics(pattern_type)
 
         # Use variance in success rates as inverse consistency measure
-        success_rates = pattern_stats.get('success_rate_history', [])
+        success_rates = pattern_stats.get("success_rate_history", [])
         if len(success_rates) < 2:
             return 0.5  # Default moderate consistency
 
