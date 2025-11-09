@@ -23,12 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **メモリ使用量削減**: memory_utils活用による最適化
 - **バックテストフレームワーク強化**: 実市場データ対応
 
-#### 拡張タスク分析・ドキュメント化
-- **パラメータ最適化**: リスク管理パラメータのチューニング戦略
-- **シグナル品質向上**: 偽陽性削減と真陽性増加策
-- **ポートフォリオ拡張**: 複数ポジション管理・相関分析
-- **リアルタイム適応強化**: 市場環境変化への動的対応
-- **ドキュメント**: `PHASE_2_PERFORMANCE_ANALYSIS.md` 作成
+#### 拡張タスク分析・実装順序決定
+- **Phase 3-1 (最優先)**: シグナル品質向上 - トレード頻度改善による統計的有意性向上
+- **Phase 3-2 (次点)**: パラメータ最適化 - リスク管理チューニングによるSharpe Ratio改善
+- **Phase 3-3 (中期的)**: ポートフォリオ拡張 - 複数資産リスク分散
+- **Phase 3-4 (長期的)**: リアルタイム適応強化 - 12種MarketRegime統合
+- **既存システム活用**: ActionSignalGuideAdapter, RiskManager, DynamicThresholdManager, WalkForwardAnalyzer, TTLCache, PerformanceProfiler, memory_utils, 12種MarketRegimeシステム
+
+#### 課題特定と解決策
+- **シグナル過度保守性**: 'hodl'シグナル過多、トレード数24の課題解決
+- **Sharpe Ratio改善**: Kelly基準・VaRベースリスク管理導入
+- **統計的有意性確保**: シグナル品質改善によるトレード頻度増加
+
+#### ドキュメント更新
+- **PHASE_2_PERFORMANCE_ANALYSIS.md**: 詳細な実装順序、既存システム活用戦略、ロードマップ
 
 #### 技術的改善
 - **型安全性の向上**: mypy対応と型ヒント強化
