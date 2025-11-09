@@ -166,5 +166,4 @@ CRITICAL_ALERT_LEVEL = "critical"
 # Display formatting
 CURRENCY_PRECISION = 2
 PERCENTAGE_PRECISION = 3
-TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"</content>
-<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\constants.py
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
