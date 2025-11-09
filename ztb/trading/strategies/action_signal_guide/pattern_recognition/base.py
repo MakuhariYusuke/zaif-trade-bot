@@ -4,31 +4,31 @@ Base classes for pattern recognition in Action Signal Guide.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections import OrderedDict
-from threading import Lock
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 import threading
 import time
+from abc import ABC, abstractmethod
+from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.utils.exceptions.custom_exceptions import ValidationError
 from ztb.utils.memory_utils import temporary_array
 from ztb.utils.performance_utils import timed
 from ztb.utils.type_validation import TypeValidator
 
 try:
     from ztb.trading.strategies.action_signal_guide.types import (
-        MultiTimeframeData,
-        PatternThresholds,
-        PatternMetrics,
-        PatternResult,
-        SignalMetadata,
         AnalysisResult,
         MultiTimeframeAnalysis,
+        MultiTimeframeData,
+        PatternMetrics,
+        PatternResult,
+        PatternThresholds,
         RegimeAdjustment,
+        SignalMetadata,
     )
 except ImportError:
     # Fallback if types module not available
@@ -37,7 +37,9 @@ except ImportError:
         PatternThresholds = Dict[str, Union[int, float, None]]
         PatternMetrics = Dict[str, Union[int, float, str]]
         PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
-        SignalMetadata = Dict[str, Union[int, float, str, bool, List[Union[int, float]]]]
+        SignalMetadata = Dict[
+            str, Union[int, float, str, bool, List[Union[int, float]]]
+        ]
         AnalysisResult = Dict[str, Union[float, str, bool, Dict[str, float]]]
         MultiTimeframeAnalysis = Dict[str, AnalysisResult]
         RegimeAdjustment = Dict[str, Union[int, float, str]]
@@ -47,7 +49,9 @@ except ImportError:
         PatternThresholds = Dict[str, Union[int, float, None]]
         PatternMetrics = Dict[str, Union[int, float, str]]
         PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
-        SignalMetadata = Dict[str, Union[int, float, str, bool, List[Union[int, float]]]]
+        SignalMetadata = Dict[
+            str, Union[int, float, str, bool, List[Union[int, float]]]
+        ]
         AnalysisResult = Dict[str, Union[float, str, bool, Dict[str, float]]]
         MultiTimeframeAnalysis = Dict[str, AnalysisResult]
         RegimeAdjustment = Dict[str, Union[int, float, str]]
@@ -124,7 +128,8 @@ class LRUCache:
         with self._lock:
             current_time = time.time()
             expired_keys = [
-                key for key, timestamp in self.timestamps.items()
+                key
+                for key, timestamp in self.timestamps.items()
                 if current_time - timestamp > self.ttl_seconds
             ]
 
@@ -207,31 +212,31 @@ def calculate_technical_features(data: pd.DataFrame, window: int = 20) -> pd.Dat
     df = data.copy()
 
     # Price-based features
-    df['returns'] = df['close'].pct_change()
-    df['log_returns'] = np.log(df['close'] / df['close'].shift(1))
+    df["returns"] = df["close"].pct_change()
+    df["log_returns"] = np.log(df["close"] / df["close"].shift(1))
 
     # Volatility features
-    df['volatility'] = df['returns'].rolling(window=window).std()
-    df['high_low_ratio'] = df['high'] / df['low']
-    df['close_open_ratio'] = df['close'] / df['open']
+    df["volatility"] = df["returns"].rolling(window=window).std()
+    df["high_low_ratio"] = df["high"] / df["low"]
+    df["close_open_ratio"] = df["close"] / df["open"]
 
     # Volume features
-    if 'volume' in df.columns:
-        df['volume_ma'] = df['volume'].rolling(window=window).mean()
-        df['volume_std'] = df['volume'].rolling(window=window).std()
-        df['volume_ratio'] = df['volume'] / df['volume_ma']
+    if "volume" in df.columns:
+        df["volume_ma"] = df["volume"].rolling(window=window).mean()
+        df["volume_std"] = df["volume"].rolling(window=window).std()
+        df["volume_ratio"] = df["volume"] / df["volume_ma"]
 
     # Momentum features
-    df['momentum'] = df['close'] / df['close'].shift(window)
-    df['roc'] = df['close'].pct_change(periods=window)
+    df["momentum"] = df["close"] / df["close"].shift(window)
+    df["roc"] = df["close"].pct_change(periods=window)
 
     # Trend features
-    df['sma_short'] = df['close'].rolling(window=window//2).mean()
-    df['sma_long'] = df['close'].rolling(window=window).mean()
-    df['trend_strength'] = (df['sma_short'] - df['sma_long']) / df['sma_long']
+    df["sma_short"] = df["close"].rolling(window=window // 2).mean()
+    df["sma_long"] = df["close"].rolling(window=window).mean()
+    df["trend_strength"] = (df["sma_short"] - df["sma_long"]) / df["sma_long"]
 
     # Fill NaN values
-    df = df.fillna(method='bfill').fillna(method='ffill').fillna(0)
+    df = df.fillna(method="bfill").fillna(method="ffill").fillna(0)
 
     return df
 
@@ -324,7 +329,9 @@ class PatternRecognizer(ABC):
         self.name = self.__class__.__name__
         self._validate_config()
         # Use LRU cache for signal results to prevent memory leaks and improve performance
-        self._signal_cache = LRUCache(max_size=500, ttl_seconds=300)  # 500 entries, 5 minutes TTL
+        self._signal_cache = LRUCache(
+            max_size=500, ttl_seconds=300
+        )  # 500 entries, 5 minutes TTL
 
     def _validate_config(self) -> None:
         """Validate configuration parameters with runtime type checking."""
@@ -333,7 +340,9 @@ class PatternRecognizer(ABC):
         # Define validation schema for common config parameters
         config_schema = {
             "enabled": bool,
-            "min_confidence": Union[int, float],  # Will be validated for range separately
+            "min_confidence": Union[
+                int, float
+            ],  # Will be validated for range separately
             "lookback_period": int,
             "risk_level": str,  # Will be validated for specific values separately
         }
@@ -346,7 +355,9 @@ class PatternRecognizer(ABC):
                         self.config[param_name], expected_type, f"config.{param_name}"
                     )
                 except TypeError as e:
-                    raise ValidationError(f"Configuration validation failed for {self.name}: {e}")
+                    raise ValidationError(
+                        f"Configuration validation failed for {self.name}: {e}"
+                    )
 
         # Range and value validations
         if "min_confidence" in self.config:
@@ -386,14 +397,18 @@ class PatternRecognizer(ABC):
             if config_key in self.config:
                 value = self.config[config_key]
                 try:
-                    validator.validate_type(value, Union[int, float], f"config.{config_key}")
+                    validator.validate_type(
+                        value, Union[int, float], f"config.{config_key}"
+                    )
                     if not (0.0 <= value <= 1.0):
                         raise ValidationError(
                             f"Config '{config_key}' must be between 0.0 and 1.0 for {self.name}, "
                             f"got {value}"
                         )
                 except TypeError as e:
-                    raise ValidationError(f"Configuration validation failed for {self.name}: {e}")
+                    raise ValidationError(
+                        f"Configuration validation failed for {self.name}: {e}"
+                    )
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get configuration value with optional default."""
@@ -459,7 +474,6 @@ class PatternRecognizer(ABC):
 
         Raises:
             ValidationError: If inputs are invalid
-            DataError: If data is invalid
         """
         # Check if recognizer is enabled
         if not self.is_enabled():
@@ -472,7 +486,7 @@ class PatternRecognizer(ABC):
         try:
             self._validate_input_data(data, index)
         except ValueError as e:
-            raise DataError(
+            raise ValidationError(
                 f"Invalid input data for pattern {self.name}: {e}",
                 details={"recognizer": self.name, "error": str(e)},
             ) from e
@@ -483,7 +497,7 @@ class PatternRecognizer(ABC):
 
         # Check minimum required length for this specific pattern
         if len(data) < required_length:
-            raise DataError(
+            raise ValidationError(
                 f"Insufficient data length for pattern {self.name}",
                 details={
                     "recognizer": self.name,
@@ -534,28 +548,29 @@ class PatternRecognizer(ABC):
         # Add technical features if requested
         if add_technical_features:
             processed_data = calculate_technical_features(
-                processed_data,
-                window=getattr(self, 'lookback_period', 20)
+                processed_data, window=getattr(self, "lookback_period", 20)
             )
 
         # Normalize features if requested
         if normalize_features:
             if feature_columns is None:
                 # Default OHLCV columns plus common technical features
-                feature_columns = ['open', 'high', 'low', 'close', 'volume']
+                feature_columns = ["open", "high", "low", "close", "volume"]
                 if add_technical_features:
-                    feature_columns.extend([
-                        'returns', 'volatility', 'momentum', 'trend_strength'
-                    ])
+                    feature_columns.extend(
+                        ["returns", "volatility", "momentum", "trend_strength"]
+                    )
 
             # Only preprocess columns that exist
-            existing_features = [col for col in feature_columns if col in processed_data.columns]
+            existing_features = [
+                col for col in feature_columns if col in processed_data.columns
+            ]
             if existing_features:
                 processed_data = preprocess_features(
                     processed_data,
                     existing_features,
                     method="robust",  # Use robust scaling for outlier resistance
-                    remove_outliers=True
+                    remove_outliers=True,
                 )
 
         return processed_data
@@ -565,7 +580,7 @@ class PatternRecognizer(ABC):
         data: pd.DataFrame,
         index: int,
         multi_timeframe_data: MultiTimeframeData,
-        pattern_type: str = "general"
+        pattern_type: str = "general",
     ) -> float:
         """
         Analyze pattern alignment across multiple timeframes.
@@ -588,16 +603,16 @@ class PatternRecognizer(ABC):
 
             # Check alignment with higher timeframes
             for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and 'data' in tf_data:
-                    tf_df = tf_data['data']
+                if isinstance(tf_data, dict) and "data" in tf_data:
+                    tf_df = tf_data["data"]
                     if len(tf_df) > 10:  # Minimum data requirement
                         try:
                             # Basic alignment check using price direction
-                            current_close = data.iloc[index]['close']
-                            prev_close = data.iloc[index-1]['close']
+                            current_close = data.iloc[index]["close"]
+                            prev_close = data.iloc[index - 1]["close"]
                             current_trend = 1 if current_close > prev_close else -1
-                            tf_current_close = tf_df.iloc[-1]['close']
-                            tf_prev_close = tf_df.iloc[-2]['close']
+                            tf_current_close = tf_df.iloc[-1]["close"]
+                            tf_prev_close = tf_df.iloc[-2]["close"]
                             tf_trend = 1 if tf_current_close > tf_prev_close else -1
 
                             if current_trend == tf_trend:
@@ -621,7 +636,7 @@ class PatternRecognizer(ABC):
     def _adjust_thresholds_for_regime(
         self,
         multi_timeframe_data: Optional[MultiTimeframeData],
-        pattern_type: str = "general"
+        pattern_type: str = "general",
     ) -> RegimeAdjustment:
         """
         Adjust pattern thresholds based on market regime.
@@ -646,25 +661,33 @@ class PatternRecognizer(ABC):
                 trend_indicators = []
 
                 for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and 'data' in tf_data:
-                        tf_df = tf_data['data']
+                    if isinstance(tf_data, dict) and "data" in tf_data:
+                        tf_df = tf_data["data"]
                         if len(tf_df) > 20:
                             try:
                                 # Calculate volatility (ATR proxy)
-                                high_low = tf_df['high'] - tf_df['low']
-                                high_close = (tf_df['high'] - tf_df['close'].shift(1)).abs()
-                                low_close = (tf_df['low'] - tf_df['close'].shift(1)).abs()
-                                tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+                                high_low = tf_df["high"] - tf_df["low"]
+                                high_close = (
+                                    tf_df["high"] - tf_df["close"].shift(1)
+                                ).abs()
+                                low_close = (
+                                    tf_df["low"] - tf_df["close"].shift(1)
+                                ).abs()
+                                tr = pd.concat(
+                                    [high_low, high_close, low_close], axis=1
+                                ).max(axis=1)
                                 atr = tr.rolling(14).mean()
 
                                 if len(atr) > 0:
                                     current_atr = atr.iloc[-1]
-                                    avg_price = tf_df['close'].iloc[-1]
-                                    volatility = current_atr / avg_price if avg_price > 0 else 0
+                                    avg_price = tf_df["close"].iloc[-1]
+                                    volatility = (
+                                        current_atr / avg_price if avg_price > 0 else 0
+                                    )
                                     volatility_indicators.append(volatility)
 
                                 # Calculate trend strength
-                                recent_prices = tf_df['close'].tail(20).values
+                                recent_prices = tf_df["close"].tail(20).values
                                 if len(recent_prices) >= 10:
                                     x = np.arange(len(recent_prices))
                                     slope, _ = np.polyfit(x, recent_prices, 1)
@@ -675,16 +698,28 @@ class PatternRecognizer(ABC):
                                 continue
 
                 # Calculate average regime indicators
-                avg_volatility = sum(volatility_indicators) / len(volatility_indicators) if volatility_indicators else 0.01
-                avg_trend = sum(trend_indicators) / len(trend_indicators) if trend_indicators else 0.005
+                avg_volatility = (
+                    sum(volatility_indicators) / len(volatility_indicators)
+                    if volatility_indicators
+                    else 0.01
+                )
+                avg_trend = (
+                    sum(trend_indicators) / len(trend_indicators)
+                    if trend_indicators
+                    else 0.005
+                )
 
                 # Store regime information for subclasses to use
-                adjusted_params.update({
-                    'avg_volatility': avg_volatility,
-                    'avg_trend_strength': avg_trend,
-                    'regime': 'high_volatility' if avg_volatility > 0.02 else 'low_volatility',
-                    'trend_regime': 'trending' if avg_trend > 0.01 else 'sideways'
-                })
+                adjusted_params.update(
+                    {
+                        "avg_volatility": avg_volatility,
+                        "avg_trend_strength": avg_trend,
+                        "regime": "high_volatility"
+                        if avg_volatility > 0.02
+                        else "low_volatility",
+                        "trend_regime": "trending" if avg_trend > 0.01 else "sideways",
+                    }
+                )
 
             return adjusted_params
 
@@ -726,7 +761,9 @@ class PatternRecognizer(ABC):
         Returns:
             Cached SignalResult if available and valid, otherwise new recognition
         """
-        cache_key = f"{self.name}_{index}_{data.iloc[index]['close'] if index >= 0 else 0}"
+        cache_key = (
+            f"{self.name}_{index}_{data.iloc[index]['close'] if index >= 0 else 0}"
+        )
 
         # Check cache first
         cached_signal = self._signal_cache.get(cache_key)
@@ -738,7 +775,9 @@ class PatternRecognizer(ABC):
         processed_data = self.preprocess_data(data)
 
         # Calculate new signal
-        signal: Optional[SignalResult] = self.recognize(processed_data, index, multi_timeframe_data)  # type: ignore
+        signal: Optional[SignalResult] = self.recognize(
+            processed_data, index, multi_timeframe_data
+        )  # type: ignore
         if signal is not None:
             self._signal_cache.set(cache_key, signal)
         return signal
@@ -937,7 +976,9 @@ class PatternRecognizer(ABC):
 
         # Calculate recent volatility (standard deviation of returns)
         if index >= lookback:
-            recent_prices = cast(np.ndarray, data.iloc[index - lookback + 1 : index + 1]["close"].values)
+            recent_prices = cast(
+                np.ndarray, data.iloc[index - lookback + 1 : index + 1]["close"].values
+            )
             returns = np.diff(recent_prices) / recent_prices[:-1]
             volatility = np.std(returns) if len(returns) > 0 else 0.0
         else:

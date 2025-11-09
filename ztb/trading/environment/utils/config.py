@@ -81,12 +81,14 @@ class RewardSettings:
     unrealized_loss_penalty_enabled: bool = False
     unrealized_loss_penalty_base: float = 1.1
     unrealized_loss_penalty_max_steps: int = 10
-    asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(default_factory=lambda: {
-        "long_position_reward_multiplier": 1.3,
-        "short_position_reward_multiplier": 0.7,
-        "long_position_penalty_multiplier": 0.9,
-        "short_position_penalty_multiplier": 0.95
-    })
+    asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(
+        default_factory=lambda: {
+            "long_position_reward_multiplier": 1.3,
+            "short_position_reward_multiplier": 0.7,
+            "long_position_penalty_multiplier": 0.9,
+            "short_position_penalty_multiplier": 0.95,
+        }
+    )
 
 
 @dataclasses.dataclass
@@ -138,11 +140,13 @@ class EnvironmentConfig:
     enable_forced_diversity: bool = False
 
     # Action bonuses and penalties
-    action_bonuses: Dict[str, float] = dataclasses.field(default_factory=lambda: {
-        "buy_action_bonus": 0.0,
-        "sell_action_bonus": 0.0,
-        "hold_action_bonus": 0.0
-    })
+    action_bonuses: Dict[str, float] = dataclasses.field(
+        default_factory=lambda: {
+            "buy_action_bonus": 0.0,
+            "sell_action_bonus": 0.0,
+            "hold_action_bonus": 0.0,
+        }
+    )
     base_action_penalty: float = 0.015
     behavior_optimization: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
@@ -507,12 +511,18 @@ class EnvironmentConfig:
             behavior_opt = config_dict["behavior_optimization"]
             reward_settings_dict = {}
             if "action_balance_target" in behavior_opt:
-                reward_settings_dict["action_balance_target"] = behavior_opt["action_balance_target"]
+                reward_settings_dict["action_balance_target"] = behavior_opt[
+                    "action_balance_target"
+                ]
             if "balance_penalty" in behavior_opt:
-                reward_settings_dict["balance_penalty"] = behavior_opt["balance_penalty"]
+                reward_settings_dict["balance_penalty"] = behavior_opt[
+                    "balance_penalty"
+                ]
             if "entropy_regularization" in behavior_opt:
-                reward_settings_dict["entropy_regularization"] = behavior_opt["entropy_regularization"]
-        
+                reward_settings_dict["entropy_regularization"] = behavior_opt[
+                    "entropy_regularization"
+                ]
+
         if reward_settings_dict:
             try:
                 config_kwargs["reward_settings"] = RewardSettings(
@@ -545,71 +555,98 @@ class EnvironmentConfig:
     def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
         """
         Create EnvironmentConfig from dictionary.
-        
+
         Args:
             config_dict: Configuration dictionary
-            
+
         Returns:
             EnvironmentConfig instance
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
-        logger.debug(f"EnvironmentConfig.from_dict called with config_dict keys: {list(config_dict.keys())}")
-        
+
+        logger.debug(
+            f"EnvironmentConfig.from_dict called with config_dict keys: {list(config_dict.keys())}"
+        )
+
         # Create instance with defaults
         instance = cls()
-        
+
         # First pass: collect individual action bonus keys at root level
         root_level_bonuses = {}
         for bonus_key in ["buy_action_bonus", "sell_action_bonus", "hold_action_bonus"]:
             if bonus_key in config_dict:
                 root_level_bonuses[bonus_key] = float(config_dict[bonus_key])
-        
+
         # Extract behavior_optimization from nested environment config if present
         behavior_opt = None
-        if "environment" in config_dict and isinstance(config_dict["environment"], dict):
+        if "environment" in config_dict and isinstance(
+            config_dict["environment"], dict
+        ):
             env_config = config_dict["environment"]
-            if "behavior_optimization" in env_config and isinstance(env_config["behavior_optimization"], dict):
+            if "behavior_optimization" in env_config and isinstance(
+                env_config["behavior_optimization"], dict
+            ):
                 behavior_opt = env_config["behavior_optimization"]
-                logger.debug(f"Found behavior_optimization in environment: {behavior_opt}")
-        
+                logger.debug(
+                    f"Found behavior_optimization in environment: {behavior_opt}"
+                )
+
         # Also check for behavior_optimization at root level (backward compatibility)
-        if behavior_opt is None and "behavior_optimization" in config_dict and isinstance(config_dict["behavior_optimization"], dict):
+        if (
+            behavior_opt is None
+            and "behavior_optimization" in config_dict
+            and isinstance(config_dict["behavior_optimization"], dict)
+        ):
             behavior_opt = config_dict["behavior_optimization"]
             logger.debug(f"Found behavior_optimization at root level: {behavior_opt}")
-        
+
         # Handle behavior_optimization dict
         if behavior_opt is not None:
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
-            
+
             # Map behavior_optimization keys to reward_settings
             if "action_balance_target" in behavior_opt:
-                instance.reward_settings.action_balance_target = float(behavior_opt["action_balance_target"])
+                instance.reward_settings.action_balance_target = float(
+                    behavior_opt["action_balance_target"]
+                )
             if "balance_penalty" in behavior_opt:
-                instance.reward_settings.balance_penalty = float(behavior_opt["balance_penalty"])
+                instance.reward_settings.balance_penalty = float(
+                    behavior_opt["balance_penalty"]
+                )
             if "entropy_regularization" in behavior_opt:
-                instance.reward_settings.entropy_regularization = float(behavior_opt["entropy_regularization"])
+                instance.reward_settings.entropy_regularization = float(
+                    behavior_opt["entropy_regularization"]
+                )
             if "action_smoothing" in behavior_opt:
-                instance.reward_settings.action_smoothing = float(behavior_opt["action_smoothing"])
+                instance.reward_settings.action_smoothing = float(
+                    behavior_opt["action_smoothing"]
+                )
             if "consistency_penalty" in behavior_opt:
-                instance.reward_settings.consistency_penalty = float(behavior_opt["consistency_penalty"])
+                instance.reward_settings.consistency_penalty = float(
+                    behavior_opt["consistency_penalty"]
+                )
             if "redundant_trade_penalty" in behavior_opt:
-                instance.reward_settings.redundant_trade_penalty = float(behavior_opt["redundant_trade_penalty"])
+                instance.reward_settings.redundant_trade_penalty = float(
+                    behavior_opt["redundant_trade_penalty"]
+                )
 
         # Update fields from config_dict
         for key, value in config_dict.items():
             if key == "environment" and isinstance(value, dict):
                 # Special handling for nested environment config
-                logger.debug(f"Processing nested environment config")
+                logger.debug("Processing nested environment config")
                 for env_key, env_value in value.items():
                     if env_key == "behavior_optimization":
                         # Already handled above
                         continue
                     elif env_key == "action_bonuses" and isinstance(env_value, dict):
                         # Handle nested action_bonuses
-                        if not root_level_bonuses:  # Don't override root-level if present
+                        if (
+                            not root_level_bonuses
+                        ):  # Don't override root-level if present
                             converted_bonuses = {}
                             for bonus_key, bonus_value in env_value.items():
                                 converted_bonuses[bonus_key] = float(bonus_value)
@@ -617,7 +654,11 @@ class EnvironmentConfig:
                     elif hasattr(instance, env_key):
                         # Map other environment keys to instance
                         try:
-                            if env_key in ["base_action_penalty", "commission", "slippage"]:
+                            if env_key in [
+                                "base_action_penalty",
+                                "commission",
+                                "slippage",
+                            ]:
                                 setattr(instance, env_key, float(env_value))
                             elif env_key == "max_position_size":
                                 setattr(instance, env_key, float(env_value))
@@ -643,31 +684,52 @@ class EnvironmentConfig:
                         if not instance.reward_settings:
                             instance.reward_settings = RewardSettings()
                         for rs_key, rs_value in value.items():
-                            if hasattr(instance.reward_settings, rs_key):
+                            if rs_key == "action_bonuses" and isinstance(
+                                rs_value, dict
+                            ):
+                                # Special handling: copy action_bonuses to instance.action_bonuses
+                                converted_bonuses = {}
+                                for bonus_key, bonus_value in rs_value.items():
+                                    converted_bonuses[bonus_key] = float(bonus_value)
+                                instance.action_bonuses = converted_bonuses
+                                logger.debug(
+                                    f"Set action_bonuses from reward_settings: {converted_bonuses}"
+                                )
+                            elif hasattr(instance.reward_settings, rs_key):
                                 setattr(instance.reward_settings, rs_key, rs_value)
                     elif key in ["base_action_penalty", "commission", "slippage"]:
                         # Handle float fields
                         setattr(instance, key, float(value))
                     elif key == "max_steps":
                         # Handle int fields
-                        setattr(instance, key, int(float(value)) if value is not None else None)
+                        setattr(
+                            instance,
+                            key,
+                            int(float(value)) if value is not None else None,
+                        )
                     else:
                         # Default assignment
                         setattr(instance, key, value)
                 except Exception as e:
                     logger.error(f"Failed to set {key} = {value}: {e}")
-            elif key not in ["buy_action_bonus", "sell_action_bonus", "hold_action_bonus"]:
+            elif key not in [
+                "buy_action_bonus",
+                "sell_action_bonus",
+                "hold_action_bonus",
+            ]:
                 # Skip individual bonus keys (they're handled separately)
                 logger.debug(f"Skipping config key (not in EnvironmentConfig): {key}")
-        
+
         # Merge root-level bonuses into action_bonuses if they were found
         if root_level_bonuses:
             logger.debug(f"Merging root-level action bonuses: {root_level_bonuses}")
             if not instance.action_bonuses:
                 instance.action_bonuses = {}
             instance.action_bonuses.update(root_level_bonuses)
-        
-        logger.debug(f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}")
+
+        logger.debug(
+            f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}"
+        )
         return instance
 
     @staticmethod

@@ -10,7 +10,11 @@ from typing import Any, List, Optional
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG, get_action_count_index
+from ztb.trading.constants import (
+    SAC_CONTINUOUS_THRESHOLD,
+    SAC_CONTINUOUS_THRESHOLD_NEG,
+    get_action_count_index,
+)
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
@@ -81,6 +85,10 @@ class TrainingProgressCallback(BaseCallback):
             self.early_stopping_min_delta = early_stopping.get("min_delta", 0.001)
 
     def _on_step(self) -> bool:
+        # Initialize variables for the entire method scope
+        discrete_action = 0  # Default HOLD
+        action_value = 0.0  # Default value
+
         # Record action taken (handle both PPO discrete and SAC continuous actions)
         try:
             actions = self.locals.get("actions")
@@ -133,6 +141,26 @@ class TrainingProgressCallback(BaseCallback):
                 reward = rewards[0]
                 self.reward_history.append(reward)
 
+                # DEBUG: Log detailed reward and state information
+                try:
+                    infos = self.locals.get("infos")
+                    if infos and len(infos) > 0:
+                        info = infos[0]
+                        if isinstance(info, dict):
+                            portfolio_value = info.get("portfolio_value", 0)
+                            position = info.get("position", 0)
+                            pnl = info.get("pnl", 0)
+                            market_regime = info.get("market_regime", "unknown")
+
+                            # Compact DEBUG log with key metrics
+                            logging.debug(
+                                f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
+                                f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
+                                f"Position={position:.4f} | Regime={market_regime}"
+                            )
+                except Exception as e:
+                    logging.debug(f"Failed to log detailed reward info: {e}")
+
                 # Record per-regime action counts for debugging
                 try:
                     infos = self.locals.get("infos")
@@ -147,7 +175,9 @@ class TrainingProgressCallback(BaseCallback):
                                     0,
                                 ]  # [BUY, SELL, HOLD]
                             if discrete_action >= 0 and discrete_action <= 2:
-                                self.regime_action_counts[regime][get_action_count_index(discrete_action)] += 1
+                                self.regime_action_counts[regime][
+                                    get_action_count_index(discrete_action)
+                                ] += 1
                 except Exception as e:
                     logging.debug(f"Failed to record regime action: {e}")
 
@@ -285,6 +315,29 @@ class TrainingProgressCallback(BaseCallback):
         elapsed = current_time - self.start_time
         steps_per_sec = self.n_calls / elapsed if elapsed > 0 else 0
 
+        # DEBUG: Log detailed training metrics
+        if (
+            self.actor_losses
+            or self.critic_losses
+            or self.ent_coefs
+            or self.learning_rates
+        ):
+            recent_actor = self.actor_losses[-10:] if self.actor_losses else []
+            recent_critic = self.critic_losses[-10:] if self.critic_losses else []
+            recent_ent = self.ent_coefs[-10:] if self.ent_coefs else []
+            recent_lr = self.learning_rates[-10:] if self.learning_rates else []
+
+            avg_actor = sum(recent_actor) / len(recent_actor) if recent_actor else 0
+            avg_critic = sum(recent_critic) / len(recent_critic) if recent_critic else 0
+            avg_ent = sum(recent_ent) / len(recent_ent) if recent_ent else 0
+            current_lr = recent_lr[-1] if recent_lr else 0
+
+            logging.debug(
+                f"Training metrics [Step {self.n_calls}]: ActorLoss={avg_actor:.4f} | "
+                f"CriticLoss={avg_critic:.4f} | EntCoef={avg_ent:.4f} | LR={current_lr:.6f} | "
+                f"SPS={steps_per_sec:.1f}"
+            )
+
         # Always show progress, even if no actions recorded yet
         if self.discrete_actions:
             total_actions = len(self.discrete_actions)
@@ -330,27 +383,49 @@ class TrainingProgressCallback(BaseCallback):
                 extreme_positive_count = sum(1 for x in recent_continuous if x >= 0.8)
 
                 near_zero_pct = near_zero_count / len(recent_continuous) * 100
-                extreme_negative_pct = extreme_negative_count / len(recent_continuous) * 100
-                extreme_positive_pct = extreme_positive_count / len(recent_continuous) * 100
+                extreme_negative_pct = (
+                    extreme_negative_count / len(recent_continuous) * 100
+                )
+                extreme_positive_pct = (
+                    extreme_positive_count / len(recent_continuous) * 100
+                )
 
                 # Calculate action entropy (distribution diversity)
-                hist, _ = np.histogram(recent_continuous, bins=20, range=(-1, 1), density=True)
+                hist, _ = np.histogram(
+                    recent_continuous, bins=20, range=(-1, 1), density=True
+                )
                 hist = hist[hist > 0]  # Remove zero probabilities
                 action_entropy = -np.sum(hist * np.log(hist)) if len(hist) > 0 else 0
 
                 logging.warning(
                     "CONTINUOUS ACTION STATS [Step %d] - Mean: %.3f, Std: %.3f, Min: %.3f, Max: %.3f, Range: %.3f",
-                    self.n_calls, mean_action, std_action, min_action, max_action, max_action - min_action,
+                    self.n_calls,
+                    mean_action,
+                    std_action,
+                    min_action,
+                    max_action,
+                    max_action - min_action,
                 )
                 logging.warning(
                     "ACTION PERCENTILES [Step %d] - 25%%: %.3f, 50%%: %.3f, 75%%: %.3f | Near Zero (±0.1): %.1f%% | Extreme (≤-0.8): %.1f%% | Extreme (≥0.8): %.1f%%",
-                    self.n_calls, p25, p50, p75, near_zero_pct, extreme_negative_pct, extreme_positive_pct
+                    self.n_calls,
+                    p25,
+                    p50,
+                    p75,
+                    near_zero_pct,
+                    extreme_negative_pct,
+                    extreme_positive_pct,
                 )
                 logging.warning(
                     "ACTION DISTRIBUTION [Step %d] - Entropy: %.3f | Skewness: %.3f | Kurtosis: %.3f",
-                    self.n_calls, action_entropy,
-                    np.mean(((recent_continuous - mean_action) / std_action) ** 3) if std_action > 0 else 0,
-                    np.mean(((recent_continuous - mean_action) / std_action) ** 4) - 3 if std_action > 0 else 0,
+                    self.n_calls,
+                    action_entropy,
+                    np.mean(((recent_continuous - mean_action) / std_action) ** 3)
+                    if std_action > 0
+                    else 0,
+                    np.mean(((recent_continuous - mean_action) / std_action) ** 4) - 3
+                    if std_action > 0
+                    else 0,
                 )
 
                 # Log action distribution in ranges
@@ -377,7 +452,8 @@ class TrainingProgressCallback(BaseCallback):
                     ]
                     logging.warning(
                         "ACTION RANGE DISTRIBUTION [Step %d] (%%): [-1,-0.8]: %.1f, [-0.8,-0.6]: %.1f, [-0.6,-0.4]: %.1f, [-0.4,-0.2]: %.1f, [-0.2,0]: %.1f, [0,0.2]: %.1f, [0.2,0.4]: %.1f, [0.4,0.6]: %.1f, [0.6,0.8]: %.1f, [0.8,1]: %.1f",
-                        self.n_calls, *range_dist,
+                        self.n_calls,
+                        *range_dist,
                     )
 
             # Log per-regime action distribution for debugging
@@ -553,10 +629,18 @@ class TrainingProgressCallback(BaseCallback):
                 "BUY": discrete_counts[2] / total_actions,
             }
 
-            logging.info("Final Discrete Action Distribution (Total: %d actions):", total_actions)
-            logging.info("  HOLD: %.2f%% (%d)", action_dist["HOLD"] * 100, discrete_counts[1])
-            logging.info("  BUY:  %.2f%% (%d)", action_dist["BUY"] * 100, discrete_counts[2])
-            logging.info("  SELL: %.2f%% (%d)", action_dist["SELL"] * 100, discrete_counts[0])
+            logging.info(
+                "Final Discrete Action Distribution (Total: %d actions):", total_actions
+            )
+            logging.info(
+                "  HOLD: %.2f%% (%d)", action_dist["HOLD"] * 100, discrete_counts[1]
+            )
+            logging.info(
+                "  BUY:  %.2f%% (%d)", action_dist["BUY"] * 100, discrete_counts[2]
+            )
+            logging.info(
+                "  SELL: %.2f%% (%d)", action_dist["SELL"] * 100, discrete_counts[0]
+            )
 
         # Log final continuous action statistics
         if self.continuous_actions:
@@ -577,7 +661,9 @@ class TrainingProgressCallback(BaseCallback):
                 p90 = np.percentile(all_continuous, 90)
 
                 # Action distribution analysis
-                near_zero_count = np.sum((all_continuous >= -0.1) & (all_continuous <= 0.1))
+                near_zero_count = np.sum(
+                    (all_continuous >= -0.1) & (all_continuous <= 0.1)
+                )
                 extreme_negative_count = np.sum(all_continuous <= -0.8)
                 extreme_positive_count = np.sum(all_continuous >= 0.8)
                 strong_buy_count = np.sum(all_continuous >= 0.6)
@@ -589,49 +675,106 @@ class TrainingProgressCallback(BaseCallback):
                     window_size = min(100, len(all_continuous) // 10)
                     rolling_means = []
                     for i in range(window_size, len(all_continuous), window_size):
-                        rolling_means.append(np.mean(all_continuous[i-window_size:i]))
+                        rolling_means.append(
+                            np.mean(all_continuous[i - window_size : i])
+                        )
                     action_stability = np.std(rolling_means) if rolling_means else 0
                 else:
                     action_stability = 0
 
-                logging.info("Final Continuous Action Statistics (Total: %d actions):", total_continuous)
-                logging.info("  Basic Stats - Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
-                           mean_action, std_action, min_action, max_action)
-                logging.info("  Percentiles - 10%%: %.4f, 25%%: %.4f, 50%%: %.4f, 75%%: %.4f, 90%%: %.4f",
-                           p10, p25, p50, p75, p90)
+                logging.info(
+                    "Final Continuous Action Statistics (Total: %d actions):",
+                    total_continuous,
+                )
+                logging.info(
+                    "  Basic Stats - Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
+                    mean_action,
+                    std_action,
+                    min_action,
+                    max_action,
+                )
+                logging.info(
+                    "  Percentiles - 10%%: %.4f, 25%%: %.4f, 50%%: %.4f, 75%%: %.4f, 90%%: %.4f",
+                    p10,
+                    p25,
+                    p50,
+                    p75,
+                    p90,
+                )
                 logging.info("  Distribution Analysis:")
-                logging.info("    Near Zero (±0.1): %.2f%% (%d)",
-                           near_zero_count / total_continuous * 100, near_zero_count)
-                logging.info("    Extreme Negative (≤-0.8): %.2f%% (%d)",
-                           extreme_negative_count / total_continuous * 100, extreme_negative_count)
-                logging.info("    Extreme Positive (≥0.8): %.2f%% (%d)",
-                           extreme_positive_count / total_continuous * 100, extreme_positive_count)
-                logging.info("    Strong Buy (≥0.6): %.2f%% (%d)",
-                           strong_buy_count / total_continuous * 100, strong_buy_count)
-                logging.info("    Strong Sell (≤-0.6): %.2f%% (%d)",
-                           strong_sell_count / total_continuous * 100, strong_sell_count)
-                logging.info("  Action Stability - Rolling Mean Std: %.4f", action_stability)
+                logging.info(
+                    "    Near Zero (±0.1): %.2f%% (%d)",
+                    near_zero_count / total_continuous * 100,
+                    near_zero_count,
+                )
+                logging.info(
+                    "    Extreme Negative (≤-0.8): %.2f%% (%d)",
+                    extreme_negative_count / total_continuous * 100,
+                    extreme_negative_count,
+                )
+                logging.info(
+                    "    Extreme Positive (≥0.8): %.2f%% (%d)",
+                    extreme_positive_count / total_continuous * 100,
+                    extreme_positive_count,
+                )
+                logging.info(
+                    "    Strong Buy (≥0.6): %.2f%% (%d)",
+                    strong_buy_count / total_continuous * 100,
+                    strong_buy_count,
+                )
+                logging.info(
+                    "    Strong Sell (≤-0.6): %.2f%% (%d)",
+                    strong_sell_count / total_continuous * 100,
+                    strong_sell_count,
+                )
+                logging.info(
+                    "  Action Stability - Rolling Mean Std: %.4f", action_stability
+                )
 
                 # Action entropy and distribution shape
-                hist, _ = np.histogram(all_continuous, bins=20, range=(-1, 1), density=True)
+                hist, _ = np.histogram(
+                    all_continuous, bins=20, range=(-1, 1), density=True
+                )
                 hist = hist[hist > 0]
                 action_entropy = -np.sum(hist * np.log(hist)) if len(hist) > 0 else 0
-                skewness = np.mean(((all_continuous - mean_action) / std_action) ** 3) if std_action > 0 else 0
-                kurtosis = np.mean(((all_continuous - mean_action) / std_action) ** 4) - 3 if std_action > 0 else 0
+                skewness = (
+                    np.mean(((all_continuous - mean_action) / std_action) ** 3)
+                    if std_action > 0
+                    else 0
+                )
+                kurtosis = (
+                    np.mean(((all_continuous - mean_action) / std_action) ** 4) - 3
+                    if std_action > 0
+                    else 0
+                )
 
-                logging.info("  Distribution Shape - Entropy: %.4f, Skewness: %.4f, Kurtosis: %.4f",
-                           action_entropy, skewness, kurtosis)
+                logging.info(
+                    "  Distribution Shape - Entropy: %.4f, Skewness: %.4f, Kurtosis: %.4f",
+                    action_entropy,
+                    skewness,
+                    kurtosis,
+                )
 
         # Log reward statistics
         if self.reward_history:
             rewards = np.array(self.reward_history)
             logging.info("Final Reward Statistics (Total: %d rewards):", len(rewards))
-            logging.info("  Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
-                       np.mean(rewards), np.std(rewards), np.min(rewards), np.max(rewards))
-            logging.info("  Positive Rewards: %.2f%% (%d), Negative: %.2f%% (%d), Zero: %.2f%% (%d)",
-                       np.sum(rewards > 0) / len(rewards) * 100, np.sum(rewards > 0),
-                       np.sum(rewards < 0) / len(rewards) * 100, np.sum(rewards < 0),
-                       np.sum(rewards == 0) / len(rewards) * 100, np.sum(rewards == 0))
+            logging.info(
+                "  Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
+                np.mean(rewards),
+                np.std(rewards),
+                np.min(rewards),
+                np.max(rewards),
+            )
+            logging.info(
+                "  Positive Rewards: %.2f%% (%d), Negative: %.2f%% (%d), Zero: %.2f%% (%d)",
+                np.sum(rewards > 0) / len(rewards) * 100,
+                np.sum(rewards > 0),
+                np.sum(rewards < 0) / len(rewards) * 100,
+                np.sum(rewards < 0),
+                np.sum(rewards == 0) / len(rewards) * 100,
+                np.sum(rewards == 0),
+            )
 
         # Log regime-specific statistics
         if self.regime_action_counts:
@@ -642,15 +785,25 @@ class TrainingProgressCallback(BaseCallback):
                     buy_pct = counts[0] / total_regime_actions * 100
                     sell_pct = counts[1] / total_regime_actions * 100
                     hold_pct = counts[2] / total_regime_actions * 100
-                    logging.info("  %s: BUY %.1f%% (%d), SELL %.1f%% (%d), HOLD %.1f%% (%d)",
-                               regime, buy_pct, counts[0], sell_pct, counts[1], hold_pct, counts[2])
+                    logging.info(
+                        "  %s: BUY %.1f%% (%d), SELL %.1f%% (%d), HOLD %.1f%% (%d)",
+                        regime,
+                        buy_pct,
+                        counts[0],
+                        sell_pct,
+                        counts[1],
+                        hold_pct,
+                        counts[2],
+                    )
 
         # Log training time and performance
         total_time = time.time() - self.start_time
         steps_per_sec = self.n_calls / total_time if total_time > 0 else 0
         logging.info("Training Performance:")
         logging.info("  Total Steps: %d", self.n_calls)
-        logging.info("  Total Time: %.1f seconds (%.1f minutes)", total_time, total_time / 60)
+        logging.info(
+            "  Total Time: %.1f seconds (%.1f minutes)", total_time, total_time / 60
+        )
         logging.info("  Average Steps/Second: %.2f", steps_per_sec)
 
         logging.info("=" * 80)

@@ -25,10 +25,10 @@ class MemoryMonitor:
         self.history_size = self.config.get_int("ZTB_MEMORY_HISTORY_SIZE", 100)
         self.memory_history: deque = deque(maxlen=self.history_size)
         self.alert_threshold_mb = self.config.get_int(
-            "ZTB_MEMORY_ALERT_THRESHOLD_MB", 1000
+            "ZTB_MEMORY_ALERT_THRESHOLD_MB", 1500
         )
         self.warning_threshold_mb = self.config.get_int(
-            "ZTB_MEMORY_WARNING_THRESHOLD_MB", 500
+            "ZTB_MEMORY_WARNING_THRESHOLD_MB", 1000
         )
         self.monitoring_active = False
         self.monitor_thread: Optional[threading.Thread] = None

@@ -67,7 +67,7 @@ dependencies = [
     "yfinance>=0.2.0,<1.0",
 
     # Development & Testing
-    "pytest>=7.0.0,<8.0",
+    "pytest>=8.0.0,<9.0",
     "pytest-cov>=4.0.0,<5.0",
     "black>=23.0.0,<24.0",
     "isort>=5.12.0,<6.0",
@@ -193,7 +193,7 @@ module = [
 ignore_errors = true
 
 [tool.pytest.ini_options]
-minversion = "7.0"
+minversion = "8.0"
 addopts = "-ra -q --cov=ztb --cov-report=html --cov-report=term-missing"
 testpaths = [
     "tests",

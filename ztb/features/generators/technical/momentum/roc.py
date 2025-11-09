@@ -8,8 +8,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ztb.features.feature_cache import feature_cache
-from ztb.features.registry import FeatureRegistry
+from ztb.features.core.registry import FeatureRegistry
+from ztb.features.processors.caching.cache import feature_cache
 from ztb.utils.talib_wrapper import TaLibWrapper
 
 

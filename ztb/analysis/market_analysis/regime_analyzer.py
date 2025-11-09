@@ -6,48 +6,22 @@ with improved technical indicators and clearer classification logic.
 """
 
 from collections import deque
-from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 
-from ztb.utils.metrics.trading_metrics import sharpe_ratio
+from ztb.analysis.market_regime_types import MarketRegime, RegimeDetectionResult
+from ztb.features.generators.technical.momentum.roc import compute_roc
 from ztb.features.generators.technical.momentum.rsi import compute_rsi
 from ztb.features.generators.technical.trend.adx import compute_adx
 from ztb.features.generators.technical.volatility.atr import compute_atr
-from ztb.features.generators.technical.momentum.roc import compute_roc
 from ztb.features.generators.technical.volatility.bollinger import (
-    compute_bb_middle, compute_bb_upper, compute_bb_lower
+    compute_bb_lower,
+    compute_bb_middle,
+    compute_bb_upper,
 )
-
-
-class MarketRegime(Enum):
-    """Enumeration of market regimes with improved definitions."""
-    STRONG_BULL_TREND = "strong_bull_trend"
-    MODERATE_BULL_TREND = "moderate_bull_trend"
-    WEAK_BULL_TREND = "weak_bull_trend"
-    STRONG_BEAR_TREND = "strong_bear_trend"
-    MODERATE_BEAR_TREND = "moderate_bear_trend"
-    WEAK_BEAR_TREND = "weak_bear_trend"
-    HIGH_VOLATILITY_RANGING = "high_volatility_ranging"
-    MODERATE_VOLATILITY_RANGING = "moderate_volatility_ranging"
-    LOW_VOLATILITY_RANGING = "low_volatility_ranging"
-    EXTREME_VOLATILITY = "extreme_volatility"
-    CONSOLIDATION = "consolidation"
-    BREAKOUT_SETUP = "breakout_setup"
-    BREAKDOWN_SETUP = "breakdown_setup"
-
-
-@dataclass
-class RegimeDetectionResult:
-    """Result of regime detection with enhanced metadata."""
-    regime: MarketRegime
-    confidence: float
-    indicators: Dict[str, float]
-    metadata: Dict[str, Any]
-    classification_path: List[str]  # Track which conditions led to this regime
 
 
 class EnhancedRegimeAnalyzer:
@@ -92,30 +66,36 @@ class EnhancedRegimeAnalyzer:
         if len(self.volatility_history) < 20:  # Need more data for stable estimates
             # Very conservative default thresholds for initial detection
             self.volatility_percentiles = {
-                'p25': 0.002, 'p50': 0.005, 'p75': 0.010, 'p90': 0.020
+                "p25": 0.002,
+                "p50": 0.005,
+                "p75": 0.010,
+                "p90": 0.020,
             }
             self.trend_thresholds = {
-                'weak': 0.005, 'moderate': 0.015, 'strong': 0.030  # Higher thresholds
-            }
+                "weak": 0.005,
+                "moderate": 0.015,
+                "strong": 0.030,
+            }  # Higher thresholds
         else:
             # Adaptive thresholds based on historical data
             vol_data = list(self.volatility_history)
             self.volatility_percentiles = {
-                'p25': max(np.percentile(vol_data, 25), 0.005),  # Minimum thresholds
-                'p50': max(np.percentile(vol_data, 50), 0.012),
-                'p75': max(np.percentile(vol_data, 75), 0.020),
-                'p90': max(np.percentile(vol_data, 90), 0.030)
+                "p25": max(np.percentile(vol_data, 25), 0.005),  # Minimum thresholds
+                "p50": max(np.percentile(vol_data, 50), 0.012),
+                "p75": max(np.percentile(vol_data, 75), 0.020),
+                "p90": max(np.percentile(vol_data, 90), 0.030),
             }
 
             trend_data = [abs(t) for t in self.trend_strength_history]
             self.trend_thresholds = {
-                'weak': max(np.percentile(trend_data, 25), 0.003),
-                'moderate': max(np.percentile(trend_data, 50), 0.008),
-                'strong': max(np.percentile(trend_data, 75), 0.015)
+                "weak": max(np.percentile(trend_data, 25), 0.003),
+                "moderate": max(np.percentile(trend_data, 50), 0.008),
+                "strong": max(np.percentile(trend_data, 75), 0.015),
             }
 
-    def update_price_data(self, price: float, high: Optional[float] = None,
-                         low: Optional[float] = None):
+    def update_price_data(
+        self, price: float, high: Optional[float] = None, low: Optional[float] = None
+    ):
         """
         Update the analyzer with new price data.
 
@@ -139,11 +119,7 @@ class EnhancedRegimeAnalyzer:
             return {}
 
         # Create DataFrame for feature generators
-        df = pd.DataFrame({
-            'close': prices,
-            'high': highs,
-            'low': lows
-        })
+        df = pd.DataFrame({"close": prices, "high": highs, "low": lows})
 
         # Core indicators using existing feature generators
         rsi = float(compute_rsi(df).iloc[-1])
@@ -159,6 +135,7 @@ class EnhancedRegimeAnalyzer:
 
         # MACD using TaLib directly for individual components
         from ztb.utils.talib_wrapper import TaLibWrapper
+
         talib = TaLibWrapper()
         macd_line, macd_signal, macd_histogram = talib.macd(prices, 12, 26, 9)
         macd = float(macd_line[-1]) if len(macd_line) > 0 else 0.0
@@ -174,7 +151,11 @@ class EnhancedRegimeAnalyzer:
         atr = float(compute_atr(df).iloc[-1])
 
         # Bollinger Band position
-        bb_position = (prices[-1] - bb_lower) / (bb_upper - bb_lower) if bb_upper != bb_lower else 0.5
+        bb_position = (
+            (prices[-1] - bb_lower) / (bb_upper - bb_lower)
+            if bb_upper != bb_lower
+            else 0.5
+        )
 
         # Update statistical baselines
         self.volatility_history.append(volatility)
@@ -185,33 +166,35 @@ class EnhancedRegimeAnalyzer:
             self._update_adaptive_thresholds()
 
         return {
-            'rsi': rsi,
-            'adx': adx,
-            'volatility': volatility,
-            'momentum': momentum,
-            'macd': macd,
-            'macd_signal': signal,
-            'macd_histogram': histogram,
-            'bb_position': bb_position,
-            'atr': atr,
-            'sma': sma,
-            'bb_upper': bb_upper,
-            'bb_lower': bb_lower
+            "rsi": rsi,
+            "adx": adx,
+            "volatility": volatility,
+            "momentum": momentum,
+            "macd": macd,
+            "macd_signal": signal,
+            "macd_histogram": histogram,
+            "bb_position": bb_position,
+            "atr": atr,
+            "sma": sma,
+            "bb_upper": bb_upper,
+            "bb_lower": bb_lower,
         }
 
-    def _classify_regime(self, indicators: Dict[str, float]) -> Tuple[MarketRegime, float, List[str]]:
+    def _classify_regime(
+        self, indicators: Dict[str, float]
+    ) -> Tuple[MarketRegime, float, List[str]]:
         """
         Classify market regime with clear priority-based logic.
 
         Returns:
             Tuple of (regime, confidence, classification_path)
         """
-        rsi = indicators.get('rsi', 50.0)
-        adx = indicators.get('adx', 25.0)
-        volatility = indicators.get('volatility', 0.0)
-        momentum = indicators.get('momentum', 0.0)
-        macd_histogram = indicators.get('macd_histogram', 0.0)
-        bb_position = indicators.get('bb_position', 0.5)
+        rsi = indicators.get("rsi", 50.0)
+        adx = indicators.get("adx", 25.0)
+        volatility = indicators.get("volatility", 0.0)
+        momentum = indicators.get("momentum", 0.0)
+        macd_histogram = indicators.get("macd_histogram", 0.0)
+        bb_position = indicators.get("bb_position", 0.5)
 
         classification_path = []
 
@@ -225,21 +208,21 @@ class EnhancedRegimeAnalyzer:
         if adx > 30:
             classification_path.append("adx_trend_check")
 
-            if trend_strength > self.trend_thresholds['strong']:
+            if trend_strength > self.trend_thresholds["strong"]:
                 classification_path.append("strong_trend")
                 if momentum > 0:
                     return MarketRegime.STRONG_BULL_TREND, 0.90, classification_path
                 else:
                     return MarketRegime.STRONG_BEAR_TREND, 0.90, classification_path
 
-            elif trend_strength > self.trend_thresholds['moderate']:
+            elif trend_strength > self.trend_thresholds["moderate"]:
                 classification_path.append("moderate_trend")
                 if momentum > 0:
                     return MarketRegime.MODERATE_BULL_TREND, 0.80, classification_path
                 else:
                     return MarketRegime.MODERATE_BEAR_TREND, 0.80, classification_path
 
-            elif trend_strength > self.trend_thresholds['weak']:
+            elif trend_strength > self.trend_thresholds["weak"]:
                 classification_path.append("weak_trend")
                 if momentum > 0:
                     return MarketRegime.WEAK_BULL_TREND, 0.70, classification_path
@@ -247,12 +230,12 @@ class EnhancedRegimeAnalyzer:
                     return MarketRegime.WEAK_BEAR_TREND, 0.70, classification_path
 
         # Priority 3: High volatility ranging
-        if volatility > self.volatility_percentiles['p75']:
+        if volatility > self.volatility_percentiles["p75"]:
             classification_path.append("high_volatility_ranging")
             return MarketRegime.HIGH_VOLATILITY_RANGING, 0.85, classification_path
 
         # Priority 4: Breakout/Breakdown setups (moderate ADX, specific conditions)
-        if 20 <= adx <= 30 and trend_strength < self.trend_thresholds['weak']:
+        if 20 <= adx <= 30 and trend_strength < self.trend_thresholds["weak"]:
             classification_path.append("breakout_setup_check")
 
             # Check for breakout conditions
@@ -267,10 +250,14 @@ class EnhancedRegimeAnalyzer:
         if adx < 20:
             classification_path.append("ranging_market_check")
 
-            if volatility > self.volatility_percentiles['p50']:
+            if volatility > self.volatility_percentiles["p50"]:
                 classification_path.append("moderate_volatility_ranging")
-                return MarketRegime.MODERATE_VOLATILITY_RANGING, 0.70, classification_path
-            elif volatility > self.volatility_percentiles['p25']:
+                return (
+                    MarketRegime.MODERATE_VOLATILITY_RANGING,
+                    0.70,
+                    classification_path,
+                )
+            elif volatility > self.volatility_percentiles["p25"]:
                 classification_path.append("low_volatility_ranging")
                 return MarketRegime.LOW_VOLATILITY_RANGING, 0.65, classification_path
             else:
@@ -289,7 +276,7 @@ class EnhancedRegimeAnalyzer:
                 confidence=0.5,
                 indicators={},
                 metadata={"reason": "insufficient_data"},
-                classification_path=["insufficient_data"]
+                classification_path=["insufficient_data"],
             )
 
         # Calculate technical indicators
@@ -312,10 +299,10 @@ class EnhancedRegimeAnalyzer:
                 "data_points": len(self.price_buffer),
                 "adaptive_thresholds": {
                     "volatility_percentiles": self.volatility_percentiles,
-                    "trend_thresholds": self.trend_thresholds
-                }
+                    "trend_thresholds": self.trend_thresholds,
+                },
             },
-            classification_path=classification_path
+            classification_path=classification_path,
         )
 
         # Store in history

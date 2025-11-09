@@ -1,0 +1,16 @@
+{
+  "risk_metrics": {},
+  "temporal_patterns": {},
+  "market_conditions": {},
+  "trading_frequency": {},
+  "temporal_analysis": {},
+  "market_condition_analysis": {},
+  "trading_frequency_analysis": {},
+  "robustness_analysis": {
+    "error": "No PnL or portfolio data available"
+  },
+  "correlation_analysis": {},
+  "transaction_cost_analysis": {},
+  "walk_forward_analysis": {},
+  "microstructure_analysis": {}
+}
