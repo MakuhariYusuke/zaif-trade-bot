@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-11-10T03:50:45.996157",
+  "total_tests": 3,
+  "successful_tests": 3,
+  "failed_tests": 0,
+  "execution_time_seconds": 1.579500436782837,
+  "test_results": [
+    {
+      "name": "ウォークフォワード分析統合",
+      "success": true
+    },
+    {
+      "name": "統合最適化システム",
+      "success": true
+    },
+    {
+      "name": "コンポーネント統合",
+      "success": true
+    }
+  ]
+}

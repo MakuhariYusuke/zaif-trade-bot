@@ -616,7 +616,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
             callbacks.append(best_model_callback)
             self.logger.info("🏆 Best Model saving enabled")
 
-        # チェックポイントコールバック
+        # チェックポイントコールバック (SB3標準とTrainingCheckpointManager経由の両方を使用)
         checkpoint_interval = int(safe_to_float(cfg.get("checkpoint_interval", 10000)))
         checkpoint_callback = CheckpointCallback(
             save_freq=checkpoint_interval,

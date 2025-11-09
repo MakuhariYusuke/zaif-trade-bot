@@ -1,0 +1,40 @@
+{
+  "backtest_info": {
+    "model": "sac_v445.3_strong_selling_optimized",
+    "config_file": "config/v445/sac_v445.3_strong_selling_optimized.json",
+    "model_file": "models/sac_v445.3_strong_selling_optimized_final.zip",
+    "timestamp": "2025-11-09T22:23:35.202388",
+    "total_steps": 4139
+  },
+  "initial_state": {
+    "portfolio_value": 10000.0,
+    "jpy_balance": 10000.0,
+    "btc_balance": 0.0
+  },
+  "final_state": {
+    "portfolio_value": 1247365.9552089658,
+    "jpy_balance": 0.0,
+    "btc_balance": 24.93422508239746
+  },
+  "profits": {
+    "jpy_profit": -10000.0,
+    "btc_profit": 24.93422508239746,
+    "total_profit": 1237365.9552089658,
+    "total_return_pct": 12373.659552089659
+  },
+  "action_statistics": {
+    "total_actions": 4139,
+    "sell_actions": 1388,
+    "buy_actions": 1459,
+    "hold_actions": 1292,
+    "sell_percentage": 33.5346702101957,
+    "buy_percentage": 35.25006040106306,
+    "hold_percentage": 31.21526938874124
+  },
+  "performance_metrics": {
+    "total_reward": 142349.402276356,
+    "average_reward": 34.39222089305533,
+    "max_portfolio_value": 1247780.9434902158,
+    "min_portfolio_value": 9945.118899638977
+  }
+}

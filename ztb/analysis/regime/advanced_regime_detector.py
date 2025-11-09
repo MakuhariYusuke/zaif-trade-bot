@@ -6,37 +6,12 @@ with 12 distinct market regimes for adaptive trading strategies.
 """
 
 from collections import deque
-from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 
-
-class MarketRegime(Enum):
-    """Enumeration of market regimes."""
-    STRONG_BULL_TREND = "strong_bull_trend"
-    MODERATE_BULL_TREND = "moderate_bull_trend"
-    WEAK_BULL_TREND = "weak_bull_trend"
-    STRONG_BEAR_TREND = "strong_bear_trend"
-    MODERATE_BEAR_TREND = "moderate_bear_trend"
-    WEAK_BEAR_TREND = "weak_bear_trend"
-    HIGH_VOLATILITY_RANGING = "high_volatility_ranging"
-    MODERATE_VOLATILITY_RANGING = "moderate_volatility_ranging"
-    LOW_VOLATILITY_RANGING = "low_volatility_ranging"
-    EXTREME_VOLATILITY = "extreme_volatility"
-    CONSOLIDATION = "consolidation"
-    BREAKOUT_SETUP = "breakout_setup"
-    BREAKDOWN_SETUP = "breakdown_setup"
-
-
-@dataclass
-class RegimeDetectionResult:
-    """Result of regime detection."""
-    regime: MarketRegime
-    confidence: float
-    indicators: Dict[str, float]
-    metadata: Dict[str, Any]
+from ztb.analysis.market_regime_types import MarketRegime, RegimeDetectionResult
 
 
 class TechnicalIndicators:
@@ -63,30 +38,33 @@ class TechnicalIndicators:
         return float(rsi)
 
     @staticmethod
-    def calculate_adx(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int = 14) -> float:
+    def calculate_adx(
+        highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int = 14
+    ) -> float:
         """Calculate Average Directional Index."""
-        if len(highs) < period + 1 or len(lows) < period + 1 or len(closes) < period + 1:
+        if (
+            len(highs) < period + 1
+            or len(lows) < period + 1
+            or len(closes) < period + 1
+        ):
             return 25.0  # Neutral ADX
 
         # Calculate True Range
         tr = np.maximum(
             highs[1:] - lows[1:],
-            np.maximum(
-                np.abs(highs[1:] - closes[:-1]),
-                np.abs(lows[1:] - closes[:-1])
-            )
+            np.maximum(np.abs(highs[1:] - closes[:-1]), np.abs(lows[1:] - closes[:-1])),
         )
 
         # Calculate Directional Movement
         dm_plus = np.where(
             (highs[1:] - highs[:-1]) > (lows[:-1] - lows[1:]),
             np.maximum(highs[1:] - highs[:-1], 0),
-            0
+            0,
         )
         dm_minus = np.where(
             (lows[:-1] - lows[1:]) > (highs[1:] - highs[:-1]),
             np.maximum(lows[:-1] - lows[1:], 0),
-            0
+            0,
         )
 
         # Smooth the values
@@ -95,7 +73,11 @@ class TechnicalIndicators:
         di_minus = 100 * np.mean(dm_minus[-period:]) / atr if atr > 0 else 0
 
         # Calculate ADX
-        dx = 100 * np.abs(di_plus - di_minus) / (di_plus + di_minus) if (di_plus + di_minus) > 0 else 0
+        dx = (
+            100 * np.abs(di_plus - di_minus) / (di_plus + di_minus)
+            if (di_plus + di_minus) > 0
+            else 0
+        )
         adx = np.mean([dx])  # Simplified, should be smoothed
 
         return float(adx)
@@ -117,7 +99,7 @@ class TechnicalIndicators:
         if len(prices) < period + 1:
             return 0.0
 
-        return float((prices[-1] - prices[-period-1]) / prices[-period-1])
+        return float((prices[-1] - prices[-period - 1]) / prices[-period - 1])
 
     @staticmethod
     def calculate_macd(prices: np.ndarray) -> Tuple[float, float, float]:
@@ -169,8 +151,9 @@ class AdvancedRegimeDetector:
         self.adx_trend_threshold = 25
         self.trend_strength_threshold = 0.01
 
-    def update_price_data(self, price: float, high: Optional[float] = None,
-                         low: Optional[float] = None):
+    def update_price_data(
+        self, price: float, high: Optional[float] = None, low: Optional[float] = None
+    ):
         """
         Update the detector with new price data.
 
@@ -202,33 +185,42 @@ class AdvancedRegimeDetector:
 
         # Calculate percentiles for volatility
         if len(self.price_buffer) > 20:
-            recent_volatility = [TechnicalIndicators.calculate_volatility(
-                np.array(list(self.price_buffer)[-i-20:-i]) if i > 0 else np.array(list(self.price_buffer)[-20:])
-            ) for i in range(min(10, len(self.price_buffer)//20))]
-            volatility_percentile = np.percentile(recent_volatility, 70) if recent_volatility else 0.5
+            recent_volatility = [
+                TechnicalIndicators.calculate_volatility(
+                    np.array(list(self.price_buffer)[-i - 20 : -i])
+                    if i > 0
+                    else np.array(list(self.price_buffer)[-20:])
+                )
+                for i in range(min(10, len(self.price_buffer) // 20))
+            ]
+            volatility_percentile = (
+                np.percentile(recent_volatility, 70) if recent_volatility else 0.5
+            )
         else:
             volatility_percentile = 0.5
 
         return {
-            'rsi': rsi,
-            'adx': adx,
-            'volatility': volatility,
-            'volatility_percentile': volatility_percentile,
-            'momentum': momentum,
-            'macd': macd,
-            'macd_signal': signal,
-            'macd_histogram': histogram
+            "rsi": rsi,
+            "adx": adx,
+            "volatility": volatility,
+            "volatility_percentile": volatility_percentile,
+            "momentum": momentum,
+            "macd": macd,
+            "macd_signal": signal,
+            "macd_histogram": histogram,
         }
 
-    def _classify_regime(self, indicators: Dict[str, float]) -> Tuple[MarketRegime, float]:
+    def _classify_regime(
+        self, indicators: Dict[str, float]
+    ) -> Tuple[MarketRegime, float]:
         """Classify the current market regime based on indicators."""
-        rsi = indicators.get('rsi', 50.0)
-        adx = indicators.get('adx', 25.0)
-        trend_strength = abs(indicators.get('momentum', 0.0))
-        volatility = indicators.get('volatility', 0.0)
-        volatility_percentile = indicators.get('volatility_percentile', 0.5)
-        macd_histogram = indicators.get('macd_histogram', 0.0)
-        momentum = indicators.get('momentum', 0.0)
+        rsi = indicators.get("rsi", 50.0)
+        adx = indicators.get("adx", 25.0)
+        trend_strength = abs(indicators.get("momentum", 0.0))
+        volatility = indicators.get("volatility", 0.0)
+        volatility_percentile = indicators.get("volatility_percentile", 0.5)
+        macd_histogram = indicators.get("macd_histogram", 0.0)
+        momentum = indicators.get("momentum", 0.0)
 
         # High volatility regimes
         if volatility_percentile > 0.9:
@@ -282,7 +274,7 @@ class AdvancedRegimeDetector:
                 regime=MarketRegime.CONSOLIDATION,
                 confidence=0.5,
                 indicators={},
-                metadata={"reason": "insufficient_data"}
+                metadata={"reason": "insufficient_data"},
             )
 
         # Calculate technical indicators
@@ -299,7 +291,7 @@ class AdvancedRegimeDetector:
             regime=regime,
             confidence=confidence,
             indicators=indicators,
-            metadata={"detection_time": datetime.now().isoformat()}
+            metadata={"detection_time": datetime.now().isoformat()},
         )
 
         self.regime_history.append(result)
@@ -317,7 +309,7 @@ class AdvancedRegimeDetector:
                 "total_detections": 0,
                 "regime_counts": {},
                 "average_confidence": 0.0,
-                "most_common_regime": None
+                "most_common_regime": None,
             }
 
         regime_counts = {}
@@ -328,13 +320,15 @@ class AdvancedRegimeDetector:
             regime_counts[regime_name] = regime_counts.get(regime_name, 0) + 1
             total_confidence += result.confidence
 
-        most_common_regime = max(regime_counts.items(), key=lambda x: x[1])[0] if regime_counts else None
+        most_common_regime = (
+            max(regime_counts.items(), key=lambda x: x[1])[0] if regime_counts else None
+        )
 
         return {
             "total_detections": len(self.regime_history),
             "regime_counts": regime_counts,
             "average_confidence": total_confidence / len(self.regime_history),
-            "most_common_regime": most_common_regime
+            "most_common_regime": most_common_regime,
         }
 
     def reset(self):

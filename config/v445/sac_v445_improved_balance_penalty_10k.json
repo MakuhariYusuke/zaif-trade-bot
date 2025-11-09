@@ -1,0 +1,75 @@
+{
+  "algorithm": "sac",
+  "total_timesteps": 10000,
+  "model_name": "sac_v445_improved_balance_penalty_10k",
+  "description": "SAC v445 with improved balance penalty - 10k timesteps training",
+  "model_save_path": "models/sac_v445_improved_balance_penalty_10k.zip",
+  "training": {
+    "algorithm": "sac",
+    "total_timesteps": 10000,
+    "data_config": {
+      "csv_path": "data/btc_jpy_featured_dataset.csv"
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.001,
+      "buffer_size": 50000,
+      "learning_starts": 100,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": 0.5,
+      "target_update_interval": 1,
+      "target_entropy": -1.0
+    }
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "commission": 0.001,
+    "max_position_size": 1.0,
+    "reward_scaling": 1.0,
+    "action_space_type": "continuous",
+    "use_continuous_actions": true,
+    "feature_set": "minimal",
+    "curriculum_stage": "opportunity_cost",
+    "continuous_to_discrete_threshold": 0.2,
+    "continuous_to_discrete_threshold_neg": -0.2,
+    "behavior_optimization": {
+      "balance_penalty": 50.0,
+      "action_balance_target": 0.333
+    },
+    "action_bonuses": {
+      "buy_action_bonus": 0.0,
+      "sell_action_bonus": 0.0,
+      "hold_action_bonus": 0.0
+    }
+  },
+  "reward_settings": {
+    "balance_penalty": 50.0,
+    "use_simple_reward": false,
+    "balance_penalty_targets": {
+      "buy_target": 0.333,
+      "sell_target": 0.333,
+      "hold_target": 0.334
+    },
+    "unrealized_loss_penalty_enabled": true,
+    "unrealized_loss_penalty_base": 1.05,
+    "unrealized_loss_penalty_max_steps": 100,
+    "opportunity_cost_penalty_enabled": true,
+    "opportunity_cost_penalty_base": 0.01,
+    "opportunity_cost_penalty_increase_rate": 0.005,
+    "opportunity_cost_max_steps": 50
+  },
+  "behavior_optimization": {
+    "balance_penalty": 50.0,
+    "action_balance_target": 0.333
+  },
+  "checkpoint_interval": 500,
+  "checkpoint_dir": "models/checkpoints",
+  "logging": {
+    "level": "WARNING",
+    "forced_balance_level": "WARNING",
+    "reward_calculator_level": "WARNING",
+    "environment_level": "WARNING",
+    "tensorboard_log": "runs/sac_v445_improved_balance_penalty_10k"
+  }
+}

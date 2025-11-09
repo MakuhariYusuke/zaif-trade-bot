@@ -1,0 +1,8 @@
+{
+  "model_name": "sac_v445.4_ultra_aggressive_selling",
+  "total_timesteps": 10000,
+  "training_duration": "completed",
+  "final_model_path": "models/sac_v445.4_ultra_aggressive_selling_final.zip",
+  "config_path": "config/v445/sac_v445.4_ultra_aggressive_selling.json",
+  "timestamp": "2025-11-09T15:53:42.782856"
+}

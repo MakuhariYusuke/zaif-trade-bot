@@ -1,0 +1,8 @@
+{
+  "model_name": "sac_v445.3_strong_selling_optimized",
+  "total_timesteps": 10000,
+  "training_duration": "0:06:21.953903",
+  "final_model_path": "models/sac_v445.3_strong_selling_optimized_final.zip",
+  "config_path": "config/v445/sac_v445.3_strong_selling_optimized.json",
+  "timestamp": "2025-11-09T22:11:05.104601"
+}

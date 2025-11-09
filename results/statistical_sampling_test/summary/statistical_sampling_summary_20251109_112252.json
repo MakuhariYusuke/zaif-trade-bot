@@ -1,0 +1,41 @@
+{
+  "total_runs": 3,
+  "valid_runs": 3,
+  "total_episodes": 3,
+  "reward_statistics": {
+    "mean": 66.66666412353516,
+    "std": 188.5618133544922,
+    "min": -200.0,
+    "max": 200.0,
+    "median": 200.0,
+    "percentiles": {
+      "25th": 0.0,
+      "75th": 200.0,
+      "95th": 200.0
+    }
+  },
+  "action_distribution_statistics": {
+    "hold": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "buy": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "sell": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "individual_run_summaries": [
+    {
+      "seed": 1814,
+      "run_id": 1,
+      "episode_rewards": [

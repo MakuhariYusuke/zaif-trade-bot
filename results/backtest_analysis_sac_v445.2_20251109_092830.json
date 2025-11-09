@@ -1,0 +1,91 @@
+{
+  "summary": {
+    "episodes": 50,
+    "performance_rating": "FAIR",
+    "timestamp": "2025-11-09T09:27:38.146712"
+  },
+  "reward_analysis": {
+    "mean_reward": -133.43547908600803,
+    "reward_volatility": 94.6041640084595,
+    "reward_range": {
+      "min": -365.5761429673258,
+      "max": -0.344114154235157,
+      "median": -120.91578911923749
+    },
+    "reward_distribution": {
+      "distribution_type": "MODERATE_SPREAD",
+      "coefficient_of_variation": 0.7089880791560754,
+      "volatility_assessment": "MODERATE"
+    },
+    "improvement_potential": {
+      "improvement_potential": "LOW",
+      "improvement_ratio": 0.0025788804940952217,
+      "description": "Limited improvement potential - performance is consistent"
+    }
+  },
+  "action_analysis": {
+    "action_statistics": {
+      "mean": -0.10486970063447952,
+      "std": 0.57524658665406,
+      "range": {
+        "min": -1.9917856454849243,
+        "max": 1.9941275119781494
+      }
+    },
+    "action_health_check": {
+      "health_status": "ISSUES_DETECTED",
+      "issues": [
+        "EXTREME_ACTION_RANGE"
+      ],
+      "action_range_used": 3.9859131574630737,
+      "centering_score": 0.10486970063447952,
+      "variance_score": 0.57524658665406
+    },
+    "action_patterns": {
+      "available": true,
+      "episode_count": 50,
+      "mean_consistency": 0.10569377390409111,
+      "std_consistency": 0.19594865194966452,
+      "pattern_type": "MODERATELY_CONSISTENT"
+    }
+  },
+  "risk_analysis": {
+    "sharpe_ratio": -1.4104609504722883,
+    "win_rate": 0.0,
+    "risk_assessment": {
+      "risk_level": "VERY_HIGH_RISK",
+      "volatility_level": "MODERATE",
+      "sharpe_interpretation": "Very poor risk-adjusted returns",
+      "win_rate_assessment": "POOR"
+    },
+    "stability_metrics": {
+      "stability_score": 0.946041640084595,
+      "stability_level": "MODERATE",
+      "consistency_description": "Reward variability: 94.60"
+    }
+  },
+  "validation_results": {
+    "aggressive_performance_validation": {
+      "validation_result": "SUCCESS",
+      "validation_score": 1.0,
+      "passed_checks": 4,
+      "total_checks": 4,
+      "check_details": {
+        "action_variance_sufficient": true,
+        "learning_evidence": true,
+        "no_extreme_bias": true,
+        "reasonable_performance": true
+      }
+    },
+    "bias_detection": {
+      "biases_detected": 0,
+      "bias_list": [],
+      "overall_bias_assessment": "CLEAN"
+    },
+    "recommendations": [
+      "Review action space bounds and clipping",
+      "Focus on risk-adjusted performance improvements",
+      "Consider adding risk management constraints"
+    ]
+  }
+}

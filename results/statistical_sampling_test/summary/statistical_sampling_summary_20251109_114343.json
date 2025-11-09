@@ -1,0 +1,119 @@
+{
+  "total_runs": 2,
+  "valid_runs": 2,
+  "total_episodes": 2,
+  "reward_statistics": {
+    "mean": 0.0,
+    "std": 200.0,
+    "min": -200.0,
+    "max": 200.0,
+    "median": 0.0,
+    "percentiles": {
+      "25th": -100.0,
+      "75th": 100.0,
+      "95th": 180.0
+    }
+  },
+  "action_distribution_statistics": {
+    "hold": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "buy": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "sell": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "individual_run_summaries": [
+    {
+      "seed": 2493,
+      "run_id": 1,
+      "episode_rewards": [
+        -200.0
+      ],
+      "episode_lengths": [
+        50
+      ],
+      "all_actions": [],
+      "mean_reward": -200.0,
+      "std_reward": 0.0,
+      "mean_episode_length": 50,
+      "total_episodes": 1,
+      "action_distribution": {
+        "HOLD": 0.1412,
+        "BUY": 0.6295,
+        "SELL": 0.2293
+      },
+      "training_stats": {
+        "total_timesteps": 10000,
+        "training_time": 595.7755811214447,
+        "model_path": "models/sac_aggressive_performance_optimized.zip",
+        "status": "completed",
+        "steps_per_second": 16.784843684222047,
+        "final_reward": -200.0,
+        "action_distribution": {
+          "HOLD": 0.1412,
+          "BUY": 0.6295,
+          "SELL": 0.2293
+        },
+        "optimization": {
+          "memory_stats": "Training completed in 600.22 seconds",
+          "performance_profile": "Total training time: 600.22s",
+          "parallel_processing_enabled": false,
+          "cache_size": 0,
+          "data_optimization_applied": true
+        }
+      }
+    },
+    {
+      "seed": 9147,
+      "run_id": 2,
+      "episode_rewards": [
+        200.0
+      ],
+      "episode_lengths": [
+        50
+      ],
+      "all_actions": [],
+      "mean_reward": 200.0,
+      "std_reward": 0.0,
+      "mean_episode_length": 50,
+      "total_episodes": 1,
+      "action_distribution": {
+        "HOLD": 0.1559,
+        "BUY": 0.5788,
+        "SELL": 0.2653
+      },
+      "training_stats": {
+        "total_timesteps": 10000,
+        "training_time": 594.6545031070709,
+        "model_path": "models/sac_aggressive_performance_optimized.zip",
+        "status": "completed",
+        "steps_per_second": 16.816487469194264,
+        "final_reward": 200.0,
+        "action_distribution": {
+          "HOLD": 0.1559,
+          "BUY": 0.5788,
+          "SELL": 0.2653
+        },
+        "optimization": {
+          "memory_stats": "Training completed in 598.65 seconds",
+          "performance_profile": "Total training time: 598.65s",
+          "parallel_processing_enabled": false,
+          "cache_size": 0,
+          "data_optimization_applied": true
+        }
+      }
+    }
+  ]
+}

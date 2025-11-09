@@ -18,8 +18,13 @@ def main() -> None:
         description="Unified Training Runner for Zaif Trade Bot"
     )
     parser.add_argument(
+        "config_file",
+        nargs="?",
+        help="Path to configuration JSON file",
+    )
+    parser.add_argument(
         "--config",
-        required=True,
+        dest="config_file",
         help="Path to configuration JSON file",
     )
     parser.add_argument(
@@ -49,25 +54,31 @@ def main() -> None:
         help="Maximum number of features to use",
     )
     parser.add_argument(
+        "-s",
         "--total-timesteps",
         type=int,
         help="Override total_timesteps from config",
     )
     parser.add_argument(
-        "--timesteps",
-        type=int,
-        help="Alias for --total-timesteps: Override total_timesteps from config",
+        "--resume",
+        action="store_true",
+        help="Resume training from the latest checkpoint",
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Override logging level from config (DEBUG, INFO, WARNING, ERROR)",
     )
 
     args = parser.parse_args()
 
     # Load and validate configuration
     try:
-        if args.config:
+        if args.config_file:
             # Load JSON config directly for training configs
             import json
 
-            with open(args.config, "r") as f:
+            with open(args.config_file, "r") as f:
                 raw_config = json.load(f)
 
             # Process config using ConfigManager to build unified config
@@ -75,8 +86,6 @@ def main() -> None:
 
             # Determine timesteps override (prefer --total-timesteps over --timesteps)
             timesteps_override = args.total_timesteps
-            if timesteps_override is None:
-                timesteps_override = args.timesteps
 
             config_manager = ConfigManager(raw_config)
             config = config_manager.build_unified_config(
@@ -84,6 +93,11 @@ def main() -> None:
                 stream_batch_size=args.stream_batch_size,
                 total_timesteps_override=timesteps_override,
             )
+            # Override log level from command line if provided
+            if args.log_level:
+                if "logging" not in config:
+                    config["logging"] = {}
+                config["logging"]["level"] = args.log_level
             print(f"DEBUG: Unified config environment: {config.get('environment', {})}")
             print(f"DEBUG: Unified config keys: {list(config.keys())}")
         else:
@@ -92,6 +106,7 @@ def main() -> None:
 
             config_manager = GlobalConfigManager.get_instance()
             config = config_manager.load_config()
+            timesteps_override = args.total_timesteps
 
     except Exception as e:
         print(f"❌ Failed to load configuration: {e}")
@@ -108,6 +123,7 @@ def main() -> None:
         stream_batch_size=args.stream_batch_size,
         max_features=args.max_features,
         total_timesteps=timesteps_override,
+        resume=args.resume,
     )
 
     success = trainer.run()

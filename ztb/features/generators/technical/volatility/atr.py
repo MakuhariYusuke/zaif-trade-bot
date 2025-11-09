@@ -7,7 +7,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ztb.features.registry import FeatureRegistry
+from ztb.features.core.registry import FeatureRegistry
 from ztb.features.timeframe import Timeframe
 from ztb.utils.talib_wrapper import TaLibWrapper
 
