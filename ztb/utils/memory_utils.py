@@ -3,6 +3,7 @@ Memory management utilities for Zaif Trade Bot.
 
 This module provides context managers and utilities for efficient memory management,
 particularly for temporary arrays and large data structures.
+Enhanced with TTLCache memory management integration.
 """
 
 from contextlib import contextmanager
@@ -12,6 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ztb.utils.logging_utils import get_logger
+from ztb.cache.memory_cache import default_memory_manager
 
 logger = get_logger(__name__)
 
@@ -46,12 +48,11 @@ def temporary_array(*args: Any, **kwargs: Any) -> Generator[NDArray[Any], None, 
         del arr
 
 
-@contextmanager
 def memory_efficient_processing(
     data: NDArray[Any], chunk_size: Optional[int] = None
 ) -> Generator[NDArray[Any], None, None]:
     """
-    Context manager for memory-efficient processing of large arrays.
+    Generator for memory-efficient processing of large arrays.
 
     Automatically chunks large arrays for processing to avoid memory issues.
 
@@ -77,21 +78,31 @@ def memory_efficient_processing(
 
 class MemoryTracker:
     """
-    Track memory usage of operations.
+    Track memory usage of operations with TTLCache integration.
 
     Useful for debugging memory leaks and optimizing memory usage.
+    Enhanced with MemoryManager integration for comprehensive tracking.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, enable_cache_tracking: bool = True) -> None:
         super().__init__()
         self._initial_memory = 0
         self._peak_memory = 0
+        self._cache_initial_size = 0
+        self.enable_cache_tracking = enable_cache_tracking
+        self.memory_manager = default_memory_manager if enable_cache_tracking else None
 
     def __enter__(self) -> Any:
         import psutil
 
         process = psutil.Process()
         self._initial_memory = process.memory_info().rss
+
+        # Track cache size if enabled
+        if self.memory_manager:
+            cache_stats = self.memory_manager.get_cache_stats()
+            self._cache_initial_size = cache_stats["total_cache_entries"]
+
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -101,16 +112,30 @@ class MemoryTracker:
         final_memory = process.memory_info().rss
         memory_delta = final_memory - self._initial_memory
 
+        # Get cache statistics
+        cache_final_size = 0
+        if self.memory_manager:
+            cache_stats = self.memory_manager.get_cache_stats()
+            cache_final_size = cache_stats["total_cache_entries"]
+
+        cache_delta = cache_final_size - self._cache_initial_size
+
         logger.debug(
             f"Memory usage: initial={self._initial_memory / 1024 / 1024:.1f}MB, "
             f"final={final_memory / 1024 / 1024:.1f}MB, "
-            f"delta={memory_delta / 1024 / 1024:+.1f}MB"
+            f"delta={memory_delta / 1024 / 1024:+.1f}MB, "
+            f"cache_delta={cache_delta:+d} entries"
         )
 
         if memory_delta > 50 * 1024 * 1024:  # 50MB threshold
             logger.warning(
                 f"Large memory increase detected: {memory_delta / 1024 / 1024:.1f}MB"
             )
+
+        # Trigger memory optimization if memory usage is high
+        if self.memory_manager and final_memory > 800 * 1024 * 1024:  # 800MB threshold
+            logger.info("High memory usage detected, triggering optimization...")
+            self.memory_manager.optimize_memory_usage()
 
 
 def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:
@@ -137,16 +162,20 @@ def cleanup_training_memory(
     env: Optional[Any] = None,
     model: Optional[Any] = None,
     data_cache: Optional[dict] = None,
-    force_gc: bool = True
+    force_gc: bool = True,
+    optimize_cache: bool = True
 ) -> None:
     """
     Perform comprehensive memory cleanup after training operations.
+
+    Enhanced with MemoryManager integration for cache optimization.
 
     Args:
         env: Training environment to close
         model: Model object (not deleted if might be saved)
         data_cache: Data cache dictionary to clear
         force_gc: Whether to force garbage collection
+        optimize_cache: Whether to optimize memory cache
     """
     import gc
 
@@ -166,6 +195,11 @@ def cleanup_training_memory(
             # Just log, don't delete
             logger.debug("Model cleanup skipped (may be saved)")
 
+        # Optimize memory cache
+        if optimize_cache:
+            default_memory_manager.optimize_memory_usage()
+            logger.debug("Optimized memory cache")
+
         # Force garbage collection
         if force_gc:
             collected = gc.collect()
@@ -181,30 +215,54 @@ def get_memory_usage() -> Dict[str, float]:
     """
     Get current memory usage statistics.
 
+    Enhanced with MemoryManager integration for comprehensive statistics.
+
     Returns:
-        Dictionary with memory usage information in MB
+        Dictionary with memory usage information in MB and cache stats
     """
     try:
         import psutil
         process = psutil.Process()
         memory_info = process.memory_info()
 
-        return {
+        base_stats = {
             'rss': memory_info.rss / 1024 / 1024,  # Resident Set Size
             'vms': memory_info.vms / 1024 / 1024,  # Virtual Memory Size
             'percent': process.memory_percent()
         }
+
+        # Add cache statistics from MemoryManager
+        cache_stats = default_memory_manager.get_cache_stats()
+        base_stats.update({
+            'cache_feature_entries': cache_stats['feature_cache_size'],
+            'cache_data_entries': cache_stats['data_cache_size'],
+            'cache_model_entries': cache_stats['model_cache_size'],
+            'cache_total_entries': cache_stats['total_cache_entries']
+        })
+
+        return base_stats
+
     except ImportError:
         logger.warning("psutil not available for memory monitoring")
-        return {'rss': 0.0, 'vms': 0.0, 'percent': 0.0}
+        return {
+            'rss': 0.0, 'vms': 0.0, 'percent': 0.0,
+            'cache_feature_entries': 0, 'cache_data_entries': 0,
+            'cache_model_entries': 0, 'cache_total_entries': 0
+        }
     except Exception as e:
         logger.warning(f"Failed to get memory usage: {e}")
-        return {'rss': 0.0, 'vms': 0.0, 'percent': 0.0}
+        return {
+            'rss': 0.0, 'vms': 0.0, 'percent': 0.0,
+            'cache_feature_entries': 0, 'cache_data_entries': 0,
+            'cache_model_entries': 0, 'cache_total_entries': 0
+        }
 
 
 def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
     """
     Check if memory usage is above threshold.
+
+    Enhanced with cache-aware memory pressure detection.
 
     Args:
         threshold_mb: Memory threshold in MB
@@ -213,4 +271,18 @@ def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
         True if memory usage is above threshold
     """
     memory = get_memory_usage()
-    return memory['rss'] > threshold_mb
+
+    # Check RSS memory
+    memory_pressure = memory['rss'] > threshold_mb
+
+    # Also check cache size as additional pressure indicator
+    cache_pressure = memory.get('cache_total_entries', 0) > 1000  # Arbitrary cache size threshold
+
+    if memory_pressure or cache_pressure:
+        logger.warning(
+            f"Memory pressure detected: RSS={memory['rss']:.1f}MB/{threshold_mb:.1f}MB, "
+            f"Cache={memory.get('cache_total_entries', 0)} entries"
+        )
+        return True
+
+    return False

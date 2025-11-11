@@ -79,12 +79,24 @@ def calculate_improved_balance_penalty(actions, balance_penalty_scale=1000.0):
     buy_sell_target = 0.4
     hold_target = 0.2
 
-    penalty = (
-        abs(buy_ratio - buy_sell_target)
-        + abs(sell_ratio - buy_sell_target)
-        + abs(hold_ratio - hold_target)
-        + abs(buy_ratio - sell_ratio) * 0.5  # Additional penalty for BUY/SELL imbalance
-    ) * balance_penalty_scale
+    # Calculate penalties for deviation from targets
+    buy_penalty = abs(buy_ratio - buy_sell_target)
+    sell_penalty = abs(sell_ratio - buy_sell_target)
+    hold_penalty = abs(hold_ratio - hold_target)
+
+    # BUY actions are more expensive (transaction costs, position management)
+    # so penalize BUY deviations more heavily
+    buy_penalty *= 1.5
+
+    # Additional penalty for BUY/SELL imbalance - penalize the excessive action more
+    if buy_ratio > sell_ratio:
+        # Too many BUYs - increase BUY penalty
+        buy_penalty *= 2.0
+    elif sell_ratio > buy_ratio:
+        # Too many SELLs - increase SELL penalty
+        sell_penalty *= 2.0
+
+    penalty = (buy_penalty + sell_penalty + hold_penalty) * balance_penalty_scale
 
     return penalty
 

@@ -146,6 +146,9 @@ class TestAdaptiveConfidenceAdjuster:
 
     def test_volatility_adjustment(self, confidence_adjuster):
         """ボラティリティ調整テスト"""
+        # 固定シードで再現性確保
+        np.random.seed(42)
+
         # 低ボラティリティデータ
         low_vol_data = pd.DataFrame({
             'open': [100] * 50,
@@ -249,16 +252,16 @@ class TestMarketRegimeDetector:
         regime = regime_detector.detect_regime(trend_data)
 
         assert isinstance(regime, MarketRegime)
-        # 上昇トレンドなのでBULL_TRENDが検出されるはず
-        assert regime in [MarketRegime.BULL_TREND, MarketRegime.SIDEWAYS]
+        # 上昇トレンドなのでSTRONG_BULLまたはMODERATE_BULLが検出されるはず
+        assert regime in [MarketRegime.STRONG_BULL, MarketRegime.MODERATE_BULL]
 
     def test_detect_regime_sideways(self, regime_detector, sideways_data):
         """レンジ検出テスト"""
         regime = regime_detector.detect_regime(sideways_data)
 
         assert isinstance(regime, MarketRegime)
-        # 横ばいなのでSIDEWAYSまたはCONSOLIDATIONが検出されるはず
-        assert regime in [MarketRegime.SIDEWAYS, MarketRegime.CONSOLIDATION]
+        # 横ばいなのでTIGHT_RANGEまたはQUIET_RANGEが検出されるはず
+        assert regime in [MarketRegime.TIGHT_RANGE, MarketRegime.QUIET_RANGE]
 
     def test_detect_regime_insufficient_data(self, regime_detector):
         """データ不足時のレジーム検出テスト"""
@@ -271,8 +274,8 @@ class TestMarketRegimeDetector:
 
         regime = regime_detector.detect_regime(short_data)
 
-        # データ不足時はSIDEWAYSが返される
-        assert regime == MarketRegime.SIDEWAYS
+        # データ不足時はQUIET_RANGEが返される
+        assert regime == MarketRegime.QUIET_RANGE
 
     def test_trend_strength_calculation(self, regime_detector, trend_data):
         """トレンド強度計算テスト"""
@@ -310,23 +313,21 @@ class TestConfidenceThresholds:
         thresholds = ConfidenceThresholds()
 
         # 各レジームの閾値を取得
-        bull_threshold = thresholds.get_threshold_for_regime(MarketRegime.BULL_TREND)
-        assert bull_threshold == thresholds.bull_trend_threshold
+        strong_bull_threshold = thresholds.get_threshold_for_regime(MarketRegime.STRONG_BULL)
+        assert strong_bull_threshold == thresholds.strong_bull_threshold
 
-        bear_threshold = thresholds.get_threshold_for_regime(MarketRegime.BEAR_TREND)
-        assert bear_threshold == thresholds.bear_trend_threshold
+        moderate_bull_threshold = thresholds.get_threshold_for_regime(MarketRegime.MODERATE_BULL)
+        assert moderate_bull_threshold == thresholds.moderate_bull_threshold
 
-        sideways_threshold = thresholds.get_threshold_for_regime(MarketRegime.SIDEWAYS)
-        assert sideways_threshold == thresholds.sideways_threshold
+        strong_bear_threshold = thresholds.get_threshold_for_regime(MarketRegime.STRONG_BEAR)
+        assert strong_bear_threshold == thresholds.strong_bear_threshold
 
-        # HIGH_VOLATILITYレジームの閾値を取得
-        high_vol_threshold = thresholds.get_threshold_for_regime(MarketRegime.HIGH_VOLATILITY)
-        assert high_vol_threshold == thresholds.high_vol_threshold
+        tight_range_threshold = thresholds.get_threshold_for_regime(MarketRegime.TIGHT_RANGE)
+        assert tight_range_threshold == thresholds.tight_range_threshold
 
-        # 未知のレジームは基本閾値を返す（実際には全て定義されているのでテスト用）
-        # ここではBREAKOUTが定義されていることを確認
-        breakout_threshold = thresholds.get_threshold_for_regime(MarketRegime.BREAKOUT)
-        assert breakout_threshold == thresholds.breakout_threshold
+        # BREAKOUT_UPレジームの閾値を取得
+        breakout_up_threshold = thresholds.get_threshold_for_regime(MarketRegime.BREAKOUT_UP)
+        assert breakout_up_threshold == thresholds.breakout_up_threshold
 
     def test_to_dict(self):
         """辞書変換テスト"""

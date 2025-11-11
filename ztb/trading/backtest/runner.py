@@ -168,7 +168,7 @@ class BacktestEngine:
 
     def run_backtest(
         self, strategy: StrategyAdapter, data: pd.DataFrame
-    ) -> tuple[pd.Series, pd.DataFrame, Optional[Dict[str, Any]]]:
+    ) -> tuple[pd.Series, pd.DataFrame, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """Run backtest simulation."""
 
         capital = self.initial_capital
@@ -592,7 +592,7 @@ def main() -> None:
         data = engine.load_data(args.dataset)
 
         # Run backtest
-        equity_curve, orders, adaptation_summary = engine.run_backtest(strategy, data)
+        equity_curve, orders, adaptation_summary, signal_performance_summary = engine.run_backtest(strategy, data)
 
         # Log adaptation summary if available
         if adaptation_summary:

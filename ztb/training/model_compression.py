@@ -20,6 +20,7 @@ import torch.nn as nn
 from torch.quantization import DeQuantStub, QuantStub
 
 from ztb.utils.logging_utils import get_logger
+from ztb.cache.memory_cache import default_memory_manager
 
 logger = get_logger(__name__)
 
@@ -216,6 +217,160 @@ class QuantizationCompressor(BaseCompressionTechnique):
         except Exception as e:
             logger.warning(f"Failed to calculate model size: {e}")
             return 0.0
+
+
+class PruningCompressor(BaseCompressionTechnique):
+    """
+    Neural network pruning for model compression.
+
+    Supports multiple pruning techniques:
+    - L1/L2 unstructured pruning
+    - Structured pruning (channel-wise)
+    - Dynamic pruning based on importance scores
+    """
+
+    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.2):
+        """
+        Initialize pruning compressor.
+
+        Args:
+            pruning_type: Type of pruning ('l1_unstructured', 'l2_unstructured', 'structured')
+            amount: Fraction of weights to prune (0.0 to 1.0)
+        """
+        self.pruning_type = pruning_type
+        self.amount = amount
+        self.pruned_weights = {}
+        self.original_sparsity = 0.0
+        self.final_sparsity = 0.0
+
+    def compress(self, model: nn.Module, **kwargs) -> nn.Module:
+        """
+        Apply pruning to the model with memory caching.
+
+        Args:
+            model: PyTorch model to prune
+            **kwargs: Additional arguments for pruning
+
+        Returns:
+            Pruned model
+        """
+        # Create cache key for pruned model
+        model_hash = hash(str(model.state_dict()))
+        cache_key = f"pruned_model_{model_hash}_{self.pruning_type}_{self.amount}"
+
+        # Check memory cache first
+        cached_model = default_memory_manager.get_cached_model_state(cache_key)
+        if cached_model is not None:
+            logger.info("Loading pruned model from memory cache")
+            model.load_state_dict(cached_model)
+            return model
+
+        logger.info(f"Applying {self.pruning_type} pruning with amount {self.amount}...")
+
+        self.original_sparsity = self._calculate_sparsity(model)
+
+        if self.pruning_type == "l1_unstructured":
+            self._apply_l1_unstructured_pruning(model)
+        elif self.pruning_type == "l2_unstructured":
+            self._apply_l2_unstructured_pruning(model)
+        elif self.pruning_type == "structured":
+            self._apply_structured_pruning(model)
+        else:
+            raise ValueError(
+                f"Unsupported pruning type: {self.pruning_type}. "
+                "Supported types: l1_unstructured, l2_unstructured, structured"
+            )
+
+        self.final_sparsity = self._calculate_sparsity(model)
+
+        logger.info(".1%")
+
+        # Cache the pruned model state
+        default_memory_manager.cache_model_state(cache_key, model.state_dict())
+
+        return model
+
+    def _apply_l1_unstructured_pruning(self, model: nn.Module):
+        """Apply L1 unstructured pruning."""
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                # Calculate L1 norm for each weight
+                weight_l1 = torch.abs(module.weight).sum(dim=1)
+                _, indices = torch.topk(
+                    weight_l1,
+                    int(module.weight.size(0) * (1 - self.amount)),
+                    largest=True,
+                )
+                mask = torch.zeros_like(module.weight)
+                mask[indices] = 1
+                module.weight.data *= mask
+
+    def _apply_l2_unstructured_pruning(self, model: nn.Module):
+        """Apply L2 unstructured pruning."""
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                # Calculate L2 norm for each weight
+                weight_l2 = torch.sqrt(torch.sum(module.weight ** 2, dim=1))
+                _, indices = torch.topk(
+                    weight_l2,
+                    int(module.weight.size(0) * (1 - self.amount)),
+                    largest=True,
+                )
+                mask = torch.zeros_like(module.weight)
+                mask[indices] = 1
+                module.weight.data *= mask
+
+    def _apply_structured_pruning(self, model: nn.Module):
+        """Apply structured pruning (remove entire channels/filters)."""
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                # Calculate importance scores for output channels
+                weight_norm = torch.norm(module.weight, p=2, dim=1)
+                _, indices = torch.topk(
+                    weight_norm,
+                    int(module.weight.size(0) * (1 - self.amount)),
+                    largest=True,
+                )
+
+                # Create mask for selected channels
+                mask = torch.zeros(module.weight.size(0), dtype=torch.bool)
+                mask[indices] = True
+
+                # Apply mask
+                module.weight.data = module.weight.data[mask]
+                if module.bias is not None:
+                    module.bias.data = module.bias.data[mask]
+
+                # Update output features
+                module.out_features = len(indices)
+
+    def decompress(self, model: nn.Module, **kwargs) -> nn.Module:
+        """Decompression not applicable for pruning - return model as-is."""
+        logger.warning("Pruning decompression not supported - returning original model")
+        return model
+
+    def get_compression_stats(self) -> Dict[str, Any]:
+        """Get pruning compression statistics."""
+        return {
+            "technique": "pruning",
+            "type": self.pruning_type,
+            "pruning_amount": self.amount,
+            "original_sparsity": self.original_sparsity,
+            "final_sparsity": self.final_sparsity,
+            "sparsity_increase": self.final_sparsity - self.original_sparsity
+        }
+
+    def _calculate_sparsity(self, model: nn.Module) -> float:
+        """Calculate model sparsity (fraction of zero weights)."""
+        total_params = 0
+        zero_params = 0
+
+        for name, module in model.named_modules():
+            if isinstance(module, (nn.Linear, nn.Conv2d)):
+                total_params += module.weight.numel()
+                zero_params += (module.weight == 0).sum().item()
+
+        return zero_params / total_params if total_params > 0 else 0.0
 
 
 class PruningCompressor(BaseCompressionTechnique):

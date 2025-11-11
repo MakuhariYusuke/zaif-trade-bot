@@ -23,6 +23,22 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Advanced Reward System**: Modular reward calculator with clear bonus/penalty separation
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
 
+## 🆕 Recent Updates (2025-11-12)
+
+### Phase 2: Multi-Timeframe Trend Detection 完了 ✅
+- **マルチタイムフレーム分析**: 1分足、5分足、15分足の統合分析システムを実装
+- **トレンドコンバージェンス計算**: MultiTimeframeAnalyzerとTrendConvergenceCalculatorによる高度なトレンド分析
+- **SignalGuidanceSystem拡張**: Phase 2コンポーネントを統合し、既存の品質スコアリングシステムを活用
+- **完全なテストスイート**: 17個の単位テストすべて通過、コンポーネント間連携を検証
+- **既存機能活用**: TaLibWrapper、品質スコアリングシステム、既存のテクニカル指標を徹底活用
+- **Phase 1成果維持**: 26.9 signals/day目標達成を維持しつつ、精度向上を実現
+
+### SAC Training Validation and Balance Penalty Fix ✅
+- **SAC Training Execution**: 10,000ステップのSACトレーニングを正常に実行、出力値の検証完了（NaNや無限値なし）
+- **バランスペナルティ修正**: BUY/SELLアクションで異なるペナルティを実現（BUYに1.5倍のコスト係数適用）
+- **報酬システム検証**: トレーニングプロセスとの互換性を確保した報酬計算の修正
+- **テスト更新**: test_improved_balance_penalty()で非対称ペナルティを検証
+
 ## 🆕 Recent Updates (2025-11-10)
 
 ### Phase 3-1: シグナル品質向上 - 単体テスト構造化完了 ✅

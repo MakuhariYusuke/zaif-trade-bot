@@ -249,6 +249,9 @@ class HeavyTradingEnv(gym.Env):
             "current_step": self.current_step,
             "action_value": action_value,
             "position_change_threshold": position_change_threshold,
+            "portfolio_value": self.balance + self.unrealized_pnl,  # ポートフォリオ価値を追加
+            "btc_balance": getattr(self, 'btc_balance', 0),  # BTC残高
+            "current_price": self.data.iloc[self.current_step]["close"] if self.current_step < len(self.data) else 0,  # 現在価格
             "signal_strength": getattr(
                 self.reward_calculator, "last_signal_strength", 0.0
             ),
