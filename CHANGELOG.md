@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-11-11
+
+### SAC Training Validation and Balance Penalty Fix ✅
+
+#### SAC Training Execution
+- **10,000 Steps Training**: Successfully executed SAC (Soft Actor-Critic) training with 10,000 timesteps for validation
+- **Output Validation**: Verified no obviously incorrect values (NaN, infinite values, unrealistic rewards/losses)
+- **Configuration Setup**: Created configs/v430/sac_v430_test_10000.json with optimized hyperparameters
+- **Model Persistence**: Generated valid model file (sac_v430_test_10000_steps.zip) without errors
+
+#### Balance Penalty Correction
+- **Asymmetric Penalties**: Fixed balance penalty calculation to differentiate BUY and SELL actions
+- **BUY Cost Factor**: Added 1.5x penalty multiplier for BUY actions (reflecting higher transaction costs and position management)
+- **Test Validation**: Updated test_improved_balance_penalty() to verify different penalties for all-BUY vs all-SELL scenarios
+- **Reward System Integrity**: Ensured reward calculation compatibility with training process
+
 ## [Unreleased] - 2025-11-10
 
 ### Phase 3-1: シグナル品質向上 - 単体テスト構造化完了 ✅

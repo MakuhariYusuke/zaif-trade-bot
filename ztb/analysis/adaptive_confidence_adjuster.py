@@ -17,29 +17,50 @@ from ztb.utils.performance_profiler import PerformanceProfiler
 
 
 class MarketRegime(Enum):
-    """市場レジーム"""
+    """市場レジーム - 12分類拡張版"""
 
-    BULL_TREND = "bull_trend"          # 強気トレンド
-    BEAR_TREND = "bear_trend"          # 弱気トレンド
-    SIDEWAYS = "sideways"              # レンジ
-    HIGH_VOLATILITY = "high_volatility" # 高ボラティリティ
-    LOW_VOLATILITY = "low_volatility"   # 低ボラティリティ
-    BREAKOUT = "breakout"              # ブレイクアウト
-    CONSOLIDATION = "consolidation"    # 統合
+    # トレンド系 (4分類)
+    STRONG_BULL = "strong_bull"        # 強い強気トレンド
+    MODERATE_BULL = "moderate_bull"    # 中程度の強気トレンド
+    MODERATE_BEAR = "moderate_bear"    # 中程度の弱気トレンド
+    STRONG_BEAR = "strong_bear"        # 強い弱気トレンド
+
+    # レンジ系 (4分類)
+    TIGHT_RANGE = "tight_range"        # 狭いレンジ (低ボラティリティ)
+    WIDE_RANGE = "wide_range"          # 広いレンジ (高ボラティリティ)
+    VOLATILE_RANGE = "volatile_range"  # ボラティリティの高いレンジ
+    QUIET_RANGE = "quiet_range"        # ボラティリティの低いレンジ
+
+    # 特殊パターン (4分類)
+    BREAKOUT_UP = "breakout_up"        # 上方向ブレイクアウト
+    BREAKOUT_DOWN = "breakout_down"    # 下方向ブレイクアウト
+    REVERSAL_UP = "reversal_up"        # 上方向転換
+    REVERSAL_DOWN = "reversal_down"    # 下方向転換
 
 
 @dataclass
 class ConfidenceThresholds:
-    """信頼度閾値設定"""
+    """信頼度閾値設定 - 12レジーム拡張版"""
 
     base_threshold: float = 0.7  # 基本閾値
-    bull_trend_threshold: float = 0.65  # 強気トレンド時
-    bear_trend_threshold: float = 0.65  # 弱気トレンド時
-    sideways_threshold: float = 0.75  # レンジ時
-    high_vol_threshold: float = 0.8  # 高ボラティリティ時
-    low_vol_threshold: float = 0.6  # 低ボラティリティ時
-    breakout_threshold: float = 0.7  # ブレイクアウト時
-    consolidation_threshold: float = 0.75  # 統合時
+
+    # トレンド系閾値
+    strong_bull_threshold: float = 0.7   # 強い強気トレンド時
+    moderate_bull_threshold: float = 0.65 # 中程度の強気トレンド時
+    moderate_bear_threshold: float = 0.65 # 中程度の弱気トレンド時
+    strong_bear_threshold: float = 0.6   # 強い弱気トレンド時
+
+    # レンジ系閾値
+    tight_range_threshold: float = 0.75    # 狭いレンジ時
+    wide_range_threshold: float = 0.7      # 広いレンジ時
+    volatile_range_threshold: float = 0.8  # ボラティリティの高いレンジ時
+    quiet_range_threshold: float = 0.6     # ボラティリティの低いレンジ時
+
+    # 特殊パターン閾値
+    breakout_up_threshold: float = 0.7     # 上方向ブレイクアウト時
+    breakout_down_threshold: float = 0.7   # 下方向ブレイクアウト時
+    reversal_up_threshold: float = 0.75    # 上方向転換時
+    reversal_down_threshold: float = 0.75  # 下方向転換時
 
     # 適応型調整パラメータ
     performance_adjustment_factor: float = 0.1  # パフォーマンス調整係数
@@ -50,13 +71,23 @@ class ConfidenceThresholds:
     def get_threshold_for_regime(self, regime: MarketRegime) -> float:
         """レジームに応じた閾値を取得"""
         regime_thresholds = {
-            MarketRegime.BULL_TREND: self.bull_trend_threshold,
-            MarketRegime.BEAR_TREND: self.bear_trend_threshold,
-            MarketRegime.SIDEWAYS: self.sideways_threshold,
-            MarketRegime.HIGH_VOLATILITY: self.high_vol_threshold,
-            MarketRegime.LOW_VOLATILITY: self.low_vol_threshold,
-            MarketRegime.BREAKOUT: self.breakout_threshold,
-            MarketRegime.CONSOLIDATION: self.consolidation_threshold
+            # トレンド系
+            MarketRegime.STRONG_BULL: self.strong_bull_threshold,
+            MarketRegime.MODERATE_BULL: self.moderate_bull_threshold,
+            MarketRegime.MODERATE_BEAR: self.moderate_bear_threshold,
+            MarketRegime.STRONG_BEAR: self.strong_bear_threshold,
+
+            # レンジ系
+            MarketRegime.TIGHT_RANGE: self.tight_range_threshold,
+            MarketRegime.WIDE_RANGE: self.wide_range_threshold,
+            MarketRegime.VOLATILE_RANGE: self.volatile_range_threshold,
+            MarketRegime.QUIET_RANGE: self.quiet_range_threshold,
+
+            # 特殊パターン
+            MarketRegime.BREAKOUT_UP: self.breakout_up_threshold,
+            MarketRegime.BREAKOUT_DOWN: self.breakout_down_threshold,
+            MarketRegime.REVERSAL_UP: self.reversal_up_threshold,
+            MarketRegime.REVERSAL_DOWN: self.reversal_down_threshold
         }
         return regime_thresholds.get(regime, self.base_threshold)
 
@@ -64,13 +95,22 @@ class ConfidenceThresholds:
         """辞書形式に変換"""
         return {
             'base_threshold': self.base_threshold,
-            'bull_trend_threshold': self.bull_trend_threshold,
-            'bear_trend_threshold': self.bear_trend_threshold,
-            'sideways_threshold': self.sideways_threshold,
-            'high_vol_threshold': self.high_vol_threshold,
-            'low_vol_threshold': self.low_vol_threshold,
-            'breakout_threshold': self.breakout_threshold,
-            'consolidation_threshold': self.consolidation_threshold,
+            # トレンド系
+            'strong_bull_threshold': self.strong_bull_threshold,
+            'moderate_bull_threshold': self.moderate_bull_threshold,
+            'moderate_bear_threshold': self.moderate_bear_threshold,
+            'strong_bear_threshold': self.strong_bear_threshold,
+            # レンジ系
+            'tight_range_threshold': self.tight_range_threshold,
+            'wide_range_threshold': self.wide_range_threshold,
+            'volatile_range_threshold': self.volatile_range_threshold,
+            'quiet_range_threshold': self.quiet_range_threshold,
+            # 特殊パターン
+            'breakout_up_threshold': self.breakout_up_threshold,
+            'breakout_down_threshold': self.breakout_down_threshold,
+            'reversal_up_threshold': self.reversal_up_threshold,
+            'reversal_down_threshold': self.reversal_down_threshold,
+            # 調整パラメータ
             'performance_adjustment_factor': self.performance_adjustment_factor,
             'volatility_adjustment_factor': self.volatility_adjustment_factor,
             'min_threshold': self.min_threshold,
@@ -117,7 +157,7 @@ class MarketRegimeDetector:
 
     def detect_regime(self, data: pd.DataFrame) -> MarketRegime:
         """
-        市場レジームを検出
+        市場レジームを検出 (12分類拡張版)
 
         Args:
             data: OHLCデータ
@@ -126,34 +166,56 @@ class MarketRegimeDetector:
             検出された市場レジーム
         """
         if len(data) < self.lookback_periods:
-            return MarketRegime.SIDEWAYS
+            return MarketRegime.QUIET_RANGE
 
         recent_data = data.tail(self.lookback_periods)
 
-        # トレンド検出
+        # 基本指標計算
         trend_strength = self._calculate_trend_strength(recent_data)
-
-        # ボラティリティ検出
         volatility = self._calculate_volatility(recent_data)
-
-        # ブレイクアウト検出
         is_breakout = self._detect_breakout(recent_data)
+        is_reversal = self._detect_reversal(recent_data)
 
-        # レジーム判定
-        if trend_strength > 0.5:  # 強気トレンド
-            return MarketRegime.BULL_TREND
-        elif trend_strength < -0.5:  # 弱気トレンド
-            return MarketRegime.BEAR_TREND
-        elif abs(trend_strength) < 0.1:  # レンジ
-            return MarketRegime.CONSOLIDATION
-        elif volatility > 0.7:  # 高ボラティリティ
-            return MarketRegime.HIGH_VOLATILITY
-        elif volatility < 0.2:  # 低ボラティリティ
-            return MarketRegime.LOW_VOLATILITY
-        elif is_breakout:  # ブレイクアウト（他の条件に当てはまらない場合）
-            return MarketRegime.BREAKOUT
+        # トレンド強度による分類
+        abs_trend = abs(trend_strength)
+
+        if abs_trend > 0.7:  # 強いトレンド
+            if trend_strength > 0:
+                return MarketRegime.STRONG_BULL
+            else:
+                return MarketRegime.STRONG_BEAR
+        elif abs_trend > 0.3:  # 中程度のトレンド
+            if trend_strength > 0:
+                return MarketRegime.MODERATE_BULL
+            else:
+                return MarketRegime.MODERATE_BEAR
+
+        # レンジ/特殊パターン分類
+        if is_reversal:
+            # 転換パターン
+            recent_trend = self._calculate_trend_strength(recent_data.head(10))
+            if trend_strength > 0.2 and recent_trend < -0.2:
+                return MarketRegime.REVERSAL_UP
+            elif trend_strength < -0.2 and recent_trend > 0.2:
+                return MarketRegime.REVERSAL_DOWN
+
+        if is_breakout:
+            # ブレイクアウトパターン
+            breakout_direction = self._detect_breakout_direction(recent_data)
+            if breakout_direction > 0:
+                return MarketRegime.BREAKOUT_UP
+            else:
+                return MarketRegime.BREAKOUT_DOWN
+
+        # ボラティリティベースのレンジ分類
+        if volatility > 0.6:
+            return MarketRegime.VOLATILE_RANGE
+        elif volatility > 0.3:
+            return MarketRegime.WIDE_RANGE
+        elif volatility < 0.15:
+            return MarketRegime.QUIET_RANGE
         else:
-            return MarketRegime.SIDEWAYS
+            return MarketRegime.TIGHT_RANGE
 
     def _calculate_trend_strength(self, data: pd.DataFrame) -> float:
         """トレンド強度を計算"""
@@ -184,7 +246,16 @@ class MarketRegimeDetector:
 
         # 標準偏差をパーセンタイルに変換
         vol_std = returns.std()
-        vol_percentile = (vol_std - returns.quantile(0.1)) / (returns.quantile(0.9) - returns.quantile(0.1))
+        q10 = returns.quantile(0.1)
+        q90 = returns.quantile(0.9)
+
+        # ゼロ除算を防ぐ
+        denominator = q90 - q10
+        if denominator == 0 or np.isnan(denominator):
+            # 全ての値が同じ場合（低ボラティリティ）
+            return 0.0 if vol_std == 0 else 0.5
+
+        vol_percentile = (vol_std - q10) / denominator
         vol_percentile = np.clip(vol_percentile, 0, 1)
 
         return vol_percentile
@@ -204,6 +275,64 @@ class MarketRegimeDetector:
         breakout_down = recent_low < prev_low * 0.95  # 5%以上のブレイク
 
         return bool(breakout_up or breakout_down)
+
+    def _detect_breakout_direction(self, data: pd.DataFrame) -> int:
+        """ブレイクアウトの方向を検出 (1: 上方向, -1: 下方向, 0: なし)"""
+        if len(data) < 20:
+            return 0
+
+        recent_high = data['high'].tail(10).max()
+        recent_low = data['low'].tail(10).min()
+        prev_high = data['high'].iloc[-20:-10].max()
+        prev_low = data['low'].iloc[-20:-10].min()
+
+        breakout_up = recent_high > prev_high * 1.05
+        breakout_down = recent_low < prev_low * 0.95
+
+        if breakout_up and not breakout_down:
+            return 1
+        elif breakout_down and not breakout_up:
+            return -1
+        else:
+            return 0
+
+    def _detect_reversal(self, data: pd.DataFrame) -> bool:
+        """トレンド転換を検出"""
+        if len(data) < 30:
+            return False
+
+        # 短期トレンドと中期トレンドの比較
+        short_trend = self._calculate_trend_strength(data.tail(10))
+        medium_trend = self._calculate_trend_strength(data.tail(20))
+
+        # トレンドの方向が逆転している場合
+        trend_reversal = (short_trend * medium_trend < 0) and (abs(short_trend) > 0.3)
+
+        # RSIのダイバージェンスも考慮（簡易版）
+        if len(data) >= 14:
+            closes = data['close']
+            rsi_short = self._calculate_rsi(closes.tail(7))
+            rsi_medium = self._calculate_rsi(closes.tail(14))
+
+            rsi_divergence = abs(rsi_short - rsi_medium) > 20
+
+            return bool(trend_reversal or rsi_divergence)
+
+        return bool(trend_reversal)
+
+    def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> float:
+        """RSIを計算"""
+        if len(prices) < period + 1:
+            return 50.0
+
+        deltas = prices.diff()
+        gain = (deltas.where(deltas > 0, 0)).rolling(window=period).mean()
+        loss = (-deltas.where(deltas < 0, 0)).rolling(window=period).mean()
+
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+
+        return rsi.iloc[-1] if not rsi.empty else 50.0
 
 
 class AdaptiveConfidenceAdjuster:
@@ -330,13 +459,23 @@ class AdaptiveConfidenceAdjuster:
         """信頼度スコアを計算"""
         # レジームの安定性スコア
         regime_stability = {
-            MarketRegime.BULL_TREND: 0.8,
-            MarketRegime.BEAR_TREND: 0.8,
-            MarketRegime.SIDEWAYS: 0.6,
-            MarketRegime.HIGH_VOLATILITY: 0.4,
-            MarketRegime.LOW_VOLATILITY: 0.7,
-            MarketRegime.BREAKOUT: 0.5,
-            MarketRegime.CONSOLIDATION: 0.6
+            # トレンド系 (強いトレンドは不安定)
+            MarketRegime.STRONG_BULL: 0.6,
+            MarketRegime.MODERATE_BULL: 0.7,
+            MarketRegime.MODERATE_BEAR: 0.7,
+            MarketRegime.STRONG_BEAR: 0.6,
+            
+            # レンジ系 (安定した順)
+            MarketRegime.QUIET_RANGE: 0.9,
+            MarketRegime.TIGHT_RANGE: 0.8,
+            MarketRegime.WIDE_RANGE: 0.7,
+            MarketRegime.VOLATILE_RANGE: 0.4,
+            
+            # 特殊パターン
+            MarketRegime.BREAKOUT_UP: 0.5,
+            MarketRegime.BREAKOUT_DOWN: 0.5,
+            MarketRegime.REVERSAL_UP: 0.45,
+            MarketRegime.REVERSAL_DOWN: 0.45
         }.get(regime, 0.5)
 
         # 調整の安定性スコア

@@ -15,6 +15,7 @@ import pyarrow.parquet as pq
 
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.config_loader import ConfigLoader
+from .memory_cache import default_memory_manager
 
 
 def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
@@ -200,8 +201,18 @@ def read_parquet(
     path: Path,
     config: Optional[Dict[str, Any]] = None,
     columns: Optional[List[str]] = None,
+    enable_memory_cache: bool = True,
 ) -> pd.DataFrame:
-    """Read Parquet to DataFrame with memory monitoring"""
+    """Read Parquet to DataFrame with memory monitoring and caching"""
+    # Create cache key from path and columns
+    cache_key = f"parquet_{path}_{str(sorted(columns)) if columns else 'all'}"
+
+    # Check memory cache first
+    if enable_memory_cache:
+        cached_data = default_memory_manager.get_cached_training_data(cache_key)
+        if cached_data is not None:
+            return cached_data
+
     if config is None:
         config = load_config()
 
@@ -236,6 +247,10 @@ def read_parquet(
         print(
             f"WARNING: Memory usage exceeded limit. Current: {mem_after / (1024 * 1024):.1f}MB, Limit: {peak_memory_limit / (1024 * 1024):.1f}MB"
         )
+
+    # Cache in memory for future use
+    if enable_memory_cache:
+        default_memory_manager.cache_training_data(cache_key, df)
 
     return df
 

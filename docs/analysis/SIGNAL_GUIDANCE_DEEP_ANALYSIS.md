@@ -1,9 +1,9 @@
 # アクションシグナルガイドシステムの深掘り分析と改善提案
 
-**作成日**: 2025年11月10日  
-**最終更新**: 2025年11月11日  
-**対象**: SAC v445 アクションシグナルガイド + Phase 3 リスク管理統合  
-**ステータス**: ✅ Phase 1 & 2 実装完了 → ✅ Phase 3 リスク管理統合完了  
+**作成日**: 2025年11月10日
+**最終更新**: 2025年11月11日
+**対象**: SAC v445 アクションシグナルガイド + Phase 3 リスク管理統合
+**ステータス**: ✅ Phase 1 & 2 実装完了 → ✅ Phase 3 リスク管理統合完了
 
 ---
 
@@ -25,7 +25,7 @@
 
 **Phase 3 の主な改善点:**
 1. **マルチタイムフレーム収束分析** - 時間軸間のトレンド整合性を評価
-2. **統計的バリデーション** - シグナルの統計的有意性を検証  
+2. **統計的バリデーション** - シグナルの統計的有意性を検証
 3. **統合バックテスト** - エンハンストリスクマネージャーと連携
 4. **動的リスク乗数** - 市場ボラティリティに応じたポジション調整
 
@@ -179,33 +179,33 @@ Market Data (OHLCV)
 ```python
 class AdvancedMarketAnalyzer:
     """高度な市場分析エンジン"""
-    
+
     def __init__(self, lookback_period: int = 50):
         self.lookback = lookback_period
         self.price_history = deque(maxlen=lookback_period)
         self.volume_history = deque(maxlen=lookback_period)
         self.indicators_cache = {}
-        
+
     def calculate_rsi(self, period: int = 14) -> float:
         """RSI計算: 過買い/過売り判定"""
         if len(self.price_history) < period + 1:
             return 50.0  # 中立値
-            
+
         prices = list(self.price_history)
         deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
         gains = [d if d > 0 else 0 for d in deltas]
         losses = [-d if d < 0 else 0 for d in deltas]
-        
+
         avg_gain = sum(gains[-period:]) / period
         avg_loss = sum(losses[-period:]) / period
-        
+
         if avg_loss == 0:
             return 100.0 if avg_gain > 0 else 50.0
-            
+
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
         return rsi
-    
+
     def calculate_macd(self, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
         """MACD計算: トレンド強度判定"""
         # EMA計算
@@ -215,7 +215,7 @@ class AdvancedMarketAnalyzer:
             'signal': signal_line,
             'histogram': macd_line - signal_line
         }
-    
+
     def calculate_bollinger_bands(self, period: int = 20, std_dev: float = 2.0) -> dict:
         """ボリンジャーバンド計算"""
         # ...
@@ -226,12 +226,12 @@ class AdvancedMarketAnalyzer:
             'width': (upper_band - lower_band) / middle_band,  # 正規化幅
             'position': (current_price - lower_band) / (upper_band - lower_band)  # 0-1位置
         }
-    
+
     def calculate_atr(self, period: int = 14) -> float:
         """ATR計算: ボラティリティ指標"""
         # ...
         return atr_value
-    
+
     def analyze_volume(self, period: int = 20) -> dict:
         """出来高分析"""
         # ...
@@ -247,7 +247,7 @@ class AdvancedMarketAnalyzer:
 ```python
 class SignalQualityScorer:
     """シグナル品質評価システム"""
-    
+
     def __init__(self, analyzer: AdvancedMarketAnalyzer):
         self.analyzer = analyzer
         self.weights = {
@@ -258,13 +258,13 @@ class SignalQualityScorer:
             'volume': 0.10,
             'price_momentum': 0.10
         }
-    
-    def calculate_signal_score(self, 
+
+    def calculate_signal_score(self,
                               direction: str,  # 'buy' or 'sell'
                               config: SignalConfig) -> dict:
         """
         方向別シグナルスコア計算
-        
+
         Returns:
             {
                 'score': 0-100,  # 総合スコア
@@ -279,10 +279,10 @@ class SignalQualityScorer:
         bb = self.analyzer.calculate_bollinger_bands()
         atr = self.analyzer.calculate_atr()
         volume = self.analyzer.analyze_volume()
-        
+
         # 各指標のスコア計算
         scores = {}
-        
+
         # RSI スコア
         if direction == 'buy':
             # RSIが低い（過売り）ほど買いシグナル強い
@@ -290,7 +290,7 @@ class SignalQualityScorer:
         else:  # sell
             # RSIが高い（過買い）ほど売りシグナル強い
             scores['rsi'] = max(0, rsi - 50) if rsi > 50 else 0
-        
+
         # MACD スコア
         if direction == 'buy':
             # ヒストグラムがプラスで増加中
@@ -298,7 +298,7 @@ class SignalQualityScorer:
         else:  # sell
             # ヒストグラムがマイナスで減少中
             scores['macd'] = 100 if macd['histogram'] < 0 and macd['macd'] < macd['signal'] else 0
-        
+
         # ボリンジャーバンド スコア
         bb_position = bb['position']  # 0-1
         if direction == 'buy':
@@ -307,29 +307,29 @@ class SignalQualityScorer:
         else:  # sell
             # 上部バンド近辺（position > 0.7）で売りシグナル強い
             scores['bb'] = 100 * max(0, bb_position - 0.7) / 0.3
-        
+
         # ATR スコア（ボラティリティが高いほど取引活発）
         atr_score = min(100, self.analyzer.atr_ratio * 50)  # ATR比率を50倍で正規化
         scores['atr'] = atr_score
-        
+
         # 出来高 スコア
         volume_score = min(100, volume['volume_ratio'] * 50)
         scores['volume'] = volume_score
-        
+
         # 価格モメンタム
         momentum = self._calculate_price_momentum()
         if direction == 'buy':
             scores['price_momentum'] = momentum if momentum > 0 else 0
         else:  # sell
             scores['price_momentum'] = -momentum if momentum < 0 else 0
-        
+
         # 総合スコア計算（加重平均）
         total_score = sum(scores.get(k, 0) * v for k, v in self.weights.items())
-        
+
         # 信頼度計算（各指標が同じ方向を指しているか）
         alignment = self._calculate_alignment(scores, direction)
         confidence = alignment
-        
+
         return {
             'score': total_score,
             'confidence': confidence,
@@ -337,21 +337,21 @@ class SignalQualityScorer:
             'reason': self._generate_reason(scores, direction),
             'strength': total_score / 100.0
         }
-    
-    def should_execute_signal(self, 
+
+    def should_execute_signal(self,
                              score_result: dict,
                              min_confidence: float = 0.70) -> bool:
         """
         シグナル実行判定
-        
+
         Args:
             score_result: calculate_signal_score() の戻り値
             min_confidence: 最小信頼度閾値
-        
+
         Returns:
             True if confidence >= min_confidence and score >= 50
         """
-        return (score_result['confidence'] >= min_confidence and 
+        return (score_result['confidence'] >= min_confidence and
                 score_result['score'] >= 50)
 ```
 
@@ -360,7 +360,7 @@ class SignalQualityScorer:
 ```python
 class RiskBasedPositionManager:
     """リスクベースのポジション管理"""
-    
+
     def __init__(self, win_rate: float = 0.55, avg_profit_ratio: float = 1.2):
         """
         Args:
@@ -369,48 +369,48 @@ class RiskBasedPositionManager:
         """
         self.win_rate = win_rate
         self.avg_profit_ratio = avg_profit_ratio
-    
-    def calculate_kelly_position_size(self, 
+
+    def calculate_kelly_position_size(self,
                                      total_portfolio: float,
                                      fractional: float = 0.5) -> float:
         """
         ケリー基準によるポジションサイジング
-        
+
         f* = (p * b - q) / b
         ここで p=勝率, q=敗率, b=平均利益/損失比
         """
         p = self.win_rate
         q = 1 - p
         b = self.avg_profit_ratio
-        
+
         if b == 0:
             return 0.02  # デフォルト: 2%
-        
+
         f_star = (p * b - q) / b
-        
+
         # フラクショナル・ケリー（1/2推奨）
         position_ratio = max(0.01, min(0.25, f_star * fractional))
-        
+
         return total_portfolio * position_ratio
-    
+
     def calculate_var(self,
                      portfolio_value: float,
                      confidence_level: float = 0.95,
                      lookback_days: int = 30) -> float:
         """
         VaR（バリュー・アット・リスク）計算
-        
+
         Returns:
             最大予想損失額
         """
         # 過去リターン分析
         returns = self._get_historical_returns(lookback_days)
-        
+
         # パーセンタイル計算
         var_percentile = np.percentile(returns, (1 - confidence_level) * 100)
-        
+
         return portfolio_value * var_percentile
-    
+
     def calculate_position_size_with_risk(self,
                                          portfolio_value: float,
                                          entry_price: float,
@@ -418,24 +418,24 @@ class RiskBasedPositionManager:
                                          risk_percent: float = 0.02) -> float:
         """
         リスク額ベースのポジションサイジング
-        
+
         Args:
             portfolio_value: 総資産
             entry_price: エントリー価格
             stop_loss_price: ストップロス価格
             risk_percent: リスク許容度（資産の何%まで）
-        
+
         Returns:
             ポジションサイズ（通貨単位）
         """
         risk_amount = portfolio_value * risk_percent
         price_risk = abs(entry_price - stop_loss_price)
-        
+
         if price_risk == 0:
             return 0
-        
+
         position_size = risk_amount / price_risk
-        
+
         return position_size
 ```
 
@@ -450,14 +450,14 @@ class RiskBasedPositionManager:
 ```python
 class MultiTimeframeAnalyzer:
     """マルチタイムフレームトレンド分析システム"""
-    
+
     def __init__(self):
         self.timeframes = {
             Timeframe.M1: TimeframeData(),
             Timeframe.M5: TimeframeData(),
             Timeframe.M15: TimeframeData()
         }
-    
+
     def update_timeframe_data(self, timeframe: Timeframe, price: float, volume: float):
         """指定時間軸のデータを更新"""
         self.timeframes[timeframe].prices.append(price)
@@ -467,26 +467,26 @@ class MultiTimeframeAnalyzer:
         if len(self.timeframes[timeframe].prices) > max_len:
             self.timeframes[timeframe].prices.pop(0)
             self.timeframes[timeframe].volumes.pop(0)
-    
+
     def analyze_timeframe_trend(self, timeframe: Timeframe) -> Optional[TrendAnalysis]:
         """単一時間軸のトレンド分析"""
         data = self.timeframes[timeframe]
         if len(data.prices) < 25:  # 十分なデータがない場合
             return None
-            
+
         # テクニカル指標計算（TaLibWrapper使用）
         prices = np.array(data.prices)
-        
+
         # RSI, MACD, BB, ATR, Trend計算
         rsi = TechnicalIndicators.calculate_rsi(prices)
         macd_result = TechnicalIndicators.calculate_macd(prices)
         bb_result = TechnicalIndicators.calculate_bollinger_bands(prices)
         atr = TechnicalIndicators.calculate_atr(prices)
         trend_score = self._calculate_trend_score(prices)
-        
+
         # トレンド方向判定
         direction = self._determine_trend_direction(trend_score, macd_result)
-        
+
         return TrendAnalysis(
             direction=direction,
             strength=abs(trend_score),
@@ -495,7 +495,7 @@ class MultiTimeframeAnalyzer:
             macd_signal="bullish" if macd_result[2] > 0 else "bearish",
             bollinger_position=self._calculate_bb_position(prices[-1], bb_result)
         )
-    
+
     def analyze_convergence(self) -> TrendConvergenceResult:
         """全時間軸のトレンド収束分析"""
         analyses = {}
@@ -503,7 +503,7 @@ class MultiTimeframeAnalyzer:
             analysis = self.analyze_timeframe_trend(tf)
             if analysis:
                 analyses[tf] = analysis
-        
+
         # TrendConvergenceCalculatorで収束度計算
         calculator = TrendConvergenceCalculator()
         return calculator.calculate_convergence(analyses)
@@ -514,7 +514,7 @@ class MultiTimeframeAnalyzer:
 ```python
 class TrendConvergenceCalculator:
     """トレンド収束度計算システム"""
-    
+
     def __init__(self):
         self.weights = {
             'alignment': 0.4,
@@ -522,7 +522,7 @@ class TrendConvergenceCalculator:
             'momentum_harmony': 0.2,
             'timeframe_agreement': 0.1
         }
-    
+
     def calculate_convergence(self, analyses: Dict[Timeframe, TrendAnalysis]) -> TrendConvergenceResult:
         """トレンド収束度を計算"""
         if not analyses:
@@ -531,13 +531,13 @@ class TrendConvergenceCalculator:
                 dominant_trend=TrendDirection.NEUTRAL,
                 timeframe_agreement=0.0
             )
-        
+
         # 各指標の計算
         alignment_score = self._calculate_alignment_score(analyses)
         strength_consistency = self._calculate_strength_consistency(analyses)
         momentum_harmony = self._calculate_momentum_harmony(analyses)
         timeframe_agreement = len(analyses) / 3.0  # 利用可能な時間軸の割合
-        
+
         # 加重平均スコア
         overall_score = (
             alignment_score * self.weights['alignment'] +
@@ -545,13 +545,13 @@ class TrendConvergenceCalculator:
             momentum_harmony * self.weights['momentum_harmony'] +
             timeframe_agreement * self.weights['timeframe_agreement']
         )
-        
+
         # 優位トレンド判定
         dominant_trend = self._determine_dominant_trend(analyses)
-        
+
         # 収束レベル判定
         convergence_level = self._determine_convergence_level(overall_score)
-        
+
         return TrendConvergenceResult(
             convergence_score=overall_score,
             dominant_trend=dominant_trend,
@@ -571,19 +571,19 @@ class TrendConvergenceCalculator:
 ```python
 class SignalGuidanceSystem:
     """拡張版シグナルガイダンスシステム（Phase 2統合）"""
-    
+
     def __init__(self):
         # Phase 1コンポーネント
         self.quality_scorer = SignalQualityScorer()
-        
+
         # Phase 2コンポーネント
         self.multi_timeframe_analyzer = MultiTimeframeAnalyzer()
         self.convergence_calculator = TrendConvergenceCalculator()
-    
+
     def get_multi_timeframe_analysis(self) -> dict:
         """マルチタイムフレーム分析結果を取得"""
         convergence = self.multi_timeframe_analyzer.analyze_convergence()
-        
+
         return {
             "phase": "Phase 2 - Multi-timeframe Analysis",
             "convergence": {
@@ -597,7 +597,7 @@ class SignalGuidanceSystem:
                 if self.multi_timeframe_analyzer.analyze_timeframe_trend(tf)
             }
         }
-    
+
     def _apply_convergence_enhancement(self, base_score: float, convergence: TrendConvergenceResult) -> float:
         """収束度によるスコア強化"""
         enhancement_factor = convergence.convergence_score / 100.0
@@ -627,55 +627,55 @@ class SignalGuidanceSystem:
         """
         # 時間軸ごとにトレンド計算
         trends = {}
-        
+
         # 1分足
         if len(ohlcv_data['1m_close']) >= 5:
             trend_1m = self._calculate_trend(ohlcv_data['1m_close'][-5:])
             trends['1min'] = trend_1m
-        
+
         # 5分足
         if len(ohlcv_data['5m_close']) >= 5:
             trend_5m = self._calculate_trend(ohlcv_data['5m_close'][-5:])
             trends['5min'] = trend_5m
-        
+
         # 15分足
         if len(ohlcv_data['15m_close']) >= 5:
             trend_15m = self._calculate_trend(ohlcv_data['15m_close'][-5:])
             trends['15min'] = trend_15m
-        
+
         # 収束度計算
         convergence = self._calculate_convergence(trends)
-        
+
         return {
             'trends': trends,
             'convergence': convergence,
             'recommendation': self._get_multi_timeframe_signal(trends, convergence)
         }
-    
+
     def _calculate_trend(self, prices: list) -> dict:
         """トレンド計算"""
         if len(prices) < 2:
             return {'trend': 'neutral', 'strength': 0}
-        
+
         change = prices[-1] - prices[0]
         avg_price = sum(prices) / len(prices)
         strength = abs(change) / avg_price
-        
+
         trend = 'up' if change > 0 else 'down' if change < 0 else 'neutral'
-        
+
         return {'trend': trend, 'strength': min(1.0, strength)}
-    
+
     def _calculate_convergence(self, trends: dict) -> float:
         """時間軸の一致度計算"""
         if len(trends) < 2:
             return 0.0
-        
+
         # 全指標が同じ方向を指しているか
         trend_values = []
         for timeframe_trend in trends.values():
             if isinstance(timeframe_trend, dict):
                 trend_values.append(1 if timeframe_trend['trend'] == 'up' else -1 if timeframe_trend['trend'] == 'down' else 0)
-        
+
         # 一致度: 1.0 = 完全一致, 0.0 = 分散
         if all(v == trend_values[0] for v in trend_values):
             return 1.0
@@ -688,20 +688,20 @@ class SignalGuidanceSystem:
 ```python
 class ScalpingOptimizer:
     """スキャルピング取引最適化"""
-    
+
     def __init__(self):
         self.min_hold_time = 60  # 最小保有時間（秒）
         self.max_daily_trades = 100  # 最大日次取引数
         self.daily_trade_count = 0
         self.last_trade_time = None
-        
+
     def should_scalp(self,
                     signal_score: float,
                     microtrend: dict,
                     volatility: float) -> bool:
         """
         スキャルピング実行判定
-        
+
         条件:
         1. シグナルスコア >= 65
         2. マイクロトレンド収束度 >= 0.7
@@ -712,47 +712,47 @@ class ScalpingOptimizer:
         # 基本条件
         if signal_score < 65:
             return False
-        
+
         # マイクロトレンド条件
         if microtrend['convergence'] < 0.7:
             return False
-        
+
         # ボラティリティ条件（高すぎず低すぎず）
         if volatility < 0.001 or volatility > 0.05:
             return False
-        
+
         # 最小保有時間条件
         if self.last_trade_time:
             time_since_trade = time.time() - self.last_trade_time
             if time_since_trade < self.min_hold_time:
                 return False
-        
+
         # 日次上限条件
         if self.daily_trade_count >= self.max_daily_trades:
             return False
-        
+
         return True
-    
+
     def get_optimal_position_size(self,
                                  portfolio_value: float,
                                  signal_strength: float,
                                  volatility: float) -> float:
         """
         ボラティリティ適応的なポジションサイジング
-        
+
         高ボラティリティ時は小さく、低ボラティリティ時は大きく
         """
         # ベースサイズ: ポートフォリオの1-2%
         base_size = portfolio_value * 0.015
-        
+
         # シグナル強度による調整
         size_by_strength = base_size * (0.5 + signal_strength * 0.5)
-        
+
         # ボラティリティによる調整（逆相関）
         vol_factor = min(1.0, 0.02 / (volatility + 0.001))
-        
+
         final_size = size_by_strength * vol_factor
-        
+
         return final_size
 ```
 
@@ -765,73 +765,73 @@ class ScalpingOptimizer:
 ```python
 class PerformanceAnalyzer:
     """パフォーマンス分析システム"""
-    
+
     def __init__(self):
         self.trades = []
         self.equity_curve = []
-        
+
     def calculate_sharpe_ratio(self, risk_free_rate: float = 0.03) -> float:
         """シャープレシオ計算"""
         if not self.equity_curve or len(self.equity_curve) < 2:
             return 0.0
-        
+
         returns = np.diff(np.log(self.equity_curve))
         mean_return = np.mean(returns)
         std_return = np.std(returns)
-        
+
         sharpe = (mean_return - risk_free_rate / 252) / std_return * np.sqrt(252)
         return sharpe
-    
+
     def calculate_sortino_ratio(self, risk_free_rate: float = 0.03) -> float:
         """ソルティノレシオ計算（下方リスクのみ考慮）"""
         if not self.equity_curve or len(self.equity_curve) < 2:
             return 0.0
-        
+
         returns = np.diff(np.log(self.equity_curve))
         mean_return = np.mean(returns)
-        
+
         # 下方リターンのみを抽出
         downside_returns = returns[returns < 0]
         downside_std = np.std(downside_returns) if len(downside_returns) > 0 else 0
-        
+
         if downside_std == 0:
             return 0.0
-        
+
         sortino = (mean_return - risk_free_rate / 252) / downside_std * np.sqrt(252)
         return sortino
-    
+
     def calculate_max_drawdown(self) -> float:
         """最大ドローダウン計算"""
         if not self.equity_curve or len(self.equity_curve) < 2:
             return 0.0
-        
+
         equity = np.array(self.equity_curve)
         running_max = np.maximum.accumulate(equity)
         drawdown = (equity - running_max) / running_max
-        
+
         return np.min(drawdown)
-    
+
     def calculate_win_rate(self) -> float:
         """勝率計算"""
         if not self.trades:
             return 0.0
-        
+
         winning_trades = sum(1 for t in self.trades if t['profit'] > 0)
         return winning_trades / len(self.trades)
-    
+
     def calculate_profit_factor(self) -> float:
         """プロフィットファクター計算"""
         if not self.trades:
             return 0.0
-        
+
         gross_profit = sum(t['profit'] for t in self.trades if t['profit'] > 0)
         gross_loss = abs(sum(t['profit'] for t in self.trades if t['profit'] < 0))
-        
+
         if gross_loss == 0:
             return 0.0
-        
+
         return gross_profit / gross_loss
-    
+
     def get_performance_summary(self) -> dict:
         """パフォーマンスサマリー"""
         return {
@@ -851,17 +851,17 @@ class PerformanceAnalyzer:
 ```python
 class SignificanceValidator:
     """統計的有意性検証"""
-    
-    def t_test_returns(self, returns: np.ndarray, 
+
+    def t_test_returns(self, returns: np.ndarray,
                        null_hypothesis_mean: float = 0.0) -> dict:
         """
         t検定によるリターンの有意性検証
-        
+
         帰無仮説: リターンの平均 = null_hypothesis_mean
         """
         t_stat = (np.mean(returns) - null_hypothesis_mean) / (np.std(returns) / np.sqrt(len(returns)))
         p_value = 2 * (1 - stats.t.cdf(abs(t_stat), len(returns) - 1))
-        
+
         return {
             't_statistic': t_stat,
             'p_value': p_value,
@@ -869,27 +869,27 @@ class SignificanceValidator:
             'mean_return': np.mean(returns),
             'confidence_level': 1 - p_value
         }
-    
-    def bootstrap_confidence_interval(self, 
+
+    def bootstrap_confidence_interval(self,
                                      trades: list,
                                      metric: str = 'profit',
                                      n_bootstrap: int = 10000,
                                      ci: float = 0.95) -> dict:
         """
         ブートストラップ法による信頼区間推定
-        
+
         オーバーフィッティングを考慮した信頼性評価
         """
         metric_values = [t[metric] for t in trades]
-        
+
         bootstrap_samples = []
         for _ in range(n_bootstrap):
             sample = np.random.choice(metric_values, size=len(metric_values), replace=True)
             bootstrap_samples.append(np.mean(sample))
-        
+
         lower = np.percentile(bootstrap_samples, (1 - ci) / 2 * 100)
         upper = np.percentile(bootstrap_samples, (1 + ci) / 2 * 100)
-        
+
         return {
             'lower_bound': lower,
             'upper_bound': upper,
@@ -906,12 +906,12 @@ class SignificanceValidator:
 - [ ] AdvancedMarketAnalyzer クラス実装
   - RSI, MACD, BB, ATR計算ロジック
   - 単体テスト（各指標の数値検証）
-  
+
 - [ ] SignalQualityScorer クラス実装
   - 複数指標のスコアリング
   - 加重平均計算
   - 信頼度アルゴリズム
-  
+
 - [ ] RiskBasedPositionManager クラス実装
   - ケリー基準計算
   - VaR計算
@@ -920,7 +920,7 @@ class SignificanceValidator:
 - [ ] MicroTrendDetector クラス実装
   - 複数時間軸分析
   - トレンド収束度計算
-  
+
 - [ ] ScalpingOptimizer クラス実装
   - スキャルピング判定ロジック
   - ボラティリティ適応的ポジションサイジング
@@ -929,7 +929,7 @@ class SignificanceValidator:
 - [ ] PerformanceAnalyzer クラス実装
   - Sharpe, Sortino比率計算
   - ドローダウン分析
-  
+
 - [ ] SignificanceValidator クラス実装
   - t検定
   - ブートストラップ検証
@@ -1041,11 +1041,11 @@ StatisticalValidator
 def calculate_risk_adjusted_score(base_score: float, risk_multiplier: float) -> float:
     """
     リスク乗数を考慮したシグナルスコア計算
-    
+
     Args:
         base_score: Phase 2の基本スコア (0-100)
         risk_multiplier: Phase 3のリスク乗数 (0.1-2.0)
-    
+
     Returns:
         リスク調整済みスコア (0-100)
     """
@@ -1056,7 +1056,7 @@ def calculate_risk_adjusted_score(base_score: float, risk_multiplier: float) -> 
         adjusted_score = base_score * 1.2  # リスク低 → スコア20%増
     else:
         adjusted_score = base_score
-    
+
     return min(100, max(0, adjusted_score))
 ```
 
@@ -1067,21 +1067,21 @@ def calculate_risk_adjusted_score(base_score: float, risk_multiplier: float) -> 
 def calculate_convergence_score(timeframes: List[str], trends: Dict[str, float]) -> float:
     """
     複数時間軸のトレンド収束を評価
-    
+
     Args:
         timeframes: 時間軸リスト ['1m', '5m', '15m', '1h']
         trends: 各時間軸のトレンドスコア
-    
+
     Returns:
         収束スコア (0-1): 1に近いほど整合性が高い
     """
     if len(trends) < 2:
         return 0.5
-    
+
     # トレンド方向の一致度を計算
     directions = [1 if trend > 0 else -1 for trend in trends.values()]
     consistency = sum(1 for d in directions if d == directions[0]) / len(directions)
-    
+
     return consistency
 ```
 
@@ -1093,24 +1093,24 @@ def calculate_convergence_score(timeframes: List[str], trends: Dict[str, float])
 def dynamic_position_sizing(signal_score: float, risk_multiplier: float, base_position: float) -> float:
     """
     シグナル強度とリスクに基づく動的ポジションサイジング
-    
+
     Args:
         signal_score: シグナルスコア (0-100)
         risk_multiplier: リスク乗数 (0.1-2.0)
         base_position: 基準ポジションサイズ (0.02)
-    
+
     Returns:
         調整済みポジションサイズ
     """
     # シグナル強度による調整
     signal_factor = signal_score / 100.0  # 0-1
-    
+
     # リスク調整
     risk_factor = risk_multiplier
-    
+
     # 最終ポジションサイズ
     position_size = base_position * signal_factor * risk_factor
-    
+
     return min(0.1, max(0.005, position_size))  # 0.5%-10%の範囲
 ```
 
@@ -1120,11 +1120,11 @@ def dynamic_position_sizing(signal_score: float, risk_multiplier: float, base_po
 def adaptive_entry_conditions(market_volatility: float, trend_strength: float) -> Dict[str, float]:
     """
     市場状態に応じた適応型エントリー条件
-    
+
     Args:
         market_volatility: 市場ボラティリティ (0-1)
         trend_strength: トレンド強度 (0-1)
-    
+
     Returns:
         調整済みエントリー条件
     """
@@ -1157,7 +1157,7 @@ def adaptive_entry_conditions(market_volatility: float, trend_strength: float) -
 ### Phase 3 の実装ステータス
 
 - ✅ **マルチタイムフレーム分析**: 実装完了
-- ✅ **統計的バリデーション**: 実装完了  
+- ✅ **統計的バリデーション**: 実装完了
 - ✅ **統合バックテスト**: 実装完了
 - ✅ **リスク乗数計算**: 実装完了
 - ⚠️ **動的ポジションサイジング**: 未実装（推奨）

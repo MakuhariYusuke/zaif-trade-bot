@@ -2,6 +2,7 @@
 DataLoader: Unified data loading with caching.
 
 Provides a common interface for loading data with automatic caching.
+Enhanced with TTLCache memory management integration.
 """
 
 import pickle
@@ -11,15 +12,18 @@ from typing import Callable, Dict, Optional, cast
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
+from .memory_cache import default_memory_manager
 
 
 class DataLoader:
     """Unified data loader with caching support"""
 
-    def __init__(self, cache_dir: str = "data/cache") -> None:
+    def __init__(self, cache_dir: str = "data/cache", enable_memory_cache: bool = True) -> None:
         super().__init__()
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.enable_memory_cache = enable_memory_cache
+        self.memory_manager = default_memory_manager if enable_memory_cache else None
 
     def load_with_cache(
         self, key: str, load_func: Callable[[], pd.DataFrame]
@@ -39,11 +43,21 @@ class DataLoader:
         self, key: str, load_func: Callable[[], pd.DataFrame]
     ) -> pd.DataFrame:
         """Implementation of load with cache."""
+        # Check memory cache first
+        if self.memory_manager:
+            cached_data = self.memory_manager.get_cached_training_data(key)
+            if cached_data is not None:
+                return cached_data
+
         cache_path = self.cache_dir / f"{key}.pkl"
         if cache_path.exists():
             try:
                 with open(cache_path, "rb") as f:
-                    return cast(pd.DataFrame, pickle.load(f))
+                    data = cast(pd.DataFrame, pickle.load(f))
+                    # Cache in memory for future use
+                    if self.memory_manager:
+                        self.memory_manager.cache_training_data(key, data)
+                    return data
             except Exception:
                 # If cache is corrupted, remove it
                 cache_path.unlink(missing_ok=True)
@@ -52,6 +66,9 @@ class DataLoader:
         try:
             with open(cache_path, "wb") as f:
                 pickle.dump(data, f)
+            # Also cache in memory
+            if self.memory_manager:
+                self.memory_manager.cache_training_data(key, data)
         except Exception:
             # If caching fails, continue without error
             pass
