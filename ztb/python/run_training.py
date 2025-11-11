@@ -40,6 +40,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import setup_logging
 
 # Add project root to path
@@ -214,7 +215,7 @@ def main():
     setup_logging(
         level=log_level,
         log_file=str(log_dir / "training_log.txt"),
-        max_bytes=10 * 1024 * 1024,  # 10MB
+        max_bytes=10 * BYTES_PER_MB,  # 10MB
         backup_count=5,
     )
 

@@ -16,6 +16,8 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 @dataclass
 class CheckpointResult:
@@ -115,7 +117,7 @@ class CheckpointBenchmark:
 
         # Assume 4 bytes per float32 element, 8 bytes per float64
         estimated_bytes = total_elements * 4
-        return estimated_bytes / (1024 * 1024)
+        return estimated_bytes / BYTES_PER_MB
 
     def benchmark_pickle_save(
         self, data: Dict[str, Any], file_path: Path
@@ -128,7 +130,7 @@ class CheckpointBenchmark:
             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         duration = time.time() - start_time
-        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        file_size = file_path.stat().st_size / BYTES_PER_MB  # MB
         throughput = file_size / duration
 
         violations = []
@@ -157,7 +159,7 @@ class CheckpointBenchmark:
             data = pickle.load(f)
 
         duration = time.time() - start_time
-        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        file_size = file_path.stat().st_size / BYTES_PER_MB  # MB
         throughput = file_size / duration
 
         violations = []
@@ -196,7 +198,7 @@ class CheckpointBenchmark:
             json.dump(json_data, f, indent=2)
 
         duration = time.time() - start_time
-        file_size = file_path.stat().st_size / (1024 * 1024)  # MB
+        file_size = file_path.stat().st_size / BYTES_PER_MB  # MB
         throughput = file_size / duration
 
         violations = []
@@ -237,9 +239,7 @@ class CheckpointBenchmark:
             json.dump(metadata, f, indent=2, default=str)
 
         duration = time.time() - start_time
-        file_size = (file_path.stat().st_size + metadata_file.stat().st_size) / (
-            1024 * 1024
-        )
+        file_size = (file_path.stat().st_size + metadata_file.stat().st_size) / BYTES_PER_MB
         throughput = file_size / duration
 
         violations = []

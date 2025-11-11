@@ -12,6 +12,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from ztb.config.loader import ConfigLoader
+from ztb.utils.config_manager import validate_dict_config
 from ztb.utils.v4xx_config_converter import V4XXConfigConverter
 
 
@@ -93,9 +94,9 @@ def verify_curriculum_stage_flow():
         "buy_action_bonus",
     ]
 
-    missing_keys = [k for k in important_keys if k not in training_env]
-    if missing_keys:
-        print(f"  ⚠ Missing keys in environment config: {missing_keys}")
+    # 設定検証をユーティリティ関数で実行
+    if not validate_dict_config(training_env, important_keys):
+        print(f"  ⚠ Missing keys in environment config: {[k for k in important_keys if k not in training_env]}")
 
     present_keys = [k for k in important_keys if k in training_env]
     print(f"  ✓ Present important keys: {present_keys}")

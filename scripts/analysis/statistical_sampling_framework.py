@@ -22,6 +22,7 @@ sys.path.insert(0, str(project_root))
 
 
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
+from ztb.utils.config_manager import validate_dict_config
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -53,10 +54,8 @@ class StatisticalSamplingFramework:
             return False
 
         required_keys = ["total_timesteps", "training_time", "final_reward"]
-        for key in required_keys:
-            if key not in training_stats:
-                self.logger.warning(f"Missing required key in training stats: {key}")
-                return False
+        if not validate_dict_config(training_stats, required_keys):
+            return False
 
         # 値の妥当性チェック
         if training_stats.get("total_timesteps", 0) <= 0:
