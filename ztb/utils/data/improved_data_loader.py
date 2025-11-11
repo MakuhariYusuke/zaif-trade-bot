@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.errors import ZTBError
 
@@ -89,7 +90,7 @@ class ImprovedDataLoader:
         try:
             if (
                 self.enable_memory_mapping
-                and file_path.stat().st_size > 10 * 1024 * 1024
+                and file_path.stat().st_size > 10 * BYTES_PER_MB
             ):  # >10MB
                 # Memory-mapped loading
                 with open(file_path, "r+b") as f:

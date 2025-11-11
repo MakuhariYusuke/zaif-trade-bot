@@ -14,6 +14,7 @@ import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.policies import ActorCriticPolicy
 
+from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointManager,
     TrainingCheckpointConfig,
@@ -182,8 +183,8 @@ class TestTrainingCheckpointManager(unittest.TestCase):
         """Test checkpoint behavior under memory pressure."""
         # Mock low memory situation
         mock_memory.return_value = Mock()
-        mock_memory.return_value.available = 100 * 1024 * 1024  # 100MB
-        mock_memory.return_value.total = 1024 * 1024 * 1024  # 1GB
+        mock_memory.return_value.available = 100 * BYTES_PER_MB  # 100MB
+        mock_memory.return_value.total = BYTES_PER_GB  # 1GB
 
         # This should still work even with memory pressure
         self.manager.save(

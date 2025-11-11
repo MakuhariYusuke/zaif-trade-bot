@@ -13,6 +13,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ztb.utils.analysis_formatters import create_result_summary
+
 
 def load_training_results():
     """Load training comparison results."""
@@ -227,10 +229,23 @@ def main():
 
     print(f"✅ Analysis complete. Report saved to {output_file}")
 
-    # Print summary
+    # Print summary with structured format
     print("\n📊 Analysis Summary:")
     for insight in comparison.get("insights", []):
         print(f"  • {insight}")
+
+    # 主要指標の構造化表示
+    backtest_comp = comparison.get("backtest_comparison", {})
+    if backtest_comp:
+        returns = [v.get("total_return_pct", 0) for v in backtest_comp.values()]
+        if returns:
+            summary_metrics = {
+                "best_return_pct": max(returns),
+                "profitable_models": sum(1 for r in returns if r > 0),
+                "total_models": len(returns),
+                "avg_return_pct": sum(returns) / len(returns)
+            }
+            print(f"\n📈 Key Metrics:\n{create_result_summary(summary_metrics)}")
 
     print("\n📋 Conclusions:")
     for conclusion in report.get("conclusions", []):

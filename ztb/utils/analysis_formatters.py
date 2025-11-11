@@ -10,7 +10,13 @@ from typing import Any, Dict
 
 
 def format_performance_summary(performance_summary: Dict[str, Any]) -> str:
-    """Format performance summary for display."""
+    """
+    Format performance summary for display.
+    Args:
+        performance_summary: Dictionary containing performance summary
+    Returns:
+        str: Formatted performance summary
+    """
     lines = ["=== PERFORMANCE SUMMARY ==="]
 
     if "total_signals_generated" in performance_summary:
@@ -33,7 +39,13 @@ def format_performance_summary(performance_summary: Dict[str, Any]) -> str:
 
 
 def format_pattern_statistics(pattern_statistics: Dict[str, Any]) -> str:
-    """Format pattern statistics for display."""
+    """
+    Format pattern statistics for display.
+    Args:
+        pattern_statistics: Dictionary containing pattern statistics
+    Returns:
+        str: Formatted pattern statistics
+    """
     lines = ["=== PATTERN STATISTICS ==="]
 
     if not pattern_statistics:
@@ -64,7 +76,13 @@ def format_pattern_statistics(pattern_statistics: Dict[str, Any]) -> str:
 
 
 def format_trading_results_summary(trading_results_summary: Dict[str, Any]) -> str:
-    """Format trading results summary for display."""
+    """
+    Format trading results summary for display.
+    Args:
+        trading_results_summary: Dictionary containing trading results summary
+    Returns:
+        str: Formatted trading results summary
+    """
     lines = ["=== TRADING RESULTS SUMMARY ==="]
 
     if "total_trades" in trading_results_summary:
@@ -116,7 +134,13 @@ def print_analysis_results(analysis: Dict[str, Any], use_json: bool = False) -> 
 def print_formatted_metrics(
     metrics: Dict[str, Any], title: str = "Analysis Results"
 ) -> None:
-    """Print formatted metrics dictionary with consistent formatting."""
+    """
+    Print formatted metrics dictionary with consistent formatting.
+    
+    Args:
+        metrics: Dictionary of metrics to print
+        title: Title for the metrics section
+    """
     print(f"\n{'='*50}")
     print(f" {title} ")
     print(f"{'='*50}")
@@ -143,3 +167,23 @@ def print_formatted_metrics(
             print(f"{key.replace('_', ' ').title()}: {value}")
 
     print(f"{'='*50}\n")
+
+
+def create_result_summary(results: Dict[str, Any]) -> str:
+    """
+    結果辞書から要約文字列を生成
+
+    Args:
+        results: 結果を含む辞書
+
+    Returns:
+        str: フォーマットされた要約文字列
+    """
+    summary_parts = []
+    for key, value in results.items():
+        if isinstance(value, float):
+            summary_parts.append(f"{key}: {value:.4f}")
+        else:
+            summary_parts.append(f"{key}: {value}")
+
+    return " | ".join(summary_parts)

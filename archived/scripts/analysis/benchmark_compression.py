@@ -12,11 +12,12 @@ import lz4.frame
 import numpy as np
 import pandas as pd
 import zstandard as zstd
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 def create_test_data(size_mb: int = 10) -> pd.DataFrame:
     """テストデータ作成（DataFrame）"""
-    n_rows = size_mb * 1024 * 1024 // 100  # 概算
+    n_rows = size_mb * BYTES_PER_MB // 100  # 概算
     data = {
         "timestamp": pd.date_range("2020-01-01", periods=n_rows, freq="1min"),
         "open": np.random.uniform(100, 200, n_rows),
@@ -64,15 +65,13 @@ def benchmark_compressor(
 
     return {
         "compressor": name,
-        "original_size_mb": original_size / (1024 * 1024),
-        "compressed_size_mb": compressed_size / (1024 * 1024),
+        "original_size_mb": original_size / BYTES_PER_MB,
+        "compressed_size_mb": compressed_size / BYTES_PER_MB,
         "compression_ratio": compression_ratio,
         "compress_time_avg": np.mean(compress_times) * 1000,  # ms
         "decompress_time_avg": np.mean(decompress_times) * 1000,  # ms
-        "compress_speed_mbs": original_size / (1024 * 1024) / np.mean(compress_times),
-        "decompress_speed_mbs": original_size
-        / (1024 * 1024)
-        / np.mean(decompress_times),
+        "compress_speed_mbs": original_size / BYTES_PER_MB / np.mean(compress_times),
+        "decompress_speed_mbs": original_size / BYTES_PER_MB / np.mean(decompress_times),
     }
 
 
@@ -84,7 +83,7 @@ def main():
     test_data = create_test_data(size_mb=5)  # 5MBのテストデータ
     pickled_data = pickle.dumps(test_data, protocol=pickle.HIGHEST_PROTOCOL)
 
-    print(f"Test data size: {len(pickled_data) / (1024 * 1024):.2f} MB")
+    print(f"Test data size: {len(pickled_data) / BYTES_PER_MB:.2f} MB")
     print()
 
     # 圧縮方式の定義

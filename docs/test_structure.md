@@ -145,6 +145,36 @@ class TestClassToTest:
 - 大きなデータファイルはGitignore対象
 - モックを使用した外部依存の分離
 
+## Unified Optimizer テスト構造
+
+### 単体テスト (`tests/unit/training/test_unified_optimizer.py`)
+UnifiedOptimizerの各コンポーネントを個別にテスト：
+
+- **OptimizationConfig**: 設定クラスのデフォルト値とカスタム値の検証
+- **OptimizationResult**: 最適化結果のデータ構造検証
+- **BayesianOptimizer**: Optunaを使用したベイズ最適化（条件付きテスト）
+- **MultiTimeframeOptimizer**: マルチタイムフレーム最適化機能
+- **ABTestingFramework**: A/Bテストフレームワーク
+- **OptimizationResultPersistence**: 結果の保存・読み込み・検索
+- **ParallelOptimizer**: 並列最適化実行
+- **AutomaticOptimizationPipeline**: 自動最適化パイプライン
+- **UnifiedOptimizer**: 統合最適化システム全体
+
+### 統合テスト (`tests/integration/training/test_unified_optimizer_integration.py`)
+複数コンポーネントの連携をテスト：
+
+- **完全自動パイプライン**: エンドツーエンドの最適化ワークフロー
+- **マルチタイムフレーム + A/Bテスト**: 複合最適化機能の統合
+- **並列最適化**: 並列処理とリソース管理
+- **持続化機能**: 結果保存・検索・比較
+- **ワークフロー統合**: ハイパーパラメータ→システム→結果保存の完全フロー
+
+### テスト実行結果
+- **単体テスト**: 24件すべてPASS
+- **統合テスト**: 5件すべてPASS
+- **総テスト数**: 29件（100%成功率）
+- **実行時間**: 約16.9秒
+
 ## 注意事項
 
 - 実行時生成物（ログ、キャッシュ、アーティファクト）は `results/` ディレクトリに格納

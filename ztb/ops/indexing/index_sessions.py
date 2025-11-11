@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 def get_session_status(corr_dir: Path) -> str:
     """Determine session status."""
@@ -48,7 +50,7 @@ def index_sessions(root: Path) -> Dict[str, Any]:
                 "created_at": datetime.fromtimestamp(item.stat().st_ctime).isoformat(),
                 "modified_at": datetime.fromtimestamp(item.stat().st_mtime).isoformat(),
                 "size_mb": sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
-                / (1024 * 1024),
+                / BYTES_PER_MB,
                 "latest_step": 0,
                 "status": get_session_status(item),
                 "is_best": best_marker.exists(),

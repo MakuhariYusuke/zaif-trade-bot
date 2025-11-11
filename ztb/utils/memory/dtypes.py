@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from pandas.api import types as ptypes
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 @dataclass
 class OptimizationReport:
@@ -25,15 +27,14 @@ class OptimizationReport:
 
     @property
     def memory_before_mb(self) -> float:
-        return self.memory_before_bytes / (1024 * 1024)
+        return self.memory_before_bytes / BYTES_PER_MB
 
     @property
     def memory_after_mb(self) -> float:
-        return self.memory_after_bytes / (1024 * 1024)
-
+        return self.memory_after_bytes / BYTES_PER_MB
     @property
     def memory_saved_mb(self) -> float:
-        return self.memory_saved_bytes / (1024 * 1024)
+        return self.memory_saved_bytes / BYTES_PER_MB
 
     @property
     def percent_reduction(self) -> float:

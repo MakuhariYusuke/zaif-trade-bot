@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
+from ztb.utils.analysis_formatters import create_result_summary
 
-def analyze_training_logs():
+
+def analyze_training_logs() -> None:
     """Analyze training logs from tensorboard"""
 
     # Find latest training log
@@ -123,12 +125,17 @@ def analyze_training_logs():
             if data["values"]:
                 values = np.array(data["values"])
                 print(f"{tag}:")
-                print(f"  Initial: {values[0]:.6f}")
-                print(f"  Final: {values[-1]:.6f}")
-                print(f"  Mean: {np.mean(values):.6f}")
-                print(f"  Std: {np.std(values):.6f}")
-                print(f"  Min: {np.min(values):.6f}")
-                print(f"  Max: {np.max(values):.6f}")
+                
+                # メトリクス統計の構造化表示
+                metrics_summary = {
+                    "initial": values[0],
+                    "final": values[-1],
+                    "mean": np.mean(values),
+                    "std": np.std(values),
+                    "min": np.min(values),
+                    "max": np.max(values)
+                }
+                print(f"  {create_result_summary(metrics_summary)}")
 
     # Check for entropy-related metrics
     entropy_found = False

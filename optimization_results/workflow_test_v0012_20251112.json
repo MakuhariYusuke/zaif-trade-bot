@@ -1,0 +1,14 @@
+{
+  "version_id": "v0012",
+  "result_type": "workflow_test",
+  "timestamp": "2025-11-12T04:49:56.239477",
+  "result": {
+    "workflow_test": true,
+    "best_score": -5.506014842614304
+  },
+  "metadata": {},
+  "tags": [],
+  "performance_metrics": {
+    "best_score": -5.506014842614304
+  }
+}

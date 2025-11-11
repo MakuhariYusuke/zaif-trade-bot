@@ -23,7 +23,7 @@ import sys
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,8 +31,6 @@ import pandas as pd
 from sklearn.model_selection import KFold
 from stable_baselines3 import PPO
 from tqdm import tqdm
-
-from ztb.utils.data_utils import load_csv_data
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
@@ -46,6 +44,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from ztb.trading.ensemble import EnsemblePredictor  # noqa: E402
 from ztb.trading.environment import HeavyTradingEnv  # noqa: E402
+from ztb.utils.system_utils import safe_import
+from ztb.utils.data_utils import load_csv_data
+
 
 # Import evaluation modules (lazy import to avoid circular imports)
 evaluation_modules_available = True
@@ -56,27 +57,32 @@ def _import_evaluation_modules():
     """Lazy import of evaluation modules to avoid circular imports."""
     global evaluation_analyzers, evaluation_modules_available
     try:
-        from cost_sensitivity import CostSensitivityAnalyzer
-        from monte_carlo_simulation import MonteCarloSimulator
-        from performance_attribution import PerformanceAttributionAnalyzer
+        # 各モジュールを安全にインポート
+        cost_sensitivity = safe_import("cost_sensitivity", "Cost sensitivity analysis")
+        monte_carlo = safe_import("monte_carlo_simulation", "Monte Carlo simulation")
+        performance_attr = safe_import("performance_attribution", "Performance attribution analysis")
+        risk_parity = safe_import("risk_parity_analysis", "Risk parity analysis")
+        strategy_robust = safe_import("strategy_robustness", "Strategy robustness analysis")
 
-        # Temporarily disable benchmark_comparison due to import issues
-        # from benchmark_comparison import BenchmarkComparisonAnalyzer
-        from risk_parity_analysis import RiskParityAnalyzer
-        from strategy_robustness import StrategyRobustnessAnalyzer
+        evaluation_analyzers = {}
+        
+        if cost_sensitivity and hasattr(cost_sensitivity, 'CostSensitivityAnalyzer'):
+            evaluation_analyzers["cost_sensitivity"] = cost_sensitivity.CostSensitivityAnalyzer(base_fee=0.001)
+        
+        if monte_carlo and hasattr(monte_carlo, 'MonteCarloSimulator'):
+            evaluation_analyzers["monte_carlo"] = monte_carlo.MonteCarloSimulator()
+            
+        if performance_attr and hasattr(performance_attr, 'PerformanceAttributionAnalyzer'):
+            evaluation_analyzers["performance_attribution"] = performance_attr.PerformanceAttributionAnalyzer()
+            
+        if risk_parity and hasattr(risk_parity, 'RiskParityAnalyzer'):
+            evaluation_analyzers["risk_parity"] = risk_parity.RiskParityAnalyzer()
+            
+        if strategy_robust and hasattr(strategy_robust, 'StrategyRobustnessAnalyzer'):
+            evaluation_analyzers["strategy_robustness"] = strategy_robust.StrategyRobustnessAnalyzer()
 
-        evaluation_analyzers = {
-            "performance_attribution": PerformanceAttributionAnalyzer(),
-            "monte_carlo": MonteCarloSimulator(),
-            "strategy_robustness": StrategyRobustnessAnalyzer(),
-            # 'benchmark_comparison': BenchmarkComparisonAnalyzer(risk_free_rate=0.02),  # Disabled due to import issues
-            "risk_parity": RiskParityAnalyzer(),
-            "cost_sensitivity": CostSensitivityAnalyzer(
-                base_fee=0.001
-            ),  # Default value
-        }
-        evaluation_modules_available = True
-    except ImportError as e:
+        evaluation_modules_available = len(evaluation_analyzers) > 0
+    except Exception as e:
         print(f"Warning: Some evaluation modules not available: {e}")
         evaluation_modules_available = False
 

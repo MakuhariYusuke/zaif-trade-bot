@@ -3,6 +3,8 @@ v394d vs v394f 完全比較分析
 ent_coef 20倍でも結果はほぼ同じという衝撃的な事実
 """
 
+from ztb.utils.analysis_formatters import create_result_summary
+
 
 def analyze_v394_comparison() -> None:
     """v394d vs v394f の詳細比較"""
@@ -68,6 +70,14 @@ def analyze_v394_comparison() -> None:
     print(
         f"{'Entropy':<30} | {v394d_data['entropy']:<20.3f} | {v394f_data['entropy']:<20.3f} | {'Tie 🟰'}"
     )
+    
+    # エントロピー比較の構造化表示
+    entropy_comparison = {
+        "v394d_entropy": v394d_data['entropy'],
+        "v394f_entropy": v394f_data['entropy'],
+        "entropy_difference": abs(v394d_data['entropy'] - v394f_data['entropy'])
+    }
+    print(f"\n📊 Entropy Comparison Summary:\n{create_result_summary(entropy_comparison)}")
     print()
 
     # 時系列比較

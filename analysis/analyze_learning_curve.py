@@ -3,6 +3,8 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from ztb.utils.analysis_formatters import create_result_summary
+
 # Load training monitor data
 monitor_df = pd.read_csv("tensorboard/v437/monitor.csv", comment="#")
 
@@ -71,7 +73,16 @@ print("   - Training shows realistic reward ranges (not inflated)")
 print("   - Backtest shows stable portfolio (no unrealistic growth)")
 print("   - Negative rewards indicate proper penalty for poor actions")
 print("\n📊 Key Metrics:")
-print(".2f")
-print(".2f")
-print(".2f")
-print(".2f")
+analysis_results = {
+    "total_episodes": len(monitor_df),
+    "average_reward": monitor_df['r'].mean(),
+    "max_reward": monitor_df['r'].max(),
+    "min_reward": monitor_df['r'].min(),
+    "average_episode_length": monitor_df['l'].mean(),
+    "total_steps": backtest_data['total_steps'],
+    "initial_portfolio": backtest_data['initial_portfolio'],
+    "final_portfolio": backtest_data['final_portfolio'],
+    "total_reward": backtest_data['total_reward'],
+    "total_return_pct": backtest_data['total_return_pct']
+}
+print(create_result_summary(analysis_results))
