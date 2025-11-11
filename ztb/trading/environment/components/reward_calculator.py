@@ -25,7 +25,7 @@ from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettin
 from ztb.trading.strategies.action_signal_guide.components.market_regime import (
     MarketRegimeDetector,
 )
-from ztb.utils.logging_utils import get_logger
+from ztb.utils.logging_utils import StructuredLogger
 
 from .asymmetric_reward_scaler import AsymmetricRewardScaler
 from .behavioral_penalty_calculator import BehavioralPenaltyCalculator
@@ -68,6 +68,7 @@ class RewardCalculator:
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
         self.logger = get_logger("ztb.trading.environment.reward")
+        self.structured_logger = StructuredLogger("ztb.trading.environment.reward", json_format=True)
 
         # Internal state for tracking
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
@@ -234,6 +235,54 @@ class RewardCalculator:
         self._forced_balance_last_state: Optional[str] = None
         self._forced_balance_last_summary_step = 0
         self._forced_balance_summary_interval = 500
+
+        # Dynamic log level control
+        self._dynamic_logging_enabled = self.get_setting_bool(
+            "logging.dynamic_level_control", True
+        )
+        self._log_level_change_threshold = self.get_setting_int(
+            "logging.level_change_threshold", 1000
+        )
+        self._current_log_level = level
+        self._log_evaluation_counter = 0
+
+    def set_log_level(self, level: str) -> None:
+        """Dynamically set log level for reward calculator.
+
+        Args:
+            level: Log level string (DEBUG, INFO, WARNING, ERROR)
+        """
+        import logging
+
+        level_upper = level.upper()
+        if hasattr(logging, level_upper):
+            new_level = getattr(logging, level_upper)
+            reward_logger = logging.getLogger("ztb.trading.environment.reward")
+            reward_logger.setLevel(new_level)
+            self._current_log_level = new_level
+            self.structured_logger.info(
+                "Log level changed",
+                extra={"old_level": self._current_log_level, "new_level": new_level}
+            )
+
+    def _evaluate_dynamic_logging(self, step: int) -> None:
+        """Evaluate and adjust log level based on training progress.
+
+        Args:
+            step: Current training step
+        """
+        if not self._dynamic_logging_enabled:
+            return
+
+        self._log_evaluation_counter += 1
+        if self._log_evaluation_counter % self._log_level_change_threshold != 0:
+            return
+
+        # Reduce logging frequency as training progresses
+        if step > 50000 and self._current_log_level < logging.WARNING:
+            self.set_log_level("WARNING")
+        elif step > 100000 and self._current_log_level < logging.ERROR:
+            self.set_log_level("ERROR")
 
     def _map_action_to_index(self, action: int) -> int:
         """Normalize action identifiers to consistent indices [HOLD, BUY, SELL]."""
@@ -449,6 +498,9 @@ class RewardCalculator:
         Returns:
             Calculated reward value
         """
+        # Dynamic log level evaluation
+        self._evaluate_dynamic_logging(step)
+
         self._last_reward_components = {}  # Reset at the beginning of each calculation
 
         # Debug logging for reward calculation inputs

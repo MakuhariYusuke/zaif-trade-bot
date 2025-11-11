@@ -32,6 +32,7 @@ class TrainingProgressCallback(BaseCallback):
         lr_scheduler: Optional[DynamicLRScheduler] = None,
         early_stopping: Optional[Any] = None,
         trainer_ref: Optional[Any] = None,
+        checkpoint_manager: Optional[Any] = None,
     ):
         super().__init__(verbose)
         self.check_freq = check_freq
@@ -41,6 +42,7 @@ class TrainingProgressCallback(BaseCallback):
         self.early_stopping = early_stopping
         self.trainer_ref = trainer_ref
         self.trainer = trainer_ref  # Set trainer attribute for compatibility
+        self.checkpoint_manager = checkpoint_manager
 
         # Provide explicit type annotations so mypy can reason about these lists
         self.continuous_actions: List[float] = []
@@ -284,6 +286,40 @@ class TrainingProgressCallback(BaseCallback):
         # Check early stopping conditions
         if self.early_stopping_enabled and self.n_calls % self.check_freq == 0:
             self._check_early_stopping()
+
+        # Periodic checkpoint saving (Week 9-10 requirement: save every 1000 steps)
+        if (
+            self.checkpoint_manager is not None
+            and self.checkpoint_manager.should_checkpoint(self.n_calls)
+        ):
+            try:
+                # Get current training metrics
+                current_metrics = {}
+                if hasattr(self.model, "logger") and self.model.logger:
+                    logger_values = getattr(self.model.logger, "name_to_value", {})
+                    current_metrics.update({
+                        "actor_loss": logger_values.get("train/actor_loss"),
+                        "critic_loss": logger_values.get("train/critic_loss"),
+                        "ent_coef": logger_values.get("train/ent_coef"),
+                        "learning_rate": logger_values.get("train/learning_rate"),
+                    })
+
+                # Save checkpoint with current training state
+                self.checkpoint_manager.save(
+                    step=self.n_calls,
+                    model=self.model,
+                    metrics=current_metrics,
+                    extra={
+                        "training_time": time.time() - self.start_time,
+                        "episodes_completed": len(self.episode_rewards),
+                    }
+                )
+
+                if self.verbose > 0:
+                    logging.info(f"Checkpoint saved at step {self.n_calls}")
+
+            except Exception as e:
+                logging.warning(f"Failed to save checkpoint at step {self.n_calls}: {e}")
 
         return True
 
