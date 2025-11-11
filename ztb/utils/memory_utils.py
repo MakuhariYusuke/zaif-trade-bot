@@ -12,6 +12,7 @@ from typing import Any, Dict, Generator, Optional, TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 from ztb.cache.memory_cache import default_memory_manager
 
@@ -121,19 +122,19 @@ class MemoryTracker:
         cache_delta = cache_final_size - self._cache_initial_size
 
         logger.debug(
-            f"Memory usage: initial={self._initial_memory / 1024 / 1024:.1f}MB, "
-            f"final={final_memory / 1024 / 1024:.1f}MB, "
-            f"delta={memory_delta / 1024 / 1024:+.1f}MB, "
+            f"Memory usage: initial={self._initial_memory / BYTES_PER_MB:.1f}MB, "
+            f"final={final_memory / BYTES_PER_MB:.1f}MB, "
+            f"delta={memory_delta / BYTES_PER_MB:+.1f}MB, "
             f"cache_delta={cache_delta:+d} entries"
         )
 
-        if memory_delta > 50 * 1024 * 1024:  # 50MB threshold
+        if memory_delta > 50 * BYTES_PER_MB:  # 50MB threshold
             logger.warning(
-                f"Large memory increase detected: {memory_delta / 1024 / 1024:.1f}MB"
+                f"Large memory increase detected: {memory_delta / BYTES_PER_MB:.1f}MB"
             )
 
         # Trigger memory optimization if memory usage is high
-        if self.memory_manager and final_memory > 800 * 1024 * 1024:  # 800MB threshold
+        if self.memory_manager and final_memory > 800 * BYTES_PER_MB:  # 800MB threshold
             logger.info("High memory usage detected, triggering optimization...")
             self.memory_manager.optimize_memory_usage()
 
@@ -226,8 +227,8 @@ def get_memory_usage() -> Dict[str, float]:
         memory_info = process.memory_info()
 
         base_stats = {
-            'rss': memory_info.rss / 1024 / 1024,  # Resident Set Size
-            'vms': memory_info.vms / 1024 / 1024,  # Virtual Memory Size
+            'rss': memory_info.rss / BYTES_PER_MB,  # Resident Set Size
+            'vms': memory_info.vms / BYTES_PER_MB,  # Virtual Memory Size
             'percent': process.memory_percent()
         }
 

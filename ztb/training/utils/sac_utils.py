@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.path_utils import get_project_root
 
 # Get project root using utility
@@ -228,7 +229,7 @@ class SACUtilities:
             "files_found": len(removed_files),
             "files_removed": total_removed if not dry_run else 0,
             "total_size_bytes": total_size,
-            "total_size_mb": total_size / (1024 * 1024),
+            "total_size_mb": total_size / BYTES_PER_MB,
             "removed_files": removed_files[:100],  # Limit output
         }
 

@@ -19,14 +19,11 @@ from numpy.typing import NDArray
 from sklearn.base import BaseEstimator
 from sklearn.inspection import permutation_importance
 
-# SHAP のインポート（利用可能な場合）
-try:
-    import shap
+from ztb.utils.system_utils import check_library_availability, safe_import
 
-    SHAP_AVAILABLE = True
-except ImportError:
-    SHAP_AVAILABLE = False
-    warnings.warn("SHAP is not installed. Install with: pip install shap")
+# SHAP の利用可能性チェックとインポート
+SHAP_AVAILABLE = check_library_availability("shap", "SHAP feature importance analysis")
+shap = safe_import("shap", "SHAP feature importance analysis") if SHAP_AVAILABLE else None
 
 
 @dataclass

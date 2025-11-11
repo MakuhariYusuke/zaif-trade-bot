@@ -15,6 +15,8 @@ import pandas as pd
 # Add the project root to the path
 sys.path.insert(0, os.path.abspath("."))
 
+from ztb.utils.analysis_formatters import create_result_summary
+
 from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
     ActionSignalGuide,
     ActionSignalGuideConfig,
@@ -370,13 +372,25 @@ def run_comprehensive_analysis():
 
     print("\nDetailed Analysis Results:")
     print("Pattern Statistics:")
+    
+    # パターン統計の構造化表示
+    pattern_summary = {}
     for pattern, stats in aggregated_analysis["pattern_stats"].items():
-        print(f"  {pattern.upper()}: {stats['signals_generated']} signals")
+        signals_generated = stats['signals_generated']
         strength_stats = stats.get("strength_stats", {})
+        if strength_stats:
+            pattern_summary[f"{pattern}_signals"] = signals_generated
+            pattern_summary[f"{pattern}_strength_mean"] = strength_stats.get('mean', 0)
+            pattern_summary[f"{pattern}_strength_std"] = strength_stats.get('std', 0)
+        
+        print(f"  {pattern.upper()}: {signals_generated} signals")
         if strength_stats:
             print(
                 f"    Strength: {strength_stats.get('mean', 0):.3f} ± {strength_stats.get('std', 0):.3f}"
             )
+    
+    if pattern_summary:
+        print(f"\n📊 Pattern Metrics Summary:\n{create_result_summary(pattern_summary)}")
 
     print("\n=== Analysis completed successfully! ===")
 

@@ -7,6 +7,7 @@ Unit tests for memory monitoring utilities
 import os
 from unittest.mock import MagicMock, patch
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.memory_monitor import (
     check_memory_usage,
     get_memory_usage,
@@ -30,7 +31,7 @@ class TestMemoryMonitor:
         """Test getting current memory usage"""
         with patch("psutil.Process") as mock_process:
             mock_proc_instance = MagicMock()
-            mock_proc_instance.memory_info.return_value.rss = 50 * 1024 * 1024  # 50MB
+            mock_proc_instance.memory_info.return_value.rss = 50 * BYTES_PER_MB
             mock_process.return_value = mock_proc_instance
 
             result = get_memory_usage()
@@ -42,7 +43,7 @@ class TestMemoryMonitor:
             with patch("builtins.print") as mock_print:
                 mock_proc_instance = MagicMock()
                 mock_proc_instance.memory_info.return_value.rss = (
-                    2000 * 1024 * 1024
+                    2000 * BYTES_PER_MB
                 )  # 2000MB
                 mock_process.return_value = mock_proc_instance
 
@@ -57,7 +58,7 @@ class TestMemoryMonitor:
                 with patch("builtins.print") as mock_print:
                     mock_proc_instance = MagicMock()
                     mock_proc_instance.memory_info.return_value.rss = (
-                        500 * 1024 * 1024
+                        500 * BYTES_PER_MB
                     )  # 500MB
                     mock_process.return_value = mock_proc_instance
 
@@ -72,7 +73,7 @@ class TestMemoryMonitor:
                 with patch("builtins.print") as mock_print:
                     mock_proc_instance = MagicMock()
                     mock_proc_instance.memory_info.return_value.rss = (
-                        1500 * 1024 * 1024
+                        1500 * BYTES_PER_MB
                     )  # 1500MB
                     mock_process.return_value = mock_proc_instance
 
@@ -89,7 +90,7 @@ class TestMemoryMonitor:
                 with patch("builtins.print") as mock_print:
                     mock_proc_instance = MagicMock()
                     mock_proc_instance.memory_info.return_value.rss = (
-                        2500 * 1024 * 1024
+                        2500 * BYTES_PER_MB
                     )  # 2500MB
                     mock_process.return_value = mock_proc_instance
 
@@ -106,7 +107,7 @@ class TestMemoryMonitor:
                 with patch("builtins.print") as mock_print:
                     mock_proc_instance = MagicMock()
                     mock_proc_instance.memory_info.return_value.rss = (
-                        1000 * 1024 * 1024
+                        1000 * BYTES_PER_MB
                     )  # 1000MB
                     mock_process.return_value = mock_proc_instance
 
@@ -120,7 +121,7 @@ class TestMemoryMonitor:
             with patch("builtins.print") as mock_print:
                 mock_proc_instance = MagicMock()
                 mock_proc_instance.memory_info.return_value.rss = (
-                    75.5 * 1024 * 1024
+                    75.5 * BYTES_PER_MB
                 )  # 75.5MB
                 mock_process.return_value = mock_proc_instance
 
@@ -133,7 +134,7 @@ class TestMemoryMonitor:
             with patch("builtins.print") as mock_print:
                 mock_proc_instance = MagicMock()
                 mock_proc_instance.memory_info.return_value.rss = (
-                    200 * 1024 * 1024
+                    200 * BYTES_PER_MB
                 )  # 200MB
                 mock_process.return_value = mock_proc_instance
 
@@ -148,7 +149,7 @@ class TestMemoryMonitor:
             with patch("builtins.print") as mock_print:
                 mock_proc_instance = MagicMock()
                 mock_proc_instance.memory_info.return_value.rss = (
-                    100 * 1024 * 1024
+                    100 * BYTES_PER_MB
                 )  # 100MB
                 mock_process.return_value = mock_proc_instance
 

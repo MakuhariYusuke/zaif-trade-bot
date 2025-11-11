@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import logging
-from typing import Dict, Any, List
+
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -117,7 +118,7 @@ def test_memory_operations():
 
         # メモリ使用量確認
         size_bytes = large_array.nbytes
-        size_mb = size_bytes / (1024 * 1024)
+        size_mb = size_bytes / BYTES_PER_MB
         logger.info(f"✓ Memory usage: {size_mb:.2f} MB")
 
         # 配列操作

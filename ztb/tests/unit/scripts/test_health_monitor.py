@@ -6,6 +6,7 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.ops.monitoring.health_monitor import HealthMonitor
 
 
@@ -26,7 +27,7 @@ class TestHealthMonitor(unittest.TestCase):
     def test_check_memory_usage_success(self, mock_process_class):
         """Test successful memory check."""
         mock_process = MagicMock()
-        mock_process.memory_info.return_value.rss = 100 * 1024 * 1024  # 100MB
+        mock_process.memory_info.return_value.rss = 100 * BYTES_PER_MB  # 100MB
         mock_process.memory_percent.return_value = 50.0
         mock_process_class.return_value = mock_process
 
@@ -39,7 +40,7 @@ class TestHealthMonitor(unittest.TestCase):
     def test_check_memory_usage_high_usage(self, mock_process_class):
         """Test memory check with high usage."""
         mock_process = MagicMock()
-        mock_process.memory_info.return_value.rss = 900 * 1024 * 1024  # 900MB
+        mock_process.memory_info.return_value.rss = 900 * BYTES_PER_MB  # 900MB
         mock_process.memory_percent.return_value = 85.0
         mock_process_class.return_value = mock_process
 
@@ -61,8 +62,8 @@ class TestHealthMonitor(unittest.TestCase):
     @patch("ztb.scripts.health_monitor.psutil.disk_usage")
     def test_check_disk_space_success(self, mock_disk_usage):
         """Test successful disk space check."""
-        mock_disk_usage.return_value.free = 2 * 1024 * 1024 * 1024  # 2GB
-        mock_disk_usage.return_value.total = 100 * 1024 * 1024 * 1024  # 100GB
+        mock_disk_usage.return_value.free = 2 * BYTES_PER_GB  # 2GB
+        mock_disk_usage.return_value.total = 100 * BYTES_PER_GB  # 100GB
 
         result = self.monitor._check_disk_space()
         self.assertTrue(result["healthy"])
@@ -72,8 +73,8 @@ class TestHealthMonitor(unittest.TestCase):
     @patch("ztb.scripts.health_monitor.psutil.disk_usage")
     def test_check_disk_space_low_space(self, mock_disk_usage):
         """Test disk space check with low space."""
-        mock_disk_usage.return_value.free = 500 * 1024 * 1024  # 500MB
-        mock_disk_usage.return_value.total = 50 * 1024 * 1024 * 1024  # 50GB
+        mock_disk_usage.return_value.free = 500 * BYTES_PER_MB  # 500MB
+        mock_disk_usage.return_value.total = 50 * BYTES_PER_GB  # 50GB
 
         result = self.monitor._check_disk_space()
         self.assertFalse(result["healthy"])
@@ -92,7 +93,7 @@ class TestHealthMonitor(unittest.TestCase):
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_stat = MagicMock()
-        mock_stat.st_size = 50 * 1024 * 1024  # 50MB
+        mock_stat.st_size = 50 * BYTES_PER_MB
         mock_path.stat.return_value = mock_stat
         mock_path_class.return_value = mock_path
 

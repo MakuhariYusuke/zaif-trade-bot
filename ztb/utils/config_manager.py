@@ -8,7 +8,7 @@ to ensure consistency and reduce duplication.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
 
@@ -274,4 +274,50 @@ class ConfigManager:
 
     def get_cached_configs(self) -> Dict[str, Dict[str, Any]]:
         """Get all cached configurations."""
-        return self._cache.copy()
+        return {key: value.copy() for key, value in self._cache.items()}
+
+
+def validate_config(config: Any, required_fields: list) -> bool:
+    """
+    設定オブジェクトの必須フィールドを検証
+
+    Args:
+        config: 検証する設定オブジェクト
+        required_fields: 必須フィールド名のリスト
+
+    Returns:
+        bool: すべての必須フィールドが存在するかどうか
+    """
+    missing_fields = []
+    for field in required_fields:
+        if not hasattr(config, field):
+            missing_fields.append(field)
+
+    if missing_fields:
+        logger.error(f"Missing required configuration fields: {missing_fields}")
+        return False
+
+    return True
+
+
+def validate_dict_config(config: Dict[str, Any], required_keys: List[str]) -> bool:
+    """
+    辞書型設定の必須キーを検証
+
+    Args:
+        config: 検証する設定辞書
+        required_keys: 必須キーのリスト
+
+    Returns:
+        bool: すべての必須キーが存在するかどうか
+    """
+    missing_keys = []
+    for key in required_keys:
+        if key not in config:
+            missing_keys.append(key)
+
+    if missing_keys:
+        logger.error(f"Missing required configuration keys: {missing_keys}")
+        return False
+
+    return True

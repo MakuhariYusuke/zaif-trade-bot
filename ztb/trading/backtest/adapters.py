@@ -4,12 +4,15 @@ Strategy adapters for backtesting.
 Provides adapters to wrap different trading strategies for unified backtest interface.
 """
 
+from re import A
 import time
 from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import numpy as np
 import pandas as pd
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.trading.risk.optimizers.integrated_signal_filter import IntegratedSignalFilter
 from ztb.utils.cache_utils import TTLCache
 
@@ -965,11 +968,11 @@ class RLPolicyAdapter:
                 float(action[0]) if hasattr(action, "__len__") else float(action)
             )
             if action_val < -0.33:
-                discrete_action = -1  # SELL
+                discrete_action = ACTION_SELL  # SELL
             elif action_val > 0.33:
-                discrete_action = 1  # BUY
+                discrete_action = ACTION_BUY  # BUY
             else:
-                discrete_action = 0  # HOLD
+                discrete_action = ACTION_HOLD  # HOLD
 
         # Debug: Log the discrete action to file
         with open("debug_actions.log", "a") as f:
@@ -989,7 +992,7 @@ class RLPolicyAdapter:
             signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
+        action_to_signal = {"sell": ACTION_SELL, "hold": ACTION_HOLD, "buy": ACTION_BUY}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
         return pd.DataFrame(
@@ -1037,7 +1040,7 @@ class RLPolicyAdapter:
 
         return {
             "cache_entries": total_entries,
-            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
             "model_loaded": self.model is not None,
         }
@@ -1112,7 +1115,7 @@ class SMACrossoverAdapter:
             signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
+        action_to_signal = {"sell": ACTION_SELL, "hold": ACTION_HOLD, "buy": ACTION_BUY}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
         return pd.DataFrame(
@@ -1149,7 +1152,7 @@ class SMACrossoverAdapter:
 
         return {
             "cache_entries": total_entries,
-            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
             "model_loaded": self.model is not None,
         }
@@ -1182,7 +1185,7 @@ class BuyAndHoldAdapter:
             signals.append(signal["action"])
 
         # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {"sell": -1, "hold": 0, "buy": 1}
+        action_to_signal = {"sell": ACTION_SELL, "hold": ACTION_HOLD, "buy": ACTION_BUY}
         signal_values = [action_to_signal.get(s, 0) for s in signals]
 
         return pd.DataFrame(
@@ -1209,7 +1212,7 @@ class BuyAndHoldAdapter:
 
         return {
             "cache_entries": total_entries,
-            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
             "model_loaded": self.model is not None,
         }

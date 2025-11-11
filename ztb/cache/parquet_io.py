@@ -13,6 +13,7 @@ import psutil
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.config_loader import ConfigLoader
 from .memory_cache import default_memory_manager
@@ -192,7 +193,7 @@ def write_parquet(
         compression=compression,
         row_group_size=row_group_size,
         use_dictionary=True,
-        data_page_size=1024 * 1024,  # 1MB pages
+        data_page_size=BYTES_PER_MB,  # 1MB pages
     )
 
 
@@ -220,7 +221,7 @@ def read_parquet(
     peak_memory_mb = limits.get("peak_memory_mb", 1200)
     if peak_memory_mb is None:
         peak_memory_mb = 1200
-    peak_memory_limit = int(peak_memory_mb) * 1024 * 1024  # MB to bytes
+    peak_memory_limit = int(peak_memory_mb) * BYTES_PER_MB  # MB to bytes
 
     # Monitor memory before read
     process = psutil.Process(os.getpid())
@@ -241,11 +242,11 @@ def read_parquet(
 
     # Check memory after read
     mem_after = process.memory_info().rss
-    mem_increase = (mem_after - mem_before) / (1024 * 1024)  # MB
+    mem_increase = (mem_after - mem_before) / BYTES_PER_MB  # MB
 
     if mem_after > peak_memory_limit:
         print(
-            f"WARNING: Memory usage exceeded limit. Current: {mem_after / (1024 * 1024):.1f}MB, Limit: {peak_memory_limit / (1024 * 1024):.1f}MB"
+            f"WARNING: Memory usage exceeded limit. Current: {mem_after / BYTES_PER_MB:.1f}MB, Limit: {peak_memory_limit / BYTES_PER_MB:.1f}MB"
         )
 
     # Cache in memory for future use

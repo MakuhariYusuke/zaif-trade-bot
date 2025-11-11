@@ -16,6 +16,7 @@ import zlib
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union, cast
 
+from ztb.trading.environment.constants import BYTES_PER_KB, BYTES_PER_MB
 from ztb.utils.path_utils import ensure_dir
 
 try:
@@ -89,9 +90,9 @@ class FeatureCache:
             return self.compressor
 
         # 動的選択ロジック
-        if data_size_bytes < 50 * 1024:  # < 50KB
+        if data_size_bytes < 50 * BYTES_PER_KB:  # < 50KB
             return "lz4" if HAS_LZ4 else "zlib"
-        elif data_size_bytes < 1024 * 1024:  # < 1MB
+        elif data_size_bytes < BYTES_PER_MB:  # < 1MB
             if access_pattern == "frequent":
                 return "lz4" if HAS_LZ4 else "zlib"
             else:
@@ -106,7 +107,7 @@ class FeatureCache:
     def _setup_compressor(self) -> None:
         """圧縮方式の設定"""
         selected = self._select_compressor(
-            1024 * 1024, self.access_pattern
+            BYTES_PER_MB, self.access_pattern
         )  # 1MB基準で初期選択
 
         if selected == "zstd" and HAS_ZSTD:
@@ -212,7 +213,7 @@ class FeatureCache:
             for old_file in cache_files:
                 if current_size_mb <= self.cache_max_mb:
                     break
-                file_size_mb = os.path.getsize(str(old_file)) / (1024 * 1024)
+                file_size_mb = os.path.getsize(str(old_file)) / BYTES_PER_MB
                 current_size_mb -= file_size_mb
                 os.unlink(str(old_file))
                 self.stats["evictions"] += 1
@@ -319,7 +320,7 @@ class FeatureCache:
                     f = self.cache_dir / filename
                     if os.path.isfile(f):
                         total_size += os.path.getsize(f)
-            return total_size / (1024 * 1024)
+            return total_size / BYTES_PER_MB
         except Exception as e:
             logging.warning(f"[CACHE] Error getting cache size: {e}")
             return 0.0

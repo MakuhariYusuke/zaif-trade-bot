@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 import numpy as np
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 class MemoryMonitoringBenchmark:
     """Benchmark memory monitoring overhead in experiments"""
@@ -39,7 +41,7 @@ class MemoryMonitoringBenchmark:
         return {
             "step": step_num,
             "reward": np.random.normal(0, 1),
-            "memory_mb": psutil.Process().memory_info().rss / (1024 * 1024),
+            "memory_mb": psutil.Process().memory_info().rss / BYTES_PER_MB,
         }
 
     def benchmark_memory_monitoring(
@@ -69,7 +71,7 @@ class MemoryMonitoringBenchmark:
 
             # Memory monitoring (similar to ResourceMonitor.log_resources)
             if step % monitoring_interval == 0:
-                current_memory = psutil.Process().memory_info().rss / (1024 * 1024)
+                current_memory = psutil.Process().memory_info().rss / BYTES_PER_MB
                 memory_history.append(current_memory)
 
                 # Measure time for GC operations
@@ -103,7 +105,7 @@ class MemoryMonitoringBenchmark:
             "monitoring_interval": monitoring_interval,
             "total_time_sec": total_time,
             "avg_step_time_sec": total_time / total_steps,
-            "memory_increase_mb": (end_memory - start_memory) / (1024 * 1024),
+            "memory_increase_mb": (end_memory - start_memory) / BYTES_PER_MB,
             "gc_operations_count": len(step_times),
             "avg_gc_time_sec": np.mean(gc_times) if gc_times else 0,
             "max_gc_time_sec": max(gc_times) if gc_times else 0,
