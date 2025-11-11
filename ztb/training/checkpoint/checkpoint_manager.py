@@ -190,10 +190,93 @@ class TrainingCheckpointManager:
                 },
             )
 
-    def shutdown(self) -> None:
-        self._manager.shutdown()
-        if self.observability:
-            self.observability.log_event("checkpoint_manager_shutdown")
+    def validate_checkpoint_integrity(
+        self, snapshot: TrainingCheckpointSnapshot, model: Optional[BaseAlgorithm] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate the integrity of a checkpoint snapshot.
+
+        Args:
+            snapshot: The checkpoint snapshot to validate
+            model: Optional model to validate against
+
+        Returns:
+            Dict containing validation results with 'valid', 'errors', and 'warnings' keys
+        """
+        validation_result = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+        }
+
+        try:
+            # Validate basic structure
+            if not hasattr(snapshot, 'payload') or not isinstance(snapshot.payload, dict):
+                validation_result["valid"] = False
+                validation_result["errors"].append("Invalid checkpoint payload structure")
+                return validation_result
+
+            payload = snapshot.payload
+
+            # Validate model state
+            if "policy_state" not in payload:
+                validation_result["valid"] = False
+                validation_result["errors"].append("Missing policy state in checkpoint")
+            else:
+                policy_state = payload["policy_state"]
+                if not isinstance(policy_state, dict):
+                    validation_result["valid"] = False
+                    validation_result["errors"].append("Invalid policy state format")
+                elif model is not None:
+                    # Validate against current model
+                    try:
+                        model.policy.load_state_dict(policy_state, strict=False)
+                    except Exception as e:
+                        validation_result["warnings"].append(f"Policy state loading issue: {e}")
+
+            # Validate optimizer state if present
+            if self.config.include_optimizer and "optimizer_state" in payload:
+                optimizer_state = payload["optimizer_state"]
+                if not isinstance(optimizer_state, dict):
+                    validation_result["warnings"].append("Invalid optimizer state format")
+                elif model is not None:
+                    try:
+                        optimizer = getattr(model.policy, "optimizer", None)
+                        if optimizer is not None:
+                            optimizer.load_state_dict(optimizer_state)
+                        else:
+                            validation_result["warnings"].append("Model has no optimizer but checkpoint contains optimizer state")
+                    except Exception as e:
+                        validation_result["warnings"].append(f"Optimizer state loading issue: {e}")
+
+            # Validate replay buffer if present
+            if self.config.include_replay_buffer and "buffer_bytes" in payload:
+                buffer_bytes = payload["buffer_bytes"]
+                if not isinstance(buffer_bytes, bytes):
+                    validation_result["warnings"].append("Invalid replay buffer format")
+
+            # Validate RNG state if present
+            if self.config.include_rng_state and "rng_state" in payload:
+                rng_state = payload["rng_state"]
+                if not isinstance(rng_state, dict):
+                    validation_result["warnings"].append("Invalid RNG state format")
+
+            # Validate metadata
+            if hasattr(snapshot, 'metadata') and snapshot.metadata:
+                metadata = snapshot.metadata
+                if not isinstance(metadata, dict):
+                    validation_result["warnings"].append("Invalid metadata format")
+
+            # Validate step number
+            if not isinstance(snapshot.step, int) or snapshot.step < 0:
+                validation_result["valid"] = False
+                validation_result["errors"].append("Invalid step number in checkpoint")
+
+        except Exception as e:
+            validation_result["valid"] = False
+            validation_result["errors"].append(f"Checkpoint validation failed: {e}")
+
+        return validation_result
 
     # ------------------------------------------------------------------
     # Internal helpers
