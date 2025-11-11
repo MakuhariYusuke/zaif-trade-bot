@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""
+Unified Training System for v4XX Series
+
+A lightweight, focused training system that supports all v4XX versions
+through unified configuration and minimal interface.
+"""
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from ztb.features.optimizer_features import OptimizerFeatureTracker
+from ztb.training.core.unified_base import UnifiedBase
+from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
+from ztb.utils.v4xx_config_converter import V4XXConfigConverter
+
+
+class V4XXUnifiedTrainer(UnifiedBase):
+    """Lightweight unified trainer for all v4XX series models."""
+
+    def __init__(self, config_path: str, version: Optional[str] = None):
+        """
+        Initialize unified trainer.
+
+        Args:
+            config_path: Path to configuration file
+            version: Override version detection (optional)
+        """
+        super().__init__(config_path, version)
+        self.config = self._load_and_convert_config()
+        self.trainer = None
+
+        # Initialize optimizer tracker if configured (v442+ feature)
+        optimizer_config = self.config.get("optimizer_features")
+        if optimizer_config is not None:
+            self.optimizer_tracker = OptimizerFeatureTracker(
+                max_history=optimizer_config.get("max_history", 1000),
+                enable_normalization=optimizer_config.get("enable_normalization", True),
+                normalization_method=optimizer_config.get(
+                    "normalization_method", "robust"
+                ),
+                outlier_threshold=optimizer_config.get("outlier_threshold", 1.5),
+            )
+            self.logger.info(
+                "Optimizer features enabled for enhanced training monitoring"
+            )
+        else:
+            self.optimizer_tracker = None
+            self.logger.info("Optimizer features disabled (legacy configuration)")
+
+    def _load_and_convert_config(self) -> Dict[str, Any]:
+        """Load and convert configuration to unified format."""
+        try:
+            # Load raw config
+            raw_config = self.load_config(str(self.config_path))
+
+            # Detect version if not provided
+            if self.version is None:
+                self.version = V4XXConfigConverter.detect_config_version(raw_config)
+                self.logger.info(f"Detected configuration version: {self.version}")
+
+            # Convert to unified format
+            unified_config = V4XXConfigConverter.convert_to_unified(raw_config)
+
+            # Add metadata
+            unified_config["_metadata"] = {
+                "original_version": self.version,
+                "converted_at": "unified_trainer",
+                "config_path": str(self.config_path),
+            }
+
+            self.logger.info(f"Configuration loaded and converted for {self.version}")
+            return unified_config
+
+        except Exception as e:
+            self.logger.error(f"Failed to load configuration: {e}")
+            raise
+
+    def validate_config(self) -> bool:
+        """Validate the unified configuration."""
+        required_fields = ["algorithm", "model_name", "training"]
+        return super().validate_config(self.config, required_fields)
+
+    def initialize_trainer(self):
+        """Initialize the algorithm trainer."""
+        try:
+            algorithm = self.config["algorithm"]
+            self.logger.info(
+                f"Initializing {algorithm.upper()} trainer for {self.config['model_name']}"
+            )
+
+            self.trainer = create_algorithm_trainer(
+                algorithm,
+                self.config,
+                self.logger,
+                optimizer_tracker=self.optimizer_tracker,
+            )
+
+            if (
+                hasattr(self.trainer, "validate_config")
+                and not self.trainer.validate_config()
+            ):
+                raise ValueError("Trainer configuration validation failed")
+
+            self.logger.info("Trainer initialized successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize trainer: {e}")
+            raise
+
+    def train(self):
+        """Execute training."""
+        if self.trainer is None:
+            self.initialize_trainer()
+
+        try:
+            self.logger.info(f"Starting training for {self.config['model_name']}")
+            self.logger.info(
+                f"Total timesteps: {self.config['training']['total_timesteps']:,}"
+            )
+
+            self.trainer.train()
+
+            self.logger.info("Training completed successfully")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Training failed: {e}")
+            raise
+
+    def save_config(self, output_path: Optional[str] = None):
+        """Save the unified configuration."""
+        if output_path is None and self.config_path:
+            output_path = str(
+                self.config_path.parent / f"{self.config_path.stem}_unified.json"
+            )
+        elif output_path is None:
+            output_path = "config_unified.json"
+
+        super().save_config(self.config, output_path)
+
+    def run(self):
+        """Execute the main functionality (alias for train)."""
+        self.train()
+
+    def analyze_results(self):
+        """Analyze training results."""
+        if self.trainer is None:
+            self.logger.warning("No trainer initialized, cannot analyze results")
+            return
+
+        try:
+            if hasattr(self.trainer, "analyze_results"):
+                self.logger.info("Analyzing training results...")
+                self.trainer.analyze_results()
+            else:
+                self.logger.info("Trainer does not support result analysis")
+        except Exception as e:
+            self.logger.error(f"Failed to analyze results: {e}")
+            raise
+
+
+def main():
+    """Main entry point for unified training system."""
+    parser = argparse.ArgumentParser(
+        description="Unified Training System for v4XX Series"
+    )
+    parser.add_argument("config", help="Path to configuration file")
+    parser.add_argument("--version", help="Override version detection")
+    parser.add_argument(
+        "--save-config", action="store_true", help="Save converted configuration"
+    )
+    parser.add_argument(
+        "--validate-only", action="store_true", help="Only validate configuration"
+    )
+
+    args = parser.parse_args()
+
+    try:
+        # Initialize trainer
+        trainer = V4XXUnifiedTrainer(args.config, args.version)
+
+        # Validate configuration
+        if not trainer.validate_config():
+            sys.exit(1)
+
+        if args.validate_only:
+            trainer.logger.info("Configuration validation completed successfully")
+            return
+
+        # Save converted config if requested
+        if args.save_config:
+            trainer.save_config()
+
+        # Execute training
+        trainer.train()
+
+    except Exception as e:
+        print(f"❌ Training system failed: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
