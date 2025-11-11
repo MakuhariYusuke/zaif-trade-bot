@@ -15,11 +15,12 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
-from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
+from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager, TrainingCheckpointConfig
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
+from ztb.utils.logging_utils import StructuredLogger
 
 
 class SACTrainer(BaseAlgorithmTrainer):
@@ -43,10 +44,28 @@ class SACTrainer(BaseAlgorithmTrainer):
         self.optimizer_tracker = optimizer_tracker
         self.training_stats: TrainingStats = {}
 
+        # Initialize structured logger for JSON logging
+        self.structured_logger = StructuredLogger("ztb.training.sac", json_format=True)
+
         # Training state manager for resume functionality
         self.training_state_manager = TrainingStateManager(
             save_dir=self.config.get("training", {}).get(
                 "checkpoint_dir", "models/training_states"
+            )
+        )
+
+        # Training checkpoint manager for periodic saves
+        self.checkpoint_manager = TrainingCheckpointManager(
+            save_dir=self.config.get("training", {}).get(
+                "checkpoint_dir", "models/checkpoints"
+            ),
+            config=TrainingCheckpointConfig(
+                interval_steps=1000,  # Save every 1000 steps as per Week 9-10 requirements
+                keep_last=5,
+                compress="lz4",
+                async_save=True,
+                include_optimizer=True,
+                include_replay_buffer=False,
             )
         )
 
@@ -223,6 +242,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                     early_stopping=early_stopping_config
                     if early_stopping_config
                     else None,
+                    checkpoint_manager=self.checkpoint_manager,
                 )
 
                 # Enable regime tracking if adaptation is enabled
