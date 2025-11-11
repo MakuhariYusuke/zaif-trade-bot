@@ -2,6 +2,7 @@
 """
 sqlite_cache.py
 Lightweight SQLite-based cache for Raspberry Pi environments.
+Enhanced with TTLCache memory management integration.
 """
 
 import hashlib
@@ -12,6 +13,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from .memory_cache import MemoryManager, default_memory_manager
+
 
 class SQLiteCache:
     """SQLite-based LRU cache with TTL support and task-specific optimization"""
@@ -21,6 +24,7 @@ class SQLiteCache:
         db_path: Optional[Path] = None,
         max_items: int = 50000,
         task_mode: str = "default",
+        enable_memory_cache: bool = True,
     ):
         super().__init__()
         if db_path is None:
@@ -29,6 +33,7 @@ class SQLiteCache:
         self.db_path = db_path
         self.max_items = max_items
         self.task_mode = task_mode
+        self.enable_memory_cache = enable_memory_cache
 
         # Task-specific TTL defaults
         self.default_ttls = {
@@ -40,6 +45,12 @@ class SQLiteCache:
 
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._init_db()
+
+        # Initialize memory manager integration
+        if enable_memory_cache:
+            self.memory_manager = default_memory_manager
+        else:
+            self.memory_manager = None
 
     def get_default_ttl(self) -> int:
         """Get default TTL based on task mode"""
@@ -97,9 +108,19 @@ class SQLiteCache:
         )
         conn.commit()
 
+        # Also cache in memory if enabled
+        if self.memory_manager:
+            self.memory_manager.cache_feature_data(key, value, ttl_sec)
+
     def get(self, key: str) -> Optional[Any]:
         """Get cache value, returns None if expired or not found"""
         now = int(time.time())
+
+        # Check memory cache first if enabled
+        if self.enable_memory_cache and self.memory_manager:
+            value = self.memory_manager.get_cached_feature_data(key)
+            if value is not None:
+                return value
 
         conn = self.conn
         cursor = conn.execute(
@@ -131,7 +152,13 @@ class SQLiteCache:
         )
         conn.commit()
 
-        return pickle.loads(value_blob)
+        value = pickle.loads(value_blob)
+
+        # Update memory cache if enabled
+        if self.enable_memory_cache and self.memory_manager:
+            self.memory_manager.cache_feature_data(key, value, ttl_sec)
+
+        return value
 
     def touch(self, key: str) -> None:
         """Update last_access for LRU"""

@@ -521,6 +521,18 @@ class V4FeatureExtractor:
         """
         self.config = config or {}
         self.unified_engineer = UnifiedFeatureEngineer(config=self.config)
+
+        # FeatureRegistryの初期化
+        from ztb.features.core.registry import FeatureRegistry
+        FeatureRegistry.initialize()
+
+        # scalping featuresをインポートして登録
+        try:
+            import ztb.features.scalping  # noqa: F401
+            logger.info("Scalping features loaded")
+        except ImportError as e:
+            logger.warning(f"Failed to load scalping features: {e}")
+
         logger.info("V4FeatureExtractor initialized")
 
     def extract_features(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -535,12 +547,25 @@ class V4FeatureExtractor:
             特徴量が追加されたデータフレーム
         """
         try:
+            # Extract short-term feature parameters before passing to unified engineer
+            short_term_params = {}
+            for param in ['rv_window', 'tv_window']:
+                if param in kwargs:
+                    short_term_params[param] = kwargs.pop(param)
+
+            # news_data を分離（SAC特徴量生成に渡さない）
+            news_data = kwargs.pop('news_data', None)
+
             # SACモデル向けの特徴量生成
             features_df = self.unified_engineer.generate_features(
                 df, feature_set="curated", model_type="sac", **kwargs
             )
+
+            # 短期間収益性向上のための追加特徴量
+            enhanced_df = self._add_short_term_features(features_df, news_data=news_data, **short_term_params)
+
             logger.info("V4FeatureExtractor: Features extracted successfully")
-            return features_df
+            return enhanced_df
         except Exception as e:
             logger.error(f"V4FeatureExtractor error: {e}")
             raise
@@ -552,4 +577,129 @@ class V4FeatureExtractor:
         Returns:
             特徴量名のリスト
         """
-        return self.unified_engineer.get_available_features("sac")
+        base_features = self.unified_engineer.get_available_features("sac")
+        # 短期間特徴量を追加
+        short_term_features = [
+            "realized_volatility",
+            "tick_volume_ratio",
+            "order_flow_imbalance",
+            "news_sentiment_score",
+            "news_sentiment_intensity"
+        ]
+        return base_features + short_term_features
+
+    def _add_short_term_features(self, df: pd.DataFrame, news_data=None, **kwargs) -> pd.DataFrame:
+        """
+        短期間収益性向上のための特徴量を追加
+
+        Args:
+            df: ベース特徴量が追加されたデータフレーム
+            **kwargs: 追加パラメータ
+
+        Returns:
+            短期間特徴量が追加されたデータフレーム
+        """
+        try:
+            from ztb.features.core.registry import FeatureRegistry
+
+            # Extract short-term feature parameters to avoid passing them to lower layers
+            rv_window = kwargs.get('rv_window', 10)
+            tv_window = kwargs.get('tv_window', 5)
+
+            df = df.copy()
+
+            # Realized Volatility 追加
+            if 'realized_volatility' in FeatureRegistry._registry:
+                rv_func = FeatureRegistry._registry['realized_volatility']
+                rv_series = rv_func(df, window=rv_window)
+                df['realized_volatility'] = rv_series
+
+            # Tick Volume Ratio 追加
+            if 'tick_volume_ratio' in FeatureRegistry._registry:
+                tv_func = FeatureRegistry._registry['tick_volume_ratio']
+                tv_series = tv_func(df, window=tv_window)
+                df['tick_volume_ratio'] = tv_series
+
+            # Order Flow Imbalance 追加
+            if 'order_flow_imbalance' in FeatureRegistry._registry:
+                of_func = FeatureRegistry._registry['order_flow_imbalance']
+                of_series = of_func(df)
+                df['order_flow_imbalance'] = of_series
+
+            # ニュース感情スコア統合 (オプション)
+            df = self._add_news_sentiment_features(df, news_data=news_data, **kwargs)
+
+            logger.info("Added short-term enhanced features")
+            return df
+
+        except Exception as e:
+            logger.warning(f"Failed to add short-term features: {e}")
+            return df
+
+    def _add_news_sentiment_features(self, df: pd.DataFrame, news_data=None, **kwargs) -> pd.DataFrame:
+        """
+        ニュース感情スコア特徴量を追加
+
+        Args:
+            df: 入力データフレーム
+            news_data: ニュースデータ（リストまたはDataFrame）
+            **kwargs: 追加パラメータ
+
+        Returns:
+            ニュース感情特徴量が追加されたデータフレーム
+        """
+        try:
+            if news_data is None or len(news_data) == 0:
+                return df
+
+            from ztb.multimodal.features.news_feature_processor import NewsFeatureProcessor
+
+            processor = NewsFeatureProcessor()
+
+            if isinstance(news_data, list):
+                # ニューステキストのリストの場合
+                sentiment_features = processor.extract_sentiment_features(news_data)
+
+                if sentiment_features:
+                    df = df.copy()
+                    # ニュース感情を全期間に適用（簡易実装）
+                    # 本来は時間軸でマップすべき
+                    n_periods = len(df)
+                    n_news = len(news_data)
+
+                    if n_news > 0:
+                        # ニュースを期間に分配
+                        scores_per_period = n_periods // n_news
+                        remainder = n_periods % n_news
+
+                        sentiment_scores = []
+                        sentiment_intensities = []
+
+                        for i in range(n_news):
+                            score = sentiment_features.get('financial_sentiment', [0.0])[i] if i < len(sentiment_features.get('financial_sentiment', [])) else 0.0
+                            intensity = sentiment_features.get('sentiment_intensity', [0.0])[i] if i < len(sentiment_features.get('sentiment_intensity', [])) else 0.0
+
+                            # このニュースの期間数
+                            periods_for_news = scores_per_period + (1 if i < remainder else 0)
+
+                            sentiment_scores.extend([score] * periods_for_news)
+                            sentiment_intensities.extend([intensity] * periods_for_news)
+
+                        # 長さを調整
+                        if len(sentiment_scores) > n_periods:
+                            sentiment_scores = sentiment_scores[:n_periods]
+                            sentiment_intensities = sentiment_intensities[:n_periods]
+                        elif len(sentiment_scores) < n_periods:
+                            sentiment_scores.extend([0.0] * (n_periods - len(sentiment_scores)))
+                            sentiment_intensities.extend([0.0] * (n_periods - len(sentiment_intensities)))
+
+                        df['news_sentiment_score'] = sentiment_scores
+                        df['news_sentiment_intensity'] = sentiment_intensities
+
+                        logger.info("Added news sentiment features (distributed)")
+
+            return df
+
+        except Exception as e:
+            logger.warning(f"Failed to add news sentiment features: {e}")
+            return df

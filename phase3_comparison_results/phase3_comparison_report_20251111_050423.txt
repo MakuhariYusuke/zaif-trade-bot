@@ -1,0 +1,15 @@
+
+================================================================================
+PHASE 3 ENHANCED VS BASELINE BACKTEST COMPARISON REPORT
+Generated: 2025-11-11 05:04:23
+================================================================================
+
+📊 BACKTEST SUMMARY:
+  Baseline Status: ❌ Failed
+  Phase 3 Enhanced Status: ❌ Failed
+
+❌ Baseline Error: cannot import name 'TradingMetrics' from 'ztb.utils.trading_metrics' (C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\trading_metrics.py)
+
+❌ Phase 3 Enhanced Error: 'close'
+
+================================================================================

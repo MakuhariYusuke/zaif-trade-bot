@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import PPO
@@ -154,7 +154,7 @@ class SACV445MultiPeriodTester:
 
         # Disable adaptive feature selection to maintain consistent feature dimensions
         env_config_dict["adaptive_feature_selection"] = {"enabled": False}
-        env_config_dict["target_feature_count"] = None
+        env_config_dict["target_feature_count"] = 140
 
         env_config = EnvironmentConfig(**env_config_dict)
 

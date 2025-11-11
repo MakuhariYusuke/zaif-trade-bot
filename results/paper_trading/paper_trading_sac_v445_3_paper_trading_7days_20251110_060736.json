@@ -1,0 +1,1243 @@
+{
+  "experiment_info": {
+    "name": "sac_v445_3_paper_trading_7days",
+    "timestamp": "20251110_060736",
+    "model_path": "models\\sac_v444_2_final_model.zip",
+    "phase": "3-3 Live Trading Integration"
+  },
+  "portfolio": {
+    "jpy_balance": 9998.96799198553,
+    "btc_balance": 0.0,
+    "portfolio_value": 9998.96799198553,
+    "trades": [
+      {
+        "timestamp": "2023-07-21T13:00:00",
+        "type": "BUY",
+        "price": 49777.321637670255,
+        "btc_amount": 0.020069380334919052,
+        "jpy_amount": 1000.0,
+        "portfolio_value": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T14:00:00",
+        "type": "SELL",
+        "price": 49825.55232189282,
+        "btc_amount": 0.020069380334919052,
+        "jpy_amount": 998.9679919855306,
+        "portfolio_value": 9999.967959945476
+      }
+    ],
+    "performance_history": [
+      {
+        "timestamp": "2023-07-21T07:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 49171.19471786031,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T08:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 49690.51826669178,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T09:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 48858.363415053136,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T10:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 49179.59851517287,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T11:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 49236.18401930993,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T12:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 48237.02196332166,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T13:00:00",
+        "portfolio_value": 10000.0,
+        "btc_price": 49777.321637670255,
+        "btc_balance": 0.0,
+        "jpy_balance": 10000.0
+      },
+      {
+        "timestamp": "2023-07-21T14:00:00",
+        "portfolio_value": 9999.967959945476,
+        "btc_price": 49825.55232189282,
+        "btc_balance": 0.020069380334919052,
+        "jpy_balance": 9000.0
+      },
+      {
+        "timestamp": "2023-07-21T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49024.53655446265,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48332.459257217255,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48635.04631215266,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49515.27231275041,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48252.96299087334,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49158.818214975065,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48859.29050036676,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48896.3998698272,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-21T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48609.34531905476,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49313.26395230142,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48260.26326162901,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49226.02759509893,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49004.65167734109,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48595.650625729904,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49496.3158061924,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48459.51522609881,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49333.51354226725,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48826.3393446567,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48957.93002511895,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48457.17652331663,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48682.97212845677,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49107.12411201592,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48999.45568006686,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48836.144323208966,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48297.68230128503,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49178.005819914455,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49560.6826147636,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48360.68935876293,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48912.53465555067,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48736.221590630696,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49188.42031155815,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48401.961287575024,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-22T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49077.17600977411,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49309.46355623577,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48405.66759892486,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49560.06109926577,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49055.6138909045,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49151.72371837898,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49507.03342449413,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48737.39992423759,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48710.470021157525,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48556.8889461654,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49149.53902547229,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48837.39153041675,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49022.26152443912,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48105.7047931205,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49132.061451350186,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48884.11309436129,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49785.432059678285,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49076.85464458028,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49180.902578940215,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49533.92383470302,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49160.78737315111,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49101.773488408864,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49840.50485190165,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48702.648874086415,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-23T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49174.05084290722,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48531.078496150585,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49633.74636148397,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49201.62075753146,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48425.14548132242,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49272.19642974332,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48518.14874706334,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48374.13865848225,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49521.56466854718,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48932.1108176462,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48686.46710789444,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49601.69948786777,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49147.58563507311,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49049.57058706233,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49605.60656322465,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49253.01726065431,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48829.14876205338,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48295.60093336002,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48764.77282384236,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48743.36283138287,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48665.92235775045,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48900.32263531172,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49611.25959452606,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49673.88479281219,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-24T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48482.12249071395,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49764.24798421005,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48475.6541257864,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48986.56995908597,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49236.67466874787,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49458.34320439928,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49041.96717231144,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48805.195911610186,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49426.77022720038,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48943.165299027816,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50168.72946855654,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49384.25752523218,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48617.60453134991,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49145.24490256772,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49224.59771639593,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49016.96423914445,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48564.89649967878,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49880.041271722,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49180.695081137615,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48518.92457823794,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50060.9560831523,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49089.79937061322,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49440.26050811556,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48676.30583296868,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-25T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49062.32582888373,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48677.459769442044,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49703.06738420613,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49143.47442246477,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48869.35665596039,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49129.96731508085,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49747.13023337588,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49466.89425782577,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49267.31357734955,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48667.21087216134,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50465.66575350311,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50019.8860200574,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49804.57060926358,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49725.399129309,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49480.72247934253,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49075.39983692883,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49400.10887925299,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49472.64940660977,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49888.83870197466,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49112.919504309575,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49263.2601098626,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49663.18477186595,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48973.72585470837,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49044.42256866354,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-26T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49475.78409865873,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49851.66074162687,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48474.04484767078,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50338.237637144535,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50363.55412719676,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48565.23772402744,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49155.507714744206,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50121.26701719455,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49594.20041902453,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T08:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49007.94330809423,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T09:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49845.88617934084,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T10:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48989.27461161524,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T11:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49729.04742595688,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T12:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49131.77425057118,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T13:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49416.327808868205,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T14:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49794.73769571732,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T15:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49547.62904921468,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T16:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49197.68768353156,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T17:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49920.79408189175,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T18:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49882.004388895744,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T19:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49319.95104592853,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T20:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49151.29859216807,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T21:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48730.05184186194,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T22:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49367.04580809888,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-27T23:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49750.73561318992,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T00:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49440.62608236147,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T01:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48758.052513422524,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T02:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49269.11469442217,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T03:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49761.171288609,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T04:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 48926.312173947765,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T05:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50336.927066738,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T06:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 49341.30034642203,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      },
+      {
+        "timestamp": "2023-07-28T07:00:00",
+        "portfolio_value": 9998.96799198553,
+        "btc_price": 50026.25788064997,
+        "btc_balance": 0.0,
+        "jpy_balance": 9998.96799198553
+      }
+    ]
+  },
+  "metrics": {
+    "initial_balance": 10000.0,
+    "final_value": 9998.96799198553,
+    "total_return_pct": -0.010320080144701933,
+    "total_trades": 2,
+    "buy_trades": 1,
+    "sell_trades": 1,
+    "win_rate_pct": 0.0,
+    "total_pnl": -1.0320080144693975,
+    "max_drawdown_pct": 0.010320080144701933,
+    "sharpe_ratio": -0.09751589407395934,
+    "initial_btc_balance": 0.0,
+    "final_btc_balance": 0.0,
+    "btc_change": 0.0,
+    "final_btc_price": 50026.25788064997,
+    "final_btc_value": 0.0,
+    "final_jpy_balance": 9998.96799198553,
+    "btc_value_change_pct": 0.0,
+    "signal_stats": {
+      "total_signals": 20,
+      "buy_signals": 1,
+      "sell_signals": 1,
+      "hold_signals": 18,
+      "signal_diversity": 0.09999999999999998,
+      "avg_signal_interval_minutes": 60.0
+    }
+  }
+}

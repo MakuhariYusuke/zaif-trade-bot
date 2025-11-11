@@ -8,6 +8,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
+import pandas as pd
 import torch
 
 from ztb.training.constants import DEFAULT_LEARNING_RATE
@@ -2132,3 +2133,478 @@ class UnifiedTrainer:
         except Exception as e:
             self.logger.error(f"Failed to create V433 training environment: {e}")
             return None
+
+    def run_multi_period_backtest(
+        self,
+        model_path: str,
+        data_path: Optional[str] = None,
+        window_sizes: Optional[List[int]] = None,
+        overlap_ratio: float = 0.5,
+        output_path: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run multi-period backtest analysis for SAC v445.3 model.
+
+        This method integrates the multi_period_analysis_sac_v445_3.py functionality
+        into the unified trainer framework.
+
+        Args:
+            model_path: Path to the trained model
+            data_path: Path to custom data file (optional)
+            window_sizes: List of window sizes in hours to test
+            overlap_ratio: Overlap ratio between consecutive windows
+            output_path: Path to save results (optional)
+
+        Returns:
+            Dict containing backtest results
+        """
+        try:
+            from pathlib import Path
+            import json
+            import pandas as pd
+            import numpy as np
+            from stable_baselines3 import PPO
+            from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+            from ztb.trading.environment.utils.config import EnvironmentConfig
+        except ImportError as e:
+            self.logger.error(f"Failed to import required modules: {e}")
+            return {"error": f"Import error: {e}"}
+
+        self.logger.info("Starting multi-period backtest analysis...")
+
+        # Set default window sizes
+        if window_sizes is None:
+            window_sizes = [24]  # Default to 24 hours
+
+        try:
+            # Load model
+            if not Path(model_path).exists():
+                raise FileNotFoundError(f"Model file not found: {model_path}")
+
+            model = PPO.load(model_path)
+            self.logger.info(f"Loaded model from {model_path}")
+
+            # Load data
+            if data_path and Path(data_path).exists():
+                custom_df = pd.read_csv(data_path)
+                custom_df["timestamp"] = pd.to_datetime(custom_df["timestamp"])
+                self.logger.info(f"Loaded custom data from {data_path}, shape: {custom_df.shape}")
+                df = custom_df
+            else:
+                # Load default training data
+                default_path = "data/btc_jpy_real_dataset.csv"
+                if not Path(default_path).exists():
+                    raise FileNotFoundError(f"Default data file not found: {default_path}")
+                df = pd.read_csv(default_path)
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                self.logger.info(f"Loaded default data, shape: {df.shape}")
+
+            # Create environment config (simplified version)
+            env_config_dict = {
+                "initial_portfolio_value": 10000.0,
+                "transaction_fee": 0.001,
+                "use_continuous_actions": True,
+                "adaptive_feature_selection": {"enabled": False},
+                "target_feature_count": 140
+            }
+            env_config = EnvironmentConfig(**env_config_dict)
+
+            # Create environment
+            env = HeavyTradingEnv(df=df, config=env_config, use_continuous_actions=True)
+            self.logger.info(f"Environment created with observation space: {env.observation_space}")
+
+            # Verify observation space matches model expectations
+            expected_obs_dim = model.observation_space.shape[0]
+            actual_obs_dim = env.observation_space.shape[0]
+            if actual_obs_dim != expected_obs_dim:
+                self.logger.warning(
+                    f"Observation space mismatch: model expects {expected_obs_dim}, environment provides {actual_obs_dim}"
+                )
+
+            results = {}
+
+            for window_size in window_sizes:
+                self.logger.info(f"Testing window size: {window_size} hours")
+
+                # Identify market periods
+                periods = self._identify_market_periods(df, window_size, overlap_ratio)
+
+                window_results = []
+                for period in periods:
+                    period_result = self._test_period_with_model(
+                        model, env, df, period["start_idx"], period["end_idx"], period["period_name"]
+                    )
+                    window_results.append(period_result)
+
+                # Analyze results by trend type
+                trend_analysis = self._analyze_results_by_trend(window_results)
+
+                results[f"{window_size}h_windows"] = {
+                    "period_results": window_results,
+                    "summary": trend_analysis
+                }
+
+            # Save results if output path provided
+            if output_path:
+                output_dir = Path(output_path).parent
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(results, f, indent=2, default=str)
+                self.logger.info(f"Results saved to {output_path}")
+
+            self.logger.info("Multi-period backtest analysis completed")
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Multi-period backtest failed: {e}")
+            return {"error": str(e)}
+
+    def _identify_market_periods(
+        self, df, window_size_hours: int = 24, overlap_ratio: float = 0.5
+    ) -> List[Dict[str, Any]]:
+        """Identify different market periods (uptrend, downtrend, sideways)."""
+        periods = []
+
+        # Calculate moving averages and trends
+        df_copy = df.copy()
+        df_copy["MA20"] = df_copy["close"].rolling(window=20).mean()
+        df_copy["MA50"] = df_copy["close"].rolling(window=50).mean()
+        df_copy["trend"] = (df_copy["MA20"] - df_copy["MA50"]) / df_copy["MA50"] * 100
+
+        # Identify periods with configurable window size and overlap
+        step_size = int(window_size_hours * (1 - overlap_ratio))
+        window_size = window_size_hours
+
+        for i in range(0, len(df_copy) - window_size, step_size):
+            start_idx = i
+            end_idx = min(i + window_size, len(df_copy))
+
+            period_data = df_copy.iloc[start_idx:end_idx]
+            start_price = period_data["close"].iloc[0]
+            end_price = period_data["close"].iloc[-1]
+            price_change = (end_price - start_price) / start_price * 100
+
+            # Classify trend
+            if price_change < -2:  # Downtrend
+                trend_type = "downtrend"
+            elif price_change > 2:  # Uptrend
+                trend_type = "uptrend"
+            else:  # Sideways
+                trend_type = "sideways"
+
+            periods.append({
+                "start_idx": start_idx,
+                "end_idx": end_idx,
+                "start_date": period_data["timestamp"].iloc[0],
+                "end_date": period_data["timestamp"].iloc[-1],
+                "start_price": start_price,
+                "end_price": end_price,
+                "price_change_pct": price_change,
+                "trend_type": trend_type,
+                "period_name": f"{trend_type}_{len(periods)+1}_{period_data['timestamp'].iloc[0].strftime('%Y%m%d')}_{window_size_hours}h"
+            })
+
+        return periods
+
+    def _test_period_with_model(
+        self, model, env, df, start_idx: int, end_idx: int, period_name: str
+    ) -> Dict[str, Any]:
+        """Test the model on a specific period."""
+        # Reset environment and advance to start_idx
+        obs, _ = env.reset()
+
+        # Advance to start_idx by taking dummy actions
+        for step in range(start_idx):
+            action = [0.0]  # Neutral action
+            obs, _, terminated, truncated, _ = env.step(action)
+            if terminated or truncated:
+                self.logger.warning(f"Environment terminated before reaching start_idx {start_idx}")
+                break
+
+        # Test the period
+        done = False
+        total_steps = 0
+        actions_taken = []
+        rewards_received = []
+        max_test_steps = min(end_idx - start_idx, 1000)
+
+        initial_portfolio_value = env.portfolio_value
+
+        while not done and total_steps < max_test_steps:
+            try:
+                action, _ = model.predict(obs, deterministic=True)
+                actions_taken.append(action[0])
+
+                obs, reward, terminated, truncated, info = env.step(action)
+                rewards_received.append(reward)
+
+                done = terminated or truncated
+                total_steps += 1
+            except IndexError:
+                break
+
+        # Calculate results
+        final_portfolio_value = env.portfolio_value
+        total_profit = final_portfolio_value - initial_portfolio_value
+        total_return_pct = (total_profit / initial_portfolio_value) * 100 if initial_portfolio_value > 0 else 0
+
+        # Action statistics
+        sell_actions = sum(1 for a in actions_taken if a < -0.3)
+        buy_actions = sum(1 for a in actions_taken if a > 0.3)
+        hold_actions = len(actions_taken) - sell_actions - buy_actions
+
+        return {
+            "period_name": period_name,
+            "start_date": str(df.iloc[start_idx]["timestamp"]),
+            "end_date": str(df.iloc[min(end_idx, len(df) - 1)]["timestamp"]),
+            "duration_hours": total_steps,
+            "initial_portfolio": initial_portfolio_value,
+            "final_portfolio": final_portfolio_value,
+            "total_profit": total_profit,
+            "total_return_pct": total_return_pct,
+            "total_actions": len(actions_taken),
+            "sell_actions": sell_actions,
+            "buy_actions": buy_actions,
+            "hold_actions": hold_actions,
+            "sell_percentage": (sell_actions / len(actions_taken)) * 100 if actions_taken else 0,
+            "buy_percentage": (buy_actions / len(actions_taken)) * 100 if actions_taken else 0,
+            "hold_percentage": (hold_actions / len(actions_taken)) * 100 if actions_taken else 0,
+            "total_reward": sum(rewards_received),
+            "average_reward": sum(rewards_received) / len(rewards_received) if rewards_received else 0,
+        }
+
+    def _analyze_results_by_trend(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Analyze results by trend type."""
+        trend_groups = {}
+        for result in results:
+            trend_type = result.get("trend_type", "unknown")
+            if trend_type not in trend_groups:
+                trend_groups[trend_type] = []
+            trend_groups[trend_type].append(result)
+
+        analysis = {"overall": {}, "by_trend_type": {}}
+
+        # Overall analysis
+        if results:
+            returns = [r["total_return_pct"] for r in results]
+            analysis["overall"] = {
+                "total_periods": len(results),
+                "avg_return": sum(returns) / len(returns),
+                "win_rate": sum(1 for r in results if r["total_return_pct"] > 0) / len(results) * 100,
+                "sharpe_ratio": self._calculate_sharpe_ratio(returns)
+            }
+
+        # By trend type analysis
+        for trend_type, trend_results in trend_groups.items():
+            if trend_results:
+                returns = [r["total_return_pct"] for r in trend_results]
+                analysis["by_trend_type"][trend_type] = {
+                    "count": len(trend_results),
+                    "avg_return": sum(returns) / len(returns),
+                    "win_rate": sum(1 for r in trend_results if r["total_return_pct"] > 0) / len(trend_results) * 100,
+                    "sharpe_ratio": self._calculate_sharpe_ratio(returns)
+                }
+
+        return analysis
+
+    def _calculate_sharpe_ratio(self, returns: List[float]) -> float:
+        """Calculate Sharpe ratio from returns list."""
+        if not returns or len(returns) < 2:
+            return 0.0
+
+        try:
+            mean_return = sum(returns) / len(returns)
+            std_return = (sum((r - mean_return) ** 2 for r in returns) / len(returns)) ** 0.5
+            return mean_return / std_return if std_return > 0 else 0.0
+        except:
+            return 0.0
+
+    def run_multi_period_backtest(
+        self,
+        periods: List[Dict[str, Any]],
+        model_path: Optional[str] = None,
+        config_path: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run multi-period backtest analysis.
+
+        Args:
+            periods: List of period definitions with start/end dates
+            model_path: Path to trained model (optional)
+            config_path: Path to config file (optional)
+
+        Returns:
+            Multi-period backtest results
+        """
+        results = {
+            "period_results": [],
+            "overall_metrics": {},
+            "regime_performance": {},
+            "recommendations": []
+        }
+
+        try:
+            # Load model if path provided
+            model = None
+            if model_path:
+                try:
+                    from stable_baselines3 import PPO
+                    model = PPO.load(model_path)
+                    self.logger.info(f"Loaded model from {model_path}")
+                except Exception as e:
+                    self.logger.error(f"Failed to load model: {e}")
+                    return results
+
+            # Create environment for testing
+            env = self._create_backtest_environment(config_path)
+            if env is None:
+                self.logger.error("Failed to create backtest environment")
+                return results
+
+            # Load data
+            df = self._load_backtest_data(config_path)
+            if df is None or df.empty:
+                self.logger.error("Failed to load backtest data")
+                return results
+
+            # Run backtest for each period
+            for period in periods:
+                period_result = self._run_single_period_backtest(
+                    model, env, df, period
+                )
+                results["period_results"].append(period_result)
+
+            # Calculate overall metrics
+            results["overall_metrics"] = self._calculate_overall_backtest_metrics(
+                results["period_results"]
+            )
+
+            # Analyze regime performance
+            results["regime_performance"] = self._analyze_backtest_regime_performance(
+                results["period_results"]
+            )
+
+            # Generate recommendations
+            results["recommendations"] = self._generate_backtest_recommendations(results)
+
+        except Exception as e:
+            self.logger.error(f"Multi-period backtest failed: {e}")
+            results["error"] = str(e)
+
+        return results
+
+    def _create_backtest_environment(self, config_path: Optional[str] = None):
+        """Create environment for backtesting."""
+        try:
+            # Use existing environment creation logic
+            if hasattr(self, '_create_v433_training_environment'):
+                return self._create_v433_training_environment()
+            else:
+                # Fallback environment creation
+                from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+                from ztb.trading.environment.utils.config import EnvironmentConfig
+
+                env_config = EnvironmentConfig(
+                    initial_portfolio_value=100000,
+                    transaction_cost=0.001,
+                    max_position_size=1.0
+                )
+                return HeavyTradingEnv(env_config)
+        except Exception as e:
+            self.logger.error(f"Failed to create backtest environment: {e}")
+            return None
+
+    def _load_backtest_data(self, config_path: Optional[str] = None):
+        """Load data for backtesting."""
+        try:
+            # Use config to determine data path
+            data_config = self.config.get("training", {}).get("data_config", {})
+            csv_path = data_config.get("data_path", "data/btc_jpy_real_dataset.csv")
+
+            import pandas as pd
+            df = pd.read_csv(csv_path)
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            return df
+        except Exception as e:
+            self.logger.error(f"Failed to load backtest data: {e}")
+            return None
+
+    def _run_single_period_backtest(
+        self,
+        model,
+        env,
+        df,
+        period: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Run backtest for a single period."""
+        try:
+            start_date = period.get("start_date")
+            end_date = period.get("end_date")
+            period_name = period.get("name", "unknown")
+
+            # Find indices for the period
+            start_idx = 0
+            end_idx = len(df) - 1
+
+            if start_date:
+                start_mask = df["timestamp"] >= pd.to_datetime(start_date)
+                start_idx = start_mask.idxmax() if start_mask.any() else 0
+
+            if end_date:
+                end_mask = df["timestamp"] <= pd.to_datetime(end_date)
+                end_idx = end_mask.idxmax() if end_mask.any() else len(df) - 1
+
+            # Run the period test
+            return self._test_period_with_model(
+                model, env, df, start_idx, end_idx, period_name
+            )
+
+        except Exception as e:
+            self.logger.error(f"Single period backtest failed: {e}")
+            return {
+                "period_name": period.get("name", "unknown"),
+                "error": str(e),
+                "total_return_pct": 0.0
+            }
+
+    def _calculate_overall_backtest_metrics(self, period_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Calculate overall metrics from period results."""
+        if not period_results:
+            return {}
+
+        valid_results = [r for r in period_results if "error" not in r]
+
+        if not valid_results:
+            return {"error": "No valid period results"}
+
+        returns = [r.get("total_return_pct", 0) for r in valid_results]
+        total_trades = sum(r.get("total_actions", 0) for r in valid_results)
+
+        return {
+            "total_periods": len(valid_results),
+            "average_return": sum(returns) / len(returns) if returns else 0.0,
+            "total_trades": total_trades,
+            "win_rate": sum(1 for r in valid_results if r.get("total_return_pct", 0) > 0) / len(valid_results) * 100 if valid_results else 0.0
+        }
+
+    def _analyze_backtest_regime_performance(self, period_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Analyze performance by market regime."""
+        # Placeholder - would integrate with regime detection
+        return {
+            "bull_market_performance": {"average_return": 0.0, "win_rate": 0.0},
+            "bear_market_performance": {"average_return": 0.0, "win_rate": 0.0},
+            "sideways_performance": {"average_return": 0.0, "win_rate": 0.0}
+        }
+
+    def _generate_backtest_recommendations(self, results: Dict[str, Any]) -> List[str]:
+        """Generate recommendations based on backtest results."""
+        recommendations = []
+        overall = results.get("overall_metrics", {})
+
+        if overall.get("win_rate", 0) > 60:
+            recommendations.append("Strong overall performance - maintain current strategy")
+        elif overall.get("win_rate", 0) < 40:
+            recommendations.append("Performance needs improvement - consider strategy adjustments")
+
+        return recommendations

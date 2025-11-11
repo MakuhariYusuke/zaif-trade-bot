@@ -1,0 +1,24 @@
+{
+  "ticker": "BTC-JPY",
+  "fetched_at": "2025-11-10T04:11:12.299349",
+  "records": 7063,
+  "start_date": "2025-11-03 00:02:00+00:00",
+  "end_date": "2025-11-09 19:09:00+00:00",
+  "columns": [
+    "timestamp",
+    "close",
+    "high",
+    "low",
+    "open",
+    "volume",
+    "adj_close"
+  ],
+  "data_quality": {
+    "missing_values_pct": 0.0,
+    "price_range": [
+      15152255.0,
+      17070910.0
+    ],
+    "avg_volume": 23661602237.526264
+  }
+}

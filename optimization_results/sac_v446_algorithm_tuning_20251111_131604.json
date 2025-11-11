@@ -1,0 +1,320 @@
+{
+  "timestamp": "20251111_131604",
+  "study_name": "sac_v446_algorithm_tuning",
+  "n_trials": 20,
+  "best_trial": 0,
+  "best_value": -1000.0,
+  "best_params": {
+    "learning_rate": 0.0001329291894316216,
+    "buffer_size": 100000,
+    "batch_size": 64,
+    "tau": 0.001143098387631322,
+    "gamma": 0.9924426311429718,
+    "ent_coef": 1.0,
+    "network_type": "mlp",
+    "net_arch_idx": 4,
+    "activation_idx": 0
+  },
+  "all_trials": [
+    {
+      "trial": 0,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.0001329291894316216,
+        "buffer_size": 100000,
+        "batch_size": 64,
+        "tau": 0.001143098387631322,
+        "gamma": 0.9924426311429718,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 4,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 1,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 3.511356313970405e-05,
+        "buffer_size": 20000,
+        "batch_size": 128,
+        "tau": 0.004091220574443786,
+        "gamma": 0.95683519917195,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 0,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 2,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.0005987474910461401,
+        "buffer_size": 10000,
+        "batch_size": 512,
+        "tau": 0.009239150319627255,
+        "gamma": 0.9896114700577066,
+        "ent_coef": 0.1,
+        "network_type": "mlp",
+        "net_arch_idx": 0,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 3,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 1.2681352169084594e-05,
+        "buffer_size": 100000,
+        "batch_size": 128,
+        "tau": 0.00352135880546787,
+        "gamma": 0.9590578683207508,
+        "ent_coef": "auto",
+        "network_type": "mlp",
+        "net_arch_idx": 2,
+        "activation_idx": 2
+      }
+    },
+    {
+      "trial": 4,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 1.8427970406864546e-05,
+        "buffer_size": 20000,
+        "batch_size": 256,
+        "tau": 0.006741204610702764,
+        "gamma": 0.9674809130079859,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 0,
+        "activation_idx": 2
+      }
+    },
+    {
+      "trial": 5,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.0020736445177905022,
+        "buffer_size": 20000,
+        "batch_size": 128,
+        "tau": 0.00590568592506064,
+        "gamma": 0.9536281879349704,
+        "ent_coef": 0.1,
+        "network_type": "mlp",
+        "net_arch_idx": 1,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 6,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 8.569331925053983e-05,
+        "buffer_size": 40000,
+        "batch_size": 256,
+        "tau": 0.0013170256885255104,
+        "gamma": 0.9849489945739267,
+        "ent_coef": 0.1,
+        "network_type": "mlp",
+        "net_arch_idx": 2,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 7,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 1.1919481947918725e-05,
+        "buffer_size": 20000,
+        "batch_size": 128,
+        "tau": 0.008082886378162037,
+        "gamma": 0.9622153192282948,
+        "ent_coef": 0.01,
+        "network_type": "mlp",
+        "net_arch_idx": 1,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 8,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.006153085601625313,
+        "buffer_size": 90000,
+        "batch_size": 128,
+        "tau": 0.007808345085542414,
+        "gamma": 0.9764277698538668,
+        "ent_coef": 0.01,
+        "network_type": "mlp",
+        "net_arch_idx": 1,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 9,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.00284475125551182,
+        "buffer_size": 90000,
+        "batch_size": 128,
+        "tau": 0.0013178481381249188,
+        "gamma": 0.9665431433987778,
+        "ent_coef": "auto",
+        "network_type": "mlp",
+        "net_arch_idx": 1,
+        "activation_idx": 2
+      }
+    },
+    {
+      "trial": 10,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.00019602712210026765,
+        "buffer_size": 70000,
+        "batch_size": 64,
+        "tau": 0.002081505387371054,
+        "gamma": 0.9981842922307945,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 4,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 11,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 7.256685895552504e-05,
+        "buffer_size": 60000,
+        "batch_size": 64,
+        "tau": 0.003618467954115584,
+        "gamma": 0.9797587369969543,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 4,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 12,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 5.9781286201475357e-05,
+        "buffer_size": 40000,
+        "batch_size": 64,
+        "tau": 0.002366124616205211,
+        "gamma": 0.9975051951822355,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 3,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 13,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.00041577686510837244,
+        "buffer_size": 70000,
+        "batch_size": 512,
+        "tau": 0.004719153989660871,
+        "gamma": 0.9538446568633722,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 3,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 14,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 4.050051849089251e-05,
+        "buffer_size": 40000,
+        "batch_size": 64,
+        "tau": 0.002072499935877458,
+        "gamma": 0.9889686377934261,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 3,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 15,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.00017387706430988122,
+        "buffer_size": 50000,
+        "batch_size": 64,
+        "tau": 0.0028521474966091602,
+        "gamma": 0.9712794658936105,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 4,
+        "activation_idx": 1
+      }
+    },
+    {
+      "trial": 16,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.0009717427194116941,
+        "buffer_size": 80000,
+        "batch_size": 512,
+        "tau": 0.0016862960296108798,
+        "gamma": 0.950760008717717,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 0,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 17,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 2.9929768244984942e-05,
+        "buffer_size": 100000,
+        "batch_size": 256,
+        "tau": 0.001054956329307461,
+        "gamma": 0.9818131958471875,
+        "ent_coef": 0.01,
+        "network_type": "mlp",
+        "net_arch_idx": 3,
+        "activation_idx": 2
+      }
+    },
+    {
+      "trial": 18,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 0.00014960063856912743,
+        "buffer_size": 30000,
+        "batch_size": 128,
+        "tau": 0.004591528147007546,
+        "gamma": 0.9728908844426521,
+        "ent_coef": "auto",
+        "network_type": "mlp",
+        "net_arch_idx": 2,
+        "activation_idx": 0
+      }
+    },
+    {
+      "trial": 19,
+      "value": -1000.0,
+      "params": {
+        "learning_rate": 3.594006215360352e-05,
+        "buffer_size": 60000,
+        "batch_size": 64,
+        "tau": 0.004593796945301471,
+        "gamma": 0.9924520195077411,
+        "ent_coef": 1.0,
+        "network_type": "mlp",
+        "net_arch_idx": 4,
+        "activation_idx": 1
+      }
+    }
+  ]
+}

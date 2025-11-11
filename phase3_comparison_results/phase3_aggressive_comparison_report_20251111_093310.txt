@@ -1,0 +1,53 @@
+
+================================================================================
+PHASE 3 ENHANCED VS BASELINE BACKTEST COMPARISON (AGGRESSIVE VERSION)
+Generated: 2025-11-11 09:33:10
+================================================================================
+
+📈 METRICS COMPARISON (AGGRESSIVE):
+  Total Return:
+    Baseline: 1.037856384443523
+    Phase 3 Aggressive:  -0.005951672338268953
+    Change:  -100.6%
+
+  Sharpe Ratio:
+    Baseline: 1.038256735045666
+    Phase 3 Aggressive:  -0.27618756682084594
+    Change:  -126.6%
+
+  Max Drawdown:
+    Baseline: -0.6537201390595209
+    Phase 3 Aggressive:  -0.011818702843558742
+    Change:  +98.2%
+
+  Win Rate:
+    Baseline: 0.4595744680851064
+    Phase 3 Aggressive:  0.5
+    Change:  +8.8%
+
+  Profit Factor:
+    Baseline: 0.8069624817951528
+    Phase 3 Aggressive:  1.0137695760196412
+    Change:  +25.6%
+
+  Total Trades:
+    Baseline: 235
+    Phase 3 Aggressive:  4
+    Change:  -98.3%
+
+🔧 AGGRESSIVE PARAMETERS:
+  Max Position Size: 10.0%
+  Stop Loss: 5.0%
+  Take Profit: 12.0%
+  Max Consecutive Losses: 5
+
+📊 ADDITIONAL METRICS:
+  Average Trade P&L: 0.0006
+  Max Consecutive Losses: 1
+
+💡 AGGRESSIVE IMPROVEMENT HIGHLIGHTS:
+  ❌ Return still below baseline - further optimization needed
+  ⚠️  Trade frequency still low - consider further relaxation
+  ✅ Improved win rate
+
+================================================================================

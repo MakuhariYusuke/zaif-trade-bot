@@ -1,0 +1,57 @@
+{
+  "backtest_results": {
+    "signal_frequency": {
+      "signals_per_day": 41.46666666666667,
+      "buy_signals": 1244,
+      "sell_signals": 0,
+      "hold_signals": 7396,
+      "total_signals": 8640,
+      "signal_ratio": 0.1439814814814815
+    },
+    "signal_quality": {
+      "avg_quality_score": 61.97136177753793,
+      "quality_score_std": 19.17119102363135,
+      "min_quality_score": 25.65381458123872,
+      "max_quality_score": 93.27337047279778,
+      "win_rate": 0.0,
+      "profit_factor": 1.0,
+      "max_drawdown": 0.0
+    },
+    "signal_behavior": {
+      "signal_changes": 2482,
+      "signal_persistence": 0.7126982289616854,
+      "avg_signal_streak": 2.0
+    },
+    "performance": {
+      "total_return_pct": 0.00011538826392497867,
+      "market_return_pct": 0.0005769413196103414,
+      "excess_return": -0.00046155305568536275,
+      "sharpe_ratio": 0.8395150179148814
+    },
+    "metadata": {
+      "backtest_days": 30.0,
+      "data_points": 8640,
+      "timestamp": "2025-11-10T13:36:43.274124"
+    }
+  },
+  "baseline_comparison": {
+    "frequency_improvement": {
+      "baseline_signals_per_day": 2.9,
+      "improved_signals_per_day": 41.46666666666667,
+      "improvement_factor": 14.298850574712645,
+      "improvement_pct": 1329.8850574712646
+    },
+    "target_achievement": {
+      "target_min": 20,
+      "target_max": 50,
+      "achieved": 41.46666666666667,
+      "target_met": true,
+      "within_range": true
+    }
+  },
+  "summary": {
+    "signals_per_day": 41.46666666666667,
+    "avg_quality_score": 61.97136177753793,
+    "target_achieved": true
+  }
+}

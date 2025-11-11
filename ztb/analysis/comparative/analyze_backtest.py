@@ -27,8 +27,10 @@ from ztb.metrics.metrics import (
     sharpe_ratio,
     sortino_ratio,
 )
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import (
+    TRADING_DAYS_PER_YEAR,  # = 252
+    ACTION_BUY, ACTION_HOLD, ACTION_SELL,
+)
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
 
