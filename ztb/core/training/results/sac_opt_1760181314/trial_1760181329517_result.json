@@ -1,0 +1,13 @@
+{
+  "trial_id": "trial_1760181329517",
+  "parameters": {
+    "learning_rate": 0.00016543902989795802,
+    "batch_size": 512,
+    "gamma": 0.9934282622066997,
+    "target_update_interval": 5
+  },
+  "critic_loss": 1000000.0,
+  "duration_minutes": 0.0011426369349161784,
+  "stdout_tail": "",
+  "returncode": 1
+}
