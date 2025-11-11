@@ -52,7 +52,7 @@ class NoiseFilter:
             if col in df.columns:
                 z_scores = np.abs(stats.zscore(df[col].fillna(df[col].mean())))
                 mask = z_scores < self.zscore_threshold
-                df_filtered.loc[~mask, col] = df_filtered[col].rolling(window=5, center=True).mean().fillna(method='bfill').fillna(method='ffill')
+                df_filtered.loc[~mask, col] = df_filtered[col].rolling(window=5, center=True).mean().bfill().ffill()
 
         logger.info(f"Z-score filtering applied to {len(columns)} columns")
         return df_filtered
@@ -79,7 +79,7 @@ class NoiseFilter:
                 upper_bound = Q3 + (self.iqr_multiplier * IQR)
 
                 mask = (df[col] < lower_bound) | (df[col] > upper_bound)
-                df_filtered.loc[mask, col] = df_filtered[col].rolling(window=5, center=True).mean().fillna(method='bfill').fillna(method='ffill')
+                df_filtered.loc[mask, col] = df_filtered[col].rolling(window=5, center=True).mean().bfill().ffill()
 
         logger.info(f"IQR filtering applied to {len(columns)} columns")
         return df_filtered
@@ -201,7 +201,7 @@ class AnomalyDetector:
         for col in columns:
             if col in df.columns:
                 df_clean.loc[anomaly_mask, col] = np.nan
-                df_clean[col] = df_clean[col].interpolate(method='linear').fillna(method='bfill').fillna(method='ffill')
+                df_clean[col] = df_clean[col].interpolate(method='linear').bfill().ffill()
 
         logger.info(f"Anomaly detection completed using {method} method")
         return df_clean, anomaly_mask

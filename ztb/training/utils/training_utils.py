@@ -5,7 +5,7 @@ Common training utilities for reducing code duplication across training scripts
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
+from ztb.training.utils.parallel_utils import DataLoaderParallelizer, default_processor
+from ztb.cache.memory_cache import default_memory_manager, default_buffer_manager
 
 
 def setup_project_path() -> Path:
@@ -134,3 +136,114 @@ def load_training_data(csv_path: str = "ml-dataset-enhanced.csv") -> pd.DataFram
     df = pd.read_csv(csv_path)
     df = df.sort_values("timestamp").reset_index(drop=True)
     return df
+
+
+def load_training_data_parallel(csv_paths: list[str], combine: bool = True,
+                              preprocess_func: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
+                              enable_memory_cache: bool = True) -> Union[pd.DataFrame, list[pd.DataFrame]]:
+    """
+    Load multiple training data files in parallel with memory caching.
+
+    Args:
+        csv_paths: List of CSV file paths to load
+        combine: Whether to combine all DataFrames into one
+        preprocess_func: Optional preprocessing function to apply to each DataFrame
+        enable_memory_cache: Whether to use memory caching
+
+    Returns:
+        Combined DataFrame if combine=True, otherwise list of DataFrames
+    """
+    # Create cache key from file paths
+    cache_key = f"training_data_{'_'.join(sorted(csv_paths))}_{combine}"
+
+    # Check memory cache first
+    if enable_memory_cache:
+        cached_data = default_memory_manager.get_cached_training_data(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+    data_loader = DataLoaderParallelizer()
+
+    # Load CSV files in parallel
+    dataframes = data_loader.parallel_csv_loading(csv_paths)
+
+    # Apply preprocessing if provided
+    if preprocess_func is not None:
+        dataframes = data_loader.parallel_data_preprocessing(dataframes, preprocess_func)
+
+    if combine:
+        # Combine all DataFrames
+        combined_df = pd.concat(dataframes, ignore_index=True)
+        # Sort by timestamp and reset index
+        if 'timestamp' in combined_df.columns:
+            combined_df = combined_df.sort_values("timestamp").reset_index(drop=True)
+
+        # Cache the result
+        if enable_memory_cache:
+            default_memory_manager.cache_training_data(cache_key, combined_df)
+
+        return combined_df
+    else:
+        # Cache individual dataframes if not combining
+        if enable_memory_cache:
+            for i, df in enumerate(dataframes):
+                df_cache_key = f"training_data_{csv_paths[i]}"
+                default_memory_manager.cache_training_data(df_cache_key, df)
+
+        return dataframes
+
+
+def parallel_data_preprocessing(df: pd.DataFrame, chunk_size: int = 10000,
+                              preprocess_func: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
+                              enable_memory_cache: bool = True) -> pd.DataFrame:
+    """
+    Apply preprocessing to DataFrame in parallel chunks with memory caching.
+
+    Args:
+        df: Input DataFrame
+        chunk_size: Size of each processing chunk
+        preprocess_func: Preprocessing function to apply
+        enable_memory_cache: Whether to use memory caching
+
+    Returns:
+        Preprocessed DataFrame
+    """
+    if preprocess_func is None:
+        return df
+
+    # Create cache key for preprocessing result
+    cache_key = f"preprocessed_data_{hash(str(df.values.tobytes()) if hasattr(df, 'values') else str(df))}_{chunk_size}"
+
+    # Check memory cache first
+    if enable_memory_cache:
+        cached_data = default_memory_manager.get_cached_training_data(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+    if len(df) <= chunk_size:
+        # Small dataset
+        result = preprocess_func(df)
+        if enable_memory_cache:
+            default_memory_manager.cache_training_data(cache_key, result)
+        return result
+
+    # Split DataFrame into chunks
+    chunks = []
+    for i in range(0, len(df), chunk_size):
+        chunk = df.iloc[i:i + chunk_size].copy()
+        chunks.append(chunk)
+
+    # Process chunks in parallel
+    def process_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
+        return preprocess_func(chunk)
+
+    processed_chunks = default_processor.parallel_map(process_chunk, chunks)
+
+    # Combine processed chunks
+    result_df = pd.concat(processed_chunks, ignore_index=True)
+
+    # Cache the result
+    if enable_memory_cache:
+        default_memory_manager.cache_training_data(cache_key, result_df)
+
+    return result_df

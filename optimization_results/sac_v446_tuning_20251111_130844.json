@@ -1,0 +1,126 @@
+{
+  "best_params": {
+    "data_periods": 1350,
+    "data_volatility": 319.80426929501584,
+    "data_trend_strength": 0.0012713516576204173,
+    "reward_scaling": 1.3886218532930636,
+    "max_position": 0.05696756190799966
+  },
+  "best_value": -80.19047639634321,
+  "best_trial": 5,
+  "n_trials": 10,
+  "all_trials": [
+    {
+      "trial": 0,
+      "value": -80.22031183458755,
+      "params": {
+        "data_periods": 1062,
+        "data_volatility": 770.4285838459497,
+        "data_trend_strength": 0.0015979909127171077,
+        "reward_scaling": 1.397987726295555,
+        "max_position": 0.07340279606636549
+      }
+    },
+    {
+      "trial": 1,
+      "value": -80.58108799607245,
+      "params": {
+        "data_periods": 909,
+        "data_volatility": 234.85016730091968,
+        "data_trend_strength": 0.0017992642186624027,
+        "reward_scaling": 1.4016725176148133,
+        "max_position": 0.15621088666940686
+      }
+    },
+    {
+      "trial": 2,
+      "value": -80.26248787125219,
+      "params": {
+        "data_periods": 814,
+        "data_volatility": 781.9459112971966,
+        "data_trend_strength": 0.0017486639612006327,
+        "reward_scaling": 0.8185086660174142,
+        "max_position": 0.0772737450810651
+      }
+    },
+    {
+      "trial": 3,
+      "value": -80.46632374978137,
+      "params": {
+        "data_periods": 928,
+        "data_volatility": 382.54534577572264,
+        "data_trend_strength": 0.0012871346474483568,
+        "reward_scaling": 1.1479175279631737,
+        "max_position": 0.0936843710297063
+      }
+    },
+    {
+      "trial": 4,
+      "value": -80.38377931344762,
+      "params": {
+        "data_periods": 1228,
+        "data_volatility": 283.6963163912251,
+        "data_trend_strength": 0.0009382169728028272,
+        "reward_scaling": 1.0495427649405376,
+        "max_position": 0.1184104976325554
+      }
+    },
+    {
+      "trial": 5,
+      "value": -80.19047639634321,
+      "params": {
+        "data_periods": 1350,
+        "data_volatility": 319.80426929501584,
+        "data_trend_strength": 0.0012713516576204173,
+        "reward_scaling": 1.3886218532930636,
+        "max_position": 0.05696756190799966
+      }
+    },
+    {
+      "trial": 6,
+      "value": -80.4163452236954,
+      "params": {
+        "data_periods": 1225,
+        "data_volatility": 302.31447421237493,
+        "data_trend_strength": 0.0005975773894779193,
+        "reward_scaling": 1.92332830588,
+        "max_position": 0.19484480496118395
+      }
+    },
+    {
+      "trial": 7,
+      "value": -80.78397156850158,
+      "params": {
+        "data_periods": 1366,
+        "data_volatility": 382.7682615040224,
+        "data_trend_strength": 0.0006465081710095758,
+        "reward_scaling": 1.5263495397682354,
+        "max_position": 0.11602287406094021
+      }
+    },
+    {
+      "trial": 8,
+      "value": -80.29003998718092,
+      "params": {
+        "data_periods": 885,
+        "data_volatility": 497.1061460667621,
+        "data_trend_strength": 0.0005515827816728276,
+        "reward_scaling": 1.8639806031181732,
+        "max_position": 0.08881699724000255
+      }
+    },
+    {
+      "trial": 9,
+      "value": -80.48705483853196,
+      "params": {
+        "data_periods": 1264,
+        "data_volatility": 387.0266456536466,
+        "data_trend_strength": 0.0012801020317667164,
+        "reward_scaling": 1.3200654190149195,
+        "max_position": 0.07772816832882906
+      }
+    }
+  ],
+  "timestamp": "2025-11-11T13:08:44.125977",
+  "study_name": "sac_v446_parameter_tuning"
+}

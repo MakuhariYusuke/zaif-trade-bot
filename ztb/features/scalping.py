@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 
-from .registry import FeatureRegistry
+from ztb.features.core.registry import FeatureRegistry
 
 # Register scalping features
 register = FeatureRegistry.register
@@ -216,3 +216,30 @@ def liquidity_surge(df: pd.DataFrame, window: int = 5) -> pd.Series:
         recent_max = np.max(volume_window) if len(volume_window) > 0 else 0.0
         surge[i] = volume[i] / recent_max if recent_max > 0 else 1.0
     return pd.Series(surge, index=df.index, name="liquidity_surge")
+
+
+@register("realized_volatility")
+def realized_volatility(df: pd.DataFrame, window: int = 10) -> pd.Series:
+    """
+    Realized Volatility (RV) - measure of price variability over a period
+
+    RV = sqrt(sum of squared returns over the period)
+    Higher RV indicates higher price uncertainty/volatility
+    """
+    close = df["close"].values
+    rv = np.zeros_like(close, dtype=np.float64)
+
+    for i in range(window, len(close)):
+        # Calculate returns over the window
+        returns = np.zeros(window - 1)
+        for j in range(1, window):
+            idx = i - window + j
+            if close[idx - 1] != 0:
+                returns[j - 1] = (close[idx] - close[idx - 1]) / close[idx - 1]
+            else:
+                returns[j - 1] = 0.0
+
+        # Realized volatility as square root of sum of squared returns
+        rv[i] = np.sqrt(np.sum(returns ** 2))
+
+    return pd.Series(rv, index=df.index, name="realized_volatility")
