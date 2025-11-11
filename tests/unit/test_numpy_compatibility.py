@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import pytest
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 class TestNumPyCompatibility:
@@ -97,7 +98,7 @@ class TestNumPyCompatibility:
 
         # Memory usage check
         size_bytes = large_array.nbytes
-        size_mb = size_bytes / (1024 * 1024)
+        size_mb = size_bytes / BYTES_PER_MB
         assert size_mb > 0
 
         # Array operations

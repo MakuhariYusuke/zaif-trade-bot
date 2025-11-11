@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,7 +101,7 @@ def measure_io_performance(
     cpu_after_read = psutil.cpu_percent(interval=None)
 
     # Calculate metrics
-    file_size = parquet_path.stat().st_size / (1024 * 1024)  # MB
+    file_size = parquet_path.stat().st_size / BYTES_PER_MB
 
     return {
         "compression": config["parquet"]["compression"],
@@ -112,8 +114,8 @@ def measure_io_performance(
         "read_throughput_mbps": (file_size / read_time) if read_time > 0 else 0,
         "write_cpu_percent": cpu_after_write,
         "read_cpu_percent": cpu_after_read,
-        "write_mem_mb": (mem_after_write - mem_before_write) / (1024 * 1024),
-        "read_mem_mb": (mem_after_read - mem_before_read) / (1024 * 1024),
+        "write_mem_mb": (mem_after_write - mem_before_write) / BYTES_PER_MB,
+        "read_mem_mb": (mem_after_read - mem_before_read) / BYTES_PER_MB,
     }
 
 

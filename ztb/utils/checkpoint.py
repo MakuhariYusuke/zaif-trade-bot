@@ -25,6 +25,7 @@ import numpy as np
 import torch
 from stable_baselines3.common.base_class import BaseAlgorithm
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.common import ConfigDict
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
@@ -406,7 +407,7 @@ class CheckpointManager:
             return self.compress
 
         # Auto selection based on size
-        if data_size > 100 * 1024 * 1024:  # > 100MB
+        if data_size > 100 * BYTES_PER_MB:  # > 100MB
             return "lz4" if HAS_LZ4 else "zlib"
         else:
             return "zstd" if HAS_ZSTD else "lz4" if HAS_LZ4 else "zlib"

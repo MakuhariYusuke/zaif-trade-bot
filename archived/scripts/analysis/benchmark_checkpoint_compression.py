@@ -7,24 +7,19 @@ LZ4 vs ZSTD compression comparison for 100k experiment checkpoints
 import json
 import pickle
 import time
+import zlib
 from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
 
-try:
-    import lz4.frame
+from ztb.utils.system_utils import check_library_availability, safe_import
 
-    HAS_LZ4 = True
-except ImportError:
-    HAS_LZ4 = False
-
-try:
-    import zstandard as zstd
-
-    HAS_ZSTD = True
-except ImportError:
-    HAS_ZSTD = False
+# 圧縮ライブラリの利用可能性チェックとインポート
+HAS_LZ4 = check_library_availability("lz4.frame", "LZ4 compression")
+HAS_ZSTD = check_library_availability("zstandard", "ZSTD compression")
+lz4_frame = safe_import("lz4.frame", "LZ4 compression") if HAS_LZ4 else None
+zstd = safe_import("zstandard", "ZSTD compression") if HAS_ZSTD else None
 
 
 class CompressionBenchmark:
@@ -91,11 +86,11 @@ class CompressionBenchmark:
         original_size = len(pickle_data)
 
         # Compress
-        if compression_type == "lz4" and HAS_LZ4:
-            compressed = lz4.frame.compress(
+        if compression_type == "lz4" and HAS_LZ4 and lz4_frame:
+            compressed = lz4_frame.compress(
                 pickle_data, compression_level=1
             )  # Fast compression
-        elif compression_type == "zstd" and HAS_ZSTD:
+        elif compression_type == "zstd" and HAS_ZSTD and zstd:
             ctx = zstd.ZstdCompressor(level=3)  # Balanced compression
             compressed = ctx.compress(pickle_data)
         elif compression_type == "zlib":
@@ -108,9 +103,9 @@ class CompressionBenchmark:
 
         # Decompression benchmark
         start_time = time.time()
-        if compression_type == "lz4" and HAS_LZ4:
-            decompressed = lz4.frame.decompress(compressed)
-        elif compression_type == "zstd" and HAS_ZSTD:
+        if compression_type == "lz4" and HAS_LZ4 and lz4_frame:
+            decompressed = lz4_frame.decompress(compressed)
+        elif compression_type == "zstd" and HAS_ZSTD and zstd:
             ctx = zstd.ZstdDecompressor()
             decompressed = ctx.decompress(compressed)
         elif compression_type == "zlib":

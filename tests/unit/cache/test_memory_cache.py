@@ -17,6 +17,7 @@ from ztb.cache.memory_cache import (
     get_memory_stats,
     optimize_memory,
 )
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 class TestMemoryManager(unittest.TestCase):
@@ -40,8 +41,8 @@ class TestMemoryManager(unittest.TestCase):
     def test_get_memory_usage_with_psutil(self, mock_process):
         """Test memory usage retrieval with psutil available."""
         mock_memory_info = Mock()
-        mock_memory_info.rss = 64 * 1024 * 1024  # 64MB
-        mock_memory_info.vms = 128 * 1024 * 1024  # 128MB
+        mock_memory_info.rss = 64 * BYTES_PER_MB  # 64MB
+        mock_memory_info.vms = 128 * BYTES_PER_MB  # 128MB
         mock_process.return_value.memory_info.return_value = mock_memory_info
         mock_process.return_value.cpu_percent.return_value = 15.5
 

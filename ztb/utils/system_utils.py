@@ -3,8 +3,76 @@
 System utilities for environment and hardware management.
 """
 
+import importlib
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
+
+def check_library_availability(library_name: str, feature_name: str) -> bool:
+    """
+    ライブラリの利用可能性をチェックし、結果をログ出力
+
+    Args:
+        library_name: インポートするライブラリ名
+        feature_name: 機能の説明名
+
+    Returns:
+        bool: ライブラリが利用可能かどうか
+    """
+    try:
+        importlib.import_module(library_name)
+        return True
+    except ImportError:
+        logger.warning(f"{library_name} not available. {feature_name} will be disabled.")
+        return False
+
+
+def safe_import(library_name: str, feature_name: str) -> Optional[Any]:
+    """
+    安全なライブラリインポートを実行
+
+    Args:
+        library_name: インポートするライブラリ名
+        feature_name: 機能の説明名
+
+    Returns:
+        インポートされたモジュール、またはNone
+    """
+    try:
+        return importlib.import_module(library_name)
+    except ImportError:
+        logger.warning(f"{library_name} not available. {feature_name} will be disabled.")
+        return None
+
+
+def create_library_flags() -> Dict[str, bool]:
+    """
+    一般的なライブラリの利用可能性フラグを作成
+
+    Returns:
+        Dict[str, bool]: ライブラリ名をキー、利用可能性を値とする辞書
+    """
+    libraries = {
+        'optuna': 'Bayesian optimization',
+        'tqdm': 'Progress bars',
+        'psutil': 'System monitoring',
+        'scipy': 'Statistical functions',
+        'sklearn': 'Machine learning',
+        'pandas': 'Data manipulation',
+        'numpy': 'Numerical computing',
+        'matplotlib': 'Plotting',
+        'seaborn': 'Statistical visualization'
+    }
+
+    flags = {}
+    for lib_name, feature_desc in libraries.items():
+        flags[f"{lib_name.upper()}_AVAILABLE"] = check_library_availability(lib_name, feature_desc)
+
+    return flags
 
 
 def configure_pytorch_environment(cuda_optimizations: bool = True) -> None:

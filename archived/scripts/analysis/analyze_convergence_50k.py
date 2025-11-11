@@ -16,19 +16,16 @@ from typing import List, Tuple
 
 import numpy as np
 
-# TensorBoardログ読み取り
-try:
-    from tensorboard.backend.event_processing import event_accumulator
+from ztb.utils.system_utils import check_library_availability, safe_import
 
-    TENSORBOARD_AVAILABLE = True
-except ImportError:
-    TENSORBOARD_AVAILABLE = False
-    print("⚠️ TensorBoard not available, using fallback method")
+# TensorBoard の利用可能性チェックとインポート
+TENSORBOARD_AVAILABLE = check_library_availability("tensorboard.backend.event_processing", "TensorBoard event processing")
+event_accumulator = safe_import("tensorboard.backend.event_processing.event_accumulator", "TensorBoard event accumulator") if TENSORBOARD_AVAILABLE else None
 
 
 def extract_scalar_from_tensorboard(log_dir: Path, tag: str) -> List[Tuple[int, float]]:
     """TensorBoardログからスカラー値を抽出"""
-    if not TENSORBOARD_AVAILABLE:
+    if not TENSORBOARD_AVAILABLE or event_accumulator is None:
         return []
 
     ea = event_accumulator.EventAccumulator(str(log_dir))

@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional, Sequence, Union
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_GB
+
 
 class GateStatus(Enum):
     PASS = "pass"
@@ -39,7 +41,7 @@ class EvalGates:
                 "description": "No duplicate global steps",
             },
             "memory_rss": {
-                "threshold": 2 * 1024 * 1024 * 1024,
+                "threshold": 2 * BYTES_PER_GB,
                 "description": "RSS < 2GB",
             },  # 2GB in bytes
             "reward_trend_300k": {
@@ -93,8 +95,8 @@ class EvalGates:
         """Check current memory usage."""
         process = psutil.Process()
         rss_bytes = process.memory_info().rss
-        rss_gb = rss_bytes / (1024 * 1024 * 1024)
-        threshold_gb = self.gates["memory_rss"]["threshold"] / (1024 * 1024 * 1024)
+        rss_gb = rss_bytes / BYTES_PER_GB
+        threshold_gb = self.gates["memory_rss"]["threshold"] / BYTES_PER_GB
         status = (
             GateStatus.PASS
             if rss_bytes < self.gates["memory_rss"]["threshold"]

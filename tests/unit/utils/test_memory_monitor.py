@@ -5,6 +5,7 @@ Unit tests for memory_monitor.py
 import unittest
 from unittest.mock import Mock, patch
 
+from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 from ztb.utils.memory_monitor import (
     MemoryMonitor,
@@ -31,7 +32,7 @@ class TestMemoryMonitor(unittest.TestCase):
     def test_get_memory_usage(self, mock_process):
         """Test getting memory usage."""
         mock_process.return_value.memory_info.return_value.rss = (
-            512 * 1024 * 1024
+            512 * BYTES_PER_MB
         )  # 512MB
 
         usage = get_memory_usage()
@@ -42,7 +43,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory usage warning."""
         # Mock high memory usage
         mock_process.return_value.memory_info.return_value.rss = (
-            1500 * 1024 * 1024
+            1.5 * BYTES_PER_GB
         )  # 1.5GB
 
         with patch("ztb.utils.memory_monitor.ZTBConfig") as mock_config_class:
@@ -62,7 +63,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory usage with no warning."""
         # Mock normal memory usage
         mock_process.return_value.memory_info.return_value.rss = (
-            500 * 1024 * 1024
+            500 * BYTES_PER_MB
         )  # 500MB
 
         with patch("builtins.print") as mock_print:
@@ -82,7 +83,7 @@ class TestMemoryMonitor(unittest.TestCase):
     def test_memory_monitor_record_usage(self, mock_process):
         """Test recording memory usage in monitor."""
         mock_process.return_value.memory_info.return_value.rss = (
-            256 * 1024 * 1024
+            256 * BYTES_PER_MB
         )  # 256MB
 
         usage = self.monitor.record_memory_usage()
@@ -109,7 +110,7 @@ class TestMemoryMonitor(unittest.TestCase):
         # Record different memory values
         values = [100, 200, 150, 300, 250]
         for i, val in enumerate(values):
-            mock_process.return_value.memory_info.return_value.rss = val * 1024 * 1024
+            mock_process.return_value.memory_info.return_value.rss = val * BYTES_PER_MB
             self.monitor.record_memory_usage()
 
         stats = self.monitor.get_memory_stats()
@@ -129,7 +130,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory trend increasing."""
         # Record increasing values
         for val in [100, 110, 120, 130, 140, 150, 160, 170, 180, 190]:
-            mock_process.return_value.memory_info.return_value.rss = val * 1024 * 1024
+            mock_process.return_value.memory_info.return_value.rss = val * BYTES_PER_MB
             self.monitor.record_memory_usage()
 
         trend = self.monitor.get_memory_trend()
@@ -140,7 +141,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory trend decreasing."""
         # Record decreasing values
         for val in [200, 190, 180, 170, 160, 150, 140, 130, 120, 110]:
-            mock_process.return_value.memory_info.return_value.rss = val * 1024 * 1024
+            mock_process.return_value.memory_info.return_value.rss = val * BYTES_PER_MB
             self.monitor.record_memory_usage()
 
         trend = self.monitor.get_memory_trend()
@@ -151,7 +152,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory trend stable."""
         # Record stable values
         for val in [150, 152, 148, 151, 149, 153, 147, 150, 152, 148]:
-            mock_process.return_value.memory_info.return_value.rss = val * 1024 * 1024
+            mock_process.return_value.memory_info.return_value.rss = val * BYTES_PER_MB
             self.monitor.record_memory_usage()
 
         trend = self.monitor.get_memory_trend()
@@ -162,7 +163,7 @@ class TestMemoryMonitor(unittest.TestCase):
         """Test memory monitoring alerts."""
         # Set high memory usage
         mock_process.return_value.memory_info.return_value.rss = (
-            2500 * 1024 * 1024
+            2.5 * BYTES_PER_GB
         )  # 2.5GB
 
         with patch("ztb.utils.memory_monitor.logger") as mock_logger:
@@ -226,7 +227,7 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
         """Test that warning is not triggered at 800MB (below new 1000MB threshold)."""
         # Mock memory usage at 800MB
         mock_process.return_value.memory_info.return_value.rss = (
-            800 * 1024 * 1024
+            800 * BYTES_PER_MB
         )  # 800MB
 
         monitor = MemoryMonitor(self.config)
@@ -242,7 +243,7 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
         """Test that warning is triggered at 1200MB (above new 1000MB threshold)."""
         # Mock memory usage at 1200MB
         mock_process.return_value.memory_info.return_value.rss = (
-            1200 * 1024 * 1024
+            1200 * BYTES_PER_MB
         )  # 1200MB
 
         monitor = MemoryMonitor(self.config)
