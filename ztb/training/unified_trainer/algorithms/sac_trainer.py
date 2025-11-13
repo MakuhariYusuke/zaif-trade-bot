@@ -15,8 +15,9 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
+from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager, TrainingCheckpointConfig
-from ztb.training.utils.distributed_training import get_distributed_info
+from ztb.utils.training_utils import create_checkpoint_callback
 from ztb.training.utils.training_stats import TrainingStats
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
@@ -77,6 +78,101 @@ class SACTrainer(BaseAlgorithmTrainer):
         self.regime_adaptation_enabled = False
         if self.market_regime_adaptation.get("enabled", False) and self.env is not None:
             self._initialize_market_regime_adaptation()
+
+    @staticmethod
+    def _is_valid_feature_set_name(value: Optional[str]) -> bool:
+        """Return True when value looks like an explicit, non-placeholder feature set."""
+        if not isinstance(value, str):
+            return False
+        name = value.strip()
+        if not name:
+            return False
+        # Valid feature sets include "default" and other predefined sets
+        valid_sets = ["default", "high_quality", "minimal", "full", "no_harmful", "v435_risk_managed", "v435_risk_managed_no_multi_timeframe"]
+        return name in valid_sets
+
+    def _extract_feature_set(self, source: Any) -> Optional[str]:
+        """Safely extract feature_set string from dict-like or object sources."""
+        candidate: Optional[str] = None
+        if isinstance(source, dict):
+            candidate = source.get("feature_set")
+        elif hasattr(source, "feature_set"):
+            candidate = getattr(source, "feature_set")
+        if isinstance(candidate, str):
+            candidate = candidate.strip()
+        else:
+            candidate = None
+        return candidate
+
+    def _resolve_feature_set_override(self, env_candidate: Any) -> Optional[str]:
+        """Find the most reliable feature_set declaration in the stacked config."""
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        training_section = (
+            config_dict.get("training", {}) if isinstance(config_dict, dict) else {}
+        )
+        candidates = [
+            training_section.get("features", {}),  # Highest priority
+            config_dict.get("features", {}),
+            training_section.get("environment", {}),
+            config_dict.get("environment", {}),
+            env_candidate,  # Lowest priority
+        ]
+        fallback: Optional[str] = None
+        for i, source in enumerate(candidates):
+            candidate = self._extract_feature_set(source)
+            if not candidate:
+                continue
+            if self._is_valid_feature_set_name(candidate):
+                return candidate
+            if fallback is None:
+                fallback = candidate
+        return fallback
+
+    def _ensure_feature_set_on_target(self, target: Any, feature_set: str) -> None:
+        """Apply feature_set to dict/object target when it's missing or default."""
+        if not self._is_valid_feature_set_name(feature_set):
+            return
+
+        if isinstance(target, dict):
+            current = target.get("feature_set")
+            if not self._is_valid_feature_set_name(current):
+                target["feature_set"] = feature_set
+        else:
+            # For objects, check if feature_set attribute exists
+            current = getattr(target, "feature_set", None)
+            if not self._is_valid_feature_set_name(current):
+                setattr(target, "feature_set", feature_set)
+
+    def _propagate_feature_set(self, feature_set: str, env_candidate: Any) -> None:
+        """Write the resolved feature_set back into every config view."""
+        if not self._is_valid_feature_set_name(feature_set):
+            return
+
+        # Only propagate to dict/object targets, not to string env_candidate
+        if isinstance(env_candidate, dict) or not isinstance(env_candidate, str):
+            self._ensure_feature_set_on_target(env_candidate, feature_set)
+
+        cfg = self.config if isinstance(self.config, dict) else None
+        if not isinstance(cfg, dict):
+            return
+
+        env_section = cfg.setdefault("environment", {})
+        if isinstance(env_section, dict):
+            self._ensure_feature_set_on_target(env_section, feature_set)
+
+        features_section = cfg.setdefault("features", {})
+        if isinstance(features_section, dict):
+            self._ensure_feature_set_on_target(features_section, feature_set)
+
+        training_section = cfg.setdefault("training", {})
+        if isinstance(training_section, dict):
+            training_env = training_section.setdefault("environment", {})
+            if isinstance(training_env, dict):
+                self._ensure_feature_set_on_target(training_env, feature_set)
+
+            training_features = training_section.setdefault("features", {})
+            if isinstance(training_features, dict):
+                self._ensure_feature_set_on_target(training_features, feature_set)
 
     def _initialize_market_regime_adaptation(self):
         """Initialize market regime adaptation system."""
@@ -250,15 +346,10 @@ class SACTrainer(BaseAlgorithmTrainer):
                     callback.enable_regime_tracking = True
 
                 # Add checkpoint callback
-                from stable_baselines3.common.callbacks import (
-                    CallbackList,
-                    CheckpointCallback,
-                )
-
                 checkpoint_interval = self.config.get("checkpoint_interval", 10000)
                 checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
                 os.makedirs(checkpoint_dir, exist_ok=True)
-                checkpoint_callback = CheckpointCallback(
+                checkpoint_callback = create_checkpoint_callback(
                     save_freq=checkpoint_interval,
                     save_path=checkpoint_dir,
                     name_prefix="sac_checkpoint",
@@ -267,15 +358,10 @@ class SACTrainer(BaseAlgorithmTrainer):
                 callback = CallbackList([callback, checkpoint_callback])
             else:
                 # If callback is provided, add checkpoint callback to it
-                from stable_baselines3.common.callbacks import (
-                    CallbackList,
-                    CheckpointCallback,
-                )
-
                 checkpoint_interval = self.config.get("checkpoint_interval", 10000)
                 checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
                 os.makedirs(checkpoint_dir, exist_ok=True)
-                checkpoint_callback = CheckpointCallback(
+                checkpoint_callback = create_checkpoint_callback(
                     save_freq=checkpoint_interval,
                     save_path=checkpoint_dir,
                     name_prefix="sac_checkpoint",
@@ -314,6 +400,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                 self.logger.info(
                     f"Environment config keys: {list(actual_env_config.keys())}"
                 )
+                self.logger.info(
+                    f"actual_env_config feature_set: {actual_env_config.get('feature_set', 'NOT_FOUND')}"
+                )
             except Exception:
                 self.logger.info(f"Environment config type: {type(actual_env_config)}")
 
@@ -346,9 +435,26 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
             except Exception:
                 pass
+
+            resolved_feature_set = self._resolve_feature_set_override(actual_env_config)
+            if resolved_feature_set and self._is_valid_feature_set_name(
+                resolved_feature_set
+            ):
+                self._propagate_feature_set(resolved_feature_set, actual_env_config)
+                self.logger.info(
+                    f"Resolved feature_set for environment: {resolved_feature_set}"
+                )
+
             # Convert whatever shape we received into an EnvironmentConfig instance
             # EnvironmentConfig.from_dict can handle nested layouts (training.environment, training.environment.config)
             try:
+                print(f"DEBUG: About to create EnvironmentConfig from actual_env_config")
+                print(f"DEBUG: actual_env_config type: {type(actual_env_config)}")
+                if isinstance(actual_env_config, dict):
+                    print(f"DEBUG: actual_env_config keys: {list(actual_env_config.keys())}")
+                    print(f"DEBUG: actual_env_config feature_set: {actual_env_config.get('feature_set', 'NOT_FOUND')}")
+                elif hasattr(actual_env_config, 'feature_set'):
+                    print(f"DEBUG: actual_env_config.feature_set: {actual_env_config.feature_set}")
                 if isinstance(actual_env_config, EnvironmentConfig):
                     env_config_obj = actual_env_config
                 elif isinstance(actual_env_config, dict):
@@ -356,6 +462,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                 else:
                     # Fallback: try converting the whole training section or full config
                     env_config_obj = EnvironmentConfig.from_dict(self.config)
+
+                # DEBUG: Log the feature_set
+                self.logger.info(f"DEBUG: env_config_obj.feature_set = {getattr(env_config_obj, 'feature_set', 'NOT_SET')}")
 
                 # Honor explicit flags from the original config dict if present.
                 # Some conversion paths may nest the fields; check common locations.

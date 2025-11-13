@@ -23,23 +23,21 @@ class TestUnifiedTrainer:
     def sample_config(self):
         """Sample configuration"""
         return {
-            "training": {
-                "algorithm": "sac",
-                "env_name": "HeavyTradingEnv",
-                "total_timesteps": 100000,
-                "batch_size": 256,
-                "learning_rate": 3e-4,
-                "gamma": 0.99,
-                "tau": 0.005,
-                "alpha": 0.2,
-                "target_entropy": "auto",
-                "buffer_size": 1000000,
-                "learning_starts": 1000,
-                "train_freq": 1,
-                "gradient_steps": 1,
-                "verbose": 1,
-                "device": "cpu"
-            }
+            "algorithm": "sac",
+            "env_name": "HeavyTradingEnv",
+            "total_timesteps": 100000,
+            "batch_size": 256,
+            "learning_rate": 3e-4,
+            "gamma": 0.99,
+            "tau": 0.005,
+            "alpha": 0.2,
+            "target_entropy": "auto",
+            "buffer_size": 1000000,
+            "learning_starts": 1000,
+            "train_freq": 1,
+            "gradient_steps": 1,
+            "verbose": 1,
+            "device": "cpu"
         }
 
     @pytest.fixture
@@ -50,18 +48,32 @@ class TestUnifiedTrainer:
     @pytest.fixture
     def sample_backtest_data(self):
         """Sample backtest data"""
-        # Create a DataFrame that represents the loaded data
-        return pd.DataFrame({
-            "timestamp": pd.date_range("2023-01-01", periods=200, freq="1H"),
-            "price": np.random.randn(200).cumsum() + 100,
-            "volume": np.random.randint(100, 1000, 200)
-        })
+        return {
+            "period_1": {
+                "start_date": "2023-01-01",
+                "end_date": "2023-01-31",
+                "data": pd.DataFrame({
+                    "timestamp": pd.date_range("2023-01-01", periods=100, freq="1H"),
+                    "price": np.random.randn(100).cumsum() + 100,
+                    "volume": np.random.randint(100, 1000, 100)
+                })
+            },
+            "period_2": {
+                "start_date": "2023-02-01",
+                "end_date": "2023-02-28",
+                "data": pd.DataFrame({
+                    "timestamp": pd.date_range("2023-02-01", periods=100, freq="1H"),
+                    "price": np.random.randn(100).cumsum() + 100,
+                    "volume": np.random.randint(100, 1000, 100)
+                })
+            }
+        }
 
     def test_initialization(self, trainer):
         """Initialization test"""
         assert trainer.config is not None
-        assert trainer.config["training"]["algorithm"] == "sac"
-        assert trainer.algorithm_trainer is None
+        assert trainer.algorithm == "sac"
+        assert trainer.model is None
 
     def test_run_multi_period_backtest(self, trainer, sample_backtest_data):
         """Multi-period backtest execution test"""
@@ -115,16 +127,16 @@ class TestUnifiedTrainer:
 
     def test_create_backtest_environment(self, trainer):
         """Backtest environment creation test"""
-        config_path = "test_config.json"
+        env_config = {"env_name": "HeavyTradingEnv"}
 
-        # Verify the _create_v433_training_environment method exists
-        assert hasattr(trainer, '_create_v433_training_environment')
+        with patch('ztb.training.unified_trainer.trainer.gym.make') as mock_make:
+            mock_env = Mock()
+            mock_make.return_value = mock_env
 
-        with patch.object(trainer, '_create_v433_training_environment', side_effect=Exception("Mocked failure")) as mock_v433:
-            env = trainer._create_backtest_environment(config_path)
+            env = trainer._create_backtest_environment(env_config)
 
-            mock_v433.assert_called_once()
-            assert env is None  # Should return None when _create_v433_training_environment fails
+            mock_make.assert_called_with("HeavyTradingEnv")
+            assert env == mock_env
 
     def test_load_backtest_data(self, trainer):
         """Backtest data loading test"""
@@ -136,17 +148,14 @@ class TestUnifiedTrainer:
             }
         ]
 
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_df = pd.DataFrame({
-                "timestamp": pd.date_range("2023-01-01", periods=10, freq="1H"),
-                "price": [100] * 10
-            })
-            mock_read_csv.return_value = mock_df
+        with patch('ztb.training.unified_trainer.trainer.load_market_data') as mock_load:
+            mock_data = {"period_1": pd.DataFrame()}
+            mock_load.return_value = mock_data
 
             data = trainer._load_backtest_data(periods)
 
-            mock_read_csv.assert_called_once()
-            assert data is not None
+            mock_load.assert_called()
+            assert data == mock_data
 
     def test_run_single_period_backtest(self, trainer):
         """Single period backtest execution test"""
@@ -156,42 +165,41 @@ class TestUnifiedTrainer:
             "volume": [1000] * 10
         })
 
-        with patch.object(trainer, '_create_backtest_environment') as mock_env, \
-             patch.object(trainer, '_test_period_with_model') as mock_test:
+        with patch.object(trainer, '_create_backtest_environment') as mock_env,              patch('ztb.training.unified_trainer.trainer.evaluate_policy') as mock_eval:
 
             mock_env_instance = Mock()
             mock_env.return_value = mock_env_instance
-            mock_test.return_value = {
-                "period_name": "period_1",
-                "total_return_pct": 5.0,
-                "total_actions": 10,
-                "total_reward": 150
+            mock_eval.return_value = {
+                "mean_reward": 150,
+                "std_reward": 20,
+                "total_episodes": 10
             }
 
-            # Mock algorithm_trainer
-            trainer.algorithm_trainer = Mock()
+            # Mock model
+            trainer.model = Mock()
 
-            results = trainer._run_single_period_backtest(
-                trainer.algorithm_trainer,  # model
-                mock_env_instance,          # env
-                period_data,               # df
-                {"name": "period_1", "start_date": "2023-01-01", "end_date": "2023-01-02"}  # period
-            )
+            results = trainer._run_single_period_backtest("period_1", period_data)
 
-            mock_test.assert_called_once()
-            assert "period_name" in results
-            assert results["total_return_pct"] == 5.0
+            assert "metrics" in results
+            assert "performance_by_regime" in results
+            assert results["metrics"]["total_episodes"] == 10
 
     def test_calculate_overall_backtest_metrics(self, trainer):
         """Overall backtest metrics calculation test"""
         period_results = [
             {
-                "total_return_pct": 0.05,
-                "total_actions": 100
+                "metrics": {
+                    "total_return": 0.05,
+                    "total_trades": 100,
+                    "win_rate": 0.6
+                }
             },
             {
-                "total_return_pct": 0.03,
-                "total_actions": 80
+                "metrics": {
+                    "total_return": 0.03,
+                    "total_trades": 80,
+                    "win_rate": 0.55
+                }
             }
         ]
 
@@ -200,11 +208,11 @@ class TestUnifiedTrainer:
         assert "total_periods" in metrics
         assert "average_return" in metrics
         assert "total_trades" in metrics
-        assert "win_rate" in metrics
+        assert "average_win_rate" in metrics
         assert metrics["total_periods"] == 2
         assert abs(metrics["average_return"] - 0.04) < 0.001
         assert metrics["total_trades"] == 180
-        assert abs(metrics["win_rate"] - 100.0) < 0.001  # Both periods positive
+        assert abs(metrics["average_win_rate"] - 0.575) < 0.001
 
     def test_analyze_backtest_regime_performance(self, trainer):
         """Backtest regime performance analysis test"""
@@ -225,23 +233,23 @@ class TestUnifiedTrainer:
 
         regime_perf = trainer._analyze_backtest_regime_performance(period_results)
 
-        assert "bull_market_performance" in regime_perf
-        assert "bear_market_performance" in regime_perf
-        assert "sideways_performance" in regime_perf
-        # Since it's a placeholder, values are 0.0
-        assert regime_perf["bull_market_performance"]["average_return"] == 0.0
-        assert regime_perf["bull_market_performance"]["win_rate"] == 0.0
+        assert "bull" in regime_perf
+        assert "bear" in regime_perf
+        assert regime_perf["bull"]["average_return"] == 0.07
+        assert regime_perf["bull"]["average_win_rate"] == 0.675
+        assert regime_perf["bear"]["average_return"] == -0.015
+        assert regime_perf["bear"]["average_win_rate"] == 0.425
 
     def test_generate_backtest_recommendations(self, trainer):
         """Backtest recommendations generation test"""
         results = {
             "overall_metrics": {
-                "win_rate": 65.0,  # Set win_rate > 60 to trigger recommendation
+                "average_win_rate": 0.65,
                 "average_return": 0.04
             },
             "regime_performance": {
-                "bull_market_performance": {"win_rate": 0.7},
-                "bear_market_performance": {"win_rate": 0.3}
+                "bull": {"average_win_rate": 0.7},
+                "bear": {"average_win_rate": 0.3}
             }
         }
 
@@ -249,9 +257,9 @@ class TestUnifiedTrainer:
 
         assert isinstance(recommendations, list)
         assert len(recommendations) > 0
-        # Should contain recommendation for strong performance
-        strong_perf_found = any("Strong overall performance" in rec for rec in recommendations)
-        assert strong_perf_found
+        # Should contain recommendations for strong performing regime
+        strong_regime_found = any("bull" in rec for rec in recommendations)
+        assert strong_regime_found
 
     def test_error_handling(self, trainer):
         """Error handling test"""

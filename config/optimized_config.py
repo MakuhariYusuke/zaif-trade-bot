@@ -319,11 +319,11 @@ def validate_optimized_config():
     np.random.seed(42)
 
     n_points = len(dates)
-    base_price = 100.0
-    trend = np.linspace(0, 5, n_points)
-    noise = np.random.normal(0, 1.5, n_points)
+    base_price = 5000000.0  # JPY-based price
+    trend = np.linspace(0, 250000, n_points)  # Adjusted for JPY scale
+    noise = np.random.normal(0, 75000, n_points)  # Adjusted volatility
     prices = base_price + trend + noise
-    prices = np.maximum(prices, 1.0)
+    prices = np.maximum(prices, 1000000.0)  # Minimum realistic price
 
     high_prices = prices * (1 + np.random.uniform(0, 0.015, n_points))
     low_prices = prices * (1 - np.random.uniform(0, 0.015, n_points))

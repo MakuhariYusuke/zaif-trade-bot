@@ -16,6 +16,8 @@ import numpy as np
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.policy_utils import predict_with_masks
 from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.utils.trading_metrics import action_distribution as calculate_action_distribution
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 
 def run_simple_backtest(
@@ -54,7 +56,7 @@ def run_simple_backtest(
 
     total_reward = 0.0
     total_pnl = 0.0
-    action_counts = {"HOLD": 0, "BUY": 0, "SELL": 0}
+    all_actions = []
     total_rewards = []
     total_pnls = []
 
@@ -74,13 +76,8 @@ def run_simple_backtest(
             episode_reward += reward
             episode_pnl += info.get("pnl", 0.0)
 
-            # Count actions
-            if action == 0:
-                action_counts["HOLD"] += 1
-            elif action == 1:
-                action_counts["BUY"] += 1
-            else:
-                action_counts["SELL"] += 1
+            # Collect actions
+            all_actions.append(action)
 
             steps += 1
 
@@ -108,19 +105,21 @@ def run_simple_backtest(
     print(f"Average Reward: {avg_reward:.4f} ± {std_reward:.4f}")
     print(f"Average PnL: {avg_pnl:.6f} ± {std_pnl:.6f}")
 
-    total_actions = sum(action_counts.values())
+    action_distribution = calculate_action_distribution(all_actions)
+    total_actions = len(all_actions)
     print(f"Total Return: {sum(total_pnls):.6f}")
 
     print("\nAction Distribution:")
-    for action, count in action_counts.items():
-        percentage = (count / total_actions) * 100 if total_actions > 0 else 0
-        print(f"  {action}: {count} ({percentage:.1f}%)")
+    for action_name, ratio in action_distribution.items():
+        count = int(ratio * total_actions)
+        percentage = ratio * 100
+        print(f"  {action_name}: {count} ({percentage:.1f}%)")
 
     return {
         "avg_reward": avg_reward,
         "avg_pnl": avg_pnl,
         "total_pnl": total_pnl,
-        "action_counts": action_counts,
+        "action_distribution": action_distribution,
     }
 
 

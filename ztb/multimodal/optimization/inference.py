@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
+from ztb.trading.environment.constants import BYTES_PER_GB 
 
 logger = logging.getLogger(__name__)
 
@@ -287,8 +288,8 @@ class MemoryManager:
     def monitor_memory(self) -> Dict[str, float]:
         """メモリ使用量を監視"""
         if torch.cuda.is_available():
-            allocated = torch.cuda.memory_allocated() / 1024 / 1024 / 1024  # GB
-            reserved = torch.cuda.memory_reserved() / 1024 / 1024 / 1024  # GB
+            allocated = torch.cuda.memory_allocated() / BYTES_PER_GB
+            reserved = torch.cuda.memory_reserved() / BYTES_PER_GB
 
             memory_info = {
                 "allocated_gb": allocated,

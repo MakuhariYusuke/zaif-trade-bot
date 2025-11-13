@@ -110,7 +110,7 @@ class RegimeDetectionTester:
         np.random.seed(42)  # For reproducible results
 
         # Base parameters
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
         dates = pd.date_range(start="2023-01-01", periods=length, freq="1H")
 
         # Regime-specific parameters

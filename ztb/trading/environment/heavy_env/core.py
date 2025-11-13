@@ -323,6 +323,17 @@ class HeavyTradingEnv(
         super().__init__()
         self.logger = get_logger(self.__class__.__name__)
 
+        # DEBUG: Log feature_set at the very beginning
+        try:
+            if isinstance(config, EnvironmentConfig):
+                print(f"DEBUG: config is EnvironmentConfig, feature_set = {getattr(config, 'feature_set', 'NOT_SET')}")
+            elif isinstance(config, dict):
+                print(f"DEBUG: config is dict, feature_set = {config.get('feature_set', 'NOT_SET')}")
+            else:
+                print(f"DEBUG: config is {type(config)}, feature_set unknown")
+        except Exception as e:
+            print(f"DEBUG: Failed to log feature_set: {e}")
+
         if df is not None:
             TypeValidator.validate_type(df, pd.DataFrame, "df")
 
@@ -348,6 +359,9 @@ class HeavyTradingEnv(
             self.config = config
         else:
             self.config = EnvironmentConfig.from_dict(config)
+
+        # DEBUG: Log feature_set
+        self.logger.info(f"DEBUG: HeavyTradingEnv config.feature_set = {getattr(self.config, 'feature_set', 'NOT_SET')}")
 
         # Extract values from config for validation and use.
         # kwargs can override some runtime parameters.
@@ -964,14 +978,19 @@ class HeavyTradingEnv(
             self.df,
         )
 
-        # Diagnostic: log environment observation_space and returned observation shape
+        # Diagnostic: log environment observation_space and returned observation shape (every 100 steps)
         try:
-            logger.debug(
-                "HeavyTradingEnv._get_observation: observation_space.shape=%s, returned_obs_shape=%s, optimizer_tracker_present=%s",
-                getattr(self.observation_space, "shape", None),
-                getattr(obs, "shape", None),
-                self.optimizer_tracker is not None,
-            )
+            if hasattr(self, '_obs_step_count'):
+                self._obs_step_count += 1
+            else:
+                self._obs_step_count = 1
+            if self._obs_step_count % 100 == 0:
+                logger.debug(
+                    "HeavyTradingEnv._get_observation: observation_space.shape=%s, returned_obs_shape=%s, optimizer_tracker_present=%s",
+                    getattr(self.observation_space, "shape", None),
+                    getattr(obs, "shape", None),
+                    self.optimizer_tracker is not None,
+                )
         except Exception:
             pass
 

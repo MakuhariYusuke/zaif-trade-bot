@@ -241,6 +241,12 @@ class EnvironmentConfig:
                     "EnvironmentConfig.from_dict preview use_continuous_actions=%s",
                     config_dict.get("use_continuous_actions", "NOT_PRESENT"),
                 )
+                # Debug: Check for dict keys
+                for key, value in config_dict.items():
+                    if isinstance(key, dict):
+                        logger.error(f"Found dict as key in config_dict: key={key}, value={value}")
+                        raise TypeError(f"unhashable type: 'dict' - found dict as key: {key}")
+                    logger.debug(f"config_dict key: {key}, type: {type(key)}, value type: {type(value)}")
         except Exception:
             logger.exception("Failed to log EnvironmentConfig.from_dict diagnostic")
 
@@ -433,21 +439,29 @@ class EnvironmentConfig:
             if isinstance(env_config, dict):
                 # Copy environment config values to top level for processing
                 for key, value in env_config.items():
+                    if isinstance(key, dict):
+                        logger.error(f"Found dict as key in env_config: key={key}, value={value}")
+                        raise TypeError(f"unhashable type: 'dict' - found dict as key in env_config: {key}")
+                    logger.debug(f"env_config key: {key}, type: {type(key)}, value type: {type(value)}")
                     if (
                         key in known_fields and key not in config_kwargs
                     ):  # Don't override if already set
+                        logger.debug(f"Setting config_kwargs[{key}] = {value}")
                         config_kwargs[key] = value
                     elif key == "signal_guidance" and isinstance(
                         value, dict
                     ):  # Special handling for signal_guidance
+                        logger.debug(f"Setting config_kwargs[{key}] = {value} (signal_guidance)")
                         config_kwargs[key] = value
                     elif key == "market_regime" and isinstance(
                         value, dict
                     ):  # Special handling for market_regime
+                        logger.debug(f"Setting config_kwargs[{key}] = {value} (market_regime)")
                         config_kwargs[key] = value
                     elif key == "dynamic_reward_shaping" and isinstance(
                         value, dict
                     ):  # Special handling for dynamic_reward_shaping
+                        logger.debug(f"Setting config_kwargs[{key}] = {value} (dynamic_reward_shaping)")
                         config_kwargs[key] = value
 
         # Handle field name mappings
@@ -532,6 +546,10 @@ class EnvironmentConfig:
                 # Be tolerant of extra/unknown keys in configs (forward compatibility)
                 rs = RewardSettings()
                 for k, v in reward_settings_dict.items():
+                    if isinstance(k, dict):
+                        logger.error(f"Found dict as reward_settings key: k={k}, v={v}")
+                        raise TypeError(f"unhashable type: 'dict' - found dict as reward_settings key: {k}")
+                    logger.debug(f"Processing reward_settings key: {k}, type: {type(k)}, value type: {type(v)}")
                     if hasattr(rs, k):
                         try:
                             setattr(rs, k, v)
@@ -549,7 +567,15 @@ class EnvironmentConfig:
                             rs.custom_reward_params[k] = v
                 config_kwargs["reward_settings"] = rs
 
-        return cls(**config_kwargs)  # type: ignore[arg-type]
+        try:
+            logger.debug(f"Creating EnvironmentConfig with config_kwargs keys: {list(config_kwargs.keys())}")
+            result = cls(**config_kwargs)  # type: ignore[arg-type]
+            logger.debug("EnvironmentConfig created successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to create EnvironmentConfig: {e}")
+            logger.error(f"config_kwargs: {config_kwargs}")
+            raise
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
@@ -635,10 +661,18 @@ class EnvironmentConfig:
 
         # Update fields from config_dict
         for key, value in config_dict.items():
+            if isinstance(key, dict):
+                logger.error(f"Found dict as key in config_dict (2nd from_dict): key={key}, value={value}")
+                raise TypeError(f"unhashable type: 'dict' - found dict as key in 2nd from_dict: {key}")
+            logger.debug(f"Processing config_dict key: {key}, type: {type(key)}, value type: {type(value)}")
             if key == "environment" and isinstance(value, dict):
                 # Special handling for nested environment config
                 logger.debug("Processing nested environment config")
                 for env_key, env_value in value.items():
+                    if isinstance(env_key, dict):
+                        logger.error(f"Found dict as env_key: env_key={env_key}, env_value={env_value}")
+                        raise TypeError(f"unhashable type: 'dict' - found dict as env_key: {env_key}")
+                    logger.debug(f"Processing env_key: {env_key}, type: {type(env_key)}, env_value type: {type(env_value)}")
                     if env_key == "behavior_optimization":
                         # Already handled above
                         continue
@@ -649,6 +683,10 @@ class EnvironmentConfig:
                         ):  # Don't override root-level if present
                             converted_bonuses = {}
                             for bonus_key, bonus_value in env_value.items():
+                                if isinstance(bonus_key, dict):
+                                    logger.error(f"Found dict as bonus_key: bonus_key={bonus_key}, bonus_value={bonus_value}")
+                                    raise TypeError(f"unhashable type: 'dict' - found dict as bonus_key: {bonus_key}")
+                                logger.debug(f"Processing bonus_key: {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}")
                                 converted_bonuses[bonus_key] = float(bonus_value)
                             instance.action_bonuses = converted_bonuses
                     elif hasattr(instance, env_key):
@@ -677,6 +715,10 @@ class EnvironmentConfig:
                         # Handle action_bonuses dict
                         converted_bonuses = {}
                         for bonus_key, bonus_value in value.items():
+                            if isinstance(bonus_key, dict):
+                                logger.error(f"Found dict as bonus_key (2): bonus_key={bonus_key}, bonus_value={bonus_value}")
+                                raise TypeError(f"unhashable type: 'dict' - found dict as bonus_key (2): {bonus_key}")
+                            logger.debug(f"Processing bonus_key (2): {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}")
                             converted_bonuses[bonus_key] = float(bonus_value)
                         setattr(instance, key, converted_bonuses)
                     elif key == "reward_settings" and isinstance(value, dict):
@@ -684,6 +726,10 @@ class EnvironmentConfig:
                         if not instance.reward_settings:
                             instance.reward_settings = RewardSettings()
                         for rs_key, rs_value in value.items():
+                            if isinstance(rs_key, dict):
+                                logger.error(f"Found dict as rs_key: rs_key={rs_key}, rs_value={rs_value}")
+                                raise TypeError(f"unhashable type: 'dict' - found dict as rs_key: {rs_key}")
+                            logger.debug(f"Processing rs_key: {rs_key}, type: {type(rs_key)}, rs_value type: {type(rs_value)}")
                             if rs_key == "action_bonuses" and isinstance(
                                 rs_value, dict
                             ):

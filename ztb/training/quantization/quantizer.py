@@ -11,6 +11,7 @@ from typing import Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +202,7 @@ class SACQuantizer:
         buffer_size = 0
         for buffer in model.buffers():
             buffer_size += buffer.nelement() * buffer.element_size()
-        return (param_size + buffer_size) / 1024 / 1024
+        return (param_size + buffer_size) / BYTES_PER_MB
 
     def validate_quantization(
         self,

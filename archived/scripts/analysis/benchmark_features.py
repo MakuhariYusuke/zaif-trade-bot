@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -38,7 +40,7 @@ def benchmark_features():
 
     # Measure initial memory
     process = psutil.Process()
-    initial_memory_mb = process.memory_info().rss / 1024 / 1024
+    initial_memory_mb = process.memory_info().rss / BYTES_PER_MB
     print(f"Initial memory: {initial_memory_mb:.1f} MB")
 
     # Benchmark full feature computation
@@ -65,7 +67,7 @@ def benchmark_features():
         times.append(elapsed)
 
         # Measure memory after computation
-        peak_memory_mb = process.memory_info().rss / 1024 / 1024
+        peak_memory_mb = process.memory_info().rss / BYTES_PER_MB
         memory_peaks.append(peak_memory_mb)
 
         print(

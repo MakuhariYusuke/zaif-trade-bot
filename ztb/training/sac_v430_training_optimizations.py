@@ -29,13 +29,13 @@ class GradientAccumulator:
     def __init__(self, accumulation_steps: int = 4):
         self.accumulation_steps = accumulation_steps
         self.step_count = 0
-        self.scaler = torch.amp.GradScaler() if torch.cuda.is_available() else None
+        self.scaler = torch.cuda.amp.GradScaler() if torch.cuda.is_available() else None
 
     def step(
         self,
         optimizer: torch.optim.Optimizer,
         loss: torch.Tensor,
-        scaler: Optional[torch.amp.GradScaler] = None,
+        scaler: Optional[torch.cuda.amp.GradScaler] = None,
     ) -> bool:
         """
         Perform gradient accumulation step.

@@ -17,6 +17,8 @@ from typing import Any, Dict
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentBase, ExperimentResult
@@ -47,7 +49,7 @@ class SmokeTestExperiment(ExperimentBase):
         )
 
         # Record initial memory
-        self.start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+        self.start_memory = psutil.Process().memory_info().rss / BYTES_PER_MB
 
         # Load dataset
         try:
@@ -85,7 +87,7 @@ class SmokeTestExperiment(ExperimentBase):
                 self.feature_pass_rates.append(pass_rate)
 
                 # Track memory usage
-                current_memory = psutil.Process().memory_info().rss / 1024 / 1024
+                current_memory = psutil.Process().memory_info().rss / BYTES_PER_MB
                 self.peak_memory = max(self.peak_memory, current_memory)
 
                 # Log progress every 1000 steps

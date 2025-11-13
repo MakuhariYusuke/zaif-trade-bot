@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -402,7 +403,7 @@ class SystemOptimizer:
             process = psutil.Process()
             memory_info = process.memory_info()
 
-            current_memory_mb = memory_info.rss / 1024 / 1024
+            current_memory_mb = memory_info.rss / BYTES_PER_MB
             self.memory_usage.append(current_memory_mb)
 
             # メモリ閾値チェック
@@ -412,7 +413,7 @@ class SystemOptimizer:
                     "status": "optimized",
                     "action": "garbage_collection",
                     "memory_before": current_memory_mb,
-                    "memory_after": process.memory_info().rss / 1024 / 1024,
+                    "memory_after": process.memory_info().rss / BYTES_PER_MB,
                 }
 
             return {"status": "normal", "current_memory_mb": current_memory_mb}
@@ -488,7 +489,7 @@ class SystemOptimizer:
                 memory_info = process.memory_info()
                 status.update(
                     {
-                        "current_memory_mb": memory_info.rss / 1024 / 1024,
+                        "current_memory_mb": memory_info.rss / BYTES_PER_MB,
                         "cpu_percent": process.cpu_percent(interval=0.1),
                     }
                 )

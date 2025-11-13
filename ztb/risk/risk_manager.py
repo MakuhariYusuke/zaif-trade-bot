@@ -145,7 +145,7 @@ class RiskManager:
             "market_regime": market_regime,
         }
 
-        logger.debug(f"Risk adjusted position: {result}")
+        logger.debug(f"Risk adjusted position: {result}") if len(reasons) > 0 else None
         return result
 
     def _apply_correlation_risk_control(self, position: float) -> float:

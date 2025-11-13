@@ -13,6 +13,7 @@ from typing import List, Tuple
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
 
+from ztb.trading.environment.constants import BYTES_PER_KB
 from ztb.utils.cli_common import (
     CLIFormatter,
     CLIValidator,
@@ -64,20 +65,20 @@ def find_candidates(
     keep_ids = {s[0] for s in recent_sessions} | {s[0] for s in keep_best_sessions}
 
     # Check size limit
-    total_size_gb = sum(s[2] for s in sessions) / 1024
+    total_size_gb = sum(s[2] for s in sessions) / BYTES_PER_KB
     if total_size_gb > max_size_gb:
         # Sort by age (oldest first) for size-based cleanup
         size_candidates = [s for s in sessions if s[0] not in keep_ids]
         size_candidates.sort(key=lambda x: x[1])  # oldest first
 
-        current_size = sum(s[2] for s in sessions if s[0] in keep_ids) / 1024
+        current_size = sum(s[2] for s in sessions if s[0] in keep_ids) / BYTES_PER_KB
         for sess in size_candidates:
             if current_size >= max_size_gb:
                 break
             candidates.append(
                 (sess[0], f"Size limit: {total_size_gb:.1f}GB > {max_size_gb}GB")
             )
-            current_size += sess[2] / 1024
+            current_size += sess[2] / BYTES_PER_KB
     else:
         # Age/size based
         for sess in sessions:

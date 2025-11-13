@@ -14,6 +14,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 from .analyzer import ABTestAnalyzer
 from .config import ABTestConfig
 from .types import (
@@ -461,7 +463,7 @@ class ABTestExecutor:
         """メモリ使用量を監視"""
         while True:
             try:
-                memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
+                memory_mb = psutil.Process().memory_info().rss / BYTES_PER_MB
 
                 if memory_mb > self.config.performance.max_memory_mb:
                     logger.warning(f"Memory usage high: {memory_mb:.1f}MB")

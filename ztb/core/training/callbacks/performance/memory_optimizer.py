@@ -18,6 +18,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 @dataclass
 class MemoryConfig:
@@ -225,7 +227,7 @@ class MemoryMonitor:
         try:
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
-            memory_mb = memory_info.rss / 1024 / 1024
+            memory_mb = memory_info.rss / BYTES_PER_MB
 
             with self._lock:
                 self._memory_history.append(memory_mb)

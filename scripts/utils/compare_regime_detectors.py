@@ -23,10 +23,10 @@ def generate_test_data(scenario: str, length: int = 60) -> list:
 
     if scenario == "strong_bull_trend":
         # Strong upward trend
-        prices = [100.0 + i * 0.8 for i in range(length)]  # Remove noise
+        prices = [5000000.0 + i * 40000 for i in range(length)]  # Remove noise, JPY scale
     elif scenario == "extreme_volatility":
         # Extreme volatility - very extreme
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based
         prices = []
         for i in range(length):
             volatility = 0.15 + 0.10 * np.sin(i * 0.5)  # Much higher volatility
@@ -35,16 +35,16 @@ def generate_test_data(scenario: str, length: int = 60) -> list:
             base_price = price
     elif scenario == "consolidation":
         # Sideways consolidation - very stable
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based
         prices = [
-            base_price + np.sin(i * 0.1) * 0.1 for i in range(length)
-        ]  # Much smaller oscillations
+            base_price + np.sin(i * 0.1) * 50000 for i in range(length)
+        ]  # Much smaller oscillations, JPY scale
     elif scenario == "high_volatility_ranging":
         # High volatility ranging - moderate
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based
         prices = []
         for i in range(length):
-            change = np.random.normal(0, 1.0)  # Moderate volatility
+            change = np.random.normal(0, 50000)  # Moderate volatility, JPY scale
             price = base_price + change
             prices.append(price)
             base_price = price
