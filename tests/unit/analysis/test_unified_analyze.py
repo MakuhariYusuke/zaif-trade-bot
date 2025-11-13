@@ -357,11 +357,16 @@ class TestSessionAnalysis:
 class TestParserAndMain:
     """Test cases for parser creation and main function."""
 
-    @pytest.mark.skip(reason="create_parser has conflicting --episodes arguments that need to be fixed in the source code")
     def test_create_parser(self):
         """Test create_parser returns ArgumentParser."""
-        # This test is skipped due to conflicting --episodes arguments in the source code
-        pass
+        parser = create_parser()
+
+        assert isinstance(parser, argparse.ArgumentParser)
+
+        # Check that required arguments are present
+        help_text = parser.format_help()
+        assert "category" in help_text
+        assert "tool" in help_text
 
     @patch('sys.argv', ['unified_analyze.py', 'model', 'sac', '--model', 'test.zip'])
     @patch('ztb.analysis.unified_analyze.create_parser')

@@ -40,10 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mock Integration**: Proper mocking of external dependencies and file system operations
 
 #### Test Coverage Metrics
-- **31 Test Cases**: Covering core functionality, error conditions, and integration points
-- **1 Skipped Test**: Known issue with conflicting argument definitions (marked for future resolution)
+- **32 Test Cases**: Covering core functionality, error conditions, and integration points
+- **0 Skipped Tests**: All tests now passing after resolving argument conflicts
 - **Test Categories**: Initialization, execution flow, tool discovery, error handling, and main function behavior
 - **Mock Strategy**: Extensive use of unittest.mock for isolating external dependencies
+
+#### Argument Parser Fixes
+- **Resolved --episodes Conflict**: Fixed duplicate argument definitions in create_parser()
+- **Paper Trading Arguments**: Renamed paper trading episodes to `--paper-episodes` for clarity
+- **Code Quality**: Eliminated argparse.ArgumentError that was preventing parser creation
+- **Test Coverage**: Enabled previously skipped create_parser test case
 
 #### Quality Assurance Benefits
 - **Regression Prevention**: Automated testing prevents future breaking changes
