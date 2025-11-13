@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
-from ztb.utils.training_utils import create_checkpoint_callback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed import
@@ -29,6 +28,7 @@ from ztb.training.utils.training_logger import create_training_logger
 from ztb.types.common import SACLikeModelProtocol
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import ensure_dict, safe_to_float
+from ztb.utils.training_utils import create_checkpoint_callback
 
 logger = get_logger(__name__)
 
