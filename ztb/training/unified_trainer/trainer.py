@@ -84,6 +84,7 @@ from ztb.utils.logging_utils import get_logger
 # Import optimization utilities
 from ztb.utils.memory_utils import MemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
+from ztb.utils.trading_metrics import win_rate as calculate_win_rate
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
@@ -2585,7 +2586,7 @@ class UnifiedTrainer:
             "total_periods": len(valid_results),
             "average_return": sum(returns) / len(returns) if returns else 0.0,
             "total_trades": total_trades,
-            "win_rate": sum(1 for r in valid_results if r.get("total_return_pct", 0) > 0) / len(valid_results) * 100 if valid_results else 0.0
+            "win_rate": calculate_win_rate(returns) * 100
         }
 
     def _analyze_backtest_regime_performance(self, period_results: List[Dict[str, Any]]) -> Dict[str, Any]:

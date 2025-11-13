@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional
 import psutil
 import requests
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.errors import safe_operation
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.logging_utils import get_logger
@@ -38,7 +39,7 @@ def collect_ci_metrics() -> Dict[str, Any]:
     metrics = {
         "timestamp": datetime.now().isoformat(),
         "cpu_percent": psutil.cpu_percent(interval=1),
-        "memory_mb": memory_info.rss / 1024 / 1024,
+        "memory_mb": memory_info.rss / BYTES_PER_MB,
         "memory_percent": process.memory_percent(),
         "disk_usage": psutil.disk_usage("/").percent,
         "uptime_seconds": time.time() - psutil.boot_time(),

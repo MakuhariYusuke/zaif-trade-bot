@@ -41,7 +41,7 @@ class TestSystemIntegration:
         n_samples = 1000
 
         # Generate realistic OHLC data
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
         prices = [base_price]
 
         for _ in range(n_samples - 1):

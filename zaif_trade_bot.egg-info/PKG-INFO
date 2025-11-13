@@ -20,7 +20,7 @@ Classifier: Topic :: Office/Business :: Financial :: Investment
 Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
-Requires-Dist: numpy<2.0,>=1.24.4
+Requires-Dist: numpy<3.0,>=1.24.4
 Requires-Dist: pandas<3.0,>=2.0.0
 Requires-Dist: scikit-learn<2.0,>=1.3.2
 Requires-Dist: scipy<2.0,>=1.10.0
@@ -30,8 +30,8 @@ Requires-Dist: torchaudio<3.0,>=2.0.0
 Requires-Dist: transformers<5.0,>=4.0.0
 Requires-Dist: datasets<3.0,>=2.0.0
 Requires-Dist: gymnasium<1.0,>=0.28.1
-Requires-Dist: stable-baselines3[extra]<2.0,>=1.8.0
-Requires-Dist: sb3-contrib<2.0,>=1.8.0
+Requires-Dist: stable-baselines3[extra]<3.0,>=2.0.0
+Requires-Dist: sb3-contrib<3.0,>=2.0.0
 Requires-Dist: optuna<4.0,>=3.0.0
 Requires-Dist: shap<1.0,>=0.40.0
 Requires-Dist: pydantic<3.0,>=2.0.0
@@ -51,7 +51,7 @@ Requires-Dist: fredapi<1.0,>=0.5.0
 Requires-Dist: alpha-vantage<3.0,>=2.3.0
 Requires-Dist: newsapi-python<1.0,>=0.2.0
 Requires-Dist: yfinance<1.0,>=0.2.0
-Requires-Dist: pytest<8.0,>=7.0.0
+Requires-Dist: pytest<9.0,>=8.0.0
 Requires-Dist: pytest-cov<5.0,>=4.0.0
 Requires-Dist: black<24.0,>=23.0.0
 Requires-Dist: isort<6.0,>=5.12.0
@@ -81,7 +81,7 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![Type Checking](https://img.shields.io/badge/mypy-strict-green.svg)](https://mypy-lang.org)
 [![Security](https://img.shields.io/badge/security-bandit+safety-green.svg)](https://github.com/PyCQA/bandit)
-[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen.svg)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-40%20passed-brightgreen.svg)](https://github.com)
 [![Coverage](https://img.shields.io/badge/coverage-40%25-yellow.svg)](https://coverage.readthedocs.io)
 
 ## 🚀 Features
@@ -89,6 +89,8 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Reinforcement Learning**: PPO and SAC algorithms for trading strategies
 - **Multi-Modal Learning**: Integrated price, news sentiment, and economic indicators
 - **Risk Management Integration**: SAC v435 with dynamic position sizing, drawdown control, and market adaptation
+- **Advanced Automatic Optimization**: 3-layer optimization architecture with hyperparameter tuning, multi-timeframe optimization, and A/B testing
+- **Unified Optimization System**: Bayesian optimization, parallel processing, and result persistence with version control
 - **Configurable Feature Sets**: Flexible feature engineering with preset configurations (minimal, high-quality, full)
 - **Production Ready**: Comprehensive type checking, security scanning, and CI/CD
 - **Modular Architecture**: Clean separation of concerns with well-defined interfaces
@@ -98,8 +100,81 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Comprehensive Monitoring**: Logging, metrics, and alerting systems
 - **Advanced Reward System**: Modular reward calculator with clear bonus/penalty separation
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
+- **Phase 3 Ensemble Methods**: Multi-source signal integration with dynamic weight adjustment and confidence-based scoring
 
-## 🆕 Recent Updates (2025-11-02)
+## 🆕 Recent Updates (2025-11-12)
+
+### Phase 3: Ensemble Signal Methods 完了 ✅
+- **EnsembleSignalGenerator実装**: 多ソースシグナル統合による高度なアンサンブル手法
+- **4ソースシグナル統合**: テクニカル分析、パターン認識、センチメント分析、出来高プロファイル
+- **動的ウェイト調整**: 信頼度ベースの動的ウェイト最適化とアンサンブルスコア計算
+- **SignalQualityScorer統合**: Phase 2拡張機能（CompositeIndicator, AdaptiveIndicator, 強化MACD, トレンドメトリクス）へのPhase 3統合
+- **信頼度計算**: 各シグナルソースの信頼度評価と総合的シグナル信頼性評価
+- **循環インポート解決**: モジュール依存関係の最適化とクリーンアーキテクチャ維持
+- **包括的テスト**: Phase 3統合テスト成功、スコア62.27で正常動作確認
+- **ドキュメント更新**: 実装詳細と使用方法の包括的ドキュメント化
+
+### SIGNAL_GUIDANCE System Unit Tests Implementation ✅
+- **Structured Test Organization**: Created comprehensive unit test suite for SIGNAL_GUIDANCE system with proper directory structure
+- **Test Directory Structure**:
+  - `tests/unit/trading/signal/quality_scorer/` - SignalQualityScorer tests
+  - `tests/unit/trading/signal/ensemble/` - EnsembleSignalGenerator tests
+  - `tests/unit/trading/signal/scorers/` - Individual SignalScorer tests
+  - `tests/unit/trading/signal/indicators/` - Indicator component tests
+- **Component Coverage**: Full test coverage for all SIGNAL_GUIDANCE components including initialization, calculation methods, error handling, and configuration parameters
+- **Test Categories**: Unit tests covering normal operation, edge cases, error conditions, and integration scenarios
+- **Quality Assurance**: Comprehensive test suite ensuring reliability and maintainability of signal quality scoring system
+
+### Test Code Organization and Quality Assurance ✅
+- **Unified Optimizer Test Separation**: Moved comprehensive test suites from production code to dedicated test files
+- **Test Structure Refactoring**: Created `tests/unit/training/test_unified_optimizer.py` (24 unit tests) and `tests/integration/training/test_unified_optimizer_integration.py` (5 integration tests)
+- **Code Quality Improvement**: Removed 567 lines of test code from `unified_optimizer.py`, enhancing maintainability
+- **Pytest Standards**: Converted from unittest to pytest format with proper fixtures, assertions, and error handling
+- **Test Coverage**: 100% pass rate across all 29 tests with comprehensive component validation
+- **Bug Fixes**: Resolved AutomaticOptimizationPipeline system_optimizer attribute issue
+
+### Week 11-12: Advanced Automatic Optimization 完了 ✅
+- **3層最適化アーキテクチャ**: ハイパーパラメータ→マルチタイムフレーム→A/Bテストの深い最適化層
+- **UnifiedOptimizer拡張**: 既存アセット（BayesianOptimizer, IntegratedParameterOptimizer）を活用した統合最適化システム
+- **マルチタイムフレーム最適化**: 1分/5分/15分足別パラメータ最適化とクロスタイムフレーム相関分析
+- **A/Bテストフレームワーク**: 統計的有意差検定（t-test）と効果量計算による自動パラメータ比較
+- **自動最適化パイプライン**: 探索→検証→デプロイメントの完全自動化ワークフロー
+- **最適化結果持続化**: バージョン管理、検索、比較機能を備えた結果管理システム
+- **並列最適化実行**: ThreadPoolExecutorによる最大8並列処理とパラメータスイープ
+- **包括的テストスイート**: 100%成功率のユニットテストと統合テスト
+- **パフォーマンス検証**: 総実行時間1.263秒、すべての最適化コンポーネント正常動作確認
+- **ドキュメント更新**: PHASE3_FINAL_VALIDATION_REPORT.mdにWeek 11-12実装レポート追加
+
+### Phase 2: Multi-Timeframe Trend Detection 完了 ✅
+- **マルチタイムフレーム分析**: 1分足、5分足、15分足の統合分析システムを実装
+- **トレンドコンバージェンス計算**: MultiTimeframeAnalyzerとTrendConvergenceCalculatorによる高度なトレンド分析
+- **SignalGuidanceSystem拡張**: Phase 2コンポーネントを統合し、既存の品質スコアリングシステムを活用
+- **完全なテストスイート**: 17個の単位テストすべて通過、コンポーネント間連携を検証
+- **既存機能活用**: TaLibWrapper、品質スコアリングシステム、既存のテクニカル指標を徹底活用
+- **Phase 1成果維持**: 26.9 signals/day目標達成を維持しつつ、精度向上を実現
+
+### SAC Training Validation and Balance Penalty Fix ✅
+- **SAC Training Execution**: 10,000ステップのSACトレーニングを正常に実行、出力値の検証完了（NaNや無限値なし）
+- **バランスペナルティ修正**: BUY/SELLアクションで異なるペナルティを実現（BUYに1.5倍のコスト係数適用）
+- **報酬システム検証**: トレーニングプロセスとの互換性を確保した報酬計算の修正
+- **テスト更新**: test_improved_balance_penalty()で非対称ペナルティを検証
+
+## 🆕 Recent Updates (2025-11-10)
+
+### Phase 3-1: シグナル品質向上 - 単体テスト構造化完了 ✅
+- **構造化テスト実装**: TestDataFactory, TestUtilities, BaseSignalQualityTest基底クラスによる統一テスト基盤
+- **コンポーネントカバー**: SignalQualityAnalyzer, ConfidenceScoringEngine, MultiTimeFrameValidator, VolumeFilter, PriceActionFilter, IntegratedSignalFilter
+- **テスト品質向上**: 40 test cases, エラー処理強化, 無効入力対応, エッジケース検証
+- **堅牢性強化**: コンポーネント間連携テスト, メモリ管理検証, プロファイラ統合確認
+- **次フェーズ準備**: Phase 3-2パラメータ最適化に向けた安定したテスト基盤確立
+
+### Phase 2 実市場データバックテスト完了 🚀
+- **実市場性能検証**: BTC/JPY 1時間足データを使用した完全バックテスト
+- **パフォーマンス指標**: 総リターン-5.25%, 年率-2.8%, 勝率37.5%, Sharpe Ratio 0.11
+- **最適化実装**: TTLCache導入、ATR計算最適化、メモリ使用量削減
+- **実装順序決定**: Phase 3-1:シグナル品質向上 → Phase 3-2:パラメータ最適化 → Phase 3-3:ポートフォリオ拡張 → Phase 3-4:リアルタイム適応強化
+- **既存システム活用**: 12種MarketRegime, ActionSignalGuideAdapter, RiskManager, DynamicThresholdManager, WalkForwardAnalyzer
+- **ドキュメント更新**: `PHASE_2_PERFORMANCE_ANALYSIS.md` 作成、実装ロードマップと既存活用戦略
 
 ### Action Signal Guide Testing Suite ✅
 - **Comprehensive Unit Tests**: 66 test cases covering all Action Signal Guide components (100% pass rate)

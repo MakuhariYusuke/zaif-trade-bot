@@ -73,13 +73,18 @@ class ObservationBuilder:
                 )
                 obs = np.concatenate([obs, optimizer_values])
 
-            # Diagnostic: log observation shape and optimizer tracker state
+            # Diagnostic: log observation shape and optimizer tracker state (every 100 steps)
             try:
-                logger.debug(
-                    "ObservationBuilder.get_observation: obs.shape=%s, optimizer_tracker_present=%s",
-                    obs.shape,
-                    self.optimizer_tracker is not None,
-                )
+                if hasattr(self, '_step_count'):
+                    self._step_count += 1
+                else:
+                    self._step_count = 1
+                if self._step_count % 100 == 0:
+                    logger.debug(
+                        "ObservationBuilder.get_observation: obs.shape=%s, optimizer_tracker_present=%s",
+                        obs.shape,
+                        self.optimizer_tracker is not None,
+                    )
             except Exception:
                 pass
 

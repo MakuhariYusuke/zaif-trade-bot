@@ -35,7 +35,7 @@ class TestPerformance:
         n_samples = 10000  # Large dataset
 
         # Generate market data
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
         prices = []
         current_price = base_price
 
@@ -70,7 +70,7 @@ class TestPerformance:
         n_samples = 5000
 
         # Similar to large_market_data but smaller
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
         prices = []
         current_price = base_price
 

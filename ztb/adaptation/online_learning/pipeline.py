@@ -15,6 +15,7 @@ import psutil
 import torch
 import torch.nn as nn
 from torch.optim import SGD, Adagrad, Adam
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 from .config import OnlineLearningConfig
 from .types import (
@@ -648,12 +649,12 @@ class ResourceMonitor:
 
         # メモリ使用量
         memory = psutil.virtual_memory()
-        memory_usage_mb = memory.used / 1024 / 1024
+        memory_usage_mb = memory.used / BYTES_PER_MB
 
         # GPUメモリ（利用可能な場合）
         gpu_memory_mb = None
         if torch.cuda.is_available():
-            gpu_memory_mb = torch.cuda.memory_allocated() / 1024 / 1024
+            gpu_memory_mb = torch.cuda.memory_allocated() / BYTES_PER_MB
 
         # ディスクI/O
         current_disk_io = psutil.disk_io_counters()
@@ -661,13 +662,11 @@ class ResourceMonitor:
         if self.last_disk_io and time_delta > 0:
             disk_read_mb = (
                 (current_disk_io.read_bytes - self.last_disk_io.read_bytes)
-                / 1024
-                / 1024
+                / BYTES_PER_MB
             )
             disk_write_mb = (
                 (current_disk_io.write_bytes - self.last_disk_io.write_bytes)
-                / 1024
-                / 1024
+                / BYTES_PER_MB
             )
             disk_io_mb_per_sec = (disk_read_mb + disk_write_mb) / time_delta
 
@@ -676,10 +675,10 @@ class ResourceMonitor:
         net_io_mb_per_sec = 0.0
         if self.last_net_io and time_delta > 0:
             net_sent_mb = (
-                (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / 1024 / 1024
+                (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / BYTES_PER_MB
             )
             net_recv_mb = (
-                (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / 1024 / 1024
+                (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / BYTES_PER_MB
             )
             net_io_mb_per_sec = (net_sent_mb + net_recv_mb) / time_delta
 

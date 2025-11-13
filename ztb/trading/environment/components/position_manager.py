@@ -191,7 +191,7 @@ class PositionManager:
 
         # ログ出力
         if risk_adjusted["control_active"]:
-            logger.info(f"Risk control applied: {risk_adjusted['reasons']}")
+            logger.debug(f"Risk control applied: {risk_adjusted['reasons']}")
 
         # 理想的なコスト（リスク調整済みサイズ））
 
@@ -244,7 +244,7 @@ class PositionManager:
             current_price,
             entry_cost,
             available_funds,
-        )
+        ) if self.trades_count % 5 == 0 else None
 
         return entry_cost
 
@@ -288,7 +288,7 @@ class PositionManager:
             self.entry_price,
             realized_trade_pnl + exit_cost,  # PnL before cost
             exit_cost,
-        )
+        ) if self.trades_count % 5 == 0 else None
 
         self.trades_count += 1
         self.position = 0.0

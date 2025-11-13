@@ -19,8 +19,8 @@ def sample_market_data():
     np.random.seed(42)
     n_samples = 1000
 
-    # Generate realistic market data
-    base_price = 100.0
+    # Generate realistic market data (JPY-based for Zaif exchange)
+    base_price = 5000000.0  # Realistic BTC/JPY price
     prices = []
     current_price = base_price
 

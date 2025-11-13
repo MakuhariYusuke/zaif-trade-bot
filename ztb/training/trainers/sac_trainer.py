@@ -11,11 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
-from stable_baselines3.common.callbacks import (
-    BaseCallback,
-    CallbackList,
-    CheckpointCallback,
-)
+from ztb.utils.training_utils import create_checkpoint_callback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed import
@@ -618,7 +614,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
 
         # チェックポイントコールバック (SB3標準とTrainingCheckpointManager経由の両方を使用)
         checkpoint_interval = int(safe_to_float(cfg.get("checkpoint_interval", 10000)))
-        checkpoint_callback = CheckpointCallback(
+        checkpoint_callback = create_checkpoint_callback(
             save_freq=checkpoint_interval,
             save_path=str(log_dir / "checkpoints"),
             name_prefix=model_name,

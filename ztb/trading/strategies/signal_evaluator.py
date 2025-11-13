@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.trading_metrics import sharpe_ratio
+from ztb.utils.statistics import calculate_max_drawdown
 
 from .signal_definitions import SignalDefinitions, SignalType
 
@@ -230,8 +232,8 @@ class SignalEvaluator:
                     avg_return=np.mean(returns) if returns else 0.0,
                     max_return=np.max(returns) if returns else 0.0,
                     min_return=np.min(returns) if returns else 0.0,
-                    sharpe_ratio=self._calculate_sharpe_ratio(returns),
-                    max_drawdown=self._calculate_max_drawdown(returns),
+                    sharpe_ratio=sharpe_ratio(returns),
+                    max_drawdown=calculate_max_drawdown(np.cumprod(1 + np.array(returns)))['max_drawdown'],
                     total_return=np.sum(returns) if returns else 0.0,
                 )
 
@@ -283,31 +285,6 @@ class SignalEvaluator:
             if take_profit and current_price <= entry_price * (1 - take_profit):
                 return True
         return False
-
-    def _calculate_sharpe_ratio(self, returns: List[float]) -> float:
-        """Calculate Sharpe ratio for a series of returns."""
-        if not returns or len(returns) < 2:
-            return 0.0
-
-        returns_array = np.array(returns)
-        avg_return = np.mean(returns_array)
-        std_return = np.std(returns_array)
-
-        if std_return == 0:
-            return 0.0
-
-        # Annualized Sharpe ratio (assuming daily returns)
-        return (avg_return / std_return) * np.sqrt(252)
-
-    def _calculate_max_drawdown(self, returns: List[float]) -> float:
-        """Calculate maximum drawdown from a series of returns."""
-        if not returns:
-            return 0.0
-
-        cumulative = np.cumprod(1 + np.array(returns))
-        running_max = np.maximum.accumulate(cumulative)
-        drawdown = (cumulative - running_max) / running_max
-        return np.min(drawdown)
 
     def compare_signals(self, results: Dict[str, BacktestResult]) -> pd.DataFrame:
         """

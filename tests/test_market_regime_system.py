@@ -36,7 +36,7 @@ class TestMarketRegimeClassifier(unittest.TestCase):
         np.random.seed(42)
 
         # Generate realistic price data
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
         returns = np.random.normal(0.0001, 0.02, 100)  # Small drift with volatility
         prices = base_price * np.exp(np.cumsum(returns))
 
@@ -237,8 +237,8 @@ class TestRegimeIntegration(unittest.TestCase):
         np.random.seed(123)
 
         # Create trending data (bull market simulation)
-        base_price = 100.0
-        trend = np.linspace(0, 0.5, 200)  # Upward trend
+        base_price = 5000000.0  # JPY-based price
+        trend = np.linspace(0, 2, 200)  # Upward trend, adjusted for JPY scale
         noise = np.random.normal(0, 0.01, 200)
         prices = base_price * np.exp(trend + noise)
 

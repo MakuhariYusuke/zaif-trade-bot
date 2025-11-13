@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
 from ztb.utils.config import ZTBConfig
 from ztb.utils.memory_monitor import MemoryMonitor
@@ -205,7 +206,7 @@ class HealthChecker:
             metrics = SystemMetrics(
                 cpu_percent=cpu_percent,
                 memory_percent=memory.percent,
-                memory_mb=memory.used / 1024 / 1024,
+                memory_mb=memory.used / BYTES_PER_MB,
                 disk_usage_percent=disk.percent,
                 network_connections=network,
                 timestamp=time.time(),

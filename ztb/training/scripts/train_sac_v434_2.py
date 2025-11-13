@@ -15,7 +15,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CheckpointCallback
+from ztb.utils.training_utils import create_checkpoint_callback, save_model
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
@@ -204,7 +204,7 @@ def train_v434_2_model(
     logger.info(f"Starting v434.2 training for {total_timesteps:,} timesteps")
 
     # コールバック設定
-    checkpoint_callback = CheckpointCallback(
+    checkpoint_callback = create_checkpoint_callback(
         save_freq=50000,
         save_path="checkpoints/sac_v434_2/",
         name_prefix="sac_v434_2",
@@ -220,7 +220,7 @@ def train_v434_2_model(
     )
 
     # 最終モデル保存
-    model.save(model_save_path)
+    save_model(model, model_save_path)
     logger.info(f"Model saved to {model_save_path}")
 
     return model

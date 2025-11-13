@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Add parent directory to sys.path to ensure ztb modules can be imported when running as a script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -104,7 +106,7 @@ def run_100k_experiment() -> pd.DataFrame:
     print(f"Total computation time: {total_time:.2f}s")
     print(f"Features computed: {len(features_df.columns)}")
     print(f"Average time per sample: {total_time / len(df) * 1000:.2f}ms")
-    print(f"Memory usage: {psutil.Process().memory_info().rss / 1024 / 1024:.1f} MB")
+    print(f"Memory usage: {psutil.Process().memory_info().rss / BYTES_PER_MB:.1f} MB")
 
     # Verify dtypes are optimized
     dtypes_info = features_df.dtypes.value_counts()

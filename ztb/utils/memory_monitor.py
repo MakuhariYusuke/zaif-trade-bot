@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional, cast
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 
 logger = logging.getLogger(__name__)
@@ -173,7 +174,7 @@ def check_memory_usage(threshold_mb: int = 1000) -> None:
     config = ZTBConfig()
     if config.get_bool("ZTB_DEV_MEMORY_WARN"):
         process = psutil.Process()
-        memory_mb = process.memory_info().rss / 1024 / 1024
+        memory_mb = process.memory_info().rss / BYTES_PER_MB
         if memory_mb > threshold_mb:
             print(
                 f"WARNING: High memory usage: {memory_mb:.1f}MB (threshold: {threshold_mb}MB)"
@@ -188,7 +189,7 @@ def get_memory_usage() -> float:
         Memory usage in MB
     """
     process = psutil.Process()
-    return cast(float, process.memory_info().rss / 1024 / 1024)
+    return cast(float, process.memory_info().rss / BYTES_PER_MB)
 
 
 def log_memory_usage(label: str = "") -> None:

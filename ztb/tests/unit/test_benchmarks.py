@@ -8,8 +8,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.evaluation.auto_feature_generator import AutoFeatureGenerator
+from ztb.analysis.auto_feature_generator import AutoFeatureGenerator
 from ztb.metrics.metrics import calculate_all_metrics
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 class TestPerformanceBenchmarks:
@@ -62,7 +63,7 @@ class TestPerformanceBenchmarks:
 
     def test_evaluate_feature_class_performance(self, medium_ohlc_data):
         """Benchmark evaluate_feature_class performance"""
-        from ztb.evaluation.re_evaluate_features import evaluate_feature_class
+        from ztb.analysis.re_evaluate_features import evaluate_feature_class
 
         # Create a mock feature class
         class MockFeature:
@@ -137,7 +138,7 @@ class TestPerformanceBenchmarks:
 
     def test_large_dataset_evaluation_timeout(self, large_ohlc_data):
         """Test that large dataset evaluation completes within timeout"""
-        from ztb.evaluation.re_evaluate_features import evaluate_feature_class
+        from ztb.analysis.re_evaluate_features import evaluate_feature_class
 
         # Create a mock feature class
         class MockFeature:
@@ -168,7 +169,7 @@ class TestPerformanceBenchmarks:
 
         import psutil
 
-        from ztb.evaluation.re_evaluate_features import evaluate_feature_class
+        from ztb.analysis.re_evaluate_features import evaluate_feature_class
 
         # Create a mock feature class
         class MockFeature:
@@ -179,7 +180,7 @@ class TestPerformanceBenchmarks:
 
         # Get initial memory usage
         process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        initial_memory = process.memory_info().rss / BYTES_PER_MB
 
         try:
             result = evaluate_feature_class(
@@ -187,7 +188,7 @@ class TestPerformanceBenchmarks:
             )
 
             # Get final memory usage
-            final_memory = process.memory_info().rss / 1024 / 1024  # MB
+            final_memory = process.memory_info().rss / BYTES_PER_MB
             memory_increase = final_memory - initial_memory
 
             # Memory increase should be reasonable (< 500MB)
@@ -203,7 +204,7 @@ class TestPerformanceBenchmarks:
         """Test performance with concurrent feature evaluations"""
         import concurrent.futures
 
-        from ztb.evaluation.re_evaluate_features import evaluate_feature_class
+        from ztb.analysis.re_evaluate_features import evaluate_feature_class
 
         # Create a mock feature class
         class MockFeature:
@@ -314,7 +315,7 @@ class TestPerformanceBenchmarks:
 
     def test_indicators_performance_comparison(self, medium_ohlc_data):
         """Compare performance of different indicator calculations"""
-        from ztb.features.volatility.kalman_ext import calculate_kalman_extended
+        from ztb.features.generators.technical.volatility.kalman_ext import calculate_kalman_extended
 
         # Benchmark Kalman filter
         start = time.time()

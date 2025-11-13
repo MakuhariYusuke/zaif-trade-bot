@@ -17,6 +17,7 @@ import pandas as pd
 import psutil
 from pandas.api import types as ptypes
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.protocols import FeatureRegistryProtocol
 
 logger = logging.getLogger(__name__)
@@ -490,8 +491,8 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
         process = psutil.Process()
         if memory_monitor_enabled and verbose:
-            input_mem_mb = df.memory_usage(deep=True).sum() / 1024 / 1024
-            rss_mb = process.memory_info().rss / 1024 / 1024
+            input_mem_mb = df.memory_usage(deep=True).sum() / BYTES_PER_MB
+            rss_mb = process.memory_info().rss / BYTES_PER_MB
             print(f"[Memory] input frame={input_mem_mb:.2f} MB RSS={rss_mb:.2f} MB")
         features_df = pd.DataFrame(index=df.index.copy())
         feature_times = {}
@@ -564,9 +565,9 @@ class FeatureRegistry(FeatureRegistryProtocol):
                 and step_count % memory_log_interval == 0
             ):
                 frame_memory_mb = (
-                    features_df.memory_usage(deep=True).sum() / 1024 / 1024
+                    features_df.memory_usage(deep=True).sum() / BYTES_PER_MB
                 )
-                rss_mb = process.memory_info().rss / 1024 / 1024
+                rss_mb = process.memory_info().rss / BYTES_PER_MB
                 if progress_bar is not None:
                     progress_bar.set_postfix(
                         {"rss_mb": f"{rss_mb:.1f}", "df_mb": f"{frame_memory_mb:.1f}"},
@@ -581,7 +582,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
                 gc.collect()
 
             if step_count % report_interval == 0:
-                memory_usage_mb = process.memory_info().rss / 1024 / 1024
+                memory_usage_mb = process.memory_info().rss / BYTES_PER_MB
                 generate_intermediate_report(
                     step_count, feature_times, memory_usage_mb, nan_rates
                 )
@@ -670,8 +671,8 @@ class FeatureRegistry(FeatureRegistryProtocol):
                 gc.collect()
 
         if memory_monitor_enabled and verbose:
-            frame_memory_mb = features_df.memory_usage(deep=True).sum() / 1024 / 1024
-            rss_mb = process.memory_info().rss / 1024 / 1024
+            frame_memory_mb = features_df.memory_usage(deep=True).sum() / BYTES_PER_MB
+            rss_mb = process.memory_info().rss / BYTES_PER_MB
             print(
                 f"[Memory] final features_df={frame_memory_mb:.2f} MB RSS={rss_mb:.2f} MB"
             )

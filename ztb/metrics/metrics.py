@@ -6,10 +6,10 @@ Robust implementation of trading performance metrics
 
 from typing import Any, Dict, Optional, TypedDict, Union, cast
 
-import numpy as np
-import pandas as pd
-from numpy.typing import NDArray
-from scipy import stats
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
+from numpy.typing import NDArray # type: ignore
+from scipy import stats # type: ignore
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
@@ -1230,131 +1230,3 @@ def _perform_statistical_tests_impl(
         "mean_b": float(mean_b),
         "effect_size": float(effect_size),
     }
-
-
-def calculate_trading_reward(
-    pnl: float,
-    transaction_cost: float,
-    position: float,
-    old_position: float,
-    reward_scaling: float = 1.0,
-    opportunity_cost_penalty: float = 0.01,
-    stagnation_penalty: float = 0.005,
-    consecutive_idle_steps: int = 0,
-    consecutive_position_hold_steps: int = 0,
-) -> float:
-    """
-    Calculate simplified trading reward using metrics-based approach.
-
-    This function provides a simplified alternative to the complex RewardCalculator,
-    using basic trading metrics and penalties.
-
-    Args:
-        pnl: Profit/Loss from the action
-        transaction_cost: Transaction cost incurred
-        position: Current position after action
-        old_position: Position before action
-        reward_scaling: Scaling factor for reward
-        opportunity_cost_penalty: Penalty for missed opportunities
-        stagnation_penalty: Penalty for prolonged position holding
-        consecutive_idle_steps: Number of consecutive idle (no position change) steps
-        consecutive_position_hold_steps: Number of consecutive position holding steps
-
-    Returns:
-        Calculated reward value
-    """
-    # Base reward from PnL minus transaction costs
-    base_reward = pnl - transaction_cost
-
-    # Opportunity cost penalty for inaction when profitable
-    if abs(position - old_position) < 1e-6:  # No position change
-        opportunity_penalty = opportunity_cost_penalty * consecutive_idle_steps
-        base_reward -= opportunity_penalty
-
-    # Stagnation penalty for prolonged position holding causing drawdowns
-    if abs(position) > 1e-6:  # Has position
-        stagnation_penalty_amount = stagnation_penalty * consecutive_position_hold_steps
-        base_reward -= stagnation_penalty_amount
-
-    # Apply reward scaling
-    scaled_reward = base_reward * reward_scaling
-
-    return float(scaled_reward)
-
-
-def calculate_risk_adjusted_reward(
-    returns: Union[pd.Series, NDArray[Any]],
-    current_pnl: float,
-    transaction_cost: float,
-    risk_free_rate: float = 0.0,
-    reward_scaling: float = 1.0,
-) -> float:
-    """
-    Calculate reward using risk-adjusted metrics (Sharpe ratio based).
-
-    This function uses Sharpe ratio concepts for reward calculation,
-    providing a metrics-based alternative to complex reward functions.
-
-    Args:
-        returns: Historical returns series for risk calculation
-        current_pnl: Current profit/loss
-        transaction_cost: Transaction cost
-        risk_free_rate: Risk-free rate (annual)
-        reward_scaling: Scaling factor
-
-    Returns:
-        Risk-adjusted reward value
-    """
-    if len(returns) == 0:
-        return float((current_pnl - transaction_cost) * reward_scaling)
-
-    # Calculate Sharpe ratio for the returns series
-    sharpe = sharpe_ratio(returns, risk_free_rate)
-
-    # Use Sharpe ratio to modulate the reward
-    # Higher Sharpe ratio = better risk-adjusted performance = higher reward
-    risk_adjustment = max(0.1, min(2.0, sharpe + 1.0))  # Clamp between 0.1 and 2.0
-
-    base_reward = current_pnl - transaction_cost
-    adjusted_reward = base_reward * risk_adjustment * reward_scaling
-
-    return float(adjusted_reward)
-
-
-def calculate_downside_risk_reward(
-    returns: Union[pd.Series, NDArray[Any]],
-    current_pnl: float,
-    transaction_cost: float,
-    reward_scaling: float = 1.0,
-    downside_floor: float = 0.0,
-) -> float:
-    """
-    Calculate reward using downside risk metrics (Sortino ratio based).
-
-    This function focuses on downside risk rather than total volatility,
-    providing a conservative reward calculation approach.
-
-    Args:
-        returns: Historical returns series
-        current_pnl: Current profit/loss
-        transaction_cost: Transaction cost
-        reward_scaling: Scaling factor
-        downside_floor: Minimum acceptable return
-
-    Returns:
-        Downside risk-adjusted reward value
-    """
-    if len(returns) == 0:
-        return float((current_pnl - transaction_cost) * reward_scaling)
-
-    # Calculate Sortino ratio for downside risk assessment
-    sortino = sortino_ratio(returns, downside_floor=downside_floor)
-
-    # Use Sortino ratio to modulate reward
-    # Higher Sortino ratio = better downside protection = higher reward
-    risk_adjustment = max(0.1, min(2.0, sortino + 1.0))  # Clamp between 0.1 and 2.0
-
-    base_reward = current_pnl - transaction_cost
-    adjusted_reward = base_reward * risk_adjustment * reward_scaling
-
-    return float(adjusted_reward)
