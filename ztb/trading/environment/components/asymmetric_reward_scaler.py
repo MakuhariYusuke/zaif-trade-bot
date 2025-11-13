@@ -30,6 +30,7 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
         """
         self._config = env_config
         self.logger = get_logger("ztb.trading.environment.asymmetric_reward_scaler")
+        self._penalty_count = 0
         self._load_settings()
 
     def _load_settings(self):
@@ -105,15 +106,16 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
                     f"Applied short position reward reduction: {self.short_pos_reward_multiplier}x"
                 )
         else:  # Loss trade
+            self._penalty_count += 1
             if position_direction == "long":
                 reward *= self.long_pos_penalty_multiplier
                 self.logger.debug(
                     f"Applied long position penalty reduction: {self.long_pos_penalty_multiplier}x"
-                )
+                ) if self._penalty_count % 20 == 0 else None
             elif position_direction == "short":
                 reward *= self.short_pos_penalty_multiplier
                 self.logger.debug(
                     f"Applied short position penalty boost: {self.short_pos_penalty_multiplier}x"
-                )
+                ) if self._penalty_count % 20 == 0 else None
 
         return reward

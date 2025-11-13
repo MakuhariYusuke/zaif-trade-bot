@@ -11,6 +11,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+import glob
+import os
 
 import numpy as np
 import pandas as pd
@@ -26,11 +28,14 @@ from ztb.metrics.metrics import (
     seasonality_analysis,
     sharpe_ratio,
     sortino_ratio,
+    win_rate,
 )
+from ztb.utils.trading_metrics import action_distribution
 from ztb.trading.constants import (
     TRADING_DAYS_PER_YEAR,  # = 252
     ACTION_BUY, ACTION_HOLD, ACTION_SELL,
 )
+from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
 
@@ -80,6 +85,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             Path(training_report_path) if training_report_path else None
         )
         self.data = self._load_data()
+        self.is_unified = 'results' in self.data and isinstance(self.data.get('results'), list) and 'avg_return_pct' in self.data
         self.training_data = (
             self._load_training_data() if training_report_path else None
         )
@@ -154,8 +160,76 @@ class BacktestAnalyzer(BaseAnalyzer):
             "btc_analysis": self.analyze_btc_performance(),
         }
 
+        if self.is_unified:
+            if self.data.get('enable_signal_guidance'):
+                results['signal_guidance_analysis'] = self._analyze_signal_guidance()
+
         self.results = results
         return results
+
+    def _analyze_signal_guidance(self) -> Dict[str, Any]:
+        """SIGNAL_GUIDANCE分析を実行"""
+        episodes = self.data['results']
+        all_guidance_scores = []
+        all_original_actions = []
+        all_guidance_actions = []
+
+        for ep in episodes:
+            if 'guidance_signals' in ep:
+                for signal in ep['guidance_signals']:
+                    all_guidance_scores.append(signal['guidance_score'])
+                    all_original_actions.append(signal['original_action'])
+                    all_guidance_actions.append(signal['guidance_action'])
+
+        if not all_guidance_scores:
+            return {}
+
+        # アクション分布
+        orig_discrete = []
+        guide_discrete = []
+        for a in all_original_actions:
+            if isinstance(a, list) and len(a) > 0:
+                orig_discrete.append(continuous_to_discrete_action(a[0]))
+            elif isinstance(a, (int, float)):
+                orig_discrete.append(a)
+            else:
+                orig_discrete.append(0)
+
+        for a in all_guidance_actions:
+            if isinstance(a, list) and len(a) > 0:
+                guide_discrete.append(continuous_to_discrete_action(a[0]))
+            elif isinstance(a, (int, float)):
+                guide_discrete.append(a)
+            else:
+                guide_discrete.append(0)
+
+        differences = sum(1 for o, g in zip(orig_discrete, guide_discrete) if o != g)
+
+        # スコア vs ポートフォリオ価値の相関
+        portfolio_values = []
+        for ep in episodes:
+            if 'guidance_signals' in ep:
+                portfolio_values.extend([s['portfolio_value'] for s in ep['guidance_signals']])
+
+        correlation = np.corrcoef(all_guidance_scores, portfolio_values)[0,1] if len(portfolio_values) == len(all_guidance_scores) else 0
+
+        return {
+            'number_of_signals': len(all_guidance_scores),
+            'average_score': float(np.mean(all_guidance_scores)),
+            'score_std': float(np.std(all_guidance_scores)),
+            'min_score': float(min(all_guidance_scores)),
+            'max_score': float(max(all_guidance_scores)),
+            'original_hold': orig_discrete.count(0),
+            'original_buy': orig_discrete.count(1),
+            'original_sell': orig_discrete.count(-1),
+            'guidance_hold': guide_discrete.count(0),
+            'guidance_buy': guide_discrete.count(1),
+            'guidance_sell': guide_discrete.count(-1),
+            'differences': differences,
+            'total_actions': len(orig_discrete),
+            'difference_pct': differences / len(orig_discrete) * 100 if orig_discrete else 0,
+            'correlation': float(correlation)
+        }
 
     def calculate_risk_metrics(self) -> Dict[str, float]:
         """リスク指標を計算"""
@@ -613,8 +687,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         total_steps = len(actions)
 
         # アクション分布
-        unique, counts = np.unique(actions, return_counts=True)
-        action_distribution = dict(zip(unique.astype(int), counts))
+        action_dist = action_distribution(actions)
 
         # 取引頻度（BUY/SELLの割合）
         trade_actions = actions[(actions == ACTION_BUY) | (actions == ACTION_SELL)]
@@ -631,7 +704,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             avg_trade_interval = min_trade_interval = max_trade_interval = 0
 
         return {
-            "action_distribution": action_distribution,
+            "action_distribution": action_dist,
             "trade_frequency": trade_frequency,
             "avg_trade_interval": avg_trade_interval,
             "min_trade_interval": min_trade_interval,
@@ -2483,6 +2556,57 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.unified:
+        # 統一されたバックテスト結果の解析
+        analyzer = BacktestAnalyzer(results_path=args.results_path)
+        results = analyzer.analyze()
+
+        summary = analyzer.data
+        print(f"=== Unified Backtest Analysis: {args.results_path} ===")
+        print(f'Mode: {summary["mode"]}')
+        print(f'Episodes: {summary["n_episodes"]}')
+        print(f'Periods: {summary["n_periods"]}')
+        print(f'Signal Guidance: {summary["enable_signal_guidance"]}')
+        print()
+
+        episodes = summary['results']
+        final_balances = [ep['final_balance'] for ep in episodes]
+        print(f'Final Portfolio Values: {final_balances}')
+        print(f'Average Final Balance: {np.mean(final_balances):.2f}')
+        print(f'Std Final Balance: {np.std(final_balances):.2f}')
+        print(f'Average Return: {summary["avg_return_pct"]:.2f}%')
+        print(f'Std Return: {summary["std_return_pct"]:.2f}%')
+        print(f'Win Rate: {summary["win_rate"]:.1f}%')
+        print(f'Sharpe Ratio: {summary["sharpe_ratio"]:.4f}')
+        print()
+
+        if 'signal_guidance_analysis' in results:
+            sga = results['signal_guidance_analysis']
+            print('=== SIGNAL_GUIDANCE Analysis ===')
+            print(f'Number of signals: {sga["number_of_signals"]}')
+            print(f'Average guidance score: {sga["average_score"]:.2f}')
+            print(f'Score std: {sga["score_std"]:.2f}')
+            print(f'Min score: {sga["min_score"]:.2f}')
+            print(f'Max score: {sga["max_score"]:.2f}')
+            print()
+
+            print('=== Action Distribution ===')
+            print(f'Original actions - Hold: {sga["original_hold"]}, Buy: {sga["original_buy"]}, Sell: {sga["original_sell"]}')
+            print(f'Guidance actions - Hold: {sga["guidance_hold"]}, Buy: {sga["guidance_buy"]}, Sell: {sga["guidance_sell"]}')
+
+            differences = sga["differences"]
+            total = sga["total_actions"]
+            print(f'Actions where guidance differed from original: {differences}/{total} ({sga["difference_pct"]:.1f}%)')
+            print()
+
+            print(f'Correlation between SIGNAL_GUIDANCE score and portfolio value: {sga["correlation"]:.3f}')
+            print()
+
+        return 0
+
+    if not args.results_path:
+        parser.error("--results-path is required unless --unified is specified")
 
     try:
         # 分析器の初期化

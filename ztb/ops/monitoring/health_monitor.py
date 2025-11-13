@@ -9,6 +9,7 @@ from typing import Any, Dict, cast
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.utils.errors import safe_operation
 
 
@@ -87,7 +88,7 @@ class HealthMonitor:
 
             return {
                 "healthy": memory_percent < 80,  # Less than 80% memory usage
-                "used_mb": memory_info.rss / 1024 / 1024,
+                "used_mb": memory_info.rss / BYTES_PER_MB,
                 "used_percent": memory_percent,
                 "limit_mb": 1024,  # 1GB limit
             }
@@ -111,12 +112,12 @@ class HealthMonitor:
         """Check disk space availability."""
         try:
             disk_usage = psutil.disk_usage("/")
-            free_gb = disk_usage.free / 1024 / 1024 / 1024
+            free_gb = disk_usage.free / BYTES_PER_GB
 
             return {
                 "healthy": free_gb > 1,  # At least 1GB free
                 "free_gb": free_gb,
-                "total_gb": disk_usage.total / 1024 / 1024 / 1024,
+                "total_gb": disk_usage.total / BYTES_PER_GB,
             }
         except Exception as e:
             return {"healthy": False, "error": str(e)}
@@ -140,7 +141,7 @@ class HealthMonitor:
         try:
             log_file = Path("trading_service.log")
             if log_file.exists():
-                size_mb = log_file.stat().st_size / 1024 / 1024
+                size_mb = log_file.stat().st_size / BYTES_PER_MB
                 # Check if log file is not too large (>100MB)
                 healthy = size_mb < 100
                 return {"healthy": healthy, "size_mb": size_mb, "exists": True}

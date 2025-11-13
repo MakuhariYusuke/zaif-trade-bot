@@ -9,9 +9,12 @@ python/slippage.py
 src/__init__.py
 tests/__init__.py
 tests/test_action_signal_guide.py
+tests/test_action_signal_guide_performance_integration.py
 tests/test_action_signal_validation.py
+tests/test_actions.py
 tests/test_backtest_sac_v438_quick.py
 tests/test_end_to_end.py
+tests/test_enhanced_regime_analyzer.py
 tests/test_hammer.py
 tests/test_hasattr.py
 tests/test_heavy_env_core.py
@@ -19,6 +22,7 @@ tests/test_heavy_env_initialization.py
 tests/test_heavy_env_observation_consistency.py
 tests/test_heavy_env_regime.py
 tests/test_integration.py
+tests/test_integration_validation.py
 tests/test_market_regime.py
 tests/test_market_regime_system.py
 tests/test_multi_timeframe_alignment.py
@@ -27,9 +31,15 @@ tests/test_optimizer_features.py
 tests/test_optimizer_features_enhanced.py
 tests/test_pattern_recognition.py
 tests/test_performance_stress.py
+tests/test_phase_2_multi_timeframe.py
+tests/test_phase_3_3_live_trading_integration.py
+tests/test_phase_3_3_realtime_optimization_integration.py
+tests/test_phase_3_integration.py
 tests/test_regime_classifier.py
 tests/test_sac_integration.py
 tests/test_sac_trainer_regime.py
+tests/test_signal_guidance_system.py
+tests/test_signal_performance_analyzer.py
 tests/test_training_resume.py
 tests/test_types.py
 tests/test_unified_trainer_integration.py

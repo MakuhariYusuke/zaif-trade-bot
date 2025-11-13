@@ -28,7 +28,7 @@ def create_sample_market_data(n_periods: int = 100) -> pd.DataFrame:
     timestamps = [start_time + timedelta(minutes=i) for i in range(n_periods)]
 
     # Generate OHLCV data with some trends and volatility
-    base_price = 50000.0
+    base_price = 5000000.0  # JPY-based price for Zaif
     prices = [base_price]
 
     for i in range(1, n_periods):

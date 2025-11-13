@@ -24,8 +24,30 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Comprehensive Monitoring**: Logging, metrics, and alerting systems
 - **Advanced Reward System**: Modular reward calculator with clear bonus/penalty separation
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
+- **Phase 3 Ensemble Methods**: Multi-source signal integration with dynamic weight adjustment and confidence-based scoring
 
 ## 🆕 Recent Updates (2025-11-12)
+
+### Phase 3: Ensemble Signal Methods 完了 ✅
+- **EnsembleSignalGenerator実装**: 多ソースシグナル統合による高度なアンサンブル手法
+- **4ソースシグナル統合**: テクニカル分析、パターン認識、センチメント分析、出来高プロファイル
+- **動的ウェイト調整**: 信頼度ベースの動的ウェイト最適化とアンサンブルスコア計算
+- **SignalQualityScorer統合**: Phase 2拡張機能（CompositeIndicator, AdaptiveIndicator, 強化MACD, トレンドメトリクス）へのPhase 3統合
+- **信頼度計算**: 各シグナルソースの信頼度評価と総合的シグナル信頼性評価
+- **循環インポート解決**: モジュール依存関係の最適化とクリーンアーキテクチャ維持
+- **包括的テスト**: Phase 3統合テスト成功、スコア62.27で正常動作確認
+- **ドキュメント更新**: 実装詳細と使用方法の包括的ドキュメント化
+
+### SIGNAL_GUIDANCE System Unit Tests Implementation ✅
+- **Structured Test Organization**: Created comprehensive unit test suite for SIGNAL_GUIDANCE system with proper directory structure
+- **Test Directory Structure**:
+  - `tests/unit/trading/signal/quality_scorer/` - SignalQualityScorer tests
+  - `tests/unit/trading/signal/ensemble/` - EnsembleSignalGenerator tests
+  - `tests/unit/trading/signal/scorers/` - Individual SignalScorer tests
+  - `tests/unit/trading/signal/indicators/` - Indicator component tests
+- **Component Coverage**: Full test coverage for all SIGNAL_GUIDANCE components including initialization, calculation methods, error handling, and configuration parameters
+- **Test Categories**: Unit tests covering normal operation, edge cases, error conditions, and integration scenarios
+- **Quality Assurance**: Comprehensive test suite ensuring reliability and maintainability of signal quality scoring system
 
 ### Test Code Organization and Quality Assurance ✅
 - **Unified Optimizer Test Separation**: Moved comprehensive test suites from production code to dedicated test files

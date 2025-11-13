@@ -18,6 +18,8 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 class MetricType(Enum):
     """指標タイプ"""
@@ -401,7 +403,7 @@ class RealTimeMetrics:
             )
             metrics.append(
                 MetricValue(
-                    "process_memory_mb", memory_info.rss / 1024 / 1024, datetime.now()
+                    "process_memory_mb", memory_info.rss / BYTES_PER_MB, datetime.now()
                 )
             )
 

@@ -341,7 +341,7 @@ class CheckpointManager:
             f.write(compressed_data)
 
         # Update stats
-        self.stats["compressed_size_mb"] += len(compressed_data) / 1024 / 1024
+        self.stats["compressed_size_mb"] += len(compressed_data) / BYTES_PER_MB
 
         return str(path)
 

@@ -96,7 +96,7 @@ class DrawdownController:
             f"Drawdown control: value={portfolio_value:.2f}, peak={self.peak_value:.2f}, "
             f"current_dd={self.current_drawdown:.4f}, max_dd={self.max_drawdown:.4f}, "
             f"reduction_factor={self.position_reduction_factor:.2f}"
-        )
+        ) if step % 20 == 0 else None
 
         return control_info
 

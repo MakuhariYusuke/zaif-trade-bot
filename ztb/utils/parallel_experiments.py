@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 
@@ -509,7 +510,7 @@ class ResourceMonitor:
 
             # Process-specific (if available)
             process = psutil.Process()
-            process_memory = process.memory_info().rss / 1024 / 1024  # MB
+            process_memory = process.memory_info().rss / BYTES_PER_MB
             process_cpu = process.cpu_percent()
 
             # GC統計とメモリリーク検知

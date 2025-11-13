@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 
 
@@ -655,7 +656,7 @@ class OnlineLearningEngine:
 
             process = psutil.Process()
 
-            memory_mb = process.memory_info().rss / 1024 / 1024
+            memory_mb = process.memory_info().rss / BYTES_PER_MB
             cpu_percent = process.cpu_percent(interval=1)
 
             if memory_mb > self.config.memory_limit_mb:

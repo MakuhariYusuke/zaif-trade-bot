@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 
 try:
@@ -166,7 +167,7 @@ class TrainingWatcher:
         if HAS_PSUTIL:
             try:
                 process = psutil.Process()
-                rss_mb = process.memory_info().rss / 1024 / 1024
+                rss_mb = process.memory_info().rss / BYTES_PER_MB
                 if rss_mb > self.rss_mb:
                     rss_breach = True
                     self.emit_alert(

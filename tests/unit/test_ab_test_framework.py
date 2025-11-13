@@ -25,6 +25,7 @@ from ztb.adaptation.ab_test.types import (
     StatisticalResult,
     StatisticalTest,
 )
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 class TestABTestTypes(unittest.TestCase):
@@ -312,7 +313,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         import psutil
 
         process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        initial_memory = process.memory_info().rss  / BYTES_PER_MB
 
         # 大規模データ処理
         for _ in range(10):
@@ -324,7 +325,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
                 [StatisticalTest.T_TEST],
             )
 
-        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        final_memory = process.memory_info().rss / BYTES_PER_MB
         memory_increase = final_memory - initial_memory
 
         print(f"Memory increase: {memory_increase:.2f} MB")

@@ -18,6 +18,19 @@ class FeatureSetConfig:
 
     # Predefined feature sets
     FEATURE_SETS = {
+        "default": {
+            "name": "Default Feature Set",
+            "description": "Standard feature set with basic filtering",
+            "excluded_features": [
+                "dividends",
+                "stock splits",
+            ],
+            "include_regime_features": True,
+            "include_correlation_features": True,
+            "include_ensemble_features": True,
+            "include_risk_features": True,
+            "include_multi_timeframe_features": True,
+        },
         "full": {
             "name": "Full Feature Set",
             "description": "Complete SAC v427 feature set (150+ dimensions)",
@@ -67,7 +80,7 @@ class FeatureSetConfig:
                 "open",
                 "high",
                 "low",
-                "close",  # OHLCV base (high correlation)
+                # "close",  # OHLCV base - needed for feature engineering
                 "volume",  # Volume (high correlation)
                 "returns",
                 "log_returns",  # Simple returns (high correlation)

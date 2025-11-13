@@ -19,6 +19,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.risk.risk_manager import RiskManager
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.types.common import ConfigDict
+from ztb.utils.training_utils import create_checkpoint_callback, create_eval_callback, save_model, save_training_results, validate_training_config
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -324,7 +325,7 @@ class SACv435Trainer:
         output_dir = Path(self.config["output"]["model_dir"])
 
         # Checkpoint callback
-        checkpoint_callback = CheckpointCallback(
+        checkpoint_callback = create_checkpoint_callback(
             save_freq=50000,
             save_path=str(output_dir / "checkpoints"),
             name_prefix="sac_v435",
@@ -332,8 +333,8 @@ class SACv435Trainer:
         callbacks.append(checkpoint_callback)
 
         # Evaluation callback
-        eval_callback = EvalCallback(
-            self.env,
+        eval_callback = create_eval_callback(
+            eval_env=self.env,
             best_model_save_path=str(output_dir / "best_model"),
             log_path=str(output_dir / "eval_logs"),
             eval_freq=10000,
@@ -346,6 +347,9 @@ class SACv435Trainer:
 
     def train(self) -> Dict[str, Any]:
         """Execute training with risk management integration and curriculum learning"""
+        # Validate training configuration
+        validate_training_config(self.config)
+
         logger.info(
             "Starting v435 training with risk management and curriculum learning"
         )
@@ -400,7 +404,7 @@ class SACv435Trainer:
             output_dir.mkdir(parents=True, exist_ok=True)
 
             model_path = output_dir / "sac_v435_final.zip"
-            self.model.save(model_path)
+            save_model(self.model, model_path)
 
             result["model_path"] = str(model_path)
             result["config"] = self.config
@@ -518,8 +522,7 @@ def main():
     results_dir.mkdir(parents=True, exist_ok=True)
 
     results_file = results_dir / "training_results.json"
-    with open(results_file, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+    save_training_results(result, results_file)
 
     print(f"Training results saved to {results_file}")
 

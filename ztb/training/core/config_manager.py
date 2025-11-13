@@ -100,6 +100,11 @@ class ConfigManager:
                 if key in training_env and key not in environment:
                     environment[key] = training_env[key]
 
+        # Also check training.features section for feature_set
+        training_features = self.config.get("training", {}).get("features", {})
+        if isinstance(training_features, dict) and "feature_set" in training_features:
+            environment["feature_set"] = training_features["feature_set"]
+
         # Apply top-level overrides/fallbacks
         environment["max_position_size"] = self._get_config_value(
             "max_position_size",

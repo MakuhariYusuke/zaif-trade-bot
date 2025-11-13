@@ -99,7 +99,7 @@ class DynamicPositionSizer:
             f"Position sizing: base={base_position:.4f}, adjusted={adjusted_size:.4f}, "
             f"vol_mult={self.volatility_multiplier:.2f}, dd_mult={self.drawdown_multiplier:.2f}, "
             f"regime_mult={self.market_regime_multiplier:.2f}"
-        )
+        ) if hasattr(self, '_sizing_step_count') and self._sizing_step_count % 20 == 0 else None
 
         return adjusted_size
 

@@ -149,6 +149,70 @@ class TechnicalIndicators:
             logger.warning(f"ATR calculation failed: {e}")
             return 0.0
 
+    def calculate_stochastic(self, high: Union[np.ndarray, pd.Series],
+                            low: Union[np.ndarray, pd.Series],
+                            close: Union[np.ndarray, pd.Series],
+                            k_period: int = 14, d_period: int = 3) -> Tuple[float, float]:
+        """
+        Calculate Stochastic Oscillator
+
+        Args:
+            high: High prices
+            low: Low prices
+            close: Close prices
+            k_period: %K period (default: 14)
+            d_period: %D period (default: 3)
+
+        Returns:
+            Tuple of (%K, %D)
+        """
+        try:
+            k_values, d_values = self.talib.stoch(high, low, close, k_period, d_period)
+
+            # Return the last valid values
+            def get_last_valid(arr):
+                valid = arr[~np.isnan(arr)]
+                return float(valid[-1]) if len(valid) > 0 else 50.0
+
+            return (
+                get_last_valid(k_values),
+                get_last_valid(d_values)
+            )
+        except Exception as e:
+            logger.warning(f"Stochastic calculation failed: {e}")
+            return (50.0, 50.0)
+
+    def calculate_momentum(self, prices: Union[np.ndarray, pd.Series], period: int = 10) -> float:
+        """
+        Calculate Momentum indicator
+
+        Args:
+            prices: Price data array
+            period: Momentum period (default: 10)
+
+        Returns:
+            Current momentum value
+        """
+        try:
+            if len(prices) < period + 1:
+                return 0.0
+
+            # Momentum = Current price - Price n periods ago
+            current_price = prices[-1]
+            past_price = prices[-(period + 1)]
+            momentum = current_price - past_price
+
+            # Normalize to percentage change
+            if past_price > 0:
+                momentum_pct = (momentum / past_price) * 100
+                return momentum_pct
+            else:
+                return 0.0
+
+        except Exception as e:
+            logger.warning(f"Momentum calculation failed: {e}")
+            return 0.0
+
     def get_technical_signals(self, df: pd.DataFrame) -> Dict[str, float]:
         """
         Get comprehensive technical signals from OHLCV data
@@ -193,6 +257,18 @@ class TechnicalIndicators:
                 signals['atr'] = self.calculate_atr(
                     df['high'].values, df['low'].values, df['close'].values
                 )
+
+            # Stochastic Oscillator
+            if all(col in df.columns for col in ['high', 'low', 'close']):
+                stoch_k, stoch_d = self.calculate_stochastic(
+                    df['high'].values, df['low'].values, df['close'].values
+                )
+                signals['stoch_k'] = stoch_k
+                signals['stoch_d'] = stoch_d
+
+            # Momentum
+            if 'close' in df.columns:
+                signals['momentum'] = self.calculate_momentum(df['close'].values)
 
         except Exception as e:
             logger.error(f"Error calculating technical signals: {e}")

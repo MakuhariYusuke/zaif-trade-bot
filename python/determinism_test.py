@@ -27,7 +27,7 @@ def generate_test_data(n_rows: int = 1000, seed: int = 42) -> pd.DataFrame:
     dates = pd.date_range("2023-01-01", periods=n_rows, freq="1min")
 
     # Generate price data with controlled randomness
-    base_price = 100.0
+    base_price = 5000000.0  # JPY-based price
     price_changes = np.random.normal(0, 0.01, n_rows).cumsum()
     close = base_price * (1 + price_changes)
 

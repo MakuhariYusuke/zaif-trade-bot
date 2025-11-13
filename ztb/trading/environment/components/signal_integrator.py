@@ -152,7 +152,7 @@ class SignalIntegrator(ISignalIntegrator):
         """
         self.logger.debug(
             f"integrate_signal called: enabled={self.enabled}, action={action}, step={step}"
-        )
+        ) if step % 50 == 0 else None
         if not self.enabled or self.signal_integration is None:
             return reward
 

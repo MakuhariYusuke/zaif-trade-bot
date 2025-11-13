@@ -19,6 +19,7 @@ import torch
 import torch.nn as nn
 from torch.quantization import DeQuantStub, QuantStub
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 from ztb.cache.memory_cache import default_memory_manager
 
@@ -54,7 +55,7 @@ class QuantizationCompressor(BaseCompressionTechnique):
     - Mixed precision training (FP16)
     """
 
-    def __init__(self, quantization_type: str = "dynamic"):
+    def __init__(self, quantization_type: str = "dynamic") -> None:
         """
         Initialize quantization compressor.
 
@@ -175,7 +176,7 @@ class QuantizationCompressor(BaseCompressionTechnique):
         model.dequant = DeQuantStub()
         return model
 
-    def _calibrate_model(self, model: nn.Module, calibration_data: torch.Tensor):
+    def _calibrate_model(self, model: nn.Module, calibration_data: torch.Tensor) -> None:
         """Calibrate quantized model with sample data."""
         logger.info("Calibrating quantized model...")
         with torch.no_grad():
@@ -213,7 +214,7 @@ class QuantizationCompressor(BaseCompressionTechnique):
             for buffer in model.buffers():
                 buffer_size += buffer.nelement() * buffer.element_size()
             total_size = param_size + buffer_size
-            return total_size / 1024 / 1024 if total_size > 0 else 0.0
+            return total_size / BYTES_PER_MB if total_size > 0 else 0.0
         except Exception as e:
             logger.warning(f"Failed to calculate model size: {e}")
             return 0.0
@@ -229,7 +230,7 @@ class PruningCompressor(BaseCompressionTechnique):
     - Dynamic pruning based on importance scores
     """
 
-    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.2):
+    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.2) -> None:
         """
         Initialize pruning compressor.
 
@@ -290,7 +291,7 @@ class PruningCompressor(BaseCompressionTechnique):
 
         return model
 
-    def _apply_l1_unstructured_pruning(self, model: nn.Module):
+    def _apply_l1_unstructured_pruning(self, model: nn.Module) -> None:
         """Apply L1 unstructured pruning."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -305,7 +306,7 @@ class PruningCompressor(BaseCompressionTechnique):
                 mask[indices] = 1
                 module.weight.data *= mask
 
-    def _apply_l2_unstructured_pruning(self, model: nn.Module):
+    def _apply_l2_unstructured_pruning(self, model: nn.Module) -> None:
         """Apply L2 unstructured pruning."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -320,7 +321,7 @@ class PruningCompressor(BaseCompressionTechnique):
                 mask[indices] = 1
                 module.weight.data *= mask
 
-    def _apply_structured_pruning(self, model: nn.Module):
+    def _apply_structured_pruning(self, model: nn.Module) -> None:
         """Apply structured pruning (remove entire channels/filters)."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -382,7 +383,7 @@ class PruningCompressor(BaseCompressionTechnique):
     - Dynamic pruning based on importance scores
     """
 
-    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.3):
+    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.3) -> None:
         """
         Initialize pruning compressor.
 
@@ -441,7 +442,7 @@ class PruningCompressor(BaseCompressionTechnique):
 
         return model
 
-    def _apply_l1_unstructured_pruning(self, model: nn.Module):
+    def _apply_l1_unstructured_pruning(self, model: nn.Module) -> None:
         """Apply L1 unstructured pruning."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -456,7 +457,7 @@ class PruningCompressor(BaseCompressionTechnique):
                 mask[indices] = 1
                 module.weight.data *= mask
 
-    def _apply_l2_unstructured_pruning(self, model: nn.Module):
+    def _apply_l2_unstructured_pruning(self, model: nn.Module) -> None:
         """Apply L2 unstructured pruning."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -471,7 +472,7 @@ class PruningCompressor(BaseCompressionTechnique):
                 mask[indices] = 1
                 module.weight.data *= mask
 
-    def _apply_structured_pruning(self, model: nn.Module):
+    def _apply_structured_pruning(self, model: nn.Module) -> None:
         """Apply structured pruning (channel pruning)."""
         for name, module in model.named_modules():
             if isinstance(module, nn.Linear):
@@ -525,7 +526,7 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
     Trains a smaller student model to mimic a larger teacher model.
     """
 
-    def __init__(self, temperature: float = 2.0, alpha: float = 0.5):
+    def __init__(self, temperature: float = 2.0, alpha: float = 0.5) -> None:
         """
         Initialize knowledge distillation compressor.
 
@@ -631,11 +632,11 @@ class ModelCompressionManager:
     quantization, pruning, and knowledge distillation.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.compressors = {}
         self.compression_stats = {}
 
-    def add_compressor(self, name: str, compressor: BaseCompressionTechnique):
+    def add_compressor(self, name: str, compressor: BaseCompressionTechnique) -> None:
         """Add a compression technique."""
         self.compressors[name] = compressor
         logger.info(f"Added compressor: {name}")

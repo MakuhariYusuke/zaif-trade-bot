@@ -14,6 +14,8 @@ import pandas as pd
 from stable_baselines3 import SAC
 
 from ztb.risk.risk_manager import RiskManager
+from ztb.utils.trading_metrics import win_rate, sharpe_ratio
+from ztb.utils.statistics import calculate_max_drawdown
 
 logger = logging.getLogger(__name__)
 
@@ -246,19 +248,18 @@ class SACv435Evaluator:
 
         # Win rate (simplified)
         if total_trades > 0:
-            winning_trades = sum(
-                1
+            returns = [
+                trade.get("portfolio_value", 0) - trade.get("previous_value", 0)
                 for trade in trades
-                if trade.get("portfolio_value", 0) > trade.get("previous_value", 0)
-            )
-            win_rate = winning_trades / total_trades
+            ]
+            win_rate_value = win_rate(returns)
         else:
-            win_rate = 0
+            win_rate_value = 0
 
         return {
             "total_return": total_return,
             "total_trades": total_trades,
-            "win_rate": win_rate,
+            "win_rate": win_rate_value,
         }
 
     def _prepare_observation(self, data: pd.Series) -> np.ndarray:
@@ -301,17 +302,11 @@ class SACv435Evaluator:
         cumulative_returns = np.cumprod(1 + returns) - 1
 
         # Maximum drawdown
-        peak = np.maximum.accumulate(portfolio_values)
-        drawdowns = (portfolio_values - peak) / peak
-        max_drawdown = drawdowns.min()
+        max_drawdown_result = calculate_max_drawdown(portfolio_values)
+        max_drawdown = max_drawdown_result['max_drawdown']
 
         # Sharpe ratio (assuming risk-free rate of 0)
-        if len(returns) > 0:
-            sharpe_ratio = (
-                np.mean(returns) / np.std(returns) * np.sqrt(252)
-            )  # Annualized
-        else:
-            sharpe_ratio = 0
+        sharpe_ratio_value = sharpe_ratio(returns)
 
         # Risk adjustment statistics
         if risk_adjustments:
@@ -330,7 +325,7 @@ class SACv435Evaluator:
 
         risk_metrics = {
             "max_drawdown": max_drawdown,
-            "sharpe_ratio": sharpe_ratio,
+            "sharpe_ratio": sharpe_ratio_value,
             "volatility": np.std(returns),
             "total_risk_adjustments": len(risk_adjustments),
             "avg_position_reduction": position_reduction_ratio,

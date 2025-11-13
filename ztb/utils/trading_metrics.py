@@ -52,6 +52,69 @@ def sharpe_ratio(
     return float((mean_return / std_return) * np.sqrt(periods_per_year))
 
 
+def win_rate(returns: Union[List[float], NDArray[np.floating[Any]]]) -> float:
+    """
+    Win rateを計算（正のリターンの割合）
+
+    Args:
+        returns: リターンの配列
+
+    Returns:
+        Win rate (0.0 to 1.0)
+    """
+    returns = np.asarray(returns)
+
+    if len(returns) == 0:
+        return 0.0
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) == 0:
+        return 0.0
+
+    positive_returns = returns > 0
+    return float(np.mean(positive_returns))
+
+
+def action_distribution(actions: Union[List[int], NDArray[np.integer[Any]]]) -> Dict[str, float]:
+    """
+    アクション分布を計算（HOLD, BUY, SELLの割合）
+
+    Args:
+        actions: アクションの配列 (-1: SELL, 0: HOLD, 1: BUY)
+
+    Returns:
+        アクション分布の辞書 {"HOLD": ratio, "BUY": ratio, "SELL": ratio}
+    """
+    from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+
+    actions = np.asarray(actions)
+
+    if len(actions) == 0:
+        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
+
+    # Remove NaN values (though actions should be integers)
+    actions = actions[~np.isnan(actions)]
+
+    if len(actions) == 0:
+        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
+
+    # Shift actions: -1,0,1 -> 0,1,2
+    actions_shifted = actions + 1
+
+    # Count occurrences
+    action_counts = np.bincount(actions_shifted, minlength=3)
+
+    total_actions = len(actions)
+
+    return {
+        "HOLD": action_counts[ACTION_HOLD + 1] / total_actions,
+        "BUY": action_counts[ACTION_BUY + 1] / total_actions,
+        "SELL": action_counts[ACTION_SELL + 1] / total_actions,
+    }
+
+
 def sharpe_with_stats(sharpes: List[float]) -> Dict[str, Union[float, List[float]]]:
     """
     Sharpe ratioの統計情報を計算
