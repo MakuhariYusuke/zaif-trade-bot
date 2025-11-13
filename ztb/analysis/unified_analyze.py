@@ -702,7 +702,7 @@ class PaperTradingAnalysis(BaseAnalyzer):
 
             model_path = getattr(args, "model", None)
             data_path = getattr(args, "data", None)
-            num_episodes = getattr(args, "episodes", 10)
+            num_episodes = getattr(args, "paper_episodes", 10)
             output_path = getattr(args, "output", None)
 
             if not model_path or not data_path:
@@ -1084,7 +1084,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Paper trading analysis arguments
     parser.add_argument(
-        "--episodes", type=int, default=10, help="Number of episodes for paper trading"
+        "--paper-episodes", type=int, default=10, help="Number of episodes for paper trading"
     )
 
     # Specialized analysis arguments
