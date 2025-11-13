@@ -10,6 +10,7 @@ import unittest
 
 import numpy as np
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.training.callbacks.meta.meta_callbacks import (
     FewShotCallback,
     MAMLCallback,
@@ -547,7 +548,7 @@ class TestPerformanceValidation(unittest.TestCase):
         import psutil
 
         process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        initial_memory = process.memory_info().rss / BYTES_PER_MB
 
         callback = EmbeddingQualityCallback()
 
@@ -565,7 +566,7 @@ class TestPerformanceValidation(unittest.TestCase):
             )
             callback.on_epoch_end(context, logs)
 
-        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        final_memory = process.memory_info().rss / BYTES_PER_MB
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (adjust threshold as needed)

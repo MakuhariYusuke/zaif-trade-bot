@@ -20,6 +20,7 @@ import psutil
 import torch
 from torch import nn
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.memory_utils import MemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
@@ -127,7 +128,7 @@ class SystemOptimizer:
 
                 # Memory metrics
                 if self.memory_tracker:
-                    current_memory = psutil.Process().memory_info().rss / 1024 / 1024
+                    current_memory = psutil.Process().memory_info().rss / BYTES_PER_MB
                     self.memory_history.append(current_memory)
 
                     if current_memory > self.memory_threshold_mb:
@@ -356,13 +357,13 @@ class MemoryOptimizer:
         memory_info = process.memory_info()
 
         stats = {
-            "rss_mb": memory_info.rss / 1024 / 1024,
-            "vms_mb": memory_info.vms / 1024 / 1024,
+            "rss_mb": memory_info.rss / BYTES_PER_MB,
+            "vms_mb": memory_info.vms / BYTES_PER_MB,
         }
 
         if torch.cuda.is_available():
-            stats["gpu_allocated_mb"] = torch.cuda.memory_allocated() / 1024 / 1024
-            stats["gpu_reserved_mb"] = torch.cuda.memory_reserved() / 1024 / 1024
+            stats["gpu_allocated_mb"] = torch.cuda.memory_allocated() / BYTES_PER_MB
+            stats["gpu_reserved_mb"] = torch.cuda.memory_reserved() / BYTES_PER_MB
 
         return stats
 

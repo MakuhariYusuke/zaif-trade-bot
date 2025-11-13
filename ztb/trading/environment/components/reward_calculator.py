@@ -35,6 +35,13 @@ from .reward.unrealized_loss_penalty_calculator import UnrealizedLossPenaltyCalc
 from .signal_integrator import SignalIntegrator
 
 
+# Add get_logger function for compatibility
+def get_logger(name: str):
+    """Get a logger instance."""
+    import logging
+    return logging.getLogger(name)
+
+
 class RewardCalculator:
     """
     Calculates rewards for trading actions with curriculum learning stages.
@@ -386,6 +393,10 @@ class RewardCalculator:
         self._previous_portfolio_value = self.initial_portfolio_value
         self._last_reward_components = {}
 
+        # Reset logging counters
+        self._curriculum_log_counter = 0
+        self._forced_balance_log_counter = 0
+
         # Reset sub-components
         if hasattr(self, "behavioral_penalty_calculator") and hasattr(
             self.behavioral_penalty_calculator, "reset"
@@ -503,6 +514,9 @@ class RewardCalculator:
 
         self._last_reward_components = {}  # Reset at the beginning of each calculation
 
+        # Record the action for behavioral analysis BEFORE calculating penalties
+        self._record_action(action)
+
         # Debug logging for reward calculation inputs
         self.logger.debug(
             f"Reward calc inputs: action={action}, pnl={pnl:.2f}, position={position:.4f}, "
@@ -517,7 +531,7 @@ class RewardCalculator:
                 == 0
             )
             if should_log_stage:
-                self.logger.warning(
+                self.logger.info(
                     f"RewardCalculator: curriculum_stage={self.config.curriculum_stage}, total_actions={sum(self._action_counts)}"
                 )
         else:
@@ -526,7 +540,7 @@ class RewardCalculator:
                 self._curriculum_log_counter % self._curriculum_log_interval == 0
             )
             if should_log_stage:
-                self.logger.warning(
+                self.logger.info(
                     f"RewardCalculator: curriculum_stage={self.config.curriculum_stage}, total_actions={sum(self._action_counts)}"
                 )
 

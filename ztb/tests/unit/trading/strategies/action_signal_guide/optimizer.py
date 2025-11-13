@@ -68,15 +68,15 @@ def generate_test_data() -> pd.DataFrame:
 
         # Generate realistic price data with trends and volatility
         n_points = len(dates)
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price
 
         # Add trend and noise
-        trend = np.linspace(0, 10, n_points)
-        noise = np.random.normal(0, 2, n_points)
+        trend = np.linspace(0, 500000, n_points)  # Adjusted for JPY scale
+        noise = np.random.normal(0, 100000, n_points)  # Adjusted volatility
         prices = base_price + trend + noise
 
         # Ensure no negative prices
-        prices = np.maximum(prices, 1.0)
+        prices = np.maximum(prices, 1000000.0)
 
         # Create OHLCV data
         high_prices = prices * (1 + np.random.uniform(0, 0.02, n_points))

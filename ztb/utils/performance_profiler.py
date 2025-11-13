@@ -16,6 +16,7 @@ import pandas as pd
 import psutil
 
 from ztb.features import FeatureRegistry
+from ztb.trading.environment.constants import BYTES_PER_MB
 
 
 class PerformanceProfiler:
@@ -44,13 +45,13 @@ class PerformanceProfiler:
         profiler.enable()
 
         start_time = time.time()
-        start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
+        start_memory = self.process.memory_info().rss / BYTES_PER_MB
 
         try:
             yield
         finally:
             end_time = time.time()
-            end_memory = self.process.memory_info().rss / 1024 / 1024  # MB
+            end_memory = self.process.memory_info().rss / BYTES_PER_MB
 
             profiler.disable()
 
@@ -100,14 +101,14 @@ class PerformanceProfiler:
             memories = []
 
             for i in range(iterations):
-                start_memory = self.process.memory_info().rss / 1024 / 1024
+                start_memory = self.process.memory_info().rss / BYTES_PER_MB
 
                 start_time = time.time()
                 feature_func = FeatureRegistry.get(feature_name)
                 result = feature_func(df)
                 end_time = time.time()
 
-                end_memory = self.process.memory_info().rss / 1024 / 1024
+                end_memory = self.process.memory_info().rss / BYTES_PER_MB
 
                 times.append(end_time - start_time)
                 memories.append(end_memory - start_memory)
@@ -346,8 +347,8 @@ class MemoryProfiler:
         memory_percent = self.process.memory_percent()
 
         stats = {
-            "rss_mb": memory_info.rss / 1024 / 1024,
-            "vms_mb": memory_info.vms / 1024 / 1024,
+            "rss_mb": memory_info.rss / BYTES_PER_MB,
+            "vms_mb": memory_info.vms / BYTES_PER_MB,
             "percent": memory_percent,
         }
 
@@ -357,8 +358,8 @@ class MemoryProfiler:
             current, peak = tracemalloc.get_traced_memory()
             stats.update(
                 {
-                    "current_traced_mb": current / 1024 / 1024,
-                    "peak_traced_mb": peak / 1024 / 1024,
+                    "current_traced_mb": current / BYTES_PER_MB,
+                    "peak_traced_mb": peak / BYTES_PER_MB,
                 }
             )
 
@@ -385,10 +386,10 @@ class MemoryProfiler:
 
         leaks = []
         for stat in top_stats[:10]:  # Top 10 allocations
-            if stat.size / 1024 / 1024 > threshold_mb:
+            if stat.size / BYTES_PER_MB > threshold_mb:
                 leaks.append(
                     {
-                        "size_mb": stat.size / 1024 / 1024,
+                        "size_mb": stat.size / BYTES_PER_MB,
                         "count": stat.count,
                         "traceback": str(stat.traceback),
                     }
@@ -396,7 +397,7 @@ class MemoryProfiler:
 
         return {
             "potential_leaks": leaks,
-            "total_traced_mb": sum(stat.size for stat in top_stats) / 1024 / 1024,
+            "total_traced_mb": sum(stat.size for stat in top_stats) / BYTES_PER_MB,
         }
 
     def profile_memory_usage(self, func: Callable, *args, **kwargs) -> Dict[str, Any]:
@@ -414,7 +415,7 @@ class MemoryProfiler:
         if not self.psutil_available:
             return {"error": "psutil not available"}
 
-        initial_memory = self.process.memory_info().rss / 1024 / 1024
+        initial_memory = self.process.memory_info().rss / BYTES_PER_MB
 
         if self.tracemalloc_available:
             import tracemalloc
@@ -426,7 +427,7 @@ class MemoryProfiler:
         result = func(*args, **kwargs)
         end_time = time.time()
 
-        final_memory = self.process.memory_info().rss / 1024 / 1024
+        final_memory = self.process.memory_info().rss / BYTES_PER_MB
         memory_delta = final_memory - initial_memory
 
         profile_result = {
@@ -442,8 +443,8 @@ class MemoryProfiler:
             current, peak = tracemalloc.get_traced_memory()
             profile_result.update(
                 {
-                    "peak_memory_mb": peak / 1024 / 1024,
-                    "current_memory_mb": current / 1024 / 1024,
+                    "peak_memory_mb": peak / BYTES_PER_MB,
+                    "current_memory_mb": current / BYTES_PER_MB,
                 }
             )
 

@@ -114,7 +114,7 @@ class TrainingProgressCallback(BaseCallback):
                     self.continuous_actions.append(continuous_equivalent)
                     logging.debug(
                         f"PPO action {action_value} -> discrete {discrete_action}"
-                    )
+                    ) if self.n_calls % 50 == 0 else None
                 else:
                     # SAC: continuous action needs conversion
                     self.continuous_actions.append(action_value)
@@ -122,7 +122,7 @@ class TrainingProgressCallback(BaseCallback):
                     self.discrete_actions.append(discrete_action)
                     logging.debug(
                         f"SAC action {action_value:.6f} -> discrete {discrete_action}"
-                    )
+                    ) if self.n_calls % 50 == 0 else None
             else:
                 logging.debug("Actions not available - actions: %s", actions)
         except Exception as e:
@@ -152,12 +152,13 @@ class TrainingProgressCallback(BaseCallback):
                             pnl = info.get("pnl", 0)
                             market_regime = info.get("market_regime", "unknown")
 
-                            # Compact DEBUG log with key metrics
-                            logging.debug(
-                                f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
-                                f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
-                                f"Position={position:.4f} | Regime={market_regime}"
-                            )
+                            # Compact INFO log with key metrics (every 10 steps to reduce verbosity)
+                            if self.n_calls % 10 == 0:
+                                logging.info(
+                                    f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
+                                    f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
+                                    f"Position={position:.4f}"
+                                )
                 except Exception as e:
                     logging.debug(f"Failed to log detailed reward info: {e}")
 
@@ -613,9 +614,9 @@ class TrainingProgressCallback(BaseCallback):
 
     def on_training_end(self) -> None:
         """Log final training statistics when training ends."""
-        logging.info("=" * 80)
-        logging.info("TRAINING COMPLETED - FINAL STATISTICS")
-        logging.info("=" * 80)
+        logging.warning("=" * 80)
+        logging.warning("TRAINING COMPLETED - FINAL STATISTICS")
+        logging.warning("=" * 80)
 
         # Log final discrete action distribution
         if self.discrete_actions:

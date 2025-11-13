@@ -12,6 +12,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -29,7 +31,7 @@ def get_memory_usage() -> Optional[float]:
 
         process = psutil.Process(os.getpid())
         mem_info = process.memory_info()
-        return mem_info.rss / 1024 / 1024  # Convert to MB
+        return mem_info.rss / BYTES_PER_MB
     except ImportError:
         return None
 

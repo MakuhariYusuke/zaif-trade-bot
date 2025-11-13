@@ -19,6 +19,7 @@ import torch
 import torch.nn as nn
 from torch.quantization import DeQuantStub, QuantStub
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -212,7 +213,7 @@ class QuantizationCompressor(BaseCompressionTechnique):
             for buffer in model.buffers():
                 buffer_size += buffer.nelement() * buffer.element_size()
             total_size = param_size + buffer_size
-            return total_size / 1024 / 1024 if total_size > 0 else 0.0
+            return total_size  / BYTES_PER_MB if total_size > 0 else 0.0
         except Exception as e:
             logger.warning(f"Failed to calculate model size: {e}")
             return 0.0

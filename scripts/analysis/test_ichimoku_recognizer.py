@@ -22,7 +22,7 @@ def create_test_data():
     n_points = 200
 
     # Generate base price data
-    base_price = 100.0
+    base_price = 5000000.0  # JPY-based price
     prices = []
     for i in range(n_points):
         change = np.random.normal(0, 0.02)

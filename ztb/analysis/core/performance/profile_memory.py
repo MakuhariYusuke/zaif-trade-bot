@@ -15,6 +15,8 @@ from typing import Any, cast
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -28,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 def get_memory_usage() -> float:
     """Get current process memory usage in MB."""
     process = psutil.Process(os.getpid())
-    mem = process.memory_info().rss / 1024 / 1024  # Convert to MB
+    mem = process.memory_info().rss / BYTES_PER_MB
     return cast(float, mem)
 
 
@@ -175,7 +177,7 @@ def profile_memory_usage(
         logger.info("\nStep 5: Testing MINIMAL training (256 steps = 2 rollouts)...")
         logger.info(f"  Current memory: {get_memory_usage():.1f} MB")
         logger.info(
-            f"  Available memory: {psutil.virtual_memory().available / 1024 / 1024:.1f} MB"
+            f"  Available memory: {psutil.virtual_memory().available / BYTES_PER_MB:.1f} MB"
         )
 
         # Force garbage collection before training
@@ -233,7 +235,7 @@ def profile_memory_usage(
         logger.error(f"  {e}")
         logger.error(f"  Current memory: {get_memory_usage():.1f} MB")
         logger.error(
-            f"  System memory available: {psutil.virtual_memory().available / 1024 / 1024:.1f} MB"
+            f"  System memory available: {psutil.virtual_memory().available / BYTES_PER_MB:.1f} MB"
         )
         logger.error("=" * 80)
         memory_profile["error"] = str(e)

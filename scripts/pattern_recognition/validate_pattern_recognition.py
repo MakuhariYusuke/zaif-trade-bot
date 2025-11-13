@@ -54,7 +54,7 @@ def create_sample_data(num_bars: int = 200) -> pd.DataFrame:
     np.random.seed(42)  # For reproducible results
 
     # Generate base price series with trend
-    base_price = 100.0
+    base_price = 5000000.0  # JPY-based price
     prices: List[float] = []
 
     for i in range(num_bars):

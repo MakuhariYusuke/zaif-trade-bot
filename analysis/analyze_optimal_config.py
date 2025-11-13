@@ -41,7 +41,7 @@ def generate_comprehensive_test_data():
         np.random.seed(42)
 
         n_points = len(dates)
-        base_price = 100.0
+        base_price = 5000000.0  # JPY-based price for Zaif
 
         # Add trend and noise
         trend_component = np.linspace(0, scenario["trend"] * n_points, n_points)

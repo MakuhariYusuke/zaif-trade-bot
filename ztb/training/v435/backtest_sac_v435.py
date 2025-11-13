@@ -14,6 +14,9 @@ import pandas as pd
 from stable_baselines3 import SAC
 
 from ztb.risk.risk_manager import RiskManager
+from ztb.utils.trading_metrics import win_rate as calculate_win_rate
+from ztb.utils.trading_metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.utils.statistics import calculate_max_drawdown
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -129,6 +132,7 @@ class SACv435Backtester:
         balance = initial_balance
         position = 0
         trades = []
+        portfolio_values = [initial_balance]
 
         # Risk management
         risk_manager = None
@@ -188,20 +192,27 @@ class SACv435Backtester:
                 price_change = (next_price - current_price) / current_price
                 balance *= 1 + position * price_change
 
+            portfolio_values.append(balance)
+
         # Calculate final metrics
         total_return = (balance - initial_balance) / initial_balance
         total_trades = len(trades)
-        win_rate = self._calculate_win_rate(trades, df)
+        win_rate = 1.0 if total_return > 0 else 0.0
+
+        # Calculate returns for Sharpe ratio
+        returns = np.diff(portfolio_values) / portfolio_values[:-1] if len(portfolio_values) > 1 else [0]
+        sharpe_ratio = calculate_sharpe_ratio(returns)
+
+        max_drawdown_result = calculate_max_drawdown(portfolio_values)
+        max_drawdown = max_drawdown_result['max_drawdown']
 
         result = {
             "total_return": total_return,
             "final_balance": balance,
             "total_trades": total_trades,
             "win_rate": win_rate,
-            "sharpe_ratio": self._calculate_sharpe_ratio(trades, df),
-            "max_drawdown": self._calculate_max_drawdown(
-                balance, initial_balance, trades
-            ),
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
             "trades": trades,
         }
 
@@ -262,54 +273,6 @@ class SACv435Backtester:
         obs = np.array(obs_list[:10], dtype=np.float32)
 
         return obs
-
-    def _calculate_win_rate(self, trades: List[Dict], df: pd.DataFrame) -> float:
-        """Calculate win rate from trades"""
-        if not trades:
-            return 0.0
-
-        winning_trades = 0
-        for trade in trades:
-            # Simplified win/loss calculation
-            # In practice, this should be more sophisticated
-            if trade["balance"] > 100000:  # Above initial balance
-                winning_trades += 1
-
-        return winning_trades / len(trades)
-
-    def _calculate_sharpe_ratio(self, trades: List[Dict], df: pd.DataFrame) -> float:
-        """Calculate Sharpe ratio (simplified)"""
-        if not trades:
-            return 0.0
-
-        # Simplified calculation
-        returns = [trade["balance"] - 100000 for trade in trades]
-        if len(returns) < 2:
-            return 0.0
-
-        mean_return = np.mean(returns)
-        std_return = np.std(returns)
-
-        return mean_return / std_return if std_return > 0 else 0.0
-
-    def _calculate_max_drawdown(
-        self, final_balance: float, initial_balance: float, trades: List[Dict]
-    ) -> float:
-        """Calculate maximum drawdown"""
-        if not trades:
-            return 0.0
-
-        peak = initial_balance
-        max_drawdown = 0.0
-
-        for trade in trades:
-            balance = trade["balance"]
-            if balance > peak:
-                peak = balance
-            drawdown = (peak - balance) / peak
-            max_drawdown = max(max_drawdown, drawdown)
-
-        return max_drawdown
 
     def save_results(self, output_path: str = "backtest_results_v435.json"):
         """Save backtest results to file"""

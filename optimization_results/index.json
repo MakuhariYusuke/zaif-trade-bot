@@ -76,5 +76,635 @@
       "best_score": -0.23838994031947996
     },
     "filename": "workflow_test_v0015_20251112.json"
+  },
+  "v0016": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:41:52.015707",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 218.59583973884583
+    },
+    "filename": "sac_learning_params_optimization_v0016_20251112.json"
+  },
+  "v0017": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:51:42.535027",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.37726378440856934
+    },
+    "filename": "sac_learning_params_optimization_v0017_20251112.json"
+  },
+  "v0018": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:52:08.311613",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.5635559558868408
+    },
+    "filename": "sac_learning_params_optimization_v0018_20251112.json"
+  },
+  "v0019": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:53:11.547838",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.47975993156433105
+    },
+    "filename": "sac_learning_params_optimization_v0019_20251112.json"
+  },
+  "v0020": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:57:34.078003",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.4146437644958496
+    },
+    "filename": "sac_learning_params_optimization_v0020_20251112.json"
+  },
+  "v0021": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:58:01.144585",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.34836673736572266
+    },
+    "filename": "sac_learning_params_optimization_v0021_20251112.json"
+  },
+  "v0022": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T06:59:17.441310",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.3680531978607178
+    },
+    "filename": "sac_learning_params_optimization_v0022_20251112.json"
+  },
+  "v0023": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:00:21.480857",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.328507661819458
+    },
+    "filename": "sac_learning_params_optimization_v0023_20251112.json"
+  },
+  "v0024": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:01:07.241060",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.32078123092651367
+    },
+    "filename": "sac_learning_params_optimization_v0024_20251112.json"
+  },
+  "v0025": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:06:18.703605",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.3237335681915283
+    },
+    "filename": "sac_learning_params_optimization_v0025_20251112.json"
+  },
+  "v0026": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:06:48.839708",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.5182342529296875
+    },
+    "filename": "sac_learning_params_optimization_v0026_20251112.json"
+  },
+  "v0027": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:07:24.774636",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.3223855495452881
+    },
+    "filename": "sac_learning_params_optimization_v0027_20251112.json"
+  },
+  "v0028": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:08:03.584581",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 0.31076741218566895
+    },
+    "filename": "sac_learning_params_optimization_v0028_20251112.json"
+  },
+  "v0029": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:11:24.312644",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 174.2643210887909
+    },
+    "filename": "sac_learning_params_optimization_v0029_20251112.json"
+  },
+  "v0030": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:15:47.031989",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 160.64402556419373
+    },
+    "filename": "sac_learning_params_optimization_v0030_20251112.json"
+  },
+  "v0031": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:34:58.436719",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1067.3389356136322
+    },
+    "filename": "sac_learning_params_optimization_v0031_20251112.json"
+  },
+  "v0032": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:38:43.644513",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 169.8258719444275
+    },
+    "filename": "sac_learning_params_optimization_v0032_20251112.json"
+  },
+  "v0033": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T07:57:46.649520",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1109.1567833423615
+    },
+    "filename": "sac_learning_params_optimization_v0033_20251112.json"
+  },
+  "v0034": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T08:16:29.784632",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1085.0201532840729
+    },
+    "filename": "sac_learning_params_optimization_v0034_20251112.json"
+  },
+  "v0035": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:05:00.981996",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 261.6575014591217
+    },
+    "filename": "sac_learning_params_optimization_v0035_20251112.json"
+  },
+  "v0036": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:11:00.272875",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 267.5875873565674
+    },
+    "filename": "sac_learning_params_optimization_v0036_20251112.json"
+  },
+  "v0037": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:15:38.223791",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 229.60739755630493
+    },
+    "filename": "sac_learning_params_optimization_v0037_20251112.json"
+  },
+  "v0038": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:39:09.493665",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 199.7701632976532
+    },
+    "filename": "sac_learning_params_optimization_v0038_20251112.json"
+  },
+  "v0039": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:43:54.846264",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 190.74341344833374
+    },
+    "filename": "sac_learning_params_optimization_v0039_20251112.json"
+  },
+  "v0040": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:50:19.044190",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 178.4304871559143
+    },
+    "filename": "sac_learning_params_optimization_v0040_20251112.json"
+  },
+  "v0041": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:54:37.322317",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 178.58848595619202
+    },
+    "filename": "sac_learning_params_optimization_v0041_20251112.json"
+  },
+  "v0042": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T09:58:33.547569",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 187.93174767494202
+    },
+    "filename": "sac_learning_params_optimization_v0042_20251112.json"
+  },
+  "v0043": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T10:03:22.176290",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 221.9651517868042
+    },
+    "filename": "sac_learning_params_optimization_v0043_20251112.json"
+  },
+  "v0044": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T10:09:36.077866",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 304.2568018436432
+    },
+    "filename": "sac_learning_params_optimization_v0044_20251112.json"
+  },
+  "v0045": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T10:31:40.741747",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1257.123093366623
+    },
+    "filename": "sac_learning_params_optimization_v0045_20251112.json"
+  },
+  "v0046": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T10:56:59.334906",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1459.752682209015
+    },
+    "filename": "sac_learning_params_optimization_v0046_20251112.json"
+  },
+  "v0047": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T11:14:36.492189",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 990.8695771694183
+    },
+    "filename": "sac_learning_params_optimization_v0047_20251112.json"
+  },
+  "v0048": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T11:40:17.644540",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1455.8991301059723
+    },
+    "filename": "sac_learning_params_optimization_v0048_20251112.json"
+  },
+  "v0049": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T12:01:40.435085",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1234.2448453903198
+    },
+    "filename": "sac_learning_params_optimization_v0049_20251112.json"
+  },
+  "v0050": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T12:20:41.116693",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 1009.9001362323761
+    },
+    "filename": "sac_learning_params_optimization_v0050_20251112.json"
+  },
+  "v0051": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:26:50.484449",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 163.05834984779358
+    },
+    "filename": "sac_learning_params_optimization_v0051_20251112.json"
+  },
+  "v0052": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:30:19.236479",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 149.5188250541687
+    },
+    "filename": "sac_learning_params_optimization_v0052_20251112.json"
+  },
+  "v0053": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:33:14.426370",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 120.75126624107361
+    },
+    "filename": "sac_learning_params_optimization_v0053_20251112.json"
+  },
+  "v0054": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:35:33.113195",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 117.99185109138489
+    },
+    "filename": "sac_learning_params_optimization_v0054_20251112.json"
+  },
+  "v0055": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:37:51.269232",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 119.55049896240234
+    },
+    "filename": "sac_learning_params_optimization_v0055_20251112.json"
+  },
+  "v0056": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:41:11.088213",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 159.4565806388855
+    },
+    "filename": "sac_learning_params_optimization_v0056_20251112.json"
+  },
+  "v0057": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:44:06.976382",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 150.3957817554474
+    },
+    "filename": "sac_learning_params_optimization_v0057_20251112.json"
+  },
+  "v0058": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:47:11.093422",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 159.8649570941925
+    },
+    "filename": "sac_learning_params_optimization_v0058_20251112.json"
+  },
+  "v0059": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:50:55.526903",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 166.9127004146576
+    },
+    "filename": "sac_learning_params_optimization_v0059_20251112.json"
+  },
+  "v0060": {
+    "result_type": "sac_learning_params_optimization",
+    "timestamp": "2025-11-12T13:55:03.835688",
+    "tags": [
+      "sac",
+      "learning_params",
+      "optimization"
+    ],
+    "performance_metrics": {
+      "best_score": -1000.0,
+      "execution_time": 183.8417031764984
+    },
+    "filename": "sac_learning_params_optimization_v0060_20251112.json"
   }
 }

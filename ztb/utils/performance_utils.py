@@ -12,6 +12,7 @@ from typing import Any, Callable, Optional, TypeVar
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -82,7 +83,7 @@ def timed_with_memory(func: F) -> F:
 
             logger.debug(
                 f"{func.__name__}: {duration:.4f}s, "
-                f"memory delta: {memory_delta / 1024 / 1024:+.1f}MB"
+                f"memory delta: {memory_delta / BYTES_PER_MB:+.1f}MB"
             )
 
     return wrapper  # type: ignore[return-value]
@@ -136,14 +137,14 @@ class PerformanceMonitor:
             try:
                 end_gpu_memory = torch.cuda.memory_allocated()
                 gpu_memory_delta = end_gpu_memory - self.start_gpu_memory
-                gpu_memory_info = f", GPU: {gpu_memory_delta / 1024 / 1024:+.1f}MB"
+                gpu_memory_info = f", GPU: {gpu_memory_delta / BYTES_PER_MB:+.1f}MB"
             except Exception:
                 pass
 
         logger.log(
             self.log_level,
             f"{self.name}: {duration:.4f}s, "
-            f"CPU memory: {memory_delta / 1024 / 1024:+.1f}MB{gpu_memory_info}",
+            f"CPU memory: {memory_delta / BYTES_PER_MB:+.1f}MB{gpu_memory_info}",
         )
 
 

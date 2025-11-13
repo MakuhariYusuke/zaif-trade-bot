@@ -15,6 +15,8 @@ import time
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 try:
     from cachetools import TTLCache
     CACHETOOLS_AVAILABLE = True
@@ -23,7 +25,7 @@ except ImportError:
     # Fallback implementation
     class TTLCache(dict):
         """Simple TTL cache fallback implementation."""
-        def __init__(self, maxsize: int, ttl: float):
+        def __init__(self, maxsize: int, ttl: float) -> None:
             super().__init__()
             self.maxsize = maxsize
             self.ttl = ttl
@@ -61,7 +63,7 @@ logger = logging.getLogger(__name__)
 class MemoryManager:
     """Advanced memory management for training optimization."""
 
-    def __init__(self, max_memory_mb: float = 500.0, enable_monitoring: bool = True):
+    def __init__(self, max_memory_mb: float = 500.0, enable_monitoring: bool = True) -> None:
         """
         Initialize memory manager.
 
@@ -141,7 +143,7 @@ class MemoryManager:
 
         return None
 
-    def cache_training_data(self, key: str, data: Any):
+    def cache_training_data(self, key: str, data: Any) -> None:
         """Cache training data."""
         self.data_cache[key] = data
 
@@ -202,8 +204,8 @@ class MemoryManager:
             memory_info = process.memory_info()
 
             return {
-                "rss_mb": memory_info.rss / 1024 / 1024,
-                "vms_mb": memory_info.vms / 1024 / 1024,
+                "rss_mb": memory_info.rss / BYTES_PER_MB,
+                "vms_mb": memory_info.vms / BYTES_PER_MB,
                 "cpu_percent": process.cpu_percent(),
                 "cache_size": len(self.feature_cache) + len(self.data_cache) + len(self.model_cache)
             }
@@ -216,7 +218,7 @@ class MemoryManager:
                 "cache_size": len(self.feature_cache) + len(self.data_cache) + len(self.model_cache)
             }
 
-    def start_memory_monitoring(self):
+    def start_memory_monitoring(self) -> None:
         """Start background memory monitoring."""
         if self.monitoring_active:
             return
@@ -226,14 +228,14 @@ class MemoryManager:
         self.monitoring_thread.start()
         logger.info("Memory monitoring started")
 
-    def stop_memory_monitoring(self):
+    def stop_memory_monitoring(self) -> None:
         """Stop background memory monitoring."""
         self.monitoring_active = False
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=1.0)
         logger.info("Memory monitoring stopped")
 
-    def _memory_monitoring_loop(self):
+    def _memory_monitoring_loop(self) -> None:
         """Background memory monitoring loop."""
         while self.monitoring_active:
             try:
@@ -249,7 +251,12 @@ class MemoryManager:
 
                 # Log if memory usage is high
                 if memory_stats["rss_mb"] > self.max_memory_mb * 0.8:
-                    logger.warning(".1f")
+                    logger.warning(
+                        "High memory usage detected: %.1f MB / %.1f MB (%.1f%%)",
+                        memory_stats["rss_mb"],
+                        self.max_memory_mb,
+                        (memory_stats["rss_mb"] / self.max_memory_mb) * 100
+                    )
 
                 time.sleep(10)  # Check every 10 seconds
 
@@ -257,7 +264,7 @@ class MemoryManager:
                 logger.error(f"Memory monitoring error: {e}")
                 time.sleep(30)  # Wait longer on error
 
-    def optimize_memory_usage(self):
+    def optimize_memory_usage(self) -> Dict[str, Union[float, int]]:
         """Perform memory optimization."""
         logger.info("Performing memory optimization...")
 
@@ -271,7 +278,10 @@ class MemoryManager:
 
         # Get current memory usage
         memory_stats = self.get_memory_usage()
-        logger.info(".1f")
+        logger.info(
+            "Memory optimization completed. Current usage: %.1f MB",
+            memory_stats["rss_mb"]
+        )
 
         return memory_stats
 
@@ -296,7 +306,7 @@ class MemoryManager:
 class DynamicBufferManager:
     """Dynamic buffer size adjustment for training optimization."""
 
-    def __init__(self, initial_buffer_size: int = 1000, max_buffer_size: int = 10000):
+    def __init__(self, initial_buffer_size: int = 1000, max_buffer_size: int = 10000) -> None:
         """
         Initialize dynamic buffer manager.
 
@@ -314,7 +324,7 @@ class DynamicBufferManager:
 
         logger.info(f"DynamicBufferManager initialized with buffer size {initial_buffer_size}")
 
-    def adjust_buffer_size(self, current_performance: float, target_performance: float):
+    def adjust_buffer_size(self, current_performance: float, target_performance: float) -> None:
         """
         Adjust buffer size based on performance metrics.
 
@@ -351,8 +361,12 @@ class DynamicBufferManager:
                 new_size = max(int(self.buffer_size * 0.8), self.min_buffer_size)
 
             if new_size != self.buffer_size:
-                logger.info(f"Adjusting buffer size from {self.buffer_size} to {new_size} "
-                          ".2%")
+                logger.info(
+                    "Adjusting buffer size from %d to %d (%.2f%%)",
+                    self.buffer_size,
+                    new_size,
+                    (new_size / self.buffer_size - 1) * 100
+                )
                 self.buffer_size = new_size
 
     def get_optimal_buffer_size(self, data_size: int) -> int:
@@ -367,6 +381,7 @@ class DynamicBufferManager:
         """
         # Simple heuristic: buffer should be 10-20% of data size
         optimal_size = min(max(int(data_size * 0.15), self.min_buffer_size), self.max_buffer_size)
+        return optimal_size
 
 
 # Global instances

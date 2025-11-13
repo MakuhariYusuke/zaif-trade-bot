@@ -11,6 +11,9 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.trading.constants import (
+    MULTIPLIER_INDEX_BUY,
+    MULTIPLIER_INDEX_SELL,
+    MULTIPLIER_INDEX_HOLD,
     SAC_CONTINUOUS_THRESHOLD,
     SAC_CONTINUOUS_THRESHOLD_NEG,
     get_action_count_index,
@@ -116,7 +119,7 @@ class TrainingProgressCallback(BaseCallback):
                     self.continuous_actions.append(continuous_equivalent)
                     logging.debug(
                         f"PPO action {action_value} -> discrete {discrete_action}"
-                    )
+                    ) if self.n_calls % 50 == 0 else None
                 else:
                     # SAC: continuous action needs conversion
                     self.continuous_actions.append(action_value)
@@ -124,14 +127,11 @@ class TrainingProgressCallback(BaseCallback):
                     self.discrete_actions.append(discrete_action)
                     logging.debug(
                         f"SAC action {action_value:.6f} -> discrete {discrete_action}"
-                    )
+                    ) if self.n_calls % 50 == 0 else None
             else:
                 logging.debug("Actions not available - actions: %s", actions)
         except Exception as e:
-            if hasattr(self, "logger") and self.logger is not None:
-                logging.warning(f"Failed to record action: {e}")
-            else:
-                logging.warning(f"Failed to record action: {e}")
+            logging.warning(f"Failed to record action: {e}")
 
         # Record reward
         try:
@@ -154,12 +154,13 @@ class TrainingProgressCallback(BaseCallback):
                             pnl = info.get("pnl", 0)
                             market_regime = info.get("market_regime", "unknown")
 
-                            # Compact DEBUG log with key metrics
-                            logging.debug(
-                                f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
-                                f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
-                                f"Position={position:.4f} | Regime={market_regime}"
-                            )
+                            # Compact INFO log with key metrics (every 10 steps to reduce verbosity)
+                            if self.n_calls % 10 == 0:
+                                logging.info(
+                                    f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
+                                    f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
+                                    f"Position={position:.4f}"
+                                )
                 except Exception as e:
                     logging.debug(f"Failed to log detailed reward info: {e}")
 
@@ -498,9 +499,9 @@ class TrainingProgressCallback(BaseCallback):
                 for regime, counts in self.regime_action_counts.items():
                     total_regime_actions = sum(counts)
                     if total_regime_actions > 0:
-                        buy_pct = counts[0] / total_regime_actions * 100
-                        sell_pct = counts[1] / total_regime_actions * 100
-                        hold_pct = counts[2] / total_regime_actions * 100
+                        buy_pct = counts[MULTIPLIER_INDEX_BUY] / total_regime_actions * 100
+                        sell_pct = counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
+                        hold_pct = counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
                         regime_info.append(
                             f"{regime}: H{hold_pct:.1f}%/B{buy_pct:.1f}%/S{sell_pct:.1f}%"
                         )
@@ -649,9 +650,9 @@ class TrainingProgressCallback(BaseCallback):
 
     def on_training_end(self) -> None:
         """Log final training statistics when training ends."""
-        logging.info("=" * 80)
-        logging.info("TRAINING COMPLETED - FINAL STATISTICS")
-        logging.info("=" * 80)
+        logging.warning("=" * 80)
+        logging.warning("TRAINING COMPLETED - FINAL STATISTICS")
+        logging.warning("=" * 80)
 
         # Log final discrete action distribution
         if self.discrete_actions:
@@ -665,16 +666,16 @@ class TrainingProgressCallback(BaseCallback):
                 "BUY": discrete_counts[2] / total_actions,
             }
 
-            logging.info(
+            logging.warning(
                 "Final Discrete Action Distribution (Total: %d actions):", total_actions
             )
-            logging.info(
+            logging.warning(
                 "  HOLD: %.2f%% (%d)", action_dist["HOLD"] * 100, discrete_counts[1]
             )
-            logging.info(
+            logging.warning(
                 "  BUY:  %.2f%% (%d)", action_dist["BUY"] * 100, discrete_counts[2]
             )
-            logging.info(
+            logging.warning(
                 "  SELL: %.2f%% (%d)", action_dist["SELL"] * 100, discrete_counts[0]
             )
 
@@ -718,18 +719,18 @@ class TrainingProgressCallback(BaseCallback):
                 else:
                     action_stability = 0
 
-                logging.info(
+                logging.warning(
                     "Final Continuous Action Statistics (Total: %d actions):",
                     total_continuous,
                 )
-                logging.info(
+                logging.warning(
                     "  Basic Stats - Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
                     mean_action,
                     std_action,
                     min_action,
                     max_action,
                 )
-                logging.info(
+                logging.warning(
                     "  Percentiles - 10%%: %.4f, 25%%: %.4f, 50%%: %.4f, 75%%: %.4f, 90%%: %.4f",
                     p10,
                     p25,
@@ -737,33 +738,33 @@ class TrainingProgressCallback(BaseCallback):
                     p75,
                     p90,
                 )
-                logging.info("  Distribution Analysis:")
-                logging.info(
+                logging.warning("  Distribution Analysis:")
+                logging.warning(
                     "    Near Zero (±0.1): %.2f%% (%d)",
                     near_zero_count / total_continuous * 100,
                     near_zero_count,
                 )
-                logging.info(
+                logging.warning(
                     "    Extreme Negative (≤-0.8): %.2f%% (%d)",
                     extreme_negative_count / total_continuous * 100,
                     extreme_negative_count,
                 )
-                logging.info(
+                logging.warning(
                     "    Extreme Positive (≥0.8): %.2f%% (%d)",
                     extreme_positive_count / total_continuous * 100,
                     extreme_positive_count,
                 )
-                logging.info(
+                logging.warning(
                     "    Strong Buy (≥0.6): %.2f%% (%d)",
                     strong_buy_count / total_continuous * 100,
                     strong_buy_count,
                 )
-                logging.info(
+                logging.warning(
                     "    Strong Sell (≤-0.6): %.2f%% (%d)",
                     strong_sell_count / total_continuous * 100,
                     strong_sell_count,
                 )
-                logging.info(
+                logging.warning(
                     "  Action Stability - Rolling Mean Std: %.4f", action_stability
                 )
 
@@ -784,7 +785,7 @@ class TrainingProgressCallback(BaseCallback):
                     else 0
                 )
 
-                logging.info(
+                logging.warning(
                     "  Distribution Shape - Entropy: %.4f, Skewness: %.4f, Kurtosis: %.4f",
                     action_entropy,
                     skewness,
@@ -794,15 +795,15 @@ class TrainingProgressCallback(BaseCallback):
         # Log reward statistics
         if self.reward_history:
             rewards = np.array(self.reward_history)
-            logging.info("Final Reward Statistics (Total: %d rewards):", len(rewards))
-            logging.info(
+            logging.warning("Final Reward Statistics (Total: %d rewards):", len(rewards))
+            logging.warning(
                 "  Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
                 np.mean(rewards),
                 np.std(rewards),
                 np.min(rewards),
                 np.max(rewards),
             )
-            logging.info(
+            logging.warning(
                 "  Positive Rewards: %.2f%% (%d), Negative: %.2f%% (%d), Zero: %.2f%% (%d)",
                 np.sum(rewards > 0) / len(rewards) * 100,
                 np.sum(rewards > 0),
@@ -814,32 +815,32 @@ class TrainingProgressCallback(BaseCallback):
 
         # Log regime-specific statistics
         if self.regime_action_counts:
-            logging.info("Final Regime-Specific Action Distributions:")
+            logging.warning("Final Regime-Specific Action Distributions:")
             for regime, counts in self.regime_action_counts.items():
                 total_regime_actions = sum(counts)
                 if total_regime_actions > 0:
-                    buy_pct = counts[0] / total_regime_actions * 100
-                    sell_pct = counts[1] / total_regime_actions * 100
-                    hold_pct = counts[2] / total_regime_actions * 100
-                    logging.info(
+                    buy_pct = counts[MULTIPLIER_INDEX_BUY] / total_regime_actions * 100
+                    sell_pct = counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
+                    hold_pct = counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
+                    logging.warning(
                         "  %s: BUY %.1f%% (%d), SELL %.1f%% (%d), HOLD %.1f%% (%d)",
                         regime,
                         buy_pct,
-                        counts[0],
+                        counts[MULTIPLIER_INDEX_BUY],
                         sell_pct,
-                        counts[1],
+                        counts[MULTIPLIER_INDEX_SELL],
                         hold_pct,
-                        counts[2],
+                        counts[MULTIPLIER_INDEX_HOLD],
                     )
 
         # Log training time and performance
         total_time = time.time() - self.start_time
         steps_per_sec = self.n_calls / total_time if total_time > 0 else 0
-        logging.info("Training Performance:")
-        logging.info("  Total Steps: %d", self.n_calls)
-        logging.info(
+        logging.warning("Training Performance:")
+        logging.warning("  Total Steps: %d", self.n_calls)
+        logging.warning(
             "  Total Time: %.1f seconds (%.1f minutes)", total_time, total_time / 60
         )
-        logging.info("  Average Steps/Second: %.2f", steps_per_sec)
+        logging.warning("  Average Steps/Second: %.2f", steps_per_sec)
 
         logging.info("=" * 80)

@@ -12,13 +12,15 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 def rotate_log(log_path: Path, max_mb: float) -> None:
     """Rotate log if oversized."""
     if not log_path.exists():
         return
 
-    size_mb = log_path.stat().st_size / 1024 / 1024
+    size_mb = log_path.stat().st_size / BYTES_PER_MB
     if size_mb > max_mb:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         rotated_path = log_path.with_suffix(f".{timestamp}.gz")

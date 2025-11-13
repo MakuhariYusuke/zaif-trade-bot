@@ -3,11 +3,13 @@
 動的量子化、静的量子化、量子化対応トレーニングを提供。
 """
 
+from ctypes.wintypes import BYTE
 import logging
 from typing import Any, Dict, List
 
 import torch  # type: ignore
-import torch.nn as nn  # type: ignore
+import torch.nn as nn
+from ztb.trading.environment.constants import BYTES_PER_MB  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -176,9 +178,9 @@ class QuantizationUtils:
         total_size = param_size + buffer_size
 
         return {
-            "parameters_mb": param_size / 1024 / 1024,
-            "buffers_mb": buffer_size / 1024 / 1024,
-            "total_mb": total_size / 1024 / 1024,
+            "parameters_mb": param_size / BYTES_PER_MB,
+            "buffers_mb": buffer_size / BYTES_PER_MB,
+            "total_mb": total_size / BYTES_PER_MB,
         }
 
     @staticmethod

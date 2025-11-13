@@ -5,6 +5,8 @@ from typing import Optional
 
 import psutil
 
+from ztb.trading.environment.constants import BYTES_PER_MB
+
 
 def monitor_memory_usage(pid: Optional[int] = None, duration: int = 60) -> dict:
     """Monitor memory usage for a process.
@@ -36,8 +38,8 @@ def monitor_memory_usage(pid: Optional[int] = None, duration: int = 60) -> dict:
 
             stats = {
                 "time": elapsed,
-                "rss_mb": mem_info.rss / 1024 / 1024,
-                "vms_mb": mem_info.vms / 1024 / 1024,
+                "rss_mb": mem_info.rss / BYTES_PER_MB,
+                "vms_mb": mem_info.vms / BYTES_PER_MB,
                 "mem_percent": mem_percent,
             }
             memory_stats.append(stats)

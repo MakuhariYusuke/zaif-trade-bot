@@ -96,7 +96,7 @@ class BehavioralPenaltyCalculator:
 
         if (last_action == ACTION_BUY and prev_action == ACTION_SELL) or \
            (last_action == ACTION_SELL and prev_action == ACTION_BUY):
-            self.logger.debug(f"Applying consistency penalty: {self.penalty_value}")
+            self.logger.debug(f"Applying consistency penalty: {self.penalty_value}") if len(self.recent_actions) % 10 == 0 else None
             return self.penalty_value
 
         return 0.0

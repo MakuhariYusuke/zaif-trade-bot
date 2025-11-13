@@ -373,9 +373,9 @@ class RewardFunctionEvaluator:
         # Simplified synthetic data generation
         data = []
 
-        base_price = 100.0
-        portfolio_value = 10000.0
-        cash = 5000.0
+        base_price = 5000000.0  # JPY-based price
+        portfolio_value = 10000000.0  # Adjusted for JPY scale
+        cash = 5000000.0  # Adjusted for JPY scale
         position = 0
 
         for step in range(max_steps):

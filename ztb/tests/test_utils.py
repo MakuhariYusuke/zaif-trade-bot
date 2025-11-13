@@ -53,7 +53,7 @@ def get_sample_trading_data() -> pd.DataFrame:
     n_steps = 100
 
     # Generate realistic price data
-    base_price = 100.0
+    base_price = 5000000.0  # JPY-based price
     price_changes = np.random.normal(0, 0.01, n_steps)  # 1% volatility
     prices = base_price * np.cumprod(1 + price_changes)
 

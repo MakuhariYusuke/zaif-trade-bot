@@ -16,7 +16,8 @@ from stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     FlattenExtractor,
 )
-from stable_baselines3.common.type_aliases import PyTorchObs, Schedule
+from stable_baselines3.common.type_aliases import Schedule, TensorDict
+from typing import Union
 
 
 class StrictMaskedPolicy(MaskableActorCriticPolicy):
@@ -194,7 +195,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
 
     def predict_values(
         self,
-        obs: PyTorchObs,
+        obs: Union[torch.Tensor, TensorDict],
     ) -> torch.Tensor:
         """
         Predict values for observations.

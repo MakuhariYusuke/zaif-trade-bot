@@ -19,6 +19,7 @@ import pandas as pd
 
 from ztb.features import get_feature_manager
 from ztb.features.registry import FeatureRegistry
+from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.data.data_generation import generate_synthetic_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
@@ -101,7 +102,7 @@ def benchmark_feature(
         tracemalloc.stop()
 
         times.append((end_time - start_time) * 1000)  # ms
-        memories.append(peak / 1024 / 1024)  # MB
+        memories.append(peak  / BYTES_PER_MB)  # MB
 
     return {"ms_real": float(np.median(times)), "peak_MB": float(np.max(memories))}
 
@@ -125,7 +126,7 @@ def benchmark_bundle(
         tracemalloc.stop()
 
         times.append((end_time - start_time) * 1000)
-        memories.append(peak / 1024 / 1024)
+        memories.append(peak / BYTES_PER_MB)
 
     return {"ms_real": float(np.median(times)), "peak_MB": float(np.max(memories))}
 

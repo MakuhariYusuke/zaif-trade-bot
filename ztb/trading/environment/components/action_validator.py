@@ -123,7 +123,7 @@ class ActionValidator:
             legal[2] = 1
 
         # HOLDは常に合法なので、全て0になることはない
-        logger.info(
+        logger.debug(
             # legal_actions: [HOLD, BUY, SELL] の合法性
             # affordable_size: 現在資金で購入可能なBTC量
             # ideal_buy_cost: 理想的なBUY時の必要資金

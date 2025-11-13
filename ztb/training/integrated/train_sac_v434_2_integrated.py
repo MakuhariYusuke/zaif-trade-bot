@@ -13,56 +13,15 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from ztb.utils.training_utils import create_checkpoint_callback, create_eval_callback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.trading_metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.utils.statistics import calculate_max_drawdown
 
 logger = get_logger(__name__)
-
-
-def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.0) -> float:
-    """
-    シャープレシオを計算
-
-    Args:
-        returns: リターンのリスト
-        risk_free_rate: 無リスク金利
-
-    Returns:
-        シャープレシオ
-    """
-    if len(returns) < 2:
-        return 0.0
-
-    returns_array = np.array(returns)
-    excess_returns = returns_array - risk_free_rate
-    if np.std(excess_returns) == 0:
-        return 0.0
-
-    return np.mean(excess_returns) / np.std(excess_returns)
-
-
-def calculate_max_drawdown(values: List[float]) -> float:
-    """
-    最大ドローダウンを計算
-
-    Args:
-        values: ポートフォリオ価値のリスト
-
-    Returns:
-        最大ドローダウン（パーセント）
-    """
-    if not values:
-        return 0.0
-
-    values_array = np.array(values)
-    peak = np.maximum.accumulate(values_array)
-    drawdown = (values_array - peak) / peak
-    max_drawdown = np.min(drawdown)
-
-    return abs(max_drawdown) * 100  # パーセントで返す
 
 
 class SACv434Trainer:
@@ -384,7 +343,7 @@ class SACv434Trainer:
         output_dir = Path(self.config.get("output_dir", "models/sac_v434_2_integrated"))
 
         # チェックポイントコールバック
-        checkpoint_callback = CheckpointCallback(
+        checkpoint_callback = create_checkpoint_callback(
             save_freq=self.config.get("checkpoint_interval", 50000),
             save_path=str(output_dir / "checkpoints"),
             name_prefix="sac_v434_2",
@@ -392,8 +351,8 @@ class SACv434Trainer:
         callbacks.append(checkpoint_callback)
 
         # 評価コールバック
-        eval_callback = EvalCallback(
-            self.env,
+        eval_callback = create_eval_callback(
+            eval_env=self.env,
             best_model_save_path=str(output_dir / "best_model"),
             log_path=str(output_dir / "eval_logs"),
             eval_freq=self.config.get("evaluation_interval", 10000),
@@ -608,10 +567,8 @@ def run_trading_backtest(
             # 簡易的なリスク指標
             returns = np.diff(portfolio_values) / portfolio_values[:-1]
             if len(returns) > 1:
-                sharpe_ratio = (
-                    np.mean(returns) / (np.std(returns) + 1e-8) * np.sqrt(252)
-                )  # 年率化
-                max_drawdown = (min_portfolio - max_portfolio) / max_portfolio * 100
+                sharpe_ratio = calculate_sharpe_ratio(returns)
+                max_drawdown = calculate_max_drawdown(portfolio_values)['max_drawdown'] * 100
             else:
                 sharpe_ratio = 0.0
                 max_drawdown = 0.0

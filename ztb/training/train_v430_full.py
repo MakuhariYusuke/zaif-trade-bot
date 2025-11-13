@@ -18,7 +18,7 @@ try:
     import pandas as pd
     import torch
     from stable_baselines3 import SAC
-    from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
+from ztb.utils.training_utils import create_checkpoint_callback
     from stable_baselines3.common.monitor import Monitor
     from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -26,6 +26,7 @@ try:
     from ztb.trading.environment import HeavyTradingEnv
     from ztb.trading.environment.utils.config import EnvironmentConfig
     from ztb.utils.logging_utils import get_logger
+    from ztb.utils.training_utils import save_model
 
     logger = get_logger(__name__)
 
@@ -143,7 +144,7 @@ def run_full_training():
 
         # Create callbacks
         training_callback = TrainingCallback(eval_freq=5000)
-        checkpoint_callback = CheckpointCallback(
+        checkpoint_callback = create_checkpoint_callback(
             save_freq=10000,
             save_path="models/sac_v430_checkpoints",
             name_prefix="sac_v430",
@@ -170,8 +171,7 @@ def run_full_training():
 
         # Save final model
         model_path = "models/sac_v430_full/final_model.zip"
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        model.save(model_path)
+        save_model(model, model_path)
 
         # Check if model file exists
         if os.path.exists(model_path):
