@@ -868,7 +868,13 @@ class RewardCalculator:
             return 0.0
 
     def _calculate_forced_balance_reward(self, action: int, step: int) -> float:
-        """Stage: Forced balance reward that encourages corrective actions toward configured targets."""
+        """
+        Stage: Forced balance reward that encourages corrective actions toward configured targets.
+        
+        SAC v448 Layer 2 enhancements:
+        - Extended exploration period from 10 to 100 steps
+        - Emergency intervention penalty for >30% BUY-SELL deviation
+        """
         # Sync RewardCalculator's counts with BehavioralPenaltyCalculator sliding-window counts
         try:
             self._action_counts = self.behavioral_penalty_calculator._get_recent_counts()
@@ -886,7 +892,8 @@ class RewardCalculator:
         )
         self._forced_balance_log_counter += 1
 
-        min_actions = self.get_setting_int("forced_balance_min_actions", 10)
+        # SAC v448: Extended exploration period (10 → 100 steps)
+        min_actions = self.get_setting_int("forced_balance_min_actions", 100)
         exploration_reward = self.get_setting_float(
             "forced_balance_exploration_reward", 2.0
         )
@@ -930,6 +937,11 @@ class RewardCalculator:
         )
         is_imbalanced = max_abs_deviation > balance_broken_threshold
 
+        # SAC v448: Apply emergency intervention penalty if bias is extreme
+        emergency_penalty = self.behavioral_penalty_calculator.calculate_emergency_intervention()
+        if emergency_penalty < 0:
+            self._last_reward_components["emergency_intervention"] = emergency_penalty
+
         state_parts = []
         for idx, dev in enumerate(signed_deviations):
             if abs(dev) > balance_broken_threshold:
@@ -971,8 +983,10 @@ class RewardCalculator:
             balanced_reward = self.get_setting_float(
                 "forced_balance_balanced_reward", 2.0
             )
-            self._last_reward_components["base_reward"] = balanced_reward
-            return balanced_reward
+            # Apply emergency penalty even when balanced
+            final_reward = balanced_reward + emergency_penalty
+            self._last_reward_components["base_reward"] = final_reward
+            return final_reward
 
         global_penalty_scale = self.get_setting_float(
             "forced_balance_global_penalty_scale", 0.0
@@ -984,19 +998,19 @@ class RewardCalculator:
             penalty = self._map_forced_balance_penalty(
                 current_deviation, max_abs_deviation
             )
-            reward = global_pressure - penalty
+            reward = global_pressure - penalty + emergency_penalty
             self._last_reward_components["imbalance_penalty"] = -penalty
         elif current_deviation < 0:
             bonus = self._map_forced_balance_bonus(
                 abs(current_deviation), max_abs_deviation
             )
-            reward = global_pressure + bonus
+            reward = global_pressure + bonus + emergency_penalty
             self._last_reward_components["corrective_bonus"] = bonus
         else:
             on_target_reward = self.get_setting_float(
                 "forced_balance_on_target_reward", 2.0
             )
-            reward = global_pressure + on_target_reward
+            reward = global_pressure + on_target_reward + emergency_penalty
             self._last_reward_components["on_target_bonus"] = on_target_reward
 
         self._last_reward_components["base_reward"] = reward
