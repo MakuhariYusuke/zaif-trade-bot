@@ -258,7 +258,8 @@ class AdaptiveFeatureSelector:
             self._trigger_selection_callbacks(final_selection)
 
             logger.info(
-                f"Adapted features: selected {len(final_selection.selected_features)} features for {market_condition.value}"
+                f"Adapted features: selected {len(final_selection.selected_features)} "
+                f"features for {market_condition.value}"
             )
             return final_selection
 
@@ -417,7 +418,7 @@ class AdaptiveFeatureSelector:
                         corr = abs(data[col].corr(target))
                         if not np.isnan(corr):
                             correlations[col] = corr
-                    except:
+                    except Exception:
                         continue
 
             # 相関の高い特徴量を選択

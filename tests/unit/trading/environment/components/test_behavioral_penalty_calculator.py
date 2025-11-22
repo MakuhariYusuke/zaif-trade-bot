@@ -15,13 +15,9 @@ def default_settings() -> RewardSettings:
     return cast(
         RewardSettings,
         {
-            "behavior": {
-                "consistency_penalty": {
-                    "enabled": True,
-                    "value": 0.1,
-                    "lookback": 3,
-                }
-            }
+            "consistency_penalty_enabled": True,
+            "consistency_penalty": 0.1,
+            "consistency_lookback": 3,
         },
     )
 
@@ -35,8 +31,8 @@ def calculator(default_settings: RewardSettings) -> BehavioralPenaltyCalculator:
 def test_init_loads_settings_correctly(calculator: BehavioralPenaltyCalculator):
     """Test if the calculator initializes with correct settings."""
     assert calculator.consistency_penalty_enabled is True
-    assert calculator.consistency_penalty_value == 0.1
-    assert calculator.consistency_penalty_lookback == 3
+    assert calculator.penalty_value == 0.1
+    assert calculator.lookback == 3
 
 
 def test_penalty_disabled(default_settings: RewardSettings):
@@ -47,7 +43,7 @@ def test_penalty_disabled(default_settings: RewardSettings):
     for action in [ACTION_BUY, ACTION_HOLD, ACTION_SELL]:
         calculator.record_action(action)
 
-    penalty = calculator.calculate_consistency_penalty(ACTION_BUY)
+    penalty = calculator.calculate_consistency_penalty()
     assert penalty == 0.0
 
 
@@ -82,7 +78,7 @@ def test_consistency_penalty_scenarios(
     for action in actions:
         calculator.record_action(action)
 
-    penalty = calculator.calculate_consistency_penalty(current_action)
+    penalty = calculator.calculate_consistency_penalty()
     assert penalty == pytest.approx(expected_penalty)
 
 
@@ -117,7 +113,7 @@ def test_boundary_and_lookback_values(
     for action in actions:
         calculator.record_action(action)
 
-    penalty = calculator.calculate_consistency_penalty(current_action)
+    penalty = calculator.calculate_consistency_penalty()
     
     if expected_penalty != 0:
         assert penalty == pytest.approx(-penalty_value)
@@ -136,5 +132,5 @@ def test_action_history_management(default_settings: RewardSettings):
         calculator.record_action(action)
 
     # The history should only contain the last `lookback` actions
-    assert len(calculator._recent_actions) == lookback
-    assert calculator._recent_actions == [0, 1, 2, 0]
+    assert len(calculator.recent_actions) == lookback
+    assert list(calculator.recent_actions) == [0, 1, 2, 0]

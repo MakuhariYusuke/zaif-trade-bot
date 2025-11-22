@@ -20,9 +20,7 @@ def create_checkpoint_callback(
     save_freq: int,
     save_path: str,
     name_prefix: str = "rl_model",
-    verbose: int = 1,
-    save_replay_buffer: bool = False,
-    save_vecnormalize: bool = False
+    verbose: int = 1
 ) -> CheckpointCallback:
     """
     CheckpointCallbackを作成
@@ -32,8 +30,6 @@ def create_checkpoint_callback(
         save_path: 保存パス
         name_prefix: ファイル名のプレフィックス
         verbose: 詳細度
-        save_replay_buffer: リプレイバッファを保存するか
-        save_vecnormalize: VecNormalize統計を保存するか
 
     Returns:
         CheckpointCallbackインスタンス
@@ -44,9 +40,7 @@ def create_checkpoint_callback(
         save_freq=save_freq,
         save_path=save_path,
         name_prefix=name_prefix,
-        verbose=verbose,
-        save_replay_buffer=save_replay_buffer,
-        save_vecnormalize=save_vecnormalize
+        verbose=verbose
     )
 
 
@@ -55,6 +49,7 @@ def create_eval_callback(
     eval_freq: int,
     n_eval_episodes: int = 5,
     deterministic: bool = True,
+    render: bool = False,
     verbose: int = 1,
     best_model_save_path: Optional[str] = None,
     log_path: Optional[str] = None
@@ -87,6 +82,7 @@ def create_eval_callback(
         eval_freq=eval_freq,
         n_eval_episodes=n_eval_episodes,
         deterministic=deterministic,
+        render=render,
         verbose=verbose
     )
 

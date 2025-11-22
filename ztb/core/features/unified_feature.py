@@ -69,17 +69,26 @@ class UnifiedFeatureEngineer:
         Returns:
             特徴量が追加されたデータフレーム
         """
+        import time
+
+        start = time.perf_counter()
         logger.info(f"Generating features with set: {feature_set}, model: {model_type}")
 
         if model_type.lower() == "sac":
             # SACモデル固有の特徴量生成
-            return self._generate_sac_features(df, **kwargs)
+            out = self._generate_sac_features(df, **kwargs)
+            elapsed = time.perf_counter() - start
+            logger.info(f"Feature generation (SAC) completed in {elapsed:.3f}s; features={len(out.columns)}")
+            return out
         elif model_type.lower() == "v437":
             # v437モデル固有の特徴量生成
             return self._generate_v437_features(df, **kwargs)
         else:
             # 汎用特徴量生成
-            return self._generate_generic_features(df, feature_set, **kwargs)
+            out = self._generate_generic_features(df, feature_set, **kwargs)
+            elapsed = time.perf_counter() - start
+            logger.info(f"Feature generation (generic) completed in {elapsed:.3f}s; features={len(out.columns)}")
+            return out
 
     def _generate_sac_features(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """SACモデル用の特徴量生成"""

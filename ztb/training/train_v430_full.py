@@ -18,7 +18,7 @@ try:
     import pandas as pd
     import torch
     from stable_baselines3 import SAC
-from ztb.utils.training_utils import create_checkpoint_callback
+    from ztb.utils.training_utils import create_checkpoint_callback
     from stable_baselines3.common.monitor import Monitor
     from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -27,6 +27,7 @@ from ztb.utils.training_utils import create_checkpoint_callback
     from ztb.trading.environment.utils.config import EnvironmentConfig
     from ztb.utils.logging_utils import get_logger
     from ztb.utils.training_utils import save_model
+    from stable_baselines3.common.callbacks import BaseCallback
 
     logger = get_logger(__name__)
 

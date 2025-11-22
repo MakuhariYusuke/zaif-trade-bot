@@ -302,6 +302,11 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                         logger.info(
                             f"Added {len(mtf_features)} multi-timeframe features and merged into dataframe"
                         )
+                    
+                    # Clear mtf_data to free memory
+                    del mtf_data
+                    del mtf_system
+                    gc.collect()
             except Exception as e:
                 logger.warning(f"Failed to add multi-timeframe features: {e}")
 

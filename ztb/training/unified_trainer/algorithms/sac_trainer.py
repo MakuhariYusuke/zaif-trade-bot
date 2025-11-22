@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import CallbackList
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -22,6 +23,7 @@ from ztb.training.utils.training_stats import TrainingStats
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
+from ztb.training.utils.distributed_training import get_distributed_info
 
 
 class SACTrainer(BaseAlgorithmTrainer):
@@ -548,11 +550,20 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
                 raise
 
+            import time
+
+            feature_start = time.perf_counter()
             env = HeavyTradingEnv(
                 df=df,
                 config=env_config_obj,
                 optimizer_tracker=self.optimizer_tracker,
             )
+            # Attempt to capture feature generation time as measured by the environment construction
+            try:
+                env._feature_generation_time = time.perf_counter() - feature_start
+                self.logger.info(f"Captured env feature generation time: {env._feature_generation_time:.3f}s")
+            except Exception:
+                pass
 
             # Enable market regime adaptation in environment if configured
             if self.regime_classifier is not None:
@@ -736,6 +747,32 @@ class SACTrainer(BaseAlgorithmTrainer):
                 else 0,
                 action_distribution=self._calculate_final_action_distribution(callback),
             )
+
+            # Add environment feature generation time to stats (if available)
+            try:
+                feat_time = getattr(env, "_feature_generation_time", None)
+                if feat_time is not None:
+                    self.training_stats["feature_generation_time_s"] = feat_time
+            except Exception:
+                pass
+
+            # Collect reward_components from callback if available (for AB analysis)
+            try:
+                cb = callback.callbacks[0] if hasattr(callback, "callbacks") else callback
+                if hasattr(cb, "reward_components_history") and cb.reward_components_history:
+                    # Average reward components across all episodes
+                    components = {}
+                    for comp_dict in cb.reward_components_history:
+                        for key, val in comp_dict.items():
+                            if key not in components:
+                                components[key] = []
+                            components[key].append(float(val))
+                    # Average each component
+                    avg_components = {k: sum(v) / len(v) for k, v in components.items() if v}
+                    self.training_stats["reward_components"] = avg_components
+                    self.logger.info(f"Collected reward_components: {avg_components}")
+            except Exception as e:
+                self.logger.debug(f"Could not collect reward_components: {e}")
 
             self.log_training_completion(training_time, self.training_stats)
             return True

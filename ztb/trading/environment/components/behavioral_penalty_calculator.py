@@ -25,35 +25,65 @@ class BehavioralPenaltyCalculator:
         self.logger = get_logger(self.__class__.__name__)
         self._load_settings()
         
-        self.recent_actions: deque[int] = deque(maxlen=self.lookback)
+        # Keep enough history to support all lookback-based calculations
+        max_lookback = max(self.lookback, getattr(self, "action_entropy_lookback", 0), getattr(self, "skewness_lookback", 0))
+        max_lookback = max(1, max_lookback)
+        self.recent_actions: deque[int] = deque(maxlen=max_lookback)
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
 
     def _load_settings(self):
         """Load settings from the environment configuration."""
-        reward_settings = self.config.reward_settings
+        reward_settings = getattr(self.config, "reward_settings", None)
 
-        if reward_settings and isinstance(reward_settings, dict):
-            self.consistency_penalty_enabled = bool(reward_settings.get("consistency_penalty_enabled", True))
-            self.penalty_value = float(reward_settings.get("consistency_penalty", -0.05))  # type: ignore
-            self.lookback = int(reward_settings.get("consistency_lookback", 2))  # type: ignore
+        # Flexible accessor for reward settings: support dicts or RewardSettings dataclass.
+        def _rs_get(key, default=None):
+            if reward_settings is None:
+                return default
+            if isinstance(reward_settings, dict):
+                return reward_settings.get(key, default)
+            # dataclass or object: first try attribute, then custom_reward_params
+            if hasattr(reward_settings, key):
+                return getattr(reward_settings, key)
+            if hasattr(reward_settings, "custom_reward_params") and isinstance(
+                reward_settings.custom_reward_params, dict
+            ):
+                return reward_settings.custom_reward_params.get(key, default)
+            return default
+
+        if reward_settings:
+            self.consistency_penalty_enabled = bool(_rs_get("consistency_penalty_enabled", True))
+            self.penalty_value = float(_rs_get("consistency_penalty", -0.05))  # type: ignore
+            self.lookback = int(_rs_get("consistency_lookback", 50))  # type: ignore
             
             # Settings for balance penalty
-            self.balance_penalty_enabled = bool(reward_settings.get("balance_penalty_enabled", True))
-            self.balance_penalty_value = float(reward_settings.get("balance_penalty", 1.0))  # type: ignore
-            self.balance_penalty_tolerance = float(reward_settings.get("balance_penalty_tolerance", 0.05))  # type: ignore
-            self.balance_penalty_min_actions = int(reward_settings.get("balance_penalty_min_actions", 10))  # type: ignore
+            self.balance_penalty_enabled = bool(_rs_get("balance_penalty_enabled", True))
+            self.balance_penalty_value = float(_rs_get("balance_penalty", 1.0))  # type: ignore
+            self.balance_penalty_tolerance = float(_rs_get("balance_penalty_tolerance", 0.05))  # type: ignore
+            self.balance_penalty_min_actions = int(_rs_get("balance_penalty_min_actions", 10))  # type: ignore
             
-            balance_penalty_targets = reward_settings.get("balance_penalty_targets", {})
+            balance_penalty_targets = _rs_get("balance_penalty_targets", {})
             if not isinstance(balance_penalty_targets, dict):
                 balance_penalty_targets = {}
             self.hold_target = float(balance_penalty_targets.get("hold_target", 0.4))
             self.buy_target = float(balance_penalty_targets.get("buy_target", 0.3))
             self.sell_target = float(balance_penalty_targets.get("sell_target", 0.3))
+            # Additional shaping: reward actions that move distribution closer to targets
+            self.balance_shaping_enabled = bool(_rs_get("balance_shaping_enabled", True))
+            self.balance_shaping_value = float(_rs_get("balance_shaping_value", 0.5))
+            # Entropy shaping encourages diversity in actions (prevents collapse to pure SELL/BUY)
+            self.action_entropy_shaping_enabled = bool(_rs_get("action_entropy_shaping_enabled", True))
+            self.action_entropy_shaping_value = float(_rs_get("action_entropy_shaping_value", 0.01))
+            self.action_entropy_lookback = int(_rs_get("action_entropy_lookback", max(10, self.lookback)))
+            # Settings for skewness penalty (penalize extreme SELL/BUY skew)
+            self.skewness_penalty_enabled = bool(_rs_get("skewness_penalty_enabled", False))
+            self.skewness_penalty_value = float(_rs_get("skewness_penalty_value", 0.0))
+            self.skewness_penalty_tolerance = float(_rs_get("skewness_penalty_tolerance", 0.05))
+            self.skewness_lookback = int(_rs_get("skewness_lookback", max(10, self.lookback)))
         else:
             # Default values if reward_settings is None or not a dict
             self.consistency_penalty_enabled = True
             self.penalty_value = -0.05
-            self.lookback = 2
+            self.lookback = 50
             self.balance_penalty_enabled = True
             self.balance_penalty_value = 1.0
             self.balance_penalty_tolerance = 0.05
@@ -72,7 +102,21 @@ class BehavioralPenaltyCalculator:
         Args:
             action: The action to record.
         """
+        popped = None
+        if self.recent_actions.maxlen is not None and len(self.recent_actions) == self.recent_actions.maxlen:
+            # the left-most item will be popped by append
+            popped = self.recent_actions[0]
         self.recent_actions.append(action)
+
+        # update cached counts for compatibility with older code
+        if popped is not None:
+            if popped == ACTION_HOLD:
+                self._action_counts[0] = max(0, self._action_counts[0] - 1)
+            elif popped == ACTION_BUY:
+                self._action_counts[1] = max(0, self._action_counts[1] - 1)
+            elif popped == ACTION_SELL:
+                self._action_counts[2] = max(0, self._action_counts[2] - 1)
+
         if action == ACTION_HOLD:
             self._action_counts[0] += 1
         elif action == ACTION_BUY:
@@ -110,7 +154,7 @@ class BehavioralPenaltyCalculator:
         if not self.balance_penalty_enabled:
             return 0.0
 
-        hypothetical_counts = self._action_counts[:]
+        hypothetical_counts = self._get_recent_counts()
         action_index = -1
         if action == ACTION_BUY:
             action_index = 1
@@ -146,7 +190,139 @@ class BehavioralPenaltyCalculator:
 
         return -penalty
 
+    def calculate_balance_shaping(self, action: int) -> float:
+        """
+        Calculates a small shaping reward for actions that reduce overall deviation from
+        the target distribution. Returns a positive reward if the hypothetical action
+        reduces deviation, otherwise 0 or a small negative value.
+        """
+        if not getattr(self, "balance_shaping_enabled", False):
+            return 0.0
+
+        hypothetical_counts = self._get_recent_counts()
+        if action == ACTION_BUY:
+            hypothetical_counts[1] += 1
+        elif action == ACTION_SELL:
+            hypothetical_counts[2] += 1
+        else:
+            return 0.0
+
+        total_actions = sum(hypothetical_counts)
+        if total_actions == 0:
+            return 0.0
+
+        # compute current deviation
+        recent_counts = self._get_recent_counts()
+        current_tot = sum(recent_counts) or 1
+        current_buy = recent_counts[1] / current_tot
+        current_sell = recent_counts[2] / current_tot
+        current_deviation = abs(current_buy - self.buy_target) + abs(current_sell - self.sell_target)
+
+        # compute new deviation
+        new_buy = hypothetical_counts[1] / total_actions
+        new_sell = hypothetical_counts[2] / total_actions
+        new_deviation = abs(new_buy - self.buy_target) + abs(new_sell - self.sell_target)
+
+        # shaping reward proportional to improvement (reduction) in deviation
+        improvement = current_deviation - new_deviation
+        shaping = max(0.0, improvement) * self.balance_shaping_value
+        return shaping
+
+    def calculate_skewness_penalty(self) -> float:
+        """
+        Calculates a penalty based on the imbalance (skew) between BUY and SELL.
+
+        Returns:
+            Negative penalty to apply to current reward (0.0 if none).
+        """
+        if not self.skewness_penalty_enabled:
+            return 0.0
+
+        # Use sliding-window action counts (BUY index 1, SELL index 2)
+        counts = self._get_recent_counts(self.skewness_lookback)
+        total = sum(counts)
+        if total < self.skewness_lookback:
+            return 0.0
+
+        buy_ratio = counts[1] / total if total > 0 else 0.0
+        sell_ratio = counts[2] / total if total > 0 else 0.0
+
+        # compute skew: positive=SELL-heavy, negative=BUY-heavy
+        skew = sell_ratio - buy_ratio
+
+        # Only penalize when skew exceeds tolerance in either direction
+        if skew > self.skewness_penalty_tolerance:
+            penalty = (skew - self.skewness_penalty_tolerance) * self.skewness_penalty_value
+            self.logger.debug(f"Applying skewness penalty: {penalty:.5f} (skew {skew:.4f})")
+            return -penalty
+        if -skew > self.skewness_penalty_tolerance:
+            penalty = ((-skew) - self.skewness_penalty_tolerance) * self.skewness_penalty_value
+            self.logger.debug(f"Applying skewness penalty (BUY-heavy): {penalty:.5f} (skew {skew:.4f})")
+            return -penalty
+
+        return 0.0
+
+    def calculate_action_entropy_shaping(self) -> float:
+        """
+        Return a small positive shaping term if the recent action entropy increases,
+        encouraging more diverse actions and avoiding collapse to a single action.
+        It uses the last `action_entropy_lookback` actions to compute entropy.
+        """
+        if not getattr(self, "action_entropy_shaping_enabled", False):
+            return 0.0
+
+        # if not enough actions, skip
+        hist_len = len(self.recent_actions)
+        if hist_len < getattr(self, "action_entropy_lookback", 10):
+            return 0.0
+
+        counts = [0, 0, 0]
+        for a in list(self.recent_actions)[-self.action_entropy_lookback :]:
+            if a == ACTION_HOLD:
+                counts[0] += 1
+            elif a == ACTION_BUY:
+                counts[1] += 1
+            elif a == ACTION_SELL:
+                counts[2] += 1
+
+        total = sum(counts)
+        if total == 0:
+            return 0.0
+
+        probs = [c / total for c in counts]
+        import math
+
+        entropy = -sum(p * math.log(p) for p in probs if p > 0)
+
+        # target entropy: max is log(3) for 3 actions; we favor higher entropy
+        target = getattr(self, "action_entropy_target", math.log(3))
+        if entropy < target:
+            # reward proportional to the shortfall
+            shortfall = target - entropy
+            return self.action_entropy_shaping_value * shortfall
+        return 0.0
+
     def reset(self):
         """Resets the internal state of the calculator."""
         self.recent_actions.clear()
         self._action_counts = [0, 0, 0]
+
+    def _get_recent_counts(self, lookback: int | None = None) -> List[int]:
+        """Return counts for [HOLD, BUY, SELL] from recent_actions for a specified lookback.
+
+        If lookback is None use entire deque (full history held in the deque). This keeps counting
+        consistent with sliding-window semantics.
+        """
+        if lookback is None:
+            arr = list(self.recent_actions)
+        else:
+            arr = list(self.recent_actions)[-lookback:]
+        counts = [0, 0, 0]
+        for a in arr:
+            if a == ACTION_HOLD:
+                counts[0] += 1
+            elif a == ACTION_BUY:
+                counts[1] += 1
+            elif a == ACTION_SELL:
+                counts[2] += 1
+        return counts

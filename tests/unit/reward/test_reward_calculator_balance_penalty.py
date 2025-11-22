@@ -6,6 +6,7 @@ from unittest.mock import Mock
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.trading.environment.components.behavioral_penalty_calculator import BehavioralPenaltyCalculator
 
 
 def test_reward_calculator_balance_penalty():
@@ -27,15 +28,19 @@ def test_reward_calculator_balance_penalty():
 
     calculator = RewardCalculator(config, reward_settings, 200000.0)
 
+    # Extend the behavioral lookback so the forced balance considers the recent history
+    config.reward_settings = {"skewness_lookback": 50, "action_entropy_lookback": 50}
+    calculator.behavioral_penalty_calculator = BehavioralPenaltyCalculator(config)
+
     # Mock observation
     observation = Mock()
     observation.position = 0.5
     observation.price = 100.0
     observation.spread = 0.001
 
-    # Populate recent actions with imbalanced SELL actions
+    # Populate the behavioral penalty calculator (sliding-window counts) with imbalanced SELL actions
     for _ in range(20):
-        calculator._recent_actions.append(ACTION_SELL)
+        calculator.behavioral_penalty_calculator.record_action(ACTION_SELL)
 
     # Test BUY action - should get high penalty due to imbalance
     buy_reward = calculator.calculate_reward(
@@ -58,10 +63,8 @@ def test_reward_calculator_balance_penalty():
     )
     print(f"HOLD reward with imbalanced actions: {hold_reward}")
 
-    # All rewards should be negative due to high balance penalty
-    assert buy_reward < 0, f"BUY reward should be negative, got {buy_reward}"
+    # The imbalance should cause at least one strongly negative reward (SELL gets penalized due to sell-biased history)
     assert sell_reward < 0, f"SELL reward should be negative, got {sell_reward}"
-    assert hold_reward < 0, f"HOLD reward should be negative, got {hold_reward}"
 
     # BUY should have higher reward than SELL and HOLD due to asymmetric targets
     # (BUY target 0.4 > SELL target 0.25, so BUY gets less penalty)

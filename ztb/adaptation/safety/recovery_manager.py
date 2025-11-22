@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+import numpy as np
+
 from ..monitoring.safety import SafetyManager
 from .anomaly_manager import AnomalyDetectionManager
 from .fallback_manager import FallbackManager, FallbackMode

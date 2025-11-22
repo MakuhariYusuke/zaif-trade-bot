@@ -113,10 +113,6 @@ class TestABTestAnalyzer(unittest.TestCase):
         data_b = np.random.normal(0.52, 0.1, 10000)
 
         # メモリ使用量を監視しながら分析（簡易的な方法）
-        import sys
-
-        memory_before = sys.getsizeof(data_a) + sys.getsizeof(data_b)
-
         result = self.analyzer.analyze_parallel(data_a, data_b)
 
         # データがメモリ上に存在することを確認（大規模データでも処理可能）
@@ -167,14 +163,11 @@ class TestABTestAnalyzer(unittest.TestCase):
         analyzer_multi = ABTestAnalyzer(config_multi)
 
         # シングルワーカーでの実行時間
-        start_time = time.time()
         result_single = analyzer_single.analyze_parallel(data_a, data_b)
-        time_single = time.time() - start_time
 
         # マルチワーカーでの実行時間
         start_time = time.time()
         result_multi = analyzer_multi.analyze_parallel(data_a, data_b)
-        time_multi = time.time() - start_time
 
         # 結果が同等であることを確認
         self.assertAlmostEqual(result_single.p_value, result_multi.p_value, places=3)

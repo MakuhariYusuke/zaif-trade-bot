@@ -98,7 +98,7 @@ class MarketRegimeClassifier:
             return "ranging"
 
 
-class AdaptiveFeatureSelector:
+class CoreAdaptiveFeatureSelector:
     """適応型特徴量選択器"""
 
     def __init__(self, feature_groups: Optional[Dict[str, List[str]]] = None):

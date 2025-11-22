@@ -463,6 +463,14 @@ class EnvironmentConfig:
                     ):  # Special handling for dynamic_reward_shaping
                         logger.debug(f"Setting config_kwargs[{key}] = {value} (dynamic_reward_shaping)")
                         config_kwargs[key] = value
+                    elif key == "behavioral_penalty" and isinstance(value, dict):
+                        # Map behavioral_penalty keys into reward_settings dataframe
+                        if not config_kwargs.get("reward_settings"):
+                            config_kwargs["reward_settings"] = {}
+                        # shallow merge - don't override existing reward_settings that were already set
+                        for bp_k, bp_v in value.items():
+                            if bp_k not in config_kwargs["reward_settings"]:
+                                config_kwargs["reward_settings"][bp_k] = bp_v
 
         # Handle field name mappings
         if (
@@ -565,6 +573,26 @@ class EnvironmentConfig:
                                 rs.custom_reward_params[k] = v
                         except Exception:
                             rs.custom_reward_params[k] = v
+                config_kwargs["reward_settings"] = rs
+
+        # If reward_settings was added earlier via env config merges (e.g. behavioral_penalty),
+        # ensure it's also considered for RewardSettings conversion
+        if (reward_settings_dict is None) and ("reward_settings" in config_kwargs) and isinstance(
+            config_kwargs.get("reward_settings"), dict
+        ):
+            reward_settings_dict = config_kwargs.get("reward_settings")
+            try:
+                config_kwargs["reward_settings"] = RewardSettings(**reward_settings_dict)
+            except TypeError:
+                rs = RewardSettings()
+                for k, v in reward_settings_dict.items():
+                    if hasattr(rs, k):
+                        try:
+                            setattr(rs, k, v)
+                        except Exception:
+                            pass
+                    else:
+                        rs.custom_reward_params[k] = v
                 config_kwargs["reward_settings"] = rs
 
         try:
@@ -689,6 +717,31 @@ class EnvironmentConfig:
                                 logger.debug(f"Processing bonus_key: {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}")
                                 converted_bonuses[bonus_key] = float(bonus_value)
                             instance.action_bonuses = converted_bonuses
+                    elif env_key == "behavioral_penalty" and isinstance(env_value, dict):
+                        # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
+                        if not instance.reward_settings:
+                            instance.reward_settings = RewardSettings()
+                        for bp_k, bp_v in env_value.items():
+                            if hasattr(instance.reward_settings, bp_k):
+                                try:
+                                    setattr(instance.reward_settings, bp_k, bp_v)
+                                except Exception:
+                                    # fallback to custom params
+                                    instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                            else:
+                                instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                            # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
+                            if not instance.reward_settings:
+                                instance.reward_settings = RewardSettings()
+                            for bp_k, bp_v in env_value.items():
+                                if hasattr(instance.reward_settings, bp_k):
+                                    try:
+                                        setattr(instance.reward_settings, bp_k, bp_v)
+                                    except Exception:
+                                        # fallback to custom params
+                                        instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                                else:
+                                    instance.reward_settings.custom_reward_params[bp_k] = bp_v
                     elif hasattr(instance, env_key):
                         # Map other environment keys to instance
                         try:

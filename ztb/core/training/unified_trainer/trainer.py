@@ -2311,6 +2311,10 @@ class UnifiedTrainer:
         self, model, env, df, start_idx: int, end_idx: int, period_name: str
     ) -> Dict[str, Any]:
         """Test the model on a specific period."""
+        if env is None:
+            self.logger.error("Environment is None, cannot test period")
+            return {"error": "Environment not initialized"}
+
         # Reset environment and advance to start_idx
         obs, _ = env.reset()
 
@@ -2538,6 +2542,10 @@ class UnifiedTrainer:
         period: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Run backtest for a single period."""
+        if env is None:
+            self.logger.error("Environment is None, cannot run backtest")
+            return {"error": "Environment not initialized", "total_return_pct": 0.0}
+
         try:
             start_date = period.get("start_date")
             end_date = period.get("end_date")

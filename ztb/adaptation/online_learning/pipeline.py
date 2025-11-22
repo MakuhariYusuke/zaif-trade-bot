@@ -75,7 +75,7 @@ class OnlineLearningPipeline:
         self.resource_monitor = ResourceMonitor()
 
         # 適応制御
-        self.drift_detector = DriftDetector(config.adaptation_trigger_threshold)
+        self.drift_detector = OnlineDriftDetector(config.adaptation_trigger_threshold)
         self.last_adaptation_time = datetime.now()
 
         logger.info(
@@ -536,7 +536,7 @@ class OnlineLearningPipeline:
             return False
 
 
-class DriftDetector:
+class OnlineDriftDetector:
     """ドリフト検知器"""
 
     def __init__(self, threshold: float = 0.1):
