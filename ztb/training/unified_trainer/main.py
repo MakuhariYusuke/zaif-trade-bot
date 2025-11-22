@@ -68,6 +68,21 @@ def main() -> None:
         help="Override total_timesteps from config",
     )
     parser.add_argument(
+        "--data-rows-limit",
+        type=int,
+        help="Limit number of rows loaded from the dataset for fast experiments",
+    )
+    parser.add_argument(
+        "--ab-tag",
+        type=str,
+        help="Tag to attach to training reports for AB experiments",
+    )
+    parser.add_argument(
+        "--fast-mode",
+        action="store_true",
+        help="Enable fast experiment defaults: small timesteps and reduced data rows",
+    )
+    parser.add_argument(
         "--resume",
         "-r",
         action="store_true",
@@ -115,6 +130,25 @@ def main() -> None:
                 stream_batch_size=args.stream_batch_size,
                 total_timesteps_override=timesteps_override,
             )
+            # Apply overrides for AB experiments / fast mode
+            if args.data_rows_limit is not None:
+                config["data_rows_limit"] = args.data_rows_limit
+
+            if args.ab_tag:
+                # Put AB tag top-level to be included in reports
+                config["ab_tag"] = args.ab_tag
+
+            if args.fast_mode:
+                # Choose conservative defaults; respect explicit timesteps override
+                if timesteps_override is None:
+                    config["training"]["total_timesteps"] = 500
+                # Reduce dataset size for speed
+                if config.get("data_rows_limit") is None:
+                    config["data_rows_limit"] = 5000
+                # Reduce expensive feature generation
+                fcfg = config.setdefault("features", {})
+                fcfg.setdefault("feature_set", "minimal")
+                fcfg.setdefault("skip_quality_filtering", True)
         else:
             print("DEBUG: Using GlobalConfigManager")
             # Use ConfigManager for default config loading

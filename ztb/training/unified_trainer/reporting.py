@@ -35,6 +35,7 @@ class TrainingReporter:
                 "timestamp": datetime.now().isoformat(),
                 "algorithm": config.get("algorithm", "unknown"),
                 "model_name": config.get("model_name", "unknown"),
+                "ab_tag": config.get("ab_tag") if isinstance(config, dict) else None,
                 "success": success,
             },
             "configuration": config,
@@ -42,6 +43,14 @@ class TrainingReporter:
             "performance_metrics": self._calculate_performance_metrics(stats),
             "system_info": self._get_system_info(),
         }
+
+        # Include any logged events if present (provides step-level diagnostics such as action_distribution)
+        if hasattr(self, "events") and self.events:
+            report["training_events"] = self.events.copy()
+
+        # Include reward_components if present in stats for AB analysis
+        if "reward_components" in stats:
+            report["reward_components"] = stats["reward_components"]
 
         return report
 

@@ -19,7 +19,7 @@ class ExplanationType(Enum):
 
 
 @dataclass
-class FeatureImportance:
+class ExplainabilityFeatureImportance:
     """特徴量重要度"""
 
     feature_name: str
@@ -35,8 +35,8 @@ class DecisionExplanation:
 
     decision_type: str  # BUY, SELL, HOLD
     confidence_score: float
-    primary_factors: List[FeatureImportance]
-    contributing_factors: List[FeatureImportance]
+    primary_factors: List[ExplainabilityFeatureImportance]
+    contributing_factors: List[ExplainabilityFeatureImportance]
     natural_language_explanation: Optional[str] = None
     visualization_data: Optional[Dict[str, Any]] = None
 
@@ -117,7 +117,7 @@ class ExplanationCache:
 
 
 @dataclass
-class ExplanationReport:
+class VisualizationResult:
     """可視化結果"""
 
     plots: Dict[str, Any]  # プロット名 -> プロットデータ
@@ -156,7 +156,7 @@ class ExplanationReport:
     period_end: datetime
     total_explanations: int
     explanation_types: Dict[str, int]
-    top_features: List[FeatureImportance]
+    top_features: List[ExplainabilityFeatureImportance]
     model_performance_insights: Dict[str, Any]
     recommendations: List[str]
 
@@ -180,3 +180,13 @@ class ExplanationReport:
             "model_performance_insights": self.model_performance_insights,
             "recommendations": self.recommendations,
         }
+
+
+__all__ = [
+    "ExplanationCache",
+    "ExplanationResult",
+    "ExplainabilityFeatureImportance",
+    "DecisionExplanation",
+    "VisualizationResult",
+    "ExplanationReport",
+]

@@ -215,7 +215,7 @@ def update_config(
     """
     config = base_config.copy()
 
-    def deep_update(d, u):
+    def deep_update(d: Dict[str, Any], u: Dict[str, Any]) -> None:
         for k, v in u.items():
             if isinstance(v, dict) and k in d and isinstance(d[k], dict):
                 deep_update(d[k], v)

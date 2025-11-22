@@ -180,6 +180,10 @@ class MultiTimeframeFeatureSystem:
             feature_set=feature_set,
         )
 
+        # Clear raw data to free memory
+        raw_data.clear()
+        gc.collect()
+
         logger.info(
             f"Generated {len(integrated_features)} rows with {len(integrated_features.columns)} features"
         )

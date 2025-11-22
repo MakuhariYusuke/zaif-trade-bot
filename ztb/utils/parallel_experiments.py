@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
+import os
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.common import ConfigDict
@@ -435,6 +436,25 @@ class ParallelExperimentRunner:
     ) -> ExperimentResult:
         """Run single experiment in subprocess（効率化）"""
         try:
+            # Log worker start (pid) for parallelism verification
+            try:
+                pid = os.getpid()
+                self.shared_logger.info(
+                    f"Worker {index} starting in PID {pid} with config: {config.get('config_path', '')}"
+                )
+                # Also write a PID marker to logs for easier OS-level verification
+                try:
+                    pidlog = Path("logs") / "parallel_worker_pids.jsonl"
+                    pidlog.parent.mkdir(exist_ok=True)
+                    import json
+
+                    with open(pidlog, "a", encoding="utf-8") as f:
+                        f.write(json.dumps({"index": index, "pid": pid, "config": config.get("config_path", ""), "time": datetime.now().isoformat()}) + "\n")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
             # Set process priority（効率化: 必要な場合のみ）
             priority_level = config.pop("_priority_level", "normal")
             if priority_level and priority_level != "normal":

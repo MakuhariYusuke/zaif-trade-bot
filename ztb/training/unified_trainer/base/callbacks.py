@@ -20,6 +20,7 @@ from ztb.trading.constants import (
 )
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
+from ztb.training.constants import ENV_EVAL_FREQUENCY
 from ztb.training.system_optimizer import SystemOptimizer
 
 
@@ -64,6 +65,9 @@ class TrainingProgressCallback(BaseCallback):
 
         # Per-regime action tracking for debugging market regime adaptation
         self.regime_action_counts: dict = {}  # regime -> [BUY, SELL, HOLD]
+
+        # Reward components tracking for AB analysis
+        self.reward_components_history: List[dict] = []
 
         # Initialize optimizer feature tracker from trainer if available
         self.optimizer_tracker = None
@@ -153,6 +157,10 @@ class TrainingProgressCallback(BaseCallback):
                             position = info.get("position", 0)
                             pnl = info.get("pnl", 0)
                             market_regime = info.get("market_regime", "unknown")
+
+                            # Collect reward_components if available for AB analysis
+                            if "reward_components" in info:
+                                self.reward_components_history.append(info["reward_components"].copy())
 
                             # Compact INFO log with key metrics (every 10 steps to reduce verbosity)
                             if self.n_calls % 10 == 0:
@@ -400,6 +408,41 @@ class TrainingProgressCallback(BaseCallback):
                 action_dist["SELL"] * 100.0,
                 len(self.reward_history),
             )
+
+            # Save action distribution to TrainingReporter (if configured) at eval checkpoints
+            try:
+                if hasattr(self, "trainer_ref") and self.trainer_ref:
+                    # Trainer config may specify eval frequency
+                    try:
+                        total_steps = int(self.trainer_ref.config.get("training", {}).get("total_timesteps", 0))
+                        eval_freq = int(self.trainer_ref.config.get("training", {}).get("eval_freq", ENV_EVAL_FREQUENCY))
+                    except Exception:
+                        total_steps = 0
+                        eval_freq = ENV_EVAL_FREQUENCY
+
+                    if eval_freq and self.n_calls % eval_freq == 0:
+                        stats = {"action_distribution": action_dist, "step": self.n_calls}
+                        # Add reward component debugging info when present in env info
+                        try:
+                            infos = self.locals.get("infos")
+                            if infos and len(infos) > 0 and isinstance(infos[0], dict):
+                                info = infos[0]
+                                # reward components are added to info by environment: e.g. skew_penalty, balance_penalty
+                                components = {}
+                                for k, v in info.items():
+                                    # only include reward-related metrics to keep reports compact
+                                    if k.endswith("_penalty") or k.endswith("_shaping") or k == "action_bonus":
+                                        components[k] = v
+                                if components:
+                                    stats["reward_components"] = components
+                        except Exception:
+                            # Don't fail training if we can't collect reward components
+                            pass
+                        reporter = getattr(self.trainer_ref, "reporter", None)
+                        if reporter and hasattr(reporter, "log_training_progress"):
+                            reporter.log_training_progress(self.n_calls, total_steps, stats)
+            except Exception as e:
+                logging.debug(f"Failed to record action_distribution to reporter: {e}")
 
             # Log continuous action statistics for SAC models
             if self.continuous_actions and len(self.continuous_actions) > 100:

@@ -14,7 +14,7 @@ import torch.nn as nn
 
 from ztb.adaptation.online_learning.config import OnlineLearningConfig
 from ztb.adaptation.online_learning.pipeline import (
-    DriftDetector,
+    OnlineDriftDetector,
     OnlineLearningPipeline,
     ResourceMonitor,
 )
@@ -255,11 +255,11 @@ class TestOnlineLearningPipeline(unittest.TestCase):
         self.assertGreater(self.pipeline.learning_state.total_samples_processed, 0)
 
 
-class TestDriftDetector(unittest.TestCase):
-    """DriftDetectorのテスト"""
+class TestOnlineDriftDetector(unittest.TestCase):
+    """OnlineDriftDetectorのテスト"""
 
     def setUp(self):
-        self.detector = DriftDetector(threshold=0.1)
+        self.detector = OnlineDriftDetector(threshold=0.1)
 
     def test_initial_detection(self):
         """初期検知テスト"""

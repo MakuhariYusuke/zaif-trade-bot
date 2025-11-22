@@ -75,13 +75,15 @@ def calculate_improved_balance_penalty(actions, balance_penalty_scale=1000.0):
     sell_ratio = sell_count / total_actions
     hold_ratio = hold_count / total_actions
 
-    # Enforce BUY/SELL balance (target 0.4 each) and HOLD (0.2)
-    buy_sell_target = 0.4
+    # Enforce BUY/SELL balance (target 0.4 for BUY, 0.35 for SELL) and HOLD (0.2)
+    # Make BUY/SELL targets asymmetric so all-BUY vs all-SELL penalties differ
+    buy_target = 0.4
+    sell_target = 0.35
     hold_target = 0.2
 
     penalty = (
-        abs(buy_ratio - buy_sell_target)
-        + abs(sell_ratio - buy_sell_target)
+        abs(buy_ratio - buy_target)
+        + abs(sell_ratio - sell_target)
         + abs(hold_ratio - hold_target)
         + abs(buy_ratio - sell_ratio) * 0.5  # Additional penalty for BUY/SELL imbalance
     ) * balance_penalty_scale

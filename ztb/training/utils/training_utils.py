@@ -140,7 +140,7 @@ def load_training_data(csv_path: str = "ml-dataset-enhanced.csv") -> pd.DataFram
 
 def load_training_data_parallel(csv_paths: list[str], combine: bool = True,
                               preprocess_func: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
-                              enable_memory_cache: bool = True) -> Union[pd.DataFrame, list[pd.DataFrame]]:
+                              enable_memory_cache: bool = False) -> Union[pd.DataFrame, list[pd.DataFrame]]:
     """
     Load multiple training data files in parallel with memory caching.
 
@@ -195,7 +195,7 @@ def load_training_data_parallel(csv_paths: list[str], combine: bool = True,
 
 def parallel_data_preprocessing(df: pd.DataFrame, chunk_size: int = 10000,
                               preprocess_func: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None,
-                              enable_memory_cache: bool = True) -> pd.DataFrame:
+                              enable_memory_cache: bool = False) -> pd.DataFrame:
     """
     Apply preprocessing to DataFrame in parallel chunks with memory caching.
 

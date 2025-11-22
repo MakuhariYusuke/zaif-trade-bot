@@ -12,16 +12,10 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.market_regime_types import MarketRegime
+
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-
-
-class MarketRegime(Enum):
-    """Market regime types."""
-
-    BULL = "bull"
-    BEAR = "bear"
-    SIDEWAYS = "sideways"
 
 
 @dataclass
@@ -157,15 +151,15 @@ class RegimeDetector:
         """Classify market regime based on trend and volatility."""
         # High volatility always indicates uncertainty
         if volatility > self.volatility_threshold:
-            return MarketRegime.SIDEWAYS
+            return MarketRegime.CONSOLIDATION
 
         # Low volatility: classify based on trend strength
         if trend_strength > self.trend_threshold:
-            return MarketRegime.BULL
+            return MarketRegime.MODERATE_BULL_TREND
         elif trend_strength < -self.trend_threshold:
-            return MarketRegime.BEAR
+            return MarketRegime.MODERATE_BEAR_TREND
         else:
-            return MarketRegime.SIDEWAYS
+            return MarketRegime.CONSOLIDATION
 
     def _calculate_trend_strength(self, prices: pd.Series, window: int) -> pd.Series:
         """Calculate trend strength using linear regression slope."""
@@ -351,7 +345,7 @@ class RegimeEvaluator:
         regime_duration_days = np.mean([s.duration_days for s in segments])
 
         return RegimeMetrics(
-            regime=segments[0].regime if segments else MarketRegime.SIDEWAYS,
+            regime=segments[0].regime if segments else MarketRegime.CONSOLIDATION,
             total_return=cast(float, total_return),
             sharpe_ratio=sharpe_ratio,
             max_drawdown=max_drawdown,
@@ -455,7 +449,7 @@ class RegimeEvaluator:
         """Calculate trade metrics for testing purposes."""
         if not trades:
             return RegimeMetrics(
-                regime=MarketRegime.SIDEWAYS,
+                regime=MarketRegime.CONSOLIDATION,
                 total_return=0.0,
                 sharpe_ratio=0.0,
                 max_drawdown=0.0,
@@ -514,7 +508,7 @@ class RegimeEvaluator:
             sharpe_ratio = 0.0
 
         return RegimeMetrics(
-            regime=MarketRegime.BULL,
+            regime=MarketRegime.MODERATE_BULL_TREND,
             total_return=total_return,
             sharpe_ratio=sharpe_ratio,
             max_drawdown=-0.05,

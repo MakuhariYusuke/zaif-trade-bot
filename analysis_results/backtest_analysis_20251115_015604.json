@@ -1,0 +1,252 @@
+{
+  "risk_metrics": {
+    "total_return": -0.8045824055464844,
+    "sharpe_ratio": 0.0,
+    "max_drawdown": -0.8050525027285157,
+    "volatility": 0.0,
+    "sortino_ratio": 0.0,
+    "win_rate": 0.0,
+    "profit_factor": 0.14190692771301305
+  },
+  "temporal_patterns": {
+    "hourly_returns": {
+      "00:00": -0.8001474595863282,
+      "01:00": -0.0028424813573839913,
+      "02:00": -0.0010178290699320387,
+      "03:00": 0.002700453053305519,
+      "04:00": 7.963938331290692e-05,
+      "05:00": 0.0004663461038062654,
+      "06:00": -0.004224743992285965,
+      "07:00": 0.00039417135517484414,
+      "08:00": -0.001392224713805459,
+      "09:00": 0.000643107688713683,
+      "10:00": -0.002613473366804012,
+      "11:00": -0.0021635774680162337,
+      "12:00": -0.0026892817390759727,
+      "13:00": -0.0033321380280951557,
+      "14:00": -0.0036380459368666493,
+      "15:00": -0.0020565028986297067,
+      "16:00": 0.0018543673838141992
+    },
+    "weekday_returns": {
+      "Tue": -0.8045824055464844
+    }
+  },
+  "market_conditions": {
+    "uptrend": {
+      "return": -0.022068387463329828,
+      "periods": 283,
+      "name": "上昇トレンド"
+    },
+    "downtrend": {
+      "return": -0.022750940173904027,
+      "periods": 668,
+      "name": "下降トレンド"
+    },
+    "sideways": {
+      "return": -0.8001092852464843,
+      "periods": 49,
+      "name": "横ばい"
+    }
+  },
+  "trading_frequency": {
+    "action_distribution": {
+      "HOLD": 0.0,
+      "BUY": 0.0,
+      "SELL": 0.0
+    },
+    "trade_frequency": 0,
+    "avg_trade_interval": 0,
+    "min_trade_interval": 0,
+    "max_trade_interval": 0,
+    "total_trades": 0
+  },
+  "btc_analysis": {
+    "initial_btc": 0.0,
+    "final_btc": 0.0,
+    "net_btc_gained": 0.0,
+    "btc_return_pct": 0.0,
+    "usd_return_pct": -80.45824055464844,
+    "btc_vs_usd_performance_ratio": 0.0
+  },
+  "temporal_analysis": {
+    "hourly_returns": {
+      "00:00": -0.8001474595863282,
+      "01:00": -0.0028424813573839913,
+      "02:00": -0.0010178290699320387,
+      "03:00": 0.002700453053305519,
+      "04:00": 7.963938331290692e-05,
+      "05:00": 0.0004663461038062654,
+      "06:00": -0.004224743992285965,
+      "07:00": 0.00039417135517484414,
+      "08:00": -0.001392224713805459,
+      "09:00": 0.000643107688713683,
+      "10:00": -0.002613473366804012,
+      "11:00": -0.0021635774680162337,
+      "12:00": -0.0026892817390759727,
+      "13:00": -0.0033321380280951557,
+      "14:00": -0.0036380459368666493,
+      "15:00": -0.0020565028986297067,
+      "16:00": 0.0018543673838141992
+    },
+    "weekday_returns": {
+      "Tue": -0.8045824055464844
+    }
+  },
+  "market_condition_analysis": {
+    "uptrend": {
+      "return": -0.022068387463329828,
+      "periods": 283,
+      "name": "上昇トレンド"
+    },
+    "downtrend": {
+      "return": -0.022750940173904027,
+      "periods": 668,
+      "name": "下降トレンド"
+    },
+    "sideways": {
+      "return": -0.8001092852464843,
+      "periods": 49,
+      "name": "横ばい"
+    }
+  },
+  "trading_frequency_analysis": {
+    "action_distribution": {
+      "HOLD": 0.0,
+      "BUY": 0.0,
+      "SELL": 0.0
+    },
+    "trade_frequency": 0,
+    "avg_trade_interval": 0,
+    "min_trade_interval": 0,
+    "max_trade_interval": 0,
+    "total_trades": 0
+  },
+  "robustness_analysis": {
+    "overall_performance": {
+      "total_return": -0.8045824055464845,
+      "volatility": 0.025300319910578545,
+      "sharpe_ratio": -0.5167004966926942,
+      "max_drawdown": -0.02525159259759374,
+      "win_rate": 0.4694694694694695,
+      "num_trades": 999
+    },
+    "volatility_analysis": {
+      "error": "Volatility analysis failed: boolean index did not match indexed array along axis 0; size of axis is 949 but size of corresponding boolean axis is 950"
+    },
+    "trend_analysis": {
+      "uptrend_performance": {
+        "total_return": 0.01932214834178425,
+        "volatility": 0.0003555696451067035,
+        "sharpe_ratio": 1.830478057500587,
+        "max_drawdown": -0.00366529314659056,
+        "win_rate": 0.5289079229122056,
+        "num_trades": 467
+      },
+      "downtrend_performance": {
+        "total_return": -0.0404911946007408,
+        "volatility": 0.00037293074562887125,
+        "sharpe_ratio": -3.6358706483110175,
+        "max_drawdown": -0.0404573836941985,
+        "win_rate": 0.4161490683229814,
+        "num_trades": 483
+      },
+      "sideways_performance": {
+        "total_return": 0.0,
+        "volatility": 0.0,
+        "sharpe_ratio": 0.0,
+        "max_drawdown": 0.0,
+        "win_rate": 0.0,
+        "num_trades": 0
+      },
+      "trend_regime_consistency": -0.48708346716825873
+    },
+    "drawdown_analysis": {
+      "drawdown_performance": {
+        "total_return": -0.02331210574774778,
+        "volatility": 0.0003686630606600571,
+        "sharpe_ratio": -1.015305463968748,
+        "max_drawdown": -0.025251592597594238,
+        "win_rate": 0.46940822467402205,
+        "num_trades": 997
+      },
+      "recovery_performance": {
+        "total_return": -0.7999180745419945,
+        "volatility": 0.4002197984790888,
+        "sharpe_ratio": -11.212782818816065,
+        "max_drawdown": 0.0,
+        "win_rate": 0.5,
+        "num_trades": 2
+      },
+      "drawdown_recovery_consistency": 5.060258622461229
+    },
+    "seasonal_analysis": {
+      "error": "Seasonal analysis failed: 'DatetimeIndex' object has no attribute 'dt'"
+    },
+    "robustness_score": 0.9521925886161517
+  },
+  "correlation_analysis": {
+    "price_portfolio_correlation": 0.9999999999999999,
+    "lag_correlations": {
+      "lag_1": 0.031634909222975405,
+      "lag_2": -0.0392370634748553,
+      "lag_3": 0.01970536745510628,
+      "lag_4": -0.00206618429946027,
+      "lag_5": 0.01855407483574819,
+      "lag_6": 0.028308257493157428,
+      "lag_7": -0.03087057643872332,
+      "lag_8": -0.02127039035219496,
+      "lag_9": 0.03957894832710906,
+      "lag_10": 0.024081120781513223
+    },
+    "beta": 1.0010020040080156,
+    "action_price_relationships": {}
+  },
+  "transaction_cost_analysis": {
+    "total_transaction_cost": 0.0,
+    "average_cost_per_trade": 0.0,
+    "cost_to_return_ratio": 0.0,
+    "trades_per_step": 0.0,
+    "cost_efficiency_score": 1.0
+  },
+  "walk_forward_analysis": {
+    "window_metrics": {
+      "window_100": {
+        "mean_return": -0.04703867119998403,
+        "volatility": 0.1827473571237595,
+        "sharpe_ratio": -3.970931710331761,
+        "consistency_score": -0.34661503705374175
+      },
+      "window_200": {
+        "mean_return": -0.1040052920724112,
+        "volatility": 0.2634754058808275,
+        "sharpe_ratio": -5.8616468896380605,
+        "consistency_score": -0.6521930008613448
+      },
+      "window_500": {
+        "mean_return": -0.4063092081442908,
+        "volatility": 0.39497777261000605,
+        "sharpe_ratio": -11.54700306238582,
+        "consistency_score": 35.856816809745766
+      }
+    },
+    "adaptation_analysis": {
+      "first_half_return": -0.8012869807542968,
+      "second_half_return": -0.016567998684606712,
+      "adaptation_ratio": 0.020676735155499865,
+      "learning_efficiency": 0.020676735155499865
+    }
+  },
+  "microstructure_analysis": {
+    "market_depth": {
+      "price_volatility": 0.025300319910578545,
+      "liquidity_proxy": 0.9753239910109605,
+      "trading_efficiency": 1.0
+    },
+    "spread_analysis": {
+      "estimated_spread": 85.93803970059906,
+      "spread_to_price_ratio": 0.000432002920870397,
+      "slippage_risk": 0.0
+    }
+  }
+}
