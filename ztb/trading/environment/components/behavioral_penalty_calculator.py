@@ -3,7 +3,7 @@
 Behavioral Penalty Calculator - Component for calculating behavior-related penalties.
 """
 from collections import deque
-from typing import List
+from typing import List, Optional, Dict, Any
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
@@ -12,16 +12,22 @@ from ztb.utils.logging_utils import get_logger
 class BehavioralPenaltyCalculator:
     """
     Calculates penalties related to agent's behavior, such as action consistency and balance.
+    
+    SAC v448 Layer 2 enhancements:
+    - TrendDetector integration for trend-aware balance target adjustments
+    - Emergency intervention for extreme bias (>30% BUY-SELL deviation)
     """
 
-    def __init__(self, config: EnvironmentConfig):
+    def __init__(self, config: EnvironmentConfig, trend_detector: Optional[Any] = None):
         """
         Initializes the BehavioralPenaltyCalculator.
 
         Args:
             config: Environment configuration object.
+            trend_detector: Optional TrendDetector instance for trend-aware adjustments.
         """
         self.config = config
+        self.trend_detector = trend_detector
         self.logger = get_logger(self.__class__.__name__)
         self._load_settings()
         
@@ -60,6 +66,15 @@ class BehavioralPenaltyCalculator:
             self.balance_penalty_value = float(_rs_get("balance_penalty", 1.0))  # type: ignore
             self.balance_penalty_tolerance = float(_rs_get("balance_penalty_tolerance", 0.05))  # type: ignore
             self.balance_penalty_min_actions = int(_rs_get("balance_penalty_min_actions", 10))  # type: ignore
+            
+            # Emergency intervention settings (SAC v448 Layer 2)
+            self.emergency_intervention_enabled = bool(_rs_get("emergency_intervention_enabled", True))
+            self.emergency_intervention_threshold = float(_rs_get("emergency_intervention_threshold", 0.30))  # type: ignore
+            self.emergency_intervention_penalty = float(_rs_get("emergency_intervention_penalty", -500.0))  # type: ignore
+            
+            # Trend-aware balance target adjustment settings
+            self.trend_adjustment_enabled = bool(_rs_get("trend_adjustment_enabled", True))
+            self.trend_adjustment_strength = float(_rs_get("trend_adjustment_strength", 0.1))  # type: ignore
             
             balance_penalty_targets = _rs_get("balance_penalty_targets", {})
             if not isinstance(balance_penalty_targets, dict):
@@ -301,6 +316,83 @@ class BehavioralPenaltyCalculator:
             shortfall = target - entropy
             return self.action_entropy_shaping_value * shortfall
         return 0.0
+
+    def calculate_emergency_intervention(self) -> float:
+        """
+        SAC v448 Layer 2: Emergency intervention penalty for extreme action bias.
+        
+        Applies a strong penalty (-500 by default) when the BUY-SELL difference
+        exceeds 30%, preventing bias collapse to >90% BUY or >90% SELL.
+        
+        Returns:
+            Emergency penalty if bias is extreme, 0.0 otherwise.
+        """
+        if not getattr(self, "emergency_intervention_enabled", True):
+            return 0.0
+        
+        counts = self._get_recent_counts()
+        total = sum(counts)
+        
+        if total < self.balance_penalty_min_actions:
+            return 0.0
+        
+        buy_ratio = counts[1] / total
+        sell_ratio = counts[2] / total
+        buy_sell_diff = abs(buy_ratio - sell_ratio)
+        
+        threshold = getattr(self, "emergency_intervention_threshold", 0.30)
+        if buy_sell_diff > threshold:
+            penalty = getattr(self, "emergency_intervention_penalty", -500.0)
+            self.logger.warning(
+                f"Emergency intervention triggered: BUY-SELL diff={buy_sell_diff:.2%} "
+                f"(BUY={buy_ratio:.2%}, SELL={sell_ratio:.2%}), penalty={penalty}"
+            )
+            return penalty
+        
+        return 0.0
+    
+    def _adjust_targets_by_trend(self) -> Dict[str, float]:
+        """
+        SAC v448 Layer 2: Adjust balance targets based on market trend.
+        
+        Uptrend: Increase buy_target, decrease sell_target
+        Downtrend: Decrease buy_target, increase sell_target
+        Neutral: Use baseline targets
+        
+        Returns:
+            Dictionary with adjusted hold_target, buy_target, sell_target.
+        """
+        if not getattr(self, "trend_adjustment_enabled", True) or self.trend_detector is None:
+            return {
+                "hold_target": self.hold_target,
+                "buy_target": self.buy_target,
+                "sell_target": self.sell_target
+            }
+        
+        trend_signal = self.trend_detector.get_trend_signal()
+        strength = getattr(self, "trend_adjustment_strength", 0.1)
+        
+        # Adjust targets: positive trend favors BUY, negative favors SELL
+        buy_adjustment = trend_signal * strength
+        sell_adjustment = -trend_signal * strength
+        
+        adjusted_buy = max(0.1, min(0.5, self.buy_target + buy_adjustment))
+        adjusted_sell = max(0.1, min(0.5, self.sell_target + sell_adjustment))
+        
+        # Normalize to maintain total = 1.0
+        total = adjusted_buy + adjusted_sell
+        if total > 0.8:  # Leave at least 20% for HOLD
+            scale = 0.8 / total
+            adjusted_buy *= scale
+            adjusted_sell *= scale
+        
+        adjusted_hold = 1.0 - adjusted_buy - adjusted_sell
+        
+        return {
+            "hold_target": adjusted_hold,
+            "buy_target": adjusted_buy,
+            "sell_target": adjusted_sell
+        }
 
     def reset(self):
         """Resets the internal state of the calculator."""
