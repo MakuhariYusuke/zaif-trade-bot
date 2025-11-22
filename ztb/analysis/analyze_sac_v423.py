@@ -8,6 +8,8 @@ Analyzes training results from SAC v423 initial test runs.
 import json
 import sys
 from pathlib import Path
+
+import numpy as np
 from typing import Optional
 
 import matplotlib.pyplot as plt

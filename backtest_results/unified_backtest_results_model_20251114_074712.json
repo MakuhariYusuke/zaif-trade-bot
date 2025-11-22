@@ -1,0 +1,8 @@
+{
+  "mode": "model",
+  "n_episodes": 5,
+  "n_periods": 16938,
+  "enable_signal_guidance": true,
+  "error": "Error: Unexpected observation shape (88,) for Box environment, please use (182,) or (n_env, 182) for the observation shape.",
+  "results": []
+}

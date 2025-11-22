@@ -897,9 +897,12 @@ class HeavyTradingEnv(
         # Validate reward using ValidationManager
         reward = self.validation_manager.validate_reward_calculation(reward)
 
-        # Add raw reward components to info for debugging
+        # Add raw reward components to info for debugging and AB analysis
         info = self._get_info()
-        info.update(self.reward_calculator.get_last_reward_components())
+        reward_components = self.reward_calculator.get_last_reward_components()
+        info.update(reward_components)
+        # Store reward_components as a separate key for easy extraction in callbacks
+        info["reward_components"] = reward_components.copy()
         info.update(debug_info)
 
         # Enhanced debug logging for SAC continuous action and reward analysis

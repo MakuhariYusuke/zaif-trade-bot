@@ -1,0 +1,8 @@
+{
+  "mode": "model",
+  "n_episodes": 5,
+  "n_periods": 16938,
+  "enable_signal_guidance": true,
+  "error": "compute_features_batch() got an unexpected keyword argument 'skip_quality_filtering'",
+  "results": []
+}

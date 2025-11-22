@@ -17,19 +17,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.market_regime_types import MarketRegime
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
-
-class MarketRegime(Enum):
-    """Market regime classifications."""
-
-    BULL = "bull"
-    BEAR = "bear"
-    SIDEWAYS = "sideways"
-    HIGH_VOLATILITY = "high_volatility"
-    LOW_VOLATILITY = "low_volatility"
 
 
 class VolatilityLevel(Enum):

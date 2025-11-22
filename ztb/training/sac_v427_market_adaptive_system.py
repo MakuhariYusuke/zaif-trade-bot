@@ -19,7 +19,7 @@ from ztb.sac_v426_improvement.config import SACv426Config
 
 
 @dataclass
-class MarketRegime:
+class MarketRegimeInfo:
     """Market regime classification."""
 
     name: str
@@ -59,38 +59,38 @@ class SACv427MarketAdaptiveSystem:
         self.federated_aggregator = None
         self.continual_learner = None
 
-    def _initialize_market_regimes(self) -> Dict[str, MarketRegime]:
+    def _initialize_market_regimes(self) -> Dict[str, MarketRegimeInfo]:
         """Initialize market regime definitions."""
         return {
-            "bull_high_vol": MarketRegime(
+            "bull_high_vol": MarketRegimeInfo(
                 name="bull_high_vol",
                 volatility=0.03,
                 trend_strength=0.002,
                 correlation_target=0.3,
                 risk_multiplier=1.2,
             ),
-            "bull_low_vol": MarketRegime(
+            "bull_low_vol": MarketRegimeInfo(
                 name="bull_low_vol",
                 volatility=0.01,
                 trend_strength=0.001,
                 correlation_target=0.2,
                 risk_multiplier=0.8,
             ),
-            "bear_high_vol": MarketRegime(
+            "bear_high_vol": MarketRegimeInfo(
                 name="bear_high_vol",
                 volatility=0.03,
                 trend_strength=-0.002,
                 correlation_target=0.25,
                 risk_multiplier=1.5,
             ),
-            "bear_low_vol": MarketRegime(
+            "bear_low_vol": MarketRegimeInfo(
                 name="bear_low_vol",
                 volatility=0.01,
                 trend_strength=-0.001,
                 correlation_target=0.15,
                 risk_multiplier=1.0,
             ),
-            "sideways": MarketRegime(
+            "sideways": MarketRegimeInfo(
                 name="sideways",
                 volatility=0.015,
                 trend_strength=0.0005,

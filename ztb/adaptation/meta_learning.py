@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 @dataclass
-class TaskData:
+class MetaTaskData:
     """タスクデータ"""
 
     states: torch.Tensor
@@ -57,7 +57,7 @@ class MAML(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-    def adapt_to_task(self, task_data: TaskData, loss_fn: Callable) -> nn.Module:
+    def adapt_to_task(self, task_data: MetaTaskData, loss_fn: Callable) -> nn.Module:
         """タスクへの適応"""
         # モデルコピー
         adapted_model = copy.deepcopy(self.model)
@@ -111,7 +111,7 @@ class Reptile(nn.Module):
         return self.model(x)
 
     def adapt_to_task(
-        self, task_data: TaskData, loss_fn: Callable
+        self, task_data: MetaTaskData, loss_fn: Callable
     ) -> Tuple[nn.Module, Dict[str, Any]]:
         """タスクへの適応"""
         adapted_model = copy.deepcopy(self.model)
@@ -209,7 +209,7 @@ class MetaLearner:
         self.best_model_state = None
         self.best_performance = float("-inf")
 
-    def collect_task_data(self, task_data: TaskData):
+    def collect_task_data(self, task_data: MetaTaskData):
         """タスクデータ収集"""
         self.task_buffer.append(task_data)
 
@@ -217,7 +217,7 @@ class MetaLearner:
         if len(self.task_buffer) > 100:
             self.task_buffer = self.task_buffer[-100:]
 
-    def sample_tasks(self, num_tasks: int) -> List[TaskData]:
+    def sample_tasks(self, num_tasks: int) -> List[MetaTaskData]:
         """タスクサンプリング"""
         if len(self.task_buffer) < num_tasks:
             logger.warning(
@@ -336,7 +336,7 @@ class MetaLearner:
         return training_history
 
     def _evaluate_meta_performance(
-        self, tasks: List[TaskData], loss_fn: Callable
+        self, tasks: List[MetaTaskData], loss_fn: Callable
     ) -> float:
         """メタ性能評価"""
         total_performance = 0
@@ -361,7 +361,7 @@ class MetaLearner:
         return total_performance / len(tasks) if tasks else 0.0
 
     def adapt_to_new_market(
-        self, market_data: TaskData, adaptation_steps: Optional[int] = None
+        self, market_data: MetaTaskData, adaptation_steps: Optional[int] = None
     ) -> nn.Module:
         """新規市場への適応"""
         if adaptation_steps is None:
@@ -434,7 +434,7 @@ class MarketMetaLearner:
         dones: np.ndarray,
     ):
         """市場データ追加"""
-        task_data = TaskData(
+        task_data = MetaTaskData(
             states=torch.FloatTensor(states),
             actions=torch.FloatTensor(actions),
             rewards=torch.FloatTensor(rewards),
@@ -459,7 +459,7 @@ class MarketMetaLearner:
         self, market_name: str, market_data: Dict[str, np.ndarray]
     ) -> nn.Module:
         """特定市場への適応"""
-        task_data = TaskData(
+        task_data = MetaTaskData(
             states=torch.FloatTensor(market_data["states"]),
             actions=torch.FloatTensor(market_data["actions"]),
             rewards=torch.FloatTensor(market_data["rewards"]),

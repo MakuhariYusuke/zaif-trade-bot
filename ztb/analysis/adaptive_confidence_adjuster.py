@@ -5,7 +5,7 @@ Phase 3-2: パラメータ最適化 - 動的信頼度閾値調整システム
 トレンド、ボラティリティ、レジームに応じた適応型閾値管理を実装します。
 """
 
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
@@ -13,29 +13,8 @@ from enum import Enum
 import logging
 from datetime import datetime, timedelta
 
+from ztb.analysis.market_regime_types import MarketRegime
 from ztb.utils.performance_profiler import PerformanceProfiler
-
-
-class MarketRegime(Enum):
-    """市場レジーム - 12分類拡張版"""
-
-    # トレンド系 (4分類)
-    STRONG_BULL = "strong_bull"        # 強い強気トレンド
-    MODERATE_BULL = "moderate_bull"    # 中程度の強気トレンド
-    MODERATE_BEAR = "moderate_bear"    # 中程度の弱気トレンド
-    STRONG_BEAR = "strong_bear"        # 強い弱気トレンド
-
-    # レンジ系 (4分類)
-    TIGHT_RANGE = "tight_range"        # 狭いレンジ (低ボラティリティ)
-    WIDE_RANGE = "wide_range"          # 広いレンジ (高ボラティリティ)
-    VOLATILE_RANGE = "volatile_range"  # ボラティリティの高いレンジ
-    QUIET_RANGE = "quiet_range"        # ボラティリティの低いレンジ
-
-    # 特殊パターン (4分類)
-    BREAKOUT_UP = "breakout_up"        # 上方向ブレイクアウト
-    BREAKOUT_DOWN = "breakout_down"    # 下方向ブレイクアウト
-    REVERSAL_UP = "reversal_up"        # 上方向転換
-    REVERSAL_DOWN = "reversal_down"    # 下方向転換
 
 
 @dataclass

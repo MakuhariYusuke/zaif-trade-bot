@@ -19,7 +19,7 @@ class BaseExchangeConfig(ABC):
     and configuration for different exchanges.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the config and load environment variables from .env file."""
         load_dotenv()
 

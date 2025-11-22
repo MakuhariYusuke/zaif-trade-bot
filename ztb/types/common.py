@@ -12,7 +12,10 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
-from stable_baselines3.common.logger import Logger
+try:
+    from stable_baselines3.common.logger import Logger
+except (ImportError, OSError):
+    Logger = Any
 
 try:
     from gymnasium import spaces
@@ -21,7 +24,7 @@ except ImportError:
 
 try:
     from torch.utils.data import DataLoader
-except ImportError:
+except (ImportError, OSError):
     DataLoader = Any  # Fallback if torch not available
 
 # Action type for trading environments

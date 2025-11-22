@@ -193,8 +193,17 @@ class SACv427AdvancedTrainer(BaseTrainer):
                 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
                 df = df.set_index("timestamp")
 
-            # Generate v427 features
+            # Generate v427 features (capture duration if available)
+            import time
+
+            start = time.perf_counter()
             features_df = self.feature_engineer.generate_v427_features(df)
+            elapsed = time.perf_counter() - start
+            # If feature engineer stored elapsed time on DataFrame attrs, prefer that
+            feat_time = getattr(features_df, "attrs", {}).get("feature_generation_time_s", None)
+            if feat_time is None:
+                feat_time = elapsed
+            logger.info(f"Feature engineering (trainer wrapper) duration: {feat_time:.3f}s")
 
             # Save features
             features_path = "data/btc_jpy_v427_features.csv"
@@ -205,6 +214,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
                 "features_generated": len(features_df.columns),
                 "data_points": len(features_df),
                 "features_path": features_path,
+                "feature_generation_time_s": feat_time,
                 "regime_features": [
                     col for col in features_df.columns if "regime_" in col
                 ],

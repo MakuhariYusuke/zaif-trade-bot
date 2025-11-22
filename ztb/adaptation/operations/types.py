@@ -190,7 +190,7 @@ class IntegrationStatus(Enum):
 
 
 @dataclass
-class IntegrationStatus:
+class IntegrationStatusInfo:
     """統合ステータス"""
 
     monitoring_active: bool
@@ -201,7 +201,7 @@ class IntegrationStatus:
 
 
 @dataclass
-class OperationalMetrics:
+class OperationalMetricsInfo:
     """運用メトリクス"""
 
     uptime_seconds: float
@@ -233,3 +233,14 @@ class RecoveryAction:
     timestamp: datetime
     system_state: Dict[str, Any]
     recommended_actions: List[str]
+
+
+__all__ = [
+    "SystemStatus",
+    "IntegrationStatus",
+    "IntegrationStatusInfo",
+    "OperationalMetrics",
+    "OperationalMetricsInfo",
+    "AlertSummary",
+    "RecoveryAction",
+]

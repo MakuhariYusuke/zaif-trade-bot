@@ -27,6 +27,8 @@ Examples:
 """
 
 import argparse
+import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -36,17 +38,24 @@ try:
 except ImportError:
     np = None
 
+# Setup logging before any other imports
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.utils.logging_utils import get_logger
+# Import after sys.path setup
 from ztb.utils.path_utils import get_project_root
 
 # Get project root using utility
 project_root: Path = get_project_root()
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class UnifiedAnalysisSuite:
@@ -492,97 +501,6 @@ class PerformanceAnalysis(BaseAnalyzer):
 
 
 class ComparativeAnalysis(BaseAnalyzer):
-    """Comparative analysis tools."""
-
-    # def run_versions(self, args: argparse.Namespace) -> int:
-    #     """Compare multiple versions."""
-    #     try:
-    #         from ztb.analysis.comparative.compare_three_sac_versions import (
-    #             compare_sac_versions,
-    #         )
-
-    #         result = compare_sac_versions(
-    #             versions=args.versions,
-    #             metrics=getattr(args, "metrics", None),
-    #             output_path=getattr(args, "output", None),
-    #         )
-    #         logger.info("Version comparison completed")
-    #         return 0
-    #     except Exception as e:
-    #         logger.error(f"Version comparison failed: {e}")
-    #         return 1
-
-    # def run_backtest(self, args: argparse.Namespace) -> int:
-    #     """Compare backtest results."""
-    #     try:
-    #         from ztb.analysis.comparative.compare_backtest_v378_v381 import (
-    #             compare_backtest_results,
-    #         )
-
-    #         result = compare_backtest_results(
-    #             results_a=getattr(args, "results_a", None),
-    #             results_b=getattr(args, "results_b", None),
-    #             output_path=getattr(args, "output", None),
-    #         )
-    #         logger.info("Backtest comparison completed")
-    #         return 0
-    #     except Exception as e:
-    #         logger.error(f"Backtest comparison failed: {e}")
-    #         return 1
-
-    # def run_statistical(self, args: argparse.Namespace) -> int:
-    #     """Run statistical tests."""
-    #     try:
-    #         from ztb.analysis.comparative.statistical_test_v395g_v395i import (
-    #             run_statistical_tests,
-    #         )
-
-    #         result = run_statistical_tests(
-    #             data_a=getattr(args, "data_a", None),
-    #             data_b=getattr(args, "data_b", None),
-    #             test_type=getattr(args, "test", "ttest"),
-    #             output_path=getattr(args, "output", None),
-    #         )
-    #         logger.info("Statistical tests completed")
-    #         return 0
-    #     except Exception as e:
-    #         logger.error(f"Statistical tests failed: {e}")
-    #         return 1
-
-    def run_analyze_backtest(self, args: argparse.Namespace) -> int:
-        """Run comprehensive backtest analysis."""
-        try:
-            from ztb.analysis.comparative.analyze_backtest import BacktestAnalyzer
-
-            analyzer = BacktestAnalyzer(
-                results_path=getattr(args, "results", ""),
-                training_report_path=getattr(args, "training_report", None),
-            )
-
-            report = analyzer.generate_comprehensive_report()
-
-            # Save report to file if output path specified
-            if hasattr(args, "output") and args.output:
-                with open(args.output, "w", encoding="utf-8") as f:
-                    f.write(report)
-                logger.info(f"Report saved to {args.output}")
-            else:
-                # Print report to console
-                print(report)
-
-            logger.info("Backtest analysis completed")
-            return 0
-        except Exception as e:
-            logger.error(f"Backtest analysis failed: {e}")
-            return 1
-
-    def run_benchmark(self, args: argparse.Namespace) -> int:
-        """Run benchmark comparison analysis."""
-        logger.warning("Benchmark comparison analysis not implemented yet")
-        return 1
-
-
-class ComparativeAnalysis(BaseAnalyzer):
     """Comparative analysis tools for model and strategy comparison."""
 
     def run_backtest_sac_v424(self, args: argparse.Namespace) -> int:
@@ -688,6 +606,53 @@ class ComparativeAnalysis(BaseAnalyzer):
         except Exception as e:
             logger.error(f"Model comparison failed: {e}")
             return 1
+
+    def run_backtest(self, args: argparse.Namespace) -> int:
+        """Run SAC v446 backtest and optionally analyze the generated results."""
+        try:
+            from backtest.simple_backtest_v446 import run_simple_backtest
+            from ztb.analysis.comparative.analyze_backtest import BacktestAnalyzer
+        except Exception as e:
+            logger.error(f"Backtest runner setup failed: {e}")
+            return 1
+
+        model_name = getattr(args, "model_name", "sac_v446_5m_100k_config")
+        config_path = getattr(
+            args,
+            "config_path",
+            "config/v446/sac_v446_multitimeframe_shortterm_optimized.json",
+        )
+        skip_quality = getattr(args, "skip_quality_filtering", False)
+        output_path = Path(getattr(args, "results", "backtest_results_sac_v446.json"))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info("Starting SAC v446 backtest via unified_analyze")
+        result = run_simple_backtest(model_name, config_path, skip_quality)
+        if not result:
+            logger.error("Backtest execution failed")
+            return 1
+
+        output_path.write_text(json.dumps(result, indent=2))
+        logger.info(f"Backtest results saved to {output_path}")
+
+        if getattr(args, "backtest_only", False):
+            return 0
+
+        analyzer = BacktestAnalyzer(
+            results_path=str(output_path),
+            training_report_path=getattr(args, "training_report", None),
+        )
+        report = analyzer.generate_comprehensive_report()
+
+        if getattr(args, "output", None):
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(report)
+            logger.info(f"Report saved to {args.output}")
+        else:
+            print(report)
+
+        logger.info("Backtest + analysis completed")
+        return 0
 
 
 class PaperTradingAnalysis(BaseAnalyzer):
@@ -1080,6 +1045,26 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model_results",
         help="Model results files (format: 'name1:path1,name2:path2')",
+    )
+    parser.add_argument(
+        "--model-name",
+        help="Backtest model base name (without .zip)",
+        default="sac_v446_5m_100k_config",
+    )
+    parser.add_argument(
+        "--config-path",
+        help="Backtest unified config path",
+        default="config/v446/sac_v446_multitimeframe_shortterm_optimized.json",
+    )
+    parser.add_argument(
+        "--skip-quality-filtering",
+        action="store_true",
+        help="Skip feature quality filtering in the backtest",
+    )
+    parser.add_argument(
+        "--backtest-only",
+        action="store_true",
+        help="Run the backtest without automatically generating the report",
     )
 
     # Paper trading analysis arguments

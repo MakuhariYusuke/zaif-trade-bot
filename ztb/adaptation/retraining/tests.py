@@ -457,7 +457,8 @@ class TestRetrainingTrigger(unittest.TestCase):
     def test_weak_reference_memory_management(self):
         """弱参照によるメモリ管理"""
         # コールバックオブジェクトを作成
-        callback_obj = lambda: None
+        def callback_obj():
+            pass
 
         # オブジェクトを弱参照セットに追加
         self.trigger._metric_callbacks.add(callback_obj)

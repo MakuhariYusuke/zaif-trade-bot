@@ -159,6 +159,7 @@ class PPOConfig(TypedDict, total=False):
 
     # Trading-specific parameters
     reward_scaling: float
+    reward_clip_value: float
     transaction_cost: float
     position_penalty_scale: float
     inventory_penalty_scale: float
@@ -253,10 +254,10 @@ def get_ppo_config(overrides: Optional[PPOConfig] = None) -> PPOConfig:
         >>> print(config["learning_rate"])  # 0.0001
         >>> print(config["batch_size"])     # 128
     """
-    config: PPOConfig = dict(DEFAULT_PPO_CONFIG)
+    config: PPOConfig = DEFAULT_PPO_CONFIG.copy()
     if overrides:
         config.update(overrides)
-    return config  # type: ignore[return-value]
+    return config
 
 
 def get_conservative_ppo_config() -> PPOConfig:
