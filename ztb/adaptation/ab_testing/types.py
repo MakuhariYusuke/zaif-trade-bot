@@ -60,7 +60,7 @@ class TestMetrics:
 
 
 @dataclass
-class StatisticalResult:
+class ABTestingStatisticalResult:
     """統計的検定結果"""
 
     test_type: StatisticalTest
@@ -79,7 +79,7 @@ class TestResult:
     status: TestStatus
     winner_variant: Optional[str]
     confidence_level: float
-    statistical_results: List[StatisticalResult]
+    statistical_results: List[ABTestingStatisticalResult]
     metrics_comparison: Dict[str, TestMetrics]
     start_time: datetime
     end_time: Optional[datetime]

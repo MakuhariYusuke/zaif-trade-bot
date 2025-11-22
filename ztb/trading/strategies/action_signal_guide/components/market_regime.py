@@ -12,19 +12,15 @@ from datetime import datetime, timedelta
 from enum import Enum
 import logging
 
+from ztb.analysis.market_regime_types import MarketRegime
+
 logger = logging.getLogger(__name__)
 
 
-class MarketRegime(Enum):
-    """Enumeration of market regimes."""
-    TRENDING_BULLISH = "trending_bullish"
-    TRENDING_BEARISH = "trending_bearish"
-    RANGING = "ranging"
-    HIGH_VOLATILITY = "high_volatility"
-    LOW_VOLATILITY = "low_volatility"
+from ztb.trading.environment.components.interfaces import IMarketRegimeDetector
 
 
-class MarketRegimeDetector:
+class MarketRegimeDetector(IMarketRegimeDetector):
     """
     Detects current market regime using multiple indicators.
     """
@@ -81,6 +77,24 @@ class MarketRegimeDetector:
             self.regime_history = self.regime_history[-50:]
 
         return regime
+
+    def detect_regime(self, current_price: float, step: int) -> str:
+        """
+        Detect current market regime (IMarketRegimeDetector interface).
+
+        Args:
+            current_price: Current market price
+            step: Current step number
+
+        Returns:
+            Market regime: 'bull', 'bear', 'sideways', 'volatile'
+        """
+        # For interface compatibility, return a simple regime based on price
+        # In a real implementation, this would use historical data
+        if len(self.regime_history) > 0:
+            return self.regime_history[-1]["regime"].value
+        else:
+            return "sideways"
 
     def get_regime_stability(self) -> float:
         """

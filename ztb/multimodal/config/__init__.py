@@ -269,7 +269,7 @@ class MultimodalConfig:
             },
         }
 
-    def save_yaml(self, yaml_path: str):
+    def save_yaml(self, yaml_path: str) -> None:
         """設定をYAMLファイルに保存"""
         config_dict = self.to_dict()
         with open(yaml_path, "w", encoding="utf-8") as f:

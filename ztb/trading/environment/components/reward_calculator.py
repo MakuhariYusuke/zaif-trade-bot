@@ -8,6 +8,7 @@ Refactored to follow SOLID principles with component-based architecture.
 # mypy: disable-error-code=literal-required
 
 import inspect
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -36,7 +37,7 @@ from .signal_integrator import SignalIntegrator
 
 
 # Add get_logger function for compatibility
-def get_logger(name: str):
+def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     import logging
     return logging.getLogger(name)
@@ -87,7 +88,7 @@ class RewardCalculator:
         self.last_signal_reward: float = 0.0
         self._previous_portfolio_value = initial_portfolio_value
         self._last_reward_components: Dict[str, Union[str, float]] = {}
-        self._recent_actions = []  # Reset this list as well
+        self._recent_actions: List[int] = []  # Reset this list as well
 
         # Initialize components
         self._initialize_components(config)
@@ -138,7 +139,7 @@ class RewardCalculator:
         # Logging setup
         self._setup_logging()
 
-    def _initialize_components(self, config: EnvironmentConfig):
+    def _initialize_components(self, config: EnvironmentConfig) -> None:
         """Initialize all sub-components."""
         self.market_regime_detector = self._init_market_regime_detector()
         self.dynamic_reward_shaper = self._init_dynamic_reward_shaper()
@@ -223,7 +224,7 @@ class RewardCalculator:
             ),
         )
 
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
         import logging
 
         reward_logger = logging.getLogger("ztb.trading.environment.reward")
@@ -291,24 +292,21 @@ class RewardCalculator:
         elif step > 100000 and self._current_log_level < logging.ERROR:
             self.set_log_level("ERROR")
 
-    def _map_action_to_index(self, action: int) -> int:
-        """Normalize action identifiers to consistent indices [HOLD, BUY, SELL]."""
-        action_int = int(action)
-        if action_int in (ACTION_HOLD, 0):
-            return 0
-        if action_int in (ACTION_BUY, 1):
-            return 1
-        if action_int in (ACTION_SELL, -1, 2):
-            return 2
-        raise ValueError(
-            f"Unsupported action value for forced balance tracking: {action}"
-        )
-
     def _record_action(self, action: int) -> int:
-        """Increment internal action counters and return normalized index."""
-        action_index = self._map_action_to_index(action)
-        self._action_counts[action_index] += 1
-        return action_index
+        """
+        Record action in behavioral penalty calculator and sync action counts.
+        
+        Args:
+            action: Action taken (0=HOLD, 1=BUY, 2=SELL)
+        
+        Returns:
+            Normalized action index (0=HOLD, 1=BUY, 2=SELL)
+        """
+        self.behavioral_penalty_calculator.record_action(action)
+        # Sync action counts with behavioral calculator's recent counts
+        self._action_counts = self.behavioral_penalty_calculator._get_recent_counts()
+        # Return normalized action index (actions are already 0,1,2)
+        return action
 
     def _map_forced_balance_penalty(self, deviation: float, severity: float) -> float:
         """Convert deviation above target into a scaled penalty value."""
@@ -380,7 +378,7 @@ class RewardCalculator:
             base_bonus = bonus_large
         return base_bonus * bonus_scale * severity_multiplier
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets the internal state of the calculator for a new episode."""
         self.logger.debug("Resetting RewardCalculator state.")
         self._action_counts = [0, 0, 0]
@@ -455,10 +453,10 @@ class RewardCalculator:
 
     def _get_nested_setting(
         self, key: str
-    ) -> Optional[Union[int, float, bool, str, dict, list]]:
+    ) -> Optional[Union[int, float, bool, str, dict, list, RewardSettings]]:
         """Get nested setting value using dot notation."""
         keys = key.split(".")
-        value: Any = self.reward_settings
+        value: Union[int, float, bool, str, dict, list, RewardSettings, None] = self.reward_settings
 
         try:
             for k in keys:
@@ -516,42 +514,6 @@ class RewardCalculator:
 
         # Record the action for behavioral analysis BEFORE calculating penalties
         self._record_action(action)
-
-        # Debug logging for reward calculation inputs
-        self.logger.debug(
-            f"Reward calc inputs: action={action}, pnl={pnl:.2f}, position={position:.4f}, "
-            f"portfolio_value={portfolio_value:.2f}, atr={atr:.2f}, current_price={current_price:.2f}, "
-            f"old_position={old_position:.4f}, step={step}"
-        )
-
-        # Log curriculum stage info with throttling for all stages
-        if self.config.curriculum_stage == "forced_balance":
-            should_log_stage = (
-                self._forced_balance_log_counter % self._forced_balance_log_interval
-                == 0
-            )
-            if should_log_stage:
-                self.logger.info(
-                    f"RewardCalculator: curriculum_stage={self.config.curriculum_stage}, total_actions={sum(self._action_counts)}"
-                )
-        else:
-            # For other stages, use general throttling
-            should_log_stage = (
-                self._curriculum_log_counter % self._curriculum_log_interval == 0
-            )
-            if should_log_stage:
-                self.logger.info(
-                    f"RewardCalculator: curriculum_stage={self.config.curriculum_stage}, total_actions={sum(self._action_counts)}"
-                )
-
-        # Increment general counter for all stages
-        self._curriculum_log_counter += 1
-
-        self.last_signal_strength = 0.0
-        self.last_signal_reward = 0.0
-
-        # Record the action for behavioral analysis BEFORE calculating penalties
-        self.behavioral_penalty_calculator.record_action(action)
 
         # Update win/loss counts
         if pnl > 0:
@@ -677,11 +639,11 @@ class RewardCalculator:
         self._previous_portfolio_value = portfolio_value
 
         # Filter arguments for the specific method being called
-        sig = inspect.signature(reward_method)
+        sig = inspect.signature(reward_method)  # type: ignore
         valid_args = {k: v for k, v in method_args.items() if k in sig.parameters}
 
         # Calculate the base reward for the current stage
-        base_reward = reward_method(**valid_args)
+        base_reward = reward_method(**valid_args)  # type: ignore
 
         # Apply action bonus directly to reward
         base_reward += action_bonus
@@ -691,6 +653,29 @@ class RewardCalculator:
 
         # Apply the balance penalty calculated earlier
         base_reward += balance_penalty
+        # Apply skewness penalty if available (penalize strong BUY/SELL skews)
+        try:
+            skew_penalty = self.behavioral_penalty_calculator.calculate_skewness_penalty()
+        except Exception:
+            skew_penalty = 0.0
+        base_reward += skew_penalty
+        self._last_reward_components["skew_penalty"] = skew_penalty
+
+        # Balance shaping reward: positive when this action moves distribution towards targets
+        try:
+            balance_shaping = self.behavioral_penalty_calculator.calculate_balance_shaping(action)
+        except Exception:
+            balance_shaping = 0.0
+        base_reward += balance_shaping
+        self._last_reward_components["balance_shaping"] = balance_shaping
+
+        # Action entropy shaping: encouraging diversity in actions
+        try:
+            entropy_shaping = self.behavioral_penalty_calculator.calculate_action_entropy_shaping()
+        except Exception:
+            entropy_shaping = 0.0
+        base_reward += entropy_shaping
+        self._last_reward_components["entropy_shaping"] = entropy_shaping
 
         # Apply common post-processing to the base reward
         final_reward = self._post_process_reward(
@@ -860,14 +845,36 @@ class RewardCalculator:
                 )
                 return 0.0
 
+            # Store reward components for analysis
+            self._last_reward_components = {
+                "stage": "simple_reward",
+                "pnl": float(pnl),
+                "adjusted_pnl": float(adjusted_pnl),
+                "base_reward": float(adjusted_pnl * reward_scaling),
+                "hold_penalty_applied": action == ACTION_HOLD,
+                "trade_bonus_applied": action in [ACTION_BUY, ACTION_SELL],
+                "position_change": float(position_change),
+                "final_reward": float(reward),
+            }
+
             return reward
 
         except Exception as e:
             self.logger.error(f"RewardCalculator failed, using simple reward: {e}")
+            self._last_reward_components = {
+                "stage": "simple_reward_error",
+                "error": str(e),
+            }
             return 0.0
 
     def _calculate_forced_balance_reward(self, action: int, step: int) -> float:
         """Stage: Forced balance reward that encourages corrective actions toward configured targets."""
+        # Sync RewardCalculator's counts with BehavioralPenaltyCalculator sliding-window counts
+        try:
+            self._action_counts = self.behavioral_penalty_calculator._get_recent_counts()
+        except Exception:
+            # Fallback: keep existing _action_counts
+            pass
         action_index = self._record_action(action)
         total_actions = sum(self._action_counts)
 
@@ -1168,7 +1175,7 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: np.ndarray = None,
+        observation: Optional[np.ndarray] = None,
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
         self._record_action(action)
@@ -1243,8 +1250,8 @@ class RewardCalculator:
             action_ratios = [count / total_actions for count in self._action_counts]
 
             deviation = abs(
-                action_ratios[self._map_action_to_index(action)]
-                - target_ratios[self._map_action_to_index(action)]
+                action_ratios[action]
+                - target_ratios[action]
             )
             if deviation > tolerance:
                 excess_deviation = deviation - tolerance
@@ -1308,7 +1315,7 @@ class RewardCalculator:
         """Simplified ultra-profit reward that focuses on basic trading principles."""
 
         # Basic reward components
-        reward = 0.0
+        reward: float = 0.0
 
         # Profit/Loss component - normalized by ATR
         if pnl > 0:
@@ -1615,19 +1622,19 @@ class RewardCalculator:
         self.logger.debug("Testing reward calculation...")
         for i, case in enumerate(test_cases):
             reward = self.calculate_reward(
-                action=case["action"],
-                current_price=case["current_price"],
-                position=case["position"],
-                portfolio_value=case["portfolio_value"],
-                atr=case["atr"],
+                action=case["action"],  # type: ignore
+                current_price=case["current_price"],  # type: ignore
+                position=case["position"],  # type: ignore
+                portfolio_value=case["portfolio_value"],  # type: ignore
+                atr=case["atr"],  # type: ignore
                 transaction_cost=10.0,
                 reward_scaling=10.0,  # Scale rewards for testing
-                pnl=case["pnl"],
-                old_position=case["old_position"],
-                step=case["step"],
+                pnl=case["pnl"],  # type: ignore
+                old_position=case["old_position"],  # type: ignore
+                step=case["step"],  # type: ignore
                 observation=None,
                 reward_history=[],
-                portfolio_value_history=[case["portfolio_value"]] * 30,
+                portfolio_value_history=[case["portfolio_value"]] * 30,  # type: ignore  # type: ignore
             )
             self.logger.debug(
                 f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}"

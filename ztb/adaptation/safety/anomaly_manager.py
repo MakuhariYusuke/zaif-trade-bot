@@ -6,6 +6,7 @@ Anomaly Detection Manager
 import logging
 import threading
 import time
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum

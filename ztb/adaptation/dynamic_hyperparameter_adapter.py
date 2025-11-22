@@ -282,7 +282,8 @@ class DynamicHyperparameterAdapter:
             self._trigger_adaptation_callbacks(result)
 
             logger.info(
-                f"Adapted {len(applied_adaptations)} hyperparameters with {performance_improvement:.4f} performance improvement"
+                f"Adapted {len(applied_adaptations)} hyperparameters with "
+                f"{performance_improvement:.4f} performance improvement"
             )
             return result
 

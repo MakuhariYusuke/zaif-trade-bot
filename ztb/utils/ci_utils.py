@@ -21,7 +21,10 @@ from typing import Any, Dict, Optional
 import psutil
 import requests
 
-from ztb.trading.environment.constants import BYTES_PER_MB
+try:
+    from ztb.trading.environment.constants import BYTES_PER_MB
+except (ImportError, OSError):
+    BYTES_PER_MB = 1024 * 1024
 from ztb.utils.errors import safe_operation
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.logging_utils import get_logger

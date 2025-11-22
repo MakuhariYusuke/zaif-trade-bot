@@ -8,6 +8,18 @@ backtest analysis implementations.
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
 
+class RiskMetricsResult(TypedDict, total=False):
+    """Aggregated risk metric results."""
+
+    total_return: float
+    sharpe_ratio: float
+    max_drawdown: float
+    volatility: float
+    sortino_ratio: float
+    win_rate: float
+    profit_factor: float
+
+
 class NormalityTestResult(TypedDict, total=False):
     """Result of normality statistical tests."""
 
@@ -58,10 +70,10 @@ class TemporalPatternsResult(TypedDict, total=False):
     """Result of temporal pattern analysis."""
 
     hourly_returns: Dict[str, float]
-    weekday_returns: Dict[str, str]
+    weekday_returns: Dict[str, float]
 
 
-class MarketConditionResult(TypedDict):
+class MarketConditionResult(TypedDict, total=False):
     """Result of market condition analysis."""
 
     uptrend: Optional[Dict[str, Union[str, float]]]
@@ -72,7 +84,7 @@ class MarketConditionResult(TypedDict):
 class TradingFrequencyResult(TypedDict, total=False):
     """Result of trading frequency analysis."""
 
-    action_distribution: Dict[int, int]
+    action_distribution: Dict[str, float]
     trade_frequency: float
     avg_trade_interval: float
     min_trade_interval: float
@@ -163,11 +175,11 @@ class StressTestResult(TypedDict):
     high_volatility: Dict[str, Union[float, int]]
 
 
-class WalkForwardAnalysisResult(TypedDict):
+class WalkForwardAnalysisResult(TypedDict, total=False):
     """Result of walk-forward efficiency analysis."""
 
-    window_analysis: Optional[Dict[str, List[PerformanceMetricsResult]]]
-    adaptation_analysis: Optional[Dict[str, Union[float, int]]]
+    window_metrics: Dict[str, Dict[str, float]]
+    adaptation_analysis: Dict[str, Union[float, int]]
 
 
 class MicrostructureAnalysisResult(TypedDict):
@@ -179,24 +191,61 @@ class MicrostructureAnalysisResult(TypedDict):
     behavioral_patterns: Optional[Dict[str, float]]
 
 
+class SignalGuidanceAnalysisResult(TypedDict, total=False):
+    """Analysis result for signal guidance episodes."""
+
+    number_of_signals: int
+    average_score: float
+    score_std: float
+    min_score: float
+    max_score: float
+    original_hold: int
+    original_buy: int
+    original_sell: int
+    guidance_hold: int
+    guidance_buy: int
+    guidance_sell: int
+    differences: int
+    total_actions: int
+    difference_pct: float
+    correlation: float
+
+
+class BTCPerformanceResult(TypedDict, total=False):
+    """Performs BTC-related tracking metrics."""
+
+    initial_btc: float
+    final_btc: float
+    net_btc_gained: float
+    btc_return_pct: float
+    usd_return_pct: float
+    btc_vs_usd_performance_ratio: float
+    btc_mean_holding: float
+    btc_max_holding: float
+    btc_min_holding: float
+    btc_holding_volatility: float
+    btc_positive_changes: int
+    btc_negative_changes: int
+    btc_trade_frequency: float
+    btc_position_stability: float
+
+
 class AnalysisResult(TypedDict, total=False):
     """Comprehensive backtest analysis result."""
 
-    risk_metrics: Dict[str, float]
+    risk_metrics: RiskMetricsResult
     temporal_patterns: TemporalPatternsResult
     market_conditions: MarketConditionResult
     trading_frequency: TradingFrequencyResult
-    temporal_analysis: Union[
-        Dict[str, Any], TemporalPatternsResult
-    ]  # Keep for enhanced stats
-    market_condition_analysis: Union[
-        Dict[str, Any], MarketConditionResult
-    ]  # Keep for enhanced stats
-    trading_frequency_analysis: Union[
-        Dict[str, Any], TradingFrequencyResult
-    ]  # Keep for enhanced stats
+    btc_analysis: BTCPerformanceResult
+    signal_guidance_analysis: SignalGuidanceAnalysisResult
+    temporal_analysis: TemporalPatternsResult
+    market_condition_analysis: MarketConditionResult
+    trading_frequency_analysis: TradingFrequencyResult
     robustness_analysis: RobustnessAnalysisResult
     correlation_analysis: CorrelationAnalysisResult
     transaction_cost_analysis: TransactionCostAnalysisResult
     walk_forward_analysis: WalkForwardAnalysisResult
     microstructure_analysis: MicrostructureAnalysisResult
+
+

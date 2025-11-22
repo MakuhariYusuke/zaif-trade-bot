@@ -79,7 +79,7 @@ class MemoryManager:
 
         # Initialize caches
         self.feature_cache = TTLCache(maxsize=1000, ttl=300)  # 5 minutes TTL
-        self.data_cache = TTLCache(maxsize=500, ttl=600)     # 10 minutes TTL
+        self.data_cache = TTLCache(maxsize=500, ttl=60)     # 10 minutes TTL
         self.model_cache = TTLCache(maxsize=50, ttl=1800)    # 30 minutes TTL
 
         # Memory monitoring
@@ -249,8 +249,8 @@ class MemoryManager:
                 if len(self.memory_history) > 1000:
                     self.memory_history = self.memory_history[-1000:]
 
-                # Log if memory usage is high
-                if memory_stats["rss_mb"] > self.max_memory_mb * 0.8:
+                # Log if memory usage is high (relaxed threshold for feature engineering)
+                if memory_stats["rss_mb"] > self.max_memory_mb * 0.95:
                     logger.warning(
                         "High memory usage detected: %.1f MB / %.1f MB (%.1f%%)",
                         memory_stats["rss_mb"],
@@ -385,7 +385,7 @@ class DynamicBufferManager:
 
 
 # Global instances
-default_memory_manager = MemoryManager()
+default_memory_manager = MemoryManager(max_memory_mb=800.0)  # Increased from 500MB to handle feature engineering
 default_buffer_manager = DynamicBufferManager()
 
 
