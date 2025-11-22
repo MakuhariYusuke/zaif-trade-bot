@@ -1,0 +1,132 @@
+{
+  "_comment": "SAC v448 Configuration Template - Copy and customize for new experiments",
+  "_instructions": {
+    "1_version": "Update version to match your experiment (e.g., 4.4.8-v448.my_experiment)",
+    "2_model_name": "Update model_name to describe your experiment",
+    "3_action_bonuses": "Keep at 0.00 unless testing bias effects",
+    "4_asymmetric_scaling": "Keep at 1.00 for balanced learning",
+    "5_balance_targets": "Use 47.5/47.5/5.0 as baseline",
+    "6_forced_balance": "min_actions=100, threshold=0.08 for 1-min timeframe",
+    "7_mtf_weights": "30/55/15 for noise suppression"
+  },
+  "version": "4.4.8-v448.template",
+  "training": {
+    "model_name": "sac_v448_template",
+    "algorithm": "sac",
+    "total_timesteps": 3000,
+    "eval_freq": 1000,
+    "checkpoint_interval": 1000,
+    "data_config": {
+      "use_real_data": true,
+      "data_path": "data/btc_jpy_1m_dataset.csv",
+      "validation_split": 0.2
+    },
+    "environment": {
+      "timeframe": "1m",
+      "initial_balance": 200000.0,
+      "transaction_cost": 0.001,
+      "max_position_size": 1.0,
+      "enable_action_masking": true,
+      "use_continuous_actions": true,
+      "curriculum_stage": "forced_balance",
+      "reward_settings": {
+        "use_simple_reward": false,
+        "reward_scale": 1.8,
+        "trading_bonus": 0.01,
+        "profit_bonuses": {
+          "small_profit": 0.001,
+          "medium_profit": 0.005,
+          "large_profit": 0.01
+        },
+        "penalty_coefficients": {
+          "loss_penalty": -0.002,
+          "large_loss_penalty": -0.01,
+          "inactivity_penalty": -0.0001
+        },
+        "asymmetric_reward_scaling": {
+          "_comment": "Keep all at 1.00 for balanced learning",
+          "long_position_reward_multiplier": 1.00,
+          "short_position_reward_multiplier": 1.00,
+          "long_position_penalty_multiplier": 1.00,
+          "short_position_penalty_multiplier": 1.00
+        },
+        "profit_bonus_multiplier_buy": 1.0,
+        "profit_bonus_multiplier_sell": 1.0,
+        "entropy_bonus": 0.05,
+        "balance_penalty_enabled": true,
+        "balance_penalty_min_actions": 50,
+        "balance_penalty_targets": {
+          "_comment": "47.5/47.5/5.0 baseline from successful runs",
+          "buy_target": 0.475,
+          "sell_target": 0.475,
+          "hold_target": 0.05
+        },
+        "balance_penalty": 8.0,
+        "balance_penalty_tolerance": 0.04,
+        "balance_shaping_enabled": true,
+        "balance_shaping_value": 0.08,
+        "action_entropy_shaping_enabled": true,
+        "action_entropy_shaping_value": 0.02,
+        "forced_balance_min_actions": 100,
+        "forced_balance_threshold": 0.08,
+        "forced_balance_emergency_penalty": 500.0,
+        "forced_balance.penalty.scale": 3.0,
+        "forced_balance.penalty.value_very_large_deviation": 300.0,
+        "forced_balance.bonus.scale": 2.0,
+        "forced_balance.bonus.value_large_deviation": 40.0,
+        "signal_guidance": {
+          "guidance_level": "partial",
+          "signal_bonus_weight": 0.05,
+          "signal_penalty_weight": 0.03,
+          "enable_advanced_integration": true
+        }
+      },
+      "behavior_optimization": {
+        "action_balance_target": 0.45,
+        "balance_penalty": 8.0,
+        "balance_penalty_tolerance": 0.04,
+        "entropy_regularization": 0.05,
+        "action_smoothing": 0.06,
+        "consistency_penalty": 0.03
+      },
+      "action_bonuses": {
+        "_comment": "Keep at 0.00 to prevent bias accumulation",
+        "buy_action_bonus": 0.00,
+        "sell_action_bonus": 0.00,
+        "hold_action_bonus": 0.00
+      },
+      "enable_multi_timeframe": true,
+      "multi_timeframe": {
+        "base_timeframe": "1min",
+        "enabled_timeframes": ["1min", "5min", "15min"],
+        "feature_weights": {
+          "_comment": "30/55/15 for noise suppression",
+          "1min": 0.30,
+          "5min": 0.55,
+          "15min": 0.15
+        }
+      }
+    },
+    "features": {
+      "feature_set": "full",
+      "custom_features": null,
+      "quality_thresholds": {
+        "min_variance": 1e-12,
+        "max_outlier_rate": 0.4,
+        "max_zero_rate": 0.95
+      }
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0001,
+      "buffer_size": 50000,
+      "learning_starts": 100,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": 0.05
+    }
+  },
+  "logging": {
+    "log_level": "WARNING"
+  }
+}
