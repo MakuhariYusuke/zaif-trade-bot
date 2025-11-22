@@ -5,6 +5,97 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.8] - SAC v448 Emergency Fix - 2025-11-21
+
+### 🚨 Critical Fix: 1-Minute Timeframe Bias Collapse Resolution
+
+#### Problem Identified
+- **Bias Collapse Crisis**: 50% of training runs (10/20 cases) experienced extreme action bias (BUY>90% or SELL>90%)
+- **Profitability Failure**: Average final reward degraded to 2.62, with 35% failure rate (reward<0)
+- **Transaction Cost Explosion**: 1500 trades/episode causing 150% cost ratio
+- **Complete Policy Collapse**: 7 runs showed catastrophic failure (BUY≈93%, SELL≈4%, reward≈-9.0)
+
+#### Root Causes Analyzed
+1. **Action Bonus Cumulative Effect**: buy_action_bonus=0.02 accumulated to 60-point bias over 3000 steps
+2. **Asymmetric Reward Scaling**: long_multiplier=1.05 + short_multiplier=0.95 amplified BUY preference
+3. **Weak Forced Balance**: min_actions=10 insufficient for 1-min timeframe, threshold=0.15 too lenient
+4. **1-Minute Time Scale Mismatch**: 10 steps = 10 minutes, policy fate decided prematurely
+5. **Noise Dominance**: S/N ratio 0.25, 1-min weight 60% amplifying noise
+6. **No Emergency Intervention**: Lack of >30% deviation emergency penalty
+
+#### Emergency Fix Implementation
+
+##### Configuration Changes (v448 vs v447)
+- **Action Bonuses**: All set to 0.00 (was buy=0.02, sell=0.00) - eliminates cumulative bias
+- **Asymmetric Scaling**: All set to 1.00 (was long=1.05, short=0.95) - neutralizes BUY preference
+- **Balance Targets**: 47.5/47.5/5.0 (was 40/30/30) - based on successful run patterns
+- **Balance Penalty**: 8.0 (was 5.0) - strengthened enforcement
+- **Forced Balance Min**: 100 (was 10) - adapted to 1-min timeframe
+- **Forced Balance Threshold**: 0.08 (was 0.15) - earlier intervention
+- **Emergency Penalty**: 500.0 (new) - critical deviation suppression
+- **Entropy Coefficient**: 0.05 (was 0.01) - enhanced exploration
+- **MTF Weights**: 1min=30%, 5min=55%, 15min=15% (was 60%/40%) - noise suppression
+
+##### Files Created
+- `config/v448/sac_v448_emergency_fix.json` - Emergency fix configuration
+- `config/v448/templates/v448_config_template.json` - Reusable template with annotations
+- `config/v448/README.md` - Comprehensive v448 configuration documentation
+- `scripts/validate_v448_emergency.py` - Configuration validation and quick test script
+- `tools/organize_v448_structure.py` - Directory structure management tool
+- `tools/analyze_recent_reports.py` - Training report pattern analysis tool
+
+##### Documentation Updates
+- `docs/SAC_v448_DEVELOPMENT_PLAN.md` - Complete bias collapse analysis and fix strategy
+- `docs/SAC_v448_IMPLEMENTATION_ROADMAP.md` - 7-layer implementation plan (12-16 days)
+
+##### Directory Structure Organized
+```
+config/v448/
+├── sac_v448_emergency_fix.json          # ✅ Emergency fix (M1 milestone)
+├── templates/
+│   └── v448_config_template.json        # ✅ Reusable template
+└── README.md                             # ✅ Configuration guide
+
+tools/
+├── analyze_recent_reports.py            # ✅ Report analysis
+└── organize_v448_structure.py           # ✅ Structure management
+
+scripts/
+└── validate_v448_emergency.py           # ✅ Quick validation
+```
+
+#### Success Criteria (M1 Milestone)
+- ✅ **Zero Bias Collapse**: BUY<90%, SELL<90% across all validation runs
+- ✅ **Action Balance**: |BUY% - SELL%| < 25%
+- ✅ **Reward Stability**: Final reward > -5.0
+- 🎯 **Target Pattern**: BUY≈50%, SELL≈45%, HOLD≈5%, Reward=8-9
+
+#### Next Steps (Implementation Roadmap)
+1. **Phase 0 (0.5d)**: Environment setup, dependency validation ✅ **COMPLETED**
+2. **Layer 1 (1d)**: Foundation components (TrendDetector, BalanceMetrics)
+3. **Layer 2-4 (3.5d)**: Emergency fixes implementation and validation
+4. **Layer 5-7 (7d)**: Advanced features (Curriculum v3, Multi-agent evaluation)
+
+#### Validation Process
+```bash
+# Configuration validation (all checks passed)
+python scripts/validate_v448_emergency.py --timesteps 1000
+
+# Full training test (pending execution)
+python scripts/unified_trainer.py \
+  --config config/v448/sac_v448_emergency_fix.json \
+  --timesteps 3000 \
+  --seed 42
+```
+
+#### Key Insights Discovered
+- **1-Hour vs 1-Minute Fundamental Difference**: 60× frequency, noise dominance, immediate bias lock-in
+- **Forced Balance Philosophy Shift**: From "penalty suppression" to "initial enforcement → gradual liberation"
+- **Multi-Timeframe Optimal Weights**: Lower timeframes need lower weights to suppress noise
+- **Action Bonus Danger**: Even 0.02 bonus creates catastrophic cumulative effects
+
+---
+
 ## [Unreleased] - 2025-11-12
 
 ### Codebase Refactoring: Training Features Deduplication 🎯
@@ -183,6 +274,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test Structure Documentation**: Updated `docs/test_structure.md` with unified optimizer test locations
 - **Changelog**: Added comprehensive change history for test refactoring
 - **README**: Updated Recent Updates section with test organization improvements
+
+### SAC v446 5m Training Health Analysis ⚠️
+
+- **docs/SAC_V446_5M_STATUS_ANALYSIS.md**: 現行 `training_report_sac_sac_v446_5m_100k_config_20251113_162206.json` を題材に、負報酬/BUY偏重/ロギング不足など5分足トレーニングの課題を整理し、改善アクションを明文化。
+- **課題追跡**: reward 分布、validation metrics ログ、gradient_steps・VecEnv などのチューニングを次フェーズで検証しつつ、5分足 backtest で現象の再発を確認。
 
 ## [Unreleased] - 2025-11-11
 
