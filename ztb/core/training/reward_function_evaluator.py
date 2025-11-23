@@ -17,29 +17,14 @@ import numpy as np
 import pandas as pd
 
 from ztb.trading.environment.utils.config import RewardSettings
+from ztb.types.evaluation_types import EvaluationMetrics
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
 @dataclass
-class EvaluationMetrics:
-    """Metrics for reward function evaluation."""
-
-    total_return: float = 0.0
-    sharpe_ratio: float = 0.0
-    win_rate: float = 0.0
-    max_drawdown: float = 0.0
-    volatility: float = 0.0
-    consistency_score: float = 0.0
-    profit_factor: float = 0.0
-    calmar_ratio: float = 0.0
-    sortino_ratio: float = 0.0
-    recovery_factor: float = 0.0
-
-
-@dataclass
-class EvaluationResult:
+class TrainingEvaluationResult:
     """Result of reward function parameter evaluation."""
 
     metrics: EvaluationMetrics

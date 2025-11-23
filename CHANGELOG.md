@@ -70,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Testing
 - **Layer 1**: 49 unit tests (TrendDetector: 20, LongTermMetrics: 29) ✅
 - **Layer 2**: 14 unit tests (BehavioralPenaltyCalculator: 14) ✅
-- **Total**: 63 tests passing in 0.71 seconds ✅
+- **Layer 3**: 22 unit tests (BalanceCurriculumManager: 22) ✅
+- **Total**: 85 tests passing in 1.09 seconds ✅
 
 #### Test Coverage
 - Emergency intervention triggers and thresholds
@@ -78,6 +79,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TrendDetector integration scenarios
 - Extended exploration period validation
 - Forced balance reward with emergency penalty
+- Dynamic stage progression and emergency revert
+- Backward compatibility (disabled mode)
+
+### Layer 3: Balance Curriculum ✅ (Day 4)
+
+**完了日**: 2025-01-23
+
+#### BalanceCurriculumManager Implementation
+**新規ファイル**: `ztb/trading/environment/components/reward/balance_curriculum.py` (約350行)
+
+**目的**: 既存の`curriculum_stage`システムに動的進行機能を追加し、重複を回避
+
+**主要機能**:
+1. ✅ **動的ステージ進行**: パフォーマンスメトリクスに基づく自動進行
+   - forced_balance → balanced_transition → pnl_focused → trading_focused → profit_optimized
+   - 各ステージに明確な進行条件（最小ステップ数、バランス閾値、報酬閾値等）
+   
+2. ✅ **緊急復帰機能**: バイアス崩壊検知時にforced_balanceへ自動復帰
+   - BUY-SELL差 > 35%: 即座に復帰
+   - 持続的なマイナス報酬 + 25%以上のバイアス: 復帰
+   - 最大3回までの緊急復帰制限
+   
+3. ✅ **後方互換性**: `enabled=False`でv447の静的ステージ動作
+   - 既存の`curriculum_stage`設定を完全にサポート
+   - 動的機能を無効化しても従来通り動作
+   
+4. ✅ **メトリクス追跡**: ステージ履歴、平均報酬、シャープレシオ等を記録
+
+**ステージ進行条件**:
+```python
+{
+    "forced_balance": {
+        "min_steps": 100,
+        "balance_threshold": 0.15,  # BUY-SELL差 < 15%
+        "min_success_episodes": 10,
+        "success_rate": 0.8,
+    },
+    "balanced_transition": {
+        "min_steps": 200,
+        "balance_threshold": 0.20,
+        "avg_reward_threshold": 0.0,  # 正の平均報酬
+    },
+    "pnl_focused": {
+        "min_steps": 500,
+        "balance_threshold": 0.25,
+        "avg_reward_threshold": 2.0,
+        "sharpe_threshold": 0.5,
+    },
+}
+```
+
+**統合設計**:
+- `RewardCalculator`に統合せず、独立したマネージャーとして動作（将来のLayer 4で統合予定）
+- 環境の`step()`で`update()`を呼び出し、ステージ変更を監視
+- `get_current_stage()`で現在のステージを取得し、`RewardCalculator`に提供
+
+**テスト**: 22単体テスト ✅
+- 初期化とカスタム設定
+- 無効化モード（v447互換性）
+- 緊急復帰トリガーと制限
+- ステージ進行条件の検証
+- メトリクス追跡と履歴記録
+- 統合シナリオ（完全な進行サイクル、緊急復帰からの回復）
+
+### Files Modified
+- `ztb/trading/environment/components/behavioral_penalty_calculator.py` (Layer 2)
+- `ztb/trading/environment/components/reward_calculator.py` (Layer 2)
+- `ztb/trading/environment/components/reward/__init__.py` (Layer 1, 3)
+
+### Files Created
+- `ztb/trading/environment/components/reward/trend_detector.py` (216 lines, Layer 1)
+- `ztb/trading/environment/components/reward/metrics.py` (330 lines, Layer 1)
+- `ztb/trading/environment/components/reward/balance_curriculum.py` (350 lines, Layer 3)
+- `tests/unit/components/reward/test_trend_detector.py` (20 tests, Layer 1)
+- `tests/unit/components/reward/test_metrics.py` (29 tests, Layer 1)
+- `tests/unit/components/reward/test_behavioral_penalty_calculator.py` (14 tests, Layer 2)
+- `tests/unit/components/reward/test_balance_curriculum.py` (22 tests, Layer 3)
+- `config/v448/sac_v448_emergency_fix.json` (Phase 0)
+- `config/v448/templates/v448_config_template.json` (Phase 0)
+- `config/v448/README.md` (Phase 0)
+- `scripts/validate_v448_emergency.py` (Phase 0)
+- `tools/organize_v448_structure.py` (Phase 0)
+- `tools/analyze_recent_reports.py` (Phase 0)
+
+### Documentation
+- `docs/SAC_v448_DEVELOPMENT_PLAN.md` - Complete analysis and implementation strategy
+- `docs/SAC_v448_IMPLEMENTATION_ROADMAP.md` - 7-layer implementation roadmap (updated with Layer 3 details)
+
+### Testing
+- **Layer 1**: 49 unit tests (TrendDetector: 20, LongTermMetrics: 29) ✅
+- **Layer 2**: 14 unit tests (BehavioralPenaltyCalculator: 14) ✅
 
 ### Files Modified
 - `ztb/trading/environment/components/behavioral_penalty_calculator.py`
