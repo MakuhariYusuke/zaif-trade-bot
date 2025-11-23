@@ -212,70 +212,191 @@ pytest tests/unit/components/test_reward_calculator.py::test_forced_balance_emer
 
 ---
 
-### Layer 3: 設定ファイル（0.5日）
+### Layer 2: コア修正（2日） ✅
 
-**依存**: Layer 2  
-**目的**: 緊急修正設定の作成
+**依存**: Layer 1  
+**目的**: 緊急修正の実装
 
-#### 3.1 Emergency Fix Config
-**ファイル**: `config/v448/emergency/sac_v448_emergency_fix.json`
+**完了日**: 2025-01-21
 
-**内容**:
+#### 2.1 Behavioral Penalty強化（1日） ✅
+**ファイル**: `ztb/trading/environment/components/behavioral_penalty_calculator.py`
+
+**修正内容**:
+1. ✅ `calculate_emergency_intervention()` 新規追加（BUY-SELL差>30%で-500ペナルティ）
+2. ✅ `_adjust_targets_by_trend()` 新規追加（TrendDetector統合）
+3. ✅ TrendDetectorパラメータを`__init__`に追加
+
+**テスト**: 14単体テスト（全て成功） ✅
+```bash
+pytest tests/unit/components/reward/test_behavioral_penalty_calculator.py -v
+```
+
+#### 2.2 Reward Calculator緊急修正（1日） ✅
+**ファイル**: `ztb/trading/environment/components/reward_calculator.py`
+
+**修正内容**:
+1. ✅ `_calculate_forced_balance_reward()` 強化
+   - 初期exploration期間延長（10→100 steps）
+   - Emergency intervention統合
+2. ✅ Emergency penalty適用（balanced状態でも）
+
+**テスト**: 既存テスト維持 + 統合テスト ✅
+
+---
+
+### Layer 3: Balance Curriculum（2日）
+
+**依存**: Layer 1-2  
+**目的**: 動的カリキュラム学習の実装
+
+**注**: 既存の`curriculum_stage`設定(forced_balance, balanced_transition等)を活用し、重複を避ける
+
+#### 3.1 既存カリキュラムの整理（0.5日）
+
+**現状確認**:
+- ✅ `RewardCalculator`に`curriculum_stage`による段階的報酬計算が実装済み
+- ✅ 10種類のステージ: forced_balance, balanced_transition, pnl_focused, trading_focused, profit_optimized, risk_management, opportunity_cost, ultra_profit, stability_optimized, backtest_optimization
+- ✅ 設定ファイルで`training.environment.curriculum_stage`を指定
+
+**問題点**:
+- ❌ 動的な進行機能なし（手動でステージ変更が必要）
+- ❌ ステージ進行条件が未定義
+- ❌ バランス崩壊検知後の自動介入なし
+
+#### 3.2 Dynamic Curriculum Manager（1日）
+**新規ファイル**: `ztb/trading/environment/components/reward/balance_curriculum.py`
+
+**目的**: 既存のstage-based rewardシステムに動的進行機能を追加
+
+**実装内容**:
+```python
+class BalanceCurriculumManager:
+    """
+    Dynamic curriculum progression for balance-focused training.
+    
+    Integrates with existing RewardCalculator curriculum_stage system.
+    Monitors training progress and automatically transitions between stages.
+    
+    SAC v448 Layer 3: Focus on bias prevention and sustainable learning.
+    """
+    
+    def __init__(self, config: EnvironmentConfig):
+        self.config = config
+        self.current_stage = config.curriculum_stage or "forced_balance"
+        self.stage_start_step = 0
+        self.stage_history: List[Dict[str, Any]] = []
+        
+        # Stage progression conditions
+        self.stage_conditions = {
+            "forced_balance": {
+                "min_steps": 100,
+                "balance_threshold": 0.15,  # BUY-SELL diff < 15%
+                "min_success_rate": 0.8,  # 80% of last 50 steps balanced
+            },
+            "balanced_transition": {
+                "min_steps": 200,
+                "balance_threshold": 0.20,
+                "reward_threshold": 0.0,  # Positive average reward
+            },
+            "pnl_focused": {
+                "min_steps": 500,
+                "sharpe_threshold": 0.5,
+                "max_drawdown": 0.15,
+            }
+        }
+    
+    def should_progress(
+        self,
+        step: int,
+        action_counts: List[int],
+        recent_rewards: deque,
+        portfolio_values: List[float]
+    ) -> bool:
+        """Check if conditions are met to progress to next stage."""
+        
+    def progress_to_next_stage(self) -> str:
+        """Advance to the next curriculum stage."""
+        
+    def check_balance_emergency(self, action_counts: List[int]) -> bool:
+        """Check if emergency intervention (revert to forced_balance) is needed."""
+        if sum(action_counts) < 50:
+            return False
+        
+        buy_ratio = action_counts[1] / sum(action_counts)
+        sell_ratio = action_counts[2] / sum(action_counts)
+        
+        # Emergency: revert to forced_balance if bias > 35%
+        if abs(buy_ratio - sell_ratio) > 0.35:
+            self.logger.warning(
+                f"🚨 BALANCE EMERGENCY: Reverting to forced_balance "
+                f"(BUY={buy_ratio:.1%}, SELL={sell_ratio:.1%})"
+            )
+            self.current_stage = "forced_balance"
+            self.stage_start_step = 0
+            return True
+        
+        return False
+    
+    def get_current_stage(self) -> str:
+        """Return current curriculum stage for RewardCalculator."""
+        return self.current_stage
+    
+    def update(
+        self,
+        step: int,
+        action_counts: List[int],
+        recent_rewards: deque,
+        portfolio_values: List[float]
+    ) -> Dict[str, Any]:
+        """
+        Update curriculum state and check for progression.
+        
+        Returns:
+            Dictionary with curriculum status and any stage changes.
+        """
+```
+
+**統合方法**:
+1. `RewardCalculator.__init__`で`BalanceCurriculumManager`をオプション初期化
+2. 環境の`step()`で`curriculum_manager.update()`を呼び出し
+3. `RewardCalculator.calculate_reward()`で`curriculum_manager.get_current_stage()`を使用
+4. 既存の`config.curriculum_stage`は初期ステージとして機能
+
+#### 3.3 設定統合（0.5日）
+
+**設定追加**: `config/v448/sac_v448_emergency_fix.json`
 ```json
 {
-  "version": "4.4.8-v448.emergency",
   "training": {
-    "model_name": "sac_v448_emergency_fix",
-    "total_timesteps": 3000,
     "environment": {
       "curriculum_stage": "forced_balance",
-      "reward_settings": {
-        "balance_penalty_targets": {
-          "buy_target": 0.475,
-          "sell_target": 0.475,
-          "hold_target": 0.05
-        },
-        "balance_penalty": 8.0,
-        "balance_penalty_min_actions": 50,
-        "forced_balance_min_actions": 100,
-        "forced_balance_threshold": 0.08,
-        "forced_balance_emergency_penalty": 500.0
-      },
-      "action_bonuses": {
-        "buy_action_bonus": 0.00,
-        "sell_action_bonus": 0.00,
-        "hold_action_bonus": 0.00
-      },
-      "asymmetric_reward_scaling": {
-        "long_position_reward_multiplier": 1.00,
-        "short_position_reward_multiplier": 1.00,
-        "long_position_penalty_multiplier": 1.00,
-        "short_position_penalty_multiplier": 1.00
-      },
-      "multi_timeframe": {
-        "feature_weights": {
-          "1min": 0.30,
-          "5min": 0.55,
-          "15min": 0.15
+      "curriculum_learning": {
+        "enabled": true,
+        "auto_progression": true,
+        "emergency_revert": true,
+        "stage_conditions": {
+          "forced_balance": {
+            "min_steps": 100,
+            "balance_threshold": 0.15
+          }
         }
       }
-    },
-    "sac_hyperparameters": {
-      "ent_coef": 0.05
     }
   }
 }
 ```
 
-#### 3.2 テンプレート作成
-**ファイル**: `config/v448/templates/v448_config_template.json`
+**後方互換性**:
+- `curriculum_learning.enabled=false`: 既存の静的ステージ動作（v447互換）
+- `curriculum_learning.enabled=true`: 新しい動的カリキュラム（v448）
 
 ---
 
-### Layer 4: テストと検証（1日）
+### Layer 4: Integration & Environment（1日）
 
 **依存**: Layer 1-3  
-**目的**: 緊急修正の動作確認
+**目的**: 環境クラスへの統合
 
 #### 4.1 単体テスト
 ```bash

@@ -8,46 +8,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from .types import AlertLevel
-
-
-class AlertType(Enum):
-    """アラートタイプ"""
-
-    PERFORMANCE = "performance"
-    SAFETY = "safety"
-    DRIFT = "drift"
-    SYSTEM = "system"
+from ztb.types.common import AlertLevel
+from ztb.types.evaluation_types import AlertType, EvaluationMetrics, EvaluationResult
 
 
 @dataclass
-class EvaluationMetrics:
-    """評価メトリクス"""
+class MonitoringEvaluationResult(EvaluationResult):
+    """監視拡張評価結果"""
 
-    accuracy: float
-    precision: float
-    recall: float
-    f1_score: float
-    sharpe_ratio: float
-    max_drawdown: float
-    total_return: float
-    volatility: float
-
-    # オプションの追加メトリクス
-    win_rate: Optional[float] = None
-    profit_factor: Optional[float] = None
-    calmar_ratio: Optional[float] = None
-    sortino_ratio: Optional[float] = None
-
-
-@dataclass
-class EvaluationResult:
-    """評価結果"""
-
-    timestamp: datetime
-    performance_metrics: Optional[EvaluationMetrics] = None
-    safety_metrics: Optional[Dict[str, Any]] = None
-    drift_detected: bool = False
     drift_severity: Optional[int] = None
     online_learning_metrics: Optional[Dict[str, Any]] = None
     overall_score: Optional[float] = None
