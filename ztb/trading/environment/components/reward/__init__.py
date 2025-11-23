@@ -6,6 +6,7 @@ Each component is responsible for a specific aspect of reward calculation.
 """
 
 from .action_penalty import ActionPenaltyCalculator
+from .balance_curriculum import BalanceCurriculumManager
 from .base_reward_calculator import BaseRewardCalculator
 from .diversity_bonus import DiversityBonusCalculator
 from .drawdown_penalty import DrawdownPenaltyCalculator
@@ -31,4 +32,5 @@ __all__ = [
     "WinStreakBonusCalculator",
     "TrendDetector",
     "LongTermMetrics",
+    "BalanceCurriculumManager",
 ]
