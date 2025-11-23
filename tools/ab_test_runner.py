@@ -24,6 +24,24 @@ from ztb.experiments.base import ExperimentResult
 from ztb.cache.memory_cache import default_memory_manager
 
 
+def check_torch_available() -> bool:
+    """Check if torch is importable in this environment. Returns True if torch is available."""
+    try:
+        import importlib
+        torch = importlib.import_module("torch")
+        # If python successfully imports torch but the DLL initialization fails it'll raise OSError
+        # We can still run CPU-only workloads if installed as CPU-only. Return True if import ok.
+        return True
+    except Exception as e:
+        print("Warning: PyTorch import failed in this environment.")
+        print("PyTorch is required for training runs. If you only need CPU-mode, install a CPU-only PyTorch wheel, e.g.:")
+        print("  pip install --upgrade pip")
+        print("  pip install ""torch"" --index-url https://download.pytorch.org/whl/cpu")
+        print("Otherwise, install the correct torch wheel for your platform (see https://pytorch.org/get-started/locally/)")
+        print(f"Import error: {e}")
+        return False
+
+
 def run_training(config_path: Path, seed: int, timesteps: int = 2000) -> None:
     # Use python -c wrapper to set global deterministic seed for our process and then
     # call the unified trainer main, passing config and other args via sys.argv.
@@ -177,6 +195,9 @@ def main():
         print(f"Running {len(tasks)} tasks with {args.jobs} parallel workers")
         run_parallel_experiments(ABTrainingExperiment, tasks, max_workers=args.jobs)
     else:
+        # Check for torch availability and warn; training subprocess will still attempt to import
+        if not check_torch_available():
+            print("Proceeding without PyTorch — CPU-only training will likely fail without torch installed.")
         for t in tasks:
             run_training(Path(t["config_path"]), int(t["seed"]), timesteps=int(t.get("timesteps", 2000)))
 
