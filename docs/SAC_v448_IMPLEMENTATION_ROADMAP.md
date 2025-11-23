@@ -10,6 +10,26 @@
 
 ---
 
+## 🖥️ 開発環境 & CPU 前提方針
+
+本プロジェクトは原則 **CPU 環境で動作可能** に設計されています。GPU (CUDA) は将来の拡張性のためにサポートされますが、依存関係により CUDA ビルドの PyTorch は必須ではありません。
+
+推奨設定 (Windows, CPU のみ):
+- Python 3.11.x
+- pip のアップデート: `python -m pip install --upgrade pip`
+- CPU-only PyTorch: `pip install torch --index-url https://download.pytorch.org/whl/cpu`
+
+注意: GPU 版の PyTorch (CUDA) をインストールすると、CUDA ドライバと Visual C++ ランタイムの互換性が必要です。CI/開発機は CPU-only で回して、実運用で GPU を使う場合のみ GPU版をインストールしてください。
+
+実行時の安全策:
+- パッケージのトップレベル import で heavy env (torch依存) を読み込まないようにしました。
+- `tools/ab_test_runner.py` は起動前に PyTorch の可用性を確認し、欠落時には明示的に警告を出します。
+- `ztb.utils.torch_utils` モジュールで `is_torch_available()` / `get_preferred_device()` を提供しています。
+
+この方針により、CPU-only環境で unit tests や reward component の検証が容易になります。GPU を使う場合は、事前に PyTorch (GPU対応) を正しくインストールして下さい。
+
+---
+
 ## 📁 ディレクトリ整理計画
 
 ### 現状の問題点
