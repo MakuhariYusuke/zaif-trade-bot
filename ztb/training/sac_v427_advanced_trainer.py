@@ -13,9 +13,9 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
-from ztb.core.base import BaseTrainer
 from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.sac_v427_market_adaptive_system import SACv427MarketAdaptiveSystem
+from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
@@ -200,10 +200,14 @@ class SACv427AdvancedTrainer(BaseTrainer):
             features_df = self.feature_engineer.generate_v427_features(df)
             elapsed = time.perf_counter() - start
             # If feature engineer stored elapsed time on DataFrame attrs, prefer that
-            feat_time = getattr(features_df, "attrs", {}).get("feature_generation_time_s", None)
+            feat_time = getattr(features_df, "attrs", {}).get(
+                "feature_generation_time_s", None
+            )
             if feat_time is None:
                 feat_time = elapsed
-            logger.info(f"Feature engineering (trainer wrapper) duration: {feat_time:.3f}s")
+            logger.info(
+                f"Feature engineering (trainer wrapper) duration: {feat_time:.3f}s"
+            )
 
             # Save features
             features_path = "data/btc_jpy_v427_features.csv"

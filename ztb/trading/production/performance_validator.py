@@ -5,7 +5,7 @@ V433 Phase 5: Paper Trading Layer - Performance Validator
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -58,7 +58,7 @@ class RiskMetrics:
 
 
 @dataclass
-class PerformanceMetrics:
+class ProductionPerformanceMetrics:
     """パフォーマンス指標"""
 
     total_return: Decimal
@@ -72,6 +72,15 @@ class PerformanceMetrics:
     consecutive_wins: int
     consecutive_losses: int
     recovery_factor: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        data = asdict(self)
+        # Convert Decimal to str for JSON serialization
+        for key, value in data.items():
+            if isinstance(value, Decimal):
+                data[key] = str(value)
+        return data
 
 
 @dataclass
@@ -97,7 +106,7 @@ class ValidationReport:
 
     statistical_tests: List[StatisticalTest] = field(default_factory=list)
     risk_metrics: RiskMetrics = None
-    performance_metrics: PerformanceMetrics = None
+    performance_metrics: ProductionPerformanceMetrics = None
     benchmark_comparison: BenchmarkComparison = None
 
     recommendations: List[str] = field(default_factory=list)
@@ -393,7 +402,7 @@ class PerformanceValidator:
 
     def _calculate_performance_metrics(
         self, trades: List[VirtualTrade], evaluation_period_days: int
-    ) -> PerformanceMetrics:
+    ) -> ProductionPerformanceMetrics:
         """
         パフォーマンス指標計算
 
@@ -402,10 +411,10 @@ class PerformanceValidator:
             evaluation_period_days: 評価期間（日）
 
         Returns:
-            PerformanceMetrics: パフォーマンス指標
+            ProductionPerformanceMetrics: パフォーマンス指標
         """
         if not trades:
-            return PerformanceMetrics(
+            return ProductionPerformanceMetrics(
                 total_return=Decimal("0"),
                 annualized_return=0.0,
                 win_rate=0.0,
@@ -423,7 +432,7 @@ class PerformanceValidator:
         realized_trades = [t for t in trades if t.realized_pnl != 0]
 
         if not realized_trades:
-            return PerformanceMetrics(
+            return ProductionPerformanceMetrics(
                 total_return=Decimal("0"),
                 annualized_return=0.0,
                 win_rate=0.0,
@@ -489,7 +498,7 @@ class PerformanceValidator:
             else float("inf")
         )
 
-        return PerformanceMetrics(
+        return ProductionPerformanceMetrics(
             total_return=total_return,
             annualized_return=annualized_return,
             win_rate=win_rate,

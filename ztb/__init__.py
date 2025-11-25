@@ -29,7 +29,12 @@ if TYPE_CHECKING:
 # Import main components for easy access
 # from .analysis import BacktestAnalyzer  # Temporarily disabled
 from .config import ConfigManager
-from .data import BTCBiasDetector, BTCDataAugmentor
+
+# Avoid importing heavy submodules at package import time; use lazy attribute access
+__LAZY_MODULE_ATTRIBUTES__ = {
+    "BTCDataAugmentor": ("ztb.data", "BTCDataAugmentor"),
+    "BTCBiasDetector": ("ztb.data", "BTCBiasDetector"),
+}
 
 # Define public API
 __all__ = [
@@ -43,6 +48,22 @@ __all__ = [
     "__author__",
     "__description__",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy import heavy submodules when accessed on the package.
+
+    Implemented per PEP 562 to avoid importing heavy ML modules at package import time.
+    """
+    if name in __LAZY_MODULE_ATTRIBUTES__:
+        module_name, attr_name = __LAZY_MODULE_ATTRIBUTES__[name]
+        module = __import__(module_name, fromlist=[attr_name])
+        return getattr(module, attr_name)
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+def __dir__():
+    return sorted(list(globals().keys()) + list(__LAZY_MODULE_ATTRIBUTES__.keys()))
 
 
 def get_version() -> str:

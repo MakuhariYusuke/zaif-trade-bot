@@ -8,7 +8,17 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterator, List, Optional, Sequence, cast
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    TypedDict,
+    Unpack,
+    cast,
+)
 
 import pandas as pd
 
@@ -28,6 +38,24 @@ from ztb.utils.observability import ObservabilityClient
 
 from .coin_gecko_stream import CoinGeckoStream, MarketDataBatch, StreamConfig
 from .stream_buffer import BufferStats, StreamBuffer
+
+
+class GetDataKwargs(TypedDict, total=False):
+    """Kwargs for get_data method"""
+
+    rows: int
+
+
+class StreamingPipelineConfig(TypedDict, total=False):
+    """Configuration for streaming pipeline"""
+
+    symbol: str
+    buffer_size: int
+    feature_window: int
+    update_interval: float
+    enable_observability: bool
+    cache_dir: str
+
 
 logger = get_logger(__name__)
 
@@ -264,7 +292,7 @@ class StreamingPipeline:
             raise ValueError("rows must be positive")
         return self._compute_features_for_latest(rows)
 
-    def get_data(self, **kwargs: Any) -> pd.DataFrame:
+    def get_data(self, **kwargs: Unpack[GetDataKwargs]) -> pd.DataFrame:
         """Get market data from the streaming pipeline."""
         rows = kwargs.get("rows", 100)
         return self.latest_features(rows)
@@ -659,7 +687,9 @@ class StreamingPipeline:
 
 
 # Factory function for registry integration
-def create_streaming_pipeline(**kwargs: Any) -> StreamingPipeline:
+def create_streaming_pipeline(
+    **kwargs: Unpack[StreamingPipelineConfig],
+) -> StreamingPipeline:
     """Create a streaming pipeline using the registry pattern.
 
     This function maintains backward compatibility while enabling

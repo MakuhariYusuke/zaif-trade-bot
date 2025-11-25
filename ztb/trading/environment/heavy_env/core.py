@@ -67,7 +67,7 @@ from ztb.trading.environment.heavy_env.mixins.streaming import (
 from ztb.trading.environment.types import StatisticsDict
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.types.protocols import TradingEnvironment
-from ztb.utils.errors import ConfigurationError, ValidationError
+from ztb.utils.exceptions.custom_exceptions import ConfigurationError, ValidationError
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_validation import TypeValidator
@@ -326,9 +326,13 @@ class HeavyTradingEnv(
         # DEBUG: Log feature_set at the very beginning
         try:
             if isinstance(config, EnvironmentConfig):
-                print(f"DEBUG: config is EnvironmentConfig, feature_set = {getattr(config, 'feature_set', 'NOT_SET')}")
+                print(
+                    f"DEBUG: config is EnvironmentConfig, feature_set = {getattr(config, 'feature_set', 'NOT_SET')}"
+                )
             elif isinstance(config, dict):
-                print(f"DEBUG: config is dict, feature_set = {config.get('feature_set', 'NOT_SET')}")
+                print(
+                    f"DEBUG: config is dict, feature_set = {config.get('feature_set', 'NOT_SET')}"
+                )
             else:
                 print(f"DEBUG: config is {type(config)}, feature_set unknown")
         except Exception as e:
@@ -361,7 +365,9 @@ class HeavyTradingEnv(
             self.config = EnvironmentConfig.from_dict(config)
 
         # DEBUG: Log feature_set
-        self.logger.info(f"DEBUG: HeavyTradingEnv config.feature_set = {getattr(self.config, 'feature_set', 'NOT_SET')}")
+        self.logger.info(
+            f"DEBUG: HeavyTradingEnv config.feature_set = {getattr(self.config, 'feature_set', 'NOT_SET')}"
+        )
 
         # Extract values from config for validation and use.
         # kwargs can override some runtime parameters.
@@ -983,7 +989,7 @@ class HeavyTradingEnv(
 
         # Diagnostic: log environment observation_space and returned observation shape (every 100 steps)
         try:
-            if hasattr(self, '_obs_step_count'):
+            if hasattr(self, "_obs_step_count"):
                 self._obs_step_count += 1
             else:
                 self._obs_step_count = 1

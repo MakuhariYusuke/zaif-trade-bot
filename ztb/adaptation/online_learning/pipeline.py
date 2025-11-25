@@ -15,6 +15,7 @@ import psutil
 import torch
 import torch.nn as nn
 from torch.optim import SGD, Adagrad, Adam
+
 from ztb.trading.environment.constants import BYTES_PER_MB
 
 from .config import OnlineLearningConfig
@@ -631,6 +632,10 @@ class OnlineDriftDetector:
             return "unknown_drift"
 
 
+# Backwards compatibility: expose DriftDetector as expected elsewhere
+DriftDetector = OnlineDriftDetector
+
+
 class ResourceMonitor:
     """リソース監視器"""
 
@@ -661,13 +666,11 @@ class ResourceMonitor:
         disk_io_mb_per_sec = 0.0
         if self.last_disk_io and time_delta > 0:
             disk_read_mb = (
-                (current_disk_io.read_bytes - self.last_disk_io.read_bytes)
-                / BYTES_PER_MB
-            )
+                current_disk_io.read_bytes - self.last_disk_io.read_bytes
+            ) / BYTES_PER_MB
             disk_write_mb = (
-                (current_disk_io.write_bytes - self.last_disk_io.write_bytes)
-                / BYTES_PER_MB
-            )
+                current_disk_io.write_bytes - self.last_disk_io.write_bytes
+            ) / BYTES_PER_MB
             disk_io_mb_per_sec = (disk_read_mb + disk_write_mb) / time_delta
 
         # ネットワークI/O
@@ -675,11 +678,11 @@ class ResourceMonitor:
         net_io_mb_per_sec = 0.0
         if self.last_net_io and time_delta > 0:
             net_sent_mb = (
-                (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / BYTES_PER_MB
-            )
+                current_net_io.bytes_sent - self.last_net_io.bytes_sent
+            ) / BYTES_PER_MB
             net_recv_mb = (
-                (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / BYTES_PER_MB
-            )
+                current_net_io.bytes_recv - self.last_net_io.bytes_recv
+            ) / BYTES_PER_MB
             net_io_mb_per_sec = (net_sent_mb + net_recv_mb) / time_delta
 
         # 状態更新

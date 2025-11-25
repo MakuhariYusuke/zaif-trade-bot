@@ -236,12 +236,6 @@ def validate_batch(
             except ValidationError as e:
                 raise ValidationError(f"Validation failed for {name}: {e}") from e
 
-
-class ConfigurationError(ZTBError):
-    """Configuration-related errors."""
-
-
-class SchemaError(ZTBError):
     """Schema-related errors."""
 
 

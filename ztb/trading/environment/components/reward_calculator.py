@@ -9,7 +9,7 @@ Refactored to follow SOLID principles with component-based architecture.
 
 import inspect
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -31,7 +31,9 @@ from ztb.utils.logging_utils import StructuredLogger
 from .asymmetric_reward_scaler import AsymmetricRewardScaler
 from .behavioral_penalty_calculator import BehavioralPenaltyCalculator
 from .dynamic_reward_shaper import DynamicRewardShaper
+from .reward.balance_curriculum import BalanceCurriculumManager
 from .reward.opportunity_cost_penalty_calculator import OpportunityCostPenaltyCalculator
+from .reward.trend_detector import TrendDetector
 from .reward.unrealized_loss_penalty_calculator import UnrealizedLossPenaltyCalculator
 from .signal_integrator import SignalIntegrator
 
@@ -40,6 +42,7 @@ from .signal_integrator import SignalIntegrator
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     import logging
+
     return logging.getLogger(name)
 
 
@@ -76,7 +79,9 @@ class RewardCalculator:
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
         self.logger = get_logger("ztb.trading.environment.reward")
-        self.structured_logger = StructuredLogger("ztb.trading.environment.reward", json_format=True)
+        self.structured_logger = StructuredLogger(
+            "ztb.trading.environment.reward", json_format=True
+        )
 
         # Internal state for tracking
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
@@ -145,12 +150,30 @@ class RewardCalculator:
         self.dynamic_reward_shaper = self._init_dynamic_reward_shaper()
         self.signal_integrator = self._init_signal_integrator(config)
         self.asymmetric_reward_scaler = AsymmetricRewardScaler(env_config=config)
-        self.behavioral_penalty_calculator = BehavioralPenaltyCalculator(config=config)
+        # Create TrendDetector for behavioral integration
+        self.trend_detector = TrendDetector(
+            min_samples=self.get_setting_int("trend_detector.min_samples", 20)
+        )
+        self.behavioral_penalty_calculator = BehavioralPenaltyCalculator(
+            config=config, trend_detector=self.trend_detector
+        )
         self.unrealized_loss_penalty_calculator = UnrealizedLossPenaltyCalculator(
             reward_settings=self.reward_settings
         )
         self.opportunity_cost_penalty_calculator = OpportunityCostPenaltyCalculator(
             reward_settings=self.reward_settings
+        )
+
+        # Initialize optional Balance Curriculum Manager
+        curriculum_learning = getattr(config, "curriculum_learning", {}) or {}
+        curriculum_enabled = bool(curriculum_learning.get("enabled", False))
+        curriculum_auto = bool(curriculum_learning.get("auto_progression", True))
+        curriculum_emergency = bool(curriculum_learning.get("emergency_revert", True))
+        self.curriculum_manager = BalanceCurriculumManager(
+            config=config,
+            enabled=curriculum_enabled,
+            auto_progression=curriculum_auto,
+            emergency_revert=curriculum_emergency,
         )
 
     def _init_market_regime_detector(self) -> MarketRegimeDetector:
@@ -270,7 +293,7 @@ class RewardCalculator:
             self._current_log_level = new_level
             self.structured_logger.info(
                 "Log level changed",
-                extra={"old_level": self._current_log_level, "new_level": new_level}
+                extra={"old_level": self._current_log_level, "new_level": new_level},
             )
 
     def _evaluate_dynamic_logging(self, step: int) -> None:
@@ -295,10 +318,10 @@ class RewardCalculator:
     def _record_action(self, action: int) -> int:
         """
         Record action in behavioral penalty calculator and sync action counts.
-        
+
         Args:
             action: Action taken (0=HOLD, 1=BUY, 2=SELL)
-        
+
         Returns:
             Normalized action index (0=HOLD, 1=BUY, 2=SELL)
         """
@@ -456,7 +479,9 @@ class RewardCalculator:
     ) -> Optional[Union[int, float, bool, str, dict, list, RewardSettings]]:
         """Get nested setting value using dot notation."""
         keys = key.split(".")
-        value: Union[int, float, bool, str, dict, list, RewardSettings, None] = self.reward_settings
+        value: Union[
+            int, float, bool, str, dict, list, RewardSettings, None
+        ] = self.reward_settings
 
         try:
             for k in keys:
@@ -539,7 +564,23 @@ class RewardCalculator:
             )
 
         # Original complex reward function
-        curriculum_stage = self.config.curriculum_stage
+        # Prefer curriculum manager if enabled, otherwise fallback to config
+        curriculum_stage = getattr(self.config, "curriculum_stage", None)
+        if hasattr(self, "curriculum_manager") and getattr(
+            self.curriculum_manager, "enabled", False
+        ):
+            # Update manager with latest metrics so it may progress or revert stages
+            try:
+                self.curriculum_manager.update(
+                    step=step,
+                    action_counts=self._action_counts,
+                    recent_rewards=reward_history,
+                    portfolio_values=portfolio_value_history,
+                )
+            except Exception:
+                # Avoid breaking reward flow due to curriculum errors
+                self.logger.exception("Failed to update curriculum manager")
+            curriculum_stage = self.curriculum_manager.get_current_stage()
         self.logger.info(
             "Curriculum stage: %s, position: %.2f, action: %d",
             curriculum_stage,
@@ -655,7 +696,9 @@ class RewardCalculator:
         base_reward += balance_penalty
         # Apply skewness penalty if available (penalize strong BUY/SELL skews)
         try:
-            skew_penalty = self.behavioral_penalty_calculator.calculate_skewness_penalty()
+            skew_penalty = (
+                self.behavioral_penalty_calculator.calculate_skewness_penalty()
+            )
         except Exception:
             skew_penalty = 0.0
         base_reward += skew_penalty
@@ -663,7 +706,9 @@ class RewardCalculator:
 
         # Balance shaping reward: positive when this action moves distribution towards targets
         try:
-            balance_shaping = self.behavioral_penalty_calculator.calculate_balance_shaping(action)
+            balance_shaping = (
+                self.behavioral_penalty_calculator.calculate_balance_shaping(action)
+            )
         except Exception:
             balance_shaping = 0.0
         base_reward += balance_shaping
@@ -671,7 +716,9 @@ class RewardCalculator:
 
         # Action entropy shaping: encouraging diversity in actions
         try:
-            entropy_shaping = self.behavioral_penalty_calculator.calculate_action_entropy_shaping()
+            entropy_shaping = (
+                self.behavioral_penalty_calculator.calculate_action_entropy_shaping()
+            )
         except Exception:
             entropy_shaping = 0.0
         base_reward += entropy_shaping
@@ -870,14 +917,16 @@ class RewardCalculator:
     def _calculate_forced_balance_reward(self, action: int, step: int) -> float:
         """
         Stage: Forced balance reward that encourages corrective actions toward configured targets.
-        
+
         SAC v448 Layer 2 enhancements:
         - Extended exploration period from 10 to 100 steps
         - Emergency intervention penalty for >30% BUY-SELL deviation
         """
         # Sync RewardCalculator's counts with BehavioralPenaltyCalculator sliding-window counts
         try:
-            self._action_counts = self.behavioral_penalty_calculator._get_recent_counts()
+            self._action_counts = (
+                self.behavioral_penalty_calculator._get_recent_counts()
+            )
         except Exception:
             # Fallback: keep existing _action_counts
             pass
@@ -938,7 +987,9 @@ class RewardCalculator:
         is_imbalanced = max_abs_deviation > balance_broken_threshold
 
         # SAC v448: Apply emergency intervention penalty if bias is extreme
-        emergency_penalty = self.behavioral_penalty_calculator.calculate_emergency_intervention()
+        emergency_penalty = (
+            self.behavioral_penalty_calculator.calculate_emergency_intervention()
+        )
         if emergency_penalty < 0:
             self._last_reward_components["emergency_intervention"] = emergency_penalty
 
@@ -1263,10 +1314,7 @@ class RewardCalculator:
             penalty_val = self.get_setting_float("balance_penalty", 6.0)
             action_ratios = [count / total_actions for count in self._action_counts]
 
-            deviation = abs(
-                action_ratios[action]
-                - target_ratios[action]
-            )
+            deviation = abs(action_ratios[action] - target_ratios[action])
             if deviation > tolerance:
                 excess_deviation = deviation - tolerance
                 balance_penalty = penalty_val * excess_deviation

@@ -27,6 +27,7 @@ from typing import (
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -308,7 +309,7 @@ class HyperparameterOptimizer(ABC):
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update PPO parameters with the test value."""
 
-    def create_environment(self, **overrides: Any) -> HeavyTradingEnv:
+    def create_environment(self, **overrides: Dict[str, Any]) -> HeavyTradingEnv:
         config_dict = self.env_config.as_dict()
         if overrides:
             config_dict.update(overrides)
@@ -368,8 +369,8 @@ class HyperparameterOptimizer(ABC):
         def make_env() -> Any:
             env = self.create_environment()
 
-            def _mask_fn(environment: Any) -> Any:
-                return environment.get_action_masks()
+            def _mask_fn(environment: Any) -> NDArray[np.bool_]:
+                return cast(NDArray[np.bool_], environment.get_action_masks())
 
             masked_env = ActionMasker(env, _mask_fn)
             return cast(Any, Monitor(masked_env))
@@ -537,6 +538,7 @@ class HyperparameterOptimizer(ABC):
         if getattr(args, "search_range", None) is not None:
             # Parse comma-separated values
             range_str = str(args.search_range)
+            values: List[Union[int, float]]
             try:
                 # Try to parse as integers first
                 values = [int(v.strip()) for v in range_str.split(",")]

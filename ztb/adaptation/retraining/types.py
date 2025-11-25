@@ -2,7 +2,7 @@
 Type definitions for Automatic Retraining Triggers
 """
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -52,7 +52,7 @@ class TriggerCondition:
 
 
 @dataclass
-class PerformanceMetrics:
+class MLPerformanceMetrics:
     """パフォーマンス指標"""
 
     accuracy: float
@@ -63,6 +63,10 @@ class PerformanceMetrics:
     sharpe_ratio: float
     max_drawdown: float
     timestamp: datetime
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
 
 
 @dataclass
@@ -102,8 +106,8 @@ class RetrainingResult:
     training_duration: timedelta
     completed_at: datetime
     error_message: Optional[str] = None
-    metrics_before: Optional[PerformanceMetrics] = None
-    metrics_after: Optional[PerformanceMetrics] = None
+    metrics_before: Optional[MLPerformanceMetrics] = None
+    metrics_after: Optional[MLPerformanceMetrics] = None
 
 
 @dataclass

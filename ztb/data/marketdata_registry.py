@@ -8,12 +8,27 @@ with factory pattern for instantiation and configuration.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Protocol, cast
+from typing import Any, Dict, Optional, Protocol, TypedDict, Unpack, cast
+
+import pandas as pd
 
 from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
 from ztb.trading.live.replay_market import ReplayMarket
 from ztb.utils.logging_utils import get_logger
+
+
+class MarketDataSourceConfig(TypedDict, total=False):
+    """Configuration for market data sources"""
+
+    symbol: str
+    timeframe: str
+    start_date: str
+    end_date: str
+    limit: int
+    cache_dir: str
+    api_key: str
+
 
 logger = get_logger(__name__)
 
@@ -21,7 +36,7 @@ logger = get_logger(__name__)
 class MarketDataSource(Protocol):
     """Protocol for market data sources."""
 
-    def get_data(self, **kwargs: Any) -> Any:
+    def get_data(self, **kwargs: Any) -> pd.DataFrame:
         """Get market data from the source."""
         ...
 
@@ -120,7 +135,9 @@ class MarketDataSourceRegistry:
 
         return self._factories[source_type]
 
-    def create_source(self, source_type: str, **kwargs: Any) -> MarketDataSource:
+    def create_source(
+        self, source_type: str, **kwargs: Unpack[MarketDataSourceConfig]
+    ) -> MarketDataSource:
         """Create a market data source instance."""
         factory = self.get_factory(source_type)
         return factory.create(**kwargs)
@@ -142,7 +159,9 @@ def get_market_data_registry() -> MarketDataSourceRegistry:
     return _registry
 
 
-def create_market_data_source(source_type: str, **kwargs: Any) -> MarketDataSource:
+def create_market_data_source(
+    source_type: str, **kwargs: Unpack[MarketDataSourceConfig]
+) -> MarketDataSource:
     """Convenience function to create a market data source."""
     registry = get_market_data_registry()
     return registry.create_source(source_type, **kwargs)

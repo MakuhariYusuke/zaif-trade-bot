@@ -5,8 +5,8 @@ This module contains the base reward calculator class with common functionality
 and component initialization.
 """
 
-from typing import Any, List, Optional
 from collections import deque
+from typing import Any, List, Optional
 
 import numpy as np
 
@@ -19,11 +19,13 @@ from ztb.trading.constants import (
     MULTIPLIER_INDEX_SELL,
 )
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.trading.strategies.action_signal_guide.components.market_regime import (
+    MarketRegimeDetector,
+)
 from ztb.utils.logging_utils import get_logger
 
 from ..asymmetric_reward_scaler import AsymmetricRewardScaler
 from ..dynamic_reward_shaper import DynamicRewardShaper
-from ztb.trading.strategies.action_signal_guide.components.market_regime import MarketRegimeDetector
 from ..signal_integrator import SignalIntegrator
 
 
@@ -45,7 +47,7 @@ class BaseRewardCalculator:
         config: EnvironmentConfig,
         reward_settings: RewardSettings,
         initial_portfolio_value: float,
-    ):
+    ) -> None:
         """
         Initialize BaseRewardCalculator with component-based architecture.
 
@@ -65,7 +67,9 @@ class BaseRewardCalculator:
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
         self._loss_count = 0
-        self._recent_actions = deque(maxlen=100)  # Track recent actions for frequency penalty
+        self._recent_actions = deque(
+            maxlen=100
+        )  # Track recent actions for frequency penalty
         self.last_signal_strength: float = 0.0
         self.last_signal_reward: float = 0.0
         self._previous_portfolio_value = initial_portfolio_value  # Track previous portfolio value for delta calculation
@@ -73,7 +77,7 @@ class BaseRewardCalculator:
         # Initialize components following SOLID principles
         self._initialize_components()
 
-    def _initialize_components(self):
+    def _initialize_components(self) -> None:
         """Initialize all reward calculation components."""
         # 1. Market Regime Detector
         self.logger.debug("Initializing MarketRegimeDetector")
@@ -292,7 +296,7 @@ class BaseRewardCalculator:
         """
         raise NotImplementedError("Subclasses must implement calculate_reward")
 
-    def update_action_counts(self, action: int):
+    def update_action_counts(self, action: int) -> None:
         """Update action tracking statistics."""
         if action == ACTION_BUY:
             self._action_counts[MULTIPLIER_INDEX_BUY] += 1
@@ -306,14 +310,14 @@ class BaseRewardCalculator:
         if len(self._recent_actions) > 100:  # Keep last 100 actions
             self._recent_actions.pop(0)
 
-    def update_win_loss_counts(self, pnl: float):
+    def update_win_loss_counts(self, pnl: float) -> None:
         """Update win/loss tracking."""
         if pnl > 0:
             self._win_count += 1
         elif pnl < 0:
             self._loss_count += 1
 
-    def reset_episode_state(self):
+    def reset_episode_state(self) -> None:
         """Reset episode-specific state."""
         self._action_counts = [0, 0, 0]  # [BUY, SELL, HOLD]
         self._consecutive_idle_steps = 0
