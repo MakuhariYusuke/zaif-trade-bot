@@ -68,11 +68,15 @@ except Exception:
     AlertLevel = Any  # type: ignore
 
 
-JSONSerializable = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+JSONSerializable = Union[
+    Dict[str, "JSONSerializable"], List["JSONSerializable"], str, int, float, bool, None
+]
 
 
 # More specific config types
-ConfigValue = Union[str, int, float, bool, List[Any], Dict[str, Any], None]
+ConfigValue = Union[
+    str, int, float, bool, List["ConfigValue"], Dict[str, "ConfigValue"], None
+]
 
 
 class BaseConfigDict(TypedDict, total=False):
