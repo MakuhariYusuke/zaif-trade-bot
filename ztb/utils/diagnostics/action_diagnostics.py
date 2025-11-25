@@ -12,11 +12,13 @@ Provides tools to visualize and debug:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
+
+if TYPE_CHECKING:
+    import torch
 
 
 class ActionDiagnostics:
@@ -36,11 +38,11 @@ class ActionDiagnostics:
     def log_batch_diagnostics(
         self,
         step: int,
-        logits_raw: torch.Tensor,
-        logits_masked: torch.Tensor,
-        action_masks: Optional[torch.Tensor],
-        probs_before_temp: torch.Tensor,
-        probs_after_temp: torch.Tensor,
+        logits_raw: "torch.Tensor",
+        logits_masked: "torch.Tensor",
+        action_masks: Optional["torch.Tensor"],
+        probs_before_temp: "torch.Tensor",
+        probs_after_temp: "torch.Tensor",
         temperature: float,
         actions_selected: torch.Tensor,
         advantages: Optional[torch.Tensor] = None,
@@ -70,6 +72,11 @@ class ActionDiagnostics:
             policy_loss: Policy loss
             phase: "train" or "eval"
         """
+        # Import torch lazily (avoid requiring torch at module import time)
+        import importlib
+
+        tmod = importlib.import_module("torch")
+
         # Convert to numpy for analysis
         logits_raw_np = logits_raw.detach().cpu().numpy()
         logits_masked_np = logits_masked.detach().cpu().numpy()

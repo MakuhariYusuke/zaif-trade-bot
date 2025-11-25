@@ -6,9 +6,7 @@ Common type definitions for evaluation and monitoring
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
-
-from .common import AlertLevel
+from typing import Any, Dict, Optional
 
 
 class AlertType(Enum):
@@ -31,18 +29,18 @@ class EvaluationMetrics:
     f1_score: Optional[float] = None
 
     # Financial metrics
-    total_return: Optional[float] = None
-    sharpe_ratio: Optional[float] = None
-    max_drawdown: Optional[float] = None
-    volatility: Optional[float] = None
-    win_rate: Optional[float] = None
-    profit_factor: Optional[float] = None
-    calmar_ratio: Optional[float] = None
-    sortino_ratio: Optional[float] = None
+    total_return: float = 0.0
+    sharpe_ratio: float = 0.0
+    max_drawdown: float = 0.0
+    volatility: float = 0.0
+    win_rate: float = 0.0
+    profit_factor: float = 0.0
+    calmar_ratio: float = 0.0
+    sortino_ratio: float = 0.0
 
     # Additional metrics
-    consistency_score: Optional[float] = None
-    recovery_factor: Optional[float] = None
+    consistency_score: float = 0.0
+    recovery_factor: float = 0.0
 
 
 @dataclass

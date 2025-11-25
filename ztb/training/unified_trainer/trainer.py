@@ -14,7 +14,6 @@ import torch
 from ztb.training.constants import DEFAULT_LEARNING_RATE
 from ztb.types.common import (
     AnomalyDetectorProtocol,
-    BaseAlgorithmTrainer,
     ConfigDict,
     ContinualLearnerProtocol,
     EnsemblePredictor,
@@ -94,6 +93,7 @@ if TYPE_CHECKING:
         OnlineLearningConfig,
         OnlineLearningEngine,
     )
+    from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 
 
 class UnifiedTrainer:
@@ -2141,7 +2141,7 @@ class UnifiedTrainer:
         data_path: Optional[str] = None,
         window_sizes: Optional[List[int]] = None,
         overlap_ratio: float = 0.5,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run multi-period backtest analysis for SAC v445.3 model.
@@ -2160,11 +2160,13 @@ class UnifiedTrainer:
             Dict containing backtest results
         """
         try:
-            from pathlib import Path
             import json
-            import pandas as pd
+            from pathlib import Path
+
             import numpy as np
+            import pandas as pd
             from stable_baselines3 import PPO
+
             from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
             from ztb.trading.environment.utils.config import EnvironmentConfig
         except ImportError as e:
@@ -2189,13 +2191,17 @@ class UnifiedTrainer:
             if data_path and Path(data_path).exists():
                 custom_df = pd.read_csv(data_path)
                 custom_df["timestamp"] = pd.to_datetime(custom_df["timestamp"])
-                self.logger.info(f"Loaded custom data from {data_path}, shape: {custom_df.shape}")
+                self.logger.info(
+                    f"Loaded custom data from {data_path}, shape: {custom_df.shape}"
+                )
                 df = custom_df
             else:
                 # Load default training data
                 default_path = "data/btc_jpy_real_dataset.csv"
                 if not Path(default_path).exists():
-                    raise FileNotFoundError(f"Default data file not found: {default_path}")
+                    raise FileNotFoundError(
+                        f"Default data file not found: {default_path}"
+                    )
                 df = pd.read_csv(default_path)
                 df["timestamp"] = pd.to_datetime(df["timestamp"])
                 self.logger.info(f"Loaded default data, shape: {df.shape}")
@@ -2206,13 +2212,15 @@ class UnifiedTrainer:
                 "transaction_fee": 0.001,
                 "use_continuous_actions": True,
                 "adaptive_feature_selection": {"enabled": False},
-                "target_feature_count": 140
+                "target_feature_count": 140,
             }
             env_config = EnvironmentConfig(**env_config_dict)
 
             # Create environment
             env = HeavyTradingEnv(df=df, config=env_config, use_continuous_actions=True)
-            self.logger.info(f"Environment created with observation space: {env.observation_space}")
+            self.logger.info(
+                f"Environment created with observation space: {env.observation_space}"
+            )
 
             # Verify observation space matches model expectations
             expected_obs_dim = model.observation_space.shape[0]
@@ -2233,7 +2241,12 @@ class UnifiedTrainer:
                 window_results = []
                 for period in periods:
                     period_result = self._test_period_with_model(
-                        model, env, df, period["start_idx"], period["end_idx"], period["period_name"]
+                        model,
+                        env,
+                        df,
+                        period["start_idx"],
+                        period["end_idx"],
+                        period["period_name"],
                     )
                     window_results.append(period_result)
 
@@ -2242,7 +2255,7 @@ class UnifiedTrainer:
 
                 results[f"{window_size}h_windows"] = {
                     "period_results": window_results,
-                    "summary": trend_analysis
+                    "summary": trend_analysis,
                 }
 
             # Save results if output path provided
@@ -2250,7 +2263,7 @@ class UnifiedTrainer:
                 output_dir = Path(output_path).parent
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                with open(output_path, 'w', encoding='utf-8') as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(results, f, indent=2, default=str)
                 self.logger.info(f"Results saved to {output_path}")
 
@@ -2294,17 +2307,19 @@ class UnifiedTrainer:
             else:  # Sideways
                 trend_type = "sideways"
 
-            periods.append({
-                "start_idx": start_idx,
-                "end_idx": end_idx,
-                "start_date": period_data["timestamp"].iloc[0],
-                "end_date": period_data["timestamp"].iloc[-1],
-                "start_price": start_price,
-                "end_price": end_price,
-                "price_change_pct": price_change,
-                "trend_type": trend_type,
-                "period_name": f"{trend_type}_{len(periods)+1}_{period_data['timestamp'].iloc[0].strftime('%Y%m%d')}_{window_size_hours}h"
-            })
+            periods.append(
+                {
+                    "start_idx": start_idx,
+                    "end_idx": end_idx,
+                    "start_date": period_data["timestamp"].iloc[0],
+                    "end_date": period_data["timestamp"].iloc[-1],
+                    "start_price": start_price,
+                    "end_price": end_price,
+                    "price_change_pct": price_change,
+                    "trend_type": trend_type,
+                    "period_name": f"{trend_type}_{len(periods)+1}_{period_data['timestamp'].iloc[0].strftime('%Y%m%d')}_{window_size_hours}h",
+                }
+            )
 
         return periods
 
@@ -2320,7 +2335,9 @@ class UnifiedTrainer:
             action = [0.0]  # Neutral action
             obs, _, terminated, truncated, _ = env.step(action)
             if terminated or truncated:
-                self.logger.warning(f"Environment terminated before reaching start_idx {start_idx}")
+                self.logger.warning(
+                    f"Environment terminated before reaching start_idx {start_idx}"
+                )
                 break
 
         # Test the period
@@ -2348,7 +2365,11 @@ class UnifiedTrainer:
         # Calculate results
         final_portfolio_value = env.portfolio_value
         total_profit = final_portfolio_value - initial_portfolio_value
-        total_return_pct = (total_profit / initial_portfolio_value) * 100 if initial_portfolio_value > 0 else 0
+        total_return_pct = (
+            (total_profit / initial_portfolio_value) * 100
+            if initial_portfolio_value > 0
+            else 0
+        )
 
         # Action statistics
         sell_actions = sum(1 for a in actions_taken if a < -0.3)
@@ -2368,14 +2389,24 @@ class UnifiedTrainer:
             "sell_actions": sell_actions,
             "buy_actions": buy_actions,
             "hold_actions": hold_actions,
-            "sell_percentage": (sell_actions / len(actions_taken)) * 100 if actions_taken else 0,
-            "buy_percentage": (buy_actions / len(actions_taken)) * 100 if actions_taken else 0,
-            "hold_percentage": (hold_actions / len(actions_taken)) * 100 if actions_taken else 0,
+            "sell_percentage": (sell_actions / len(actions_taken)) * 100
+            if actions_taken
+            else 0,
+            "buy_percentage": (buy_actions / len(actions_taken)) * 100
+            if actions_taken
+            else 0,
+            "hold_percentage": (hold_actions / len(actions_taken)) * 100
+            if actions_taken
+            else 0,
             "total_reward": sum(rewards_received),
-            "average_reward": sum(rewards_received) / len(rewards_received) if rewards_received else 0,
+            "average_reward": sum(rewards_received) / len(rewards_received)
+            if rewards_received
+            else 0,
         }
 
-    def _analyze_results_by_trend(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_results_by_trend(
+        self, results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Analyze results by trend type."""
         trend_groups = {}
         for result in results:
@@ -2392,8 +2423,10 @@ class UnifiedTrainer:
             analysis["overall"] = {
                 "total_periods": len(results),
                 "avg_return": sum(returns) / len(returns),
-                "win_rate": sum(1 for r in results if r["total_return_pct"] > 0) / len(results) * 100,
-                "sharpe_ratio": self._calculate_sharpe_ratio(returns)
+                "win_rate": sum(1 for r in results if r["total_return_pct"] > 0)
+                / len(results)
+                * 100,
+                "sharpe_ratio": self._calculate_sharpe_ratio(returns),
             }
 
         # By trend type analysis
@@ -2403,8 +2436,12 @@ class UnifiedTrainer:
                 analysis["by_trend_type"][trend_type] = {
                     "count": len(trend_results),
                     "avg_return": sum(returns) / len(returns),
-                    "win_rate": sum(1 for r in trend_results if r["total_return_pct"] > 0) / len(trend_results) * 100,
-                    "sharpe_ratio": self._calculate_sharpe_ratio(returns)
+                    "win_rate": sum(
+                        1 for r in trend_results if r["total_return_pct"] > 0
+                    )
+                    / len(trend_results)
+                    * 100,
+                    "sharpe_ratio": self._calculate_sharpe_ratio(returns),
                 }
 
         return analysis
@@ -2416,7 +2453,9 @@ class UnifiedTrainer:
 
         try:
             mean_return = sum(returns) / len(returns)
-            std_return = (sum((r - mean_return) ** 2 for r in returns) / len(returns)) ** 0.5
+            std_return = (
+                sum((r - mean_return) ** 2 for r in returns) / len(returns)
+            ) ** 0.5
             return mean_return / std_return if std_return > 0 else 0.0
         except:
             return 0.0
@@ -2425,7 +2464,7 @@ class UnifiedTrainer:
         self,
         periods: List[Dict[str, Any]],
         model_path: Optional[str] = None,
-        config_path: Optional[str] = None
+        config_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run multi-period backtest analysis.
@@ -2442,7 +2481,7 @@ class UnifiedTrainer:
             "period_results": [],
             "overall_metrics": {},
             "regime_performance": {},
-            "recommendations": []
+            "recommendations": [],
         }
 
         try:
@@ -2451,6 +2490,7 @@ class UnifiedTrainer:
             if model_path:
                 try:
                     from stable_baselines3 import PPO
+
                     model = PPO.load(model_path)
                     self.logger.info(f"Loaded model from {model_path}")
                 except Exception as e:
@@ -2471,9 +2511,7 @@ class UnifiedTrainer:
 
             # Run backtest for each period
             for period in periods:
-                period_result = self._run_single_period_backtest(
-                    model, env, df, period
-                )
+                period_result = self._run_single_period_backtest(model, env, df, period)
                 results["period_results"].append(period_result)
 
             # Calculate overall metrics
@@ -2487,7 +2525,9 @@ class UnifiedTrainer:
             )
 
             # Generate recommendations
-            results["recommendations"] = self._generate_backtest_recommendations(results)
+            results["recommendations"] = self._generate_backtest_recommendations(
+                results
+            )
 
         except Exception as e:
             self.logger.error(f"Multi-period backtest failed: {e}")
@@ -2499,7 +2539,7 @@ class UnifiedTrainer:
         """Create environment for backtesting."""
         try:
             # Use existing environment creation logic
-            if hasattr(self, '_create_v433_training_environment'):
+            if hasattr(self, "_create_v433_training_environment"):
                 return self._create_v433_training_environment()
             else:
                 # Fallback environment creation
@@ -2509,7 +2549,7 @@ class UnifiedTrainer:
                 env_config = EnvironmentConfig(
                     initial_portfolio_value=100000,
                     transaction_cost=0.001,
-                    max_position_size=1.0
+                    max_position_size=1.0,
                 )
                 return HeavyTradingEnv(env_config)
         except Exception as e:
@@ -2524,6 +2564,7 @@ class UnifiedTrainer:
             csv_path = data_config.get("data_path", "data/btc_jpy_real_dataset.csv")
 
             import pandas as pd
+
             df = pd.read_csv(csv_path)
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             return df
@@ -2532,11 +2573,7 @@ class UnifiedTrainer:
             return None
 
     def _run_single_period_backtest(
-        self,
-        model,
-        env,
-        df,
-        period: Dict[str, Any]
+        self, model, env, df, period: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Run backtest for a single period."""
         try:
@@ -2566,10 +2603,12 @@ class UnifiedTrainer:
             return {
                 "period_name": period.get("name", "unknown"),
                 "error": str(e),
-                "total_return_pct": 0.0
+                "total_return_pct": 0.0,
             }
 
-    def _calculate_overall_backtest_metrics(self, period_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_overall_backtest_metrics(
+        self, period_results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Calculate overall metrics from period results."""
         if not period_results:
             return {}
@@ -2586,16 +2625,18 @@ class UnifiedTrainer:
             "total_periods": len(valid_results),
             "average_return": sum(returns) / len(returns) if returns else 0.0,
             "total_trades": total_trades,
-            "win_rate": calculate_win_rate(returns) * 100
+            "win_rate": calculate_win_rate(returns) * 100,
         }
 
-    def _analyze_backtest_regime_performance(self, period_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_backtest_regime_performance(
+        self, period_results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Analyze performance by market regime."""
         # Placeholder - would integrate with regime detection
         return {
             "bull_market_performance": {"average_return": 0.0, "win_rate": 0.0},
             "bear_market_performance": {"average_return": 0.0, "win_rate": 0.0},
-            "sideways_performance": {"average_return": 0.0, "win_rate": 0.0}
+            "sideways_performance": {"average_return": 0.0, "win_rate": 0.0},
         }
 
     def _generate_backtest_recommendations(self, results: Dict[str, Any]) -> List[str]:
@@ -2604,8 +2645,12 @@ class UnifiedTrainer:
         overall = results.get("overall_metrics", {})
 
         if overall.get("win_rate", 0) > 60:
-            recommendations.append("Strong overall performance - maintain current strategy")
+            recommendations.append(
+                "Strong overall performance - maintain current strategy"
+            )
         elif overall.get("win_rate", 0) < 40:
-            recommendations.append("Performance needs improvement - consider strategy adjustments")
+            recommendations.append(
+                "Performance needs improvement - consider strategy adjustments"
+            )
 
         return recommendations

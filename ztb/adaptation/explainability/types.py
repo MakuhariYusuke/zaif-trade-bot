@@ -29,6 +29,10 @@ class ExplainabilityFeatureImportance:
     confidence: Optional[float] = None
 
 
+# Backwards compatibility: alias name expected by other modules
+FeatureImportance = ExplainabilityFeatureImportance
+
+
 @dataclass
 class DecisionExplanation:
     """決定説明"""
@@ -67,7 +71,7 @@ class ExplanationResult:
     model_version: str
     explanation_type: ExplanationType
     target_prediction: Any
-    feature_importance: List[FeatureImportance]
+    feature_importance: List[ExplainabilityFeatureImportance]
     decision_explanation: Optional[DecisionExplanation] = None
     visualization: Optional[VisualizationResult] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -126,34 +130,8 @@ class VisualizationResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
-        return {
-            "plots": self.plots,
-            "timestamp": self.timestamp.isoformat(),
-            "format": self.format,
-        }
+        # Removed duplicated VisualizationResult and explanation cache declarations (they are defined above as ExplanationCache)
 
-    """説明キャッシュ"""
-    explanation_id: str
-    result: ExplanationResult
-    created_at: datetime
-    ttl_seconds: int
-
-    @property
-    def is_expired(self) -> bool:
-        """キャッシュが期限切れかどうか"""
-        from datetime import timedelta
-
-        return datetime.now() - self.created_at > timedelta(seconds=self.ttl_seconds)
-
-
-@dataclass
-class ExplanationReport:
-    """説明レポート"""
-
-    report_id: str
-    generated_at: datetime
-    period_start: datetime
-    period_end: datetime
     total_explanations: int
     explanation_types: Dict[str, int]
     top_features: List[ExplainabilityFeatureImportance]

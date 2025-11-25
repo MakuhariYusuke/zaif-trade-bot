@@ -22,9 +22,10 @@ import pandas as pd
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.core.base import BaseTrainer
 from ztb.training.components.regime_adaptive_trainer import RegimeAdaptiveTrainerMixin
+from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
@@ -212,7 +213,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             logger.error(f"Model validation failed: {e}")
             return {"model_loaded": False, "validation_error": str(e)}
 
-    def train(self, data: Any) -> Dict[str, Any]:
+    def train(self, data: ConfigDict) -> Dict[str, Any]:
         """
         Train the SAC model. Required by BaseTrainer.
 
@@ -230,7 +231,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
         return self.run_training(total_timesteps=total_timesteps, output_dir=output_dir)
 
-    def evaluate(self, data: Any) -> Dict[str, Any]:
+    def evaluate(self, data: ConfigDict) -> Dict[str, Any]:
         """
         Evaluate the SAC model. Required by BaseTrainer.
 

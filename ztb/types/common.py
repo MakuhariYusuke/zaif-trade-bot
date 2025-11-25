@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
+
 try:
     from stable_baselines3.common.logger import Logger
 except (ImportError, OSError):
@@ -60,16 +61,19 @@ class SB3ModelProtocol(Protocol):
     observation_space: spaces.Space
 
 
+# Backwards compatibility alias: AlertLevel is defined in types/alert_types.py
+try:
+    from ztb.types.alert_types import AlertLevel  # type: ignore
+except Exception:
+    AlertLevel = Any  # type: ignore
+
+
 JSONSerializable = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
 
 
 # More specific config types
-ConfigValue = Union[
-    str, int, float, bool,
-    List[Any],
-    Dict[str, Any],
-    None
-]
+ConfigValue = Union[str, int, float, bool, List[Any], Dict[str, Any], None]
+
 
 class BaseConfigDict(TypedDict, total=False):
     """Base configuration dictionary with common fields."""
@@ -137,9 +141,8 @@ class BaseConfigDict(TypedDict, total=False):
 
 
 ConfigDict = Union[
-    BaseConfigDict,
-    Dict[str, ConfigValue]  # Fallback for dynamic or legacy configs
-]
+    BaseConfigDict, Dict[str, ConfigValue]
+]  # Fallback for dynamic or legacy configs
 OptConfigDict = Optional[ConfigDict]
 PathLike = Union[str, Path]
 
@@ -193,33 +196,6 @@ class ModelResult(TypedDict):
 
 # Training-related lightweight protocols / aliases
 TrainingConfig = ConfigDict  # Keep for backward compatibility
-
-
-class BaseAlgorithmTrainer(Protocol):
-    """Minimal protocol describing the algorithm trainer used by UnifiedTrainer.
-
-    Keep this intentionally small and conservative; add attributes used by
-    UnifiedTrainer to avoid using `object` or raw `Any` in that module.
-    """
-
-    model: Optional[SB3ModelProtocol]
-    dataloader: Optional[DataLoader]
-
-    def train(self) -> bool:  # returns success flag
-        """Train the model and return success status."""
-        ...
-
-    def get_model_state(self) -> Dict[str, Any]:
-        """Get current model state for saving/checkpointing."""
-        ...
-
-    def set_model_state(self, state: Dict[str, Any]) -> None:
-        """Set model state for loading/checkpointing."""
-        ...
-
-    def get_training_stats(self) -> TrainingStats:
-        """Get comprehensive training statistics."""
-        ...
 
 
 class EnsemblePredictor(Protocol):
@@ -329,3 +305,23 @@ class SACLikeModelProtocol(Protocol):
 
     # Observation space (has .shape)
     observation_space: spaces.Space
+
+
+# Base classes for components
+class BaseComponent:
+    """Base class for all system components."""
+
+    def __init__(self, name: str = ""):
+        self.name = name or self.__class__.__name__
+
+    def get_name(self) -> str:
+        """Get component name."""
+        return self.name
+
+    def validate_config(self, config: Dict[str, Any]) -> bool:
+        """Validate component configuration."""
+        return True
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get component status."""
+        return {"name": self.name, "status": "active"}

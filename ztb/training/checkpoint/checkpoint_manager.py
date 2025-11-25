@@ -10,10 +10,14 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 
 import numpy as np
-from stable_baselines3.common.base_class import BaseAlgorithm
+
+if TYPE_CHECKING:
+    from stable_baselines3.common.base_class import BaseAlgorithm
+else:
+    BaseAlgorithm = Any  # avoid importing stable_baselines3 at module import time
 
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.errors import handle_error
@@ -191,7 +195,9 @@ class TrainingCheckpointManager:
             )
 
     def validate_checkpoint_integrity(
-        self, snapshot: TrainingCheckpointSnapshot, model: Optional[BaseAlgorithm] = None
+        self,
+        snapshot: TrainingCheckpointSnapshot,
+        model: Optional[BaseAlgorithm] = None,
     ) -> Dict[str, Any]:
         """
         Validate the integrity of a checkpoint snapshot.
@@ -211,9 +217,13 @@ class TrainingCheckpointManager:
 
         try:
             # Validate basic structure
-            if not hasattr(snapshot, 'payload') or not isinstance(snapshot.payload, dict):
+            if not hasattr(snapshot, "payload") or not isinstance(
+                snapshot.payload, dict
+            ):
                 validation_result["valid"] = False
-                validation_result["errors"].append("Invalid checkpoint payload structure")
+                validation_result["errors"].append(
+                    "Invalid checkpoint payload structure"
+                )
                 return validation_result
 
             payload = snapshot.payload
@@ -232,22 +242,30 @@ class TrainingCheckpointManager:
                     try:
                         model.policy.load_state_dict(policy_state, strict=False)
                     except Exception as e:
-                        validation_result["warnings"].append(f"Policy state loading issue: {e}")
+                        validation_result["warnings"].append(
+                            f"Policy state loading issue: {e}"
+                        )
 
             # Validate optimizer state if present
             if self.config.include_optimizer and "optimizer_state" in payload:
                 optimizer_state = payload["optimizer_state"]
                 if not isinstance(optimizer_state, dict):
-                    validation_result["warnings"].append("Invalid optimizer state format")
+                    validation_result["warnings"].append(
+                        "Invalid optimizer state format"
+                    )
                 elif model is not None:
                     try:
                         optimizer = getattr(model.policy, "optimizer", None)
                         if optimizer is not None:
                             optimizer.load_state_dict(optimizer_state)
                         else:
-                            validation_result["warnings"].append("Model has no optimizer but checkpoint contains optimizer state")
+                            validation_result["warnings"].append(
+                                "Model has no optimizer but checkpoint contains optimizer state"
+                            )
                     except Exception as e:
-                        validation_result["warnings"].append(f"Optimizer state loading issue: {e}")
+                        validation_result["warnings"].append(
+                            f"Optimizer state loading issue: {e}"
+                        )
 
             # Validate replay buffer if present
             if self.config.include_replay_buffer and "buffer_bytes" in payload:
@@ -262,7 +280,7 @@ class TrainingCheckpointManager:
                     validation_result["warnings"].append("Invalid RNG state format")
 
             # Validate metadata
-            if hasattr(snapshot, 'metadata') and snapshot.metadata:
+            if hasattr(snapshot, "metadata") and snapshot.metadata:
                 metadata = snapshot.metadata
                 if not isinstance(metadata, dict):
                     validation_result["warnings"].append("Invalid metadata format")

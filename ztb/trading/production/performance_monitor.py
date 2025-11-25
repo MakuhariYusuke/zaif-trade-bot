@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+from ztb.types.alert_types import AlertLevel
+
 
 class MonitorFrequency(Enum):
     """監視頻度"""
@@ -27,7 +29,7 @@ class MonitorFrequency(Enum):
 
 
 class AlertSeverity(Enum):
-    """アラート重要度"""
+    """アラート重要度 (deprecated: use AlertLevel)"""
 
     INFO = "info"
     WARNING = "warning"
@@ -52,7 +54,7 @@ class PerformanceAlert:
 
     alert_id: str
     timestamp: datetime
-    severity: AlertSeverity
+    severity: AlertLevel
     metric_name: str
     current_value: float
     threshold_value: float
@@ -242,7 +244,7 @@ class PerformanceMonitor:
         # コールバック実行
         for callback in self.snapshot_callbacks:
             try:
-                asyncio.create_task(callback(snapshot))
+                asyncio.create_task(callback(snapshot))  # type: ignore
             except Exception as e:
                 self.logger.error(f"Snapshot callback error: {e}")
 
@@ -298,7 +300,7 @@ class PerformanceMonitor:
 
     def _evaluate_threshold(
         self, threshold: PerformanceThreshold, value: float
-    ) -> Optional[AlertSeverity]:
+    ) -> Optional[AlertLevel]:
         """
         閾値評価
 
@@ -307,41 +309,41 @@ class PerformanceMonitor:
             value: 現在の値
 
         Returns:
-            Optional[AlertSeverity]: アラート重要度
+            Optional[AlertLevel]: アラート重要度
         """
         if threshold.comparison == ">":
             if value >= threshold.critical_threshold:
-                return AlertSeverity.CRITICAL
+                return AlertLevel.CRITICAL
             elif value >= threshold.error_threshold:
-                return AlertSeverity.ERROR
+                return AlertLevel.CRITICAL
             elif value >= threshold.warning_threshold:
-                return AlertSeverity.WARNING
+                return AlertLevel.WARNING
         elif threshold.comparison == "<":
             if value <= threshold.critical_threshold:
-                return AlertSeverity.CRITICAL
+                return AlertLevel.CRITICAL
             elif value <= threshold.error_threshold:
-                return AlertSeverity.ERROR
+                return AlertLevel.CRITICAL
             elif value <= threshold.warning_threshold:
-                return AlertSeverity.WARNING
+                return AlertLevel.WARNING
         elif threshold.comparison == ">=":
             if value >= threshold.critical_threshold:
-                return AlertSeverity.CRITICAL
+                return AlertLevel.CRITICAL
             elif value >= threshold.error_threshold:
-                return AlertSeverity.ERROR
+                return AlertLevel.CRITICAL
             elif value >= threshold.warning_threshold:
-                return AlertSeverity.WARNING
+                return AlertLevel.WARNING
         elif threshold.comparison == "<=":
             if value <= threshold.critical_threshold:
-                return AlertSeverity.CRITICAL
+                return AlertLevel.CRITICAL
             elif value <= threshold.error_threshold:
-                return AlertSeverity.ERROR
+                return AlertLevel.CRITICAL
             elif value <= threshold.warning_threshold:
-                return AlertSeverity.WARNING
+                return AlertLevel.WARNING
 
         return None
 
     def _get_threshold_value(
-        self, threshold: PerformanceThreshold, severity: AlertSeverity
+        self, threshold: PerformanceThreshold, severity: AlertLevel
     ) -> float:
         """
         閾値取得
@@ -353,15 +355,13 @@ class PerformanceMonitor:
         Returns:
             float: 閾値
         """
-        if severity == AlertSeverity.CRITICAL:
+        if severity == AlertLevel.CRITICAL:
             return threshold.critical_threshold
-        elif severity == AlertSeverity.ERROR:
-            return threshold.error_threshold
         else:
             return threshold.warning_threshold
 
     def _generate_alert_message(
-        self, threshold: PerformanceThreshold, value: float, severity: AlertSeverity
+        self, threshold: PerformanceThreshold, value: float, severity: AlertLevel
     ) -> str:
         """
         アラートメッセージ生成
@@ -389,11 +389,11 @@ class PerformanceMonitor:
         Returns:
             str: 全体ヘルス状態
         """
-        if any(alert.severity == AlertSeverity.CRITICAL for alert in alerts):
+        if any(alert.severity == AlertLevel.CRITICAL for alert in alerts):
             return "critical"
-        elif any(alert.severity == AlertSeverity.ERROR for alert in alerts):
+        elif any(alert.severity == AlertLevel.CRITICAL for alert in alerts):
             return "unhealthy"
-        elif any(alert.severity == AlertSeverity.WARNING for alert in alerts):
+        elif any(alert.severity == AlertLevel.WARNING for alert in alerts):
             return "degraded"
         else:
             return "healthy"
@@ -419,7 +419,7 @@ class PerformanceMonitor:
         # コールバック実行
         for callback in self.alert_callbacks:
             try:
-                asyncio.create_task(callback(alert))
+                asyncio.create_task(callback(alert))  # type: ignore
             except Exception as e:
                 self.logger.error(f"Alert callback error: {e}")
 
@@ -493,7 +493,7 @@ class PerformanceMonitor:
         # コールバック実行
         for callback in self.health_callbacks:
             try:
-                asyncio.create_task(callback(health_check))
+                asyncio.create_task(callback(health_check))  # type: ignore
             except Exception as e:
                 self.logger.error(f"Health callback error: {e}")
 
@@ -525,7 +525,7 @@ class PerformanceMonitor:
 
         # 指標別統計
         metrics_summary = {}
-        all_metrics = set()
+        all_metrics: set[str] = set()
         for snapshot in recent_snapshots:
             all_metrics.update(snapshot.metrics.keys())
 
@@ -553,16 +553,13 @@ class PerformanceMonitor:
             "total": len(recent_alerts),
             "by_severity": {
                 "info": len(
-                    [a for a in recent_alerts if a.severity == AlertSeverity.INFO]
+                    [a for a in recent_alerts if a.severity == AlertLevel.INFO]
                 ),
                 "warning": len(
-                    [a for a in recent_alerts if a.severity == AlertSeverity.WARNING]
-                ),
-                "error": len(
-                    [a for a in recent_alerts if a.severity == AlertSeverity.ERROR]
+                    [a for a in recent_alerts if a.severity == AlertLevel.WARNING]
                 ),
                 "critical": len(
-                    [a for a in recent_alerts if a.severity == AlertSeverity.CRITICAL]
+                    [a for a in recent_alerts if a.severity == AlertLevel.CRITICAL]
                 ),
             },
         }
@@ -853,7 +850,11 @@ class PerformanceMonitor:
                 alert = PerformanceAlert(
                     alert_id=a_data["alert_id"],
                     timestamp=datetime.fromisoformat(a_data["timestamp"]),
-                    severity=AlertSeverity(a_data["severity"]),
+                    severity=AlertLevel(
+                        a_data["severity"]
+                        if a_data["severity"] != "error"
+                        else "critical"
+                    ),
                     metric_name=a_data["metric_name"],
                     current_value=a_data["current_value"],
                     threshold_value=a_data["threshold_value"],

@@ -12,12 +12,11 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
+from ztb.types.alert_types import AlertCondition, AlertLevel, AlertStatus
+
 from .config import MonitoringConfig
 from .types import (
     Alert,
-    AlertCondition,
-    AlertLevel,
-    AlertStatus,
     DashboardData,
     MetricType,
     MetricValue,

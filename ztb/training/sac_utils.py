@@ -8,9 +8,10 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Callable, Dict
 
 from ztb.optimization.base import ParameterSpace, ParameterType, TrialResult
+from ztb.types.common import ConfigDict
 
 
 def get_sac_parameter_spaces(preset: str = "full") -> Dict[str, ParameterSpace]:
@@ -136,25 +137,25 @@ def create_sac_objective_function(
     total_timesteps: int = 5000,
     metric: str = "critic_loss",
     lower_is_better: bool = True,
-) -> Callable[[dict[str, Any]], TrialResult]:
+) -> Callable[[dict[str, ConfigDict]], TrialResult]:
     """
-    SAC訓練用の目的関数を作成
+    SAC training objective function creator.
 
     Args:
-        base_config_path: ベースとなる設定ファイルのパス
-        total_timesteps: 訓練ステップ数
-        metric: 最適化する指標（'critic_loss', 'actor_loss', 'episode_reward'等）
-        lower_is_better: 指標が小さいほど良いか
+        base_config_path: Base config file path
+        total_timesteps: Training timesteps
+        metric: Metric to optimize ('critic_loss', 'actor_loss', 'episode_reward', etc.)
+        lower_is_better: Whether lower metric values are better
 
     Returns:
-        Callable: パラメータを受け取り、TrialResultを返す目的関数
+        Callable: Objective function that takes parameters and returns TrialResult
     """
 
     # ベース設定を読み込み
     with open(base_config_path, "r", encoding="utf-8") as f:
         base_config = json.load(f)
 
-    def objective_function(parameters: Dict[str, Any]) -> TrialResult:
+    def objective_function(parameters: ConfigDict) -> TrialResult:
         """
         指定されたパラメータでSACを訓練し、結果を返す
 
@@ -271,28 +272,27 @@ def create_sac_objective_function(
 
 def create_mock_objective_function(
     noise_level: float = 0.1,
-) -> Callable[[dict[str, Any]], TrialResult]:
+) -> Callable[[dict[str, ConfigDict]], TrialResult]:
     """
-    テスト用のモック目的関数
-
-    実際の訓練をせず、パラメータから目的関数値を計算します。
-    最適化手法のテストや動作確認に使用します。
+    Create mock objective function for testing.
 
     Args:
-        noise_level: ノイズレベル（0-1）
+        noise_level: Noise level (0-1)
 
     Returns:
-        Callable: モック目的関数
+        Callable: Mock objective function
     """
     import random
     import time
 
-    def mock_objective(parameters: Dict[str, Any]) -> TrialResult:
+    def mock_objective(parameters: ConfigDict) -> TrialResult:
         """
-        仮想的な目的関数
+        Mock objective function for testing.
 
-        learning_rate が 3e-4 に近いほど良い、などの簡単な関数を想定
+        Simulates a simple function where learning_rate close to 3e-4 is better.
         """
+        # Slight delay simulation
+        time.sleep(0.1)
         # わずかな遅延を模擬
         time.sleep(0.1)
 

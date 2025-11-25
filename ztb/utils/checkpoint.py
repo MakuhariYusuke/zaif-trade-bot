@@ -19,11 +19,16 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypedDict
 
 import numpy as np
-import torch
-from stable_baselines3.common.base_class import BaseAlgorithm
+
+from ztb.types.common import ConfigDict
+
+if TYPE_CHECKING:
+    from stable_baselines3.common.base_class import BaseAlgorithm
+else:
+    BaseAlgorithm = Any  # type: ignore
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.common import ConfigDict
@@ -51,14 +56,37 @@ except ImportError:
 import zlib
 
 
+class MetadataTypedDict(TypedDict, total=False):
+    """Metadata for checkpoints"""
+
+    version: str
+    git_commit: str
+    hostname: str
+    training_time: float
+    model_name: str
+    config_hash: str
+
+
+class TrainingContextTypedDict(TypedDict, total=False):
+    """Training context metadata"""
+
+    algorithm: str
+    environment: str
+    total_timesteps: int
+    episode_count: int
+    best_reward: float
+    learning_rate: float
+    entropy_coef: float
+
+
 class CheckpointData(TypedDict):
     """Checkpoint data structure"""
 
     obj: Any
     step: int
-    metadata: Dict[str, Any]
+    metadata: MetadataTypedDict
     timestamp: float
-    training_context: Dict[str, Any]  # Enhanced metadata for training context
+    training_context: TrainingContextTypedDict  # Enhanced metadata for training context
 
 
 class TrainingStateCheckpointData(TypedDict):
@@ -128,8 +156,8 @@ class CheckpointManager:
         self,
         obj: Any,
         step: int,
-        metadata: Optional[Dict[str, Any]] = None,
-        training_context: Optional[Dict[str, Any]] = None,
+        metadata: Optional[MetadataTypedDict] = None,
+        training_context: Optional[TrainingContextTypedDict] = None,
     ) -> None:
         """Save checkpoint asynchronously"""
         if self.save_queue.full():
@@ -150,8 +178,8 @@ class CheckpointManager:
         self,
         obj: Any,
         step: int,
-        metadata: Optional[Dict[str, Any]] = None,
-        training_context: Optional[Dict[str, Any]] = None,
+        metadata: Optional[MetadataTypedDict] = None,
+        training_context: Optional[TrainingContextTypedDict] = None,
     ) -> str:
         """Save checkpoint synchronously (blocking)"""
         return self._save_checkpoint(obj, step, metadata or {}, training_context or {})
@@ -854,20 +882,36 @@ class TrainingStateManager:
         episode_count: int = 0,
         episode_rewards: Optional[List[float]] = None,
         episode_lengths: Optional[List[int]] = None,
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[ConfigDict] = None,
         training_time: float = 0.0,
         filename: Optional[str] = None,
     ) -> str:
         """Save complete training state for later resumption"""
 
         # Capture random states for reproducibility
-        random_state = (
-            random.getstate(),
-            np.random.get_state(),
-            torch.get_rng_state()
-            if torch.cuda.is_available()
-            else torch.random.get_rng_state(),
-        )
+        # Capture random states for reproducibility. Torch import is done lazily here to
+        # avoid DLL initialization issues on some systems when importing the module
+        # at top-level (e.g., c10.dll errors on Windows).
+        try:
+            import importlib
+
+            tmod = importlib.import_module("torch")
+        except Exception:
+            tmod = None
+
+        if tmod is not None:
+            try:
+                trng = (
+                    tmod.get_rng_state()
+                    if tmod.cuda.is_available()
+                    else tmod.random.get_rng_state()
+                )
+            except Exception:
+                trng = None
+        else:
+            trng = None
+
+        random_state = (random.getstate(), np.random.get_state(), trng)
 
         # Extract model state
         model_state = {
@@ -978,10 +1022,22 @@ class TrainingStateManager:
         random_state = training_state["random_state"]
         random.setstate(random_state[0])
         np.random.set_state(random_state[1])
-        if torch.cuda.is_available():
-            torch.set_rng_state(random_state[2])
-        else:
-            torch.random.set_rng_state(random_state[2])
+        try:
+            import importlib
+
+            tmod = importlib.import_module("torch")
+        except Exception:
+            tmod = None
+
+        if tmod is not None and random_state[2] is not None:
+            try:
+                if tmod.cuda.is_available():
+                    tmod.set_rng_state(random_state[2])
+                else:
+                    tmod.random.set_rng_state(random_state[2])
+            except Exception:
+                # Ignore issues when restoring torch RNG (e.g., CPU-only or torch version mismatch)
+                pass
 
         logger.info("Restored training state to model")
 

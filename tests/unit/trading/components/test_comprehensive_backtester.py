@@ -14,11 +14,11 @@ from ztb.trading.comprehensive_backtester import (
     ComprehensiveBacktestingSystem,
     MarketData,
     PerformanceAnalyzer,
-    PerformanceMetrics,
     RiskManager,
     RiskMetrics,
     StrategyEvaluator,
     TradeRecord,
+    TradingPerformanceMetrics,
 )
 
 
@@ -158,7 +158,7 @@ class TestComprehensiveBacktestingSystemOperations:
             mock_result = BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(),
+                performance_metrics=TradingPerformanceMetrics(),
                 risk_metrics=RiskMetrics(),
                 execution_time=10.5,
                 success=True,
@@ -207,7 +207,7 @@ class TestComprehensiveBacktestingSystemOperations:
             mock_run.return_value = BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(),
+                performance_metrics=TradingPerformanceMetrics(),
                 risk_metrics=RiskMetrics(),
                 execution_time=5.0,
                 success=True,
@@ -230,7 +230,7 @@ class TestComprehensiveBacktestingSystemOperations:
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(
+                performance_metrics=TradingPerformanceMetrics(
                     total_return=0.15, sharpe_ratio=1.2
                 ),
                 risk_metrics=RiskMetrics(max_drawdown=0.1, value_at_risk=0.05),
@@ -258,7 +258,7 @@ class TestComprehensiveBacktestingSystemOperations:
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(
+                performance_metrics=TradingPerformanceMetrics(
                     total_return=0.15, sharpe_ratio=1.2
                 ),
                 risk_metrics=RiskMetrics(max_drawdown=0.1),
@@ -268,7 +268,7 @@ class TestComprehensiveBacktestingSystemOperations:
             BacktestResult(
                 config=sample_backtest_config,
                 trades=[],
-                performance_metrics=PerformanceMetrics(
+                performance_metrics=TradingPerformanceMetrics(
                     total_return=0.20, sharpe_ratio=1.5
                 ),
                 risk_metrics=RiskMetrics(max_drawdown=0.12),
@@ -292,7 +292,7 @@ class TestComprehensiveBacktestingSystemOperations:
         valid_result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(total_return=0.1),
+            performance_metrics=TradingPerformanceMetrics(total_return=0.1),
             risk_metrics=RiskMetrics(max_drawdown=0.1),
             execution_time=5.0,
             success=True,
@@ -301,7 +301,9 @@ class TestComprehensiveBacktestingSystemOperations:
         invalid_result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(total_return=-0.5),  # Bad return
+            performance_metrics=TradingPerformanceMetrics(
+                total_return=-0.5
+            ),  # Bad return
             risk_metrics=RiskMetrics(max_drawdown=0.3),  # High drawdown
             execution_time=5.0,
             success=True,
@@ -337,7 +339,7 @@ class TestBacktestEngine:
             engine, "_calculate_performance_metrics"
         ) as mock_calc:
             mock_execute.return_value = []  # No trades
-            mock_calc.return_value = PerformanceMetrics(total_return=0.05)
+            mock_calc.return_value = TradingPerformanceMetrics(total_return=0.05)
 
             result = engine.run_backtest(sample_market_data)
 
@@ -407,7 +409,7 @@ class TestBacktestEngine:
 
         metrics = engine._calculate_performance_metrics()
 
-        assert isinstance(metrics, PerformanceMetrics)
+        assert isinstance(metrics, TradingPerformanceMetrics)
         assert metrics.total_trades == 2
         # Profit calculation: sell_price - buy_price - commissions
         expected_profit = (1550000.0 - 1500000.0) - (
@@ -435,7 +437,7 @@ class TestStrategyEvaluator:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(
+            performance_metrics=TradingPerformanceMetrics(
                 total_return=0.15,
                 sharpe_ratio=1.5,
                 win_rate=0.7,
@@ -465,7 +467,7 @@ class TestStrategyEvaluator:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(
+            performance_metrics=TradingPerformanceMetrics(
                 total_return=-0.1, sharpe_ratio=0.3, win_rate=0.4
             ),
             risk_metrics=RiskMetrics(max_drawdown=0.25),
@@ -497,7 +499,7 @@ class TestRiskManager:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(total_return=0.1),
+            performance_metrics=TradingPerformanceMetrics(total_return=0.1),
             risk_metrics=RiskMetrics(
                 max_drawdown=0.15, value_at_risk=0.05, expected_shortfall=0.08, beta=0.8
             ),
@@ -522,7 +524,7 @@ class TestRiskManager:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(total_return=0.05),
+            performance_metrics=TradingPerformanceMetrics(total_return=0.05),
             risk_metrics=RiskMetrics(
                 max_drawdown=0.35,
                 value_at_risk=0.12,
@@ -556,7 +558,7 @@ class TestPerformanceAnalyzer:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=sample_trade_records,
-            performance_metrics=PerformanceMetrics(),
+            performance_metrics=TradingPerformanceMetrics(),
             risk_metrics=RiskMetrics(),
             execution_time=10.0,
             success=True,
@@ -615,7 +617,7 @@ class TestBacktestResult:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(),
+            performance_metrics=TradingPerformanceMetrics(),
             risk_metrics=RiskMetrics(),
             execution_time=10.5,
             success=True,
@@ -631,7 +633,9 @@ class TestBacktestResult:
         result = BacktestResult(
             config=sample_backtest_config,
             trades=[],
-            performance_metrics=PerformanceMetrics(total_return=0.15, total_trades=10),
+            performance_metrics=TradingPerformanceMetrics(
+                total_return=0.15, total_trades=10
+            ),
             risk_metrics=RiskMetrics(max_drawdown=0.1),
             execution_time=10.5,
             success=True,
@@ -725,7 +729,7 @@ class TestPerformanceMetrics:
 
     def test_initialization(self):
         """Test PerformanceMetrics initialization"""
-        metrics = PerformanceMetrics()
+        metrics = TradingPerformanceMetrics()
 
         assert metrics.total_return == 0.0
         assert metrics.total_trades == 0
@@ -734,7 +738,7 @@ class TestPerformanceMetrics:
 
     def test_calculated_properties(self):
         """Test calculated properties"""
-        metrics = PerformanceMetrics(
+        metrics = TradingPerformanceMetrics(
             total_return=0.15, total_trades=10, winning_trades=7, losing_trades=3
         )
 
