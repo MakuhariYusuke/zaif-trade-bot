@@ -3,7 +3,6 @@ import os
 from typing import Any, Dict, List, Optional
 
 import psutil
-import torch
 
 
 def auto_config_threads(
@@ -70,13 +69,12 @@ def apply_cpu_tuning() -> None:
     os.environ.setdefault("OMP_NUM_THREADS", str(per))
     os.environ.setdefault("MKL_NUM_THREADS", str(per))
     try:
-        torch.set_num_threads(per)
+        import importlib
+
+        tmod = importlib.import_module("torch")
+        tmod.set_num_threads(per)
     except Exception as e:
         logging.warning(f"Failed to set torch num threads: {e}")
-    try:
-        torch.set_num_threads(per)
-    except Exception:
-        pass
 
     logging.info(
         f"[CPU] physical={physical} logical={logical} procs={procs} threads_per_proc={per} "

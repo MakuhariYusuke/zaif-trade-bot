@@ -15,8 +15,7 @@ from typing import Any, Dict, Optional, Union, overload
 import numpy as np
 import pandas as pd
 
-from ztb.core.base import BaseAnalyzer
-from ztb.types.common import AnalysisData
+from ztb.analysis.unified_analyze import BaseAnalyzer
 from ztb.data.btc_data_augmentation import BTCBiasDetector
 from ztb.metrics.metrics import (
     calculate_all_metrics,
@@ -27,16 +26,14 @@ from ztb.metrics.metrics import (
     seasonality_analysis,
     sharpe_ratio,
     sortino_ratio,
-    win_rate,
 )
-from ztb.utils.trading_metrics import action_distribution
-from ztb.trading.constants import (
-    TRADING_DAYS_PER_YEAR,  # = 252
-    ACTION_BUY, ACTION_HOLD, ACTION_SELL,
-)
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.types.common import AnalysisData
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import PerformanceMonitor
+from ztb.utils.trading_metrics import action_distribution
 
 # Import type definitions
 from .backtest_analysis_types import (
@@ -46,11 +43,12 @@ from .backtest_analysis_types import (
     BTCPerformanceResult,
     CorrelationAnalysisResult,
     MarketConditionResult,
+    MicrostructureAnalysisResult,
     NormalityTestResult,
     PerformanceMetricsResult,
     RiskAdjustedMetricsResult,
-    RobustnessAnalysisResult,
     RiskMetricsResult,
+    RobustnessAnalysisResult,
     SignalGuidanceAnalysisResult,
     StatisticalTestResult,
     TemporalPatternsResult,
@@ -58,7 +56,6 @@ from .backtest_analysis_types import (
     TransactionCostAnalysisResult,
     VolatilityClusteringResult,
     WalkForwardAnalysisResult,
-    MicrostructureAnalysisResult,
 )
 
 logger = get_logger(__name__)
@@ -97,7 +94,11 @@ class BacktestAnalyzer(BaseAnalyzer):
             Path(training_report_path) if training_report_path else None
         )
         self.data = self._load_data()
-        self.is_unified = 'results' in self.data and isinstance(self.data.get('results'), list) and 'avg_return_pct' in self.data
+        self.is_unified = (
+            "results" in self.data
+            and isinstance(self.data.get("results"), list)
+            and "avg_return_pct" in self.data
+        )
         self.training_data = (
             self._load_training_data() if training_report_path else None
         )
@@ -198,25 +199,25 @@ class BacktestAnalyzer(BaseAnalyzer):
         }
 
         if self.is_unified:
-            if self.data.get('enable_signal_guidance'):
-                results['signal_guidance_analysis'] = self._analyze_signal_guidance()
+            if self.data.get("enable_signal_guidance"):
+                results["signal_guidance_analysis"] = self._analyze_signal_guidance()
 
         self.results = results
         return results
 
     def _analyze_signal_guidance(self) -> SignalGuidanceAnalysisResult:
         """SIGNAL_GUIDANCE分析を実行"""
-        episodes = self.data['results']
+        episodes = self.data["results"]
         all_guidance_scores = []
         all_original_actions = []
         all_guidance_actions = []
 
         for ep in episodes:
-            if 'guidance_signals' in ep:
-                for signal in ep['guidance_signals']:
-                    all_guidance_scores.append(signal['guidance_score'])
-                    all_original_actions.append(signal['original_action'])
-                    all_guidance_actions.append(signal['guidance_action'])
+            if "guidance_signals" in ep:
+                for signal in ep["guidance_signals"]:
+                    all_guidance_scores.append(signal["guidance_score"])
+                    all_original_actions.append(signal["original_action"])
+                    all_guidance_actions.append(signal["guidance_action"])
 
         if not all_guidance_scores:
             return {}
@@ -245,27 +246,35 @@ class BacktestAnalyzer(BaseAnalyzer):
         # スコア vs ポートフォリオ価値の相関
         portfolio_values = []
         for ep in episodes:
-            if 'guidance_signals' in ep:
-                portfolio_values.extend([s['portfolio_value'] for s in ep['guidance_signals']])
+            if "guidance_signals" in ep:
+                portfolio_values.extend(
+                    [s["portfolio_value"] for s in ep["guidance_signals"]]
+                )
 
-        correlation = np.corrcoef(all_guidance_scores, portfolio_values)[0,1] if len(portfolio_values) == len(all_guidance_scores) else 0
+        correlation = (
+            np.corrcoef(all_guidance_scores, portfolio_values)[0, 1]
+            if len(portfolio_values) == len(all_guidance_scores)
+            else 0
+        )
 
         return {
-            'number_of_signals': len(all_guidance_scores),
-            'average_score': float(np.mean(all_guidance_scores)),
-            'score_std': float(np.std(all_guidance_scores)),
-            'min_score': float(min(all_guidance_scores)),
-            'max_score': float(max(all_guidance_scores)),
-            'original_hold': orig_discrete.count(0),
-            'original_buy': orig_discrete.count(1),
-            'original_sell': orig_discrete.count(-1),
-            'guidance_hold': guide_discrete.count(0),
-            'guidance_buy': guide_discrete.count(1),
-            'guidance_sell': guide_discrete.count(-1),
-            'differences': differences,
-            'total_actions': len(orig_discrete),
-            'difference_pct': differences / len(orig_discrete) * 100 if orig_discrete else 0,
-            'correlation': float(correlation)
+            "number_of_signals": len(all_guidance_scores),
+            "average_score": float(np.mean(all_guidance_scores)),
+            "score_std": float(np.std(all_guidance_scores)),
+            "min_score": float(min(all_guidance_scores)),
+            "max_score": float(max(all_guidance_scores)),
+            "original_hold": orig_discrete.count(0),
+            "original_buy": orig_discrete.count(1),
+            "original_sell": orig_discrete.count(-1),
+            "guidance_hold": guide_discrete.count(0),
+            "guidance_buy": guide_discrete.count(1),
+            "guidance_sell": guide_discrete.count(-1),
+            "differences": differences,
+            "total_actions": len(orig_discrete),
+            "difference_pct": differences / len(orig_discrete) * 100
+            if orig_discrete
+            else 0,
+            "correlation": float(correlation),
         }
 
     def calculate_risk_metrics(self) -> RiskMetricsResult:
@@ -283,8 +292,8 @@ class BacktestAnalyzer(BaseAnalyzer):
         # 日次リターン（分足データを日次に変換）
         if "timestamps" in self.data:
             timestamps = pd.to_datetime(
-                self.data["timestamps"], errors="coerce"  # Guard invalid date strings
-            )
+                self.data["timestamps"], errors="coerce"
+            )  # Guard invalid date strings
             valid_mask = ~pd.isna(timestamps)
             valid_mask = np.asarray(valid_mask, dtype=bool)
             if not valid_mask.any():
@@ -308,9 +317,7 @@ class BacktestAnalyzer(BaseAnalyzer):
                     current_day = day
                     day_start_value = value
             if day_start_value is not None and len(filtered_values) > 0:
-                daily_return = (
-                    filtered_values[-1] - day_start_value
-                ) / day_start_value
+                daily_return = (filtered_values[-1] - day_start_value) / day_start_value
                 daily_returns.append(daily_return)
 
             daily_returns = np.array(daily_returns)
@@ -652,9 +659,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         if isinstance(self.data["timestamps"], pd.DatetimeIndex):
             timestamps = self.data["timestamps"]
         else:
-            timestamps = pd.to_datetime(
-                self.data["timestamps"], errors="coerce"
-            )
+            timestamps = pd.to_datetime(self.data["timestamps"], errors="coerce")
         portfolio_values = np.array(self.data["portfolio_history"])
         valid_mask = ~pd.isna(timestamps)
         valid_mask = np.asarray(valid_mask, dtype=bool)
@@ -1723,7 +1728,9 @@ class BacktestAnalyzer(BaseAnalyzer):
                                 f"  一貫性スコア: {metrics.get('consistency_score', 0):.3f}"
                             )
 
-                        adaptation_metrics = wf_efficiency.get("adaptation_analysis", {})
+                        adaptation_metrics = wf_efficiency.get(
+                            "adaptation_analysis", {}
+                        )
                         if adaptation_metrics:
                             report_lines.append("学習適応分析:")
                             report_lines.append(
@@ -2657,20 +2664,20 @@ def main() -> None:
         print(f'Signal Guidance: {summary["enable_signal_guidance"]}')
         print()
 
-        episodes = summary['results']
-        final_balances = [ep['final_balance'] for ep in episodes]
-        print(f'Final Portfolio Values: {final_balances}')
-        print(f'Average Final Balance: {np.mean(final_balances):.2f}')
-        print(f'Std Final Balance: {np.std(final_balances):.2f}')
+        episodes = summary["results"]
+        final_balances = [ep["final_balance"] for ep in episodes]
+        print(f"Final Portfolio Values: {final_balances}")
+        print(f"Average Final Balance: {np.mean(final_balances):.2f}")
+        print(f"Std Final Balance: {np.std(final_balances):.2f}")
         print(f'Average Return: {summary["avg_return_pct"]:.2f}%')
         print(f'Std Return: {summary["std_return_pct"]:.2f}%')
         print(f'Win Rate: {summary["win_rate"]:.1f}%')
         print(f'Sharpe Ratio: {summary["sharpe_ratio"]:.4f}')
         print()
 
-        if 'signal_guidance_analysis' in results:
-            sga = results['signal_guidance_analysis']
-            print('=== SIGNAL_GUIDANCE Analysis ===')
+        if "signal_guidance_analysis" in results:
+            sga = results["signal_guidance_analysis"]
+            print("=== SIGNAL_GUIDANCE Analysis ===")
             print(f'Number of signals: {sga["number_of_signals"]}')
             print(f'Average guidance score: {sga["average_score"]:.2f}')
             print(f'Score std: {sga["score_std"]:.2f}')
@@ -2678,16 +2685,24 @@ def main() -> None:
             print(f'Max score: {sga["max_score"]:.2f}')
             print()
 
-            print('=== Action Distribution ===')
-            print(f'Original actions - Hold: {sga["original_hold"]}, Buy: {sga["original_buy"]}, Sell: {sga["original_sell"]}')
-            print(f'Guidance actions - Hold: {sga["guidance_hold"]}, Buy: {sga["guidance_buy"]}, Sell: {sga["guidance_sell"]}')
+            print("=== Action Distribution ===")
+            print(
+                f'Original actions - Hold: {sga["original_hold"]}, Buy: {sga["original_buy"]}, Sell: {sga["original_sell"]}'
+            )
+            print(
+                f'Guidance actions - Hold: {sga["guidance_hold"]}, Buy: {sga["guidance_buy"]}, Sell: {sga["guidance_sell"]}'
+            )
 
             differences = sga["differences"]
             total = sga["total_actions"]
-            print(f'Actions where guidance differed from original: {differences}/{total} ({sga["difference_pct"]:.1f}%)')
+            print(
+                f'Actions where guidance differed from original: {differences}/{total} ({sga["difference_pct"]:.1f}%)'
+            )
             print()
 
-            print(f'Correlation between SIGNAL_GUIDANCE score and portfolio value: {sga["correlation"]:.3f}')
+            print(
+                f'Correlation between SIGNAL_GUIDANCE score and portfolio value: {sga["correlation"]:.3f}'
+            )
             print()
 
         return 0

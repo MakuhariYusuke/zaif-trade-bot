@@ -10,9 +10,9 @@ from ztb.trading.performance_optimizer import (
     LatencyOptimizer,
     MemoryOptimizer,
     OptimizationResult,
-    PerformanceMetrics,
     PerformanceOptimizationSystem,
     PerformanceTarget,
+    SystemPerformanceMetrics,
 )
 
 
@@ -45,7 +45,7 @@ def sample_performance_target():
 @pytest.fixture
 def sample_performance_metrics():
     """Sample performance metrics"""
-    return PerformanceMetrics(
+    return SystemPerformanceMetrics(
         avg_latency_ms=50.0,
         p95_latency_ms=75.0,
         p99_latency_ms=90.0,
@@ -98,16 +98,16 @@ class TestPerformanceOptimizationSystemOperations:
             # Mock optimization results
             mock_latency.return_value = OptimizationResult(
                 optimization_type="data_processing",
-                before_metrics=PerformanceMetrics(avg_latency_ms=100.0),
-                after_metrics=PerformanceMetrics(avg_latency_ms=80.0),
+                before_metrics=SystemPerformanceMetrics(avg_latency_ms=100.0),
+                after_metrics=SystemPerformanceMetrics(avg_latency_ms=80.0),
                 improvement_percent=20.0,
                 success=True,
             )
 
             mock_signal.return_value = OptimizationResult(
                 optimization_type="signal_processing",
-                before_metrics=PerformanceMetrics(avg_latency_ms=120.0),
-                after_metrics=PerformanceMetrics(avg_latency_ms=90.0),
+                before_metrics=SystemPerformanceMetrics(avg_latency_ms=120.0),
+                after_metrics=SystemPerformanceMetrics(avg_latency_ms=90.0),
                 improvement_percent=25.0,
                 success=True,
             )
@@ -164,8 +164,8 @@ class TestPerformanceOptimizationSystemOperations:
         performance_optimizer.optimization_results = [
             OptimizationResult(
                 optimization_type="latency",
-                before_metrics=PerformanceMetrics(avg_latency_ms=100.0),
-                after_metrics=PerformanceMetrics(avg_latency_ms=80.0),
+                before_metrics=SystemPerformanceMetrics(avg_latency_ms=100.0),
+                after_metrics=SystemPerformanceMetrics(avg_latency_ms=80.0),
                 improvement_percent=20.0,
                 success=True,
             )
@@ -281,8 +281,8 @@ class TestLatencyOptimizer:
             optimizer, "_optimize_memory_pool", return_value=True
         ), patch.object(optimizer, "_optimize_caching", return_value=True):
             mock_measure.side_effect = [
-                PerformanceMetrics(avg_latency_ms=100.0),  # Before
-                PerformanceMetrics(avg_latency_ms=80.0),  # After
+                SystemPerformanceMetrics(avg_latency_ms=100.0),  # Before
+                SystemPerformanceMetrics(avg_latency_ms=80.0),  # After
             ]
 
             result = optimizer.optimize_data_processing()
@@ -305,8 +305,8 @@ class TestLatencyOptimizer:
             optimizer, "_optimize_algorithms", return_value=True
         ), patch.object(optimizer, "_optimize_io_operations", return_value=True):
             mock_measure.side_effect = [
-                PerformanceMetrics(avg_latency_ms=120.0),  # Before
-                PerformanceMetrics(avg_latency_ms=90.0),  # After
+                SystemPerformanceMetrics(avg_latency_ms=120.0),  # Before
+                SystemPerformanceMetrics(avg_latency_ms=90.0),  # After
             ]
 
             result = optimizer.optimize_signal_processing()
@@ -326,8 +326,8 @@ class TestLatencyOptimizer:
             optimizer, "_optimize_garbage_collection", return_value=True
         ), patch.object(optimizer, "_optimize_memory_structures", return_value=True):
             mock_measure.side_effect = [
-                PerformanceMetrics(memory_usage_gb=3.0),  # Before
-                PerformanceMetrics(memory_usage_gb=2.5),  # After
+                SystemPerformanceMetrics(memory_usage_gb=3.0),  # Before
+                SystemPerformanceMetrics(memory_usage_gb=2.5),  # After
             ]
 
             result = optimizer.optimize_memory_usage()
@@ -480,7 +480,7 @@ class TestPerformanceMetrics:
 
     def test_initialization(self):
         """Test PerformanceMetrics initialization"""
-        metrics = PerformanceMetrics()
+        metrics = SystemPerformanceMetrics()
 
         assert metrics.avg_latency_ms == 0.0
         assert metrics.memory_usage_gb == 0.0
@@ -500,8 +500,8 @@ class TestOptimizationResult:
 
     def test_initialization(self):
         """Test OptimizationResult initialization"""
-        before = PerformanceMetrics(avg_latency_ms=100.0)
-        after = PerformanceMetrics(avg_latency_ms=80.0)
+        before = SystemPerformanceMetrics(avg_latency_ms=100.0)
+        after = SystemPerformanceMetrics(avg_latency_ms=80.0)
 
         result = OptimizationResult(
             optimization_type="test",
@@ -520,8 +520,8 @@ class TestOptimizationResult:
         """Test improvement description for improvement"""
         result = OptimizationResult(
             optimization_type="test",
-            before_metrics=PerformanceMetrics(),
-            after_metrics=PerformanceMetrics(),
+            before_metrics=SystemPerformanceMetrics(),
+            after_metrics=SystemPerformanceMetrics(),
             improvement_percent=15.5,
             success=True,
         )
@@ -532,8 +532,8 @@ class TestOptimizationResult:
         """Test improvement description for degradation"""
         result = OptimizationResult(
             optimization_type="test",
-            before_metrics=PerformanceMetrics(),
-            after_metrics=PerformanceMetrics(),
+            before_metrics=SystemPerformanceMetrics(),
+            after_metrics=SystemPerformanceMetrics(),
             improvement_percent=-10.0,
             success=False,
         )

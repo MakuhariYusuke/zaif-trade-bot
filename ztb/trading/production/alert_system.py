@@ -20,23 +20,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import requests
 
-
-class AlertLevel(Enum):
-    """アラートレベル"""
-
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
-
-
-class AlertStatus(Enum):
-    """アラートステータス"""
-
-    ACTIVE = "active"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
-    EXPIRED = "expired"
+from ztb.types.alert_types import AlertLevel, AlertStatus
 
 
 class NotificationChannel(Enum):
@@ -67,7 +51,7 @@ class AlertRule:
 
 
 @dataclass
-class Alert:
+class ProductionAlert:
     """アラート"""
 
     alert_id: str
@@ -121,8 +105,8 @@ class AlertSystem:
         self.alert_rules: Dict[str, AlertRule] = {}
 
         # アラート管理
-        self.active_alerts: Dict[str, Alert] = {}
-        self.alert_history: List[Alert] = []
+        self.active_alerts: Dict[str, ProductionAlert] = {}
+        self.alert_history: List[ProductionAlert] = []
 
         # アラート抑制
         self.alert_cooldowns: Dict[str, datetime] = {}
@@ -136,7 +120,7 @@ class AlertSystem:
         self.monitoring_thread: Optional[threading.Thread] = None
 
         # コールバック
-        self.alert_callbacks: List[Callable[[Alert], Awaitable[None]]] = []
+        self.alert_callbacks: List[Callable[[ProductionAlert], Awaitable[None]]] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -201,7 +185,7 @@ class AlertSystem:
                 "error_rate",
                 ">",
                 5.0,
-                AlertLevel.ERROR,
+                AlertLevel.CRITICAL,
             ),
             AlertRule(
                 "response_time_high",
@@ -228,7 +212,7 @@ class AlertSystem:
                 "sharpe_ratio",
                 "<",
                 0.1,
-                AlertLevel.ERROR,
+                AlertLevel.CRITICAL,
             ),
         ]
 
@@ -301,7 +285,7 @@ class AlertSystem:
         metric_name: str,
         metric_value: float,
         labels: Optional[Dict[str, str]] = None,
-    ) -> List[Alert]:
+    ) -> List[ProductionAlert]:
         """
         指標値に対するルールチェック
 
@@ -311,7 +295,7 @@ class AlertSystem:
             labels: ラベル
 
         Returns:
-            List[Alert]: 生成されたアラートリスト
+            List[ProductionAlert]: 生成されたアラートリスト
         """
         alerts = []
         labels = labels or {}
@@ -369,7 +353,7 @@ class AlertSystem:
 
     def _create_alert(
         self, rule: AlertRule, metric_value: float, labels: Dict[str, str]
-    ) -> Alert:
+    ) -> ProductionAlert:
         """
         アラート作成
 
@@ -379,14 +363,14 @@ class AlertSystem:
             labels: ラベル
 
         Returns:
-            Alert: アラート
+            ProductionAlert: アラート
         """
         alert_id = f"ALERT_{rule.rule_id}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
 
         title = f"[{rule.level.value.upper()}] {rule.name}"
         message = self._generate_alert_message(rule, metric_value)
 
-        alert = Alert(
+        alert = ProductionAlert(
             alert_id=alert_id,
             rule_id=rule.rule_id,
             level=rule.level,
@@ -429,7 +413,7 @@ class AlertSystem:
             f"Threshold: {rule.threshold:.2f} ({condition_desc})"
         )
 
-    def process_alerts(self, alerts: List[Alert]) -> None:
+    def process_alerts(self, alerts: List[ProductionAlert]) -> None:
         """
         アラート処理
 
@@ -454,7 +438,7 @@ class AlertSystem:
             # コールバック実行
             for callback in self.alert_callbacks:
                 try:
-                    asyncio.create_task(callback(alert))
+                    asyncio.create_task(callback(alert))  # type: ignore
                 except Exception as e:
                     self.logger.error(f"Alert callback error: {e}")
 
@@ -515,7 +499,7 @@ class AlertSystem:
 
         return False
 
-    async def _send_alert_notifications(self, alert: Alert) -> None:
+    async def _send_alert_notifications(self, alert: ProductionAlert) -> None:
         """
         アラート通知送信
 
@@ -546,7 +530,7 @@ class AlertSystem:
 
         alert.notification_sent = True
 
-    async def _send_log_notification(self, alert: Alert) -> None:
+    async def _send_log_notification(self, alert: ProductionAlert) -> None:
         """
         ログ通知送信
 
@@ -559,7 +543,7 @@ class AlertSystem:
         self.logger.warning(log_message)
 
     async def _send_email_notification(
-        self, alert: Alert, config: NotificationConfig
+        self, alert: ProductionAlert, config: NotificationConfig
     ) -> None:
         """
         メール通知送信
@@ -578,6 +562,11 @@ class AlertSystem:
         if not all([smtp_server, username, password, from_addr, to_addrs]):
             self.logger.warning("Email notification not configured properly")
             return
+
+        assert smtp_server is not None
+        assert username is not None
+        assert password is not None
+        assert from_addr is not None
 
         msg = MIMEMultipart()
         msg["From"] = from_addr
@@ -611,7 +600,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             self.logger.error(f"Email notification failed: {e}")
 
     async def _send_slack_notification(
-        self, alert: Alert, config: NotificationConfig
+        self, alert: ProductionAlert, config: NotificationConfig
     ) -> None:
         """
         Slack通知送信
@@ -628,7 +617,6 @@ Labels: {json.dumps(alert.labels, indent=2)}
         color_map = {
             AlertLevel.INFO: "good",
             AlertLevel.WARNING: "warning",
-            AlertLevel.ERROR: "danger",
             AlertLevel.CRITICAL: "#ff0000",
         }
 
@@ -660,7 +648,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             self.logger.error(f"Slack notification failed: {e}")
 
     async def _send_webhook_notification(
-        self, alert: Alert, config: NotificationConfig
+        self, alert: ProductionAlert, config: NotificationConfig
     ) -> None:
         """
         Webhook通知送信
@@ -697,7 +685,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             self.logger.error(f"Webhook notification failed: {e}")
 
     async def _send_sms_notification(
-        self, alert: Alert, config: NotificationConfig
+        self, alert: ProductionAlert, config: NotificationConfig
     ) -> None:
         """
         SMS通知送信
@@ -733,7 +721,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
             f"Notification configured: {channel.value} ({'enabled' if enabled else 'disabled'})"
         )
 
-    def get_active_alerts(self, level: Optional[AlertLevel] = None) -> List[Alert]:
+    def get_active_alerts(
+        self, level: Optional[AlertLevel] = None
+    ) -> List[ProductionAlert]:
         """
         アクティブアラート取得
 
@@ -757,7 +747,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
         level: Optional[AlertLevel] = None,
         status: Optional[AlertStatus] = None,
         limit: Optional[int] = None,
-    ) -> List[Alert]:
+    ) -> List[ProductionAlert]:
         """
         アラート履歴取得
 
@@ -812,7 +802,6 @@ Labels: {json.dumps(alert.labels, indent=2)}
                 "warning": len(
                     [a for a in recent_alerts if a.level == AlertLevel.WARNING]
                 ),
-                "error": len([a for a in recent_alerts if a.level == AlertLevel.ERROR]),
                 "critical": len(
                     [a for a in recent_alerts if a.level == AlertLevel.CRITICAL]
                 ),
@@ -893,7 +882,9 @@ Labels: {json.dumps(alert.labels, indent=2)}
                 del self.active_alerts[alert_key]
                 self.logger.warning(f"Alert expired: {alert.alert_id}")
 
-    def add_alert_callback(self, callback: Callable[[Alert], Awaitable[None]]) -> None:
+    def add_alert_callback(
+        self, callback: Callable[[ProductionAlert], Awaitable[None]]
+    ) -> None:
         """
         アラートコールバック追加
 
@@ -1004,7 +995,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             # アラート履歴復元
             self.alert_history = []
             for a_data in state.get("alert_history", []):
-                alert = Alert(
+                alert = ProductionAlert(
                     alert_id=a_data["alert_id"],
                     rule_id=a_data["rule_id"],
                     level=AlertLevel(a_data["level"]),

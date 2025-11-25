@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from .types import AlertCondition, AlertLevel, DashboardConfig, MetricType, ReportConfig
+from ztb.types.alert_types import AlertCondition, AlertLevel
+
+from .types import DashboardConfig, MetricType, ReportConfig
 
 
 class EvaluationMode(Enum):

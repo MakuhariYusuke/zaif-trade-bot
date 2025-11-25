@@ -413,12 +413,12 @@ class BalanceCurriculumManager:
 
 ---
 
-### Layer 4: Integration & Environment（1日）
+### Layer 4: Trend-Aware Balance & Integration（1日）
 
 **依存**: Layer 1-3  
-**目的**: 環境クラスへの統合
+**目的**: TrendDetectorの統合と環境（Reward/Behavioral Penalty）への反映、および環境クラスへの統合
 
-#### 4.1 単体テスト
+#### 4.1 単体テスト / TrendDetector 検証
 ```bash
 # 全コンポーネント
 pytest tests/unit/components/reward/ -v
@@ -482,13 +482,13 @@ class BalanceCurriculum:
 ### Layer 6: 高度な機能（2日）
 
 **依存**: Layer 5  
-**目的**: Trend-aware balance, マルチタイムフレーム最適化
+**目的**: マルチタイムフレーム重み最適化、その他の高度な改良
 
-#### 6.1 Trend-aware Balance
-**修正**: `behavioral_penalty_calculator.py`
-
-#### 6.2 マルチタイムフレーム重み最適化
+#### 6.1 マルチタイムフレーム重み最適化
 **設定**: 各config fileで`feature_weights`調整
+
+#### 6.2 その他高度な改良
+**例**: メモリ最適化、追加評価指標の導入、ポリシーモジュールの軽微な改良
 
 ---
 

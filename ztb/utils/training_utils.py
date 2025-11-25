@@ -5,11 +5,12 @@ Training Utilities
 
 import json
 import os
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+if TYPE_CHECKING:
+    # For type checking only; avoid importing stable_baselines3 at module import time
+    from stable_baselines3 import SAC  # type: ignore
+    from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
 
@@ -17,11 +18,8 @@ logger = get_logger(__name__)
 
 
 def create_checkpoint_callback(
-    save_freq: int,
-    save_path: str,
-    name_prefix: str = "rl_model",
-    verbose: int = 1
-) -> CheckpointCallback:
+    save_freq: int, save_path: str, name_prefix: str = "rl_model", verbose: int = 1
+) -> "CheckpointCallback":
     """
     CheckpointCallbackを作成
 
@@ -36,11 +34,14 @@ def create_checkpoint_callback(
     """
     os.makedirs(save_path, exist_ok=True)
 
+    # Import SB3 checkpoint callback lazily to avoid loading torch at module import time
+    from stable_baselines3.common.callbacks import CheckpointCallback
+
     return CheckpointCallback(
         save_freq=save_freq,
         save_path=save_path,
         name_prefix=name_prefix,
-        verbose=verbose
+        verbose=verbose,
     )
 
 
@@ -52,8 +53,8 @@ def create_eval_callback(
     render: bool = False,
     verbose: int = 1,
     best_model_save_path: Optional[str] = None,
-    log_path: Optional[str] = None
-) -> EvalCallback:
+    log_path: Optional[str] = None,
+) -> "EvalCallback":
     """
     EvalCallbackを作成
 
@@ -75,6 +76,9 @@ def create_eval_callback(
     if log_path:
         os.makedirs(log_path, exist_ok=True)
 
+    # Import EvalCallback lazily
+    from stable_baselines3.common.callbacks import EvalCallback
+
     return EvalCallback(
         eval_env,
         best_model_save_path=best_model_save_path,
@@ -83,11 +87,11 @@ def create_eval_callback(
         n_eval_episodes=n_eval_episodes,
         deterministic=deterministic,
         render=render,
-        verbose=verbose
+        verbose=verbose,
     )
 
 
-def save_model(model: SAC, model_path: str, verbose: bool = True) -> bool:
+def save_model(model: "SAC", model_path: str, verbose: bool = True) -> bool:
     """
     モデルを保存
 
@@ -116,7 +120,7 @@ def save_model(model: SAC, model_path: str, verbose: bool = True) -> bool:
         return False
 
 
-def load_model(model_path: str, verbose: bool = True) -> Optional[SAC]:
+def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
     """
     モデルを読み込み
 
@@ -132,7 +136,9 @@ def load_model(model_path: str, verbose: bool = True) -> Optional[SAC]:
             logger.error(f"Model file not found: {model_path}.zip")
             return None
 
-        model = SAC.load(model_path)
+        from stable_baselines3 import SAC as _SAC
+
+        model = _SAC.load(model_path)
 
         if verbose:
             logger.info(f"Model loaded from: {model_path}")
@@ -144,7 +150,9 @@ def load_model(model_path: str, verbose: bool = True) -> Optional[SAC]:
         return None
 
 
-def save_training_results(results: Dict[str, Any], output_path: str, verbose: bool = True) -> bool:
+def save_training_results(
+    results: Dict[str, Any], output_path: str, verbose: bool = True
+) -> bool:
     """
     トレーニング結果を保存
 
@@ -161,7 +169,7 @@ def save_training_results(results: Dict[str, Any], output_path: str, verbose: bo
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # JSON保存
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False, default=str)
 
         if verbose:
@@ -200,7 +208,10 @@ def validate_training_config(config: Dict[str, Any]) -> Dict[str, Any]:
         # total_timesteps
         if "total_timesteps" not in training:
             errors.append("training.total_timesteps is required")
-        elif not isinstance(training["total_timesteps"], int) or training["total_timesteps"] <= 0:
+        elif (
+            not isinstance(training["total_timesteps"], int)
+            or training["total_timesteps"] <= 0
+        ):
             errors.append("training.total_timesteps must be a positive integer")
 
         # learning_rate
@@ -223,8 +234,4 @@ def validate_training_config(config: Dict[str, Any]) -> Dict[str, Any]:
         if "transaction_cost" in env and env["transaction_cost"] > 0.01:
             warnings.append("High transaction cost detected (>1%), consider reducing")
 
-    return {
-        "valid": len(errors) == 0,
-        "errors": errors,
-        "warnings": warnings
-    }
+    return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}

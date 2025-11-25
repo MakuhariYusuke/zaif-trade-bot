@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from ztb.core.base import BaseAnalyzer
+from ztb.analysis.unified_analyze import BaseAnalyzer
 from ztb.trading.environment.constants import DEFAULT_ANALYSIS_SAMPLES
 from ztb.types.common import AnalysisData, SACLikeModelProtocol
 

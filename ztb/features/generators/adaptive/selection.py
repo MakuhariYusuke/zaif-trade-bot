@@ -454,9 +454,13 @@ class FeaturesAdaptiveFeatureSelector:
         pass
 
 
-def create_adaptive_selector() -> AdaptiveFeatureSelector:
+def create_adaptive_selector() -> "AdaptiveFeatureSelector":
     """適応型特徴量選択器の作成"""
     return AdaptiveFeatureSelector()
+
+
+# Backwards compatibility: alias to expected name
+AdaptiveFeatureSelector = FeaturesAdaptiveFeatureSelector
 
 
 # テスト用関数

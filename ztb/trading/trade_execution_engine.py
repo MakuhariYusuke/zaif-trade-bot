@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ztb.core.base import BaseComponent
 from ztb.trading.environment.constants import (
     BASIS_POINTS,
     DEFAULT_FEE_RATE,
@@ -19,6 +18,7 @@ from ztb.trading.environment.constants import (
     DEFAULT_TOTAL_CAPITAL,
     MAXIMUM_FEE_RATE,
 )
+from ztb.types.common import BaseComponent
 from ztb.utils.errors import (
     validate_non_negative,
     validate_positive,

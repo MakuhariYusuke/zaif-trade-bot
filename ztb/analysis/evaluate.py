@@ -18,15 +18,19 @@ from stable_baselines3 import PPO
 from torch.utils.tensorboard import SummaryWriter
 
 from ztb.analysis.evaluator.types import EvaluationResult, SingleEpisodeResultDict
-from ztb.config.manager import ConfigManager
 
 # Re-export from new modular structure for backward compatibility
-from ztb.core.base import BaseAnalyzer
+from ztb.analysis.unified_analyze import BaseAnalyzer
+from ztb.config.manager import ConfigManager
 from ztb.trading.environment.constants import EPSILON
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import get_file_dir
-from ztb.utils.statistics import calculate_autocorrelation, detect_outliers_iqr, rolling_statistics
+from ztb.utils.statistics import (
+    calculate_autocorrelation,
+    detect_outliers_iqr,
+    rolling_statistics,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -157,7 +161,7 @@ class TradingEvaluator(BaseAnalyzer):
             ),
         )
 
-    def analyze(self, data: Any = None) -> Dict[str, Any]:
+    def analyze(self, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Perform comprehensive model analysis."""
         result = self.evaluate_model()
         self.results = dict(result) if result else {}
@@ -203,7 +207,9 @@ class TradingEvaluator(BaseAnalyzer):
             # 全エピソードのPnLをフラット化して統計分析
             flat_pnls = [pnl for episode_pnls in all_pnls for pnl in episode_pnls]
             if flat_pnls:
-                stats["returns_statistics"] = self._analyze_returns_statistics(flat_pnls)
+                stats["returns_statistics"] = self._analyze_returns_statistics(
+                    flat_pnls
+                )
 
         # 結果の保存
         self._save_evaluation_results(
@@ -1194,7 +1200,9 @@ class TradingEvaluator(BaseAnalyzer):
 
         # 自己相関係数の計算
         autocorr_1 = calculate_autocorrelation(returns, lag=1)
-        autocorr_5 = calculate_autocorrelation(returns, lag=5) if len(returns) > 5 else 0.0
+        autocorr_5 = (
+            calculate_autocorrelation(returns, lag=5) if len(returns) > 5 else 0.0
+        )
 
         # 外れ値検出
         outliers = detect_outliers_iqr(returns)
@@ -1206,7 +1214,9 @@ class TradingEvaluator(BaseAnalyzer):
             "autocorrelation_lag1": autocorr_1,
             "autocorrelation_lag5": autocorr_5,
             "outlier_rate": outlier_rate,
-            "outlier_indices": [i for i, is_outlier in enumerate(outliers) if is_outlier],
+            "outlier_indices": [
+                i for i, is_outlier in enumerate(outliers) if is_outlier
+            ],
         }
 
     def close(self) -> None:
