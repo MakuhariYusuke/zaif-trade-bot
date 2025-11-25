@@ -7,7 +7,7 @@ V433 Adaptive SAC Core
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -116,7 +116,7 @@ class MarketRegimeState:
 
 
 @dataclass
-class PerformanceMetrics:
+class EpisodePerformanceMetrics:
     """パフォーマンス指標"""
 
     episode_reward: float = 0.0
@@ -127,6 +127,10 @@ class PerformanceMetrics:
     volatility: float = 0.0
     total_trades: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
 
 
 class AdaptiveSACPolicy(nn.Module):
@@ -453,12 +457,12 @@ class AdaptiveSACCore:
 
     def _calculate_performance_metrics(
         self, rewards: List[float]
-    ) -> PerformanceMetrics:
+    ) -> EpisodePerformanceMetrics:
         """パフォーマンス指標の計算"""
         if not rewards:
-            return PerformanceMetrics()
+            return EpisodePerformanceMetrics()
 
-        metrics = PerformanceMetrics()
+        metrics = EpisodePerformanceMetrics()
 
         # 基本指標
         metrics.episode_reward = np.mean(rewards)
@@ -494,7 +498,9 @@ class AdaptiveSACCore:
 
         return metrics
 
-    def _detect_performance_degradation(self, metrics: PerformanceMetrics) -> bool:
+    def _detect_performance_degradation(
+        self, metrics: EpisodePerformanceMetrics
+    ) -> bool:
         """パフォーマンス低下の検知"""
         if len(self.performance_history) < 5:
             return False
@@ -624,7 +630,7 @@ class AdaptiveSACCore:
         self.current_regime_state = MarketRegimeState(**state["current_regime_state"])
         self.adaptation_params = state["adaptation_params"]
         self.performance_history = deque(
-            [PerformanceMetrics(**m) for m in state["performance_history"]],
+            [EpisodePerformanceMetrics(**m) for m in state["performance_history"]],
             maxlen=self.config.performance_window_size,
         )
         self.adaptation_log = state["adaptation_log"]

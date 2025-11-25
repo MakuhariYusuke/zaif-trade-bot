@@ -14,10 +14,22 @@ import threading
 import time
 import zlib
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Any, Callable, Dict, Optional, TypedDict, Union, cast
 
 from ztb.trading.environment.constants import BYTES_PER_KB, BYTES_PER_MB
 from ztb.utils.path_utils import ensure_dir
+
+
+class FeatureCacheParams(TypedDict, total=False):
+    """Parameters for feature cache"""
+
+    symbol: str
+    timeframe: str
+    start_date: str
+    end_date: str
+    feature_set: str
+    normalization: str
+
 
 try:
     pass
@@ -135,7 +147,7 @@ class FeatureCache:
                     f"Compressor {selected} not available, falling back to zlib"
                 )
 
-    def _key(self, data_path: str, params: Dict[str, Any]) -> str:
+    def _key(self, data_path: str, params: FeatureCacheParams) -> str:
         payload = json.dumps(
             {"data": data_path, "params": params}, sort_keys=True
         ).encode()
@@ -238,7 +250,7 @@ class FeatureCache:
         except ImportError:
             pass  # psutil未導入時は無視
 
-    def get(self, data_path: str, params: Dict[str, Any]) -> Optional[Any]:
+    def get(self, data_path: str, params: FeatureCacheParams) -> Optional[Any]:
         key = self._key(data_path, params)
         f = self.cache_dir / f"{key}.pkl.z"
         if f.exists():
@@ -257,7 +269,7 @@ class FeatureCache:
                 self.stats["misses"] += 1
         return None
 
-    def put(self, data_path: str, params: Dict[str, Any], obj: Any) -> Path:
+    def put(self, data_path: str, params: FeatureCacheParams, obj: Any) -> Path:
         key = self._key(data_path, params)
         f = self.cache_dir / f"{key}.pkl.z"
 

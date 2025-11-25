@@ -6,6 +6,7 @@ This module provides evaluation functions for reward function parameter optimiza
 including multi-objective scoring and cross-validation across market conditions.
 """
 
+import dataclasses
 import json
 import time
 from dataclasses import dataclass, field
@@ -84,7 +85,7 @@ class RewardFunctionEvaluator:
         market_data: Optional[pd.DataFrame] = None,
         n_episodes: Optional[int] = None,
         max_steps: Optional[int] = None,
-    ) -> EvaluationResult:
+    ) -> TrainingEvaluationResult:
         """
         Evaluate reward function parameters.
 
@@ -139,7 +140,7 @@ class RewardFunctionEvaluator:
         # Aggregate metrics across all conditions
         aggregated_metrics = self._aggregate_metrics(all_metrics)
 
-        result = EvaluationResult(
+        result = TrainingEvaluationResult(
             metrics=aggregated_metrics,
             trade_history=all_trade_history,
             portfolio_history=all_portfolio_history,
@@ -162,114 +163,85 @@ class RewardFunctionEvaluator:
         self, parameters: Dict[str, Any], stage: str
     ) -> RewardSettings:
         """Create reward settings from parameters."""
-        # Create default settings and update with optimized parameters
-        settings: RewardSettings = {
-            "position_soft_cap": 0.8,
-            "position_penalty_scale": 0.1,
-            "position_penalty_exp": 2.0,
-            "inventory_window": 10,
-            "inventory_penalty_scale": 0.01,
-            "trade_frequency_penalty": 0.001,
-            "trade_frequency_halflife": 50.0,
-            "trade_cooldown_steps": 5,
-            "trade_cooldown_penalty": 0.01,
-            "max_consecutive_trades": 10,
-            "consecutive_trade_penalty": 0.1,
-            "volatility_window": 20,
-            "volatility_penalty_scale": 0.01,
-            "sharpe_bonus_scale": 0.1,
-            "sortino_bonus_scale": 0.1,
-            "calmar_bonus_scale": 0.1,
-            "reward_clip_value": 10.0,
-            "profit_bonus_multipliers": [1.0, 1.2, 1.5, 2.0],
-            "enable_forced_diversity": False,
-            "custom_reward_params": {},
-        }
+        # Create default settings
+        settings = RewardSettings()
 
-        # Map parameters to settings based on stage
+        # Update settings based on stage
         if stage == "balanced_transition":
-            settings.update(
-                {
-                    "balance_penalty_tolerance": parameters.get(
-                        "balance_penalty_tolerance", 0.05
+            settings = dataclasses.replace(
+                settings,
+                balance_penalty_tolerance=parameters.get(
+                    "balance_penalty_tolerance", 0.05
+                ),
+                balance_penalty=parameters.get("balance_penalty", 5.0),
+                custom_reward_params={
+                    "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.01),
+                    "trading_bonus_multiplier": parameters.get(
+                        "trading_bonus_multiplier", 2.0
                     ),
-                    "balance_penalty": parameters.get("balance_penalty", 5.0),
-                    "custom_reward_params": {
-                        "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.01),
-                        "trading_bonus_multiplier": parameters.get(
-                            "trading_bonus_multiplier", 2.0
-                        ),
-                        "trading_bonus": parameters.get("trading_bonus", 0.01),
-                        "profit_weight": parameters.get("profit_weight", 1.0),
-                        "risk_weight": parameters.get("risk_weight", 1.0),
-                        "consistency_weight": parameters.get("consistency_weight", 1.0),
-                    },
-                }
+                    "trading_bonus": parameters.get("trading_bonus", 0.01),
+                    "profit_weight": parameters.get("profit_weight", 1.0),
+                    "risk_weight": parameters.get("risk_weight", 1.0),
+                    "consistency_weight": parameters.get("consistency_weight", 1.0),
+                },
             )
 
         elif stage == "trading_focused":
-            settings.update(
-                {
-                    "balance_penalty_tolerance": parameters.get(
-                        "balance_penalty_tolerance", 0.05
+            settings = dataclasses.replace(
+                settings,
+                balance_penalty_tolerance=parameters.get(
+                    "balance_penalty_tolerance", 0.05
+                ),
+                balance_penalty=parameters.get("balance_penalty", 10.0),
+                custom_reward_params={
+                    "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.05),
+                    "trading_bonus_multiplier": parameters.get(
+                        "trading_bonus_multiplier", 3.0
                     ),
-                    "balance_penalty": parameters.get("balance_penalty", 10.0),
-                    "custom_reward_params": {
-                        "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.05),
-                        "trading_bonus_multiplier": parameters.get(
-                            "trading_bonus_multiplier", 3.0
-                        ),
-                        "trading_bonus": parameters.get("trading_bonus", 0.05),
-                        "profit_weight": parameters.get("profit_weight", 1.0),
-                        "risk_weight": parameters.get("risk_weight", 1.0),
-                        "consistency_weight": parameters.get("consistency_weight", 1.0),
-                    },
-                }
+                    "trading_bonus": parameters.get("trading_bonus", 0.05),
+                    "profit_weight": parameters.get("profit_weight", 1.0),
+                    "risk_weight": parameters.get("risk_weight", 1.0),
+                    "consistency_weight": parameters.get("consistency_weight", 1.0),
+                },
             )
 
         elif stage == "profit_optimized":
-            settings.update(
-                {
-                    "custom_reward_params": {
-                        "profit_weight": parameters.get("profit_weight", 2.0),
-                        "risk_weight": parameters.get("risk_weight", 0.1),
-                        "consistency_weight": parameters.get("consistency_weight", 0.1),
-                        "position_penalty_weight": parameters.get(
-                            "position_penalty_weight", 0.01
-                        ),
-                        "drawdown_penalty_weight": parameters.get(
-                            "drawdown_penalty_weight", 0.01
-                        ),
-                        "stagnation_penalty_weight": parameters.get(
-                            "stagnation_penalty_weight", 0.01
-                        ),
-                        "growth_bonus_weight": parameters.get(
-                            "growth_bonus_weight", 0.01
-                        ),
-                        "win_streak_bonus_weight": parameters.get(
-                            "win_streak_bonus_weight", 0.01
-                        ),
-                    }
-                }
+            settings = dataclasses.replace(
+                settings,
+                custom_reward_params={
+                    "profit_weight": parameters.get("profit_weight", 2.0),
+                    "risk_weight": parameters.get("risk_weight", 0.1),
+                    "consistency_weight": parameters.get("consistency_weight", 0.1),
+                    "position_penalty_weight": parameters.get(
+                        "position_penalty_weight", 0.01
+                    ),
+                    "drawdown_penalty_weight": parameters.get(
+                        "drawdown_penalty_weight", 0.01
+                    ),
+                    "stagnation_penalty_weight": parameters.get(
+                        "stagnation_penalty_weight", 0.01
+                    ),
+                    "growth_bonus_weight": parameters.get("growth_bonus_weight", 0.01),
+                    "win_streak_bonus_weight": parameters.get(
+                        "win_streak_bonus_weight", 0.01
+                    ),
+                },
             )
 
         elif stage == "ultra_profit":
-            settings.update(
-                {
-                    "custom_reward_params": {
-                        "profit_weight": parameters.get("profit_weight", 5.0),
-                        "risk_weight": parameters.get("risk_weight", 0.01),
-                        "consistency_weight": parameters.get(
-                            "consistency_weight", 0.01
-                        ),
-                        "ultra_profit_multiplier": parameters.get(
-                            "ultra_profit_multiplier", 2.0
-                        ),
-                        "ultra_risk_multiplier": parameters.get(
-                            "ultra_risk_multiplier", 0.5
-                        ),
-                    }
-                }
+            settings = dataclasses.replace(
+                settings,
+                custom_reward_params={
+                    "profit_weight": parameters.get("profit_weight", 5.0),
+                    "risk_weight": parameters.get("risk_weight", 0.01),
+                    "consistency_weight": parameters.get("consistency_weight", 0.01),
+                    "ultra_profit_multiplier": parameters.get(
+                        "ultra_profit_multiplier", 2.0
+                    ),
+                    "ultra_risk_multiplier": parameters.get(
+                        "ultra_risk_multiplier", 0.5
+                    ),
+                },
             )
 
         return settings
@@ -422,24 +394,24 @@ class RewardFunctionEvaluator:
 
         if action["action"] == "buy":
             # Reward for buying (simplified)
-            trading_bonus = reward_settings.get("custom_reward_params", {}).get(
+            trading_bonus = reward_settings.custom_reward_params.get(
                 "trading_bonus", 0.01
             )
             base_reward = np.random.normal(trading_bonus, 0.05)
         elif action["action"] == "sell":
             # Reward for selling (simplified)
-            trading_bonus_multiplier = reward_settings.get(
-                "custom_reward_params", {}
-            ).get("trading_bonus_multiplier", 2.0)
+            trading_bonus_multiplier = reward_settings.custom_reward_params.get(
+                "trading_bonus_multiplier", 2.0
+            )
             base_reward = np.random.normal(trading_bonus_multiplier * 0.01, 0.08)
         else:  # hold
             # Small penalty for holding
-            hold_penalty_rate = reward_settings.get("custom_reward_params", {}).get(
+            hold_penalty_rate = reward_settings.custom_reward_params.get(
                 "hold_penalty_rate", 0.01
             )
             base_reward = np.random.normal(-hold_penalty_rate, 0.02)
 
-        return base_reward
+        return float(base_reward)
 
     def _calculate_metrics(
         self,

@@ -10,6 +10,8 @@ Features:
 - Safety mechanisms: 異常検知/フォールバック/回復システム
 """
 
+from ztb.types.alert_types import AlertCondition, AlertLevel
+
 from .config import ContinuousMonitoringConfig, MonitoringConfig
 from .evaluation_manager import ContinuousEvaluationManager
 from .evaluation_types import (
@@ -22,7 +24,7 @@ from .evaluation_types import (
 from .monitor import PerformanceMonitor
 from .safety import SafetyManager
 from .scalability import AutoScaler, LoadBalancer
-from .types import AlertCondition, AlertLevel, MetricType
+from .types import MetricType
 
 __all__ = [
     "PerformanceMonitor",

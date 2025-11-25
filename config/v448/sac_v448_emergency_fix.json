@@ -19,6 +19,16 @@
       "enable_action_masking": true,
       "use_continuous_actions": true,
       "curriculum_stage": "forced_balance",
+      "curriculum_learning": {
+        "enabled": true,
+        "auto_progression": true,
+        "emergency_revert": true,
+        "stage_conditions": {
+          "forced_balance": {"min_steps": 100, "balance_threshold": 0.15},
+          "balanced_transition": {"min_steps": 200, "balance_threshold": 0.2, "avg_reward_threshold": 0.0},
+          "pnl_focused": {"min_steps": 500, "avg_reward_threshold": 2.0, "sharpe_threshold": 0.5}
+        }
+      },
       "reward_settings": {
         "use_simple_reward": false,
         "reward_scale": 1.8,

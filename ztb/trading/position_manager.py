@@ -12,10 +12,9 @@ from datetime import datetime
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from typing import Any, Dict, Optional, Tuple
 
-from ztb.core.base import BaseComponent
 from ztb.trading.environment.constants import DEFAULT_FEE_RATE, DEFAULT_TOTAL_CAPITAL
 from ztb.trading.trade_execution_engine import Position, TradeExecutionEngine
-from ztb.types.common import ConfigDict
+from ztb.types.common import BaseComponent, ConfigDict
 from ztb.utils.errors import validate_price
 from ztb.utils.logging_utils import get_logger
 

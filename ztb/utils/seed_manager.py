@@ -24,11 +24,11 @@ if TYPE_CHECKING:
         import numpy as np
     except Exception:  # pragma: no cover - type checking only
         np = None  # type: ignore[assignment]
-
     try:
         import torch
     except Exception:  # pragma: no cover - type checking only
         torch = None  # type: ignore[assignment]
+
     HAS_NUMPY = True
     HAS_TORCH = True
 else:
@@ -40,21 +40,10 @@ else:
         HAS_NUMPY = False
         np = None
 
-    try:
-        import torch
-
-        HAS_TORCH = True
-    except ImportError:
-        HAS_TORCH = False
-        torch = None
-
-try:
-    import torch
-
-    HAS_TORCH = True
-except ImportError:
+    # Do NOT import torch at module import time to avoid DLL initialization
+    # issues that can occur on some Windows environments (e.g. c10.dll load errors)
     HAS_TORCH = False
-    torch = None  # type: ignore[assignment]
+    torch = None
 
 
 class SeedManager:
@@ -84,30 +73,50 @@ class SeedManager:
             np.random.seed(seed)
 
         # Set PyTorch seeds and enable deterministic behavior
-        if HAS_TORCH:
-            # torch may be dynamically absent at runtime; guarded by HAS_TORCH
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-            torch.cuda.manual_seed_all(seed)
+        # Import torch lazily here so we avoid triggering DLL initialization on module import
+        try:
+            import importlib
+
+            tmod = importlib.import_module("torch")
+        except Exception:
+            tmod = None
+
+        if tmod is not None:
+            tmod.manual_seed(seed)
+            try:
+                tmod.cuda.manual_seed(seed)
+                tmod.cuda.manual_seed_all(seed)
+            except Exception:
+                # cuda.* may fail on CPU-only builds - ignore
+                pass
 
             # Enable deterministic algorithms
             if self.determinism_enabled:
-                self._enable_torch_determinism()
+                self._enable_torch_determinism(tmod)
 
-    def _enable_torch_determinism(self) -> None:
+    def _enable_torch_determinism(self, tmod) -> None:
         """Enable deterministic behavior in PyTorch."""
-        if not HAS_TORCH:
+        if tmod is None:
             return
 
         # Set deterministic algorithms
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        try:
+            tmod.backends.cudnn.deterministic = True
+            tmod.backends.cudnn.benchmark = False
+        except Exception:
+            pass
 
         # For reproducibility, disable TF32 on Ampere GPUs
-        if hasattr(torch.backends.cuda, "matmul"):
-            torch.backends.cuda.matmul.allow_tf32 = False
-        if hasattr(torch.backends.cudnn, "allow_tf32"):
-            torch.backends.cudnn.allow_tf32 = False
+        try:
+            if hasattr(tmod.backends.cuda, "matmul"):
+                tmod.backends.cuda.matmul.allow_tf32 = False
+        except Exception:
+            pass
+        try:
+            if hasattr(tmod.backends.cudnn, "allow_tf32"):
+                tmod.backends.cudnn.allow_tf32 = False
+        except Exception:
+            pass
 
         # Set environment variables for additional determinism
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
@@ -116,15 +125,30 @@ class SeedManager:
         """Disable deterministic behavior for performance."""
         self.determinism_enabled = False
 
-        if HAS_TORCH:
-            torch.backends.cudnn.deterministic = False
-            torch.backends.cudnn.benchmark = True
+        try:
+            import importlib
 
+            tmod = importlib.import_module("torch")
+        except Exception:
+            tmod = None
+
+        if tmod is not None:
+            try:
+                tmod.backends.cudnn.deterministic = False
+                tmod.backends.cudnn.benchmark = True
+            except Exception:
+                pass
             # Re-enable TF32
-            if hasattr(torch.backends.cuda, "matmul"):
-                torch.backends.cuda.matmul.allow_tf32 = True
-            if hasattr(torch.backends.cudnn, "allow_tf32"):
-                torch.backends.cudnn.allow_tf32 = True
+            try:
+                if hasattr(tmod.backends.cuda, "matmul"):
+                    tmod.backends.cuda.matmul.allow_tf32 = True
+            except Exception:
+                pass
+            try:
+                if hasattr(tmod.backends.cudnn, "allow_tf32"):
+                    tmod.backends.cudnn.allow_tf32 = True
+            except Exception:
+                pass
 
     def get_current_seed(self) -> Optional[int]:
         """Get the currently set seed."""

@@ -2,10 +2,12 @@
 Type definitions for Continuous Evaluation and Monitoring
 """
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+
+from ztb.types.alert_types import Alert
 
 
 class MetricType(Enum):
@@ -16,24 +18,6 @@ class MetricType(Enum):
     SYSTEM = "system"  # システムメトリクス
     MARKET = "market"  # 市場メトリクス
     ADAPTATION = "adaptation"  # 適応メトリクス
-
-
-class AlertLevel(Enum):
-    """アラートレベル"""
-
-    INFO = "info"
-    WARNING = "warning"
-    CRITICAL = "critical"
-    EMERGENCY = "emergency"
-
-
-class AlertStatus(Enum):
-    """アラートステータス"""
-
-    ACTIVE = "active"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
-    EXPIRED = "expired"
 
 
 @dataclass
@@ -49,39 +33,8 @@ class MetricValue:
 
 
 @dataclass
-class AlertCondition:
-    """アラート条件"""
-
-    metric_name: str
-    operator: str  # "gt", "lt", "eq", "ne", "gte", "lte"
-    threshold: float
-    duration_seconds: int
-    cooldown_seconds: int
-    alert_level: AlertLevel
-    description: str
-    auto_resolve: bool = True
-
-
-@dataclass
-class Alert:
-    """アラート"""
-
-    id: str
-    condition: AlertCondition
-    current_value: float
-    threshold: float
-    level: AlertLevel
-    status: AlertStatus
-    triggered_at: datetime
-    resolved_at: Optional[datetime]
-    acknowledged_at: Optional[datetime]
-    description: str
-    context: Dict[str, Any]
-
-
-@dataclass
-class PerformanceMetrics:
-    """パフォーマンスメトリクス"""
+class TradingPerformanceMetrics:
+    """取引パフォーマンスメトリクス"""
 
     total_trades: int
     profitable_trades: int
@@ -95,6 +48,11 @@ class PerformanceMetrics:
     calmar_ratio: float
     alpha: float
     beta: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
+
     timestamp: datetime
 
 

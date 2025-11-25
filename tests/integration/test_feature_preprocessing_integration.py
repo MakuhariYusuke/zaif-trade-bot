@@ -5,21 +5,23 @@ SAC v446コンポーネントの統合テスト
 """
 
 import sys
+from unittest.mock import Mock, patch
+
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 # Add src to path for imports
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 
 from ztb.features.unified_feature import V4FeatureExtractor
-from ztb.core.preprocessing.data_preprocessing import (
-    NoiseFilter,
-    AnomalyDetector,
-    SyntheticDataGenerator,
-    preprocess_data
-)
+
+# from ztb.core.preprocessing.data_preprocessing import (
+#     NoiseFilter,
+#     AnomalyDetector,
+#     SyntheticDataGenerator,
+#     preprocess_data
+# )
 
 
 class TestFeaturePreprocessingIntegration:
@@ -39,7 +41,7 @@ class TestFeaturePreprocessingIntegration:
         for i in range(n_samples):
             # Random walk with some trend
             change = np.random.normal(0, 0.01)  # 1% volatility
-            current_price *= (1 + change)
+            current_price *= 1 + change
             prices.append(current_price)
 
         # Create OHLCV data
@@ -50,14 +52,16 @@ class TestFeaturePreprocessingIntegration:
             low = price * (1 - abs(np.random.normal(0, 0.005)))
             volume = np.random.lognormal(10, 1)  # Log-normal volume
 
-            data.append({
-                'timestamp': pd.Timestamp('2023-01-01') + pd.Timedelta(minutes=i),
-                'open': price * (1 + np.random.normal(0, 0.002)),
-                'high': high,
-                'low': low,
-                'close': price,
-                'volume': volume
-            })
+            data.append(
+                {
+                    "timestamp": pd.Timestamp("2023-01-01") + pd.Timedelta(minutes=i),
+                    "open": price * (1 + np.random.normal(0, 0.002)),
+                    "high": high,
+                    "low": low,
+                    "close": price,
+                    "volume": volume,
+                }
+            )
 
         return pd.DataFrame(data)
 
@@ -65,13 +69,15 @@ class TestFeaturePreprocessingIntegration:
     def mock_unified_feature_engineer(self):
         """Mock UnifiedFeatureEngineer for testing"""
         mock_engineer = Mock()
-        mock_engineer.generate_features.return_value = pd.DataFrame({
-            'feature1': np.random.randn(1000),
-            'feature2': np.random.randn(1000),
-            'feature3': np.random.randn(1000),
-            'feature4': np.random.randn(1000),
-            'feature5': np.random.randn(1000)
-        })
+        mock_engineer.generate_features.return_value = pd.DataFrame(
+            {
+                "feature1": np.random.randn(1000),
+                "feature2": np.random.randn(1000),
+                "feature3": np.random.randn(1000),
+                "feature4": np.random.randn(1000),
+                "feature5": np.random.randn(1000),
+            }
+        )
         return mock_engineer
 
     def test_v4_feature_extractor_initialization(self, sample_market_data):
@@ -79,21 +85,24 @@ class TestFeaturePreprocessingIntegration:
         extractor = V4FeatureExtractor()
 
         assert extractor is not None
-        assert hasattr(extractor, 'extract_features')
+        assert hasattr(extractor, "extract_features")
 
-    @patch('ztb.features.unified_feature.UnifiedFeatureEngineer')
-    def test_v4_feature_extractor_with_mock(self, mock_unified_engineer_class,
-                                           sample_market_data):
+    @patch("ztb.features.unified_feature.UnifiedFeatureEngineer")
+    def test_v4_feature_extractor_with_mock(
+        self, mock_unified_engineer_class, sample_market_data
+    ):
         """Test V4FeatureExtractor with mocked UnifiedFeatureEngineer"""
         # Setup mock
         mock_instance = Mock()
-        mock_instance.generate_features.return_value = pd.DataFrame({
-            'feature1': np.random.randn(len(sample_market_data)),
-            'feature2': np.random.randn(len(sample_market_data)),
-            'feature3': np.random.randn(len(sample_market_data)),
-            'feature4': np.random.randn(len(sample_market_data)),
-            'feature5': np.random.randn(len(sample_market_data))
-        })
+        mock_instance.generate_features.return_value = pd.DataFrame(
+            {
+                "feature1": np.random.randn(len(sample_market_data)),
+                "feature2": np.random.randn(len(sample_market_data)),
+                "feature3": np.random.randn(len(sample_market_data)),
+                "feature4": np.random.randn(len(sample_market_data)),
+                "feature5": np.random.randn(len(sample_market_data)),
+            }
+        )
         mock_unified_engineer_class.return_value = mock_instance
 
         # Test extraction
@@ -102,20 +111,20 @@ class TestFeaturePreprocessingIntegration:
 
         assert isinstance(features, pd.DataFrame)
         assert len(features) == len(sample_market_data)
-        assert 'feature1' in features.columns
-        assert 'feature2' in features.columns
+        assert "feature1" in features.columns
+        assert "feature2" in features.columns
 
         # Verify mock was called with correct parameters
         mock_unified_engineer_class.assert_called_once()
         mock_instance.generate_features.assert_called_once_with(
-            sample_market_data, feature_set='curated', model_type='sac'
+            sample_market_data, feature_set="curated", model_type="sac"
         )
 
     def test_noise_filter_integration(self, sample_market_data):
         """Test NoiseFilter integration"""
         # Add some noise to the data
         noisy_data = sample_market_data.copy()
-        noisy_data['close'] += np.random.normal(0, 0.1, len(noisy_data))
+        noisy_data["close"] += np.random.normal(0, 0.1, len(noisy_data))
 
         filter_obj = NoiseFilter()
         filtered_data = filter_obj.apply_filters(noisy_data)
@@ -124,8 +133,10 @@ class TestFeaturePreprocessingIntegration:
         assert len(filtered_data) <= len(noisy_data)  # May remove some data
         assert all(col in filtered_data.columns for col in noisy_data.columns)
 
-    @patch('sklearn.ensemble.IsolationForest')
-    def test_anomaly_detector_integration(self, mock_isolation_forest, sample_market_data):
+    @patch("sklearn.ensemble.IsolationForest")
+    def test_anomaly_detector_integration(
+        self, mock_isolation_forest, sample_market_data
+    ):
         """Test AnomalyDetector integration with mocked sklearn"""
         # Setup mock
         mock_instance = Mock()
@@ -133,7 +144,9 @@ class TestFeaturePreprocessingIntegration:
         mock_isolation_forest.return_value = mock_instance
 
         detector = AnomalyDetector()
-        clean_data, anomaly_mask = detector.detect_anomalies(sample_market_data, method='isolation_forest')
+        clean_data, anomaly_mask = detector.detect_anomalies(
+            sample_market_data, method="isolation_forest"
+        )
 
         assert isinstance(clean_data, pd.DataFrame)
         assert isinstance(anomaly_mask, pd.Series)
@@ -143,7 +156,7 @@ class TestFeaturePreprocessingIntegration:
         mock_isolation_forest.assert_called_once()
         mock_instance.fit_predict.assert_called_once()
 
-    @patch('sklearn.neighbors.LocalOutlierFactor')
+    @patch("sklearn.neighbors.LocalOutlierFactor")
     def test_anomaly_detector_lof_integration(self, mock_lof, sample_market_data):
         """Test AnomalyDetector with LOF method"""
         # Setup mock
@@ -152,7 +165,9 @@ class TestFeaturePreprocessingIntegration:
         mock_lof.return_value = mock_instance
 
         detector = AnomalyDetector()
-        clean_data, anomaly_mask = detector.detect_anomalies(sample_market_data, method='local_outlier_factor')
+        clean_data, anomaly_mask = detector.detect_anomalies(
+            sample_market_data, method="local_outlier_factor"
+        )
 
         assert isinstance(clean_data, pd.DataFrame)
         mock_lof.assert_called_once()
@@ -160,32 +175,43 @@ class TestFeaturePreprocessingIntegration:
     def test_synthetic_data_generator_integration(self, sample_market_data):
         """Test SyntheticDataGenerator integration"""
         generator = SyntheticDataGenerator()
-        synthetic_data = generator.generate_time_series(sample_market_data, n_periods=500)
+        synthetic_data = generator.generate_time_series(
+            sample_market_data, n_periods=500
+        )
 
         assert isinstance(synthetic_data, pd.DataFrame)
         assert len(synthetic_data) == 500
-        assert all(col in synthetic_data.columns for col in ['open', 'high', 'low', 'close'] if col in sample_market_data.columns)
+        assert all(
+            col in synthetic_data.columns
+            for col in ["open", "high", "low", "close"]
+            if col in sample_market_data.columns
+        )
 
         # Check synthetic data has similar statistics
-        for col in ['open', 'high', 'low', 'close']:
+        for col in ["open", "high", "low", "close"]:
             real_mean = sample_market_data[col].mean()
             synth_mean = synthetic_data[col].mean()
             # Should be reasonably close (within 20% relative difference)
             assert abs(real_mean - synth_mean) / real_mean < 0.2
 
-    @patch('sklearn.ensemble.IsolationForest')
-    @patch('ztb.features.unified_feature.UnifiedFeatureEngineer')
-    def test_full_preprocessing_pipeline(self, mock_unified_engineer_class,
-                                       mock_isolation_forest, sample_market_data):
+    @patch("sklearn.ensemble.IsolationForest")
+    @patch("ztb.features.unified_feature.UnifiedFeatureEngineer")
+    def test_full_preprocessing_pipeline(
+        self, mock_unified_engineer_class, mock_isolation_forest, sample_market_data
+    ):
         """Test full preprocessing pipeline integration"""
         # Setup mocks
         mock_unified_instance = Mock()
         # Mock will be called with processed data (which may include synthetic data)
-        mock_unified_instance.generate_features.side_effect = lambda df, **kwargs: pd.DataFrame({
-            'feature1': np.random.randn(len(df)),
-            'feature2': np.random.randn(len(df)),
-            'feature3': np.random.randn(len(df))
-        })
+        mock_unified_instance.generate_features.side_effect = (
+            lambda df, **kwargs: pd.DataFrame(
+                {
+                    "feature1": np.random.randn(len(df)),
+                    "feature2": np.random.randn(len(df)),
+                    "feature3": np.random.randn(len(df)),
+                }
+            )
+        )
         mock_unified_engineer_class.return_value = mock_unified_instance
 
         mock_if_instance = Mock()
@@ -194,31 +220,35 @@ class TestFeaturePreprocessingIntegration:
 
         # Test preprocessing
         config = {
-            'apply_noise_filter': True,
-            'apply_anomaly_detection': True,
-            'generate_synthetic': True,
-            'synthetic_periods': 200
+            "apply_noise_filter": True,
+            "apply_anomaly_detection": True,
+            "generate_synthetic": True,
+            "synthetic_periods": 200,
         }
         processed_data = preprocess_data(sample_market_data, config)
 
         assert isinstance(processed_data, pd.DataFrame)
-        assert len(processed_data) >= len(sample_market_data)  # May include synthetic data
+        assert len(processed_data) >= len(
+            sample_market_data
+        )  # May include synthetic data
 
         # Test feature extraction separately
         extractor = V4FeatureExtractor()
         features = extractor.extract_features(processed_data)
 
         assert isinstance(features, pd.DataFrame)
-        assert len(features) == len(processed_data)  # Should match processed data length
+        assert len(features) == len(
+            processed_data
+        )  # Should match processed data length
 
     def test_preprocessing_pipeline_error_handling(self, sample_market_data):
         """Test error handling in preprocessing pipeline"""
         # Test with invalid data
         invalid_data = sample_market_data.copy()
-        invalid_data['close'] = np.nan  # Add NaN values
+        invalid_data["close"] = np.nan  # Add NaN values
 
         # Should handle NaN values gracefully
-        config = {'apply_noise_filter': True, 'apply_anomaly_detection': True}
+        config = {"apply_noise_filter": True, "apply_anomaly_detection": True}
         processed_data = preprocess_data(invalid_data, config)
 
         assert isinstance(processed_data, pd.DataFrame)
@@ -231,9 +261,9 @@ class TestFeaturePreprocessingIntegration:
 
         # First run
         config1 = {
-            'apply_noise_filter': True,
-            'apply_anomaly_detection': True,
-            'generate_synthetic': False
+            "apply_noise_filter": True,
+            "apply_anomaly_detection": True,
+            "generate_synthetic": False,
         }
         processed_data1 = preprocess_data(sample_market_data, config1)
 
@@ -241,9 +271,9 @@ class TestFeaturePreprocessingIntegration:
 
         # Second run
         config2 = {
-            'apply_noise_filter': True,
-            'apply_anomaly_detection': True,
-            'generate_synthetic': False
+            "apply_noise_filter": True,
+            "apply_anomaly_detection": True,
+            "generate_synthetic": False,
         }
         processed_data2 = preprocess_data(sample_market_data, config2)
 
@@ -257,9 +287,9 @@ class TestFeaturePreprocessingIntegration:
 
         # Should not crash with reasonable memory usage
         config = {
-            'apply_noise_filter': True,
-            'apply_anomaly_detection': True,
-            'generate_synthetic': False
+            "apply_noise_filter": True,
+            "apply_anomaly_detection": True,
+            "generate_synthetic": False,
         }
         processed_data = preprocess_data(large_data, config)
 
@@ -273,14 +303,15 @@ class TestFeaturePreprocessingIntegration:
         original_dtypes = sample_market_data.dtypes
 
         config = {
-            'apply_noise_filter': True,
-            'apply_anomaly_detection': True,
-            'generate_synthetic': False
+            "apply_noise_filter": True,
+            "apply_anomaly_detection": True,
+            "generate_synthetic": False,
         }
         processed_data = preprocess_data(sample_market_data, config)
 
         # Check that numeric columns maintain numeric types
-        for col in ['open', 'high', 'low', 'close', 'volume']:
+        for col in ["open", "high", "low", "close", "volume"]:
             if col in processed_data.columns:
-                assert np.issubdtype(processed_data[col].dtype, np.number), \
-                    f"Column {col} should remain numeric"
+                assert np.issubdtype(
+                    processed_data[col].dtype, np.number
+                ), f"Column {col} should remain numeric"

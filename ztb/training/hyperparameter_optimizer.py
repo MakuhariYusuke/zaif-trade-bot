@@ -21,8 +21,8 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from ztb.core.base import BaseComponent
 from ztb.trading.environment.constants import EPSILON
+from ztb.types.common import BaseComponent
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -45,7 +45,7 @@ except ImportError:
 
 
 @dataclass
-class OptimizationResult:
+class HyperparameterOptimizationResult:
     """Result of hyperparameter optimization."""
 
     best_params: Optional[Dict[str, Any]]
@@ -78,7 +78,7 @@ class OptimizationMethod(ABC):
         parameter_space: Dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
-    ) -> OptimizationResult:
+    ) -> HyperparameterOptimizationResult:
         """Run optimization."""
         pass
 
@@ -97,7 +97,7 @@ class BayesianOptimization(OptimizationMethod):
         parameter_space: Dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
-    ) -> OptimizationResult:
+    ) -> HyperparameterOptimizationResult:
         """Run Bayesian optimization with Optuna."""
 
         def optuna_objective(trial):
@@ -221,7 +221,7 @@ class BayesianOptimization(OptimizationMethod):
             ],
         }
 
-        return OptimizationResult(
+        return HyperparameterOptimizationResult(
             best_params=best_params,
             best_score=best_score,
             trials=trials,
@@ -242,7 +242,7 @@ class GridSearchOptimization(OptimizationMethod):
         parameter_space: Dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
-    ) -> OptimizationResult:
+    ) -> HyperparameterOptimizationResult:
         """Run grid search optimization."""
 
         # Generate parameter combinations
@@ -361,7 +361,7 @@ class GridSearchOptimization(OptimizationMethod):
 
         optimization_time = time.time() - start_time
 
-        return OptimizationResult(
+        return HyperparameterOptimizationResult(
             best_params=best_params,
             best_score=best_score,
             trials=trials,
@@ -427,7 +427,7 @@ class RandomSearchOptimization(OptimizationMethod):
         parameter_space: Dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
-    ) -> OptimizationResult:
+    ) -> HyperparameterOptimizationResult:
         """Run random search optimization."""
 
         trials = []
@@ -541,7 +541,7 @@ class RandomSearchOptimization(OptimizationMethod):
 
         optimization_time = time.time() - start_time
 
-        return OptimizationResult(
+        return HyperparameterOptimizationResult(
             best_params=best_params,
             best_score=best_score,
             trials=trials,
@@ -693,7 +693,9 @@ class HyperparameterOptimizer(BaseComponent):
             else:
                 print(f"  ⚪ {metric}: {value}")
 
-    def _print_optimization_summary(self, result: OptimizationResult, method: str):
+    def _print_optimization_summary(
+        self, result: HyperparameterOptimizationResult, method: str
+    ):
         """
         Print comprehensive optimization summary.
 
@@ -760,7 +762,7 @@ class HyperparameterOptimizer(BaseComponent):
         n_trials: int = None,
         cross_validate: bool = True,
         **kwargs,
-    ) -> OptimizationResult:
+    ) -> HyperparameterOptimizationResult:
         """
         Run hyperparameter optimization.
 
@@ -773,7 +775,7 @@ class HyperparameterOptimizer(BaseComponent):
             **kwargs: Additional arguments for optimization method
 
         Returns:
-            OptimizationResult object
+            HyperparameterOptimizationResult object
         """
         method = method or self.config["default_method"]
         n_trials = n_trials or self.config["n_trials"]
@@ -843,7 +845,7 @@ class HyperparameterOptimizer(BaseComponent):
 
         return cv_objective
 
-    def _save_results(self, result: OptimizationResult, method: str):
+    def _save_results(self, result: HyperparameterOptimizationResult, method: str):
         """Save optimization results to disk."""
         try:
             results_dir = Path(self.config["results_dir"])

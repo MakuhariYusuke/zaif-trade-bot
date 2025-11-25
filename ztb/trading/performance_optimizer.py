@@ -13,15 +13,15 @@ import pstats
 import threading
 import time
 import weakref
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import psutil
 
-from ztb.core.base import BaseComponent
 from ztb.trading.v433_integration_manager import V433IntegrationManager
+from ztb.types.common import BaseComponent
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -38,7 +38,7 @@ class PerformanceTarget:
 
 
 @dataclass
-class PerformanceMetrics:
+class SystemPerformanceMetrics:
     """パフォーマンス指標"""
 
     timestamp: datetime = field(default_factory=datetime.now)
@@ -64,14 +64,18 @@ class PerformanceMetrics:
     memory_efficiency: float = 0.0  # 操作あたりのメモリ使用量
     cpu_efficiency: float = 0.0  # 操作あたりのCPU使用量
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
+
 
 @dataclass
 class OptimizationResult:
     """最適化結果"""
 
     optimization_type: str
-    before_metrics: PerformanceMetrics
-    after_metrics: PerformanceMetrics
+    before_metrics: SystemPerformanceMetrics
+    after_metrics: SystemPerformanceMetrics
     improvement_percent: float
     success: bool
     details: Dict[str, Any] = field(default_factory=dict)
@@ -415,7 +419,7 @@ class LatencyOptimizer:
             self.logger.error(f"Cache size optimization failed: {e}")
             return False
 
-    def _measure_data_processing_performance(self) -> PerformanceMetrics:
+    def _measure_data_processing_performance(self) -> SystemPerformanceMetrics:
         """データ処理パフォーマンスの測定"""
         latencies = []
 
@@ -428,14 +432,14 @@ class LatencyOptimizer:
             )
             latencies.append(latency)
 
-        return PerformanceMetrics(
+        return SystemPerformanceMetrics(
             avg_latency_ms=np.mean(latencies),
             p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
             max_latency_ms=max(latencies),
         )
 
-    def _measure_signal_processing_performance(self) -> PerformanceMetrics:
+    def _measure_signal_processing_performance(self) -> SystemPerformanceMetrics:
         """シグナル処理パフォーマンスの測定"""
         latencies = []
 
@@ -460,24 +464,24 @@ class LatencyOptimizer:
             latency, _ = self.measure_operation_latency(asyncio.run, send_signal)
             latencies.append(latency)
 
-        return PerformanceMetrics(
+        return SystemPerformanceMetrics(
             avg_latency_ms=np.mean(latencies),
             p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
             max_latency_ms=max(latencies),
         )
 
-    def _measure_memory_performance(self) -> PerformanceMetrics:
+    def _measure_memory_performance(self) -> SystemPerformanceMetrics:
         """メモリパフォーマンスの測定"""
         process = psutil.Process()
 
-        return PerformanceMetrics(
+        return SystemPerformanceMetrics(
             memory_usage_gb=process.memory_info().rss / (1024**3),
             memory_efficiency=0.0,  # 計算が必要
         )
 
     def _calculate_improvement(
-        self, before: PerformanceMetrics, after: PerformanceMetrics
+        self, before: SystemPerformanceMetrics, after: SystemPerformanceMetrics
     ) -> float:
         """改善率の計算"""
         if before.avg_latency_ms == 0:
@@ -490,7 +494,7 @@ class LatencyOptimizer:
         return latency_improvement
 
     def _calculate_memory_improvement(
-        self, before: PerformanceMetrics, after: PerformanceMetrics
+        self, before: SystemPerformanceMetrics, after: SystemPerformanceMetrics
     ) -> float:
         """メモリ改善率の計算"""
         if before.memory_usage_gb == 0:

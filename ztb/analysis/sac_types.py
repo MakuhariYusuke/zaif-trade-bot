@@ -107,7 +107,7 @@ class TrainingStats(TypedDict):
     optimization: OptimizationStats
 
 
-class PerformanceMetrics(TypedDict):
+class TrainingPerformanceMetrics(TypedDict):
     """Performance metrics section."""
 
     steps_per_second: float
@@ -133,7 +133,7 @@ class TrainingReport(TypedDict):
     metadata: Metadata
     configuration: Configuration
     training_stats: TrainingStats
-    performance_metrics: PerformanceMetrics
+    performance_metrics: TrainingPerformanceMetrics
     system_info: SystemInfo
 
 
