@@ -18,7 +18,7 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.evaluation.evaluate import TradingEvaluator  # noqa: E402
+from ztb.analysis.evaluator import TradingEvaluator  # noqa: E402
 from ztb.utils.errors import safe_operation
 
 LOGGER = logging.getLogger(__name__)

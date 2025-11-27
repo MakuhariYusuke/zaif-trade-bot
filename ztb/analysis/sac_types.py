@@ -188,7 +188,7 @@ class TrainingMetrics(TypedDict):
     total_timesteps: int
 
 
-class ModelConfig(TypedDict):
+class SACModelConfig(TypedDict):
     """Model configuration extracted from reports."""
 
     model_name: str

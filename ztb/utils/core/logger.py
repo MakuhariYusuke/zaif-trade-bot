@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional
 import requests
 
 from ztb.types.common import ConfigDict
+from ztb.utils.types import LoggerProtocol
 
 
 class AsyncNotifier:
@@ -134,7 +135,7 @@ class AsyncNotifier:
                     self.last_heartbeat = current_time
 
 
-class LoggerManager:
+class LoggerManager(LoggerProtocol):
     """Unified logging manager for experiments"""
 
     def __init__(

@@ -281,6 +281,64 @@ def main() -> None:
     torch_info = attempt_torch_import()
     ztb_info = attempt_import("ztb")
     trainer_info = attempt_import("ztb.training.unified_trainer.trainer")
+    curriculum_module = attempt_import(
+        "ztb.trading.environment.components.reward.balance_curriculum"
+    )
+    trend_detector_module = attempt_import(
+        "ztb.trading.environment.components.reward.trend_detector"
+    )
+    # Try to instantiate TrendDetector to detect runtime errors
+    try:
+        if trend_detector_module.get("status") == "ok":
+            from ztb.trading.environment.components.reward.trend_detector import (
+                TrendDetector,
+            )
+
+            # Create a small detector to ensure runtime path works and basic methods run
+            td = TrendDetector(lookback=5, min_samples=1)
+            td.update(100.0)
+            signal = td.get_trend_signal()
+            log_event("trend_detector_runtime", status="ok", signal=signal)
+    except Exception as e:
+        log_event(
+            "trend_detector_runtime",
+            status="error",
+            error=repr(e),
+            traceback=traceback.format_exc(),
+        )
+
+    try:
+        # Attempt to instantiate BalanceCurriculumManager if available
+        if curriculum_module.get("status") == "ok":
+            from ztb.trading.environment.components.reward.balance_curriculum import (
+                BalanceCurriculumManager,
+            )
+
+            bcm = BalanceCurriculumManager(
+                config={
+                    "curriculum_stage": "forced_balance",
+                    "curriculum_learning": {"enabled": True},
+                }
+            )
+            log_event(
+                "balance_curriculum_runtime",
+                status="ok",
+                current_stage=bcm.get_current_stage(),
+            )
+    except Exception as e:
+        log_event(
+            "balance_curriculum_runtime",
+            status="error",
+            error=repr(e),
+            traceback=traceback.format_exc(),
+        )
+    except Exception as e:
+        log_event(
+            "trend_detector_runtime",
+            status="error",
+            error=repr(e),
+            traceback=traceback.format_exc(),
+        )
 
     diagnostics_ok = (
         torch_info.get("status") == "ok"

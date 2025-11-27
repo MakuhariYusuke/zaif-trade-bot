@@ -7,7 +7,7 @@ with effectively larger batch sizes on limited GPU memory.
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -248,7 +248,7 @@ class GradientAccumulationTrainer:
 
     def training_step(
         self,
-        batch: Any,
+        batch: Union[torch.Tensor, Tuple[torch.Tensor, ...]],
         loss_fn: Callable[[Any, Any], torch.Tensor],
         scheduler: Optional[Any] = None,
     ) -> Dict[str, Any]:

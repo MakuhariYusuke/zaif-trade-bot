@@ -174,7 +174,7 @@ class TrainingReporter:
             return {"error": str(e)}
 
 
-class TrainingLogger:
+class TrainingEventLogger:
     """Enhanced logging for training processes."""
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:

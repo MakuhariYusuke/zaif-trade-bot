@@ -10,6 +10,8 @@ import warnings
 from collections import OrderedDict
 from typing import Any, Dict, Tuple, Union, cast
 
+from ztb.utils.types import IndicatorInfo
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -1643,7 +1645,7 @@ class TaLibWrapper:
         return result
 
     @staticmethod
-    def get_indicator_info() -> Dict[str, Dict[str, Any]]:
+    def get_indicator_info() -> Dict[str, IndicatorInfo]:
         return {
             "SMA": {
                 "description": "Simple Moving Average",

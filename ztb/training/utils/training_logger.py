@@ -19,7 +19,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class TrainingLogger:
+class TrainingConsoleLogger:
     """訓練ログの統一インターフェース"""
 
     start_time: Optional[datetime]
@@ -312,9 +312,9 @@ class TrainingLogger:
 
 def create_training_logger(
     algorithm: str, model_name: str, verbose: bool = True
-) -> TrainingLogger:
+) -> TrainingConsoleLogger:
     """
-    TrainingLoggerインスタンスを作成
+    TrainingConsoleLoggerインスタンスを作成
 
     Args:
         algorithm: アルゴリズム名
@@ -322,6 +322,6 @@ def create_training_logger(
         verbose: 詳細出力
 
     Returns:
-        TrainingLoggerインスタンス
+        TrainingConsoleLoggerインスタンス
     """
-    return TrainingLogger(algorithm, model_name, verbose)
+    return TrainingConsoleLogger(algorithm, model_name, verbose)

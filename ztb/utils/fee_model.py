@@ -10,9 +10,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ztb.trading.environment.constants import DEFAULT_FEE_RATE
 from ztb.utils.file_utils import safe_json_load
+from ztb.utils.types import FeeModelProtocol
 
 
-class FeeModel(ABC):
+class FeeModel(ABC, FeeModelProtocol):
     """Abstract base class for fee models"""
 
     @abstractmethod

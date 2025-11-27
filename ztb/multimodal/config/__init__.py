@@ -42,7 +42,7 @@ class FeaturesConfig:
 
 
 @dataclass
-class ModelConfig:
+class MultimodalModelConfig:
     """モデルアーキテクチャ設定"""
 
     price_encoder_hidden_dims: list = field(default_factory=lambda: [128, 64])
@@ -60,7 +60,7 @@ class ModelConfig:
 
 
 @dataclass
-class TrainingConfig:
+class MultimodalTrainingConfig:
     """トレーニング設定"""
 
     batch_size: int = 64

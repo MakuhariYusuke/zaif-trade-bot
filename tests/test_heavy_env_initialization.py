@@ -1,10 +1,22 @@
 import pandas as pd
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.types.protocols import TradingEnvironment
 
 
 class TestHeavyTradingEnvInitialization:
     """Test cases for HeavyTradingEnv initialization."""
+
+    def test_protocol_implementation(self):
+        """Test that HeavyTradingEnv implements TradingEnvironment protocol."""
+        # Test inheritance
+        assert issubclass(HeavyTradingEnv, TradingEnvironment)
+
+        # Test protocol methods exist on class
+        assert hasattr(HeavyTradingEnv, 'reset')
+        assert hasattr(HeavyTradingEnv, 'step')
+        assert hasattr(HeavyTradingEnv, 'render')
+        assert hasattr(HeavyTradingEnv, 'close')
 
     def test_observation_space_dimension_consistency(self):
         """Test that observation space dimension matches feature matrix columns and features list length."""

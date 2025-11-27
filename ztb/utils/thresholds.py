@@ -7,15 +7,16 @@ from typing import Any, Dict, cast
 
 import numpy as np
 
-from ztb.evaluation.status import CoverageValidator
+from ztb.analysis.status import CoverageValidator
+from ztb.utils.types import ThresholdManagerProtocol
 
 
-class AdaptiveThresholdManager:
+class AdaptiveThresholdManager(ThresholdManagerProtocol):
     """Manages adaptive thresholds based on historical market data"""
 
     def __init__(self, historical_data_path: str):
         self.historical_data_path = Path(historical_data_path)
-        self.thresholds_cache: Dict[str, Any] = {}
+        self.thresholds_cache: Dict[str, float] = {}
         self.historical_successes: Dict[str, Any] = {}
         self._load_historical_data()
 

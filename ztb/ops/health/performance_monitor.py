@@ -46,7 +46,7 @@ class PerformanceTrend:
     analysis: str
 
 
-class PerformanceMonitor:
+class HealthPerformanceMonitor:
     """
     Monitors and analyzes system performance trends over time.
 
@@ -343,11 +343,11 @@ class PerformanceMonitor:
 _performance_monitor = None
 
 
-def get_performance_monitor() -> PerformanceMonitor:
+def get_performance_monitor() -> HealthPerformanceMonitor:
     """Get the global performance monitor instance."""
     global _performance_monitor
     if _performance_monitor is None:
-        _performance_monitor = PerformanceMonitor()
+        _performance_monitor = HealthPerformanceMonitor()
     return _performance_monitor
 
 

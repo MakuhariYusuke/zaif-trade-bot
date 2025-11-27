@@ -6,25 +6,22 @@ integrating with the unified backtest framework.
 """
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
 from ztb.utils.logging_utils import get_logger
-from ztb.trading.strategies.action_signal_guide.analysis.signal_performance_analyzer import (
-    SignalPerformanceAnalyzer,
-)
 
 logger = get_logger(__name__)
 
 
-class BacktestPerformanceAnalyzer(SignalPerformanceAnalyzer):
+class BacktestPerformanceAnalyzer:
     """
     Backtest-optimized signal performance analyzer.
 
-    Extends SignalPerformanceAnalyzer with backtest-specific functionality:
+    Provides signal performance analysis for backtest environments:
     - Trade outcome integration
     - Backtest-specific correlation analysis
     - Performance attribution by signal characteristics
@@ -37,9 +34,16 @@ class BacktestPerformanceAnalyzer(SignalPerformanceAnalyzer):
         Args:
             max_history_size: Maximum number of historical records to keep
         """
-        super().__init__(max_history_size=max_history_size)
+        self.max_history_size = max_history_size
+        self.logger = get_logger("ztb.trading.backtest.signal_performance_analyzer")
+
+        # Trade outcome tracking
         self.trade_outcomes: List[Dict[str, Union[str, int, float]]] = []
         self.backtest_correlations: List[Dict[str, Union[str, int, float]]] = []
+
+        # Signal quality tracking (simplified for backtest)
+        self.signal_quality_history: List[Dict[str, Any]] = []
+        self.signal_sac_correlations: List[Dict[str, Any]] = []
 
     def record_trade_outcome(
         self,
@@ -65,6 +69,7 @@ class BacktestPerformanceAnalyzer(SignalPerformanceAnalyzer):
                 'signal_direction': signal_data.get('direction', 0.0),
                 'source_patterns': signal_data.get('source_patterns', []),
                 'trade_type': trade_result.get('type', 'unknown'),
+                'action': trade_result.get('action', 'unknown'),  # Add action field
                 'entry_price': trade_result.get('entry_price', 0.0),
                 'exit_price': trade_result.get('exit_price'),
                 'quantity': trade_result.get('quantity', 0),
@@ -304,3 +309,83 @@ class BacktestPerformanceAnalyzer(SignalPerformanceAnalyzer):
             "trade_count": len(df),
             "effective_signals": int((df['pnl'] > 0).sum()),
         }
+
+    def get_performance_report(self) -> Dict[str, Any]:
+        """
+        Generate comprehensive performance report.
+
+        Returns:
+            Dictionary containing performance analysis results
+        """
+        try:
+            # Generate signal quality score
+            signal_quality_score = self._calculate_signal_quality_score()
+
+            # Generate correlation analysis
+            correlation_analysis = self._analyze_backtest_correlations()
+
+            # Generate trade outcome analysis
+            trade_analysis = self._generate_signal_effectiveness_summary()
+
+            return {
+                "signal_quality_score": signal_quality_score,
+                "correlation_analysis": correlation_analysis,
+                "trade_outcomes": self.trade_outcomes.copy(),
+                "performance_analysis": trade_analysis,  # Rename for compatibility
+                "analysis_timestamp": pd.Timestamp.now().isoformat(),
+            }
+
+        except Exception as e:
+            self.logger.error(f"Failed to generate performance report: {e}")
+            return {
+                "error": str(e),
+                "status": "Report generation failed"
+            }
+
+    def _calculate_signal_quality_score(self) -> float:
+        """Calculate overall signal quality score."""
+        if not self.trade_outcomes:
+            return 0.0
+
+        df = pd.DataFrame(self.trade_outcomes)
+
+        # Simple quality score based on win rate and profit factor
+        win_rate = (df['pnl'] > 0).mean()
+        profit_factor = self._generate_signal_effectiveness_summary().get('profit_factor', 1.0)
+
+        # Normalize profit factor (cap at 5.0)
+        normalized_pf = min(profit_factor, 5.0) / 5.0
+
+        # Combined score
+        quality_score = (win_rate * 0.6) + (normalized_pf * 0.4)
+
+        return float(quality_score)
+
+    def _analyze_backtest_correlations(self) -> Dict[str, Any]:
+        """Analyze correlations in backtest data."""
+        if len(self.trade_outcomes) < 2:
+            return {"status": "Insufficient data for correlation analysis"}
+
+        try:
+            df = pd.DataFrame(self.trade_outcomes)
+
+            # Basic correlation analysis
+            correlations = {}
+            if 'pnl' in df.columns and len(df) > 1:
+                # Correlation between trade order and pnl (momentum effect)
+                if 'trade_index' in df.columns:
+                    corr, p_value = stats.pearsonr(df['trade_index'], df['pnl'])
+                    correlations['trade_order_pnl'] = {
+                        'correlation': float(corr),
+                        'p_value': float(p_value),
+                        'significant': p_value < 0.05
+                    }
+
+            return {
+                "correlations": correlations,
+                "sample_size": len(df),
+                "analysis_type": "backtest_correlation"
+            }
+
+        except Exception as e:
+            return {"error": str(e), "status": "Correlation analysis failed"}

@@ -88,7 +88,7 @@ class Timeframe(Enum):
 
 
 @dataclass
-class TrainingConfig:
+class PPOTrainingConfig:
     """Configuration for PPO training."""
 
     # Core PPO parameters

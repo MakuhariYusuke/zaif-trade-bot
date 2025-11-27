@@ -11,18 +11,21 @@ from .unified_backtester import (
     UnifiedBacktester,
     BacktestConfig,
     BacktestResult,
-    TradingStrategy,
-    DataManager,
-    ResultsManager,
 )
 from .strategy_base import (
     BaseTradingStrategy,
     MLTradingStrategy,
     SignalBasedStrategy,
+    TradingStrategy,
 )
 from .sac_strategy import SACStrategy
 from .action_signal_guide_strategy import ActionSignalGuideStrategy
 from .analyzer import BacktestAnalyzer
+from .signal_performance import (
+    BacktestPerformanceAnalyzer,
+    BacktestSignalPerformanceAnalyzer,
+    SignalTracker,
+)
 
 __version__ = "1.0.0"
 __all__ = [
@@ -30,12 +33,13 @@ __all__ = [
     "BacktestConfig",
     "BacktestResult",
     "TradingStrategy",
-    "DataManager",
-    "ResultsManager",
     "BaseTradingStrategy",
     "MLTradingStrategy",
     "SignalBasedStrategy",
     "SACStrategy",
     "ActionSignalGuideStrategy",
     "BacktestAnalyzer",
+    "BacktestPerformanceAnalyzer",
+    "BacktestSignalPerformanceAnalyzer",
+    "SignalTracker",
 ]

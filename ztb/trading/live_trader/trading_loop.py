@@ -8,7 +8,7 @@ import numpy as np
 
 from ztb.trading.constants import ACTION_HOLD
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.performance_utils import PerformanceMonitor
+from ztb.utils.performance_utils import CodePerformanceMonitor
 
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
@@ -39,7 +39,7 @@ class TradingLoop:
             iteration_count += 1
             logger.debug(f"Starting iteration {iteration_count}")
 
-            with PerformanceMonitor(f"trading_iteration_{iteration_count}"):
+            with CodePerformanceMonitor(f"trading_iteration_{iteration_count}"):
                 try:
                     # Get current price
                     try:

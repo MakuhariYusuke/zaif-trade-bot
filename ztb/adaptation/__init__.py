@@ -37,13 +37,21 @@ from .dynamic_hyperparameter_adapter import (
     HyperparameterConfig,
     HyperparameterType,
 )
-from .explainability import (
-    DecisionExplanation,
-    ExplainabilityAnalyzer,
-    ExplainabilityConfig,
-    ExplanationResult,
-    FeatureImportance,
-)
+try:
+    from .explainability import (
+        DecisionExplanation,
+        ExplainabilityAnalyzer,
+        ExplainabilityConfig,
+        ExplanationResult,
+        FeatureImportance,
+    )
+except Exception:
+    # explainability may depend on torch/pytorch; allow package import to succeed
+    DecisionExplanation = None
+    ExplainabilityAnalyzer = None
+    ExplainabilityConfig = None
+    ExplanationResult = None
+    FeatureImportance = None
 from .hyperparameter_adaptation_system import HyperparameterAdaptationSystem
 from .market_aware_hyperparameter_manager import (
     MarketAwareConfig,

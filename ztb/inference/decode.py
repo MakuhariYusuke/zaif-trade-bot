@@ -19,7 +19,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
-import torch
+try:
+    import torch
+except Exception:
+    torch = None
 from numpy.typing import NDArray
 
 from ztb.trading.constants import ACTION_HOLD
@@ -113,7 +116,7 @@ def decode_action(
         )
 
     # Convert to numpy if torch tensor
-    is_torch = isinstance(logits, torch.Tensor)
+    is_torch = torch is not None and isinstance(logits, torch.Tensor)
     if is_torch:
         logits_np = cast(torch.Tensor, logits).detach().cpu().numpy()
         mask_np = cast(torch.Tensor, legal_mask).detach().cpu().numpy()
@@ -184,7 +187,7 @@ def decode_action(
     # Convert advantages to numpy if provided
     advantages_np = None
     if advantages is not None:
-        if isinstance(advantages, torch.Tensor):
+        if torch is not None and isinstance(advantages, torch.Tensor):
             advantages_np = advantages.detach().cpu().numpy()
         else:
             advantages_np = np.array(advantages)

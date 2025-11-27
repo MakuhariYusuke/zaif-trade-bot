@@ -16,7 +16,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.memory_utils import MemoryTracker
+from ztb.utils.memory_utils import OperationMemoryTracker
 
 logger = get_logger(__name__)
 
@@ -56,7 +56,7 @@ class ElasticWeightConsolidation:
         self.fisher_information = {}  # フィッシャー情報行列
         self.optimal_params = {}  # 各タスクの最適パラメータ
         self.task_count = 0
-        self.memory_tracker = MemoryTracker() if config.enable_memory_tracking else None
+        self.memory_tracker = OperationMemoryTracker() if config.enable_memory_tracking else None
 
     def consolidate_task(
         self, task_data: TaskData, loss_fn: Callable
@@ -174,7 +174,7 @@ class RehearsalBuffer:
         self.task_buffers = defaultdict(
             lambda: deque(maxlen=config.rehearsal_buffer_size // 5)
         )  # タスクごとのバッファ
-        self.memory_tracker = MemoryTracker() if config.enable_memory_tracking else None
+        self.memory_tracker = OperationMemoryTracker() if config.enable_memory_tracking else None
 
     def add_samples(self, task_data: TaskData):
         """サンプルの追加"""
@@ -276,7 +276,7 @@ class ProgressiveNetwork:
         self.task_networks = {}  # タスクごとのネットワーク
         self.task_count = 0
         self.lateral_connections = {}  # ネットワーク間の横接続
-        self.memory_tracker = MemoryTracker() if config.enable_memory_tracking else None
+        self.memory_tracker = OperationMemoryTracker() if config.enable_memory_tracking else None
 
     def add_task_network(self, task_id: str) -> nn.Module:
         """新規タスク用のネットワーク追加"""
@@ -411,7 +411,7 @@ class ContinualLearner:
             raise ValueError(f"Unsupported continual learning method: {config.method}")
 
         self.task_history = []
-        self.memory_tracker = MemoryTracker() if config.enable_memory_tracking else None
+        self.memory_tracker = OperationMemoryTracker() if config.enable_memory_tracking else None
 
     def learn_task(
         self,

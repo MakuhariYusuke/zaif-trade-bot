@@ -20,7 +20,7 @@ class RiskProfileConfig:
 
 
 @dataclass
-class TrainingConfig:
+class LegacyTrainingConfig:
     """Training configuration with BTC/JPY defaults."""
 
     symbol: str = "BTC_JPY"
@@ -46,6 +46,6 @@ class TrainingConfig:
 
 # Default configurations
 DEFAULT_RISK_PROFILE = RiskProfileConfig(name="aggressive")
-DEFAULT_TRAINING_CONFIG = TrainingConfig(
+DEFAULT_TRAINING_CONFIG = LegacyTrainingConfig(
     symbol="BTC_JPY", venue="coincheck", risk_profile=DEFAULT_RISK_PROFILE
 )

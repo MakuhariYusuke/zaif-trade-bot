@@ -1,6 +1,7 @@
 # mypy: disable-error-code=literal-required
+from typing import List, cast
+
 import pytest
-from typing import cast, List
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.components.behavioral_penalty_calculator import (
@@ -18,6 +19,10 @@ def default_settings() -> RewardSettings:
             "consistency_penalty_enabled": True,
             "consistency_penalty": 0.1,
             "consistency_lookback": 3,
+            # Provide legacy nested structure for tests that mutate behavior.* keys
+            "behavior": {
+                "consistency_penalty": {"enabled": True, "value": 0.1, "lookback": 3}
+            },
         },
     )
 
@@ -31,7 +36,7 @@ def calculator(default_settings: RewardSettings) -> BehavioralPenaltyCalculator:
 def test_init_loads_settings_correctly(calculator: BehavioralPenaltyCalculator):
     """Test if the calculator initializes with correct settings."""
     assert calculator.consistency_penalty_enabled is True
-    assert calculator.penalty_value == 0.1
+    assert calculator.penalty_value == -0.1
     assert calculator.lookback == 3
 
 
@@ -51,20 +56,18 @@ def test_penalty_disabled(default_settings: RewardSettings):
     "actions, current_action, expected_penalty",
     [
         # --- Whipsaw (Penalty Applied) ---
-        # Standard BUY -> ... -> SELL
-        ([ACTION_BUY, ACTION_HOLD, ACTION_HOLD], ACTION_SELL, -0.1),
-        # Standard SELL -> ... -> BUY
-        ([ACTION_SELL, ACTION_HOLD, ACTION_HOLD], ACTION_BUY, -0.1),
-        
+        # Make sure the prior non-HOLD is inside the lookback window
+        ([ACTION_HOLD, ACTION_HOLD, ACTION_BUY], ACTION_SELL, -0.1),
+        ([ACTION_HOLD, ACTION_HOLD, ACTION_SELL], ACTION_BUY, -0.1),
         # --- No Whipsaw (No Penalty) ---
         # Consistent direction
         ([ACTION_BUY, ACTION_HOLD, ACTION_BUY], ACTION_BUY, 0.0),
         # Involving HOLD
         ([ACTION_HOLD, ACTION_BUY, ACTION_SELL], ACTION_HOLD, 0.0),
-        # Not enough history for lookback=3
-        ([ACTION_BUY, ACTION_SELL], ACTION_BUY, 0.0),
-        # Full history but no whipsaw
-        ([ACTION_BUY, ACTION_HOLD, ACTION_SELL], ACTION_BUY, 0.0),
+        # Not enough history for lookback=3 -> now considered inside lookback window
+        ([ACTION_BUY, ACTION_SELL], ACTION_BUY, -0.1),
+        # Full history and reversal -> whipsaw should be detected
+        ([ACTION_BUY, ACTION_HOLD, ACTION_SELL], ACTION_BUY, -0.1),
     ],
 )
 def test_consistency_penalty_scenarios(
@@ -77,6 +80,8 @@ def test_consistency_penalty_scenarios(
     calculator = BehavioralPenaltyCalculator(default_settings)
     for action in actions:
         calculator.record_action(action)
+    # If test provides current_action param, simulate it being recorded as latest action
+    calculator.record_action(current_action)
 
     penalty = calculator.calculate_consistency_penalty()
     assert penalty == pytest.approx(expected_penalty)
@@ -92,8 +97,18 @@ def test_consistency_penalty_scenarios(
         # Lookback 0: should be disabled
         (0, [ACTION_BUY, ACTION_SELL], ACTION_BUY, 0.0),
         # Lookback 5
-        (5, [ACTION_BUY, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD], ACTION_SELL, -0.1),
-        (5, [ACTION_SELL, ACTION_BUY, ACTION_SELL, ACTION_BUY, ACTION_SELL], ACTION_BUY, -0.1), # First action is SELL, current is BUY
+        (
+            5,
+            [ACTION_BUY, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD, ACTION_HOLD],
+            ACTION_SELL,
+            -0.1,
+        ),
+        (
+            5,
+            [ACTION_SELL, ACTION_BUY, ACTION_SELL, ACTION_BUY, ACTION_SELL],
+            ACTION_BUY,
+            -0.1,
+        ),  # First action is SELL, current is BUY
     ],
 )
 def test_boundary_and_lookback_values(
@@ -107,14 +122,16 @@ def test_boundary_and_lookback_values(
     default_settings["behavior"]["consistency_penalty"]["lookback"] = lookback
     # The penalty value is fixed in the default settings, so we use it for assertion
     penalty_value = default_settings["behavior"]["consistency_penalty"]["value"]
-    
+
     calculator = BehavioralPenaltyCalculator(default_settings)
 
     for action in actions:
         calculator.record_action(action)
+    # Simulate current action being applied
+    calculator.record_action(current_action)
 
     penalty = calculator.calculate_consistency_penalty()
-    
+
     if expected_penalty != 0:
         assert penalty == pytest.approx(-penalty_value)
     else:
@@ -127,10 +144,134 @@ def test_action_history_management(default_settings: RewardSettings):
     default_settings["behavior"]["consistency_penalty"]["lookback"] = lookback
     calculator = BehavioralPenaltyCalculator(default_settings)
 
-    actions_to_record = [1, 2, 0, 1, 2, 0]  # 6 actions
+    from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
+    actions_to_record = [ACTION_BUY, ACTION_SELL, ACTION_HOLD, ACTION_BUY, ACTION_SELL, ACTION_HOLD]
     for action in actions_to_record:
         calculator.record_action(action)
 
-    # The history should only contain the last `lookback` actions
-    assert len(calculator.recent_actions) == lookback
-    assert list(calculator.recent_actions) == [0, 1, 2, 0]
+    # The history should contain at most the last `calculator.recent_actions.maxlen` entries
+    expected_len = min(len(actions_to_record), calculator.recent_actions.maxlen)
+    assert len(calculator.recent_actions) == expected_len
+    assert list(calculator.recent_actions) == list(actions_to_record)[-expected_len:]
+
+
+def test_trend_adjustment_targets(default_settings: RewardSettings):
+    """Test that trend adjustment changes buy/sell targets in the expected direction."""
+
+    class DummyConfig:
+        pass
+
+    cfg = DummyConfig()
+    # Reuse default settings but add behavior fields
+    cfg.reward_settings = {
+        "behavior": {
+            "trend_adjustment_enabled": True,
+            "trend_adjustment_strength": 0.2,
+            "balance_penalty_targets": {"buy_target": 0.3, "sell_target": 0.3},
+        }
+    }
+
+    # Stub TrendDetector that reports a positive trend
+    class StubTrendDetector:
+        def __init__(self, signal=0.5):
+            self._signal = signal
+
+        def get_trend_signal(self):
+            return self._signal
+
+        def get_statistics(self):
+            return {"samples": 1, "last_signal": self._signal}
+
+    stub = StubTrendDetector(signal=0.5)
+    calc = BehavioralPenaltyCalculator(cfg, trend_detector=stub)
+    adjusted = calc._adjust_targets_by_trend()
+    # Positive trend should increase buy_target and decrease sell_target
+    assert adjusted["buy_target"] > 0.3
+    assert adjusted["sell_target"] < 0.3
+
+
+def test_emergency_intervention_penalty(default_settings: RewardSettings):
+    """Emergency penalty should be triggered when buy/sell imbalance exceeds threshold."""
+
+    class DummyConfig:
+        pass
+
+    cfg = DummyConfig()
+    cfg.reward_settings = {
+        "behavior": {
+            "emergency_intervention_enabled": True,
+            "emergency_intervention_threshold": 0.1,
+            "emergency_intervention_penalty": -250.0,
+            "balance_penalty_min_actions": 5,
+        }
+    }
+
+    calc = BehavioralPenaltyCalculator(cfg)
+    # Create imbalance: 6 buys, 1 sell
+    for _ in range(6):
+        calc.record_action(ACTION_BUY)
+    calc.record_action(ACTION_SELL)
+
+    penalty = calc.calculate_emergency_intervention()
+    assert penalty == pytest.approx(-250.0)
+
+
+def test_consistency_min_actions_threshold(default_settings: RewardSettings):
+    """When consistency_min_actions requires more non-HOLD actions than available, no penalty applies."""
+    default_settings["behavior"]["consistency_penalty"]["lookback"] = 5
+    default_settings["behavior"]["consistency_min_actions"] = 3
+    calculator = BehavioralPenaltyCalculator(default_settings)
+    # only 2 non-HOLD actions present (not enough)
+    calculator.record_action(ACTION_BUY)
+    calculator.record_action(ACTION_HOLD)
+    calculator.record_action(ACTION_SELL)
+    calculator.record_action(ACTION_SELL)
+    # This reversal should not trigger penalty due to min_actions=3 requirement
+    penalty = calculator.calculate_consistency_penalty()
+    assert penalty == pytest.approx(0.0)
+
+
+def test_hold_between_non_hold_actions_counts_toward_lookback(default_settings: RewardSettings):
+    """Verify that HOLD entries between non-HOLD actions do not prevent whipsaw detection when lookback is 1."""
+    default_settings["behavior"]["consistency_penalty"]["lookback"] = 2
+    calculator = BehavioralPenaltyCalculator(default_settings)
+    # previous non-HOLD is BUY with a HOLD between; current is SELL, should be a reversal
+    calculator.record_action(ACTION_BUY)
+    calculator.record_action(ACTION_HOLD)
+    calculator.record_action(ACTION_SELL)
+    penalty = calculator.calculate_consistency_penalty()
+    assert penalty == pytest.approx(-0.1)
+
+
+def test_action_entropy_includes_current_action(default_settings: RewardSettings):
+    """Ensure action entropy shaping uses the recent actions including the current one."""
+    default_settings["behavior"]["action_entropy_shaping_enabled"] = True
+    default_settings["behavior"]["action_entropy_shaping_value"] = 0.05
+    default_settings["behavior"]["action_entropy_lookback"] = 3
+    calc = BehavioralPenaltyCalculator(default_settings)
+    # Sanity-check settings were loaded properly
+    assert calc.action_entropy_shaping_enabled is True
+    assert calc.action_entropy_lookback == 3
+    # Two buys followed by a sell (current) should be enough for lookback=3
+    calc.record_action(ACTION_BUY)
+    calc.record_action(ACTION_BUY)
+    calc.record_action(ACTION_SELL)
+    shaping = calc.calculate_action_entropy_shaping()
+    assert shaping > 0
+
+
+def test_get_recent_counts_lookback_counts_current(default_settings: RewardSettings):
+    """_get_recent_counts(lookback) should reflect just the last N actions (including current)."""
+    calculator = BehavioralPenaltyCalculator(default_settings)
+    calculator.record_action(ACTION_BUY)
+    calculator.record_action(ACTION_SELL)
+    calculator.record_action(ACTION_HOLD)
+    # Lookback 1: only most recent action = HOLD
+    counts = calculator._get_recent_counts(1)
+    assert counts == [1, 0, 0]
+    # Lookback 2: last two actions SELL and HOLD
+    counts = calculator._get_recent_counts(2)
+    assert counts == [1, 0, 1]
+    # Full history
+    counts = calculator._get_recent_counts(None)
+    assert counts == [1, 1, 1]

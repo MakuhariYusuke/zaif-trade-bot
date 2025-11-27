@@ -7,6 +7,8 @@ import json
 import os
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from ztb.utils.types import ValidationResult, TrainingResult
+
 if TYPE_CHECKING:
     # For type checking only; avoid importing stable_baselines3 at module import time
     from stable_baselines3 import SAC  # type: ignore
@@ -151,7 +153,7 @@ def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
 
 
 def save_training_results(
-    results: Dict[str, Any], output_path: str, verbose: bool = True
+    results: TrainingResult, output_path: str, verbose: bool = True
 ) -> bool:
     """
     トレーニング結果を保存
@@ -182,7 +184,7 @@ def save_training_results(
         return False
 
 
-def validate_training_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
     """
     トレーニング設定をバリデーション
 
