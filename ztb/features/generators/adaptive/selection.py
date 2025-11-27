@@ -16,7 +16,12 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from ztb.features.attention_trainer import AttentionTrainer, FeatureAttentionLayer
+try:
+    from ztb.features.attention_trainer import AttentionTrainer, FeatureAttentionLayer
+except Exception:
+    # Allow module import to succeed even if torch isn't available/initializable.
+    AttentionTrainer = None  # type: ignore
+    FeatureAttentionLayer = None  # type: ignore
 from ztb.features.causal_inference import CausalInferenceEngine
 
 logger = logging.getLogger(__name__)

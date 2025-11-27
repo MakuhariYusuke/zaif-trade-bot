@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypedDict, cast
 
 import numpy as np
 

@@ -56,7 +56,7 @@ class SACMetricsCallback(BaseCallback):
         """
         Args:
             log_interval: ログ出力間隔（ステップ数）
-            training_logger: TrainingLoggerインスタンス（オプション）
+            training_logger: TrainingConsoleLoggerインスタンス（オプション）
             csv_path: CSVファイルの保存パス（オプション）
             verbose: 詳細度（0: エラーのみ、1: 情報、2: デバッグ）
         """
@@ -317,7 +317,7 @@ class SACMetricsCallback(BaseCallback):
                 except Exception:
                     pass
 
-            # TrainingLoggerを使用して標準出力
+            # TrainingConsoleLoggerを使用して標準出力
             if self.training_logger:
                 self.training_logger.print_training_progress(
                     current_step=self.n_calls, total_steps=total_steps, metrics=metrics
@@ -430,7 +430,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         Returns:
             訓練結果（モデルパス、ログパス等）
         """
-        # Local config dict and TrainingLoggerを作成
+        # Local config dict and TrainingConsoleLoggerを作成
         cfg = ensure_dict(
             getattr(
                 self,
@@ -565,7 +565,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         metrics_log_interval = int(safe_to_float(cfg.get("metrics_log_interval", 100)))
         metrics_callback = SACMetricsCallback(
             log_interval=metrics_log_interval,
-            training_logger=training_logger,  # TrainingLoggerを渡す
+            training_logger=training_logger,  # TrainingConsoleLoggerを渡す
             csv_path=csv_metrics_path,  # CSVパスを渡す
             verbose=1,
         )

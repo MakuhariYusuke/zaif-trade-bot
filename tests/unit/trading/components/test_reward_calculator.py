@@ -1,7 +1,6 @@
 """Tests for RewardCalculator component."""
 
 import math
-from unittest.mock import Mock
 
 import pytest
 
@@ -14,32 +13,34 @@ from ztb.trading.environment.utils.config import RewardSettings
 def sample_config():
     """Sample environment config for testing."""
     from ztb.trading.environment.utils.config import EnvironmentConfig
+
     config_dict = {
-        'max_position_size': 1.0,
-        'transaction_cost': 0.001,
-        'exchange': 'coincheck',
-        'reward_scaling': 1.0,
-        'action_space_type': 'continuous',
-        'use_continuous_actions': True,
-        'feature_set': 'minimal',
-        'enable_action_masking': True,
-        'use_standardized_observations': True,
-        'random_start': True,
-        'continuous_to_discrete_threshold': 0.08,
-        'behavior_optimization': {
-            'action_balance_target': 0.333,
-            'entropy_regularization': 0.01,
-            'action_smoothing': 0.1,
-            'consistency_penalty': 0.05,
-            'balance_penalty': 0.1,
-            'redundant_trade_penalty': 5.0,
+        "max_position_size": 1.0,
+        "transaction_cost": 0.001,
+        "exchange": "coincheck",
+        "reward_scaling": 1.0,
+        "action_space_type": "continuous",
+        "use_continuous_actions": True,
+        "feature_set": "minimal",
+        "enable_action_masking": True,
+        "use_standardized_observations": True,
+        "random_start": True,
+        "continuous_to_discrete_threshold": 0.08,
+        "behavior_optimization": {
+            "action_balance_target": 0.333,
+            "entropy_regularization": 0.01,
+            "action_smoothing": 0.1,
+            "consistency_penalty": 0.05,
+            "balance_penalty": 0.1,
+            "redundant_trade_penalty": 5.0,
+            'balance_penalty_min_actions': 1,
         },
-        'action_bonuses': {
-            'buy_action_bonus': 0.0,
-            'sell_action_bonus': 0.0,
-            'hold_action_bonus': 0.0,
+        "action_bonuses": {
+            "buy_action_bonus": 0.0,
+            "sell_action_bonus": 0.0,
+            "hold_action_bonus": 0.0,
         },
-        'base_action_penalty': 0.015,
+        "base_action_penalty": 0.015,
     }
     return EnvironmentConfig.from_dict(config_dict)
 
@@ -230,8 +231,12 @@ class TestRewardCalculatorBalancePenalty:
 
         # BUY and SELL should have balance_penalty applied (negative impact)
         # HOLD should not have balance_penalty
-        assert reward_buy < reward_hold, f"BUY reward {reward_buy} should be less than HOLD {reward_hold} due to balance_penalty"
-        assert reward_sell < reward_hold, f"SELL reward {reward_sell} should be less than HOLD {reward_hold} due to balance_penalty"
+        assert (
+            reward_buy < reward_hold
+        ), f"BUY reward {reward_buy} should be less than HOLD {reward_hold} due to balance_penalty"
+        assert (
+            reward_sell < reward_hold
+        ), f"SELL reward {reward_sell} should be less than HOLD {reward_hold} due to balance_penalty"
 
         # Verify penalty values are reasonable
         balance_penalty = reward_calculator.reward_settings.balance_penalty  # 0.1
@@ -241,8 +246,33 @@ class TestRewardCalculatorBalancePenalty:
         buy_penalty_impact = reward_hold - reward_buy
         sell_penalty_impact = reward_hold - reward_sell
 
-        assert buy_penalty_impact > 0, f"BUY should have penalty impact: {buy_penalty_impact}"
-        assert sell_penalty_impact > 0, f"SELL should have penalty impact: {sell_penalty_impact}"
+        assert (
+            buy_penalty_impact > 0
+        ), f"BUY should have penalty impact: {buy_penalty_impact}"
+        assert (
+            sell_penalty_impact > 0
+        ), f"SELL should have penalty impact: {sell_penalty_impact}"
+
+
+def test_mtf_weights_present_in_last_components(reward_calculator):
+    """Ensure mtf_weights telemetry is present after reward calc."""
+    reward = reward_calculator.calculate_reward(
+        action=ACTION_HOLD,
+        current_price=100.0,
+        position=0.0,
+        portfolio_value=100000.0,
+        atr=1.0,
+        transaction_cost=0.001,
+        reward_scaling=1.0,
+        pnl=0.0,
+        old_position=0.0,
+        step=1,
+        observation=None,
+        reward_history=[],
+        portfolio_value_history=[100000.0],
+    )
+    components = reward_calculator.get_last_reward_components()
+    assert "mtf_weights" in components
 
     def test_balance_penalty_with_action_bonuses(self, reward_calculator):
         """Test balance_penalty interaction with action bonuses."""
@@ -345,11 +375,17 @@ class TestRewardCalculatorBalancePenalty:
 
         # With bonuses: BUY should be better than SELL due to higher bonus (10.0 vs 5.0)
         # But both should be worse than HOLD due to high balance_penalty (200.0)
-        assert reward_buy_bonus < reward_hold_bonus, f"BUY with bonus {reward_buy_bonus} should be < HOLD {reward_hold_bonus}"
-        assert reward_sell_bonus < reward_hold_bonus, f"SELL with bonus {reward_sell_bonus} should be < HOLD {reward_hold_bonus}"
+        assert (
+            reward_buy_bonus < reward_hold_bonus
+        ), f"BUY with bonus {reward_buy_bonus} should be < HOLD {reward_hold_bonus}"
+        assert (
+            reward_sell_bonus < reward_hold_bonus
+        ), f"SELL with bonus {reward_sell_bonus} should be < HOLD {reward_hold_bonus}"
 
         # BUY should be better than SELL due to higher bonus
-        assert reward_buy_bonus > reward_sell_bonus, f"BUY bonus {reward_buy_bonus} should be > SELL bonus {reward_sell_bonus}"
+        assert (
+            reward_buy_bonus > reward_sell_bonus
+        ), f"BUY bonus {reward_buy_bonus} should be > SELL bonus {reward_sell_bonus}"
 
         print(f"BUY reward with bonus: {reward_buy_bonus}")
         print(f"SELL reward with bonus: {reward_sell_bonus}")
@@ -358,7 +394,6 @@ class TestRewardCalculatorBalancePenalty:
 
 
 class TestRewardCalculatorComplex:
-
     def test_calculate_reward_balanced_transition(self, reward_calculator):
         """Test balanced transition reward calculation."""
         reward = reward_calculator.calculate_reward(
@@ -396,6 +431,64 @@ class TestRewardCalculatorComplex:
             portfolio_value_history=[100000.0],
         )
         assert isinstance(reward, float)
+
+    def test_trend_integration_in_forced_balance(self, reward_calculator):
+        """When trend favors BUY, BUY actions should be penalized less in forced_balance stage."""
+
+        # Ensure forced_balance stage triggers by lowering min actions
+        reward_calculator.reward_settings.custom_reward_params = {
+            "forced_balance_min_actions": 1,
+            "forced_balance_exploration_reward": 0.0,
+        }
+
+        # Create a stub TrendDetector
+        class StubTrendDetector:
+            def __init__(self, signal):
+                self._signal = signal
+
+            def get_trend_signal(self):
+                return self._signal
+
+            def update(self, price):
+                pass
+
+            def get_statistics(self):
+                return {"samples": 1, "last_signal": self._signal}
+
+        # Set up balanced counts that would produce a penalty for BUY
+        reward_calculator._action_counts = [0, 8, 0]
+
+        # Prepare two calculators: one with positive trend favoring BUY, one with negative
+        reward_calculator.behavioral_penalty_calculator.trend_detector = (
+            StubTrendDetector(0.6)
+        )
+        pos_trend_reward = reward_calculator._calculate_forced_balance_reward(
+            action=ACTION_BUY, step=10
+        )
+
+        reward_calculator.behavioral_penalty_calculator.trend_detector = (
+            StubTrendDetector(-0.6)
+        )
+        neg_trend_reward = reward_calculator._calculate_forced_balance_reward(
+            action=ACTION_BUY, step=10
+        )
+
+        # With positive trend favoring BUY, the penalty should be smaller (higher reward)
+        assert (
+            pos_trend_reward > neg_trend_reward
+        ), "Positive trend should reduce BUY penalty compared to negative trend"
+
+    def test_reset_resets_trend_detector(self, reward_calculator):
+        """Resetting RewardCalculator should reset TrendDetector state."""
+        # Ensure trend detector exists
+        td = reward_calculator.behavioral_penalty_calculator.trend_detector
+        assert td is not None
+        # Simulate updates
+        td.update(100.0)
+        td.update(101.0)
+        assert td.update_count >= 1
+        reward_calculator.reset()
+        assert td.update_count == 0
 
 
 class TestRewardCalculatorReset:

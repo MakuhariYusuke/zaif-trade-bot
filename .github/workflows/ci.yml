@@ -232,3 +232,7 @@ jobs:
     - name: Run DRY_RUN E2E tests
       run: |
         python -m pytest tests/test_paper_trading.py -v -k "DRY_RUN"
+
+    - name: Child wrapper diagnostics check
+      run: |
+        python tools/run_child_trainer_wrapper.py --config config/v448/sac_v448_emergency_fix.json --diagnostics-only

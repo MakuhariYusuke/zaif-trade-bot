@@ -11,7 +11,7 @@ from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 
-class ConfigValidator:
+class TrainingConfigValidator:
     """Enhanced configuration validator with detailed error reporting."""
 
     def __init__(self, logger=None):
@@ -200,12 +200,13 @@ class ConfigValidator:
             )
 
 
-class ConfigManager:
+class ConfigurationFileManager:
     """Configuration management with validation and enhancement."""
 
     def __init__(self, logger=None):
         self.logger = logger or get_logger(__name__)
-        self.validator = ConfigValidator(logger)
+        # Use TrainingConfigValidator for validation
+        self.validator = TrainingConfigValidator(logger)
 
     def load_and_validate(
         self, config_path: str

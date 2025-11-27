@@ -347,3 +347,52 @@ def is_valid_price_data(data: Any) -> TypeGuard[NDArray[np.float64]]:
         return False
 
     return bool(np.all(np.isfinite(data)) and np.all(data > 0))
+
+
+def is_valid_info_dict(info: Any) -> TypeGuard[Dict[str, Union[float, int]]]:
+    """Type guard for trading environment info dictionaries.
+
+    Args:
+        info: Value to check
+
+    Returns:
+        True if value is a valid info dict with numeric values
+    """
+    if not isinstance(info, dict):
+        return False
+
+    for key, value in info.items():
+        if not isinstance(key, str):
+            return False
+        if not isinstance(value, (int, float)):
+            return False
+
+    return True
+
+
+def is_valid_stats_result(stats: Any) -> TypeGuard[Dict[str, Union[float, List[float]]]]:
+    """Type guard for statistics result dictionaries.
+
+    Args:
+        stats: Value to check
+
+    Returns:
+        True if value is a valid stats result dict
+    """
+    if not isinstance(stats, dict):
+        return False
+
+    required_keys = {"mean", "std", "ci95"}
+    if not all(key in stats for key in required_keys):
+        return False
+
+    if not isinstance(stats["mean"], (int, float)):
+        return False
+    if not isinstance(stats["std"], (int, float)):
+        return False
+    if not isinstance(stats["ci95"], list) or len(stats["ci95"]) != 2:
+        return False
+    if not all(isinstance(x, (int, float)) for x in stats["ci95"]):
+        return False
+
+    return True

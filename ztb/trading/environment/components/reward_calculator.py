@@ -154,9 +154,13 @@ class RewardCalculator:
         self.trend_detector = TrendDetector(
             min_samples=self.get_setting_int("trend_detector.min_samples", 20)
         )
+        # Behavioral penalty calculator (integrates TrendDetector and MTF manager)
         self.behavioral_penalty_calculator = BehavioralPenaltyCalculator(
             config=config, trend_detector=self.trend_detector
         )
+        # Lightweight MTF weight manager (Layer 5 foundation)
+        from .reward.mtf_weight_manager import MTFWeightManager
+        self.mtf_weight_manager = MTFWeightManager(config)
         self.unrealized_loss_penalty_calculator = UnrealizedLossPenaltyCalculator(
             reward_settings=self.reward_settings
         )
@@ -435,6 +439,12 @@ class RewardCalculator:
             self.opportunity_cost_penalty_calculator.reset()
 
         self.logger.info("RewardCalculator has been reset.")
+        # Reset recent action buffer as well
+        self._recent_actions = []
+
+    def reset_episode_state(self) -> None:
+        """Alias for resetting episode-level state (compatibility with tests)."""
+        self.reset()
 
     def get_setting_float(self, key: str, default: float) -> float:
         """Get float reward setting with fallback. Supports nested keys with dot notation."""
@@ -490,10 +500,21 @@ class RewardCalculator:
                 elif hasattr(value, k):
                     value = getattr(value, k)
                 else:
-                    return None
-            return value
+                    value = None
+                    break
         except (KeyError, TypeError, AttributeError):
-            return None
+            value = None
+
+        # If not found, check custom_reward_params dict in reward_settings for direct key
+        if value is None:
+            try:
+                if hasattr(self.reward_settings, "custom_reward_params") and isinstance(
+                    self.reward_settings.custom_reward_params, dict
+                ):
+                    return self.reward_settings.custom_reward_params.get(key)
+            except Exception:
+                pass
+        return value
 
     def calculate_reward(
         self,
@@ -769,6 +790,12 @@ class RewardCalculator:
             reward, observation, action, step
         )
         self._last_reward_components["after_signal_integration"] = reward
+        # Add current MTF weights to telemetry if manager present
+        try:
+            mtf_w = self.mtf_weight_manager.get_weights() if hasattr(self, "mtf_weight_manager") else None
+            self._last_reward_components["mtf_weights"] = mtf_w
+        except Exception:
+            self._last_reward_components["mtf_weights"] = None
 
         return reward
 
@@ -954,15 +981,51 @@ class RewardCalculator:
             self._last_reward_components["base_reward"] = exploration_reward
             return exploration_reward
 
-        hold_target = self.get_setting_float(
-            "balance_penalty_targets.hold_target", 1.0 / 3.0
-        )
-        buy_target = self.get_setting_float(
-            "balance_penalty_targets.buy_target", 1.0 / 3.0
-        )
-        sell_target = self.get_setting_float(
-            "balance_penalty_targets.sell_target", 1.0 / 3.0
-        )
+        # Use trend-adjusted targets from BehavioralPenaltyCalculator if available
+        if hasattr(self, "behavioral_penalty_calculator"):
+            try:
+                adjusted = self.behavioral_penalty_calculator._adjust_targets_by_trend()
+                hold_target = adjusted.get(
+                    "hold_target",
+                    self.get_setting_float(
+                        "balance_penalty_targets.hold_target", 1.0 / 3.0
+                    ),
+                )
+                buy_target = adjusted.get(
+                    "buy_target",
+                    self.get_setting_float(
+                        "balance_penalty_targets.buy_target", 1.0 / 3.0
+                    ),
+                )
+                sell_target = adjusted.get(
+                    "sell_target",
+                    self.get_setting_float(
+                        "balance_penalty_targets.sell_target", 1.0 / 3.0
+                    ),
+                )
+            except Exception:
+                self.logger.exception(
+                    "Failed to get adjusted balance targets; falling back to settings"
+                )
+                hold_target = self.get_setting_float(
+                    "balance_penalty_targets.hold_target", 1.0 / 3.0
+                )
+                buy_target = self.get_setting_float(
+                    "balance_penalty_targets.buy_target", 1.0 / 3.0
+                )
+                sell_target = self.get_setting_float(
+                    "balance_penalty_targets.sell_target", 1.0 / 3.0
+                )
+        else:
+            hold_target = self.get_setting_float(
+                "balance_penalty_targets.hold_target", 1.0 / 3.0
+            )
+            buy_target = self.get_setting_float(
+                "balance_penalty_targets.buy_target", 1.0 / 3.0
+            )
+            sell_target = self.get_setting_float(
+                "balance_penalty_targets.sell_target", 1.0 / 3.0
+            )
         target_ratios = [hold_target, buy_target, sell_target]
 
         action_ratios = [count / total_actions for count in self._action_counts]
@@ -1321,6 +1384,12 @@ class RewardCalculator:
 
         final_reward = base_reward - balance_penalty
         self._last_reward_components["balance_penalty"] = -balance_penalty
+        # Record current MTF weights for telemetry
+        try:
+            mtf_w = self.mtf_weight_manager.get_weights() if hasattr(self, "mtf_weight_manager") else None
+            self._last_reward_components["mtf_weights"] = mtf_w
+        except Exception:
+            self._last_reward_components["mtf_weights"] = None
 
         self.logger.info(
             f"Profit optimized: base_reward={base_reward:.3f}, balance_penalty={balance_penalty:.3f}, pnl={pnl:.3f}, final_reward={final_reward:.3f}"

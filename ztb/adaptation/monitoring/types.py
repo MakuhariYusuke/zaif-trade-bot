@@ -7,7 +7,67 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ztb.types.alert_types import Alert
+try:
+    # Import alert types from common types to avoid duplication and maintain
+    # a single source-of-truth for Alert types. Import may fail early if the
+    # central types module is not yet importable; in that case, fall back to
+    # Any-based placeholders to avoid hard import-time failures during
+    # diagnostics (this preserves runtime behaviour and helps imports continue).
+    from ztb.types.alert_types import (
+        Alert,
+        AlertCondition,
+        AlertLevel,
+        AlertStatus,
+    )
+except Exception:
+    # Fallback to Any so the module can be imported even if alert_types is
+    # temporarily unavailable due to circular imports while other modules are
+    # being processed.
+    Alert = Any
+    AlertCondition = Any
+    AlertLevel = Any
+    AlertStatus = Any
+
+# Explicitly define the module export list for clarity and to reduce reliance
+# on partially initialized modules in import paths.
+__all__ = [
+    "MetricType",
+    "MetricValue",
+    "TradingPerformanceMetrics",
+    "RiskMetrics",
+    "SystemMetrics",
+    "MarketMetrics",
+    "AdaptationMetrics",
+    "DashboardConfig",
+    "ReportConfig",
+    "Notification",
+    "TimeSeriesData",
+    "DashboardData",
+    "ReportData",
+    "SafetyLevel",
+    "AnomalyType",
+    "FallbackType",
+    "AnomalyDetection",
+    "SafetyCheck",
+    "FallbackAction",
+    "SafetyStatus",
+    "RecoveryPlan",
+    "ScalingStrategy",
+    "ResourceType",
+    "ScalingDecision",
+    "DeploymentStatus",
+    "ResourceUsage",
+    "ScalingAction",
+    "LoadDistribution",
+    "DeploymentPlan",
+    "CostOptimization",
+    "ScalabilityMetrics",
+    # Alert types re-exported from central module
+    "Alert",
+    "AlertCondition",
+    "AlertLevel",
+    "AlertStatus",
+]
 
 
 class MetricType(Enum):

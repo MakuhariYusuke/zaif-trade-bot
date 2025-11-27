@@ -18,7 +18,7 @@ from ztb.utils.config import ZTBConfig
 logger = logging.getLogger(__name__)
 
 
-class MemoryMonitor:
+class BackgroundMemoryMonitor:
     """Advanced memory monitoring with history and alerting."""
 
     def __init__(self, config: Optional[ZTBConfig] = None):
@@ -57,6 +57,13 @@ class MemoryMonitor:
         self.monitoring_active = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=1.0)
+        
+        # Memory leak prevention: force garbage collection
+        import gc
+        collected = gc.collect()
+        if collected > 0:
+            logger.debug(f"Memory monitor cleanup: garbage collection freed {collected} objects")
+        
         logger.info("Memory monitoring stopped")
 
     def _monitor_loop(self, interval: float) -> None:
@@ -153,14 +160,14 @@ class MemoryMonitor:
 
 
 # Global monitor instance
-_memory_monitor: Optional[MemoryMonitor] = None
+_memory_monitor: Optional[BackgroundMemoryMonitor] = None
 
 
-def get_memory_monitor() -> MemoryMonitor:
+def get_memory_monitor() -> BackgroundMemoryMonitor:
     """Get global memory monitor instance."""
     global _memory_monitor
     if _memory_monitor is None:
-        _memory_monitor = MemoryMonitor()
+        _memory_monitor = BackgroundMemoryMonitor()
     return _memory_monitor
 
 

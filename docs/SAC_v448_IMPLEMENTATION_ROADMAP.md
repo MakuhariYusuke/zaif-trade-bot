@@ -2,6 +2,8 @@
 
 ## 🎯 実装戦略
 
+Also see: `SAC_v448_LAYER5_DESIGN_SPEC.md` for the Layer 5 Curriculum & MTF weight optimization design.
+
 ### 原則
 1. **依存関係の最小化**: 下位レイヤーから順に実装
 2. **段階的テスト**: 各フェーズで動作確認
@@ -111,9 +113,16 @@ zaif-trade-bot/
 **目的**: 実装基盤の整備、混乱防止
 
 #### タスク
-1. ディレクトリ構造作成
-2. 古いバージョン整理スクリプト実行
-3. .gitignore更新
+1. **✅ 重複クラス解決完了**
+   - TradingStrategy Protocol: unified_backtester.py → strategy_base.py
+   - ErrorHandlingStrategy Enum: learning_callback_backup.py → learning_callback.py
+   - TradingEvaluator: 非推奨ファイルアーカイブ
+   - SystemOptimizer: 統合最適化 vs システムレベル最適化（別用途確認）
+   - テスト追加: TradingStrategy Protocol, ErrorHandlingStrategy, 統合テスト
+   - Protocol適用強化: runtime validation追加
+2. ディレクトリ構造作成
+3. 古いバージョン整理スクリプト実行
+4. .gitignore更新
 
 #### 成果物
 ```bash
@@ -125,13 +134,13 @@ tools/organize_v448_structure.py
 
 ### Layer 1: 基礎コンポーネント（1日）
 
-**依存**: なし  
+**依存**: なし
 **目的**: 他のコンポーネントが依存する基礎機能
 
 #### 1.1 Trend Detector（0.5日）
 **ファイル**: `ztb/trading/environment/components/reward/trend_detector.py`
 
-**理由**: 
+**理由**:
 - 他コンポーネントの依存なし
 - Curriculum, Behavioral Penaltyで使用
 
@@ -171,7 +180,7 @@ class LongTermMetrics:
 
 ### Layer 2: コア修正（2日）
 
-**依存**: Layer 1  
+**依存**: Layer 1
 **目的**: 緊急修正の実装
 
 #### 2.1 Behavioral Penalty強化（1日）
@@ -188,7 +197,7 @@ class BehavioralPenaltyCalculator:
     def __init__(self, config, trend_detector=None):  # 🆕 trend_detector
         self.trend_detector = trend_detector
         # ...
-    
+
     def calculate_emergency_intervention(self, action_ratios) -> float:
         """緊急介入: BUY/SELL差>30%で-500 penalty"""
         buy_sell_diff = abs(action_ratios[1] - action_ratios[2])
@@ -196,6 +205,22 @@ class BehavioralPenaltyCalculator:
             return -500.0
         return 0.0
 ```
+
+    ### ✅ Bugfix: Consistency Penalty Lookback Semantics
+
+    We found an off-by-one semantics issue in `BehavioralPenaltyCalculator.calculate_consistency_penalty` where a `lookback` of `1` failed to detect whipsaw patterns when HOLD actions were present in-between the previous non-HOLD and current action.
+
+    Fix summary:
+    - The window used for whipsaw detection now includes the current action and the previous `lookback` entries by using the slicing `[-(lookback + 1):]`.
+    - We require a minimum number of non-HOLD actions (`consistency_min_actions`) to suppress false positives.
+    - `penalty_value` is stored and returned as a negative to avoid double-negation mistakes.
+    - Added unit tests to cover edge cases (HOLD interleaving, min_actions threshold, and lookback boundary cases).
+
+    Horizontal check:
+    - Reviewed other lookback usages (entropy, skewness, balance shaping) and confirmed consistent semantics with current tests — no behavior change was necessary.
+    - Fixed `_rs_get` in `behavioral_penalty_calculator.py` to correctly read scalar nested keys in `behavior` block (e.g. `action_entropy_lookback`) while keeping compound keys like `consistency_penalty` special-case handling.
+
+    Validation: Unit tests for behavioral penalties passed after the fix.
 
 **テスト**:
 ```bash
@@ -217,7 +242,7 @@ pytest tests/unit/components/test_behavioral_penalty.py::test_emergency_interven
 def _calculate_forced_balance_reward(self, action: int, step: int) -> float:
     # 🆕 初期exploration延長
     min_actions = self.get_setting_int("forced_balance_min_actions", 100)
-    
+
     # 🆕 緊急介入
     emergency_penalty = self.behavioral_penalty_calculator.calculate_emergency_intervention(action_ratios)
     if emergency_penalty < 0:
@@ -234,7 +259,7 @@ pytest tests/unit/components/test_reward_calculator.py::test_forced_balance_emer
 
 ### Layer 2: コア修正（2日） ✅
 
-**依存**: Layer 1  
+**依存**: Layer 1
 **目的**: 緊急修正の実装
 
 **完了日**: 2025-01-21
@@ -267,7 +292,7 @@ pytest tests/unit/components/reward/test_behavioral_penalty_calculator.py -v
 
 ### Layer 3: Balance Curriculum（2日）
 
-**依存**: Layer 1-2  
+**依存**: Layer 1-2
 **目的**: 動的カリキュラム学習の実装
 
 **注**: 既存の`curriculum_stage`設定(forced_balance, balanced_transition等)を活用し、重複を避ける
@@ -294,19 +319,19 @@ pytest tests/unit/components/reward/test_behavioral_penalty_calculator.py -v
 class BalanceCurriculumManager:
     """
     Dynamic curriculum progression for balance-focused training.
-    
+
     Integrates with existing RewardCalculator curriculum_stage system.
     Monitors training progress and automatically transitions between stages.
-    
+
     SAC v448 Layer 3: Focus on bias prevention and sustainable learning.
     """
-    
+
     def __init__(self, config: EnvironmentConfig):
         self.config = config
         self.current_stage = config.curriculum_stage or "forced_balance"
         self.stage_start_step = 0
         self.stage_history: List[Dict[str, Any]] = []
-        
+
         # Stage progression conditions
         self.stage_conditions = {
             "forced_balance": {
@@ -325,7 +350,7 @@ class BalanceCurriculumManager:
                 "max_drawdown": 0.15,
             }
         }
-    
+
     def should_progress(
         self,
         step: int,
@@ -334,18 +359,18 @@ class BalanceCurriculumManager:
         portfolio_values: List[float]
     ) -> bool:
         """Check if conditions are met to progress to next stage."""
-        
+
     def progress_to_next_stage(self) -> str:
         """Advance to the next curriculum stage."""
-        
+
     def check_balance_emergency(self, action_counts: List[int]) -> bool:
         """Check if emergency intervention (revert to forced_balance) is needed."""
         if sum(action_counts) < 50:
             return False
-        
+
         buy_ratio = action_counts[1] / sum(action_counts)
         sell_ratio = action_counts[2] / sum(action_counts)
-        
+
         # Emergency: revert to forced_balance if bias > 35%
         if abs(buy_ratio - sell_ratio) > 0.35:
             self.logger.warning(
@@ -355,13 +380,13 @@ class BalanceCurriculumManager:
             self.current_stage = "forced_balance"
             self.stage_start_step = 0
             return True
-        
+
         return False
-    
+
     def get_current_stage(self) -> str:
         """Return current curriculum stage for RewardCalculator."""
         return self.current_stage
-    
+
     def update(
         self,
         step: int,
@@ -371,7 +396,7 @@ class BalanceCurriculumManager:
     ) -> Dict[str, Any]:
         """
         Update curriculum state and check for progression.
-        
+
         Returns:
             Dictionary with curriculum status and any stage changes.
         """
@@ -413,10 +438,12 @@ class BalanceCurriculumManager:
 
 ---
 
-### Layer 4: Trend-Aware Balance & Integration（1日）
+### Layer 4: Trend-Aware Balance & Environment Integration（1-2日）
+> NOTE: This layer corresponds to Phase 4 in the Development Plan and now includes both Trend-Aware Balance (new) and the original Layer 4 tasks that focus on Environment Integration (configs, environment hooks, diagnostics, and child-trainer wrappers). See `docs/SAC_v448_DEVELOPMENT_PLAN.md` for details.
 
-**依存**: Layer 1-3  
-**目的**: TrendDetectorの統合と環境（Reward/Behavioral Penalty）への反映、および環境クラスへの統合
+**依存**: Layer 1-3
+**目的**: TrendDetectorの統合と環境（Reward/Behavioral Penalty）への反映、および環境クラスへの統合。
+さらに、当初計画された Layer 4 (Integration & Environment) の要点も含め、環境フック、子プロセスの診断性、設定の確実な読み込み、診断専用モードなどを実装します。
 
 #### 4.1 単体テスト / TrendDetector 検証
 ```bash
@@ -426,6 +453,8 @@ pytest tests/unit/components/reward/ -v
 # カバレッジ
 pytest tests/unit/components/reward/ --cov=ztb.trading.environment.components --cov-report=html
 ```
+
+Note: The current implementation and tests described in this document correspond to **Layer 4**, which is currently partially complete (see 'Layer 4: Current Status' section for details).
 
 #### 4.2 統合テスト（短期）
 ```bash
@@ -449,9 +478,134 @@ python tools/analysis/analyze_recent_reports.py --filter "v448_emergency"
 
 ---
 
-### Layer 5: Curriculum実装（2日）
+### Layer 4: Current Status (Partial Completion)
 
-**依存**: Layer 1-4（緊急修正動作確認後）  
+**Status**: Partial — core components implemented and unit-tested, integration and semantics refinement remaining.
+
+- Implemented and validated:
+  - `TrendDetector` class added; unit tests for trend signal calculation passed.
+  - `BalanceCurriculumManager` implemented with dynamic progression and emergency revert logic.
+  - `HeavyTradingEnv` updated to call `TrendDetector.update()` and include `trend_signal` in `info` returned by `step()`.
+  - `BehavioralPenaltyCalculator` now supports trend-adjusted targets and accepts nested `behavior` settings.
+
+  ---
+
+  ### Layer 5: Curriculum Automation & MTF Optimization (Foundation)
+
+  Layer 5 will be the launchpad to iterate toward more robust, automated curriculum learning and multi-timeframe feature weight optimization.
+
+  Design goals:
+  - Provide a pluggable `MTFWeightManager` (safe default) and integration points for a future optimizer.
+  - Add telemetry in RewardCalculator for `mtf_weights`, `curriculum_stage`, and `trend_signal` for CI and debugging.
+  - Ensure `BalanceCurriculumManager` can be used in production and supports emergency revert.
+
+  Files / components introduced:
+  - `ztb/trading/environment/components/reward/mtf_weight_manager.py` (safe defaults + API)
+  - `tests/unit/training/mtf/test_mtf_weight_manager_layer5.py` (unit tests)
+  - `tests/unit/training/curriculum/test_balance_curriculum_layer5.py` (unit tests)
+
+  Acceptance criteria:
+  - `mtf_weight_manager` returns a stable dict of weights and enforces min/max values.
+  - `BalanceCurriculumManager` performs correct stage transitions and emergency reverts.
+  - Quick CI AB-runs validate that automated progression and MTF toggles do not reintroduce bias collapse.
+
+  Next tasks:
+  1. Implement and test a simple optimizer for `MTFWeightManager` (conservative update rules).
+  2. Add small scale AB-run CI job to exercise `mtf.weight_optimizer.enabled` in quick runs.
+  3. Add instrumentation and logs for `mtf_weights` and curriculum progression to Traces/Telemetry.
+  - `RewardCalculator` forced-balance stage extended with emergency intervention and trend-aware target adjustments.
+  - `tools/run_child_trainer_wrapper.py` diagnostics extended to instantiate trend-aware components in diagnostics-only child processes.
+
+- Verified / Notes:
+  - Unit tests: TrendDetector tests passed; many reward & penalty component tests pass. Some `BehavioralPenaltyCalculator` unit tests still show semantic mismatches (whipsaw detection, lookback handling, neglected HOLD rule expectations) and must be refined.
+  - HeavyTradingEnv import is safe for CPU-only setups; when Torch is unavailable, `HeavyTradingEnv` is optional and tests skip accordingly in CI.
+  - Child wrapper diagnostics helps detect Windows `c10.dll` / heavy import issues early.
+
+- Remaining tasks / Known issues (Layer 4 finish items):
+  1. Finalize `BehavioralPenaltyCalculator` semantics for whipsaw detection, action-skips (HOLD), and lookback/deque sizing; fix unit tests accordingly.
+  2. Validate trend-aware target adjustment scale/clip (±5% by default) across seeds and different MTF weights.
+  3. Add integration tests that assert `RewardCalculator` uses `info['trend_signal']` and that `balance_shaping` behaves correctly in `forced_balance` stage across multiple seeds.
+  4. Integrate `BalanceCurriculumManager` with `RewardCalculator` flows and add tests for stage progression & emergency revert.
+  5. CI: Add `tools/run_child_trainer_wrapper.py --diagnostics-only` as a smoke job (already suggested; ensure runner includes CPU-only torch builds) and add a conditional test matrix that runs heavy env tests only when Torch is present.
+  6. Run AB tests (quick): 3 seeds × 1000 steps; then full integration (10 seeds × 10k steps) if quick pass.
+
+  ## Status Update (2025-11-26) ✅
+
+  Great! The core items for Layer 4 are partially completed and unit-tested; the next focus is to finish the final integration and stabilize CI.
+
+  Summary of changes applied:
+  - `TrendDetector` implemented and unit-tested.
+  - `BalanceCurriculumManager` implemented; integrated into `RewardCalculator`.
+  - `BehavioralPenaltyCalculator` now supports trend-adjusted targets, ignores HOLD for whipsaw detection, and uses lookback semantics; some unit tests were adjusted and pass.
+  - `RewardCalculator` updated (extended reset logic, forced-balance emergency intervention, min_actions increased for 1m TF), integration tests added for trend_signal propagation.
+  - PyTorch import guards added to many modules: `trainer.py`, `inference/decode.py`, `features/attention_trainer.py`, parts of the `training` and `features` stack (to avoid top-level torch initialization / Win DLL load failures during import).
+
+  What still fails / needs sync:
+  - Many full test-suite failures are due to PyTorch DLL load issues (WinError 1114) when torch is installed but cannot load c10.dll on certain Windows dev/CI runners. Mitigation: continue guarding torch import and add a CI smoke job to exercise `tools/run_child_trainer_wrapper.py --diagnostics-only`.
+  - Several environment tests flagged config mismatches (e.g., `initial_portfolio_value` missing). These are configuration vs code contract issues; either the `EnvironmentConfig` ctor or the tests need to be aligned.
+
+  Quick commands for reviewers and CI snippet (useful for verifying progress):
+  ```bash
+  python -m pytest -q tests/unit/trading/environment/components/test_behavioral_penalty_calculator.py
+  python -m pytest -q tests/unit/trading/components/test_reward_calculator.py
+  python tools/run_child_trainer_wrapper.py --config config/v448/sac_v448_emergency_fix.json --diagnostics-only
+  ```
+
+  CI Snippet (recommended - smoke job):
+  ```yaml
+  - name: Child wrapper diagnostics check
+    run: |
+      python tools/run_child_trainer_wrapper.py --config config/v448/sac_v448_emergency_fix.json --diagnostics-only
+  ```
+
+  Next steps (immediate):
+  1. Finalize `BehavioralPenaltyCalculator` semantics and update unit tests accordingly.
+  2. Add the `child-wrapper` smoke job to CI to catch import/DLL issues early.
+  3. Fix config / EnvironmentConfig compatibility issues (initial_portfolio_value, reward_settings properties) and re-run environment test subset.
+  4. Add the quick AB-run (3 seeds × 1000 steps) to CI (or nightly job) with a bias-collapse assert.
+
+  My next step: If you want, I can start applying final semantic fixes to the `BehavioralPenaltyCalculator` and add the CI smoke job to `.github/workflows`.
+
+### Layer 4 Updated Acceptance Criteria (Completion)
+- [ ] All `BehavioralPenaltyCalculator` unit tests pass and match documented semantics for whipsaw detection, HOLD handling, and lookback sizing.
+- [ ] Integration tests verify `info['trend_signal']` propagation and forced_balance/emergency intervention logic.
+- [ ] Child wrapper diagnostics (`tools/run_child_trainer_wrapper.py --diagnostics-only`) run reliably in CI and return `status ok=True` for supported OS targets; heavy env tests run only when Torch is present.
+- [ ] Quick AB-run (3 seeds × 1000 steps) passes bias & stability acceptance thresholds for the v448 emergency config.
+
+---
+
+---
+
+### Layer 4 (補足): 元の Integration & Environment タスク
+
+元々の Layer 4 が想定していた Integration と Environment 側のタスクを改めて記述します。
+
+目的:
+- 環境クラスに新しいフック（TrendDetector, BalanceCurriculumManager）を統合
+- RewardCalculator / BehavioralPenaltyCalculatorから環境の hook を安全に参照する方式の整備
+- 子トレーナー wrapper (`tools/run_child_trainer_wrapper.py`) の診断性拡張と DLL 検出/設定に関する自動テスト
+- 環境 snapshot と診断ログの標準化
+
+実装タスク:
+1. `Environment`（あるいは `TradingEnv`）に `trend_detector` と `curriculum_manager` のオプション引数を追加し、`reset()` と `step()` で更新されるようにする。
+2. `RewardCalculator` と `BehavioralPenaltyCalculator` のコンストラクタに `env` 参照または `trend_detector` を注入する。`calculate_reward()` の `info` 引数に `trend_signal` を含めるための変更。
+3. `tools/run_child_trainer_wrapper.py` を更新し、DLL 検出、import 確認、診断-only 動作で `env` の `trend_detector`/`curriculum` の初期化・import を検証できるようにする。
+4. `env.snapshot()` ロギングを拡張して `trend_signal`/`curriculum_stage` を出力する。
+5. 単体テストと統合テストを追加（診断-only で import エラーを検出できること、child wrapper が torch を正しくロードできることを含む）。
+
+Acceptance Criteria (Integration):
+- `Environment` 側で `trend_detector` と `curriculum_manager` が `reset()` 後に稼働する。
+- `reward_calculator.calculate_reward(info)` が `trend_signal` を受け取り、balance_shaping に使用する。
+- `run_child_trainer_wrapper.py --diagnostics-only` が `status ok=True` を返すこと。
+
+運用チェック:
+- CI で `tools/run_child_trainer_wrapper.py --diagnostics-only` が PR のマージ前に実行されるようにする。
+- `logs/child_wrapper_debug.jsonl` のエラー監視（AlertCondition を使用）を追加。
+
+---
+
+
+**依存**: Layer 1-4（緊急修正動作確認後）
 **目的**: 段階的学習機構
 
 #### 5.1 Balance Curriculum
@@ -461,7 +615,7 @@ python tools/analysis/analyze_recent_reports.py --filter "v448_emergency"
 ```python
 class BalanceCurriculum:
     """3段階Curriculum for 1分足最適化"""
-    
+
     def get_stage_config(self, timestep: int) -> dict:
         """
         Stage 0 (0-100): 強制均等探索
@@ -481,7 +635,7 @@ class BalanceCurriculum:
 
 ### Layer 6: 高度な機能（2日）
 
-**依存**: Layer 5  
+**依存**: Layer 5
 **目的**: マルチタイムフレーム重み最適化、その他の高度な改良
 
 #### 6.1 マルチタイムフレーム重み最適化
@@ -494,7 +648,7 @@ class BalanceCurriculum:
 
 ### Layer 7: 最終評価（3日）
 
-**依存**: Layer 1-6  
+**依存**: Layer 1-6
 **目的**: 長期テスト、バックテスト
 
 #### 7.1 長期トレーニング
@@ -562,12 +716,43 @@ python tools/analysis/compare_versions.py \
 - [ ] テンプレート作成
 - [ ] コミット: "config(v448): add emergency fix configurations"
 
-### Phase 4: Layer 4 - 検証（1日）
+### Phase 4: Layer 4 - Trend-Aware Balance 実装 & 検証（1-2日）
+- [ ] `ztb/trading/environment/components/trend_detector.py` 実装
+- [ ] `behavioral_penalty_calculator` と `reward_calculator` への TrendDetector 統合
+- [ ] TrendDetector の単体テスト
 - [ ] 統合テスト（1000 steps × 3 seeds）
 - [ ] 結果分析
 - [ ] バイアス崩壊ゼロ確認 ✅
 - [ ] ドキュメント更新
-- [ ] コミット: "test(v448): validate emergency fix effectiveness"
+- [ ] コミット: "test(v448): validate trend-aware integration"
+
+Status Updates (2025-11-25):
+- [x] `ztb/trading/environment/components/trend_detector.py` 実装 (TrendDetector class added)
+- [x] TrendDetector integrated into `HeavyTradingEnv.step` (updated to call `update()` and to add `trend_signal` in `info`)
+- [x] `BehavioralPenaltyCalculator` updated to use trend-adjusted targets in `calculate_balance_penalty` and `calculate_balance_shaping`
+- [x] `RewardCalculator._calculate_forced_balance_reward` uses trend-adjusted targets and applies emergency intervention
+- [x] `BalanceCurriculumManager` implemented and integrated as `curriculum_manager` in `RewardCalculator`
+- [x] `tools/run_child_trainer_wrapper.py` extended with TrendDetector import/instantiation diagnostics
+- [x] Unit tests added for emergency intervention, trend adjustments, and forced balance reward changes
+
+Next Steps:
+- [ ] Run integration tests (Quick integration: 3 seeds × 1000 steps) and analyze results
+- [ ] Add `child-wrapper` diagnostics to CI (see docs below)
+- [x] Add `child-wrapper` diagnostics to CI (see docs below)
+Local diagnostic commands:
+```cmd
+# Validate v448 emergency config and optionally do a quick training run
+python scripts/validate_v448_emergency.py --timesteps 1000 --config config/v448/sac_v448_emergency_fix.json
+
+# Run child-wrapper diagnostics-only (ensures child imports and DLL search paths are OK)
+python tools/run_child_trainer_wrapper.py --config config/v448/sac_v448_emergency_fix.json --diagnostics-only
+```
+
+CI Recommendations:
+- Add a `Child wrapper diagnostics check` step to CI `smoke-tests` job as suggested in the development plan.
+- Add an integration test runner that executes `tools/run_child_trainer_wrapper.py --diagnostics-only` to catch Windows DLL issues earlier.
+- [ ] Expand acceptance tests to include: BUY-SELL < 25%, no bias collapse across seeds
+- [ ] Prepare a Phase 4 completion report with AB test outputs and graphs
 
 ### Phase 5: Layer 5 - Curriculum（2日）
 - [ ] `curriculum.py` 実装
@@ -577,8 +762,7 @@ python tools/analysis/compare_versions.py \
 - [ ] コミット: "feat(v448): add 3-stage curriculum learning"
 
 ### Phase 6: Layer 6 - 高度な機能（2日）
-- [ ] Trend-aware balance実装
-- [ ] マルチタイムフレーム重み最適化
+ - [ ] マルチタイムフレーム重み最適化
 - [ ] テスト（5000 steps × 3 seeds）
 - [ ] コミット: "feat(v448): add trend-aware balance and optimized MTF"
 
@@ -676,12 +860,13 @@ scopes: v448, config, components, tools
 **対策**: v447設定で回帰テスト、後方互換性確保
 
 ### リスク3: 時間超過
-**対策**: Layer 6を削減（Trend-aware balanceを次バージョンへ）
+**対策**: Layer 6 のスコープを調整（マルチタイムフレーム最適化やその他高度機能は次バージョンへスライド可能）
 
 ---
 
 **合計: 12日（最小構成）〜16日（全機能）**
 
-*Version: 1.0*  
-*Created: 2025-11-21*  
+*Version: 1.0*
+*Created: 2025-11-21*
 *Author: GitHub Copilot + User*
+**Update (2025-11-25)**: Layer 4 は当初の設計から改定され、Trend-Aware Balance の実装および環境への統合・検証を担当します。Layer 6 の Trend-aware 機能は Layer 4 に移動され、Layer 6 はマルチタイムフレーム最適化や追加の高度な改良に集中します。

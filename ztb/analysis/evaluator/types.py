@@ -6,12 +6,6 @@ Type definitions for evaluation module.
 from typing import Any, Dict, List, TypedDict
 
 
-class ModelConfigDict(TypedDict, total=False):
-    """Model configuration dictionary."""
-
-    pass  # For now, keep as Dict[str, Any] equivalent
-
-
 class SingleEpisodeResultDict(TypedDict):
     """Single episode evaluation result."""
 

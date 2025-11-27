@@ -161,6 +161,7 @@ class SignalTracker:
         # Basic statistics
         stats = {
             "total_signals": len(df),
+            "executed_trades": int(df['trade_executed'].sum()),
             "unique_signal_types": df['signal_type'].nunique(),
             "total_patterns_used": df['pattern_count'].sum(),
             "average_patterns_per_signal": df['pattern_count'].mean(),
@@ -193,6 +194,10 @@ class SignalTracker:
         stats["direction_distribution"] = direction_counts.to_dict()
 
         return stats
+
+    def get_signal_summary(self) -> Dict[str, Union[int, float, dict]]:
+        """Get comprehensive signal summary for reporting."""
+        return self.get_signal_statistics()
 
     def reset(self) -> None:
         """Reset signal tracking history."""

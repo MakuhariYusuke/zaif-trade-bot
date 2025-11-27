@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 from ztb.utils.memory_monitor import (
-    MemoryMonitor,
+    BackgroundMemoryMonitor,
     check_memory_usage,
     get_memory_monitor,
     get_memory_usage,
@@ -16,13 +16,13 @@ from ztb.utils.memory_monitor import (
 )
 
 
-class TestMemoryMonitor(unittest.TestCase):
+class TestBackgroundMemoryMonitor(unittest.TestCase):
     """Test cases for memory monitoring functionality."""
 
     def setUp(self):
         """Set up test fixtures."""
         self.config = ZTBConfig()
-        self.monitor = MemoryMonitor(self.config)
+        self.monitor = BackgroundMemoryMonitor(self.config)
 
     def tearDown(self):
         """Clean up after tests."""
@@ -56,7 +56,7 @@ class TestMemoryMonitor(unittest.TestCase):
                 mock_print.assert_called_once()
                 call_args = mock_print.call_args[0][0]
                 self.assertIn("WARNING", call_args)
-                self.assertIn("1500.0MB", call_args)
+                self.assertIn("1536.0MB", call_args)
 
     @patch("psutil.Process")
     def test_check_memory_usage_no_warning(self, mock_process):
@@ -174,7 +174,7 @@ class TestMemoryMonitor(unittest.TestCase):
             mock_logger.error.assert_called_once()
             call_args = mock_logger.error.call_args[0][0]
             self.assertIn("CRITICAL", call_args)
-            self.assertIn("2500.0MB", call_args)
+            self.assertIn("2560.0MB", call_args)
 
     def test_memory_monitor_start_stop(self):
         """Test starting and stopping memory monitoring."""
@@ -192,10 +192,10 @@ class TestMemoryMonitor(unittest.TestCase):
         monitor2 = get_memory_monitor()
 
         self.assertIs(monitor1, monitor2)
-        self.assertIsInstance(monitor1, MemoryMonitor)
+        self.assertIsInstance(monitor1, BackgroundMemoryMonitor)
 
 
-class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
+class TestBackgroundMemoryMonitorThresholdAdjustment(unittest.TestCase):
     """Test memory monitor threshold adjustments for DEBUG log enhancements."""
 
     def setUp(self):
@@ -204,7 +204,7 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
 
     def test_warning_threshold_increased_to_1000mb(self):
         """Test that warning threshold has been increased from 500MB to 1000MB."""
-        monitor = MemoryMonitor(self.config)
+        monitor = BackgroundMemoryMonitor(self.config)
 
         # The warning threshold should now be 1000MB (increased from 500MB)
         expected_threshold = 1000
@@ -217,7 +217,7 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
     def test_config_default_warning_threshold(self):
         """Test that config default for warning threshold is 1000MB."""
         # Test with default config (no explicit setting)
-        monitor = MemoryMonitor(self.config)
+        monitor = BackgroundMemoryMonitor(self.config)
 
         # Should use the new default of 1000MB
         self.assertEqual(monitor.warning_threshold_mb, 1000)
@@ -230,11 +230,12 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
             800 * BYTES_PER_MB
         )  # 800MB
 
-        monitor = MemoryMonitor(self.config)
+        monitor = BackgroundMemoryMonitor(self.config)
 
         # Should not trigger warning at 800MB
         with patch("ztb.utils.memory_monitor.logger") as mock_logger:
-            monitor._check_memory_usage()
+            monitor.record_memory_usage()
+            monitor._check_alerts()
             # Warning should not be called
             mock_logger.warning.assert_not_called()
 
@@ -246,11 +247,12 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
             1200 * BYTES_PER_MB
         )  # 1200MB
 
-        monitor = MemoryMonitor(self.config)
+        monitor = BackgroundMemoryMonitor(self.config)
 
         # Should trigger warning at 1200MB
         with patch("ztb.utils.memory_monitor.logger") as mock_logger:
-            monitor._check_memory_usage()
+            monitor.record_memory_usage()
+            monitor._check_alerts()
             # Warning should be called
             mock_logger.warning.assert_called_once()
             warning_call = mock_logger.warning.call_args[0][0]
@@ -259,7 +261,7 @@ class TestMemoryMonitorThresholdAdjustment(unittest.TestCase):
 
     def test_threshold_values_are_reasonable(self):
         """Test that threshold values are set to reasonable levels."""
-        monitor = MemoryMonitor(self.config)
+        monitor = BackgroundMemoryMonitor(self.config)
 
         # Warning threshold should be reasonable (not too low or high)
         self.assertGreater(

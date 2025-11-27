@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -18,7 +19,7 @@ class V4XXConfigConverter:
     """Configuration converter for v4XX series compatibility."""
 
     @staticmethod
-    def convert_v427_to_unified(config: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_v427_to_unified(config: Dict[str, Any]) -> ConfigDict:
         """
         Convert v427-style configuration to unified trainer format.
 
@@ -84,7 +85,7 @@ class V4XXConfigConverter:
         return unified_config
 
     @staticmethod
-    def convert_v440_to_unified(config: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_v440_to_unified(config: Dict[str, Any]) -> ConfigDict:
         """
         Convert v440-style configuration to unified trainer format.
 
@@ -145,7 +146,7 @@ class V4XXConfigConverter:
         return unified_config
 
     @staticmethod
-    def convert_v444_to_unified(config: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_v444_to_unified(config: Dict[str, Any]) -> ConfigDict:
         """
         Convert v444-style configuration to unified trainer format.
 
@@ -266,7 +267,7 @@ class V4XXConfigConverter:
         return "unknown"
 
     @classmethod
-    def convert_to_unified(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_to_unified(cls, config: Dict[str, Any]) -> ConfigDict:
         """
         Auto-detect and convert configuration to unified format.
 
@@ -326,7 +327,7 @@ class V4XXConfigConverter:
             return config
 
     @classmethod
-    def load_and_convert_config(cls, config_path: str) -> Dict[str, Any]:
+    def load_and_convert_config(cls, config_path: str) -> ConfigDict:
         """
         Load configuration file and convert to unified format.
 

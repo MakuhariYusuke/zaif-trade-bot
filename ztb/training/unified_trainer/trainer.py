@@ -9,7 +9,14 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 import pandas as pd
-import torch
+
+# Avoid importing torch at module import time to prevent DLL initialization
+# errors on machines without GPU drivers / CUDA available. Import on-demand
+# to keep the module importable for tests that do not need Torch.
+try:
+    import torch
+except Exception:
+    torch = None
 
 from ztb.training.constants import DEFAULT_LEARNING_RATE
 from ztb.types.common import (
@@ -33,17 +40,19 @@ try:
 except ImportError:
     OPACUS_AVAILABLE = False
 
-try:
-    from torch.amp import GradScaler
-
-    AMP_AVAILABLE = True
-except ImportError:
+AMP_AVAILABLE = False
+if torch is not None:
     try:
-        from torch.cuda.amp import GradScaler
+        from torch.amp import GradScaler
 
         AMP_AVAILABLE = True
-    except ImportError:
-        AMP_AVAILABLE = False
+    except Exception:
+        try:
+            from torch.cuda.amp import GradScaler
+
+            AMP_AVAILABLE = True
+        except Exception:
+            AMP_AVAILABLE = False
 
 from ztb.adaptation.continual_learning import (
     ContinualLearner,
@@ -81,7 +90,7 @@ from ztb.utils.cache_utils import TTLCache
 from ztb.utils.logging_utils import get_logger
 
 # Import optimization utilities
-from ztb.utils.memory_utils import MemoryTracker
+from ztb.utils.memory_utils import OperationMemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
 from ztb.utils.trading_metrics import win_rate as calculate_win_rate
 
@@ -200,7 +209,7 @@ class UnifiedTrainer:
                 self.grad_scaler = None
 
         # Initialize optimization utilities
-        self.memory_tracker = MemoryTracker()
+        self.memory_tracker = OperationMemoryTracker()
         self.memory_profiler = MemoryProfiler()
         self.memory_monitor_thread = None
         self.memory_monitor_stop_event = threading.Event()

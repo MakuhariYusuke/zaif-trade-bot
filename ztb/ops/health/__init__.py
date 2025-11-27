@@ -11,7 +11,7 @@ This package provides comprehensive health checking capabilities for:
 
 from .check_venue_health import VenueHealthChecker
 from .performance_monitor import (
-    PerformanceMonitor,
+    HealthPerformanceMonitor,
     PerformanceSnapshot,
     PerformanceTrend,
     get_performance_monitor,

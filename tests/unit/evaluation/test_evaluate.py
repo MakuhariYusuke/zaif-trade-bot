@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 try:
-    from ztb.evaluation.evaluate import TradingEvaluator
+    from ztb.analysis.evaluator import TradingEvaluator
 except ImportError:
     import pytest
 

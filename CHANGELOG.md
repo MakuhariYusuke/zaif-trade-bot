@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Optional Types**: Improved type annotations for optional parameters and return values
 - **Type Annotations**: Enhanced type safety across training and analysis modules
 
+### Bug Fixes & Testing
+- **BehavioralPenaltyCalculator**: Fixed the consistency penalty lookback semantics — the consistency window now includes the current action (+ lookback). Added `consistency_min_actions` to require a minimum number of non-HOLD actions to consider a penalty.
+- **Config parsing**: Fixed nested `behavior` scalar key parsing (e.g., `action_entropy_lookback`) so nested scalar values are correctly read from the nested behavior object.
+- **Unit Tests**: Added new tests to cover lookback boundary cases, HOLD-interleaved sequences, and configuration parsing.
+- **Layer 5 Foundations**: Added Layer 5 design doc and test skeletons (MTF manager and curriculum). Added `mtf_weight_manager` stub to provide safe defaults for MTF weight retrieval.
+
 ### Development Tools
 - **MyPy Integration**: Configured strict type checking with comprehensive overrides for external libraries
 - **Type Safety Guidelines**: Established best practices for type annotations and Any type usage
@@ -178,6 +184,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/validate_v448_emergency.py` (Phase 0)
 - `tools/organize_v448_structure.py` (Phase 0)
 - `tools/analyze_recent_reports.py` (Phase 0)
+### Layer 4: Trend-Aware Balance & Environment Integration ✅ (Partial: 2025-11-25)
+
+- Integrated `TrendDetector` into `HeavyTradingEnv` and `RewardCalculator` to provide a trend signal (`info['trend_signal']`) used by `BehavioralPenaltyCalculator`.
+- `BehavioralPenaltyCalculator.calculate_balance_penalty` and `calculate_balance_shaping` now use `trend_adjusted` targets based on `TrendDetector`.
+- `RewardCalculator._calculate_forced_balance_reward()` uses trend-adjusted targets and applies emergency intervention when an extreme imbalance is detected.
+- `BalanceCurriculumManager` integration completed and added to `RewardCalculator` as an optional component.
+- Extended `tools/run_child_trainer_wrapper.py` to import & instantiate `TrendDetector` during diagnostics to catch child-process runtime issues.
+- Added integration test `tests/integration/test_trend_and_curriculum_integration.py` to verify `info` contains `trend_signal` and `curriculum_stage`.
+
 
 ### Documentation
 - `docs/SAC_v448_DEVELOPMENT_PLAN.md` - Complete analysis and implementation strategy

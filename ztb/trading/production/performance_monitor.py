@@ -89,7 +89,7 @@ class HealthCheck:
     error_message: Optional[str] = None
 
 
-class PerformanceMonitor:
+class ProductionPerformanceMonitor:
     """
     パフォーマンスモニター
 
