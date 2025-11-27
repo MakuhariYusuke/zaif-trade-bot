@@ -302,11 +302,11 @@ class SACv427AdvancedTrainer(BaseTrainer):
         logger.info("SAC v427 training completed successfully")
         return results
 
-    def train(self, data: Any) -> Dict[str, Any]:
+    def train(self) -> Dict[str, Any]:
         """Train the SAC v427 system."""
         return self.train_v427_system()
 
-    def evaluate(self, data: Any) -> Dict[str, Any]:
+    def evaluate(self) -> Dict[str, Any]:
         """Evaluate the trained model."""
         return self._final_evaluation()
 

@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Union
+from typing import Any, Dict, List, Optional, Protocol, Union
 
 import numpy as np
 import pandas as pd
@@ -19,8 +19,9 @@ import pandas as pd
 from ..adapters import StrategyAdapter
 from ..metrics import BacktestMetrics, MetricsCalculator
 from ..report import ReportGenerator
-from ...utils.logging_utils import get_logger
+from ....utils.logging_utils import get_logger
 from .signal_performance import BacktestSignalPerformanceAnalyzer
+from .strategy_base import TradingStrategy, validate_trading_strategy
 
 logger = get_logger(__name__)
 
@@ -48,45 +49,6 @@ class BacktestResult:
     portfolio_values: List[float]
     execution_time: float
     metadata: Dict[str, Union[str, int, float, bool]]
-
-
-class TradingStrategy(Protocol):
-    """
-    Protocol for trading strategies in the unified backtest framework.
-
-    All trading strategies should implement this protocol.
-    """
-
-    @property
-    def name(self) -> str:
-        """Strategy name."""
-        ...
-
-    def generate_signal(
-        self,
-        data: pd.DataFrame,
-        current_position: int
-    ) -> Dict[str, Union[str, int, float, bool]]:
-        """
-        Generate trading signal.
-
-        Args:
-            data: Market data with OHLCV and features
-            current_position: Current position (-1, 0, 1 for short, flat, long)
-
-        Returns:
-            Signal dict with 'action' and optional parameters
-        """
-        ...
-
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
-        """
-        Update strategy hyperparameters.
-
-        Args:
-            hyperparameters: Dictionary of hyperparameter names and values
-        """
-        ...
 
 
 class UnifiedBacktester:
@@ -132,6 +94,11 @@ class UnifiedBacktester:
             name: Strategy name
             strategy: Strategy instance
         """
+        # Validate TradingStrategy Protocol compliance if it's a TradingStrategy
+        if not isinstance(strategy, StrategyAdapter):
+            if not validate_trading_strategy(strategy):
+                raise ValueError(f"Strategy '{name}' does not implement TradingStrategy Protocol correctly")
+
         self.strategies[name] = strategy
         self.logger.info(f"Registered strategy: {name}")
 

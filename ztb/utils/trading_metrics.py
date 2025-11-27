@@ -5,6 +5,8 @@ metrics.py
 
 from typing import Any, Dict, List, Optional, Union, cast
 
+from ztb.utils.types import FeatureMetrics, StatsResult
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -13,7 +15,7 @@ TRADING_DAYS_PER_YEAR = 252
 
 
 def sharpe_ratio(
-    returns: Union[List[float], NDArray[np.floating[Any]]],
+    returns: Union[List[float], NDArray[np.floating]],
     risk_free_rate: float = 0.0,
     periods_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -52,7 +54,7 @@ def sharpe_ratio(
     return float((mean_return / std_return) * np.sqrt(periods_per_year))
 
 
-def win_rate(returns: Union[List[float], NDArray[np.floating[Any]]]) -> float:
+def win_rate(returns: Union[List[float], NDArray[np.floating]]) -> float:
     """
     Win rateを計算（正のリターンの割合）
 
@@ -77,7 +79,7 @@ def win_rate(returns: Union[List[float], NDArray[np.floating[Any]]]) -> float:
     return float(np.mean(positive_returns))
 
 
-def action_distribution(actions: Union[List[int], NDArray[np.integer[Any]]]) -> Dict[str, float]:
+def action_distribution(actions: Union[List[int], NDArray[np.integer]]) -> Dict[str, float]:
     """
     アクション分布を計算（HOLD, BUY, SELLの割合）
 
@@ -115,7 +117,7 @@ def action_distribution(actions: Union[List[int], NDArray[np.integer[Any]]]) -> 
     }
 
 
-def sharpe_with_stats(sharpes: List[float]) -> Dict[str, Union[float, List[float]]]:
+def sharpe_with_stats(sharpes: List[float]) -> StatsResult:
     """
     Sharpe ratioの統計情報を計算
 
@@ -147,7 +149,7 @@ def calculate_delta_sharpe(
     base_sharpes: List[float],
     with_feature_sharpes: List[float],
     min_samples: int = 10000,
-) -> Optional[Dict[str, Union[float, List[float]]]]:
+) -> Optional[StatsResult]:
     """
     delta_sharpeを計算（安定化版）
 
@@ -217,7 +219,7 @@ def validate_ablation_results(results: Dict[str, Any]) -> bool:
 
 def calculate_feature_metrics(
     feature_data: pd.Series, price_data: pd.Series, feature_name: str
-) -> Dict[str, Any]:
+) -> FeatureMetrics:
     """Calculate basic trading metrics for feature evaluation"""
     # Use feature-specific strategies
     if feature_name == "RSI":

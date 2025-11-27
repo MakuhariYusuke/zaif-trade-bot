@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from ztb.training.callbacks.monitoring.metrics_collector import MetricsCollector
 from ztb.training.callbacks.performance.memory_optimizer import LRUCache
+from ztb.training.callbacks.shared.base.learning_callback import ErrorHandlingStrategy
 
 
 class ErrorSeverity(Enum):
@@ -28,16 +29,6 @@ class ErrorSeverity(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
-
-
-class ErrorHandlingStrategy(Enum):
-    """Error handling strategies."""
-
-    CONTINUE = "continue"  # Continue execution
-    RETRY = "retry"  # Retry the operation
-    SKIP = "skip"  # Skip this callback
-    DISABLE = "disable"  # Disable this callback
-    ABORT = "abort"  # Abort training
 
 
 @dataclass

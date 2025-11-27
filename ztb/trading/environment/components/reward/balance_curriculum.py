@@ -64,8 +64,8 @@ class BalanceCurriculumManager:
         self.emergency_revert = emergency_revert
         self.logger = get_logger(self.__class__.__name__)
         
-        # Initialize current stage from config
-        self.current_stage = getattr(config, "curriculum_stage", "forced_balance")
+        # Initialize current stage from config, fallback to forced_balance if None
+        self.current_stage = getattr(config, "curriculum_stage", None) or "forced_balance"
         self.stage_start_step = 0
         self.total_steps = 0
         
@@ -442,4 +442,8 @@ class BalanceCurriculumManager:
         """Reset curriculum state for new episode/training run."""
         self.recent_rewards.clear()
         self.stage_rewards.clear()
-        # Note: Don't reset current_stage to preserve learning progress
+        # Reset current stage to a safe default for new runs
+        self.current_stage = "forced_balance"
+        self.stage_start_step = 0
+        self.total_steps = 0
+        self.emergency_count = 0

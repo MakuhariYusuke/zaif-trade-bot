@@ -6,12 +6,12 @@ helping catch type-related issues during execution rather than just at static an
 """
 
 import inspect
-from typing import Any, Callable, Dict, Optional, Type, Union, get_args, get_origin
+from typing import Any, Callable, Optional, Union, get_args, get_origin
 
 import numpy as np
 from numpy.typing import NDArray
 
-from ztb.types.common import ConfigDict
+from ztb.types.common import ConfigDict, is_config_dict, is_numeric_config_value
 from ztb.utils.exceptions.custom_exceptions import ValidationError
 
 
@@ -24,9 +24,7 @@ class TypeValidator:
     """
 
     @staticmethod
-    def validate_type(
-        value: Any, expected_type: Any, name: str = "value"
-    ) -> None:
+    def validate_type(value: Any, expected_type: Any, name: str = "value") -> None:
         """
         Validate that a value matches the expected type at runtime.
 
@@ -106,7 +104,7 @@ class TypeValidator:
 
     @staticmethod
     def validate_array_shape(
-        array: NDArray[np.floating[Any]],
+        array: NDArray[np.floating],
         expected_shape: Optional[tuple[int, ...]] = None,
         name: str = "array",
     ) -> None:
@@ -128,8 +126,8 @@ class TypeValidator:
 
     @staticmethod
     def validate_array_dtype(
-        array: NDArray[np.floating[Any]],
-        expected_dtype: Optional[np.dtype[np.floating[Any]]] = None,
+        array: NDArray[np.floating],
+        expected_dtype: Optional[np.dtype[np.floating]] = None,
         name: str = "array",
     ) -> None:
         """
@@ -217,11 +215,14 @@ def validate_environment_config(config: ConfigDict) -> None:
             raise ValidationError(f"Missing required config key: {key}")
 
     # Validate types
-    if not isinstance(config.get("reward_scaling", 1.0), (int, float)):
+    reward_scaling = config.get("reward_scaling", 1.0)
+    if not is_numeric_config_value(reward_scaling):
         raise ValidationError("reward_scaling must be numeric")
-    if not isinstance(config.get("transaction_cost", 0.0), (int, float)):
+    transaction_cost = config.get("transaction_cost", 0.0)
+    if not is_numeric_config_value(transaction_cost):
         raise ValidationError("transaction_cost must be numeric")
-    if not isinstance(config.get("max_position_size", 1.0), (int, float)):
+    max_position_size = config.get("max_position_size", 1.0)
+    if not is_numeric_config_value(max_position_size):
         raise ValidationError("max_position_size must be numeric")
 
 
@@ -241,11 +242,17 @@ def validate_training_config(config: ConfigDict) -> None:
             raise ValidationError(f"Missing required training config key: {key}")
 
     # Validate ranges
-    if not (0 < config.get("learning_rate", 0) < 1):
+    lr = config.get("learning_rate", 0)
+    if not is_numeric_config_value(lr) or not (0 < float(lr) < 1):
         raise ValidationError("learning_rate must be between 0 and 1")
-    if config.get("batch_size", 0) <= 0:
+    bs = config.get("batch_size", 0)
+    if not is_numeric_config_value(bs) or int(bs) <= 0:
         raise ValidationError("batch_size must be positive")
-    if config["training"]["total_timesteps"] <= 0:
+    training_section = config.get("training")
+    if not is_config_dict(training_section):
+        raise ValidationError("training section must be a dict")
+    total_timesteps = training_section.get("total_timesteps", 0)
+    if not is_numeric_config_value(total_timesteps) or int(total_timesteps) <= 0:
         raise ValidationError("total_timesteps must be positive")
 
 
@@ -294,10 +301,12 @@ def validate_trading_config(config: ConfigDict) -> None:
         if key not in config:
             raise ValidationError(f"Missing required trading config key: {key}")
 
-    if config.get("initial_balance", 0) <= 0:
+    initial = config.get("initial_balance", 0)
+    if not is_numeric_config_value(initial) or float(initial) <= 0:
         raise ValidationError("initial_balance must be positive")
 
-    if config.get("max_position_size", 0) <= 0:
+    max_pos = config.get("max_position_size", 0)
+    if not is_numeric_config_value(max_pos) or float(max_pos) <= 0:
         raise ValidationError("max_position_size must be positive")
 
 
@@ -316,10 +325,12 @@ def validate_model_config(config: ConfigDict) -> None:
         if key not in config:
             raise ValidationError(f"Missing required model config key: {key}")
 
-    if not (0 < config.get("learning_rate", 0) < 1):
+    lr = config.get("learning_rate", 0)
+    if not is_numeric_config_value(lr) or not (0 < float(lr) < 1):
         raise ValidationError("learning_rate must be between 0 and 1")
 
-    if config.get("batch_size", 0) <= 0:
+    bs = config.get("batch_size", 0)
+    if not is_numeric_config_value(bs) or int(bs) <= 0:
         raise ValidationError("batch_size must be positive")
 
 

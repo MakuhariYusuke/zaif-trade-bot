@@ -22,7 +22,7 @@ from torch import nn
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.cache_utils import TTLCache
-from ztb.utils.memory_utils import MemoryTracker
+from ztb.utils.memory_utils import OperationMemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class SystemOptimizer:
         self.gc_interval_steps = gc_interval_steps
 
         # Initialize components
-        self.memory_tracker = MemoryTracker() if enable_memory_tracking else None
+        self.memory_tracker = OperationMemoryTracker() if enable_memory_tracking else None
         self.performance_profiler = (
             PerformanceProfiler() if enable_performance_profiling else None
         )

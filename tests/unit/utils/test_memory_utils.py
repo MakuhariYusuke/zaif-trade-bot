@@ -2,7 +2,7 @@
 """
 Unit tests for memory_utils.py with TTLCache integration.
 
-Tests memory management utilities including MemoryTracker, temporary arrays,
+Tests memory management utilities including OperationMemoryTracker, temporary arrays,
 memory-efficient processing, and integration with MemoryManager.
 """
 
@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.memory_utils import (
-    MemoryTracker,
+    OperationMemoryTracker,
     check_memory_pressure,
     cleanup_training_memory,
     get_memory_usage,
@@ -22,8 +22,8 @@ from ztb.utils.memory_utils import (
 )
 
 
-class TestMemoryTracker(unittest.TestCase):
-    """Test cases for MemoryTracker with TTLCache integration."""
+class TestOperationMemoryTracker(unittest.TestCase):
+    """Test cases for OperationMemoryTracker with TTLCache integration."""
 
     @patch("psutil.Process")
     def test_memory_tracker_basic(self, mock_process):
@@ -31,12 +31,12 @@ class TestMemoryTracker(unittest.TestCase):
         # Mock memory values
         mock_process.return_value.memory_info.return_value.rss = 100 * 1024 * 1024  # 100MB
 
-        with MemoryTracker() as tracker:
+        with OperationMemoryTracker() as tracker:
             # Simulate some operation
             pass
 
         # Verify tracking was performed
-        self.assertIsInstance(tracker, MemoryTracker)
+        self.assertIsInstance(tracker, OperationMemoryTracker)
 
     @patch("ztb.utils.memory_utils.default_memory_manager")
     @patch("psutil.Process")
@@ -51,21 +51,22 @@ class TestMemoryTracker(unittest.TestCase):
             "total_cache_entries": 17
         }
 
-        with MemoryTracker(enable_cache_tracking=True) as tracker:
+        with OperationMemoryTracker(enable_cache_tracking=True) as tracker:
             # Simulate some operation
             pass
 
         # Verify cache stats were accessed (called in __enter__ and __exit__)
         self.assertGreaterEqual(mock_memory_manager.get_cache_stats.call_count, 2)
 
-    @patch("psutil.Process")
-    @patch("ztb.cache.memory_cache.default_memory_manager")
-    def test_memory_tracker_high_memory_optimization(self, mock_memory_manager, mock_process):
+    @patch("ztb.utils.memory_utils.psutil")
+    @patch("ztb.utils.memory_utils.default_memory_manager")
+    def test_memory_tracker_high_memory_optimization(self, mock_memory_manager, mock_psutil):
         """Test automatic memory optimization on high memory usage."""
         # Mock high memory usage that triggers optimization
-        mock_process.return_value.memory_info.return_value.rss = 900 * 1024 * 1024  # 900MB
+        mock_psutil.Process.return_value.memory_info.return_value.rss = 900 * 1024 * 1024  # 900MB
+        mock_memory_manager.get_cache_stats.return_value = {"total_cache_entries": 0}
 
-        with MemoryTracker(enable_cache_tracking=True) as tracker:
+        with OperationMemoryTracker(enable_cache_tracking=True) as tracker:
             # Simulate some operation
             pass
 
@@ -160,7 +161,7 @@ class TestOptimizeArrayDtype(unittest.TestCase):
 class TestCleanupTrainingMemory(unittest.TestCase):
     """Test cases for cleanup_training_memory function."""
 
-    @patch("ztb.cache.memory_cache.default_memory_manager")
+    @patch("ztb.utils.memory_utils.default_memory_manager")
     @patch("gc.collect")
     def test_cleanup_training_memory_basic(self, mock_gc, mock_memory_manager):
         """Test basic training memory cleanup."""
@@ -183,7 +184,7 @@ class TestCleanupTrainingMemory(unittest.TestCase):
         # Verify environment was closed
         mock_env.close.assert_called_once()
 
-    @patch("ztb.cache.memory_cache.default_memory_manager")
+    @patch("ztb.utils.memory_utils.default_memory_manager")
     def test_cleanup_training_memory_with_cache(self, mock_memory_manager):
         """Test cleanup with data cache."""
         data_cache = {"key1": "value1", "key2": "value2"}
@@ -193,7 +194,7 @@ class TestCleanupTrainingMemory(unittest.TestCase):
         # Verify cache was cleared
         self.assertEqual(len(data_cache), 0)
 
-    @patch("ztb.cache.memory_cache.default_memory_manager")
+    @patch("ztb.utils.memory_utils.default_memory_manager")
     def test_cleanup_training_memory_no_optimization(self, mock_memory_manager):
         """Test cleanup without cache optimization."""
         cleanup_training_memory(optimize_cache=False)
@@ -237,8 +238,9 @@ class TestGetMemoryUsage(unittest.TestCase):
         self.assertEqual(usage['cache_model_entries'], 3)
         self.assertEqual(usage['cache_total_entries'], 26)
 
-    @patch("ztb.cache.memory_cache.default_memory_manager")
-    def test_get_memory_usage_psutil_unavailable(self, mock_memory_manager):
+    @patch("ztb.utils.memory_utils.default_memory_manager")
+    @patch("ztb.utils.memory_utils.psutil")
+    def test_get_memory_usage_psutil_unavailable(self, mock_psutil, mock_memory_manager):
         """Test memory usage when psutil is unavailable."""
         mock_memory_manager.get_cache_stats.return_value = {
             "feature_cache_size": 0,
@@ -246,9 +248,9 @@ class TestGetMemoryUsage(unittest.TestCase):
             "model_cache_size": 0,
             "total_cache_entries": 0
         }
+        mock_psutil.Process.side_effect = ImportError("psutil not available")
 
-        with patch.dict('sys.modules', {'psutil': None}):
-            usage = get_memory_usage()
+        usage = get_memory_usage()
 
         # Should return default values
         self.assertEqual(usage['rss'], 0.0)
@@ -301,7 +303,7 @@ class TestMemoryUtilsIntegration(unittest.TestCase):
     """Integration tests for memory utilities."""
 
     @patch("psutil.Process")
-    @patch("ztb.cache.memory_cache.default_memory_manager")
+    @patch("ztb.utils.memory_utils.default_memory_manager")
     def test_full_memory_workflow(self, mock_memory_manager, mock_process):
         """Test complete memory management workflow."""
         # Mock memory values
@@ -316,7 +318,7 @@ class TestMemoryUtilsIntegration(unittest.TestCase):
         }
 
         # Test memory tracking with operations
-        with MemoryTracker(enable_cache_tracking=True) as tracker:
+        with OperationMemoryTracker(enable_cache_tracking=True) as tracker:
             # Simulate data processing
             data = np.random.rand(1000, 10)
             optimized_data = optimize_array_dtype(data)

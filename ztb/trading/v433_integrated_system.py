@@ -13,10 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ztb.trading.position_manager import PositionManager, PositionSignal
-from ztb.trading.risk_overlay import RiskOverlay
-from ztb.trading.trade_execution_engine import TradeExecutionEngine
-from ztb.utils.logging_utils import get_logger
+from ztb.utils.types import ActionType
 
 # Phase 2適応学習システムのインポート（仮定）
 try:
@@ -87,7 +84,7 @@ class SystemState:
     # Phase 2状態
     phase2_active: bool = False
     phase2_confidence: float = 0.0
-    phase2_last_action: Any = None
+    phase2_last_action: Optional[ActionType] = None
 
     # Phase 3状態
     phase3_active: bool = False
@@ -376,7 +373,7 @@ class DecisionFusionEngine:
         return opposites.get(action1) == action2
 
 
-class PerformanceMonitor:
+class TradingPerformanceMonitor:
     """パフォーマンス監視器"""
 
     def __init__(self, config: V433Config):
@@ -485,7 +482,7 @@ class V433IntegratedSystem:
         # 統合コンポーネントの初期化
         self.regime_detector = MarketRegimeDetector()
         self.decision_fusion = DecisionFusionEngine(self.config)
-        self.performance_monitor = PerformanceMonitor(self.config)
+        self.performance_monitor = TradingPerformanceMonitor(self.config)
 
         # システム状態
         self.system_state = SystemState()

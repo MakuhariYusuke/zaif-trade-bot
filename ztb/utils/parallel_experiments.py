@@ -8,6 +8,7 @@ with shared resources and separate checkpoint directories.
 
 import gc
 import logging
+import os
 import signal
 import subprocess
 import sys
@@ -19,15 +20,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
-import os
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.common import ConfigDict
+from ztb.utils.config_helpers import get_string
 from ztb.utils.path_utils import ensure_dir
 
 # Type definitions for better type safety
-ConfigValue = Any  # Keep flexible for experiment configs
-ExperimentConfig = Dict[str, ConfigValue]
+ExperimentConfig = ConfigDict
 ProcessInfo = Dict[str, Any]  # Process information dictionary
 
 # Local imports
@@ -184,7 +184,7 @@ class ParallelExperimentRunner:
         priority_order = {"high": 0, "normal": 1, "low": 2}
 
         def get_priority(config: ConfigDict) -> int:
-            model_type = config.get("model_type", "generalization")
+            model_type = get_string(config, "model_type", "generalization")
             if self.config.priority_configs:
                 priority_level = self.config.priority_configs.get(model_type, "normal")
             else:
@@ -194,7 +194,7 @@ class ParallelExperimentRunner:
         return sorted(configs, key=get_priority)
 
     def _run_batch(
-        self, batch_configs: List[Dict[str, Any]], batch_start: int
+        self, batch_configs: List[ConfigDict], batch_start: int
     ) -> List[ExperimentResult]:
         """バッチ単位で実験を実行（リソース監視付き）"""
         # リソース制限チェック
@@ -213,13 +213,13 @@ class ParallelExperimentRunner:
             for i, config in enumerate(batch_configs):
                 global_index = batch_start + i
                 # Set process priority if configured
-                model_type = config.get("model_type", "generalization")
+                model_type = get_string(config, "model_type", "generalization")
                 if (
                     self.config.priority_configs
                     and model_type in self.config.priority_configs
                 ):
                     priority_level = self.config.priority_configs[model_type]
-                    config["_priority_level"] = priority_level
+                    cast(Dict[str, Any], config)["_priority_level"] = priority_level
 
                 future = executor.submit(
                     self._run_single_experiment, config, global_index
@@ -449,17 +449,31 @@ class ParallelExperimentRunner:
                     import json
 
                     with open(pidlog, "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"index": index, "pid": pid, "config": config.get("config_path", ""), "time": datetime.now().isoformat()}) + "\n")
+                        f.write(
+                            json.dumps(
+                                {
+                                    "index": index,
+                                    "pid": pid,
+                                    "config": config.get("config_path", ""),
+                                    "time": datetime.now().isoformat(),
+                                }
+                            )
+                            + "\n"
+                        )
                 except Exception:
                     pass
             except Exception:
                 pass
 
             # Set process priority（効率化: 必要な場合のみ）
-            priority_level = config.pop("_priority_level", "normal")
+            priority_level = cast(Dict[str, Any], config).pop(
+                "_priority_level", "normal"
+            )
             if priority_level and priority_level != "normal":
                 pm = ProcessPriorityManager()
-                pm.set_process_priority(config.get("model_type", "generalization"))
+                pm.set_process_priority(
+                    get_string(config, "model_type", "generalization")
+                )
 
             # Create experiment instance
             experiment = self.config.experiment_class(config)
@@ -672,7 +686,7 @@ def run_parallel_experiments(
     """
     config = ParallelExperimentConfig(
         experiment_class=experiment_class,
-        configs=configs,
+        configs=cast(List[ConfigDict], configs),
         max_workers=max_workers,
         shared_data_cache=shared_data_cache,
         enable_resource_monitoring=enable_monitoring,

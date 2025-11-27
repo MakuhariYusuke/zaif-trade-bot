@@ -10,7 +10,10 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.utils.types import LoggerProtocol
+
 from ztb.types.common import ConfigDict
+from ztb.utils.config_helpers import get_dict, get_int, get_string
 
 BYTES_PER_MB = 1024 * 1024
 
@@ -74,15 +77,15 @@ def setup_logging_from_config(config: ConfigDict) -> None:
     Args:
         config: Configuration dictionary with logging settings
     """
-    logging_config = config.get("logging", {})
+    logging_config = get_dict(config, "logging")
 
-    level_str = logging_config.get("level", "INFO").upper()
+    level_str = get_string(logging_config, "level", "INFO").upper()
     level = getattr(logging, level_str, logging.INFO)
 
-    format_string = logging_config.get("format")
-    log_file = logging_config.get("file")
-    max_bytes = logging_config.get("max_bytes", 10 * BYTES_PER_MB)
-    backup_count = logging_config.get("backup_count", 5)
+    format_string = get_string(logging_config, "format")
+    log_file = get_string(logging_config, "file")
+    max_bytes = get_int(logging_config, "max_bytes", 10 * BYTES_PER_MB)
+    backup_count = get_int(logging_config, "backup_count", 5)
 
     setup_logging(
         level=level,
@@ -100,11 +103,13 @@ def configure_log_levels(config: ConfigDict) -> None:
     Args:
         config: Configuration dictionary with module log levels
     """
-    module_levels = config.get("logging", {}).get("module_levels", {})
+    logging_config = get_dict(config, "logging")
+    module_levels = get_dict(logging_config, "module_levels")
 
-    for module, level_str in module_levels.items():
-        level = getattr(logging, level_str.upper(), logging.INFO)
-        logging.getLogger(module).setLevel(level)
+    for module, level_val in module_levels.items():
+        if isinstance(level_val, str):
+            level = getattr(logging, level_val.upper(), logging.INFO)
+            logging.getLogger(module).setLevel(level)
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -123,7 +128,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
-class StructuredLogger:
+class StructuredLogger(LoggerProtocol):
     """
     Structured logging utility for consistent log formatting.
 

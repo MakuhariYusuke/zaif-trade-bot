@@ -5,7 +5,7 @@ This module defines protocol interfaces that standardize the behavior
 of key components in the trading system.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Protocol, runtime_checkable, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ except ImportError:
     ActType = Any
 
 
+@runtime_checkable
 class TradingEnvironment(Protocol):
     """Protocol for trading environments."""
 
@@ -44,6 +45,7 @@ class TradingEnvironment(Protocol):
         ...
 
 
+@runtime_checkable
 class FeatureRegistryProtocol(Protocol):
     """Protocol for feature registries."""
 
@@ -72,6 +74,7 @@ class FeatureRegistryProtocol(Protocol):
         ...
 
 
+@runtime_checkable
 class SerializableProtocol(Protocol):
     """Protocol for serializable objects."""
 
