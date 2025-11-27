@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.evaluation.auto_feature_generator import AutoFeatureGenerator
-from ztb.evaluation.evaluate import TradingEvaluator
+from ztb.analysis.evaluator import TradingEvaluator
 
 
 class TestQualityGates(unittest.TestCase):

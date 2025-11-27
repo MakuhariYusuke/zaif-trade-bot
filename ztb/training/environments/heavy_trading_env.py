@@ -16,11 +16,12 @@ from ztb.trading.environment.components.reward_calculator import RewardCalculato
 from ztb.trading.environment.utils.config import RewardSettings
 
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.types.protocols import TradingEnvironment
 
 logger = logging.getLogger(__name__)
 
 
-class HeavyTradingEnv(gym.Env):
+class HeavyTradingEnv(gym.Env, TradingEnvironment):
     """
     Heavy trading environment for reinforcement learning.
     """

@@ -6,7 +6,7 @@ Base classes and protocols for trading strategies in the unified backtest framew
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Protocol, Union
+from typing import Any, Dict, Optional, Protocol, Union
 
 import pandas as pd
 
@@ -48,6 +48,53 @@ class TradingStrategy(Protocol):
             hyperparameters: Dictionary of hyperparameter names and values
         """
         ...
+
+
+def validate_trading_strategy(strategy: Any) -> bool:
+    """
+    Runtime validation for TradingStrategy Protocol compliance.
+
+    Args:
+        strategy: Object to validate
+
+    Returns:
+        True if strategy implements the protocol correctly
+    """
+    # Check required attributes/methods
+    required_attrs = ['name', 'generate_signal', 'update_hyperparameters']
+
+    for attr in required_attrs:
+        if not hasattr(strategy, attr):
+            return False
+
+    # Check name property
+    try:
+        name = strategy.name
+        if not isinstance(name, str):
+            return False
+    except Exception:
+        return False
+
+    # Check method signatures (basic validation)
+    import inspect
+
+    try:
+        # Check generate_signal signature
+        sig = inspect.signature(strategy.generate_signal)
+        params = list(sig.parameters.keys())
+        if 'data' not in params or 'current_position' not in params:
+            return False
+
+        # Check update_hyperparameters signature
+        sig = inspect.signature(strategy.update_hyperparameters)
+        params = list(sig.parameters.keys())
+        if 'hyperparameters' not in params:
+            return False
+
+    except (ValueError, TypeError):
+        return False
+
+    return True
 
 
 class BaseTradingStrategy(ABC):

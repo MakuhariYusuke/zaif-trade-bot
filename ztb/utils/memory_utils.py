@@ -12,6 +12,8 @@ from typing import Any, Dict, Generator, Optional, TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
+import psutil
+
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
 from ztb.cache.memory_cache import default_memory_manager
@@ -77,7 +79,7 @@ def memory_efficient_processing(
             del chunk
 
 
-class MemoryTracker:
+class OperationMemoryTracker:
     """
     Track memory usage of operations with TTLCache integration.
 
@@ -94,8 +96,6 @@ class MemoryTracker:
         self.memory_manager = default_memory_manager if enable_cache_tracking else None
 
     def __enter__(self) -> Any:
-        import psutil
-
         process = psutil.Process()
         self._initial_memory = process.memory_info().rss
 
@@ -107,8 +107,6 @@ class MemoryTracker:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        import psutil
-
         process = psutil.Process()
         final_memory = process.memory_info().rss
         memory_delta = final_memory - self._initial_memory
@@ -137,6 +135,12 @@ class MemoryTracker:
         if self.memory_manager and final_memory > 800 * BYTES_PER_MB:  # 800MB threshold
             logger.info("High memory usage detected, triggering optimization...")
             self.memory_manager.optimize_memory_usage()
+
+        # Memory leak prevention: force garbage collection
+        import gc
+        collected = gc.collect()
+        if collected > 0:
+            logger.debug(f"Garbage collection freed {collected} objects")
 
 
 def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:
@@ -222,7 +226,6 @@ def get_memory_usage() -> Dict[str, float]:
         Dictionary with memory usage information in MB and cache stats
     """
     try:
-        import psutil
         process = psutil.Process()
         memory_info = process.memory_info()
 

@@ -78,6 +78,8 @@ class TestHeavyTradingEnv:
         assert isinstance(reward, (int, float))
         assert isinstance(done, bool)
         assert isinstance(info, dict)
+        # Ensure trend_signal is present in info for trend-aware components
+        assert "trend_signal" in info
 
     def test_action_space(self):
         """Test action space properties."""
@@ -145,6 +147,8 @@ class TestHeavyTradingEnv:
             assert isinstance(reward, (int, float))
             # Reward should be finite
             assert np.isfinite(reward)
+            # Info should provide a trend signal for diagnostic use
+            assert "trend_signal" in result[4]
 
     def test_episode_completion(self):
         """Test episode completion."""

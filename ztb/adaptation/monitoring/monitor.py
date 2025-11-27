@@ -598,7 +598,7 @@ class ReportGenerator:
         return recommendations
 
 
-class PerformanceMonitor:
+class AdaptationPerformanceMonitor:
     """パフォーマンス監視システム"""
 
     def __init__(self, config: MonitoringConfig):
@@ -731,3 +731,7 @@ class PerformanceMonitor:
     def resolve_alert(self, alert_id: str) -> bool:
         """アラート解決"""
         return self.alert_manager.resolve_alert(alert_id)
+
+
+# Backwards compat export expected by some modules/tests
+PerformanceMonitor = AdaptationPerformanceMonitor

@@ -86,7 +86,7 @@ from ztb.trading.live_trader.components.live_trading_components import (
 
 # Import Discord notifier
 from ztb.utils.notify.discord import DiscordNotifier
-from ztb.utils.performance_utils import PerformanceMonitor, timed
+from ztb.utils.performance_utils import CodePerformanceMonitor, timed
 from ztb.utils.rate_limiter import RateLimitConfig, TokenBucketRateLimiter
 
 # Import risk management
@@ -567,7 +567,7 @@ class LiveTrader:
             iteration_count += 1
             logger.debug(f"Starting iteration {iteration_count}")
 
-            with PerformanceMonitor(f"trading_iteration_{iteration_count}"):
+            with CodePerformanceMonitor(f"trading_iteration_{iteration_count}"):
                 try:
                     # Get current price
                     try:

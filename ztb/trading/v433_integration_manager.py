@@ -92,7 +92,7 @@ class IntegrationTestResult:
     timestamp: datetime = field(default_factory=datetime.now)
 
 
-class PerformanceMonitor:
+class SystemPerformanceMonitor:
     """パフォーマンス監視器"""
 
     def __init__(self, config: SystemIntegrationConfig):
@@ -668,7 +668,7 @@ class V433IntegrationManager:
 
         # コンポーネントの初期化
         self.component_manager = ComponentManager(exchange)
-        self.performance_monitor = PerformanceMonitor(self.config)
+        self.performance_monitor = SystemPerformanceMonitor(self.config)
         self.integration_tester = IntegrationTester(self.component_manager)
 
         # システム状態

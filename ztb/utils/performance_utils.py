@@ -89,7 +89,7 @@ def timed_with_memory(func: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
-class PerformanceMonitor:
+class CodePerformanceMonitor:
     """
     Context manager for monitoring code block performance.
     """
@@ -169,7 +169,7 @@ def profile_function(
         if random.random() > sample_rate:
             return func(*args, **kwargs)
 
-        with PerformanceMonitor(f"sampled_{func.__name__}"):
+        with CodePerformanceMonitor(f"sampled_{func.__name__}"):
             start_time = time.perf_counter()
             result = func(*args, **kwargs)
             duration = time.perf_counter() - start_time

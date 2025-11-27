@@ -19,6 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
+from ztb.types.common import ConfigDict
 
 warnings.filterwarnings("ignore")
 
@@ -28,12 +29,6 @@ if parent_path not in sys.path:
     sys.path.insert(0, parent_path)
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.policies.policy_utils import predict_with_masks
-
-
-class ModelConfigDict(TypedDict, total=False):
-    """Model configuration dictionary."""
-
-    pass  # For now, keep as Dict[str, Any] equivalent
 
 
 class SingleEpisodeResultDict(TypedDict):
@@ -73,7 +68,7 @@ class EvaluationResult(TypedDict, total=False):
     # Metadata
     evaluation_timestamp: str
     feature_count: int
-    model_config: ModelConfigDict
+    model_config: ConfigDict
 
     # Detailed statistics
     reward_stats: Dict[str, Any]

@@ -12,7 +12,12 @@ import gymnasium as gym
 import numpy as np
 import pandas as pd
 import psutil
-import torch
+try:
+    import torch
+    _TORCH_AVAILABLE = True
+except Exception:
+    torch = None  # type: ignore
+    _TORCH_AVAILABLE = False
 from numpy.typing import NDArray
 
 # Import v444 regime classifier for advanced market regime adaptation
@@ -834,6 +839,18 @@ class HeavyTradingEnv(
         current_price = self.data_manager.get_price_at_step(self.current_step)
         atr = self.data_manager.get_atr_at_step(self.current_step)
 
+        # Update trend detector with the latest price (if available)
+        try:
+            if (
+                hasattr(self, "reward_calculator")
+                and hasattr(self.reward_calculator, "trend_detector")
+                and self.reward_calculator.trend_detector is not None
+            ):
+                # Update trend detector before reward calculation so penalty calculations can use it
+                self.reward_calculator.trend_detector.update(current_price)
+        except Exception:
+            self.logger.exception("Failed to update TrendDetector")
+
         # Reward calculation uses discrete action
         reward = self.reward_calculator.calculate_reward(
             action=actual_action,
@@ -907,6 +924,35 @@ class HeavyTradingEnv(
         info = self._get_info()
         reward_components = self.reward_calculator.get_last_reward_components()
         info.update(reward_components)
+        # Add trend signal to info for diagnostics and downstream use
+        try:
+            if (
+                hasattr(self.reward_calculator, "trend_detector")
+                and self.reward_calculator.trend_detector is not None
+            ):
+                info["trend_signal"] = float(
+                    self.reward_calculator.trend_detector.get_trend_signal()
+                )
+                # Provide short detector stats for AB testing and monitoring
+                info[
+                    "trend_detector_stats"
+                ] = self.reward_calculator.trend_detector.get_statistics()
+        except Exception:
+            self.logger.exception("Failed to append trend_signal to info")
+        # Add curriculum stage if present for integration tests and diagnostics
+        try:
+            if (
+                hasattr(self.reward_calculator, "curriculum_manager")
+                and self.reward_calculator.curriculum_manager is not None
+            ):
+                info[
+                    "curriculum_stage"
+                ] = self.reward_calculator.curriculum_manager.get_current_stage()
+                info[
+                    "curriculum_stage_info"
+                ] = self.reward_calculator.curriculum_manager.get_stage_info()
+        except Exception:
+            self.logger.exception("Failed to append curriculum stage to info")
         # Store reward_components as a separate key for easy extraction in callbacks
         info["reward_components"] = reward_components.copy()
         info.update(debug_info)

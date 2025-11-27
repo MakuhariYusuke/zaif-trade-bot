@@ -8,7 +8,17 @@ strict types — it provides pragmatic shims that make incremental typing easier
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    TypedDict,
+    TypeGuard,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
@@ -77,6 +87,23 @@ JSONSerializable = Union[
 ConfigValue = Union[
     str, int, float, bool, List["ConfigValue"], Dict[str, "ConfigValue"], None
 ]
+
+# Refined aliases for common use cases to improve static typing
+NumericConfigValue = Union[int, float]
+PrimitiveConfigValue = Union[str, int, float, bool, None]
+
+
+# Type guard helpers to narrow ConfigValue unions at runtime
+def is_numeric_config_value(value: ConfigValue) -> TypeGuard[NumericConfigValue]:
+    return isinstance(value, (int, float))
+
+
+def is_config_dict(value: ConfigValue) -> TypeGuard[Dict[str, ConfigValue]]:
+    return isinstance(value, dict)
+
+
+def is_config_list(value: ConfigValue) -> TypeGuard[List[ConfigValue]]:
+    return isinstance(value, list)
 
 
 class BaseConfigDict(TypedDict, total=False):

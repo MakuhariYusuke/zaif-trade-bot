@@ -16,7 +16,7 @@ import psutil
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
 from ztb.utils.config import ZTBConfig
-from ztb.utils.memory_monitor import MemoryMonitor
+from ztb.utils.memory_monitor import BackgroundMemoryMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class HealthChecker:
         self.checks: Dict[str, Callable[[], HealthCheckResult]] = {}
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
         self.last_metrics: Optional[SystemMetrics] = None
-        self.memory_monitor = MemoryMonitor(self.config)
+        self.memory_monitor = BackgroundMemoryMonitor(self.config)
 
     def register_check(
         self, name: str, check_func: Callable[[], HealthCheckResult]

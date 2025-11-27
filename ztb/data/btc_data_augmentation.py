@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.performance_utils import PerformanceMonitor
+from ztb.utils.performance_utils import CodePerformanceMonitor
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ class BTCDataAugmentor:
     def __init__(self, base_data_path: str):
         """Initialize with base dataset"""
         self.base_data_path = Path(base_data_path)
-        self.performance_monitor = PerformanceMonitor("btc_data_augmentor")
+        self.performance_monitor = CodePerformanceMonitor("btc_data_augmentor")
         self.base_data = None
         self._load_base_data()
 

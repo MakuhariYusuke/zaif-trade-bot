@@ -14,15 +14,14 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from enum import Enum
+# from enum import Enum  # duplicate import removed
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, TypeVar, Union
+from typing import Dict, List, Optional, Protocol, TypeVar, Union
 
 import jsonschema
 
-# Type definitions for configuration values
-ConfigValue = Union[str, int, float, bool, List[Any], Dict[str, Any]]
-ConfigDict = Dict[str, ConfigValue]
+from ztb.types.common import ConfigDict, ConfigValue
+
 ConfigProfile = Dict[str, ConfigValue]
 ValidationResult = List[str]
 
@@ -46,31 +45,10 @@ from enum import Enum
 class DataConfig:
     """Data configuration."""
 
-    data_path: str
+    data_path: str = ""
     use_real_data: bool = True
     data_rows_limit: Optional[int] = None
     max_features: Optional[int] = None
-
-
-@dataclass
-class EnvironmentConfig:
-    """Environment configuration."""
-
-    initial_balance: float = 10000.0
-    transaction_cost: float = 0.0015
-    max_position_size: float = 1.0
-
-
-@dataclass
-class TrainingConfig:
-    """Training configuration."""
-
-    version: str = "1.0"
-    model_name: str = "default_model"
-    algorithm: str = "sac"
-    total_timesteps: int = 100000
-    data_config: DataConfig = field(default_factory=DataConfig)
-    environment: EnvironmentConfig = field(default_factory=EnvironmentConfig)
 
 
 class ConfigFormat(Enum):
@@ -362,28 +340,56 @@ class ConfigurationManager:
         """Create a typed TrainingConfig from a configuration dictionary."""
         try:
             # Extract nested configurations
-            data_config_dict = config_dict.get("training", {}).get("data_config", {})
-            env_config_dict = config_dict.get("training", {}).get("environment", {})
-            training_dict = config_dict.get("training", {})
+            # Use helpers that perform runtime validation and type narrowing
+            from ztb.utils.config_helpers import (
+                get_bool,
+                get_dict,
+                get_int,
+                get_numeric,
+                get_string,
+            )
+
+            training_section = get_dict(config_dict, "training")
+            data_config_dict = get_dict(config_dict, "training.data_config")
+            env_config_dict = get_dict(config_dict, "training.environment")
+            training_dict = training_section
 
             # Create typed objects
-            data_config = DataConfig(**data_config_dict)
-            
+            data_config = DataConfig(
+                data_path=get_string(data_config_dict, "data_path"),
+                use_real_data=get_bool(data_config_dict, "use_real_data", True),
+                data_rows_limit=get_int(data_config_dict, "data_rows_limit"),
+                max_features=get_int(data_config_dict, "max_features"),
+            )
+
             # Filter env_config_dict to only include fields that EnvironmentConfig accepts
             # This prevents initialization errors from unknown keys like 'initial_balance'
             from dataclasses import fields as dataclass_fields
+
             valid_env_keys = {f.name for f in dataclass_fields(EnvironmentConfig)}
             filtered_env_config_dict = {
                 k: v for k, v in env_config_dict.items() if k in valid_env_keys
             }
-            env_config = EnvironmentConfig(**filtered_env_config_dict)
+            env_config = EnvironmentConfig(
+                initial_balance=get_numeric(
+                    filtered_env_config_dict, "initial_balance", 10000.0
+                ),
+                transaction_cost=get_numeric(
+                    filtered_env_config_dict, "transaction_cost", 0.0015
+                ),
+                max_position_size=get_numeric(
+                    filtered_env_config_dict, "max_position_size", 1.0
+                ),
+            )
 
             # Create training config
             training_config = TrainingConfig(
-                version=config_dict.get("version", "1.0"),
-                model_name=training_dict.get("model_name", "default_model"),
-                algorithm=training_dict.get("algorithm", "sac"),
-                total_timesteps=training_dict.get("total_timesteps", 100000),
+                version=get_string(config_dict, "version", "1.0"),
+                model_name=get_string(training_dict, "model_name", "default_model"),
+                algorithm=get_string(training_dict, "algorithm", "sac"),
+                total_timesteps=int(
+                    get_numeric(config_dict, "training.total_timesteps", 100000)
+                ),
                 data_config=data_config,
                 environment=env_config,
             )

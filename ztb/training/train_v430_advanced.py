@@ -31,7 +31,7 @@ from ztb.evaluation.evaluator import Evaluator
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.training.unified_trainer.parallel_trainer import ParallelTrainer
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.memory_utils import MemoryTracker
+from ztb.utils.memory_utils import OperationMemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 logger = get_logger(__name__)
@@ -67,7 +67,7 @@ class SACv430AdvancedTrainer:
         self.config_path = Path(config_path)
         self.mode = mode
         self.base_config = self._load_config()
-        self.memory_tracker = MemoryTracker()
+        self.memory_tracker = OperationMemoryTracker()
         self.performance_profiler = PerformanceProfiler()
 
         # Setup output directory

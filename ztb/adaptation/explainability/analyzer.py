@@ -3,6 +3,8 @@ Explainability Analyzer Implementation
 SHAPベースのモデル解釈性分析
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
@@ -12,8 +14,12 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+except Exception:
+    torch = None  # type: ignore
+    nn = None  # type: ignore
 
 try:
     import shap
@@ -144,17 +150,27 @@ class ExplainabilityAnalyzer:
                 metadata={"error": str(e)},
             )
 
-    def _preprocess_input(
-        self, input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame]
-    ) -> torch.Tensor:
+    def _preprocess_input(self, input_data: Union[np.ndarray, "torch.Tensor", pd.DataFrame]):
+        """Preprocess input data into a tensor (if torch available) or numpy array"""
+        if torch is None:
+            if isinstance(input_data, pd.DataFrame):
+                return input_data.select_dtypes(include=[np.number]).values
+            elif isinstance(input_data, np.ndarray):
+                return input_data
+            else:
+                raise ValueError(f"Unsupported input data type: {type(input_data)}")
         """入力データの前処理"""
         if isinstance(input_data, pd.DataFrame):
-            # DataFrameの場合、数値データのみを使用
+            # Use numeric columns only
             numeric_data = input_data.select_dtypes(include=[np.number]).values
-            return torch.tensor(numeric_data, dtype=torch.float32)
+            if torch is not None:
+                return torch.tensor(numeric_data, dtype=torch.float32)
+            return numeric_data
         elif isinstance(input_data, np.ndarray):
-            return torch.tensor(input_data, dtype=torch.float32)
-        elif isinstance(input_data, torch.Tensor):
+            if torch is not None:
+                return torch.tensor(input_data, dtype=torch.float32)
+            return input_data
+        elif torch is not None and isinstance(input_data, torch.Tensor):
             return input_data.float()
         else:
             raise ValueError(f"Unsupported input data type: {type(input_data)}")
