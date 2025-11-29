@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from ztb.utils.core.stats import calculate_kurtosis, calculate_skew, nan_ratio
+from ztb.metrics.metrics import kurtosis, skewness
+from ztb.utils.core.stats import nan_ratio
 from ztb.utils.thresholds import AdaptiveThresholdManager
 
 
@@ -89,7 +90,7 @@ class QualityGates:
 
         # Skewness
         if len(feature_data.dropna()) > 10:
-            skew_val = calculate_skew(feature_data.dropna())
+            skew_val = skewness(feature_data.dropna())
             if pd.notna(skew_val):
                 try:
                     skew = float(skew_val)
@@ -107,13 +108,13 @@ class QualityGates:
 
         # Kurtosis
         if len(feature_data.dropna()) > 10:
-            kurtosis_val = calculate_kurtosis(feature_data.dropna())
+            kurtosis_val = kurtosis(feature_data.dropna())
             if pd.notna(kurtosis_val):
                 try:
-                    kurtosis = float(kurtosis_val)
-                    results["kurtosis"] = kurtosis
+                    kurtosis_result = float(kurtosis_val)
+                    results["kurtosis"] = kurtosis_result
                     results["kurtosis_pass"] = (
-                        abs(kurtosis) <= gates["kurtosis_threshold"]
+                        abs(kurtosis_result) <= gates["kurtosis_threshold"]
                     )
                 except (ValueError, TypeError):
                     results["kurtosis"] = None  # type: ignore
