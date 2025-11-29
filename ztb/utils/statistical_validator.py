@@ -7,15 +7,16 @@ Phase 3: Risk Management & Statistical Validation
 多重検定補正、信頼区間評価、統計的有意性検定を提供。
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
+
 import numpy as np
-import pandas as pd
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 
-from ztb.utils.statistics import p_mean_method, rolling_statistics, calculate_volatility
-from ztb.utils.trading_metrics import sharpe_ratio, sharpe_with_stats, calculate_delta_sharpe
+from ztb.metrics.metrics import kurtosis, skewness
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.statistics import calculate_volatility, rolling_statistics
+from ztb.utils.trading_metrics import sharpe_ratio
 
 logger = get_logger(__name__)
 
@@ -56,7 +57,7 @@ class StatisticalValidator:
         self,
         returns: List[float],
         benchmark_returns: Optional[List[float]] = None,
-        multiple_metrics: bool = False
+        multiple_metrics: bool = False,
     ) -> Dict[str, Any]:
         """
         性能指標の統計的検証
@@ -72,7 +73,7 @@ class StatisticalValidator:
         if len(returns) < self.min_sample_size:
             return {
                 "error": f"Insufficient sample size: {len(returns)} < {self.min_sample_size}",
-                "valid": False
+                "valid": False,
             }
 
         results = {}
@@ -85,8 +86,10 @@ class StatisticalValidator:
             sharpe = sharpe_ratio(returns)
             results["sharpe_ratio"] = {
                 "value": sharpe,
-                "confidence_interval": self._calculate_sharpe_confidence_interval(returns),
-                "stability": self._assess_metric_stability(returns, "sharpe")
+                "confidence_interval": self._calculate_sharpe_confidence_interval(
+                    returns
+                ),
+                "stability": self._assess_metric_stability(returns, "sharpe"),
             }
 
             # ベンチマーク比較
@@ -97,11 +100,13 @@ class StatisticalValidator:
 
             # 多重検定補正（複数の指標を評価する場合）
             if multiple_metrics:
-                results["multiple_testing"] = self._apply_multiple_testing_correction([
-                    results["sharpe_ratio"]["value"],
-                    results["basic_stats"]["mean"],
-                    results["basic_stats"]["volatility"]
-                ])
+                results["multiple_testing"] = self._apply_multiple_testing_correction(
+                    [
+                        results["sharpe_ratio"]["value"],
+                        results["basic_stats"]["mean"],
+                        results["basic_stats"]["volatility"],
+                    ]
+                )
 
             # 安定性評価
             results["stability_analysis"] = self._analyze_performance_stability(returns)
@@ -118,7 +123,7 @@ class StatisticalValidator:
     def validate_multiple_strategies(
         self,
         strategy_returns: Dict[str, List[float]],
-        benchmark_returns: Optional[List[float]] = None
+        benchmark_returns: Optional[List[float]] = None,
     ) -> Dict[str, Any]:
         """
         複数戦略の統計的比較検証
@@ -131,7 +136,10 @@ class StatisticalValidator:
             複数戦略比較結果
         """
         if len(strategy_returns) < 2:
-            return {"error": "Need at least 2 strategies for comparison", "valid": False}
+            return {
+                "error": "Need at least 2 strategies for comparison",
+                "valid": False,
+            }
 
         results = {}
 
@@ -142,7 +150,9 @@ class StatisticalValidator:
 
             for strategy_name, returns in strategy_returns.items():
                 if len(returns) >= self.min_sample_size:
-                    validation = self.validate_performance_metrics(returns, benchmark_returns)
+                    validation = self.validate_performance_metrics(
+                        returns, benchmark_returns
+                    )
                     individual_results[strategy_name] = validation
 
                     if validation.get("valid"):
@@ -152,7 +162,7 @@ class StatisticalValidator:
                 else:
                     individual_results[strategy_name] = {
                         "error": f"Insufficient sample size: {len(returns)}",
-                        "valid": False
+                        "valid": False,
                     }
                     all_sharpes.append(0.0)
 
@@ -165,9 +175,9 @@ class StatisticalValidator:
                 )
 
             # 多重検定補正
-            results["multiple_testing_correction"] = self._apply_multiple_testing_correction(
-                all_sharpes
-            )
+            results[
+                "multiple_testing_correction"
+            ] = self._apply_multiple_testing_correction(all_sharpes)
 
             results["valid"] = True
 
@@ -182,7 +192,7 @@ class StatisticalValidator:
         self,
         predictions: List[float],
         actual_returns: List[float],
-        signal_thresholds: Optional[List[float]] = None
+        signal_thresholds: Optional[List[float]] = None,
     ) -> Dict[str, Any]:
         """
         シグナル品質の統計的検証
@@ -199,7 +209,10 @@ class StatisticalValidator:
             return {"error": "Predictions and returns length mismatch", "valid": False}
 
         if len(predictions) < self.min_sample_size:
-            return {"error": f"Insufficient sample size: {len(predictions)}", "valid": False}
+            return {
+                "error": f"Insufficient sample size: {len(predictions)}",
+                "valid": False,
+            }
 
         results = {}
 
@@ -208,10 +221,12 @@ class StatisticalValidator:
             correlation = np.corrcoef(predictions, actual_returns)[0, 1]
             results["correlation"] = {
                 "value": correlation,
-                "p_value": self._calculate_correlation_p_value(predictions, actual_returns),
+                "p_value": self._calculate_correlation_p_value(
+                    predictions, actual_returns
+                ),
                 "confidence_interval": self._calculate_correlation_confidence_interval(
                     predictions, actual_returns
-                )
+                ),
             }
 
             # シグナル閾値別分析
@@ -241,15 +256,17 @@ class StatisticalValidator:
         return {
             "mean": float(np.mean(returns_array)),
             "std": float(np.std(returns_array, ddof=1)),
-            "skewness": float(stats.skew(returns_array)),
-            "kurtosis": float(stats.kurtosis(returns_array)),
+            "skewness": float(skewness(returns_array)),
+            "kurtosis": float(kurtosis(returns_array)),
             "min": float(np.min(returns_array)),
             "max": float(np.max(returns_array)),
             "volatility": float(np.std(returns_array, ddof=1) * np.sqrt(252)),  # 年率化
-            "sharpe_ratio": sharpe_ratio(returns)
+            "sharpe_ratio": sharpe_ratio(returns),
         }
 
-    def _calculate_sharpe_confidence_interval(self, returns: List[float]) -> List[float]:
+    def _calculate_sharpe_confidence_interval(
+        self, returns: List[float]
+    ) -> List[float]:
         """Sharpe ratioの信頼区間計算"""
         # ブートストラップ法による信頼区間推定
         sharpes = []
@@ -262,13 +279,18 @@ class StatisticalValidator:
 
         return [
             float(np.percentile(sharpes, (1 - self.confidence_level) * 100 / 2)),
-            float(np.percentile(sharpes, (1 + self.confidence_level) * 100 / 2))
+            float(np.percentile(sharpes, (1 + self.confidence_level) * 100 / 2)),
         ]
 
-    def _assess_metric_stability(self, returns: List[float], metric: str) -> Dict[str, Any]:
+    def _assess_metric_stability(
+        self, returns: List[float], metric: str
+    ) -> Dict[str, Any]:
         """指標の安定性評価"""
         if len(returns) < self.stability_window * 2:
-            return {"stable": False, "reason": "Insufficient data for stability analysis"}
+            return {
+                "stable": False,
+                "reason": "Insufficient data for stability analysis",
+            }
 
         # ローリング統計量計算
         rolling_stats = rolling_statistics(returns, self.stability_window)
@@ -284,13 +306,11 @@ class StatisticalValidator:
             "stable": stability_score > 0.7,
             "stability_score": float(stability_score),
             "rolling_mean_std": float(mean_std),
-            "rolling_std_std": float(std_std)
+            "rolling_std_std": float(std_std),
         }
 
     def _compare_with_benchmark(
-        self,
-        strategy_returns: List[float],
-        benchmark_returns: List[float]
+        self, strategy_returns: List[float], benchmark_returns: List[float]
     ) -> Dict[str, Any]:
         """ベンチマークとの統計的比較"""
         # t検定
@@ -299,7 +319,11 @@ class StatisticalValidator:
         # 効果量（Cohen's d）
         mean_diff = np.mean(strategy_returns) - np.mean(benchmark_returns)
         pooled_std = np.sqrt(
-            (np.std(strategy_returns, ddof=1)**2 + np.std(benchmark_returns, ddof=1)**2) / 2
+            (
+                np.std(strategy_returns, ddof=1) ** 2
+                + np.std(benchmark_returns, ddof=1) ** 2
+            )
+            / 2
         )
         effect_size = mean_diff / pooled_std if pooled_std > 0 else 0
 
@@ -308,17 +332,17 @@ class StatisticalValidator:
             "p_value": float(p_value),
             "significant": p_value < self.alpha_level,
             "effect_size": float(effect_size),
-            "mean_difference": float(mean_diff)
+            "mean_difference": float(mean_diff),
         }
 
     def _compare_strategies_statistically(
-        self,
-        strategy_returns: Dict[str, List[float]]
+        self, strategy_returns: Dict[str, List[float]]
     ) -> Dict[str, Any]:
         """戦略間の統計的比較（ANOVA）"""
         # 有効な戦略のみ抽出
         valid_strategies = {
-            name: returns for name, returns in strategy_returns.items()
+            name: returns
+            for name, returns in strategy_returns.items()
             if len(returns) >= self.min_sample_size
         }
 
@@ -337,10 +361,12 @@ class StatisticalValidator:
             "anova_p_value": float(p_value),
             "significant_difference": p_value < self.alpha_level,
             "best_strategy": best_strategy[0],
-            "strategy_means": {name: float(mean) for name, mean in means.items()}
+            "strategy_means": {name: float(mean) for name, mean in means.items()},
         }
 
-    def _apply_multiple_testing_correction(self, p_values: List[float]) -> Dict[str, Any]:
+    def _apply_multiple_testing_correction(
+        self, p_values: List[float]
+    ) -> Dict[str, Any]:
         """多重検定補正適用"""
         if not p_values:
             return {"error": "No p-values provided"}
@@ -355,7 +381,7 @@ class StatisticalValidator:
             "adjusted_p_values": p_adjusted.tolist(),
             "rejected": rejected.tolist(),
             "method": self.multiple_test_method,
-            "alpha_corrected": float(alpha_corrected)
+            "alpha_corrected": float(alpha_corrected),
         }
 
     def _analyze_performance_stability(self, returns: List[float]) -> Dict[str, Any]:
@@ -369,13 +395,15 @@ class StatisticalValidator:
         avg_drawdown = np.mean(drawdowns[drawdowns > 0])
 
         # ボラティリティ分析
-        volatility = calculate_volatility(returns, window=min(20, len(returns)//2))
+        volatility = calculate_volatility(returns, window=min(20, len(returns) // 2))
 
         return {
             "max_drawdown": float(max_drawdown),
-            "avg_drawdown": float(avg_drawdown) if len(drawdowns[drawdowns > 0]) > 0 else 0.0,
+            "avg_drawdown": float(avg_drawdown)
+            if len(drawdowns[drawdowns > 0]) > 0
+            else 0.0,
             "volatility_trend": volatility,
-            "volatility_stability": float(np.std(volatility)) if volatility else 0.0
+            "volatility_stability": float(np.std(volatility)) if volatility else 0.0,
         }
 
     def _calculate_correlation_p_value(self, x: List[float], y: List[float]) -> float:
@@ -407,15 +435,19 @@ class StatisticalValidator:
         self,
         predictions: List[float],
         actual_returns: List[float],
-        thresholds: List[float]
+        thresholds: List[float],
     ) -> Dict[str, Any]:
         """シグナル閾値別分析"""
         results = {}
 
         for threshold in thresholds:
             # 閾値以上のシグナル
-            strong_signals = [r for p, r in zip(predictions, actual_returns) if p >= threshold]
-            weak_signals = [r for p, r in zip(predictions, actual_returns) if p < threshold]
+            strong_signals = [
+                r for p, r in zip(predictions, actual_returns) if p >= threshold
+            ]
+            weak_signals = [
+                r for p, r in zip(predictions, actual_returns) if p < threshold
+            ]
 
             if strong_signals and weak_signals:
                 # t検定
@@ -428,15 +460,13 @@ class StatisticalValidator:
                     "weak_mean_return": float(np.mean(weak_signals)),
                     "t_statistic": float(t_stat),
                     "p_value": float(p_value),
-                    "significant": p_value < self.alpha_level
+                    "significant": p_value < self.alpha_level,
                 }
 
         return results
 
     def _analyze_prediction_accuracy(
-        self,
-        predictions: List[float],
-        actual_returns: List[float]
+        self, predictions: List[float], actual_returns: List[float]
     ) -> Dict[str, Any]:
         """予測精度分析"""
         # 方向予測精度
@@ -446,12 +476,12 @@ class StatisticalValidator:
         direction_accuracy = np.mean(pred_direction == actual_direction)
 
         # MSE, MAE
-        mse = np.mean((np.array(predictions) - np.array(actual_returns))**2)
+        mse = np.mean((np.array(predictions) - np.array(actual_returns)) ** 2)
         mae = np.mean(np.abs(np.array(predictions) - np.array(actual_returns)))
 
         return {
             "direction_accuracy": float(direction_accuracy),
             "mse": float(mse),
             "mae": float(mae),
-            "rmse": float(np.sqrt(mse))
+            "rmse": float(np.sqrt(mse)),
         }

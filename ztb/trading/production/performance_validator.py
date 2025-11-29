@@ -9,11 +9,12 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import scipy.stats as stats
 
+from ztb.metrics.metrics import test_normality
 from ztb.trading.production.virtual_portfolio_manager import (
     PortfolioMetrics,
     VirtualTrade,
@@ -243,8 +244,13 @@ class PerformanceValidator:
                 float(m.total_pnl) for m in portfolio_metrics if m.total_pnl != 0
             ]
             if len(pnl_values) >= 3:
-                stat, p_value = stats.shapiro(pnl_values)
-                significant = p_value < (1 - self.confidence_level)
+                normality_results = test_normality(pnl_values)
+                shapiro_result = normality_results.get("shapiro_wilk", {})
+                stat = shapiro_result.get("statistic")
+                p_value = shapiro_result.get("p_value")
+                significant = p_value is not None and p_value < (
+                    1 - self.confidence_level
+                )
                 interpretation = (
                     "PnL is normally distributed"
                     if not significant

@@ -4,9 +4,11 @@
 統計計算に関するユーティリティ関数を提供します。
 """
 
-from typing import List, Dict
+from typing import Dict, List
 
 import numpy as np
+
+from ztb.metrics.metrics import autocorrelation
 
 
 def p_mean_method(p_values: List[float], method: str = "arithmetic") -> float:
@@ -183,11 +185,7 @@ def calculate_autocorrelation(data: List[float], lag: int = 1) -> float:
     Returns:
         Autocorrelation coefficient
     """
-    if len(data) <= lag:
-        return 0.0
-
-    data_array = np.array(data)
-    return float(np.corrcoef(data_array[:-lag], data_array[lag:])[0, 1])
+    return autocorrelation(data, lag=lag)
 
 
 def detect_outliers_iqr(data: List[float], multiplier: float = 1.5) -> List[bool]:
