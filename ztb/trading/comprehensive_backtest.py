@@ -17,6 +17,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 from ztb.adaptation.monitoring.types import TradingPerformanceMetrics
+from ztb.metrics.metrics import coefficient_of_variation
 from ztb.trading.v433_integration_manager import V433IntegrationManager
 from ztb.utils.logging_utils import get_logger
 
@@ -930,9 +931,7 @@ class CrossValidationAnalyzer:
             "return_std": np.std(returns),
             "sharpe_variance": np.var(sharpe_ratios),
             "sharpe_std": np.std(sharpe_ratios),
-            "coefficient_of_variation": np.std(returns) / abs(np.mean(returns))
-            if np.mean(returns) != 0
-            else 0,
+            "coefficient_of_variation": coefficient_of_variation(np.array(returns)),
         }
 
     def _calculate_confidence_intervals(

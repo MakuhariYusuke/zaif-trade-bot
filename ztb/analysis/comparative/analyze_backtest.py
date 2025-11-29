@@ -7,7 +7,11 @@ This tool provides comprehensive analysis of trading backtest results,
 including risk metrics, temporal analysis, and market condition analysis.
 """
 
+from __future__ import annotations
+
+import gc
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, overload
@@ -16,22 +20,32 @@ import numpy as np
 import pandas as pd
 
 from ztb.analysis.unified_analyze import BaseAnalyzer
+from ztb.analysis.reporting.display_manager import AnalysisDisplayManager
 from ztb.data.btc_data_augmentation import BTCBiasDetector
 from ztb.metrics.metrics import (
+    autocorrelation,
     calculate_all_metrics,
     classify_market_regime,
+    coefficient_of_variation,
+    kurtosis,
     max_drawdown,
     multi_market_backtest_analysis,
     profit_factor,
     seasonality_analysis,
     sharpe_ratio,
+    skewness,
     sortino_ratio,
+    test_normality,
+    win_rate,
 )
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.trading.constants import (
+    TRADING_DAYS_PER_YEAR,  # = 252
+    ACTION_BUY, ACTION_HOLD, ACTION_SELL
+)
+from ztb.trading.environment.constants import BYTES_PER_MB, continuous_to_discrete_action
 from ztb.types.common import AnalysisData
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.memory_utils import temporary_array
 from ztb.utils.performance_utils import PerformanceMonitor
 from ztb.utils.trading_metrics import action_distribution
 
@@ -68,15 +82,15 @@ except (ImportError, OSError):
     scipy_stats = None
 
 
-# Utility function for coefficient of variation calculation
-def _calculate_coefficient_of_variation(values: np.ndarray) -> float:
-    """変動係数（Coefficient of Variation）を計算"""
-    if len(values) == 0:
-        return 0.0
-    mean_val = np.mean(values)
-    if mean_val == 0:
-        return 0.0
-    return np.std(values) / mean_val
+# Utility function for coefficient of variation calculation - moved to metrics module
+# def _calculate_coefficient_of_variation(values: np.ndarray) -> float:
+#     """変動係数（Coefficient of Variation）を計算"""
+#     if len(values) == 0:
+#         return 0.0
+#     mean_val = np.mean(values)
+#     if mean_val == 0:
+#         return 0.0
+#     return np.std(values) / mean_val
 
 
 class BacktestAnalyzer(BaseAnalyzer):
@@ -88,24 +102,161 @@ class BacktestAnalyzer(BaseAnalyzer):
         training_report_path: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(name="BacktestAnalyzer", config=config)
+        self.config = config or {}
         self.results_path = Path(results_path)
         self.training_report_path = (
             Path(training_report_path) if training_report_path else None
         )
         self.data = self._load_data()
-        self.is_unified = (
-            "results" in self.data
-            and isinstance(self.data.get("results"), list)
-            and "avg_return_pct" in self.data
-        )
+        self.is_unified = self._is_unified_format()
+
+        # 残りの初期化コード
         self.training_data = (
             self._load_training_data() if training_report_path else None
         )
         self._validate_data()
         self.performance_monitor = PerformanceMonitor("backtest_analyzer")
         self.bias_detector = BTCBiasDetector()
-        self._portfolio_cache: Optional[np.ndarray] = None
+        self.display_manager = AnalysisDisplayManager()
+
+        # 計算結果のキャッシュ（効率化・メモリリーク防止）
+        self._metrics_cache: Dict[str, Any] = {}
+        self._returns_cache: Optional[np.ndarray] = None
+        self._daily_returns_cache: Optional[np.ndarray] = None
+
+        # メモリ管理設定
+        self._max_cache_size = 100  # MB
+        self._cache_cleanup_threshold = 50  # MB
+
+    def _get_daily_returns(self, portfolio_values: np.ndarray) -> np.ndarray:
+        """日次リターンをメモリ効率的に計算・キャッシュ"""
+        # キャッシュ属性の初期化（__init__未実行時の対応）
+        if not hasattr(self, '_daily_returns_cache'):
+            self._daily_returns_cache: Optional[np.ndarray] = None
+
+        # キャッシュチェック
+        if self._daily_returns_cache is not None:
+            return self._daily_returns_cache
+
+        if "timestamps" not in self.data:
+            # タイムスタンプがない場合はステップごとのリターンを使用
+            with temporary_array(np.diff(portfolio_values) / portfolio_values[:-1]) as step_returns:
+                # 適当に日次にグループ化（仮定: 1日=1440分）
+                steps_per_day = 1440
+                daily_returns = []
+                for i in range(0, len(step_returns), steps_per_day):
+                    day_return = np.prod(1 + step_returns[i : i + steps_per_day]) - 1
+                    daily_returns.append(day_return)
+                result = np.array(daily_returns)
+        else:
+            # タイムスタンプがある場合は時間帯別にグループ化
+            timestamps = pd.to_datetime(
+                self.data["timestamps"], errors="coerce"
+            )
+            valid_mask = ~pd.isna(timestamps)
+            valid_mask = np.asarray(valid_mask, dtype=bool)
+
+            if not valid_mask.any():
+                result = np.array([])
+            else:
+                timestamps = timestamps[valid_mask]
+                filtered_values = portfolio_values[valid_mask]
+
+                with temporary_array([]) as daily_returns_list:
+                    daily_returns_list = []
+                    current_day = None
+                    day_start_value = None
+
+                    for i, (ts, value) in enumerate(zip(timestamps, filtered_values)):
+                        day = ts.date()
+                        if current_day != day:
+                            if day_start_value is not None and i > 0:
+                                daily_return = (
+                                    portfolio_values[i - 1] - day_start_value
+                                ) / day_start_value
+                                daily_returns_list.append(daily_return)
+                            current_day = day
+                            day_start_value = value
+                    if day_start_value is not None and len(filtered_values) > 0:
+                        daily_return = (filtered_values[-1] - day_start_value) / day_start_value
+                        daily_returns_list.append(daily_return)
+
+                    result = np.array(daily_returns_list)
+
+        # キャッシュ保存とメモリ管理
+        self._daily_returns_cache = result
+        self._check_cache_memory_usage()
+
+        return result
+
+    def _calculate_core_metrics_batch(self, daily_returns: np.ndarray, portfolio_values: np.ndarray, total_return: float) -> RiskMetricsResult:
+        """コア指標をバッチ計算（並列処理・メモリ効率）"""
+        # 基本的な指標計算
+        volatility = np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR) if len(daily_returns) > 0 else 0.0
+
+        # 並列計算で効率化
+        metrics_results = {}
+
+        # ThreadPoolExecutorで並列計算
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # 各指標の計算を並列実行
+            futures = {
+                'sharpe_ratio': executor.submit(sharpe_ratio, daily_returns),
+                'max_drawdown': executor.submit(max_drawdown, portfolio_values),
+                'sortino_ratio': executor.submit(sortino_ratio, daily_returns),
+                'win_rate': executor.submit(self._calculate_win_rate),
+                'profit_factor': executor.submit(self._calculate_profit_factor),
+            }
+
+            # 結果を収集
+            for metric_name, future in futures.items():
+                try:
+                    metrics_results[metric_name] = future.result()
+                except Exception as e:
+                    logger.warning(f"Failed to calculate {metric_name}: {e}")
+                    metrics_results[metric_name] = 0.0
+
+        # max_drawdownは正の値に変換
+        metrics_results['max_drawdown'] = abs(metrics_results['max_drawdown'])
+
+        return {
+            "total_return": float(total_return),
+            "sharpe_ratio": float(metrics_results['sharpe_ratio']),
+            "max_drawdown": float(metrics_results['max_drawdown']),
+            "volatility": float(volatility),
+            "sortino_ratio": float(metrics_results['sortino_ratio']),
+            "win_rate": float(metrics_results['win_rate']),
+            "profit_factor": float(metrics_results['profit_factor']),
+        }
+
+    def _check_cache_memory_usage(self) -> None:
+        """キャッシュのメモリ使用量をチェックし、必要に応じてクリーンアップ"""
+        try:
+            # キャッシュされた配列のメモリ使用量を概算
+            cache_memory_mb = 0
+            if self._daily_returns_cache is not None:
+                cache_memory_mb += self._daily_returns_cache.nbytes / BYTES_PER_MB
+            if self._returns_cache is not None:
+                cache_memory_mb += self._returns_cache.nbytes / BYTES_PER_MB
+
+            # しきい値を超えたら古いキャッシュをクリア
+            if cache_memory_mb > self._cache_cleanup_threshold:
+                logger.info(f"Cache memory usage ({cache_memory_mb:.1f}MB) exceeds threshold, clearing cache")
+                self._clear_metrics_cache()
+
+        except Exception as e:
+            logger.warning(f"Cache memory check failed: {e}")
+
+    def _clear_metrics_cache(self) -> None:
+        """メトリクスキャッシュをクリアしてメモリを解放"""
+        self._metrics_cache.clear()
+        self._returns_cache = None
+        self._daily_returns_cache = None
+        gc.collect()  # 明示的なガベージコレクション
+
+    def _is_unified_format(self) -> bool:
+        """Check if the loaded data is in unified format."""
+        return "results" in self.data and isinstance(self.data.get("results"), list)
 
     def _load_data(self) -> Dict[str, Any]:
         """Load backtest results from JSON file."""
@@ -184,7 +335,13 @@ class BacktestAnalyzer(BaseAnalyzer):
     def analyze(self, data: None = None) -> AnalysisResult:
         ...
 
-    def analyze(self, data: Optional[AnalysisData] = None) -> AnalysisResult:
+    def analyze(
+        self,
+        data: Optional[AnalysisData] = None,
+        display: bool = False,
+        show_plots: bool = True,
+        save_plots: bool = True
+    ) -> AnalysisResult:
         """Perform comprehensive backtest analysis."""
         if data:
             self.data = data
@@ -198,11 +355,20 @@ class BacktestAnalyzer(BaseAnalyzer):
             "btc_analysis": self.analyze_btc_performance(),
         }
 
-        if self.is_unified:
+        if hasattr(self, 'is_unified') and self.is_unified:
             if self.data.get("enable_signal_guidance"):
                 results["signal_guidance_analysis"] = self._analyze_signal_guidance()
 
         self.results = results
+
+        # Display results if requested
+        if display:
+            self.display_results(
+                results=results,
+                show_plots=show_plots,
+                save_plots=save_plots
+            )
+
         return results
 
     def _analyze_signal_guidance(self) -> SignalGuidanceAnalysisResult:
@@ -277,96 +443,142 @@ class BacktestAnalyzer(BaseAnalyzer):
             "correlation": float(correlation),
         }
 
+    def display_results(
+        self,
+        results: Optional[AnalysisResult] = None,
+        title: str = "Backtest Analysis Results",
+        show_plots: bool = True,
+        save_plots: bool = True
+    ) -> None:
+        """
+        Display analysis results using AnalysisDisplayManager.
+
+        Args:
+            results: Analysis results to display. If None, uses self.results
+            title: Title for the display
+            show_plots: Whether to display plots
+            save_plots: Whether to save plots to files
+        """
+        if results is None:
+            results = getattr(self, 'results', None)
+            if results is None:
+                logger.warning("No analysis results available to display")
+                return
+
+        # Convert analysis results to display format
+        display_data = self._convert_to_display_format(results)
+
+        # Use AnalysisDisplayManager to display results
+        self.display_manager.display_backtest_results(
+            results=display_data,
+            title=title,
+            show_plots=show_plots,
+            save_plots=save_plots
+        )
+
+    def _convert_to_display_format(self, results: AnalysisResult) -> Dict[str, Any]:
+        """
+        Convert analysis results to format expected by AnalysisDisplayManager.
+
+        Args:
+            results: Raw analysis results
+
+        Returns:
+            Formatted results for display
+        """
+        display_data = {}
+
+        # Extract key metrics from risk_metrics
+        if "risk_metrics" in results:
+            risk = results["risk_metrics"]
+            display_data.update({
+                'total_return_pct': risk.get('total_return_pct', 0),
+                'annualized_return_pct': risk.get('annualized_return_pct', 0),
+                'sharpe_ratio': risk.get('sharpe_ratio', 0),
+                'max_drawdown_pct': risk.get('max_drawdown_pct', 0),
+                'win_rate': risk.get('win_rate', 0),
+                'total_trades': risk.get('total_trades', 0),
+                'avg_trade_return_pct': risk.get('avg_trade_return_pct', 0),
+            })
+
+        # Add portfolio history if available
+        if "portfolio_history" in self.data:
+            display_data['portfolio_history'] = self.data["portfolio_history"]
+
+        # Add timestamps if available
+        if "timestamps" in self.data:
+            display_data['timestamps'] = self.data["timestamps"]
+
+        # Add monthly returns if available in temporal patterns
+        if "temporal_patterns" in results and "monthly_returns" in results["temporal_patterns"]:
+            display_data['monthly_returns'] = results["temporal_patterns"]["monthly_returns"]
+
+        # Add trade analysis if available
+        if "trading_frequency" in results:
+            trade_freq = results["trading_frequency"]
+            display_data['trade_analysis'] = {
+                'returns': trade_freq.get('trade_returns', []),
+                'durations': trade_freq.get('trade_durations', []),
+                'win_count': trade_freq.get('winning_trades', 0),
+                'loss_count': trade_freq.get('losing_trades', 0),
+                'cumulative_returns': trade_freq.get('cumulative_returns', []),
+            }
+
+        return display_data
+
     def calculate_risk_metrics(self) -> RiskMetricsResult:
-        """リスク指標を計算"""
+        """リスク指標を計算（キャッシュ活用・バッチ処理）"""
+        # キャッシュ属性の初期化（__init__未実行時の対応）
+        if not hasattr(self, '_metrics_cache'):
+            self._metrics_cache: Dict[str, Any] = {}
+            self._returns_cache: Optional[np.ndarray] = None
+            self._daily_returns_cache: Optional[np.ndarray] = None
+
+        # キャッシュチェック
+        cache_key = "risk_metrics"
+        if cache_key in self._metrics_cache:
+            return self._metrics_cache[cache_key]
+
         if "portfolio_history" not in self.data:
             return {}
 
         portfolio_values = np.array(self.data["portfolio_history"])
 
+        if len(portfolio_values) == 0:
+            return {}
+
+        if len(portfolio_values) < 2:
+            result = {
+                "total_return": 0.0,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 0.0,
+                "volatility": 0.0,
+            }
+            self._metrics_cache[cache_key] = result
+            return result
+
         # 総リターン
-        total_return = (portfolio_values[-1] - portfolio_values[0]) / portfolio_values[
-            0
-        ]
+        total_return = (portfolio_values[-1] - portfolio_values[0]) / portfolio_values[0]
 
-        # 日次リターン（分足データを日次に変換）
-        if "timestamps" in self.data:
-            timestamps = pd.to_datetime(
-                self.data["timestamps"], errors="coerce"
-            )  # Guard invalid date strings
-            valid_mask = ~pd.isna(timestamps)
-            valid_mask = np.asarray(valid_mask, dtype=bool)
-            if not valid_mask.any():
-                timestamps = pd.DatetimeIndex([])
-                filtered_values = np.array([])
-            else:
-                timestamps = timestamps[valid_mask]
-                filtered_values = portfolio_values[valid_mask]
-            daily_returns = []
-            current_day = None
-            day_start_value = None
-
-            for i, (ts, value) in enumerate(zip(timestamps, filtered_values)):
-                day = ts.date()
-                if current_day != day:
-                    if day_start_value is not None and i > 0:
-                        daily_return = (
-                            portfolio_values[i - 1] - day_start_value
-                        ) / day_start_value
-                        daily_returns.append(daily_return)
-                    current_day = day
-                    day_start_value = value
-            if day_start_value is not None and len(filtered_values) > 0:
-                daily_return = (filtered_values[-1] - day_start_value) / day_start_value
-                daily_returns.append(daily_return)
-
-            daily_returns = np.array(daily_returns)
-        else:
-            # タイムスタンプがない場合はステップごとのリターンを使用
-            step_returns = np.diff(portfolio_values) / portfolio_values[:-1]
-            # 適当に日次にグループ化（仮定: 1日=1440分）
-            steps_per_day = 1440
-            daily_returns = []
-            for i in range(0, len(step_returns), steps_per_day):
-                day_return = np.prod(1 + step_returns[i : i + steps_per_day]) - 1
-                daily_returns.append(day_return)
-            daily_returns = np.array(daily_returns)
+        # 日次リターンの計算（キャッシュ活用）
+        daily_returns = self._get_daily_returns(portfolio_values)
 
         if len(daily_returns) == 0:
-            return {
+            result = {
                 "total_return": total_return,
                 "sharpe_ratio": 0.0,
                 "max_drawdown": 0.0,
                 "volatility": 0.0,
             }
+            self._metrics_cache[cache_key] = result
+            return result
 
-        # metrics.pyの関数を使用して指標を計算
+        # バッチ計算で効率化
+        metrics_result = self._calculate_core_metrics_batch(daily_returns, portfolio_values, total_return)
 
-        # シャープレシオ
-        sharpe_ratio_value = sharpe_ratio(daily_returns)
-
-        # 最大ドローダウン
-        max_drawdown_value = max_drawdown(portfolio_values)
-
-        # ボラティリティ（年率化）
-        volatility = np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
-
-        # ソルティーノレシオ
-        sortino_ratio_value = sortino_ratio(daily_returns)
-
-        return {
-            "total_return": float(total_return),
-            "sharpe_ratio": float(sharpe_ratio_value),
-            "max_drawdown": float(max_drawdown_value),
-            "volatility": float(volatility),
-            "sortino_ratio": float(sortino_ratio_value),
-            "win_rate": float(
-                self.data.get("win_rate", 0) / 100.0
-                if self.data.get("win_rate", 0) > 1
-                else self.data.get("win_rate", 0)
-            ),
-            "profit_factor": float(self._calculate_profit_factor()),
-        }
+        # キャッシュ保存
+        self._metrics_cache[cache_key] = metrics_result
+        return metrics_result
 
     def _calculate_profit_factor(self) -> float:
         """プロフィットファクターを計算"""
@@ -395,8 +607,8 @@ class BacktestAnalyzer(BaseAnalyzer):
             "mean_return": float(np.mean(returns)),
             "median_return": float(np.median(returns)),
             "std_return": float(np.std(returns)),
-            "skewness": float(self._calculate_skewness(returns)),
-            "kurtosis": float(self._calculate_kurtosis(returns)),
+            "skewness": float(skewness(returns)),
+            "kurtosis": float(kurtosis(returns)),
             "return_percentiles": {
                 "1%": float(np.percentile(returns, 1)),
                 "5%": float(np.percentile(returns, 5)),
@@ -408,7 +620,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         }
 
         # 正規性検定
-        normality_tests = self._test_normality(returns)
+        normality_tests = test_normality(returns)
 
         # 自己相関分析
         autocorrelation = self._calculate_autocorrelation(returns, lags=20)
@@ -431,67 +643,68 @@ class BacktestAnalyzer(BaseAnalyzer):
             "statistical_tests": statistical_tests,
         }
 
-    def _calculate_skewness(self, returns: np.ndarray) -> float:
-        """歪度を計算"""
-        if len(returns) < 3:
-            return 0.0
-        mean = np.mean(returns)
-        std = np.std(returns)
-        if std == 0:
-            return 0.0
-        return np.mean(((returns - mean) / std) ** 3)
+    # Statistical functions moved to metrics module
+    # def _calculate_skewness(self, returns: np.ndarray) -> float:
+    #     """歪度を計算"""
+    #     if len(returns) < 3:
+    #         return 0.0
+    #     mean = np.mean(returns)
+    #     std = np.std(returns)
+    #     if std == 0:
+    #         return 0.0
+    #     return np.mean(((returns - mean) / std) ** 3)
 
-    def _calculate_kurtosis(self, returns: np.ndarray) -> float:
-        """尖度を計算"""
-        if len(returns) < 4:
-            return 0.0
-        mean = np.mean(returns)
-        std = np.std(returns)
-        if std == 0:
-            return 0.0
-        return np.mean(((returns - mean) / std) ** 4) - 3
+    # def _calculate_kurtosis(self, returns: np.ndarray) -> float:
+    #     """尖度を計算"""
+    #     if len(returns) < 4:
+    #         return 0.0
+    #     mean = np.mean(returns)
+    #     std = np.std(returns)
+    #     if std == 0:
+    #         return 0.0
+    #     return np.mean(((returns - mean) / std) ** 4) - 3
 
-    def _test_normality(self, returns: np.ndarray) -> NormalityTestResult:
-        """正規性検定を実行"""
-        if scipy_stats is None:
-            return {"error": "scipy not available for normality tests"}
+    # def _test_normality(self, returns: np.ndarray) -> NormalityTestResult:
+    #     """正規性検定を実行 - moved to metrics module"""
+    #     if scipy_stats is None:
+    #         return {"error": "scipy not available for normality tests"}
 
-        try:
-            stats = scipy_stats
+    #     try:
+    #         stats = scipy_stats
 
-            # Shapiro-Wilk検定
-            if len(returns) >= 3 and len(returns) <= 5000:
-                shapiro_stat, shapiro_p = stats.shapiro(returns)
-            else:
-                shapiro_stat, shapiro_p = None, None
+    #         # Shapiro-Wilk検定
+    #         if len(returns) >= 3 and len(returns) <= 5000:
+    #             shapiro_stat, shapiro_p = stats.shapiro(returns)
+    #         else:
+    #             shapiro_stat, shapiro_p = None, None
 
-            # Kolmogorov-Smirnov検定
-            ks_stat, ks_p = stats.kstest(
-                returns, "norm", args=(np.mean(returns), np.std(returns))
-            )
+    #         # Kolmogorov-Smirnov検定
+    #         ks_stat, ks_p = stats.kstest(
+    #             returns, "norm", args=(np.mean(returns), np.std(returns))
+    #         )
 
-            # Jarque-Bera検定
-            jb_stat, jb_p = stats.jarque_bera(returns)
+    #         # Jarque-Bera検定
+    #         jb_stat, jb_p = stats.jarque_bera(returns)
 
-            return {
-                "shapiro_wilk": {
-                    "statistic": float(shapiro_stat) if shapiro_stat else None,
-                    "p_value": float(shapiro_p) if shapiro_p else None,
-                    "is_normal": (shapiro_p or 0) > 0.05,
-                },
-                "kolmogorov_smirnov": {
-                    "statistic": float(ks_stat),
-                    "p_value": float(ks_p),
-                    "is_normal": ks_p > 0.05,
-                },
-                "jarque_bera": {
-                    "statistic": float(jb_stat),
-                    "p_value": float(jb_p),
-                    "is_normal": jb_p > 0.05,
-                },
-            }
-        except Exception as e:
-            return {"error": f"Normality test failed: {str(e)}"}
+    #         return {
+    #             "shapiro_wilk": {
+    #                 "statistic": float(shapiro_stat) if shapiro_stat else None,
+    #                 "p_value": float(shapiro_p) if shapiro_p else None,
+    #                 "is_normal": (shapiro_p or 0) > 0.05,
+    #             },
+    #             "kolmogorov_smirnov": {
+    #                 "statistic": float(ks_stat),
+    #                 "p_value": float(ks_p),
+    #                 "is_normal": ks_p > 0.05,
+    #             },
+    #             "jarque_bera": {
+    #                 "statistic": float(jb_stat),
+    #                 "p_value": float(jb_p),
+    #                 "is_normal": jb_p > 0.05,
+    #             },
+    #         }
+    #     except Exception as e:
+    #         return {"error": f"Normality test failed: {str(e)}"}
 
     def _calculate_autocorrelation(
         self, returns: np.ndarray, lags: int = 20
@@ -649,6 +862,68 @@ class BacktestAnalyzer(BaseAnalyzer):
             }
         except Exception as e:
             return {"error": f"Statistical tests failed: {str(e)}"}
+
+    def sharpe_ratio(self, returns: np.ndarray, risk_free_rate: float = 0.0, annualize: bool = True) -> float:
+        """シャープレシオを計算（metrics.pyの関数を使用）"""
+        if not annualize:
+            # 非年率化の場合は直接計算
+            returns = np.asarray(returns)
+            if len(returns) == 0 or np.std(returns) == 0:
+                return 0.0
+            excess_returns = returns - risk_free_rate
+            return float(np.mean(excess_returns) / np.std(returns))
+        else:
+            # 年率化の場合はmetrics.pyの関数を使用
+            return sharpe_ratio(returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR)
+
+    def max_drawdown(self, portfolio_values: np.ndarray) -> float:
+        """最大ドローダウンを計算（metrics.pyの関数を使用）"""
+        return abs(max_drawdown(portfolio_values))
+
+    def _calculate_win_rate(self) -> float:
+        """勝率を計算"""
+        # trade_pnlsがある場合はそれを使用
+        if "trade_pnls" in self.data:
+            pnls = np.array(self.data["trade_pnls"])
+            if len(pnls) == 0:
+                return 0.0
+            winning_trades = np.sum(pnls > 0)
+            total_trades = len(pnls)
+            return float(winning_trades / total_trades)
+        
+        # trades_arrayがある場合はそれを使用
+        if "trades_array" in self.data:
+            trades = self.data["trades_array"]
+            if not trades:
+                return 0.0
+            # FINAL_CLOSEを除外
+            valid_trades = [trade for trade in trades if trade.get("type") != "FINAL_CLOSE"]
+            if not valid_trades:
+                return 0.0
+            winning_trades = sum(1 for trade in valid_trades if trade.get("pnl", 0) > 0)
+            total_trades = len(valid_trades)
+            return float(winning_trades / total_trades) if total_trades > 0 else 0.0
+        
+        # winning_tradesとtotal_tradesがある場合はそれを使用
+        if "winning_trades" in self.data and "total_trades" in self.data:
+            winning_trades = self.data["winning_trades"]
+            total_trades = self.data["total_trades"]
+            return float(winning_trades / total_trades) if total_trades > 0 else 0.0
+        
+        # tradesがある場合はそれを使用
+        if "trades" in self.data:
+            trades = self.data["trades"]
+            if not trades:
+                return 0.0
+            # FINAL_CLOSEを除外
+            valid_trades = [trade for trade in trades if trade.get("type") != "FINAL_CLOSE"]
+            if not valid_trades:
+                return 0.0
+            winning_trades = sum(1 for trade in valid_trades if trade.get("pnl", 0) > 0)
+            total_trades = len(valid_trades)
+            return float(winning_trades / total_trades) if total_trades > 0 else 0.0
+        
+        return 0.0
 
     def analyze_temporal_patterns(self) -> TemporalPatternsResult:
         """時間帯別の分析"""
@@ -2106,8 +2381,8 @@ class BacktestAnalyzer(BaseAnalyzer):
             return 0.0
 
         # シャープレシオと勝率の変動係数を計算
-        sharpe_cv = _calculate_coefficient_of_variation(sharpe_ratios)
-        win_rate_cv = _calculate_coefficient_of_variation(win_rates)
+        sharpe_cv = coefficient_of_variation(sharpe_ratios)
+        win_rate_cv = coefficient_of_variation(win_rates)
 
         # 一貫性スコア（低い変動係数 = 高い一貫性）
         consistency_score = 1 / (1 + sharpe_cv + win_rate_cv)
@@ -2124,7 +2399,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             hourly_sharpes = [m.get("sharpe_ratio", 0) for m in hourly.values() if m]
             if len(hourly_sharpes) > 1:
                 seasonal_scores.append(
-                    1 / (1 + _calculate_coefficient_of_variation(hourly_sharpes))
+                    1 / (1 + coefficient_of_variation(hourly_sharpes))
                 )
 
         # 曜日別一貫性
@@ -2132,7 +2407,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             weekday_sharpes = [m.get("sharpe_ratio", 0) for m in weekday.values() if m]
             if len(weekday_sharpes) > 1:
                 seasonal_scores.append(
-                    1 / (1 + _calculate_coefficient_of_variation(weekday_sharpes))
+                    1 / (1 + coefficient_of_variation(weekday_sharpes))
                 )
 
         # 月別一貫性
@@ -2140,7 +2415,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             monthly_sharpes = [m.get("sharpe_ratio", 0) for m in monthly.values() if m]
             if len(monthly_sharpes) > 1:
                 seasonal_scores.append(
-                    1 / (1 + _calculate_coefficient_of_variation(monthly_sharpes))
+                    1 / (1 + coefficient_of_variation(monthly_sharpes))
                 )
 
         return np.mean(seasonal_scores) if seasonal_scores else 0.0
@@ -2463,7 +2738,7 @@ class BacktestAnalyzer(BaseAnalyzer):
                     "sharpe_ratio": float(sharpe_ratio(window_returns)),
                     "consistency_score": float(
                         1.0
-                        / (1.0 + _calculate_coefficient_of_variation(window_returns))
+                        / (1.0 + coefficient_of_variation(window_returns))
                     ),
                 }
 
