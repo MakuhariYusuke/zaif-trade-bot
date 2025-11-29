@@ -10,17 +10,18 @@ from typing import Any, List, Optional
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
+from ztb.metrics.metrics import kurtosis, skewness
 from ztb.trading.constants import (
     MULTIPLIER_INDEX_BUY,
-    MULTIPLIER_INDEX_SELL,
     MULTIPLIER_INDEX_HOLD,
+    MULTIPLIER_INDEX_SELL,
     SAC_CONTINUOUS_THRESHOLD,
     SAC_CONTINUOUS_THRESHOLD_NEG,
     get_action_count_index,
 )
 from ztb.trading.environment.constants import continuous_to_discrete_action
-from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
 from ztb.training.constants import ENV_EVAL_FREQUENCY
+from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
 
 
@@ -160,7 +161,9 @@ class TrainingProgressCallback(BaseCallback):
 
                             # Collect reward_components if available for AB analysis
                             if "reward_components" in info:
-                                self.reward_components_history.append(info["reward_components"].copy())
+                                self.reward_components_history.append(
+                                    info["reward_components"].copy()
+                                )
 
                             # Compact INFO log with key metrics (every 10 steps to reduce verbosity)
                             if self.n_calls % 10 == 0:
@@ -306,12 +309,14 @@ class TrainingProgressCallback(BaseCallback):
                 current_metrics = {}
                 if hasattr(self.model, "logger") and self.model.logger:
                     logger_values = getattr(self.model.logger, "name_to_value", {})
-                    current_metrics.update({
-                        "actor_loss": logger_values.get("train/actor_loss"),
-                        "critic_loss": logger_values.get("train/critic_loss"),
-                        "ent_coef": logger_values.get("train/ent_coef"),
-                        "learning_rate": logger_values.get("train/learning_rate"),
-                    })
+                    current_metrics.update(
+                        {
+                            "actor_loss": logger_values.get("train/actor_loss"),
+                            "critic_loss": logger_values.get("train/critic_loss"),
+                            "ent_coef": logger_values.get("train/ent_coef"),
+                            "learning_rate": logger_values.get("train/learning_rate"),
+                        }
+                    )
 
                 # Save checkpoint with current training state
                 self.checkpoint_manager.save(
@@ -321,14 +326,16 @@ class TrainingProgressCallback(BaseCallback):
                     extra={
                         "training_time": time.time() - self.start_time,
                         "episodes_completed": len(self.episode_rewards),
-                    }
+                    },
                 )
 
                 if self.verbose > 0:
                     logging.info(f"Checkpoint saved at step {self.n_calls}")
 
             except Exception as e:
-                logging.warning(f"Failed to save checkpoint at step {self.n_calls}: {e}")
+                logging.warning(
+                    f"Failed to save checkpoint at step {self.n_calls}: {e}"
+                )
 
         return True
 
@@ -414,14 +421,25 @@ class TrainingProgressCallback(BaseCallback):
                 if hasattr(self, "trainer_ref") and self.trainer_ref:
                     # Trainer config may specify eval frequency
                     try:
-                        total_steps = int(self.trainer_ref.config.get("training", {}).get("total_timesteps", 0))
-                        eval_freq = int(self.trainer_ref.config.get("training", {}).get("eval_freq", ENV_EVAL_FREQUENCY))
+                        total_steps = int(
+                            self.trainer_ref.config.get("training", {}).get(
+                                "total_timesteps", 0
+                            )
+                        )
+                        eval_freq = int(
+                            self.trainer_ref.config.get("training", {}).get(
+                                "eval_freq", ENV_EVAL_FREQUENCY
+                            )
+                        )
                     except Exception:
                         total_steps = 0
                         eval_freq = ENV_EVAL_FREQUENCY
 
                     if eval_freq and self.n_calls % eval_freq == 0:
-                        stats = {"action_distribution": action_dist, "step": self.n_calls}
+                        stats = {
+                            "action_distribution": action_dist,
+                            "step": self.n_calls,
+                        }
                         # Add reward component debugging info when present in env info
                         try:
                             infos = self.locals.get("infos")
@@ -431,7 +449,11 @@ class TrainingProgressCallback(BaseCallback):
                                 components = {}
                                 for k, v in info.items():
                                     # only include reward-related metrics to keep reports compact
-                                    if k.endswith("_penalty") or k.endswith("_shaping") or k == "action_bonus":
+                                    if (
+                                        k.endswith("_penalty")
+                                        or k.endswith("_shaping")
+                                        or k == "action_bonus"
+                                    ):
                                         components[k] = v
                                 if components:
                                     stats["reward_components"] = components
@@ -440,7 +462,9 @@ class TrainingProgressCallback(BaseCallback):
                             pass
                         reporter = getattr(self.trainer_ref, "reporter", None)
                         if reporter and hasattr(reporter, "log_training_progress"):
-                            reporter.log_training_progress(self.n_calls, total_steps, stats)
+                            reporter.log_training_progress(
+                                self.n_calls, total_steps, stats
+                            )
             except Exception as e:
                 logging.debug(f"Failed to record action_distribution to reporter: {e}")
 
@@ -542,9 +566,15 @@ class TrainingProgressCallback(BaseCallback):
                 for regime, counts in self.regime_action_counts.items():
                     total_regime_actions = sum(counts)
                     if total_regime_actions > 0:
-                        buy_pct = counts[MULTIPLIER_INDEX_BUY] / total_regime_actions * 100
-                        sell_pct = counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
-                        hold_pct = counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
+                        buy_pct = (
+                            counts[MULTIPLIER_INDEX_BUY] / total_regime_actions * 100
+                        )
+                        sell_pct = (
+                            counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
+                        )
+                        hold_pct = (
+                            counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
+                        )
                         regime_info.append(
                             f"{regime}: H{hold_pct:.1f}%/B{buy_pct:.1f}%/S{sell_pct:.1f}%"
                         )
@@ -817,28 +847,22 @@ class TrainingProgressCallback(BaseCallback):
                 )
                 hist = hist[hist > 0]
                 action_entropy = -np.sum(hist * np.log(hist)) if len(hist) > 0 else 0
-                skewness = (
-                    np.mean(((all_continuous - mean_action) / std_action) ** 3)
-                    if std_action > 0
-                    else 0
-                )
-                kurtosis = (
-                    np.mean(((all_continuous - mean_action) / std_action) ** 4) - 3
-                    if std_action > 0
-                    else 0
-                )
+                skewness_val = skewness(all_continuous)
+                kurtosis_val = kurtosis(all_continuous)
 
                 logging.warning(
                     "  Distribution Shape - Entropy: %.4f, Skewness: %.4f, Kurtosis: %.4f",
                     action_entropy,
-                    skewness,
-                    kurtosis,
+                    skewness_val,
+                    kurtosis_val,
                 )
 
         # Log reward statistics
         if self.reward_history:
             rewards = np.array(self.reward_history)
-            logging.warning("Final Reward Statistics (Total: %d rewards):", len(rewards))
+            logging.warning(
+                "Final Reward Statistics (Total: %d rewards):", len(rewards)
+            )
             logging.warning(
                 "  Mean: %.4f, Std: %.4f, Min: %.4f, Max: %.4f",
                 np.mean(rewards),
@@ -863,8 +887,12 @@ class TrainingProgressCallback(BaseCallback):
                 total_regime_actions = sum(counts)
                 if total_regime_actions > 0:
                     buy_pct = counts[MULTIPLIER_INDEX_BUY] / total_regime_actions * 100
-                    sell_pct = counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
-                    hold_pct = counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
+                    sell_pct = (
+                        counts[MULTIPLIER_INDEX_SELL] / total_regime_actions * 100
+                    )
+                    hold_pct = (
+                        counts[MULTIPLIER_INDEX_HOLD] / total_regime_actions * 100
+                    )
                     logging.warning(
                         "  %s: BUY %.1f%% (%d), SELL %.1f%% (%d), HOLD %.1f%% (%d)",
                         regime,

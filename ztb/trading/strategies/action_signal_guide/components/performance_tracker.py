@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import pandas as pd
 
+from ztb.metrics.metrics import skewness
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IPerformanceTracker
@@ -520,7 +521,7 @@ class PerformanceTracker(IPerformanceTracker):
             "mean_sac_action": float(sac_actions.mean()),
             "std_sac_action": float(sac_actions.std()),
             "sac_action_range": [float(sac_actions.min()), float(sac_actions.max())],
-            "sac_action_skewness": float(sac_actions.skew()),
+            "sac_action_skewness": float(skewness(sac_actions)),
             "strong_buy_signals": int((sac_actions > 0.7).sum()),
             "strong_sell_signals": int((sac_actions < -0.7).sum()),
         }

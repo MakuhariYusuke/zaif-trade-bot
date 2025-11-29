@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from ztb.metrics.metrics import kurtosis, skewness, test_normality
+
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -142,18 +144,21 @@ class DataQualityAssurance:
         try:
             # 正規性の検定 (Shapiro-Wilk)
             if len(close_prices) <= 5000:  # Shapiro-Wilkの制限
-                stat, p_value = stats.shapiro(close_prices)
+                normality_results = test_normality(close_prices.values)
+                shapiro_result = normality_results.get("shapiro_wilk", {})
+                stat = shapiro_result.get("statistic")
+                p_value = shapiro_result.get("p_value")
                 stats_check["price_distribution"]["normality_test"] = {
                     "statistic": stat,
                     "p_value": p_value,
-                    "is_normal": p_value > 0.05,
+                    "is_normal": p_value is not None and p_value > 0.05,
                 }
 
             # 歪度と尖度
-            skewness = close_prices.skew()
-            kurtosis = close_prices.kurtosis()
-            stats_check["price_distribution"]["skewness"] = skewness
-            stats_check["price_distribution"]["kurtosis"] = kurtosis
+            skewness_val = skewness(close_prices)
+            kurtosis_val = kurtosis(close_prices)
+            stats_check["price_distribution"]["skewness"] = skewness_val
+            stats_check["price_distribution"]["kurtosis"] = kurtosis_val
 
             # 現実的な範囲チェック
             reasonable_skew = abs(skewness) < 2.0  # 過度な歪みなし
