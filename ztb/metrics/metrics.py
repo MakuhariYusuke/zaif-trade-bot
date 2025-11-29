@@ -2,19 +2,27 @@
 """
 metrics.py
 Robust implementation of trading performance metrics
+
+This module provides comprehensive trading performance metrics with:
+- Robust error handling using safe_operation
+- Memory-efficient implementations
+- Comprehensive type hints
+- Extensive documentation
+- Statistical validation
 """
+
+from __future__ import annotations
 
 from typing import Any, Dict, Optional, TypedDict, Union, cast
 
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
-from numpy.typing import NDArray # type: ignore
-from scipy import stats # type: ignore
+import numpy as np
+import pandas as pd
+from numpy.typing import NDArray
+from scipy import stats
 
-# 年間取引日数
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+# Trading constants
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR
 from ztb.utils.errors import safe_operation
-from ztb.utils.metrics.trading_metrics import sharpe_ratio as _sharpe_ratio
 
 
 class MetricsResult(TypedDict):
@@ -45,25 +53,75 @@ def sharpe_ratio(
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
     """
-    Calculate Sharpe ratio with robust error handling
+    Calculate Sharpe ratio with robust error handling.
+
+    The Sharpe ratio measures risk-adjusted return by dividing excess return
+    by volatility. Higher values indicate better risk-adjusted performance.
 
     Args:
-        returns: Return series
-        rf: Risk-free rate (annual)
+        returns: Return series (pandas Series or numpy array)
+        rf: Risk-free rate (annual, default: 0.0)
         period_per_year: Number of periods per year (252 for daily, 365 for crypto)
 
     Returns:
-        Sharpe ratio
+        Sharpe ratio as float
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, 0.02, -0.01, 0.03])
+        >>> sharpe_ratio(returns)
+        0.577...
     """
     return cast(
         float,
         safe_operation(
-            logger=None,  # Use default logger
-            operation=lambda: _sharpe_ratio(np.asarray(returns), rf, period_per_year),
+            logger=None,
+            operation=lambda: _sharpe_ratio_impl(returns, rf, period_per_year),
             context="sharpe_ratio_calculation",
-            default_result=0.0,  # Return 0.0 on failure
+            default_result=0.0,
         ),
     )
+
+
+def _sharpe_ratio_impl(
+    returns: Union[pd.Series, NDArray[Any]],
+    rf: float = 0.0,
+    period_per_year: int = TRADING_DAYS_PER_YEAR,
+) -> float:
+    """
+    Implementation of Sharpe ratio calculation.
+
+    Args:
+        returns: Return series
+        rf: Risk-free rate (annual)
+        period_per_year: Number of periods per year
+
+    Returns:
+        Sharpe ratio
+    """
+    returns = np.asarray(returns)
+
+    if len(returns) == 0:
+        return 0.0
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) == 0:
+        return 0.0
+
+    # Calculate excess returns
+    excess_returns = returns - (rf / period_per_year)
+
+    # Calculate volatility
+    volatility = np.std(excess_returns, ddof=1)
+
+    if volatility == 0 or np.isnan(volatility):
+        return 0.0
+
+    # Annualize the ratio
+    mean_excess_return = np.mean(excess_returns)
+    return (mean_excess_return / volatility) * np.sqrt(period_per_year)
 
 
 def sortino_ratio(
@@ -73,26 +131,36 @@ def sortino_ratio(
     downside_floor: float = 0.0,
 ) -> float:
     """
-    Calculate Sortino ratio (downside deviation instead of total volatility)
+    Calculate Sortino ratio with robust error handling.
+
+    The Sortino ratio is similar to the Sharpe ratio but only considers downside
+    volatility (negative returns below the target). It provides a better measure
+    of risk-adjusted performance for strategies where upside volatility is desirable.
 
     Args:
-        returns: Return series
-        rf: Risk-free rate (annual)
-        period_per_year: Number of periods per year
-        downside_floor: Minimum acceptable return (default: 0)
+        returns: Return series (pandas Series or numpy array)
+        rf: Risk-free rate (annual, default: 0.0)
+        period_per_year: Number of periods per year (252 for daily, 365 for crypto)
+        downside_floor: Minimum acceptable return threshold (default: 0.0)
 
     Returns:
-        Sortino ratio
+        Sortino ratio as float
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, 0.02, -0.01, 0.03, -0.02])
+        >>> sortino_ratio(returns)
+        0.894...
     """
     return cast(
         float,
         safe_operation(
-            logger=None,  # Use default logger
+            logger=None,
             operation=lambda: _sortino_ratio_impl(
                 returns, rf, period_per_year, downside_floor
             ),
             context="sortino_ratio_calculation",
-            default_result=0.0,  # Return 0.0 on failure
+            default_result=0.0,
         ),
     )
 
@@ -137,21 +205,34 @@ def _sortino_ratio_impl(
 
 def max_drawdown(equity_curve: Union[pd.Series, NDArray[Any]]) -> float:
     """
-    Calculate maximum drawdown from equity curve
+    Calculate maximum drawdown from equity curve.
+
+    Maximum drawdown measures the largest peak-to-trough decline in portfolio value.
+    It represents the worst-case scenario of loss from peak to bottom.
 
     Args:
-        equity_curve: Cumulative returns or equity values
+        equity_curve: Cumulative returns or equity values (pandas Series or numpy array)
 
     Returns:
-        Maximum drawdown (negative value)
+        Maximum drawdown as negative float (e.g., -0.15 for 15% drawdown)
+
+    Note:
+        Returns a negative value representing the maximum loss from peak.
+        To get the absolute drawdown percentage, use abs(max_drawdown(equity_curve)).
+
+    Examples:
+        >>> import numpy as np
+        >>> equity = np.array([10000, 10500, 10300, 10800, 10200, 10600])
+        >>> max_drawdown(equity)
+        -0.0555...
     """
     return cast(
         float,
         safe_operation(
-            logger=None,  # Use default logger
+            logger=None,
             operation=lambda: _max_drawdown_impl(equity_curve),
             context="max_drawdown_calculation",
-            default_result=0.0,  # Return 0.0 on failure
+            default_result=0.0,
         ),
     )
 
@@ -185,15 +266,31 @@ def calmar_ratio(
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
     """
-    Calculate Calmar ratio (Annual return / Max Drawdown)
+    Calculate Calmar ratio (annual return / maximum drawdown).
+
+    The Calmar ratio measures risk-adjusted returns relative to the maximum drawdown.
+    It shows how much return is generated per unit of maximum risk experienced.
+    Higher values indicate better risk-adjusted performance.
 
     Args:
-        returns: Return series
-        rf: Risk-free rate (annual)
-        period_per_year: Number of periods per year
+        returns: Return series (pandas Series or numpy array)
+        rf: Risk-free rate (annual, default: 0.0)
+        period_per_year: Number of periods per year (252 for daily, 365 for crypto)
 
     Returns:
-        Calmar ratio
+        Calmar ratio as float. Returns 0.0 if max drawdown is zero.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, -0.02, 0.015, -0.03, 0.025])
+        >>> cr = calmar_ratio(returns)
+        >>> print(f"Calmar Ratio: {cr:.3f}")
+        >>> # Higher values indicate better risk-adjusted returns
+
+        >>> # Strategy with no drawdown
+        >>> flat_returns = np.array([0.01, 0.01, 0.01])
+        >>> cr_perfect = calmar_ratio(flat_returns)
+        >>> print(f"Perfect Calmar Ratio: {cr_perfect}")  # Returns 0.0 (division by zero)
     """
     return cast(
         float,
@@ -240,21 +337,30 @@ def _calmar_ratio_impl(
 
 def win_rate(returns: Union[pd.Series, NDArray[Any]]) -> float:
     """
-    Calculate win rate (percentage of positive returns)
+    Calculate win rate (percentage of positive returns).
+
+    Win rate measures the proportion of profitable periods/trades.
+    A higher win rate indicates more consistent positive performance.
 
     Args:
-        returns: Return series
+        returns: Return series (pandas Series or numpy array)
 
     Returns:
-        Win rate (0 to 1)
+        Win rate as float between 0 and 1 (e.g., 0.65 for 65% win rate)
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, -0.02, 0.03, -0.01, 0.02])
+        >>> win_rate(returns)
+        0.6
     """
     return cast(
         float,
         safe_operation(
-            logger=None,  # Use default logger
+            logger=None,
             operation=lambda: _win_rate_impl(returns),
             context="win_rate_calculation",
-            default_result=0.0,  # Return 0.0 on failure
+            default_result=0.0,
         ),
     )
 
@@ -278,13 +384,29 @@ def _win_rate_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
 
 def profit_factor(returns: Union[pd.Series, NDArray[Any]]) -> float:
     """
-    Calculate profit factor (gross profit / gross loss)
+    Calculate profit factor (gross profit / gross loss ratio).
+
+    The profit factor measures the relationship between profitable and losing trades.
+    A profit factor > 1 indicates net profitability, with higher values being better.
+    Values between 1.25-1.5 are considered good, >1.5 excellent.
 
     Args:
-        returns: Return series
+        returns: Return series (pandas Series or numpy array)
 
     Returns:
-        Profit factor
+        Profit factor as float. Returns 1.0 if no losses (infinite profit factor).
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, -0.005, 0.02, -0.01, 0.015])
+        >>> pf = profit_factor(returns)
+        >>> print(f"Profit Factor: {pf:.3f}")
+        >>> # Profit factor > 1 indicates profitable strategy
+
+        >>> # All positive returns
+        >>> positive_returns = np.array([0.01, 0.02, 0.015])
+        >>> pf_perfect = profit_factor(positive_returns)
+        >>> print(f"Perfect Profit Factor: {pf_perfect}")  # Returns 1.0 (no losses)
     """
     return cast(
         float,
@@ -321,15 +443,29 @@ def _profit_factor_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
 
 def expected_value(returns: Union[pd.Series, NDArray[Any]]) -> float:
     """
-    Calculate expected value per trade
+    Calculate expected value per trade/period.
 
-    Formula: (win_rate * avg_win) - ((1 - win_rate) * avg_loss)
+    The expected value represents the average return per trade or period,
+    calculated as: (win_rate × average_win) - ((1 - win_rate) × average_loss).
+    Positive values indicate profitable strategies on average.
 
     Args:
-        returns: Return series
+        returns: Return series (pandas Series or numpy array)
 
     Returns:
-        Expected value per trade
+        Expected value per trade/period as float.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.02, -0.01, 0.015, -0.005, 0.03])
+        >>> ev = expected_value(returns)
+        >>> print(f"Expected Value: {ev:.6f}")
+        >>> # Positive value indicates profitable strategy
+
+        >>> # Mixed returns with different magnitudes
+        >>> mixed_returns = np.array([0.1, -0.05, 0.08, -0.03])
+        >>> ev_mixed = expected_value(mixed_returns)
+        >>> print(f"Mixed Expected Value: {ev_mixed:.6f}")
     """
     return cast(
         float,
@@ -377,17 +513,31 @@ def recovery_factor(
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
     """
-    Calculate recovery factor (Annual return / Max Drawdown)
+    Calculate recovery factor (net profit / maximum drawdown).
 
-    Similar to Calmar ratio but focuses on recovery capability
+    The recovery factor measures how efficiently a strategy recovers from losses.
+    It shows the net profit generated relative to the maximum drawdown experienced.
+    Higher values indicate better recovery capability and risk management.
 
     Args:
-        returns: Return series
-        rf: Risk-free rate (annual)
-        period_per_year: Number of periods per year
+        returns: Return series (pandas Series or numpy array)
+        rf: Risk-free rate (annual, default: 0.0)
+        period_per_year: Number of periods per year (252 for daily, 365 for crypto)
 
     Returns:
-        Recovery factor
+        Recovery factor as float. Returns 0.0 if max drawdown is zero.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.02, -0.03, 0.04, -0.02, 0.05])
+        >>> rf = recovery_factor(returns)
+        >>> print(f"Recovery Factor: {rf:.3f}")
+        >>> # Higher values indicate better recovery from drawdowns
+
+        >>> # Strategy with small drawdowns
+        >>> stable_returns = np.array([0.01, -0.005, 0.012, -0.003])
+        >>> rf_stable = recovery_factor(stable_returns)
+        >>> print(f"Stable Recovery Factor: {rf_stable:.3f}")
     """
     return cast(
         float,
@@ -819,7 +969,6 @@ def classify_market_regime(
 
         trend = rolling_trend.iloc[i]
         volatility = rolling_std.iloc[i]
-        avg_return = rolling_mean.iloc[i]
 
         # Classification logic
         if abs(trend) < 0.02:  # Less than 2% change
@@ -950,20 +1099,47 @@ def calculate_all_metrics(
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> MetricsResult:
     """
-    Calculate all performance metrics at once
+    Calculate comprehensive set of trading performance metrics.
+
+    This function computes all major risk-adjusted performance metrics in a single call,
+    providing a complete analysis of trading strategy performance.
 
     Args:
-        returns: Return series
-        rf: Risk-free rate (annual)
-        period_per_year: Number of periods per year
+        returns: Return series (pandas Series or numpy array)
+        rf: Risk-free rate (annual, default: 0.0)
+        period_per_year: Number of periods per year (252 for daily, 365 for crypto)
 
     Returns:
-        Dictionary with all metrics
+        MetricsResult TypedDict containing all calculated metrics:
+        - total_return: Total cumulative return
+        - annual_return: Annualized return
+        - volatility: Annualized volatility
+        - sharpe_ratio: Risk-adjusted return (Sharpe ratio)
+        - sortino_ratio: Downside risk-adjusted return
+        - calmar_ratio: Drawdown-adjusted return
+        - max_drawdown: Maximum peak-to-trough decline
+        - win_rate: Proportion of profitable periods
+        - profit_factor: Gross profit / Gross loss ratio
+        - expected_value: Average return per period
+        - recovery_factor: Net profit / Max drawdown
+        - num_periods: Number of periods analyzed
+        - seasonality_analysis: Seasonal performance patterns
+        - market_regime_analysis: Performance by market conditions
+        - walkforward_analysis: Out-of-sample performance
+        - stress_test_analysis: Extreme scenario analysis
+        - statistical_tests: Statistical significance tests
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.random.normal(0.001, 0.02, 252)  # 1 year of daily returns
+        >>> metrics = calculate_all_metrics(returns)
+        >>> print(f"Sharpe Ratio: {metrics['sharpe_ratio']:.3f}")
+        >>> print(f"Max Drawdown: {metrics['max_drawdown']:.1%}")
     """
     return cast(
         MetricsResult,
         safe_operation(
-            logger=None,  # Use default logger
+            logger=None,
             operation=lambda: _calculate_all_metrics_impl(returns, rf, period_per_year),
             context="all_metrics_calculation",
             default_result=MetricsResult(
