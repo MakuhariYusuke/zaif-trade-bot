@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import gc
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, overload
@@ -19,8 +19,8 @@ from typing import Any, Dict, Optional, Union, overload
 import numpy as np
 import pandas as pd
 
-from ztb.analysis.unified_analyze import BaseAnalyzer
 from ztb.analysis.reporting.display_manager import AnalysisDisplayManager
+from ztb.analysis.unified_analyze import BaseAnalyzer
 from ztb.data.btc_data_augmentation import BTCBiasDetector
 from ztb.metrics.metrics import (
     autocorrelation,
@@ -36,13 +36,13 @@ from ztb.metrics.metrics import (
     skewness,
     sortino_ratio,
     test_normality,
-    win_rate,
 )
-from ztb.trading.constants import (
-    TRADING_DAYS_PER_YEAR,  # = 252
-    ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import (
+    BYTES_PER_MB,
+    continuous_to_discrete_action,
 )
-from ztb.trading.environment.constants import BYTES_PER_MB, continuous_to_discrete_action
 from ztb.types.common import AnalysisData
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.memory_utils import temporary_array
@@ -53,12 +53,10 @@ from ztb.utils.trading_metrics import action_distribution
 from .backtest_analysis_types import (
     ActionAveragesResult,
     AnalysisResult,
-    AutocorrelationResult,
     BTCPerformanceResult,
     CorrelationAnalysisResult,
     MarketConditionResult,
     MicrostructureAnalysisResult,
-    NormalityTestResult,
     PerformanceMetricsResult,
     RiskAdjustedMetricsResult,
     RiskMetricsResult,
@@ -131,7 +129,7 @@ class BacktestAnalyzer(BaseAnalyzer):
     def _get_daily_returns(self, portfolio_values: np.ndarray) -> np.ndarray:
         """日次リターンをメモリ効率的に計算・キャッシュ"""
         # キャッシュ属性の初期化（__init__未実行時の対応）
-        if not hasattr(self, '_daily_returns_cache'):
+        if not hasattr(self, "_daily_returns_cache"):
             self._daily_returns_cache: Optional[np.ndarray] = None
 
         # キャッシュチェック
@@ -140,7 +138,9 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         if "timestamps" not in self.data:
             # タイムスタンプがない場合はステップごとのリターンを使用
-            with temporary_array(np.diff(portfolio_values) / portfolio_values[:-1]) as step_returns:
+            with temporary_array(
+                np.diff(portfolio_values) / portfolio_values[:-1]
+            ) as step_returns:
                 # 適当に日次にグループ化（仮定: 1日=1440分）
                 steps_per_day = 1440
                 daily_returns = []
@@ -150,9 +150,7 @@ class BacktestAnalyzer(BaseAnalyzer):
                 result = np.array(daily_returns)
         else:
             # タイムスタンプがある場合は時間帯別にグループ化
-            timestamps = pd.to_datetime(
-                self.data["timestamps"], errors="coerce"
-            )
+            timestamps = pd.to_datetime(self.data["timestamps"], errors="coerce")
             valid_mask = ~pd.isna(timestamps)
             valid_mask = np.asarray(valid_mask, dtype=bool)
 
@@ -178,7 +176,9 @@ class BacktestAnalyzer(BaseAnalyzer):
                             current_day = day
                             day_start_value = value
                     if day_start_value is not None and len(filtered_values) > 0:
-                        daily_return = (filtered_values[-1] - day_start_value) / day_start_value
+                        daily_return = (
+                            filtered_values[-1] - day_start_value
+                        ) / day_start_value
                         daily_returns_list.append(daily_return)
 
                     result = np.array(daily_returns_list)
@@ -189,10 +189,19 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return result
 
-    def _calculate_core_metrics_batch(self, daily_returns: np.ndarray, portfolio_values: np.ndarray, total_return: float) -> RiskMetricsResult:
+    def _calculate_core_metrics_batch(
+        self,
+        daily_returns: np.ndarray,
+        portfolio_values: np.ndarray,
+        total_return: float,
+    ) -> RiskMetricsResult:
         """コア指標をバッチ計算（並列処理・メモリ効率）"""
         # 基本的な指標計算
-        volatility = np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR) if len(daily_returns) > 0 else 0.0
+        volatility = (
+            np.std(daily_returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
+            if len(daily_returns) > 0
+            else 0.0
+        )
 
         # 並列計算で効率化
         metrics_results = {}
@@ -201,11 +210,11 @@ class BacktestAnalyzer(BaseAnalyzer):
         with ThreadPoolExecutor(max_workers=4) as executor:
             # 各指標の計算を並列実行
             futures = {
-                'sharpe_ratio': executor.submit(sharpe_ratio, daily_returns),
-                'max_drawdown': executor.submit(max_drawdown, portfolio_values),
-                'sortino_ratio': executor.submit(sortino_ratio, daily_returns),
-                'win_rate': executor.submit(self._calculate_win_rate),
-                'profit_factor': executor.submit(self._calculate_profit_factor),
+                "sharpe_ratio": executor.submit(sharpe_ratio, daily_returns),
+                "max_drawdown": executor.submit(max_drawdown, portfolio_values),
+                "sortino_ratio": executor.submit(sortino_ratio, daily_returns),
+                "win_rate": executor.submit(self._calculate_win_rate),
+                "profit_factor": executor.submit(self._calculate_profit_factor),
             }
 
             # 結果を収集
@@ -217,16 +226,16 @@ class BacktestAnalyzer(BaseAnalyzer):
                     metrics_results[metric_name] = 0.0
 
         # max_drawdownは正の値に変換
-        metrics_results['max_drawdown'] = abs(metrics_results['max_drawdown'])
+        metrics_results["max_drawdown"] = abs(metrics_results["max_drawdown"])
 
         return {
             "total_return": float(total_return),
-            "sharpe_ratio": float(metrics_results['sharpe_ratio']),
-            "max_drawdown": float(metrics_results['max_drawdown']),
+            "sharpe_ratio": float(metrics_results["sharpe_ratio"]),
+            "max_drawdown": float(metrics_results["max_drawdown"]),
             "volatility": float(volatility),
-            "sortino_ratio": float(metrics_results['sortino_ratio']),
-            "win_rate": float(metrics_results['win_rate']),
-            "profit_factor": float(metrics_results['profit_factor']),
+            "sortino_ratio": float(metrics_results["sortino_ratio"]),
+            "win_rate": float(metrics_results["win_rate"]),
+            "profit_factor": float(metrics_results["profit_factor"]),
         }
 
     def _check_cache_memory_usage(self) -> None:
@@ -241,7 +250,9 @@ class BacktestAnalyzer(BaseAnalyzer):
 
             # しきい値を超えたら古いキャッシュをクリア
             if cache_memory_mb > self._cache_cleanup_threshold:
-                logger.info(f"Cache memory usage ({cache_memory_mb:.1f}MB) exceeds threshold, clearing cache")
+                logger.info(
+                    f"Cache memory usage ({cache_memory_mb:.1f}MB) exceeds threshold, clearing cache"
+                )
                 self._clear_metrics_cache()
 
         except Exception as e:
@@ -340,7 +351,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         data: Optional[AnalysisData] = None,
         display: bool = False,
         show_plots: bool = True,
-        save_plots: bool = True
+        save_plots: bool = True,
     ) -> AnalysisResult:
         """Perform comprehensive backtest analysis."""
         if data:
@@ -355,7 +366,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             "btc_analysis": self.analyze_btc_performance(),
         }
 
-        if hasattr(self, 'is_unified') and self.is_unified:
+        if hasattr(self, "is_unified") and self.is_unified:
             if self.data.get("enable_signal_guidance"):
                 results["signal_guidance_analysis"] = self._analyze_signal_guidance()
 
@@ -364,9 +375,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         # Display results if requested
         if display:
             self.display_results(
-                results=results,
-                show_plots=show_plots,
-                save_plots=save_plots
+                results=results, show_plots=show_plots, save_plots=save_plots
             )
 
         return results
@@ -448,7 +457,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         results: Optional[AnalysisResult] = None,
         title: str = "Backtest Analysis Results",
         show_plots: bool = True,
-        save_plots: bool = True
+        save_plots: bool = True,
     ) -> None:
         """
         Display analysis results using AnalysisDisplayManager.
@@ -460,7 +469,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             save_plots: Whether to save plots to files
         """
         if results is None:
-            results = getattr(self, 'results', None)
+            results = getattr(self, "results", None)
             if results is None:
                 logger.warning("No analysis results available to display")
                 return
@@ -473,7 +482,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             results=display_data,
             title=title,
             show_plots=show_plots,
-            save_plots=save_plots
+            save_plots=save_plots,
         )
 
     def _convert_to_display_format(self, results: AnalysisResult) -> Dict[str, Any]:
@@ -491,37 +500,44 @@ class BacktestAnalyzer(BaseAnalyzer):
         # Extract key metrics from risk_metrics
         if "risk_metrics" in results:
             risk = results["risk_metrics"]
-            display_data.update({
-                'total_return_pct': risk.get('total_return_pct', 0),
-                'annualized_return_pct': risk.get('annualized_return_pct', 0),
-                'sharpe_ratio': risk.get('sharpe_ratio', 0),
-                'max_drawdown_pct': risk.get('max_drawdown_pct', 0),
-                'win_rate': risk.get('win_rate', 0),
-                'total_trades': risk.get('total_trades', 0),
-                'avg_trade_return_pct': risk.get('avg_trade_return_pct', 0),
-            })
+            display_data.update(
+                {
+                    "total_return_pct": risk.get("total_return_pct", 0),
+                    "annualized_return_pct": risk.get("annualized_return_pct", 0),
+                    "sharpe_ratio": risk.get("sharpe_ratio", 0),
+                    "max_drawdown_pct": risk.get("max_drawdown_pct", 0),
+                    "win_rate": risk.get("win_rate", 0),
+                    "total_trades": risk.get("total_trades", 0),
+                    "avg_trade_return_pct": risk.get("avg_trade_return_pct", 0),
+                }
+            )
 
         # Add portfolio history if available
         if "portfolio_history" in self.data:
-            display_data['portfolio_history'] = self.data["portfolio_history"]
+            display_data["portfolio_history"] = self.data["portfolio_history"]
 
         # Add timestamps if available
         if "timestamps" in self.data:
-            display_data['timestamps'] = self.data["timestamps"]
+            display_data["timestamps"] = self.data["timestamps"]
 
         # Add monthly returns if available in temporal patterns
-        if "temporal_patterns" in results and "monthly_returns" in results["temporal_patterns"]:
-            display_data['monthly_returns'] = results["temporal_patterns"]["monthly_returns"]
+        if (
+            "temporal_patterns" in results
+            and "monthly_returns" in results["temporal_patterns"]
+        ):
+            display_data["monthly_returns"] = results["temporal_patterns"][
+                "monthly_returns"
+            ]
 
         # Add trade analysis if available
         if "trading_frequency" in results:
             trade_freq = results["trading_frequency"]
-            display_data['trade_analysis'] = {
-                'returns': trade_freq.get('trade_returns', []),
-                'durations': trade_freq.get('trade_durations', []),
-                'win_count': trade_freq.get('winning_trades', 0),
-                'loss_count': trade_freq.get('losing_trades', 0),
-                'cumulative_returns': trade_freq.get('cumulative_returns', []),
+            display_data["trade_analysis"] = {
+                "returns": trade_freq.get("trade_returns", []),
+                "durations": trade_freq.get("trade_durations", []),
+                "win_count": trade_freq.get("winning_trades", 0),
+                "loss_count": trade_freq.get("losing_trades", 0),
+                "cumulative_returns": trade_freq.get("cumulative_returns", []),
             }
 
         return display_data
@@ -529,7 +545,7 @@ class BacktestAnalyzer(BaseAnalyzer):
     def calculate_risk_metrics(self) -> RiskMetricsResult:
         """リスク指標を計算（キャッシュ活用・バッチ処理）"""
         # キャッシュ属性の初期化（__init__未実行時の対応）
-        if not hasattr(self, '_metrics_cache'):
+        if not hasattr(self, "_metrics_cache"):
             self._metrics_cache: Dict[str, Any] = {}
             self._returns_cache: Optional[np.ndarray] = None
             self._daily_returns_cache: Optional[np.ndarray] = None
@@ -558,7 +574,9 @@ class BacktestAnalyzer(BaseAnalyzer):
             return result
 
         # 総リターン
-        total_return = (portfolio_values[-1] - portfolio_values[0]) / portfolio_values[0]
+        total_return = (portfolio_values[-1] - portfolio_values[0]) / portfolio_values[
+            0
+        ]
 
         # 日次リターンの計算（キャッシュ活用）
         daily_returns = self._get_daily_returns(portfolio_values)
@@ -574,7 +592,9 @@ class BacktestAnalyzer(BaseAnalyzer):
             return result
 
         # バッチ計算で効率化
-        metrics_result = self._calculate_core_metrics_batch(daily_returns, portfolio_values, total_return)
+        metrics_result = self._calculate_core_metrics_batch(
+            daily_returns, portfolio_values, total_return
+        )
 
         # キャッシュ保存
         self._metrics_cache[cache_key] = metrics_result
@@ -623,7 +643,29 @@ class BacktestAnalyzer(BaseAnalyzer):
         normality_tests = test_normality(returns)
 
         # 自己相関分析
-        autocorrelation = self._calculate_autocorrelation(returns, lags=20)
+        autocorr = {}
+        for lag in range(1, min(21, len(returns))):
+            autocorr[f"lag_{lag}"] = autocorrelation(returns, lag=lag)
+
+        if scipy_stats is not None:
+            try:
+                lb_stat, lb_p = scipy_stats.acorr_ljungbox(
+                    returns, lags=[20], return_df=False
+                )
+                ljung_box = {
+                    "statistic": float(lb_stat[0]),
+                    "p_value": float(lb_p[0]),
+                    "no_autocorrelation": lb_p[0] > 0.05,
+                }
+            except Exception:
+                ljung_box = {"error": "Ljung-Box test failed"}
+        else:
+            ljung_box = {"error": "scipy not available for Ljung-Box test"}
+
+        autocorrelation_result = {
+            "autocorrelations": autocorr,
+            "ljung_box_test": ljung_box,
+        }
 
         # ボラティリティ・クラスタリング分析
         volatility_clustering = self._analyze_volatility_clustering(returns)
@@ -637,7 +679,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         return {
             "distribution_analysis": distribution_stats,
             "normality_tests": normality_tests,
-            "autocorrelation": autocorrelation,
+            "autocorrelation": autocorrelation_result,
             "volatility_clustering": volatility_clustering,
             "risk_adjusted_metrics": risk_adjusted_metrics,
             "statistical_tests": statistical_tests,
@@ -705,35 +747,6 @@ class BacktestAnalyzer(BaseAnalyzer):
     #         }
     #     except Exception as e:
     #         return {"error": f"Normality test failed: {str(e)}"}
-
-    def _calculate_autocorrelation(
-        self, returns: np.ndarray, lags: int = 20
-    ) -> AutocorrelationResult:
-        """自己相関を計算"""
-        try:
-            autocorr = {}
-            for lag in range(1, min(lags + 1, len(returns))):
-                corr = np.corrcoef(returns[:-lag], returns[lag:])[0, 1]
-                autocorr[f"lag_{lag}"] = float(corr) if not np.isnan(corr) else 0.0
-
-            if scipy_stats is not None:
-                try:
-                    lb_stat, lb_p = scipy_stats.acorr_ljungbox(
-                        returns, lags=[lags], return_df=False
-                    )
-                    ljung_box = {
-                        "statistic": float(lb_stat[0]),
-                        "p_value": float(lb_p[0]),
-                        "no_autocorrelation": lb_p[0] > 0.05,
-                    }
-                except Exception:
-                    ljung_box = {"error": "Ljung-Box test failed"}
-            else:
-                ljung_box = {"error": "scipy not available for Ljung-Box test"}
-
-            return {"autocorrelations": autocorr, "ljung_box_test": ljung_box}
-        except Exception as e:
-            return {"error": f"Autocorrelation calculation failed: {str(e)}"}
 
     def _analyze_volatility_clustering(
         self, returns: np.ndarray
@@ -863,7 +876,9 @@ class BacktestAnalyzer(BaseAnalyzer):
         except Exception as e:
             return {"error": f"Statistical tests failed: {str(e)}"}
 
-    def sharpe_ratio(self, returns: np.ndarray, risk_free_rate: float = 0.0, annualize: bool = True) -> float:
+    def sharpe_ratio(
+        self, returns: np.ndarray, risk_free_rate: float = 0.0, annualize: bool = True
+    ) -> float:
         """シャープレシオを計算（metrics.pyの関数を使用）"""
         if not annualize:
             # 非年率化の場合は直接計算
@@ -874,7 +889,9 @@ class BacktestAnalyzer(BaseAnalyzer):
             return float(np.mean(excess_returns) / np.std(returns))
         else:
             # 年率化の場合はmetrics.pyの関数を使用
-            return sharpe_ratio(returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR)
+            return sharpe_ratio(
+                returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
+            )
 
     def max_drawdown(self, portfolio_values: np.ndarray) -> float:
         """最大ドローダウンを計算（metrics.pyの関数を使用）"""
@@ -890,39 +907,43 @@ class BacktestAnalyzer(BaseAnalyzer):
             winning_trades = np.sum(pnls > 0)
             total_trades = len(pnls)
             return float(winning_trades / total_trades)
-        
+
         # trades_arrayがある場合はそれを使用
         if "trades_array" in self.data:
             trades = self.data["trades_array"]
             if not trades:
                 return 0.0
             # FINAL_CLOSEを除外
-            valid_trades = [trade for trade in trades if trade.get("type") != "FINAL_CLOSE"]
+            valid_trades = [
+                trade for trade in trades if trade.get("type") != "FINAL_CLOSE"
+            ]
             if not valid_trades:
                 return 0.0
             winning_trades = sum(1 for trade in valid_trades if trade.get("pnl", 0) > 0)
             total_trades = len(valid_trades)
             return float(winning_trades / total_trades) if total_trades > 0 else 0.0
-        
+
         # winning_tradesとtotal_tradesがある場合はそれを使用
         if "winning_trades" in self.data and "total_trades" in self.data:
             winning_trades = self.data["winning_trades"]
             total_trades = self.data["total_trades"]
             return float(winning_trades / total_trades) if total_trades > 0 else 0.0
-        
+
         # tradesがある場合はそれを使用
         if "trades" in self.data:
             trades = self.data["trades"]
             if not trades:
                 return 0.0
             # FINAL_CLOSEを除外
-            valid_trades = [trade for trade in trades if trade.get("type") != "FINAL_CLOSE"]
+            valid_trades = [
+                trade for trade in trades if trade.get("type") != "FINAL_CLOSE"
+            ]
             if not valid_trades:
                 return 0.0
             winning_trades = sum(1 for trade in valid_trades if trade.get("pnl", 0) > 0)
             total_trades = len(valid_trades)
             return float(winning_trades / total_trades) if total_trades > 0 else 0.0
-        
+
         return 0.0
 
     def analyze_temporal_patterns(self) -> TemporalPatternsResult:
@@ -2737,8 +2758,7 @@ class BacktestAnalyzer(BaseAnalyzer):
                     "volatility": float(np.std(window_returns)),
                     "sharpe_ratio": float(sharpe_ratio(window_returns)),
                     "consistency_score": float(
-                        1.0
-                        / (1.0 + coefficient_of_variation(window_returns))
+                        1.0 / (1.0 + coefficient_of_variation(window_returns))
                     ),
                 }
 
@@ -2839,7 +2859,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         # 4. 市場参加者の行動パターン
         if len(actions) > 10:
             # アクションの自己相関（慣性効果）
-            action_autocorr = float(np.corrcoef(actions[:-1], actions[1:])[0, 1])
+            action_autocorr = autocorrelation(actions, lag=1)
             microstructure_analysis["behavioral_patterns"] = {
                 "action_autocorrelation": action_autocorr,
                 "momentum_effect": action_autocorr,  # 慣性の強さ

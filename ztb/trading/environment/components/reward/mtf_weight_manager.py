@@ -1,5 +1,7 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import math
+import threading
+import time
 
 class MTFWeightManager:
     """
@@ -16,9 +18,57 @@ class MTFWeightManager:
         self._weights = {"1min": 0.30, "5min": 0.55, "15min": 0.15}
         self._min_weights = {"1min": 0.10, "5min": 0.10, "15min": 0.01}
         self._max_weights = {"1min": 0.50, "5min": 0.80, "15min": 0.50}
+        # telemetry for last applied candidate
+        self._last_applied_candidate: Optional[str] = None
+        self._last_applied_ts: Optional[float] = None
+        # lock for atomic updates
+        self._lock = threading.Lock()
 
     def get_weights(self) -> Dict[str, float]:
         return dict(self._weights)
+
+    def get_last_applied_info(self) -> Tuple[Optional[str], Optional[float]]:
+        """Return (candidate_id, timestamp) of last applied candidate, if any."""
+        return self._last_applied_candidate, self._last_applied_ts
+
+    def set_weights(self, weights: Dict[str, float]) -> bool:
+        """Atomically set new weights.
+
+        Accepts a dict of weights and optional `_candidate_id` key which will be used
+        for telemetry. Returns True on success else False.
+        """
+        # Validate weights
+        if not isinstance(weights, dict) or not weights:
+            return False
+        # Extract candidate_id if present
+        candidate_id = None
+        try:
+            candidate_id = weights.pop("_candidate_id", None)
+        except Exception:
+            candidate_id = None
+
+        with self._lock:
+            try:
+                # enforce min/max and normalize
+                total = 0.0
+                new_w = {}
+                for tf in self._weights.keys():
+                    val = float(weights.get(tf, 0.0))
+                    val = max(self._min_weights.get(tf, 0.0), val)
+                    val = min(self._max_weights.get(tf, 1.0), val)
+                    new_w[tf] = val
+                    total += val
+                if total <= 0:
+                    return False
+                for tf in new_w:
+                    new_w[tf] = new_w[tf] / total
+                # assign and set telemetry
+                self._weights = new_w
+                self._last_applied_candidate = candidate_id
+                self._last_applied_ts = time.time()
+                return True
+            except Exception:
+                return False
 
     def update(self, step: int, metrics: Optional[Dict[str, Any]] = None) -> None:
         """Conservative update rule for MTF weights.

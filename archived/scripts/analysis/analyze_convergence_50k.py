@@ -16,11 +16,21 @@ from typing import List, Tuple
 
 import numpy as np
 
+from ztb.metrics.metrics import coefficient_of_variation
 from ztb.utils.system_utils import check_library_availability, safe_import
 
 # TensorBoard の利用可能性チェックとインポート
-TENSORBOARD_AVAILABLE = check_library_availability("tensorboard.backend.event_processing", "TensorBoard event processing")
-event_accumulator = safe_import("tensorboard.backend.event_processing.event_accumulator", "TensorBoard event accumulator") if TENSORBOARD_AVAILABLE else None
+TENSORBOARD_AVAILABLE = check_library_availability(
+    "tensorboard.backend.event_processing", "TensorBoard event processing"
+)
+event_accumulator = (
+    safe_import(
+        "tensorboard.backend.event_processing.event_accumulator",
+        "TensorBoard event accumulator",
+    )
+    if TENSORBOARD_AVAILABLE
+    else None
+)
 
 
 def extract_scalar_from_tensorboard(log_dir: Path, tag: str) -> List[Tuple[int, float]]:
@@ -69,15 +79,6 @@ def mann_kendall_test(data: np.ndarray) -> Tuple[float, float, bool]:
     except Exception as e:
         print(f"⚠️ Mann-Kendall test failed: {e}")
         return 0.0, 0.0, False
-
-
-def coefficient_of_variation(data: np.ndarray) -> float:
-    """変動係数 (CV) 計算"""
-    mean = np.mean(data)
-    std = np.std(data)
-    if mean == 0:
-        return float("inf")
-    return std / abs(mean)
 
 
 def find_convergence_point(
