@@ -7,6 +7,7 @@ dynamic progression and emergency intervention capabilities.
 
 from collections import deque
 from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -16,18 +17,18 @@ from ztb.utils.logging_utils import get_logger
 class BalanceCurriculumManager:
     """
     Manages dynamic curriculum progression for balance-focused training.
-    
+
     Features:
     - Automatic stage progression based on performance metrics
     - Emergency revert to forced_balance on bias collapse
     - Integration with existing RewardCalculator curriculum_stage system
     - Backward compatible (can be disabled for v447-style static stages)
-    
+
     Stage Progression:
     1. forced_balance: Enforce action balance until stable
     2. balanced_transition: Gradual introduction of profit-based rewards
     3. pnl_focused: Optimize for profitability while maintaining balance
-    
+
     Emergency Conditions:
     - BUY-SELL deviation > 35%: Revert to forced_balance
     - Sustained negative rewards: Increase balance enforcement
@@ -51,7 +52,7 @@ class BalanceCurriculumManager:
     ):
         """
         Initialize BalanceCurriculumManager.
-        
+
         Args:
             config: Environment configuration
             enabled: Enable dynamic curriculum (False for v447 compatibility)
@@ -63,31 +64,35 @@ class BalanceCurriculumManager:
         self.auto_progression = auto_progression
         self.emergency_revert = emergency_revert
         self.logger = get_logger(self.__class__.__name__)
-        
+
         # Initialize current stage from config, fallback to forced_balance if None
-        self.current_stage = getattr(config, "curriculum_stage", None) or "forced_balance"
+        self.current_stage = (
+            getattr(config, "curriculum_stage", None) or "forced_balance"
+        )
         self.stage_start_step = 0
         self.total_steps = 0
-        
+
         # Stage history for analysis
         self.stage_history: List[Dict[str, Any]] = []
-        
+
         # Metrics tracking
         self.recent_rewards = deque(maxlen=100)
         self.stage_rewards = deque(maxlen=50)
-        
+        # listeners for external stage change handling
+        self.stage_change_listeners: List[callable] = []
+
         # Stage progression conditions (can be overridden by config)
         self.stage_conditions = self._initialize_stage_conditions()
-        
+
         # Emergency state
         self.emergency_count = 0
         self.max_emergency_reverts = 3
-        
+
         self.logger.info(
             f"BalanceCurriculumManager initialized: enabled={enabled}, "
             f"auto_progression={auto_progression}, initial_stage={self.current_stage}"
         )
-    
+
     def _initialize_stage_conditions(self) -> Dict[str, Dict[str, Any]]:
         """Initialize default stage progression conditions."""
         return {
@@ -116,7 +121,7 @@ class BalanceCurriculumManager:
                 "sharpe_threshold": 0.8,
             },
         }
-    
+
     def update(
         self,
         step: int,
@@ -126,13 +131,13 @@ class BalanceCurriculumManager:
     ) -> Dict[str, Any]:
         """
         Update curriculum state and check for stage progression or emergency.
-        
+
         Args:
             step: Current training step
             action_counts: [HOLD, BUY, SELL] action counts
             recent_rewards: Recent episode rewards
             portfolio_values: Portfolio value history (optional)
-        
+
         Returns:
             Dictionary with curriculum status and any changes:
             {
@@ -145,18 +150,18 @@ class BalanceCurriculumManager:
         """
         if not self.enabled:
             return {"stage": self.current_stage, "changed": False, "emergency": False}
-        
+
         self.total_steps = step
         previous_stage = self.current_stage
         stage_changed = False
         emergency_triggered = False
-        
+
         # Update metrics
         if recent_rewards:
             for reward in recent_rewards:
                 self.recent_rewards.append(reward)
                 self.stage_rewards.append(reward)
-        
+
         # 1. Check emergency conditions first
         if self.emergency_revert and self.emergency_count < self.max_emergency_reverts:
             emergency_triggered = self._check_emergency(action_counts)
@@ -167,7 +172,7 @@ class BalanceCurriculumManager:
                     f"🚨 Emergency {self.emergency_count}/{self.max_emergency_reverts}: "
                     f"Reverted to forced_balance"
                 )
-        
+
         # 2. Check stage progression (only if no emergency and auto_progression enabled)
         if (
             not emergency_triggered
@@ -178,7 +183,7 @@ class BalanceCurriculumManager:
             if next_stage and next_stage != self.current_stage:
                 self._progress_to_stage(next_stage, step)
                 stage_changed = True
-        
+
         # 3. Compile status
         status = {
             "stage": self.current_stage,
@@ -189,37 +194,37 @@ class BalanceCurriculumManager:
             "total_steps": self.total_steps,
             "emergency_count": self.emergency_count,
         }
-        
+
         if stage_changed:
             self.logger.info(
                 f"Stage transition: {previous_stage} -> {self.current_stage} "
                 f"(step {step}, emergency={emergency_triggered})"
             )
-        
+
         return status
-    
+
     def _check_emergency(self, action_counts: List[int]) -> bool:
         """
         Check if emergency conditions require reverting to forced_balance.
-        
+
         Emergency triggers:
         - BUY-SELL deviation > 35%
         - Sustained negative rewards with bias
-        
+
         Returns:
             True if emergency revert occurred
         """
         if self.current_stage == "forced_balance":
             return False  # Already at safest stage
-        
+
         total_actions = sum(action_counts)
         if total_actions < 50:
             return False  # Not enough data
-        
+
         buy_ratio = action_counts[1] / total_actions
         sell_ratio = action_counts[2] / total_actions
         buy_sell_diff = abs(buy_ratio - sell_ratio)
-        
+
         # Emergency condition: extreme bias
         if buy_sell_diff > 0.35:
             self.logger.warning(
@@ -228,7 +233,7 @@ class BalanceCurriculumManager:
             )
             self._revert_to_forced_balance()
             return True
-        
+
         # Secondary emergency: sustained negative rewards with moderate bias
         if (
             len(self.recent_rewards) >= 20
@@ -241,9 +246,9 @@ class BalanceCurriculumManager:
             )
             self._revert_to_forced_balance()
             return True
-        
+
         return False
-    
+
     def _should_progress(
         self,
         step: int,
@@ -252,91 +257,94 @@ class BalanceCurriculumManager:
     ) -> bool:
         """
         Check if current stage conditions are met for progression.
-        
+
         Returns:
             True if ready to progress to next stage
         """
         steps_in_stage = step - self.stage_start_step
         conditions = self.stage_conditions.get(self.current_stage)
-        
+
         if not conditions:
             return False  # No progression rules for current stage
-        
+
         # Minimum steps requirement
         if steps_in_stage < conditions.get("min_steps", 100):
             return False
-        
+
         # Stage-specific checks
         if self.current_stage == "forced_balance":
             return self._check_forced_balance_completion(action_counts)
-        
+
         elif self.current_stage == "balanced_transition":
             return self._check_balanced_transition_completion(action_counts)
-        
+
         elif self.current_stage == "pnl_focused":
             return self._check_pnl_focused_completion(action_counts, portfolio_values)
-        
+
         return False
-    
+
     def _check_forced_balance_completion(self, action_counts: List[int]) -> bool:
         """Check if forced_balance stage is ready to progress."""
         conditions = self.stage_conditions["forced_balance"]
         total_actions = sum(action_counts)
-        
+
         if total_actions < 100:
             return False
-        
+
         buy_ratio = action_counts[1] / total_actions
         sell_ratio = action_counts[2] / total_actions
         buy_sell_diff = abs(buy_ratio - sell_ratio)
-        
+
         # Check balance threshold
         balance_met = buy_sell_diff < conditions["balance_threshold"]
-        
+
         # Check sustained balance (using recent stage rewards as proxy)
-        recent_stage_rewards = list(self.stage_rewards)[-20:] if len(self.stage_rewards) >= 20 else []
-        sustained_positive = (
-            len(recent_stage_rewards) >= 10
-            and np.mean(recent_stage_rewards) > 0.0
+        recent_stage_rewards = (
+            list(self.stage_rewards)[-20:] if len(self.stage_rewards) >= 20 else []
         )
-        
+        sustained_positive = (
+            len(recent_stage_rewards) >= 10 and np.mean(recent_stage_rewards) > 0.0
+        )
+
         if balance_met and sustained_positive:
             self.logger.info(
                 f"Forced balance conditions met: BUY-SELL diff={buy_sell_diff:.1%}, "
                 f"avg_reward={np.mean(recent_stage_rewards):.2f}"
             )
             return True
-        
+
         return False
-    
+
     def _check_balanced_transition_completion(self, action_counts: List[int]) -> bool:
         """Check if balanced_transition stage is ready to progress."""
         conditions = self.stage_conditions["balanced_transition"]
-        
+
         if len(self.stage_rewards) < 30:
             return False
-        
+
         avg_reward = np.mean(list(self.stage_rewards)[-30:])
-        
+
         # Check average reward threshold
         reward_met = avg_reward >= conditions.get("avg_reward_threshold", 0.0)
-        
+
         # Check balance (more lenient than forced_balance)
         total_actions = sum(action_counts)
         if total_actions >= 100:
-            buy_sell_diff = abs(action_counts[1] / total_actions - action_counts[2] / total_actions)
+            buy_sell_diff = abs(
+                action_counts[1] / total_actions - action_counts[2] / total_actions
+            )
             balance_ok = buy_sell_diff < conditions.get("balance_threshold", 0.20)
         else:
             balance_ok = True  # Not enough data to judge
-        
+
         if reward_met and balance_ok:
             self.logger.info(
                 f"Balanced transition conditions met: avg_reward={avg_reward:.2f}"
             )
             return True
-        
+
         return False
-    
+
     def _check_pnl_focused_completion(
         self,
         action_counts: List[int],
@@ -344,13 +352,13 @@ class BalanceCurriculumManager:
     ) -> bool:
         """Check if pnl_focused stage is ready to progress."""
         conditions = self.stage_conditions["pnl_focused"]
-        
+
         if len(self.stage_rewards) < 50:
             return False
-        
+
         avg_reward = np.mean(list(self.stage_rewards)[-50:])
         reward_met = avg_reward >= conditions.get("avg_reward_threshold", 2.0)
-        
+
         # Calculate Sharpe ratio if enough data
         sharpe_ok = True
         if len(self.stage_rewards) >= 30:
@@ -358,15 +366,13 @@ class BalanceCurriculumManager:
             if np.std(rewards_array) > 0:
                 sharpe = np.mean(rewards_array) / np.std(rewards_array)
                 sharpe_ok = sharpe >= conditions.get("sharpe_threshold", 0.5)
-        
+
         if reward_met and sharpe_ok:
-            self.logger.info(
-                f"PnL focused conditions met: avg_reward={avg_reward:.2f}"
-            )
+            self.logger.info(f"PnL focused conditions met: avg_reward={avg_reward:.2f}")
             return True
-        
+
         return False
-    
+
     def _get_next_stage(self) -> Optional[str]:
         """Get the next stage in progression sequence."""
         try:
@@ -377,49 +383,78 @@ class BalanceCurriculumManager:
             # Current stage not in sequence
             pass
         return None
-    
+
     def _progress_to_stage(self, next_stage: str, step: int):
         """Progress to the specified stage."""
         previous_stage = self.current_stage
-        
+
         # Record stage history
-        self.stage_history.append({
-            "stage": previous_stage,
-            "start_step": self.stage_start_step,
-            "end_step": step,
-            "duration": step - self.stage_start_step,
-            "avg_reward": np.mean(list(self.stage_rewards)) if self.stage_rewards else 0.0,
-        })
-        
+        self.stage_history.append(
+            {
+                "stage": previous_stage,
+                "start_step": self.stage_start_step,
+                "end_step": step,
+                "duration": step - self.stage_start_step,
+                "avg_reward": np.mean(list(self.stage_rewards))
+                if self.stage_rewards
+                else 0.0,
+            }
+        )
+
         # Update stage
         self.current_stage = next_stage
         self.stage_start_step = step
         self.stage_rewards.clear()
-        
+
         self.logger.info(
             f"✨ Progressed from {previous_stage} to {next_stage} at step {step}"
         )
-    
+        # Notify listeners about the stage change
+        event = {
+            "previous_stage": previous_stage,
+            "new_stage": next_stage,
+            "step": step,
+            "emergency": False,
+        }
+        for ls in list(self.stage_change_listeners):
+            try:
+                ls(event)
+            except Exception:
+                self.logger.exception("Stage change listener error")
+
     def _revert_to_forced_balance(self):
         """Emergency revert to forced_balance stage."""
         if self.current_stage != "forced_balance":
+            previous_stage = self.current_stage
             self.current_stage = "forced_balance"
             self.stage_start_step = self.total_steps
             self.stage_rewards.clear()
-    
+            # Notify listeners about emergency revert
+            event = {
+                "previous_stage": previous_stage,
+                "new_stage": "forced_balance",
+                "step": self.total_steps,
+                "emergency": True,
+            }
+            for ls in list(self.stage_change_listeners):
+                try:
+                    ls(event)
+                except Exception:
+                    self.logger.exception("Stage change listener error")
+
     def get_current_stage(self) -> str:
         """
         Get current curriculum stage for RewardCalculator.
-        
+
         Returns:
             Current stage name (e.g., "forced_balance")
         """
         return self.current_stage
-    
+
     def get_stage_info(self) -> Dict[str, Any]:
         """
         Get detailed information about current curriculum state.
-        
+
         Returns:
             Dictionary with stage info, metrics, and history
         """
@@ -437,7 +472,7 @@ class BalanceCurriculumManager:
             "enabled": self.enabled,
             "auto_progression": self.auto_progression,
         }
-    
+
     def reset(self):
         """Reset curriculum state for new episode/training run."""
         self.recent_rewards.clear()
@@ -447,3 +482,19 @@ class BalanceCurriculumManager:
         self.stage_start_step = 0
         self.total_steps = 0
         self.emergency_count = 0
+
+    def add_stage_change_listener(self, callback: callable) -> None:
+        """Register a stage-change listener callable.
+
+        The callback will be invoked with a dict event containing keys:
+        - previous_stage: str
+        - new_stage: str
+        - step: int
+        - emergency: bool
+        """
+        try:
+            if not callable(callback):
+                return
+            self.stage_change_listeners.append(callback)
+        except Exception:
+            self.logger.exception("Failed to add stage change listener")

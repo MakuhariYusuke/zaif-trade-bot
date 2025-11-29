@@ -7,10 +7,7 @@ including performance measurement, cross-validation, and result analysis.
 
 from typing import Any, Callable, Dict, List, Optional
 
-from ztb.training.reward_function_optimizer.constants import (
-    DEFAULT_EVALUATION_EPISODES,
-    MAX_EVALUATION_EPISODES,
-)
+from ztb.metrics.metrics import coefficient_of_variation
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -59,7 +56,9 @@ class EvaluationEngine:
             all_results = []
 
             for i, condition in enumerate(market_conditions):
-                self.logger.debug(f"Evaluating condition {i + 1}/{len(market_conditions)}")
+                self.logger.debug(
+                    f"Evaluating condition {i + 1}/{len(market_conditions)}"
+                )
 
                 # Merge config with market condition
                 eval_config = {**config, **condition}
@@ -84,7 +83,9 @@ class EvaluationEngine:
 
             self.evaluation_history.append(evaluation_record)
 
-            self.logger.info(f"Configuration evaluation completed. Score: {aggregated_results.get('mean_score', 'N/A')}")
+            self.logger.info(
+                f"Configuration evaluation completed. Score: {aggregated_results.get('mean_score', 'N/A')}"
+            )
             return aggregated_results
 
         except Exception as e:
@@ -138,7 +139,9 @@ class EvaluationEngine:
 
             self.evaluation_history.append(cv_record)
 
-            self.logger.info(f"Cross-validation completed. CV score: {cv_results.get('mean_score', 'N/A')}")
+            self.logger.info(
+                f"Cross-validation completed. CV score: {cv_results.get('mean_score', 'N/A')}"
+            )
             return cv_results
 
         except Exception as e:
@@ -182,7 +185,9 @@ class EvaluationEngine:
 
             # Perform statistical testing if requested
             if statistical_test and len(comparison_results) > 1:
-                statistical_results = self._perform_statistical_testing(comparison_results)
+                statistical_results = self._perform_statistical_testing(
+                    comparison_results
+                )
             else:
                 statistical_results = {}
 
@@ -194,7 +199,9 @@ class EvaluationEngine:
                 "timestamp": self._get_timestamp(),
             }
 
-            self.logger.info(f"Configuration comparison completed. Best score: {comparison_results[0].get('mean_score', 'N/A') if comparison_results else 'N/A'}")
+            self.logger.info(
+                f"Configuration comparison completed. Best score: {comparison_results[0].get('mean_score', 'N/A') if comparison_results else 'N/A'}"
+            )
             return comparison_summary
 
         except Exception as e:
@@ -227,7 +234,9 @@ class EvaluationEngine:
 
             # Add additional metrics if available
             for metric_name in ["profit", "sharpe_ratio", "win_rate", "max_drawdown"]:
-                metric_values = [r.get(metric_name) for r in results if metric_name in r]
+                metric_values = [
+                    r.get(metric_name) for r in results if metric_name in r
+                ]
                 if metric_values:
                     aggregated[f"mean_{metric_name}"] = float(np.mean(metric_values))
                     aggregated[f"std_{metric_name}"] = float(np.std(metric_values))
@@ -238,7 +247,9 @@ class EvaluationEngine:
             self.logger.error(f"Failed to aggregate results: {e}")
             return {"error": f"Aggregation failed: {e}"}
 
-    def _calculate_cv_statistics(self, fold_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_cv_statistics(
+        self, fold_results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Calculate cross-validation statistics."""
         try:
             if not fold_results:
@@ -262,10 +273,7 @@ class EvaluationEngine:
             }
 
             # Coefficient of variation
-            if cv_stats["cv_mean_score"] != 0:
-                cv_stats["cv_coefficient_of_variation"] = cv_stats["cv_std_score"] / abs(cv_stats["cv_mean_score"])
-            else:
-                cv_stats["cv_coefficient_of_variation"] = float('inf')
+            cv_stats["cv_coefficient_of_variation"] = coefficient_of_variation(scores)
 
             return cv_stats
 
@@ -273,15 +281,21 @@ class EvaluationEngine:
             self.logger.error(f"Failed to calculate CV statistics: {e}")
             return {"error": f"CV statistics calculation failed: {e}"}
 
-    def _perform_statistical_testing(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _perform_statistical_testing(
+        self, results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """Perform statistical significance testing between configurations."""
         try:
             if len(results) < 2:
-                return {"error": "Need at least 2 configurations for statistical testing"}
+                return {
+                    "error": "Need at least 2 configurations for statistical testing"
+                }
 
             # Simple t-test between best and second best
             best_scores = results[0].get("scores", [])
-            second_best_scores = results[1].get("scores", []) if len(results) > 1 else []
+            second_best_scores = (
+                results[1].get("scores", []) if len(results) > 1 else []
+            )
 
             if not best_scores or not second_best_scores:
                 return {"error": "Insufficient score data for statistical testing"}
@@ -314,6 +328,7 @@ class EvaluationEngine:
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
         from datetime import datetime
+
         return datetime.now().isoformat()
 
     def get_evaluation_history(self) -> List[Dict[str, Any]]:

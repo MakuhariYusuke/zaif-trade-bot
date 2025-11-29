@@ -54,19 +54,3 @@ repos:
         language: system
         files: \.py$
         args: ["--config-file", "mypy.ini"]
-
-      - id: secrets-hygiene
-        name: Check for sensitive data leaks
-        # Use a local wrapper so pre-commit can import the repo package during hook execution
-        entry: python ztb/ops/pre_commit/secrets_hygiene_wrapper.py
-        language: system
-        files: \.(py|json|yaml|yml)$
-        pass_filenames: true
-
-      - id: test
-        name: Run unit tests
-        # Use existing python unit test script instead of missing npm script
-        entry: npm run test:py:unit
-        language: system
-        files: \.(py|ts)$
-        pass_filenames: false

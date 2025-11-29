@@ -8,10 +8,10 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 # Local wrappers below import implementations on demand to keep runtime
 # import costs low and to avoid name collisions/redefinitions in this module.
+from ztb.metrics.metrics import kurtosis, skewness, test_normality
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import get_project_root
 
@@ -176,17 +176,19 @@ def analyze_feature_distributions(
             print(f"  最大値: {desc['max']:.2f}")
 
             # 歪度と尖度
-            skewness = data.skew()
-            kurtosis = data.kurtosis()
-            print(f"  歪度: {skewness:.4f}")  # type: ignore[str-bytes-safe]
-            print(f"  尖度: {kurtosis:.4f}")  # type: ignore[str-bytes-safe]
+            skewness_val = skewness(data)
+            kurtosis_val = kurtosis(data)
+            print(f"  歪度: {skewness_val:.4f}")  # type: ignore[str-bytes-safe]
+            print(f"  尖度: {kurtosis_val:.4f}")  # type: ignore[str-bytes-safe]
 
             # 正規性検定
             if len(data) >= 3 and len(data) <= 5000:  # Shapiro-Wilk検定の公式推奨範囲
                 sample_size = len(data)
-                _, p_value = stats.shapiro(
-                    data.sample(sample_size, random_state=42, replace=False)
+                normality_results = test_normality(
+                    data.sample(sample_size, random_state=42, replace=False).values
                 )
+                shapiro_result = normality_results.get("shapiro_wilk", {})
+                p_value = shapiro_result.get("p_value")
                 print(
                     f"  正規性検定 p値: {p_value:.6f} ({'正規分布' if p_value > 0.05 else '非正規分布'})"
                 )
