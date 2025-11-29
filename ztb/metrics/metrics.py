@@ -1406,3 +1406,297 @@ def _perform_statistical_tests_impl(
         "mean_b": float(mean_b),
         "effect_size": float(effect_size),
     }
+
+
+def coefficient_of_variation(
+    values: Union[pd.Series, NDArray[Any]],
+) -> float:
+    """
+    Calculate coefficient of variation (CV).
+
+    The coefficient of variation is a standardized measure of dispersion
+    of a probability distribution or frequency distribution. It is defined
+    as the ratio of the standard deviation to the mean.
+
+    Args:
+        values: Array of values (pandas Series or numpy array)
+
+    Returns:
+        Coefficient of variation as float. Returns 0.0 if mean is zero.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, 0.02, -0.01, 0.03])
+        >>> cv = coefficient_of_variation(returns)
+        >>> print(f"Coefficient of Variation: {cv:.4f}")
+        >>> # Lower values indicate more consistent performance
+    """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _coefficient_of_variation_impl(values),
+        context="coefficient_of_variation_calculation",
+        default_result=0.0,
+    )
+
+
+def _coefficient_of_variation_impl(values: Union[pd.Series, NDArray[Any]]) -> float:
+    """Implementation of coefficient of variation calculation."""
+    values = np.asarray(values)
+
+    if len(values) == 0:
+        return 0.0
+
+    # Remove NaN values
+    values = values[~np.isnan(values)]
+
+    if len(values) == 0:
+        return 0.0
+
+    mean_val = np.mean(values)
+    if mean_val == 0:
+        return 0.0
+
+    std_val = np.std(values, ddof=1) if len(values) > 1 else 0.0
+    return float(std_val / abs(mean_val))
+
+
+def skewness(
+    returns: Union[pd.Series, NDArray[Any]],
+) -> float:
+    """
+    Calculate skewness of returns distribution.
+
+    Skewness measures the asymmetry of the probability distribution.
+    Positive skewness indicates a distribution with an asymmetric tail
+    extending towards positive values. Negative skewness indicates a
+    distribution with an asymmetric tail extending towards negative values.
+
+    Args:
+        returns: Return series (pandas Series or numpy array)
+
+    Returns:
+        Skewness as float. Returns 0.0 for insufficient data.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, 0.02, -0.01, 0.03, -0.02])
+        >>> skew = skewness(returns)
+        >>> print(f"Skewness: {skew:.4f}")
+        >>> # Positive skewness indicates upside potential
+    """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _skewness_impl(returns),
+        context="skewness_calculation",
+        default_result=0.0,
+    )
+
+
+def _skewness_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
+    """Implementation of skewness calculation."""
+    returns = np.asarray(returns)
+
+    if len(returns) < 3:
+        return 0.0
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) < 3:
+        return 0.0
+
+    return float(stats.skew(returns))
+
+
+def kurtosis(
+    returns: Union[pd.Series, NDArray[Any]],
+) -> float:
+    """
+    Calculate kurtosis of returns distribution.
+
+    Kurtosis measures the "tailedness" of the probability distribution.
+    High kurtosis indicates heavy tails (more extreme values).
+    Low kurtosis indicates light tails (fewer extreme values).
+
+    Args:
+        returns: Return series (pandas Series or numpy array)
+
+    Returns:
+        Kurtosis as float (excess kurtosis, normal distribution = 0).
+        Returns 0.0 for insufficient data.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.array([0.01, 0.02, -0.01, 0.03, -0.02])
+        >>> kurt = kurtosis(returns)
+        >>> print(f"Kurtosis: {kurt:.4f}")
+        >>> # High kurtosis indicates risk of extreme events
+    """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _kurtosis_impl(returns),
+        context="kurtosis_calculation",
+        default_result=0.0,
+    )
+
+
+def _kurtosis_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
+    """Implementation of kurtosis calculation."""
+    returns = np.asarray(returns)
+
+    if len(returns) < 4:
+        return 0.0
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) < 4:
+        return 0.0
+
+    return float(stats.kurtosis(returns))
+
+
+def test_normality(
+    returns: Union[pd.Series, NDArray[Any]],
+) -> Dict[str, Any]:
+    """
+    Test normality of returns distribution using multiple statistical tests.
+
+    Performs Shapiro-Wilk, Kolmogorov-Smirnov, and Jarque-Bera tests
+    to assess whether returns follow a normal distribution.
+
+    Args:
+        returns: Return series (pandas Series or numpy array)
+
+    Returns:
+        Dictionary containing test results:
+        - shapiro_wilk: Shapiro-Wilk test results
+        - kolmogorov_smirnov: KS test results
+        - jarque_bera: Jarque-Bera test results
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.random.normal(0.001, 0.02, 100)
+        >>> normality_results = test_normality(returns)
+        >>> print(f"Shapiro-Wilk p-value: {normality_results['shapiro_wilk']['p_value']:.4f}")
+    """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _test_normality_impl(returns),
+        context="normality_test_calculation",
+        default_result={
+            "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
+            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+        },
+    )
+
+
+def _test_normality_impl(returns: Union[pd.Series, NDArray[Any]]) -> Dict[str, Any]:
+    """Implementation of normality testing."""
+    returns = np.asarray(returns)
+
+    if len(returns) < 3:
+        return {
+            "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
+            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+        }
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) < 3:
+        return {
+            "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
+            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+        }
+
+    results = {}
+
+    # Shapiro-Wilk test
+    if 3 <= len(returns) <= 5000:
+        shapiro_stat, shapiro_p = stats.shapiro(returns)
+        results["shapiro_wilk"] = {
+            "statistic": float(shapiro_stat),
+            "p_value": float(shapiro_p),
+            "is_normal": shapiro_p > 0.05,
+        }
+    else:
+        results["shapiro_wilk"] = {
+            "statistic": None,
+            "p_value": None,
+            "is_normal": False,
+        }
+
+    # Kolmogorov-Smirnov test
+    ks_stat, ks_p = stats.kstest(
+        returns, "norm", args=(np.mean(returns), np.std(returns, ddof=1))
+    )
+    results["kolmogorov_smirnov"] = {
+        "statistic": float(ks_stat),
+        "p_value": float(ks_p),
+        "is_normal": ks_p > 0.05,
+    }
+
+    # Jarque-Bera test
+    jb_stat, jb_p = stats.jarque_bera(returns)
+    results["jarque_bera"] = {
+        "statistic": float(jb_stat),
+        "p_value": float(jb_p),
+        "is_normal": jb_p > 0.05,
+    }
+
+    return results
+
+
+def autocorrelation(
+    returns: Union[pd.Series, NDArray[Any]],
+    lag: int = 1,
+) -> float:
+    """
+    Calculate autocorrelation of returns at specified lag.
+
+    Autocorrelation measures the correlation between a time series
+    and its lagged version. Significant autocorrelation can indicate
+    predictability or market inefficiencies.
+
+    Args:
+        returns: Return series (pandas Series or numpy array)
+        lag: Lag period for autocorrelation calculation (default: 1)
+
+    Returns:
+        Autocorrelation coefficient as float between -1 and 1.
+
+    Examples:
+        >>> import numpy as np
+        >>> returns = np.random.normal(0.001, 0.02, 100)
+        >>> autocorr = autocorrelation(returns, lag=1)
+        >>> print(f"Autocorrelation (lag 1): {autocorr:.4f}")
+        >>> # Values near 0 indicate no serial correlation
+    """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _autocorrelation_impl(returns, lag),
+        context="autocorrelation_calculation",
+        default_result=0.0,
+    )
+
+
+def _autocorrelation_impl(returns: Union[pd.Series, NDArray[Any]], lag: int = 1) -> float:
+    """Implementation of autocorrelation calculation."""
+    returns = np.asarray(returns)
+
+    if len(returns) <= lag:
+        return 0.0
+
+    # Remove NaN values
+    returns = returns[~np.isnan(returns)]
+
+    if len(returns) <= lag:
+        return 0.0
+
+    # Calculate autocorrelation using numpy
+    autocorr = np.corrcoef(returns[lag:], returns[:-lag])[0, 1]
+    return float(autocorr) if not np.isnan(autocorr) else 0.0
