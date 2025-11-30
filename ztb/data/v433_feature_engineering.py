@@ -15,6 +15,8 @@ from scipy import stats
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
+from ztb.metrics.metrics import kurtosis, skewness
+
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -261,8 +263,8 @@ class AdaptiveFeatureEngineer:
         # 様々な期間のボラティリティ
         for window in [5, 10, 20, 30]:
             df[f"volatility_{window}d"] = returns.rolling(window=window).std()
-            df[f"volatility_skew_{window}d"] = returns.rolling(window=window).skew()
-            df[f"volatility_kurt_{window}d"] = returns.rolling(window=window).kurt()
+            df[f"volatility_skew_{window}d"] = returns.rolling(window=window).apply(lambda x: skewness(x.values) if len(x) > 0 else np.nan)
+            df[f"volatility_kurt_{window}d"] = returns.rolling(window=window).apply(lambda x: kurtosis(x.values) if len(x) > 0 else np.nan)
 
         # ボラティリティの変化
         df["volatility_trend"] = df["volatility_20d"].pct_change(5)

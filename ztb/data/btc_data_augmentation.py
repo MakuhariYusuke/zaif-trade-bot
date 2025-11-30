@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.metrics import kurtosis, skewness
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import CodePerformanceMonitor
 
@@ -608,8 +609,8 @@ class BTCBiasDetector:
         volumes = data["volume"].dropna()
 
         # Check for volume concentration
-        volume_skewness = volumes.skew()
-        volume_kurtosis = volumes.kurtosis()
+        volume_skewness = skewness(volumes.values)
+        volume_kurtosis = kurtosis(volumes.values)
 
         # Extreme skewness/kurtosis indicates volume bias
         bias_score = (abs(volume_skewness) + abs(volume_kurtosis)) / 10
