@@ -11,6 +11,7 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from ztb.features.registry import FeatureRegistry
+from ztb.metrics.metrics import kurtosis, skewness
 from ztb.trading.environment.constants import EPSILON
 
 
@@ -176,10 +177,10 @@ def calculate_kalman_extended(
         residual_series.rolling(window=residual_window).std()
     )
     features["kalman_residual_skew"] = np.asarray(
-        residual_series.rolling(window=residual_window).skew()
+        residual_series.rolling(window=residual_window).apply(lambda x: skewness(x.values) if len(x) > 0 else np.nan)
     )
     features["kalman_residual_kurt"] = np.asarray(
-        residual_series.rolling(window=residual_window).kurt()
+        residual_series.rolling(window=residual_window).apply(lambda x: kurtosis(x.values) if len(x) > 0 else np.nan)
     )
 
     # Residual percentiles - vectorized
@@ -389,8 +390,8 @@ def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     print("\nResidual analysis:")
     print(f"  Mean: {residuals.mean():.6f}")
     print(f"  Std: {residuals.std():.6f}")
-    print(f"  Skewness: {residuals.skew():.4f}")  # type: ignore[str-bytes-safe]
-    print(f"  Kurtosis: {residuals.kurt():.4f}")  # type: ignore[str-bytes-safe]
+    print(f"  Skewness: {skewness(residuals.values):.4f}")  # type: ignore[str-bytes-safe]
+    print(f"  Kurtosis: {kurtosis(residuals.values):.4f}")  # type: ignore[str-bytes-safe]
 
 
 def print_autocorr_analysis(extended_features: pd.DataFrame) -> None:

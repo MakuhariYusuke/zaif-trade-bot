@@ -757,7 +757,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             abs_returns = np.abs(returns)
             autocorr_abs = {}
             for lag in range(1, min(11, len(abs_returns))):
-                corr = np.corrcoef(abs_returns[:-lag], abs_returns[lag:])[0, 1]
+                corr = autocorrelation(abs_returns, lag=lag)
                 autocorr_abs[f"lag_{lag}"] = float(corr) if not np.isnan(corr) else 0.0
 
             # 条件付き分散の変化
@@ -1393,10 +1393,10 @@ class BacktestAnalyzer(BaseAnalyzer):
                             f"リターン標準偏差: {np.std(pnl_returns):.6f}"
                         )
                         report_lines.append(
-                            f"歪度: {pd.Series(pnl_returns).skew():.3f}"
+                            f"歪度: {skewness(pnl_returns):.3f}"
                         )
                         report_lines.append(
-                            f"尖度: {pd.Series(pnl_returns).kurtosis():.3f}"
+                            f"尖度: {kurtosis(pnl_returns):.3f}"
                         )
                         report_lines.append("")
                     except Exception as e:

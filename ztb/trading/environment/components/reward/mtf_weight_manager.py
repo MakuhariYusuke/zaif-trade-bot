@@ -1,7 +1,7 @@
-from typing import Dict, Any, Optional, Tuple
-import math
 import threading
 import time
+from typing import Any, Dict, Optional, Tuple
+
 
 class MTFWeightManager:
     """
@@ -49,21 +49,55 @@ class MTFWeightManager:
 
         with self._lock:
             try:
-                # enforce min/max and normalize
-                total = 0.0
-                new_w = {}
-                for tf in self._weights.keys():
-                    val = float(weights.get(tf, 0.0))
-                    val = max(self._min_weights.get(tf, 0.0), val)
-                    val = min(self._max_weights.get(tf, 1.0), val)
-                    new_w[tf] = val
-                    total += val
-                if total <= 0:
+                # Build initial candidate vector in same keys
+                new_w = {tf: float(weights.get(tf, 0.0)) for tf in self._weights.keys()}
+                # Bounded normalize (ensure min <= x <= max and sum(x) == 1)
+                min_w = self._min_weights
+                max_w = self._max_weights
+
+                # quick sanity checks
+                min_total = sum(min_w.values())
+                max_total = sum(max_w.values())
+                if min_total > 1.0 or max_total < 1.0:
+                    # impossible bounds
                     return False
+
+                # Clip to min/max
                 for tf in new_w:
-                    new_w[tf] = new_w[tf] / total
+                    new_w[tf] = max(min_w.get(tf, 0.0), min(max_w.get(tf, 1.0), new_w.get(tf, 0.0)))
+
+                # Iteratively adjust to meet sum=1 with bounds
+                eps = 1e-9
+                for _ in range(50):
+                    total = sum(new_w.values())
+                    if abs(total - 1.0) <= eps:
+                        break
+                    if total > 1.0:
+                        # reduce proportionally from reducible (above min)
+                        reducible_keys = [tf for tf in new_w if new_w[tf] > min_w.get(tf, 0.0) + eps]
+                        if not reducible_keys:
+                            break
+                        reducible_mass = sum(new_w[tf] - min_w.get(tf, 0.0) for tf in reducible_keys)
+                        if reducible_mass <= 0:
+                            break
+                        excess = total - 1.0
+                        for tf in reducible_keys:
+                            reduce_amount = excess * (new_w[tf] - min_w.get(tf, 0.0)) / reducible_mass
+                            new_w[tf] = max(min_w.get(tf, 0.0), new_w[tf] - reduce_amount)
+                    else:
+                        # total < 1.0 -> increase proportionally for keys below max
+                        increasable_keys = [tf for tf in new_w if new_w[tf] < max_w.get(tf, 1.0) - eps]
+                        if not increasable_keys:
+                            break
+                        increasable_mass = sum(max_w.get(tf, 1.0) - new_w[tf] for tf in increasable_keys)
+                        if increasable_mass <= 0:
+                            break
+                        shortage = 1.0 - total
+                        for tf in increasable_keys:
+                            increase_amount = shortage * (max_w.get(tf, 1.0) - new_w[tf]) / increasable_mass
+                            new_w[tf] = min(max_w.get(tf, 1.0), new_w[tf] + increase_amount)
                 # assign and set telemetry
-                self._weights = new_w
+                self._weights = {tf: float(new_w[tf]) for tf in new_w}
                 self._last_applied_candidate = candidate_id
                 self._last_applied_ts = time.time()
                 return True
@@ -101,7 +135,11 @@ class MTFWeightManager:
                 scores[tf] = 0.0
                 continue
             # Accept either sharpe or avg_return otherwise 0
-            score = m.get("sharpe") if (m.get("sharpe") is not None) else m.get("avg_return", 0.0)
+            score = (
+                m.get("sharpe")
+                if (m.get("sharpe") is not None)
+                else m.get("avg_return", 0.0)
+            )
             try:
                 score = float(score)
             except Exception:

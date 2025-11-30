@@ -17,6 +17,8 @@ from typing import Dict, List, Union, cast
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.metrics import kurtosis, skewness
+
 
 def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
     """Calculate skewness of data"""
@@ -25,11 +27,11 @@ def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
         numeric_cols = data.select_dtypes(include=[np.number]).columns
         if len(numeric_cols) == 0:
             return 0.0
-        skews = data[numeric_cols].skew()
-        return cast(float, skews.mean())
+        skews = [skewness(data[col].values) for col in numeric_cols]
+        return cast(float, np.mean(skews))
     else:
         # For Series
-        return cast(float, data.skew())
+        return cast(float, skewness(data.values))
 
 
 def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
@@ -39,11 +41,11 @@ def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int
         numeric_cols = data.select_dtypes(include=[np.number]).columns
         if len(numeric_cols) == 0:
             return 0.0
-        kurts = data[numeric_cols].kurtosis()
-        return cast(float, kurts.mean())
+        kurts = [kurtosis(data[col].values) for col in numeric_cols]
+        return cast(float, np.mean(kurts))
     else:
         # For Series
-        return cast(float, data.kurtosis())
+        return cast(float, kurtosis(data.values))
 
 
 def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
