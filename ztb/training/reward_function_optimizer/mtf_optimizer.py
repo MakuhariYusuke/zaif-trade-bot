@@ -152,6 +152,10 @@ class MTFOptimizer:
                     timesteps=self.timesteps,
                     dry_run=False,
                 )
+                # Enforce minimum report_count to trust metrics
+                if int(metrics.get("report_count", 0) or 0) < int(self.per_seed):
+                    # treat as invalid candidate (failed to produce enough reports)
+                    raise RuntimeError("Not enough reports produced for candidate")
                 mean_sharpe = metrics.get("mean_sharpe", 0.0)
                 mean_return = metrics.get("mean_total_return", 0.0)
                 composite = self._composite_score(mean_sharpe, mean_return)
