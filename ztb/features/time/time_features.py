@@ -168,20 +168,16 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
 
     # Quarterly cycle progress (0-1, where 1 is end of quarter)
     if isinstance(datetime_index, pd.DatetimeIndex):
-        quarter_start_month = ((result["time_quarter"] - 1) * 3) + 1
-        quarter_end_month = result["time_quarter"] * 3
+        # Use precise quarter boundaries based on calendar dates to compute
+        # day_of_quarter and quarter_days to guarantee values are within [0,1].
+        periods = datetime_index.to_period("Q")
+        quarter_starts = periods.to_timestamp(how="start")
+        quarter_ends = periods.to_timestamp(how="end")
 
-        # Calculate approximate days in quarter (simplified)
-        # Q1: 90-91 days, Q2: 91 days, Q3: 92 days, Q4: 92 days
-        quarter_days = result["time_quarter"].map({1: 91, 2: 91, 3: 92, 4: 92})
-
-        # Calculate day of quarter (simplified approximation)
-        month_in_quarter = result["time_month"] - quarter_start_month + 1
-        days_before_current_month = (
-            month_in_quarter - 1
-        ) * 30.44  # Average days per month
-        day_of_month = datetime_index.day
-        day_of_quarter = days_before_current_month + day_of_month
+        # days in quarter
+        quarter_days = (quarter_ends - quarter_starts).days + 1
+        # day of quarter (1-indexed)
+        day_of_quarter = (datetime_index - quarter_starts).days + 1
 
         result["time_quarterly_cycle"] = day_of_quarter / quarter_days
     else:

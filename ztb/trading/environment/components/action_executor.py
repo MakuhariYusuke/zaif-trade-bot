@@ -44,12 +44,16 @@ class ActionExecutor:
     def convert_and_validate_action(
         self,
         action: Union[int, np.ndarray],
+        dynamic_threshold: Optional[float] = None,
+        dynamic_negative_threshold: Optional[float] = None,
     ) -> tuple[int, Optional[float]]:
         """
         Convert action to discrete format and validate.
 
         Args:
             action: Raw action (continuous or discrete)
+            dynamic_threshold: Optional dynamic threshold for BUY (overrides self.action_threshold)
+            dynamic_negative_threshold: Optional dynamic threshold for SELL (overrides self.negative_action_threshold)
 
         Returns:
             Tuple of (discrete_action, continuous_value)
@@ -58,6 +62,18 @@ class ActionExecutor:
             ValueError: If action is invalid
             TypeError: If action type is unsupported
         """
+        # Use dynamic thresholds if provided, otherwise use defaults
+        threshold = (
+            dynamic_threshold
+            if dynamic_threshold is not None
+            else self.action_threshold
+        )
+        negative_threshold = (
+            dynamic_negative_threshold
+            if dynamic_negative_threshold is not None
+            else self.negative_action_threshold
+        )
+
         try:
             if isinstance(action, np.ndarray):
                 if action.size != 1:
@@ -73,8 +89,8 @@ class ActionExecutor:
 
                 discrete_action = continuous_to_discrete_action(
                     continuous_value,
-                    threshold=self.action_threshold,
-                    negative_threshold=self.negative_action_threshold,
+                    threshold=threshold,
+                    negative_threshold=negative_threshold,
                 )
                 return discrete_action, continuous_value
             elif isinstance(action, (int, np.integer)):

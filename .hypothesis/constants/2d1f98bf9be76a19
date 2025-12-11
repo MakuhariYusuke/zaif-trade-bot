@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\evaluation\eval_gates.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.001, 30.0, 1000, 300000, 'RSS < 2GB', 'Resume time < 30s', 'count', 'description', 'eval_above_baseline', 'fail', 'gate_results', 'gates_disabled', 'mean', 'memory_rss', 'no_dup_steps', 'pass', 'reason', 'reasons', 'resume_time', 'reward_trend_300k', 'skip', 'status', 'threshold', 'value']

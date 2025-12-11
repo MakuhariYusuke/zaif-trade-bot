@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\trading_metrics.py
+# hypothesis_version: 6.148.6
+
+[0.0, 1.96, 252, 10000, 'OBV', 'ROC', 'RSI', 'ZScore', 'calmar_ratio', 'ci95', 'delta_sharpe', 'max_drawdown', 'mean', 'sample_count', 'sharpe_ratio', 'sortino_ratio', 'std', 'win_rate']

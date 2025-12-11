@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\ops\health\check_venue_health.py
+# hypothesis_version: 6.148.6
+
+[130, 200, 1000, '--symbol', '--venue', '2.0', '8.8.8.8', 'SUBSCRIBE', 'X-MBX-USED-WEIGHT-1M', 'X-RateLimit-Reset', '__main__', 'binance', 'bitflyer', 'btc_jpy-ticker', 'channel', 'coincheck', 'connectivity', 'degraded', 'errors', 'healthy', 'id', 'internet', 'jsonrpc', 'latency', 'method', 'offline', 'params', 'rate_limits', 'remaining', 'reset_time', 'rest_api', 'rest_ms', 'status', 'subscribe', 'symbol', 'timestamp', 'unhealthy', 'unknown', 'venue', 'websocket', 'ws_connect_ms', 'ztb']

@@ -9,17 +9,16 @@ EnhancedRiskManager, StatisticalValidator, IntegratedBacktestRunnerの連携を�
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+
 import numpy as np
 import pandas as pd
-import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.metrics.statistical_validator import StatisticalValidator
 from ztb.risk.enhanced_risk_manager import EnhancedRiskManager
-from ztb.utils.statistical_validator import StatisticalValidator
 from ztb.trading.backtest.integrated_backtest_runner import IntegratedBacktestRunner
 from ztb.trading.signal.multi_timeframe_analyzer import Timeframe
 
@@ -37,15 +36,15 @@ class TestPhase3Integration:
             "timeframe_risk_weights": {
                 Timeframe.M1: 0.2,
                 Timeframe.M5: 0.3,
-                Timeframe.M15: 0.5
-            }
+                Timeframe.M15: 0.5,
+            },
         }
 
         self.validation_config = {
             "alpha_level": 0.05,
             "confidence_level": 0.95,
             "bootstrap_samples": 1000,  # テスト用に少なく
-            "min_sample_size": 30
+            "min_sample_size": 30,
         }
 
         self.backtest_config = {
@@ -53,19 +52,22 @@ class TestPhase3Integration:
             "enable_statistical_validation": True,
             "multi_timeframe_enabled": True,
             "n_iterations": 5,  # テスト用に少なく
-            "confidence_level": 0.95
+            "confidence_level": 0.95,
         }
 
         # サンプルデータ生成
         np.random.seed(42)
-        dates = pd.date_range('2023-01-01', periods=1000, freq='1min')
-        self.market_data = pd.DataFrame({
-            'open': np.random.randn(1000) + 100,
-            'high': np.random.randn(1000) + 102,
-            'low': np.random.randn(1000) + 98,
-            'close': np.random.randn(1000) + 100,
-            'volume': np.random.randint(1000, 10000, 1000)
-        }, index=dates)
+        dates = pd.date_range("2023-01-01", periods=1000, freq="1min")
+        self.market_data = pd.DataFrame(
+            {
+                "open": np.random.randn(1000) + 100,
+                "high": np.random.randn(1000) + 102,
+                "low": np.random.randn(1000) + 98,
+                "close": np.random.randn(1000) + 100,
+                "volume": np.random.randint(1000, 10000, 1000),
+            },
+            index=dates,
+        )
 
         # リターンデータ生成
         self.sample_returns = np.random.normal(0.001, 0.02, 500).tolist()
@@ -90,15 +92,15 @@ class TestPhase3Integration:
 
         # テストデータ投入
         for i in range(0, len(self.market_data), 5):
-            price = self.market_data.iloc[i]['close']
-            volume = self.market_data.iloc[i]['volume']
+            price = self.market_data.iloc[i]["close"]
+            volume = self.market_data.iloc[i]["volume"]
             risk_manager.multi_timeframe_analyzer.update_timeframe_data(
                 Timeframe.M5, price, volume
             )
 
         for i in range(0, len(self.market_data), 15):
-            price = self.market_data.iloc[i]['close']
-            volume = self.market_data.iloc[i]['volume']
+            price = self.market_data.iloc[i]["close"]
+            volume = self.market_data.iloc[i]["volume"]
             risk_manager.multi_timeframe_analyzer.update_timeframe_data(
                 Timeframe.M15, price, volume
             )
@@ -109,7 +111,7 @@ class TestPhase3Integration:
             current_price=100.0,
             portfolio_value=10000.0,
             atr=1.0,
-            df=self.market_data
+            df=self.market_data,
         )
 
         assert "adjusted_position" in result
@@ -149,7 +151,7 @@ class TestPhase3Integration:
         strategies = {
             "strategy_1": self.sample_returns,
             "strategy_2": [r * 1.1 for r in self.sample_returns],  # 少し良い戦略
-            "strategy_3": [r * 0.9 for r in self.sample_returns]   # 少し悪い戦略
+            "strategy_3": [r * 0.9 for r in self.sample_returns],  # 少し悪い戦略
         }
 
         result = validator.validate_multiple_strategies(strategies)
@@ -198,7 +200,7 @@ class TestPhase3Integration:
             return {
                 "signal": signal,
                 "position_size": position_size,
-                "price": data_point['close']
+                "price": data_point["close"],
             }
 
         # テスト用にデータを小さく
@@ -235,7 +237,7 @@ class TestPhase3Integration:
             return {
                 "signal": signal,
                 "position_size": 0.05,
-                "price": data_point['close']
+                "price": data_point["close"],
             }
 
         test_data = self.market_data.head(50)  # 小さくしてテスト
@@ -249,7 +251,8 @@ class TestPhase3Integration:
         # 統計的検証実行
         if backtest_result.get("iterations"):
             successful_iterations = [
-                it for it in backtest_result["iterations"]
+                it
+                for it in backtest_result["iterations"]
                 if it.get("success") and "portfolio_values" in it
             ]
 
@@ -261,11 +264,15 @@ class TestPhase3Integration:
                 if len(portfolio_values) > 1:
                     returns = []
                     for i in range(1, len(portfolio_values)):
-                        ret = (portfolio_values[i] - portfolio_values[i-1]) / portfolio_values[i-1]
+                        ret = (
+                            portfolio_values[i] - portfolio_values[i - 1]
+                        ) / portfolio_values[i - 1]
                         returns.append(ret)
 
                     if returns:
-                        validation_result = validator.validate_performance_metrics(returns)
+                        validation_result = validator.validate_performance_metrics(
+                            returns
+                        )
                         assert validation_result["valid"] == True
 
         # レポート生成テスト
@@ -303,4 +310,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()

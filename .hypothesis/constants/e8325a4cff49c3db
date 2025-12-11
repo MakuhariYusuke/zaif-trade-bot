@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\hyperparameter_adaptation_system.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.005, 0.008, 0.025, 0.03, 0.15, 0.2, 0.25, 500, 'adaptation_history', 'adaptations', 'average_performance', 'confidence', 'error', 'is_active', 'is_initialized', 'market_adaptiveness', 'market_aware_config', 'market_conditions', 'new_value', 'old_value', 'parameter', 'parameter_stability', 'reason', 'recommendations', 'strategy', 'strategy_performance', 'success', 'timestamp', 'total_adaptations']

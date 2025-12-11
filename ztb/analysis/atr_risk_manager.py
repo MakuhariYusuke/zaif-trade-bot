@@ -5,12 +5,13 @@ ATR (Average True Range) を使用した動的リスク管理を実装します�
 市場ボラティリティに応じてストップロスとテイクプロフィットを調整します。
 """
 
-from typing import Dict, List, Any, Optional, Tuple, Union
-import pandas as pd
-import numpy as np
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 from ztb.utils.performance_profiler import PerformanceProfiler
 
@@ -19,9 +20,9 @@ class RiskManagementMode(Enum):
     """リスク管理モード"""
 
     CONSERVATIVE = "conservative"  # 保守的
-    MODERATE = "moderate"         # 中庸
-    AGGRESSIVE = "aggressive"     # 積極的
-    DYNAMIC = "dynamic"          # 動的（ATRベース）
+    MODERATE = "moderate"  # 中庸
+    AGGRESSIVE = "aggressive"  # 積極的
+    DYNAMIC = "dynamic"  # 動的（ATRベース）
 
 
 @dataclass
@@ -38,12 +39,12 @@ class ATRParameters:
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'period': self.period,
-            'stop_loss_multiplier': self.stop_loss_multiplier,
-            'take_profit_risk_multiplier': self.take_profit_risk_multiplier,
-            'trailing_stop_activation': self.trailing_stop_activation,
-            'max_stop_distance': self.max_stop_distance,
-            'min_stop_distance': self.min_stop_distance
+            "period": self.period,
+            "stop_loss_multiplier": self.stop_loss_multiplier,
+            "take_profit_risk_multiplier": self.take_profit_risk_multiplier,
+            "trailing_stop_activation": self.trailing_stop_activation,
+            "max_stop_distance": self.max_stop_distance,
+            "min_stop_distance": self.min_stop_distance,
         }
 
 
@@ -96,6 +97,11 @@ class PositionRiskLimits:
         reward = self.profit_target_distance
         return reward / risk if risk > 0 else 0.0
 
+    @property
+    def max_position_size(self) -> float:
+        """Maximum position size derived from risk percentage (simple proxy)."""
+        return self.risk_percentage
+
 
 class ATRRiskManager:
     """ATRベースリスクマネージャー"""
@@ -109,7 +115,9 @@ class ATRRiskManager:
         self.atr_history: List[float] = []
         self.volatility_history: List[float] = []
 
-    def calculate_atr(self, data: pd.DataFrame, period: Optional[int] = None) -> pd.Series:
+    def calculate_atr(
+        self, data: pd.DataFrame, period: Optional[int] = None
+    ) -> pd.Series:
         """
         ATRを計算
 
@@ -122,13 +130,13 @@ class ATRRiskManager:
         """
         period = period or self.atr_params.period
 
-        if not all(col in data.columns for col in ['high', 'low', 'close']):
+        if not all(col in data.columns for col in ["high", "low", "close"]):
             raise ValueError("データに 'high', 'low', 'close' カラムが必要です")
 
         # True Range計算
-        high = data['high']
-        low = data['low']
-        close = data['close']
+        high = data["high"]
+        low = data["low"]
+        close = data["close"]
         prev_close = close.shift(1)
 
         tr1 = high - low
@@ -137,8 +145,8 @@ class ATRRiskManager:
 
         true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
-        # ATR計算（指数移動平均）
-        atr = true_range.ewm(span=period, adjust=False).mean()
+        # ATR計算（ロール平均を使用して、期間不足時はNaNを保持）
+        atr = true_range.rolling(window=period, min_periods=period).mean()
 
         return atr
 
@@ -164,7 +172,7 @@ class ATRRiskManager:
         else:
             # ボラティリティのパーセンタイルを計算
             atr_series = pd.Series(self.atr_history)
-            volatility_percentile = (atr_series.rank(pct=True).iloc[-1])
+            volatility_percentile = atr_series.rank(pct=True).iloc[-1]
 
         # 市場レジームの判定
         if volatility_percentile > 0.9:
@@ -179,7 +187,7 @@ class ATRRiskManager:
         return RiskLevel(
             atr_value=current_atr,
             volatility_percentile=volatility_percentile,
-            market_regime=regime
+            market_regime=regime,
         )
 
     def calculate_position_limits(
@@ -189,7 +197,7 @@ class ATRRiskManager:
         current_atr: float,
         risk_level: RiskLevel,
         is_long: bool = True,
-        mode: RiskManagementMode = RiskManagementMode.DYNAMIC
+        mode: RiskManagementMode = RiskManagementMode.DYNAMIC,
     ) -> PositionRiskLimits:
         """
         ポジションのリスク制限を計算
@@ -223,10 +231,14 @@ class ATRRiskManager:
 
         if is_long:
             stop_loss_price = entry_price - stop_distance
-            trailing_stop_price = entry_price + (current_atr * params.trailing_stop_activation)
+            trailing_stop_price = entry_price + (
+                current_atr * params.trailing_stop_activation
+            )
         else:
             stop_loss_price = entry_price + stop_distance
-            trailing_stop_price = entry_price - (current_atr * params.trailing_stop_activation)
+            trailing_stop_price = entry_price - (
+                current_atr * params.trailing_stop_activation
+            )
 
         # テイクプロフィット計算
         risk_distance = abs(entry_price - stop_loss_price)
@@ -245,13 +257,11 @@ class ATRRiskManager:
             risk_amount=risk_amount,
             risk_percentage=risk_percentage,
             atr_value=current_atr,
-            timestamp=pd.Timestamp.now()
+            timestamp=pd.Timestamp.now(),
         )
 
     def _adjust_parameters_for_mode(
-        self,
-        mode: RiskManagementMode,
-        risk_level: RiskLevel
+        self, mode: RiskManagementMode, risk_level: RiskLevel
     ) -> ATRParameters:
         """モードに応じてパラメータを調整"""
         base_params = self.atr_params
@@ -261,10 +271,11 @@ class ATRRiskManager:
             return ATRParameters(
                 period=base_params.period,
                 stop_loss_multiplier=base_params.stop_loss_multiplier * 1.5,
-                take_profit_risk_multiplier=base_params.take_profit_risk_multiplier * 0.8,
+                take_profit_risk_multiplier=base_params.take_profit_risk_multiplier
+                * 0.8,
                 trailing_stop_activation=base_params.trailing_stop_activation,
                 max_stop_distance=base_params.max_stop_distance,
-                min_stop_distance=base_params.min_stop_distance
+                min_stop_distance=base_params.min_stop_distance,
             )
 
         elif mode == RiskManagementMode.AGGRESSIVE:
@@ -272,10 +283,11 @@ class ATRRiskManager:
             return ATRParameters(
                 period=base_params.period,
                 stop_loss_multiplier=base_params.stop_loss_multiplier * 0.7,
-                take_profit_risk_multiplier=base_params.take_profit_risk_multiplier * 1.5,
+                take_profit_risk_multiplier=base_params.take_profit_risk_multiplier
+                * 1.5,
                 trailing_stop_activation=base_params.trailing_stop_activation,
                 max_stop_distance=base_params.max_stop_distance * 1.2,
-                min_stop_distance=base_params.min_stop_distance
+                min_stop_distance=base_params.min_stop_distance,
             )
 
         elif mode == RiskManagementMode.DYNAMIC:
@@ -295,17 +307,14 @@ class ATRRiskManager:
                 take_profit_risk_multiplier=base_params.take_profit_risk_multiplier,
                 trailing_stop_activation=base_params.trailing_stop_activation,
                 max_stop_distance=base_params.max_stop_distance,
-                min_stop_distance=base_params.min_stop_distance
+                min_stop_distance=base_params.min_stop_distance,
             )
 
         else:  # MODERATE
             return base_params
 
     def update_trailing_stop(
-        self,
-        current_price: float,
-        limits: PositionRiskLimits,
-        is_long: bool = True
+        self, current_price: float, limits: PositionRiskLimits, is_long: bool = True
     ) -> Optional[float]:
         """
         トレーリングストップを更新
@@ -324,14 +333,18 @@ class ATRRiskManager:
         if is_long:
             # ロング: 価格が上昇したらトレーリングストップを引き上げる
             if current_price > limits.trailing_stop_price:
-                new_stop = current_price - (limits.atr_value * self.atr_params.stop_loss_multiplier)
+                new_stop = current_price - (
+                    limits.atr_value * self.atr_params.stop_loss_multiplier
+                )
                 # 既存のストップロスより有利な場合のみ更新
                 if new_stop > limits.stop_loss_price:
                     return new_stop
         else:
             # ショート: 価格が下降したらトレーリングストップを引き下げる
             if current_price < limits.trailing_stop_price:
-                new_stop = current_price + (limits.atr_value * self.atr_params.stop_loss_multiplier)
+                new_stop = current_price + (
+                    limits.atr_value * self.atr_params.stop_loss_multiplier
+                )
                 # 既存のストップロスより有利な場合のみ更新
                 if new_stop < limits.stop_loss_price:
                     return new_stop
@@ -339,10 +352,7 @@ class ATRRiskManager:
         return None
 
     def should_exit_position(
-        self,
-        current_price: float,
-        limits: PositionRiskLimits,
-        is_long: bool = True
+        self, current_price: float, limits: PositionRiskLimits, is_long: bool = True
     ) -> Tuple[bool, str]:
         """
         ポジションを退出すべきかを判定
@@ -358,18 +368,30 @@ class ATRRiskManager:
         # ストップロス判定
         if is_long:
             if current_price <= limits.stop_loss_price:
-                return True, f"ストップロス発動: {current_price:.2f} <= {limits.stop_loss_price:.2f}"
+                return (
+                    True,
+                    f"ストップロス発動: {current_price:.2f} <= {limits.stop_loss_price:.2f}",
+                )
         else:
             if current_price >= limits.stop_loss_price:
-                return True, f"ストップロス発動: {current_price:.2f} >= {limits.stop_loss_price:.2f}"
+                return (
+                    True,
+                    f"ストップロス発動: {current_price:.2f} >= {limits.stop_loss_price:.2f}",
+                )
 
         # テイクプロフィット判定
         if is_long:
             if current_price >= limits.take_profit_price:
-                return True, f"テイクプロフィット発動: {current_price:.2f} >= {limits.take_profit_price:.2f}"
+                return (
+                    True,
+                    f"テイクプロフィット発動: {current_price:.2f} >= {limits.take_profit_price:.2f}",
+                )
         else:
             if current_price <= limits.take_profit_price:
-                return True, f"テイクプロフィット発動: {current_price:.2f} <= {limits.take_profit_price:.2f}"
+                return (
+                    True,
+                    f"テイクプロフィット発動: {current_price:.2f} <= {limits.take_profit_price:.2f}",
+                )
 
         return False, ""
 
@@ -378,7 +400,7 @@ class ATRRiskManager:
         self,
         historical_data: pd.DataFrame,
         trades: List[Dict[str, Any]],
-        parameter_ranges: Optional[Dict[str, List[float]]] = None
+        parameter_ranges: Optional[Dict[str, List[float]]] = None,
     ) -> ATRParameters:
         """
         ATRパラメータを最適化
@@ -393,27 +415,28 @@ class ATRRiskManager:
         """
         if parameter_ranges is None:
             parameter_ranges = {
-                'stop_loss_multiplier': [1.0, 1.5, 2.0, 2.5, 3.0],
-                'take_profit_risk_multiplier': [1.5, 2.0, 2.5, 3.0, 4.0],
-                'period': [10, 14, 20, 28]
+                "stop_loss_multiplier": [1.0, 1.5, 2.0, 2.5, 3.0],
+                "take_profit_risk_multiplier": [1.5, 2.0, 2.5, 3.0, 4.0],
+                "period": [10, 14, 20, 28],
             }
 
         best_params = None
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         # グリッドサーチ
-        for sl_mult in parameter_ranges['stop_loss_multiplier']:
-            for tp_mult in parameter_ranges['take_profit_risk_multiplier']:
-                for period in parameter_ranges['period']:
-
+        for sl_mult in parameter_ranges["stop_loss_multiplier"]:
+            for tp_mult in parameter_ranges["take_profit_risk_multiplier"]:
+                for period in parameter_ranges["period"]:
                     test_params = ATRParameters(
                         period=period,
                         stop_loss_multiplier=sl_mult,
-                        take_profit_risk_multiplier=tp_mult
+                        take_profit_risk_multiplier=tp_mult,
                     )
 
                     # パフォーマンス評価
-                    score = self._evaluate_parameters(test_params, historical_data, trades)
+                    score = self._evaluate_parameters(
+                        test_params, historical_data, trades
+                    )
 
                     if score > best_score:
                         best_score = score
@@ -423,10 +446,7 @@ class ATRRiskManager:
         return best_params or self.atr_params
 
     def _evaluate_parameters(
-        self,
-        params: ATRParameters,
-        data: pd.DataFrame,
-        trades: List[Dict[str, Any]]
+        self, params: ATRParameters, data: pd.DataFrame, trades: List[Dict[str, Any]]
     ) -> float:
         """パラメータを評価"""
         # ATR計算
@@ -436,26 +456,36 @@ class ATRRiskManager:
         winning_trades = 0
 
         for trade in trades:
-            entry_time = pd.Timestamp(trade.get('entry_time'))
-            exit_time = pd.Timestamp(trade.get('exit_time', entry_time))
+            entry_time = pd.Timestamp(trade.get("entry_time"))
+            exit_time = pd.Timestamp(trade.get("exit_time", entry_time))
 
             # エントリー時のATRを取得
-            entry_atr = atr_series.loc[:entry_time].iloc[-1] if entry_time in atr_series.index else atr_series.mean()
+            entry_atr = (
+                atr_series.loc[:entry_time].iloc[-1]
+                if entry_time in atr_series.index
+                else atr_series.mean()
+            )
 
             # リスク制限計算
             limits = self.calculate_position_limits(
-                entry_price=trade.get('entry_price', 0),
+                entry_price=trade.get("entry_price", 0),
                 position_size=0.01,  # 1%固定で評価
                 current_atr=entry_atr,
-                risk_level=RiskLevel(atr_value=entry_atr, volatility_percentile=0.5, market_regime="normal_vol")
+                risk_level=RiskLevel(
+                    atr_value=entry_atr,
+                    volatility_percentile=0.5,
+                    market_regime="normal_vol",
+                ),
             )
 
             # 実際の出口価格で評価
-            actual_exit = trade.get('exit_price', trade.get('entry_price', 0))
-            pnl = trade.get('pnl', 0)
+            actual_exit = trade.get("exit_price", trade.get("entry_price", 0))
+            pnl = trade.get("pnl", 0)
 
             # リスク調整リターン
-            risk_adjusted_return = pnl / limits.risk_amount if limits.risk_amount > 0 else 0
+            risk_adjusted_return = (
+                pnl / limits.risk_amount if limits.risk_amount > 0 else 0
+            )
 
             total_return += risk_adjusted_return
             if pnl > 0:
@@ -477,15 +507,18 @@ if __name__ == "__main__":
     risk_manager = ATRRiskManager()
 
     # サンプルOHLCデータ
-    dates = pd.date_range('2023-01-01', periods=100, freq='D')
+    dates = pd.date_range("2023-01-01", periods=100, freq="D")
     np.random.seed(42)
 
-    sample_data = pd.DataFrame({
-        'open': 100 + np.random.randn(100).cumsum(),
-        'high': 105 + np.random.randn(100).cumsum(),
-        'low': 95 + np.random.randn(100).cumsum(),
-        'close': 100 + np.random.randn(100).cumsum()
-    }, index=dates)
+    sample_data = pd.DataFrame(
+        {
+            "open": 100 + np.random.randn(100).cumsum(),
+            "high": 105 + np.random.randn(100).cumsum(),
+            "low": 95 + np.random.randn(100).cumsum(),
+            "close": 100 + np.random.randn(100).cumsum(),
+        },
+        index=dates,
+    )
 
     # ATR計算
     atr_series = risk_manager.calculate_atr(sample_data)
@@ -495,7 +528,9 @@ if __name__ == "__main__":
 
     # リスクレベル評価
     risk_level = risk_manager.assess_risk_level(current_atr, sample_data)
-    print(f"リスクレベル: {risk_level.market_regime} (パーセンタイル: {risk_level.volatility_percentile:.1%})")
+    print(
+        f"リスクレベル: {risk_level.market_regime} (パーセンタイル: {risk_level.volatility_percentile:.1%})"
+    )
 
     # ポジション制限計算
     limits = risk_manager.calculate_position_limits(
@@ -504,18 +539,24 @@ if __name__ == "__main__":
         current_atr=current_atr,
         risk_level=risk_level,
         is_long=True,
-        mode=RiskManagementMode.DYNAMIC
+        mode=RiskManagementMode.DYNAMIC,
     )
 
-    print(f"ポジション制限:")
+    print("ポジション制限:")
     print(f"  エントリー: {limits.entry_price:.2f}")
-    print(f"  ストップロス: {limits.stop_loss_price:.2f} (距離: {limits.stop_distance:.1%})")
-    print(f"  テイクプロフィット: {limits.take_profit_price:.2f} (距離: {limits.profit_target_distance:.1%})")
+    print(
+        f"  ストップロス: {limits.stop_loss_price:.2f} (距離: {limits.stop_distance:.1%})"
+    )
+    print(
+        f"  テイクプロフィット: {limits.take_profit_price:.2f} (距離: {limits.profit_target_distance:.1%})"
+    )
     print(f"  リスク報酬比率: {limits.risk_reward_ratio:.2f}")
 
     # 退出判定テスト
     test_prices = [98.0, 102.0, 105.0]  # ストップロス、通常、テイクプロフィット
 
     for price in test_prices:
-        should_exit, reason = risk_manager.should_exit_position(price, limits, is_long=True)
+        should_exit, reason = risk_manager.should_exit_position(
+            price, limits, is_long=True
+        )
         print(f"価格 {price:.2f}: {'退出' if should_exit else '継続'} - {reason}")

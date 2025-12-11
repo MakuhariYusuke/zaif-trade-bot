@@ -36,6 +36,8 @@
       "random_start": true,
       "use_continuous_actions": true,
       "continuous_to_discrete_threshold": 0.3333,
+      "base_threshold": 0.02,
+      "max_action_threshold": 1.0,
       "reward_function": "sharpe_ratio_focused",
       "risk_management": {
         "max_drawdown_limit": 0.1,

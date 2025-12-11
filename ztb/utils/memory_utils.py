@@ -10,13 +10,12 @@ from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional, TypeVar
 
 import numpy as np
+import psutil
 from numpy.typing import NDArray
 
-import psutil
-
+from ztb.cache.memory_cache import default_memory_manager
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
-from ztb.cache.memory_cache import default_memory_manager
 
 logger = get_logger(__name__)
 
@@ -138,6 +137,7 @@ class OperationMemoryTracker:
 
         # Memory leak prevention: force garbage collection
         import gc
+
         collected = gc.collect()
         if collected > 0:
             logger.debug(f"Garbage collection freed {collected} objects")
@@ -168,7 +168,7 @@ def cleanup_training_memory(
     model: Optional[Any] = None,
     data_cache: Optional[dict] = None,
     force_gc: bool = True,
-    optimize_cache: bool = True
+    optimize_cache: bool = True,
 ) -> None:
     """
     Perform comprehensive memory cleanup after training operations.
@@ -191,7 +191,7 @@ def cleanup_training_memory(
             logger.debug("Cleared data cache")
 
         # Close environment
-        if env is not None and hasattr(env, 'close'):
+        if env is not None and hasattr(env, "close"):
             env.close()
             logger.debug("Closed training environment")
 
@@ -230,35 +230,45 @@ def get_memory_usage() -> Dict[str, float]:
         memory_info = process.memory_info()
 
         base_stats = {
-            'rss': memory_info.rss / BYTES_PER_MB,  # Resident Set Size
-            'vms': memory_info.vms / BYTES_PER_MB,  # Virtual Memory Size
-            'percent': process.memory_percent()
+            "rss": memory_info.rss / BYTES_PER_MB,  # Resident Set Size
+            "vms": memory_info.vms / BYTES_PER_MB,  # Virtual Memory Size
+            "percent": process.memory_percent(),
         }
 
         # Add cache statistics from MemoryManager
         cache_stats = default_memory_manager.get_cache_stats()
-        base_stats.update({
-            'cache_feature_entries': cache_stats['feature_cache_size'],
-            'cache_data_entries': cache_stats['data_cache_size'],
-            'cache_model_entries': cache_stats['model_cache_size'],
-            'cache_total_entries': cache_stats['total_cache_entries']
-        })
+        base_stats.update(
+            {
+                "cache_feature_entries": cache_stats["feature_cache_size"],
+                "cache_data_entries": cache_stats["data_cache_size"],
+                "cache_model_entries": cache_stats["model_cache_size"],
+                "cache_total_entries": cache_stats["total_cache_entries"],
+            }
+        )
 
         return base_stats
 
     except ImportError:
         logger.warning("psutil not available for memory monitoring")
         return {
-            'rss': 0.0, 'vms': 0.0, 'percent': 0.0,
-            'cache_feature_entries': 0, 'cache_data_entries': 0,
-            'cache_model_entries': 0, 'cache_total_entries': 0
+            "rss": 0.0,
+            "vms": 0.0,
+            "percent": 0.0,
+            "cache_feature_entries": 0,
+            "cache_data_entries": 0,
+            "cache_model_entries": 0,
+            "cache_total_entries": 0,
         }
     except Exception as e:
         logger.warning(f"Failed to get memory usage: {e}")
         return {
-            'rss': 0.0, 'vms': 0.0, 'percent': 0.0,
-            'cache_feature_entries': 0, 'cache_data_entries': 0,
-            'cache_model_entries': 0, 'cache_total_entries': 0
+            "rss": 0.0,
+            "vms": 0.0,
+            "percent": 0.0,
+            "cache_feature_entries": 0,
+            "cache_data_entries": 0,
+            "cache_model_entries": 0,
+            "cache_total_entries": 0,
         }
 
 
@@ -277,10 +287,12 @@ def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
     memory = get_memory_usage()
 
     # Check RSS memory
-    memory_pressure = memory['rss'] > threshold_mb
+    memory_pressure = memory["rss"] > threshold_mb
 
     # Also check cache size as additional pressure indicator
-    cache_pressure = memory.get('cache_total_entries', 0) > 1000  # Arbitrary cache size threshold
+    cache_pressure = (
+        memory.get("cache_total_entries", 0) > 1000
+    )  # Arbitrary cache size threshold
 
     if memory_pressure or cache_pressure:
         logger.warning(
@@ -290,3 +302,57 @@ def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
         return True
 
     return False
+
+
+def cleanup_memory(
+    caches: Optional[Dict[str, Any]] = None,
+    managers: Optional[Dict[str, Any]] = None,
+    force_gc: bool = True,
+    optimize_cache: bool = True,
+) -> None:
+    """
+    Perform comprehensive memory cleanup for general use.
+
+    Args:
+        caches: Dictionary of cache objects to clear (name -> cache_object)
+        managers: Dictionary of manager objects to cleanup (name -> manager_object)
+        force_gc: Whether to force garbage collection
+        optimize_cache: Whether to optimize memory cache
+    """
+    import gc
+
+    try:
+        # Clear caches
+        if caches is not None:
+            for name, cache in caches.items():
+                if hasattr(cache, "clear"):
+                    cache.clear()
+                    logger.debug(f"Cleared cache: {name}")
+                elif hasattr(cache, "cleanup"):
+                    cache.cleanup()
+                    logger.debug(f"Cleaned up cache: {name}")
+
+        # Cleanup managers
+        if managers is not None:
+            for name, manager in managers.items():
+                if hasattr(manager, "cleanup"):
+                    manager.cleanup()
+                    logger.debug(f"Cleaned up manager: {name}")
+                elif hasattr(manager, "clear_cache"):
+                    manager.clear_cache()
+                    logger.debug(f"Cleared cache for manager: {name}")
+
+        # Optimize memory cache
+        if optimize_cache:
+            default_memory_manager.optimize_memory_usage()
+            logger.debug("Optimized memory cache")
+
+        # Force garbage collection
+        if force_gc:
+            collected = gc.collect()
+            logger.debug(f"Garbage collection completed: {collected} objects collected")
+
+        logger.info("Memory cleanup completed")
+
+    except Exception as e:
+        logger.warning(f"Memory cleanup failed: {e}")

@@ -12,8 +12,10 @@ import gymnasium as gym
 import numpy as np
 import pandas as pd
 import psutil
+
 try:
     import torch
+
     _TORCH_AVAILABLE = True
 except Exception:
     torch = None  # type: ignore
@@ -71,6 +73,7 @@ from ztb.trading.environment.heavy_env.mixins.streaming import (
 )
 from ztb.trading.environment.types import StatisticsDict
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.trading.environment.utils.domain_randomizer import DomainRandomizer
 from ztb.types.protocols import TradingEnvironment
 from ztb.utils.exceptions.custom_exceptions import ConfigurationError, ValidationError
 from ztb.utils.fee_model import ExchangeFeeModel
@@ -328,51 +331,25 @@ class HeavyTradingEnv(
         super().__init__()
         self.logger = get_logger(self.__class__.__name__)
 
-        # DEBUG: Log feature_set at the very beginning
-        try:
-            if isinstance(config, EnvironmentConfig):
-                print(
-                    f"DEBUG: config is EnvironmentConfig, feature_set = {getattr(config, 'feature_set', 'NOT_SET')}"
-                )
-            elif isinstance(config, dict):
-                print(
-                    f"DEBUG: config is dict, feature_set = {config.get('feature_set', 'NOT_SET')}"
-                )
-            else:
-                print(f"DEBUG: config is {type(config)}, feature_set unknown")
-        except Exception as e:
-            print(f"DEBUG: Failed to log feature_set: {e}")
-
         if df is not None:
             TypeValidator.validate_type(df, pd.DataFrame, "df")
 
         if config is not None and not isinstance(config, EnvironmentConfig):
             TypeValidator.validate_type(config, Dict[str, Any], "config")
 
-        # Diagnostic: record raw config received to trace conversion issues
-        try:
-            self.logger.info(
-                "HeavyTradingEnv.__init__ raw config type=%s, repr_preview=%s",
-                type(config),
-                (config if isinstance(config, dict) else str(type(config))),
-            )
-            if isinstance(config, dict):
-                self.logger.info(
-                    "HeavyTradingEnv.__init__ raw dict contains use_continuous_actions=%s",
-                    config.get("use_continuous_actions", "NOT_PRESENT"),
-                )
-        except Exception:
-            self.logger.exception("Failed to log raw config diagnostic")
-
         if isinstance(config, EnvironmentConfig):
             self.config = config
         else:
             self.config = EnvironmentConfig.from_dict(config)
-
-        # DEBUG: Log feature_set
-        self.logger.info(
-            f"DEBUG: HeavyTradingEnv config.feature_set = {getattr(self.config, 'feature_set', 'NOT_SET')}"
-        )
+            # Restore curriculum_learning if it was in the dict
+            if isinstance(config, dict) and "curriculum_learning" in config:
+                # Monkey-patch curriculum_learning onto the config instance
+                setattr(
+                    self.config, "curriculum_learning", config["curriculum_learning"]
+                )
+                self.logger.info(
+                    f"Restored curriculum_learning to config: {config['curriculum_learning']}"
+                )
 
         # Extract values from config for validation and use.
         # kwargs can override some runtime parameters.
@@ -477,25 +454,27 @@ class HeavyTradingEnv(
             **self.reward_settings
         )
 
-        self.fee_model = ExchangeFeeModel()
-        self.fee_model.set_exchange(self.config.exchange)
+        # Fee model is now handled via EnvironmentConfig.exchange_profile
+        if hasattr(self.config, "exchange_profile") and self.config.exchange_profile:
+            logger.info(f"Using ExchangeProfile: {self.config.exchange_profile.name}")
+            logger.info(
+                f"Fee Model: {type(self.config.exchange_profile.fee_model).__name__}"
+            )
 
-        # 🔧 CRITICAL FIX: 訓練時のtransaction_costを尊重
-        # 訓練時に明示的にtransaction_costが設定されている場合、それを優先
-        # fee_modelのデフォルト値で上書きしない
+        # Initialize Domain Randomizer
+        self.domain_randomizer = None
+        self._base_exchange_profile = None
         if (
-            not hasattr(self.config, "transaction_cost")
-            or self.config.transaction_cost == 0.0
+            self.config.domain_randomization
+            and self.config.domain_randomization.enabled
         ):
-            # transaction_costが未設定またはデフォルト値(0.0)の場合のみ、fee_modelから取得
-            self.config.transaction_cost = self.fee_model.get_fee_rate("buy")
-            logger.info(
-                f"Using fee_model transaction_cost: {self.config.transaction_cost}"
-            )
-        else:
-            logger.info(
-                f"Using configured transaction_cost: {self.config.transaction_cost} (not overriding with fee_model)"
-            )
+            self.domain_randomizer = DomainRandomizer(self.config.domain_randomization)
+            self._base_exchange_profile = self.config.exchange_profile
+            logger.info("Domain Randomization ENABLED")
+
+        logger.info(
+            f"Transaction Cost (Legacy/Effective): {self.config.transaction_cost}"
+        )
 
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
@@ -615,6 +594,30 @@ class HeavyTradingEnv(
     ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
         super().reset(seed=seed)
 
+        # Domain Randomization
+        if self.domain_randomizer and self._base_exchange_profile:
+            # Get intensity from options (default to config value or 1.0)
+            config_intensity = getattr(
+                self.config.domain_randomization, "intensity", 1.0
+            )
+            dr_intensity = (
+                options.get("dr_intensity", config_intensity)
+                if options
+                else config_intensity
+            )
+
+            randomized_profile = self.domain_randomizer.randomize_profile(
+                self._base_exchange_profile, intensity=dr_intensity
+            )
+            self.config.exchange_profile = randomized_profile
+
+            # Note: PositionManager reads self.config.exchange_profile dynamically, so no need to re-init it.
+            # However, we should log the change if debug is enabled.
+            if self._debug_mode:
+                logger.debug(
+                    f"Reset with randomized profile: {randomized_profile.name} (intensity={dr_intensity})"
+                )
+
         random_start = (
             options and options.get("random_start", False)
         ) or self.random_start
@@ -695,19 +698,49 @@ class HeavyTradingEnv(
         if self.regime_classifier is not None:
             try:
                 # Get recent price data for regime classification
-                window_size = 20  # Minimum window for regime detection
+                # CRITICAL FIX: Ensure window size is large enough for the classifier's lookback
+                # The classifier typically needs 100+ periods (long lookback)
+                required_lookback = 100
+                if hasattr(self.regime_classifier, "lookback_periods"):
+                    required_lookback = max(
+                        self.regime_classifier.lookback_periods.values()
+                    )
+
+                # Add a buffer to be safe
+                window_size = required_lookback + 20
+
                 start_idx = max(0, self.current_step - window_size)
                 end_idx = self.current_step + 1
 
                 if end_idx > len(self.df):
                     end_idx = len(self.df)
 
-                if end_idx - start_idx >= 10:  # Minimum data points needed
+                # Only attempt detection if we have enough data
+                if end_idx - start_idx >= required_lookback:
                     price_data = self.df.iloc[start_idx:end_idx].copy()
+
+                    # DEBUG: Check columns
+                    if self.current_step % 1000 == 0:
+                        # print(f"DEBUG: Step {self.current_step} | Columns: {price_data.columns.tolist()}")
+                        pass
+
                     if "close" in price_data.columns:
                         # Convert to DataFrame if it's a Series
                         if isinstance(price_data, pd.Series):
                             price_data = price_data.to_frame()
+
+                        # DEBUG: Print price data stats occasionally
+                        if self.current_step % 1000 == 0:
+                            closes = price_data["close"]
+                            returns = closes.pct_change().dropna()
+                            vol = returns.std()
+                            trend = (
+                                (closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0]
+                                if len(closes) > 0
+                                else 0
+                            )
+                            # print(f"DEBUG: Step {self.current_step} | Price: {closes.iloc[-1]:.2f} | Vol: {vol:.8f} | Trend: {trend:.8f}")
+
                         regime_result = self.regime_classifier.detect_regime(price_data)
                         # Cast the result to the correct type
                         return V444RegimeType(regime_result.primary_regime.value)
@@ -746,14 +779,82 @@ class HeavyTradingEnv(
             int, np.ndarray
         ],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+        # Get current market regime from RewardCalculator if available
+        current_regime = None
+        if hasattr(self, "reward_calculator") and hasattr(
+            self.reward_calculator, "market_regime_detector"
+        ):
+            detector = self.reward_calculator.market_regime_detector
+            # Use the most recently detected regime from history
+            if hasattr(detector, "regime_history") and detector.regime_history:
+                last_info = detector.regime_history[-1]
+                # Handle both dict (new) and object/enum (old) formats if necessary
+                if isinstance(last_info, dict):
+                    current_regime = str(last_info.get("regime", ""))
+                else:
+                    current_regime = str(last_info)
+
+            # If no history yet (start of episode), we might want to detect it now
+            # but that requires passing data. For now, default to None (base threshold).
+
+        # Extract raw action value for dynamic thresholding
+        raw_action_val = None
+        if isinstance(action, (np.ndarray, list)):
+            if np.ndim(action) == 0:
+                raw_action_val = float(action)
+            elif len(action) > 0:
+                raw_action_val = float(action[0])
+        elif isinstance(action, (float, np.floating)):
+            raw_action_val = float(action)
+
+        # Get dynamic thresholds based on regime
+        # Note: threshold_manager is initialized in _initialize_remaining_components
+        if hasattr(self, "threshold_manager"):
+            # Get current price and ATR for adaptive threshold
+            current_price = self._resolve_price()
+            current_atr = self._resolve_atr()
+
+            dynamic_threshold = self.threshold_manager.get_threshold(
+                volatility=current_atr,
+                current_price=current_price,
+                regime=current_regime,
+                base_value=self.action_threshold,
+                raw_action_value=raw_action_val,
+            )
+            dynamic_negative_threshold = self.threshold_manager.get_threshold(
+                volatility=current_atr,
+                current_price=current_price,
+                regime=current_regime,
+                base_value=self.negative_action_threshold,
+                raw_action_value=raw_action_val,
+            )
+        else:
+            dynamic_threshold = self.action_threshold
+            dynamic_negative_threshold = self.negative_action_threshold
+
         # Convert action (continuous or discrete) to discrete representation
         (
             discrete_action,
             continuous_action_value,
-        ) = self.action_executor.convert_and_validate_action(action)
+        ) = self.action_executor.convert_and_validate_action(
+            action,
+            dynamic_threshold=dynamic_threshold,
+            dynamic_negative_threshold=dynamic_negative_threshold,
+        )
 
         # Validate the resulting discrete action
         actual_action = self.validation_manager.validate_action(discrete_action)
+
+        # Update action history after thresholding and validation to prevent look-ahead
+        try:
+            if (
+                hasattr(self, "threshold_manager")
+                and raw_action_val is not None
+                and hasattr(self.threshold_manager, "update_action_stats")
+            ):
+                self.threshold_manager.update_action_stats(raw_action_val)
+        except Exception:
+            self.logger.debug("Failed to update ThresholdManager action history")
 
         # Get observation for debug info
         current_obs = self._get_observation()
@@ -788,10 +889,18 @@ class HeavyTradingEnv(
             logger.debug(log_data)
 
         old_position = self.position_manager.position
+        old_trades_count = self.position_manager.trades_count
         min_holding_period = getattr(self.config, "min_holding_period", 0)
         trade_pnl = self.position_manager.execute_action(
             actual_action, self.current_step, min_holding_period
         )
+
+        # Determine effective action for reward calculation
+        # If no trade occurred (count didn't increase), treat as HOLD to prevent reward farming
+        effective_action = actual_action
+        if actual_action in [ACTION_BUY, ACTION_SELL]:
+            if self.position_manager.trades_count == old_trades_count:
+                effective_action = ACTION_HOLD
 
         self._sync_from_position_manager()
 
@@ -816,8 +925,9 @@ class HeavyTradingEnv(
                     self._sync_from_position_manager()
 
         # Update state using StateManager
+        # Use effective_action so that statistics (and Balance Penalty) reflect the actual outcome
         self.state_manager.update_position_state(
-            actual_action, self.current_step, trade_pnl
+            effective_action, self.current_step, trade_pnl
         )
 
         unrealized_pnl = self.position_manager.calculate_unrealized_pnl()
@@ -853,7 +963,8 @@ class HeavyTradingEnv(
 
         # Reward calculation uses discrete action
         reward = self.reward_calculator.calculate_reward(
-            action=actual_action,
+            action=effective_action,
+            continuous_action_value=continuous_action_value,
             current_price=current_price,
             position=self.position,
             portfolio_value=portfolio_value,
@@ -979,6 +1090,42 @@ class HeavyTradingEnv(
                 self.current_step - 1, self.current_step
             )
 
+        # 🔧 CRITICAL FIX: Bankruptcy Check
+        # If portfolio value drops below a critical threshold (e.g. 10% of initial or fixed amount),
+        # terminate the episode to prevent infinite loops of failed trades.
+        # Using 2000 JPY as a safe buffer (min trade is ~1000 JPY + fees)
+        bankruptcy_threshold = getattr(self.config, "bankruptcy_threshold", 2000.0)
+        if portfolio_value < bankruptcy_threshold:
+            done = True
+            # Apply severe penalty for bankruptcy
+            bankruptcy_penalty = getattr(self.config, "bankruptcy_penalty", 1000.0)
+            reward -= bankruptcy_penalty * self.config.reward_scaling
+            info["bankruptcy"] = True
+            self.logger.warning(
+                f"Episode terminated due to bankruptcy: PV={portfolio_value:.2f} < {bankruptcy_threshold}"
+            )
+
+        # Drawdown Penalty
+        # Apply penalty if drawdown exceeds threshold to discourage deep losses before bankruptcy
+        drawdown_penalty_threshold = getattr(
+            self.config, "drawdown_penalty_threshold", 0.20
+        )
+        if self.initial_portfolio_value > 0:
+            current_drawdown = 1.0 - (portfolio_value / self.initial_portfolio_value)
+            if current_drawdown > drawdown_penalty_threshold:
+                drawdown_penalty_factor = getattr(
+                    self.config, "drawdown_penalty_factor", 0.1
+                )
+                # Penalty proportional to excess drawdown
+                excess_drawdown = current_drawdown - drawdown_penalty_threshold
+                drawdown_penalty = (
+                    excess_drawdown
+                    * drawdown_penalty_factor
+                    * self.config.reward_scaling
+                )
+                reward -= drawdown_penalty
+                info["drawdown_penalty"] = drawdown_penalty
+
         next_obs = self._get_observation()
 
         # Update info dictionary
@@ -1067,6 +1214,16 @@ class HeavyTradingEnv(
         market_regime = self._get_current_market_regime()
 
         base_info["market_regime"] = market_regime
+
+        # Add Domain Randomization info
+        if self.config.exchange_profile:
+            base_info["dr_maker_fee"] = self.config.exchange_profile.maker_fee_rate
+            base_info["dr_taker_fee"] = self.config.exchange_profile.taker_fee_rate
+            base_info["dr_slippage"] = self.config.exchange_profile.slippage_rate
+            base_info["dr_latency"] = self.config.exchange_profile.latency_ms
+
+        # if self.current_step % 50 == 0:
+        #      self.logger.warning(f"DEBUG: _get_info regime at step {self.current_step}: {market_regime}")
         return base_info
 
     def render(self, mode: str = "human") -> None:

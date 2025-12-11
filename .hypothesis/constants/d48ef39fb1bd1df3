@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\risk\optimizers\price_action_filter.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.01, 0.03, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 100, 1000, 'action', 'average_strength', 'bearish', 'bearish_patterns', 'bullish', 'bullish_patterns', 'close', 'doji', 'engulfing_bear', 'engulfing_bull', 'hammer', 'high', 'high_risk_patterns', 'hold', 'inside_bar', 'key_level_break', 'low', 'marubozu', 'medium', 'neutral', 'normal', 'open', 'outside_bar', 'pattern_distribution', 'pin_bar', 'resistance_test', 'shooting_star', 'support_test', 'timestamp', 'total_analyses', 'シグナルは基準を満たしています', '弱気パターンのみ許可されています', '強気パターンのみ許可されています', '高確率パターンのみ許可されています']

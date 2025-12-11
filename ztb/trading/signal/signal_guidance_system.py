@@ -4,11 +4,10 @@ Advanced Signal Guidance System
 Type-safe, high-performance signal guidance for SAC action conversion
 """
 
-import sys
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Literal, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Literal, Optional, Union
+
 import numpy as np
 import pandas as pd
 
@@ -16,13 +15,20 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+from ztb.trading.signal.common.utilities import score_to_discrete_action
+from ztb.trading.signal.constants import DEFAULT_FALLBACK_THRESHOLD, HIGH_SCORE_IS_BUY
+from ztb.trading.signal.multi_timeframe_analyzer import (
+    ConvergenceAnalysis,
+    MultiTimeframeAnalyzer,
+    Timeframe,
+)
 from ztb.trading.signal.quality_scorer import SignalQualityScorer
-from ztb.trading.signal.multi_timeframe_analyzer import MultiTimeframeAnalyzer, Timeframe, ConvergenceAnalysis
 from ztb.trading.signal.trend_convergence_calculator import TrendConvergenceCalculator
 
 
 class MarketTrend(Enum):
     """Market trend enumeration"""
+
     BULLISH = "bullish"
     BEARISH = "bearish"
     NEUTRAL = "neutral"
@@ -30,6 +36,7 @@ class MarketTrend(Enum):
 
 class SignalType(Enum):
     """Signal type enumeration"""
+
     BUY = 1
     SELL = -1
     HOLD = 0
@@ -38,6 +45,7 @@ class SignalType(Enum):
 @dataclass
 class MarketContext:
     """Structured market context data"""
+
     price_trend: List[float] = field(default_factory=list)
     volume_trend: List[float] = field(default_factory=list)
     trend_window: int = 10
@@ -47,6 +55,7 @@ class MarketContext:
 @dataclass
 class PositionContext:
     """Structured position context data"""
+
     has_position: bool
     position_ratio: float
     is_overexposed: bool
@@ -60,7 +69,8 @@ class PositionContext:
 @dataclass
 class SignalContext:
     """Structured signal context data"""
-    recent_bias: Literal['buy', 'sell', 'neutral']
+
+    recent_bias: Literal["buy", "sell", "neutral"]
     signal_streak: int
     last_signal: Optional[SignalType]
     sell_signal_ratio: float
@@ -69,7 +79,8 @@ class SignalContext:
 @dataclass
 class GuidanceConfig:
     """Configuration for signal guidance system"""
-    guidance_level: Literal['conservative', 'adaptive', 'aggressive'] = 'adaptive'
+
+    guidance_level: Literal["conservative", "adaptive", "aggressive"] = "adaptive"
     max_history: int = 20
     base_threshold: float = 0.33
     aggressive_threshold: float = 0.15
@@ -97,12 +108,16 @@ class SignalGuidanceSystem:
     - Configurable thresholds and behavior
     """
 
-    def __init__(self, config: Optional[GuidanceConfig] = None):
+    def __init__(
+        self,
+        config: Optional[GuidanceConfig] = None,
+        threshold_manager: Optional[object] = None,
+    ):
         self.config = config or GuidanceConfig()
         self.signal_history: List[SignalType] = []
         self.market_context = MarketContext()
         # Initialize quality scorer for deterministic scoring
-        self.quality_scorer = SignalQualityScorer()
+        self.quality_scorer = SignalQualityScorer(threshold_manager=threshold_manager)
         # Initialize multi-timeframe analyzer for Phase 2 enhancement
         self.multi_timeframe_analyzer = MultiTimeframeAnalyzer()
         # Initialize trend convergence calculator for Phase 2 enhancement
@@ -116,17 +131,17 @@ class SignalGuidanceSystem:
         # Track price trend
         if len(self.market_context.price_trend) >= self.config.trend_window:
             self.market_context.price_trend.pop(0)
-        close_price = row.get('close', row.get('price', 0))
+        close_price = row.get("close", row.get("price", 0))
         self.market_context.price_trend.append(float(close_price))
 
         # Track volume trend
-        if 'volume' in row.index:
+        if "volume" in row.index:
             if len(self.market_context.volume_trend) >= self.config.trend_window:
                 self.market_context.volume_trend.pop(0)
-            volume_val = row['volume']
+            volume_val = row["volume"]
             # Safely convert to float
             try:
-                if hasattr(volume_val, 'iloc'):
+                if hasattr(volume_val, "iloc"):
                     volume_val = volume_val.iloc[0] if len(volume_val) > 0 else 0
                 volume_float = float(volume_val)  # type: ignore
                 self.market_context.volume_trend.append(volume_float)
@@ -145,13 +160,15 @@ class SignalGuidanceSystem:
 
     def get_position_context(self, portfolio: Dict[str, Any]) -> PositionContext:
         """Analyze current position context"""
-        btc_balance = float(portfolio['btc_balance'])
-        jpy_balance = float(portfolio['jpy_balance'])
-        total_value = float(portfolio['portfolio_value'])
-        current_price = float(portfolio.get('current_price', 0))
+        btc_balance = float(portfolio["btc_balance"])
+        jpy_balance = float(portfolio["jpy_balance"])
+        total_value = float(portfolio["portfolio_value"])
+        current_price = float(portfolio.get("current_price", 0))
 
         # Position size relative to total portfolio
-        position_ratio = (btc_balance * current_price) / total_value if total_value > 0 else 0.0
+        position_ratio = (
+            (btc_balance * current_price) / total_value if total_value > 0 else 0.0
+        )
 
         return PositionContext(
             has_position=btc_balance > 0.0001,
@@ -161,17 +178,17 @@ class SignalGuidanceSystem:
             can_buy=jpy_balance > 1000,
             btc_balance=btc_balance,
             jpy_balance=jpy_balance,
-            total_value=total_value
+            total_value=total_value,
         )
 
     def get_signal_context(self) -> SignalContext:
         """Analyze recent signal patterns"""
         if len(self.signal_history) < 3:
             return SignalContext(
-                recent_bias='neutral',
+                recent_bias="neutral",
                 signal_streak=0,
                 last_signal=None,
-                sell_signal_ratio=0.0
+                sell_signal_ratio=0.0,
             )
 
         recent_signals = self.signal_history[-3:]
@@ -182,11 +199,11 @@ class SignalGuidanceSystem:
         hold_count = sum(1 for s in recent_signals if s == SignalType.HOLD)
 
         if buy_count > sell_count and buy_count > hold_count:
-            bias = 'buy'
+            bias = "buy"
         elif sell_count > buy_count and sell_count > hold_count:
-            bias = 'sell'
+            bias = "sell"
         else:
-            bias = 'neutral'
+            bias = "neutral"
 
         # Check for streaks
         last_signal = recent_signals[-1]
@@ -198,17 +215,28 @@ class SignalGuidanceSystem:
                 break
 
         # Calculate sell signal ratio
-        total_recent = len(self.signal_history[-10:]) if len(self.signal_history) >= 10 else len(self.signal_history)
-        sell_ratio = sum(1 for s in self.signal_history[-10:] if s == SignalType.SELL) / total_recent if total_recent > 0 else 0.0
+        total_recent = (
+            len(self.signal_history[-10:])
+            if len(self.signal_history) >= 10
+            else len(self.signal_history)
+        )
+        sell_ratio = (
+            sum(1 for s in self.signal_history[-10:] if s == SignalType.SELL)
+            / total_recent
+            if total_recent > 0
+            else 0.0
+        )
 
         return SignalContext(
             recent_bias=bias,
             signal_streak=streak,
             last_signal=last_signal,
-            sell_signal_ratio=sell_ratio
+            sell_signal_ratio=sell_ratio,
         )
 
-    def apply_guidance(self, continuous_action: float, row: pd.Series, portfolio: Dict[str, Any]) -> int:
+    def apply_guidance(
+        self, continuous_action: float, row: pd.Series, portfolio: Dict[str, Any]
+    ) -> int:
         """Apply intelligent signal guidance using deterministic quality scoring with Phase 2 multi-timeframe enhancement"""
         try:
             # Update context for backward compatibility
@@ -228,11 +256,15 @@ class SignalGuidanceSystem:
             # Get trend analyses for convergence calculation
             trend_analyses = {}
             for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
-                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(timeframe)
+                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(
+                    timeframe
+                )
                 if analysis:
                     trend_analyses[timeframe] = analysis
 
-            convergence_report = self.convergence_calculator.get_convergence_report(trend_analyses)
+            convergence_report = self.convergence_calculator.get_convergence_report(
+                trend_analyses
+            )
 
             # Use quality scorer for deterministic signal generation
             guided_action, quality_score = self.quality_scorer.calculate_signal_quality(
@@ -277,7 +309,12 @@ class SignalGuidanceSystem:
         else:
             return MarketTrend.NEUTRAL
 
-    def _get_adaptive_threshold(self, market_trend: MarketTrend, position_ctx: PositionContext, signal_ctx: SignalContext) -> float:
+    def _get_adaptive_threshold(
+        self,
+        market_trend: MarketTrend,
+        position_ctx: PositionContext,
+        signal_ctx: SignalContext,
+    ) -> float:
         """Get adaptive threshold based on market conditions"""
         if self.config.guidance_level == "conservative":
             return self.config.conservative_threshold
@@ -305,9 +342,14 @@ class SignalGuidanceSystem:
 
         return min(base_threshold, 0.8)  # Cap at reasonable maximum
 
-    def _apply_market_guidance(self, continuous_action: float, threshold: float,
-                              market_trend: MarketTrend, position_ctx: PositionContext,
-                              signal_ctx: SignalContext) -> int:
+    def _apply_market_guidance(
+        self,
+        continuous_action: float,
+        threshold: float,
+        market_trend: MarketTrend,
+        position_ctx: PositionContext,
+        signal_ctx: SignalContext,
+    ) -> int:
         """Apply market-aware guidance to action conversion"""
         # Base conversion
         if continuous_action > threshold:
@@ -320,19 +362,27 @@ class SignalGuidanceSystem:
         # Apply probabilistic SELL signal injection for diversity
         if base_action == SignalType.HOLD.value and position_ctx.has_position:
             # Inject SELL signals probabilistically to ensure trading diversity
-            sell_probability = self._calculate_sell_probability(market_trend, position_ctx, signal_ctx)
+            sell_probability = self._calculate_sell_probability(
+                market_trend, position_ctx, signal_ctx
+            )
             if np.random.random() < sell_probability:
                 base_action = SignalType.SELL.value
 
         # Apply guidance rules
         guided_action = self._apply_position_guidance(base_action, position_ctx)
-        guided_action = self._apply_trend_guidance(guided_action, market_trend, position_ctx)
+        guided_action = self._apply_trend_guidance(
+            guided_action, market_trend, position_ctx
+        )
         guided_action = self._apply_signal_guidance(guided_action, signal_ctx)
 
         return guided_action
 
-    def _calculate_sell_probability(self, market_trend: MarketTrend, position_ctx: PositionContext,
-                                  signal_ctx: SignalContext) -> float:
+    def _calculate_sell_probability(
+        self,
+        market_trend: MarketTrend,
+        position_ctx: PositionContext,
+        signal_ctx: SignalContext,
+    ) -> float:
         """Calculate probability of injecting SELL signal for diversity"""
         base_probability = self.config.sell_injection_base_probability
 
@@ -345,8 +395,16 @@ class SignalGuidanceSystem:
             base_probability *= self.config.sell_injection_overexposed_multiplier
 
         # Increase probability when no recent SELL signals
-        recent_signals = len(self.signal_history[-5:]) if len(self.signal_history) >= 5 else len(self.signal_history)
-        sell_count = sum(1 for s in self.signal_history[-5:] if s == SignalType.SELL) if recent_signals > 0 else 0
+        recent_signals = (
+            len(self.signal_history[-5:])
+            if len(self.signal_history) >= 5
+            else len(self.signal_history)
+        )
+        sell_count = (
+            sum(1 for s in self.signal_history[-5:] if s == SignalType.SELL)
+            if recent_signals > 0
+            else 0
+        )
         if sell_count == 0:
             base_probability *= self.config.sell_injection_no_recent_sell_multiplier
 
@@ -356,7 +414,9 @@ class SignalGuidanceSystem:
 
         return min(base_probability, self.config.sell_injection_max_probability)
 
-    def _apply_position_guidance(self, action: int, position_ctx: PositionContext) -> int:
+    def _apply_position_guidance(
+        self, action: int, position_ctx: PositionContext
+    ) -> int:
         """Apply position-based guidance"""
         # Prevent overexposure
         if action == SignalType.BUY.value and position_ctx.is_overexposed:
@@ -372,11 +432,17 @@ class SignalGuidanceSystem:
 
         return action
 
-    def _apply_trend_guidance(self, action: int, market_trend: MarketTrend, position_ctx: PositionContext) -> int:
+    def _apply_trend_guidance(
+        self, action: int, market_trend: MarketTrend, position_ctx: PositionContext
+    ) -> int:
         """Apply market trend-based guidance"""
         # In bullish markets, be more open to BUY signals
         if market_trend == MarketTrend.BULLISH:
-            if action == SignalType.HOLD.value and position_ctx.is_underexposed and position_ctx.can_buy:
+            if (
+                action == SignalType.HOLD.value
+                and position_ctx.is_underexposed
+                and position_ctx.can_buy
+            ):
                 # Consider BUY instead of HOLD when underexposed in bullish market
                 if np.random.random() < 0.3:
                     return SignalType.BUY.value
@@ -406,44 +472,55 @@ class SignalGuidanceSystem:
                         return SignalType.HOLD.value
 
                 # If we've been SELLING too much, encourage diversification
-                elif streak_signal == SignalType.SELL and action == SignalType.SELL.value:
+                elif (
+                    streak_signal == SignalType.SELL and action == SignalType.SELL.value
+                ):
                     if np.random.random() < 0.5:
                         return SignalType.HOLD.value
 
         # Balance bias and promote SELL signals when needed
-        if signal_ctx.recent_bias == 'buy' and signal_ctx.signal_streak >= 2:
+        if signal_ctx.recent_bias == "buy" and signal_ctx.signal_streak >= 2:
             # If too many BUY signals recently, slightly favor SELL/HOLD
             if action == SignalType.BUY.value:
                 if np.random.random() < 0.2:
                     return SignalType.HOLD.value
 
-        elif signal_ctx.recent_bias == 'sell' and signal_ctx.signal_streak >= 2:
+        elif signal_ctx.recent_bias == "sell" and signal_ctx.signal_streak >= 2:
             # If too many SELL signals recently, slightly favor BUY/HOLD
             if action == SignalType.SELL.value:
                 if np.random.random() < 0.2:
                     return SignalType.HOLD.value
 
         # Promote SELL signals when there are too few recent sells
-        if signal_ctx.sell_signal_ratio < self.config.signal_sell_recent_threshold and action == SignalType.HOLD.value:
+        if (
+            signal_ctx.sell_signal_ratio < self.config.signal_sell_recent_threshold
+            and action == SignalType.HOLD.value
+        ):
             # Less than threshold sells, consider injecting SELL
             if np.random.random() < self.config.signal_sell_probability:
                 return SignalType.SELL.value
 
         return action
 
-    def _create_market_dataframe(self, row: pd.Series, portfolio: Dict[str, Any]) -> pd.DataFrame:
+    def _create_market_dataframe(
+        self, row: pd.Series, portfolio: Dict[str, Any]
+    ) -> pd.DataFrame:
         """Create market DataFrame from current row and historical context"""
         try:
             # Use market data history if available (preferred for technical analysis)
-            if len(self.market_data_history) >= 30:  # Minimum for most technical indicators
+            if (
+                len(self.market_data_history) >= 30
+            ):  # Minimum for most technical indicators
                 # Create DataFrame from recent history
-                recent_data = self.market_data_history[-50:]  # Use last 50 points for analysis
+                recent_data = self.market_data_history[
+                    -50:
+                ]  # Use last 50 points for analysis
                 data = {
-                    'open': [r.get('open', r.get('price', 0)) for r in recent_data],
-                    'high': [r.get('high', r.get('price', 0)) for r in recent_data],
-                    'low': [r.get('low', r.get('price', 0)) for r in recent_data],
-                    'close': [r.get('close', r.get('price', 0)) for r in recent_data],
-                    'volume': [r.get('volume', 1.0) for r in recent_data]
+                    "open": [r.get("open", r.get("price", 0)) for r in recent_data],
+                    "high": [r.get("high", r.get("price", 0)) for r in recent_data],
+                    "low": [r.get("low", r.get("price", 0)) for r in recent_data],
+                    "close": [r.get("close", r.get("price", 0)) for r in recent_data],
+                    "volume": [r.get("volume", 1.0) for r in recent_data],
                 }
                 return pd.DataFrame(data)
             else:
@@ -453,43 +530,53 @@ class SignalGuidanceSystem:
             logger.warning(f"Error creating market DataFrame: {e}")
             return self._create_fallback_dataframe(row, portfolio)
 
-    def _create_fallback_dataframe(self, row: pd.Series, portfolio: Dict[str, Any]) -> pd.DataFrame:
+    def _create_fallback_dataframe(
+        self, row: pd.Series, portfolio: Dict[str, Any]
+    ) -> pd.DataFrame:
         """Create fallback DataFrame when insufficient historical data is available"""
         # Use recent price trend for technical analysis
-        recent_prices = self.market_context.price_trend[-50:] if len(self.market_context.price_trend) >= 50 else self.market_context.price_trend
+        recent_prices = (
+            self.market_context.price_trend[-50:]
+            if len(self.market_context.price_trend) >= 50
+            else self.market_context.price_trend
+        )
 
         if not recent_prices:
             # Fallback: create minimal DataFrame from current row
-            current_price = float(row.get('close', row.get('price', 0)))
-            high_price = float(row.get('high', current_price))
-            low_price = float(row.get('low', current_price))
-            volume = float(row.get('volume', 0))
+            current_price = float(row.get("close", row.get("price", 0)))
+            high_price = float(row.get("high", current_price))
+            low_price = float(row.get("low", current_price))
+            volume = float(row.get("volume", 0))
 
             data = {
-                'open': [current_price],
-                'high': [high_price],
-                'low': [low_price],
-                'close': [current_price],
-                'volume': [volume]
+                "open": [current_price],
+                "high": [high_price],
+                "low": [low_price],
+                "close": [current_price],
+                "volume": [volume],
             }
         else:
             # Create DataFrame from historical context
             # Assume OHLCV data is available in row
-            current_price = float(row.get('close', row.get('price', recent_prices[-1] if recent_prices else 0)))
-            high_price = float(row.get('high', current_price))
-            low_price = float(row.get('low', current_price))
-            volume = float(row.get('volume', 0))
+            current_price = float(
+                row.get(
+                    "close", row.get("price", recent_prices[-1] if recent_prices else 0)
+                )
+            )
+            high_price = float(row.get("high", current_price))
+            low_price = float(row.get("low", current_price))
+            volume = float(row.get("volume", 0))
 
             # Create time series from recent prices (simplified)
             n_points = min(len(recent_prices), 50)
             prices = recent_prices[-n_points:] + [current_price]
 
             data = {
-                'open': prices[:-1] + [prices[-1]],  # Simplified
-                'high': [max(p, current_price) for p in prices[:-1]] + [high_price],
-                'low': [min(p, current_price) for p in prices[:-1]] + [low_price],
-                'close': prices,
-                'volume': [volume] * len(prices)  # Simplified
+                "open": prices[:-1] + [prices[-1]],  # Simplified
+                "high": [max(p, current_price) for p in prices[:-1]] + [high_price],
+                "low": [min(p, current_price) for p in prices[:-1]] + [low_price],
+                "close": prices,
+                "volume": [volume] * len(prices),  # Simplified
             }
 
         return pd.DataFrame(data)
@@ -497,9 +584,9 @@ class SignalGuidanceSystem:
     def _apply_position_safety(self, action: int, portfolio: Dict[str, Any]) -> int:
         """Apply basic position-based safety checks (deterministic)"""
         # Get position information
-        btc_balance = portfolio.get('btc_balance', 0.0)
-        jpy_balance = portfolio.get('jpy_balance', 0.0)
-        current_price = portfolio.get('current_price', 0.0)
+        btc_balance = portfolio.get("btc_balance", 0.0)
+        jpy_balance = portfolio.get("jpy_balance", 0.0)
+        current_price = portfolio.get("current_price", 0.0)
 
         if current_price <= 0:
             return action
@@ -522,9 +609,12 @@ class SignalGuidanceSystem:
 
     def _fallback_conversion(self, continuous_action: float) -> int:
         """Fallback action conversion from continuous action"""
-        if continuous_action > 0.3:
+        # Use a conservative default threshold for fallback conversions to preserve sensitivity
+        # to smaller continuous actions while avoiding noisy conversions.
+        fallback_threshold = DEFAULT_FALLBACK_THRESHOLD
+        if continuous_action >= fallback_threshold:
             return SignalType.BUY.value
-        elif continuous_action < -0.3:
+        elif continuous_action <= -fallback_threshold:
             return SignalType.SELL.value
         else:
             return SignalType.HOLD.value
@@ -536,25 +626,26 @@ class SignalGuidanceSystem:
         Phase 2: Multi-timeframe trend analysis enhancement
         """
         try:
-            close_price = float(row.get('close', row.get('price', 0)))
-            volume = float(row.get('volume', 1.0))
+            close_price = float(row.get("close", row.get("price", 0)))
+            volume = float(row.get("volume", 1.0))
 
             # Update all timeframes with current data
             # Note: In production, this would receive actual timeframe-specific data
             # For now, we use the same data for all timeframes as a simplified approach
             for timeframe in [Timeframe.M1, Timeframe.M5, Timeframe.M15]:
                 self.multi_timeframe_analyzer.update_timeframe_data(
-                    timeframe=timeframe,
-                    price=close_price,
-                    volume=volume
+                    timeframe=timeframe, price=close_price, volume=volume
                 )
 
         except Exception as e:
             logger.warning(f"Failed to update multi-timeframe data: {e}")
 
-    def _apply_convergence_enhancement(self, base_score: float,
-                                     convergence_analysis: 'ConvergenceAnalysis',
-                                     convergence_report: Dict[str, Union[float, str]]) -> float:
+    def _apply_convergence_enhancement(
+        self,
+        base_score: float,
+        convergence_analysis: "ConvergenceAnalysis",
+        convergence_report: Dict[str, Union[float, str]],
+    ) -> float:
         """
         Apply Phase 2 convergence enhancement to base quality score
 
@@ -568,38 +659,44 @@ class SignalGuidanceSystem:
         """
         try:
             convergence_score = convergence_analysis.convergence_score
-            recommendation = convergence_report.get('recommendation', 'weak_convergence')
+            recommendation = convergence_report.get(
+                "recommendation", "weak_convergence"
+            )
 
             # Base enhancement factor from convergence
             enhancement_factor = convergence_score / 100.0  # 0-1 scale
 
             # Apply recommendation-based adjustments
-            if recommendation == 'strong_convergence':
+            if recommendation == "strong_convergence":
                 # Boost score for strong convergence
                 enhancement_factor *= 1.2
-            elif recommendation == 'moderate_convergence':
+            elif recommendation == "moderate_convergence":
                 # Moderate boost
                 enhancement_factor *= 1.1
-            elif recommendation == 'weak_convergence':
+            elif recommendation == "weak_convergence":
                 # Slight boost
                 enhancement_factor *= 1.05
-            elif recommendation == 'divergence':
+            elif recommendation == "divergence":
                 # Reduce score for divergence
                 enhancement_factor *= 0.9
 
             # Apply convergence weighting to base score
             # Weight convergence at 30% for Phase 2 enhancement
             convergence_weight = 0.3
-            enhanced_score = (base_score * (1 - convergence_weight) +
-                            (base_score * enhancement_factor) * convergence_weight)
+            enhanced_score = (
+                base_score * (1 - convergence_weight)
+                + (base_score * enhancement_factor) * convergence_weight
+            )
 
             # Ensure score stays within valid range
             enhanced_score = max(0.0, min(100.0, enhanced_score))
 
-            logger.debug(f"Phase 2 enhancement: base_score={base_score:.1f}, "
-                        f"convergence={convergence_score:.1f}, "
-                        f"recommendation={recommendation}, "
-                        f"enhanced_score={enhanced_score:.1f}")
+            logger.debug(
+                f"Phase 2 enhancement: base_score={base_score:.1f}, "
+                f"convergence={convergence_score:.1f}, "
+                f"recommendation={recommendation}, "
+                f"enhanced_score={enhanced_score:.1f}"
+            )
 
             return enhanced_score
 
@@ -621,16 +718,15 @@ class SignalGuidanceSystem:
         """
         # Phase 2 thresholds with convergence enhancement
         # Higher convergence can lower thresholds for more responsive signals
-        buy_threshold = 85.0   # BUY if score >= 85
+        buy_threshold = 85.0  # BUY if score >= 85
         sell_threshold = 15.0  # SELL if score <= 15
-        # HOLD for scores between 15-85
-
-        if score >= buy_threshold:
-            return SignalType.BUY.value
-        elif score <= sell_threshold:
-            return SignalType.SELL.value
-        else:
-            return SignalType.HOLD.value
+        # Use shared utility to preserve parity support
+        return score_to_discrete_action(
+            score,
+            buy_threshold=buy_threshold,
+            sell_threshold=sell_threshold,
+            high_score_is_buy=HIGH_SCORE_IS_BUY,
+        )
 
     def get_multi_timeframe_analysis(self) -> Dict[str, Any]:
         """
@@ -646,7 +742,9 @@ class SignalGuidanceSystem:
             # Get trend analyses for all timeframes
             trend_analyses = {}
             for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
-                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(timeframe)
+                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(
+                    timeframe
+                )
                 if analysis:
                     trend_analyses[timeframe.value] = {
                         "direction": analysis.direction.value,
@@ -654,7 +752,7 @@ class SignalGuidanceSystem:
                         "momentum": analysis.momentum,
                         "rsi": analysis.rsi,
                         "macd_signal": analysis.macd_signal,
-                        "bollinger_position": analysis.bollinger_position
+                        "bollinger_position": analysis.bollinger_position,
                     }
 
             # Get convergence report
@@ -664,7 +762,9 @@ class SignalGuidanceSystem:
                 if analysis is not None:
                     trend_analyses_dict[tf] = analysis
 
-            convergence_report = self.convergence_calculator.get_convergence_report(trend_analyses_dict)
+            convergence_report = self.convergence_calculator.get_convergence_report(
+                trend_analyses_dict
+            )
 
             return {
                 "phase": "Phase 2 - Multi-timeframe Analysis",
@@ -673,14 +773,14 @@ class SignalGuidanceSystem:
                     "dominant_trend": convergence.dominant_trend.value,
                     "timeframe_agreement": convergence.timeframe_agreement,
                     "short_term_bias": convergence.short_term_bias.value,
-                    "medium_term_bias": convergence.medium_term_bias.value
+                    "medium_term_bias": convergence.medium_term_bias.value,
                 },
                 "convergence_report": convergence_report,
                 "timeframe_analyses": trend_analyses,
                 "data_points": {
                     tf.value: len(data.prices)
                     for tf, data in self.multi_timeframe_analyzer.timeframes.items()
-                }
+                },
             }
 
         except Exception as e:
@@ -702,14 +802,18 @@ class SignalGuidanceSystem:
             "components": {
                 "MultiTimeframeAnalyzer": "active",
                 "TrendConvergenceCalculator": "active",
-                "SignalGuidanceSystem": "enhanced"
+                "SignalGuidanceSystem": "enhanced",
             },
             "metrics": {
                 "convergence_score": analysis.get("convergence", {}).get("score", 0),
-                "timeframe_agreement": analysis.get("convergence", {}).get("timeframe_agreement", 0),
+                "timeframe_agreement": analysis.get("convergence", {}).get(
+                    "timeframe_agreement", 0
+                ),
                 "data_points_m1": analysis.get("data_points", {}).get("1m", 0),
                 "data_points_m5": analysis.get("data_points", {}).get("5m", 0),
-                "data_points_m15": analysis.get("data_points", {}).get("15m", 0)
+                "data_points_m15": analysis.get("data_points", {}).get("15m", 0),
             },
-            "recommendation": analysis.get("convergence_report", {}).get("recommendation", "unknown")
+            "recommendation": analysis.get("convergence_report", {}).get(
+                "recommendation", "unknown"
+            ),
         }

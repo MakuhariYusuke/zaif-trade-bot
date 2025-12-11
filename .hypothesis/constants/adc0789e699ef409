@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\pretraining\masked_price_modeling.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.1, 0.15, 100, 156, 512, 'cpu', 'cuda', 'loss', 'masked_ratio', 'model_state_dict', 'optimizer_state_dict', 'val_loss', 'val_masked_ratio']

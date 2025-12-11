@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\cache\parquet_io.py
+# hypothesis_version: 6.148.6
+
+[100, 1200, 1800, 50000, '--compression', '--input', '--output', '-c', '-i', '-o', '.csv', '.json', 'Command to run', 'Input file path', 'Output file path', 'Override compression', '__main__', 'atr', 'bb', 'bollinger', 'close', 'command', 'compression', 'configs/io.yaml', 'convert', 'dependencies', 'donchian', 'ema', 'engine', 'features', 'high', 'ichimoku', 'kalman', 'limits', 'low', 'ma', 'mfi', 'moving', 'name', 'open', 'parquet', 'peak_memory_mb', 'pyarrow', 'row_group_size', 'rsi', 'sma', 'snappy', 'stoch', 'timestamp', 'use_columns', 'volume', 'vwap', 'williams']

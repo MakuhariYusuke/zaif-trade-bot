@@ -5,7 +5,7 @@ Unit tests for ztb.features.registry module.
 import pandas as pd
 import pytest
 
-from ztb.features.registry import FeatureRegistry
+from ztb.features.core.registry import FeatureRegistry
 
 
 class TestFeatureRegistry:

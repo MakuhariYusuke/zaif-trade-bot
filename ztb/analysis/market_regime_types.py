@@ -7,11 +7,12 @@ market regime detection implementations.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class MarketRegime(Enum):
     """Enumeration of market regimes with standardized definitions."""
+
     STRONG_BULL_TREND = "strong_bull_trend"
     MODERATE_BULL_TREND = "moderate_bull_trend"
     WEAK_BULL_TREND = "weak_bull_trend"
@@ -30,13 +31,38 @@ class MarketRegime(Enum):
 @dataclass
 class RegimeDetectionResult:
     """Standardized result of regime detection with optional classification path."""
+
     regime: MarketRegime
     confidence: float
     indicators: Dict[str, float]
     metadata: Dict[str, Any]
-    classification_path: List[str] = None  # Optional: track which conditions led to this regime
+    classification_path: List[
+        str
+    ] = None  # Optional: track which conditions led to this regime
 
     def __post_init__(self):
         """Initialize optional fields."""
         if self.classification_path is None:
             self.classification_path = []
+
+
+# Backwards compatibility aliases for older enum member names
+MarketRegime.STRONG_BULL = MarketRegime.STRONG_BULL_TREND
+MarketRegime.MODERATE_BULL = MarketRegime.MODERATE_BULL_TREND
+MarketRegime.WEAK_BULL = MarketRegime.WEAK_BULL_TREND
+MarketRegime.STRONG_BEAR = MarketRegime.STRONG_BEAR_TREND
+MarketRegime.MODERATE_BEAR = MarketRegime.MODERATE_BEAR_TREND
+MarketRegime.WEAK_BEAR = MarketRegime.WEAK_BEAR_TREND
+
+# Range compat
+MarketRegime.TIGHT_RANGE = MarketRegime.LOW_VOLATILITY_RANGING
+MarketRegime.WIDE_RANGE = MarketRegime.MODERATE_VOLATILITY_RANGING
+MarketRegime.VOLATILE_RANGE = MarketRegime.HIGH_VOLATILITY_RANGING
+MarketRegime.QUIET_RANGE = MarketRegime.LOW_VOLATILITY_RANGING
+
+# Pattern compat
+MarketRegime.BREAKOUT_UP = MarketRegime.BREAKOUT_SETUP
+MarketRegime.BREAKOUT_DOWN = MarketRegime.BREAKDOWN_SETUP
+# Reversal maps to consolidation
+MarketRegime.REVERSAL_UP = MarketRegime.CONSOLIDATION
+MarketRegime.REVERSAL_DOWN = MarketRegime.CONSOLIDATION

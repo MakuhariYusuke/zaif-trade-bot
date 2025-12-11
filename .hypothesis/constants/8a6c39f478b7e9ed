@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\position_manager.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.001, 0.9, 1.0, 200000.0, 'Long', 'PositionManager', 'Short', 'adjusted_position', 'buy', 'control_active', 'entry_price', 'exchange_profile', 'max_position_size', 'position', 'realized_pnl', 'risk_management', 'sell', 'slippage', 'total_pnl', 'trades_count', 'unrealized_pnl']

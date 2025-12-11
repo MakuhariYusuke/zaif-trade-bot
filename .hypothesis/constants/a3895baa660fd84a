@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\adaptive_confidence_adjuster.py
+# hypothesis_version: 6.148.6
+
+[-0.2, 0.0, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.4, 0.45, 0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 2.0, 100, 150, 200, ' | ', '-inf', '2023-01-01', 'D', '__main__', 'base_threshold', 'close', 'confidence', 'confidence_score', 'current_threshold', 'final_threshold', 'high', 'item', 'low', 'market_regime', 'max_threshold', 'min_threshold', 'open', 'pnl', 'reasoning', 'timestamp', 'wide_range_threshold', '引き上げ', '引き下げ']

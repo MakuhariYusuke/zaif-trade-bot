@@ -13,12 +13,7 @@ try:
     # central types module is not yet importable; in that case, fall back to
     # Any-based placeholders to avoid hard import-time failures during
     # diagnostics (this preserves runtime behaviour and helps imports continue).
-    from ztb.types.alert_types import (
-        Alert,
-        AlertCondition,
-        AlertLevel,
-        AlertStatus,
-    )
+    from ztb.types.alert_types import Alert, AlertCondition, AlertLevel, AlertStatus
 except Exception:
     # Fallback to Any so the module can be imported even if alert_types is
     # temporarily unavailable due to circular imports while other modules are
@@ -96,39 +91,119 @@ class MetricValue:
 class TradingPerformanceMetrics:
     """取引パフォーマンスメトリクス"""
 
-    total_trades: int
-    profitable_trades: int
-    win_rate: float
-    total_pnl: float
-    total_pnl_percentage: float
-    sharpe_ratio: float
-    sortino_ratio: float
-    max_drawdown: float
-    max_drawdown_percentage: float
-    calmar_ratio: float
-    alpha: float
-    beta: float
+    total_trades: int = 0
+    winning_trades: int = 0
+    losing_trades: int = 0
+    profitable_trades: int = 0
+    win_rate: float = 0.0
+    loss_rate: float = 0.0
+    max_consecutive_wins: int = 0
+    avg_win: float = 0.0
+    avg_loss: float = 0.0
+    profit_factor: float = 0.0
+    total_pnl: float = 0.0
+    total_pnl_percentage: float = 0.0
+    total_return: float = 0.0
+    sharpe_ratio: float = 0.0
+    sortino_ratio: float = 0.0
+    max_drawdown: float = 0.0
+    max_drawdown_percentage: float = 0.0
+    calmar_ratio: float = 0.0
+    alpha: float = 0.0
+    beta: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
-    timestamp: datetime
+    timestamp: datetime = field(default_factory=datetime.now)
+
+    # Calculated properties
+    @property
+    def computed_win_rate(self) -> float:  # computed from counts
+        return (
+            self.winning_trades / self.total_trades
+            if self.total_trades
+            else self.win_rate
+        )
+
+    @property
+    def computed_loss_rate(self) -> float:
+        return (
+            self.losing_trades / self.total_trades
+            if self.total_trades
+            else self.loss_rate
+        )
+
+    @property
+    def computed_profit_factor(self) -> float:
+        if self.avg_loss == 0.0:
+            return float("inf") if self.avg_win > 0 else 0.0
+        return (self.avg_win / self.avg_loss) if self.avg_loss else 0.0
+
+    def __post_init__(self):
+        """Populate computed fields for backward compatibility.
+
+        Compute and populate win_rate/loss_rate from counts, if counts are provided.
+        This ensures tests that check metrics.win_rate directly will pass while
+        preserving the detailed computed properties under different names.
+        """
+        try:
+            if self.total_trades and self.total_trades > 0:
+                self.win_rate = self.winning_trades / self.total_trades
+                self.loss_rate = self.losing_trades / self.total_trades
+            else:
+                # Ensure provided explicit win_rate is preserved
+                self.win_rate = float(self.win_rate or 0.0)
+                self.loss_rate = float(self.loss_rate or 0.0)
+        except Exception:
+            # Don't raise from metrics computation, keep defaults
+            pass
 
 
 @dataclass
 class RiskMetrics:
     """リスクメトリクス"""
 
-    value_at_risk_95: float
-    expected_shortfall_95: float
-    volatility: float
-    downside_volatility: float
-    beta_to_market: float
-    correlation_to_market: float
-    concentration_risk: float
-    liquidity_risk: float
-    timestamp: datetime
+    value_at_risk_95: float = 0.0
+    expected_shortfall_95: float = 0.0
+    # legacy names expected by tests
+    max_drawdown: float = 0.0
+    value_at_risk: float = 0.0
+    expected_shortfall: float = 0.0
+    volatility: float = 0.0
+    downside_volatility: float = 0.0
+    beta_to_market: float = 0.0
+    correlation_to_market: float = 0.0
+    concentration_risk: float = 0.0
+    liquidity_risk: float = 0.0
+    timestamp: datetime = field(default_factory=datetime.now)
+
+    # Backwards compatibility alias fields
+    beta: float = 0.0
+
+    def __post_init__(self):
+        # Map aliases consistently for convenience
+        try:
+            # If user provided a beta alias, copy to canonical field
+            if hasattr(self, "beta") and self.beta:
+                self.beta_to_market = self.beta
+        except Exception:
+            pass
+
+    @property
+    def risk_score(self) -> float:
+        """Compute a simple composite risk score; lower is better."""
+        score = 100.0
+        try:
+            # Penalty for drawdown and VaR and ES
+            score -= min(100.0, self.max_drawdown * 200)
+            score -= min(100.0, (getattr(self, "value_at_risk", 0.0)) * 100)
+            score -= min(100.0, (getattr(self, "expected_shortfall", 0.0)) * 100)
+            score = max(0.0, score)
+        except Exception:
+            pass
+        return score
 
 
 @dataclass

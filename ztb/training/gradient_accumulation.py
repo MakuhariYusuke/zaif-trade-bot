@@ -7,7 +7,7 @@ with effectively larger batch sizes on limited GPU memory.
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn

@@ -144,8 +144,16 @@ def test_action_history_management(default_settings: RewardSettings):
     default_settings["behavior"]["consistency_penalty"]["lookback"] = lookback
     calculator = BehavioralPenaltyCalculator(default_settings)
 
-    from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
-    actions_to_record = [ACTION_BUY, ACTION_SELL, ACTION_HOLD, ACTION_BUY, ACTION_SELL, ACTION_HOLD]
+    from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+
+    actions_to_record = [
+        ACTION_BUY,
+        ACTION_SELL,
+        ACTION_HOLD,
+        ACTION_BUY,
+        ACTION_SELL,
+        ACTION_HOLD,
+    ]
     for action in actions_to_record:
         calculator.record_action(action)
 
@@ -153,6 +161,15 @@ def test_action_history_management(default_settings: RewardSettings):
     expected_len = min(len(actions_to_record), calculator.recent_actions.maxlen)
     assert len(calculator.recent_actions) == expected_len
     assert list(calculator.recent_actions) == list(actions_to_record)[-expected_len:]
+
+
+def test_forced_balance_min_actions_expand_history(default_settings: RewardSettings):
+    """Forced balance thresholds should enlarge the action history window."""
+    default_settings["forced_balance_min_actions"] = 120
+    calculator = BehavioralPenaltyCalculator(default_settings)
+
+    # History maxlen stores lookback+1 due to the "current" slot reservation
+    assert calculator.recent_actions.maxlen == 121
 
 
 def test_trend_adjustment_targets(default_settings: RewardSettings):
@@ -231,7 +248,9 @@ def test_consistency_min_actions_threshold(default_settings: RewardSettings):
     assert penalty == pytest.approx(0.0)
 
 
-def test_hold_between_non_hold_actions_counts_toward_lookback(default_settings: RewardSettings):
+def test_hold_between_non_hold_actions_counts_toward_lookback(
+    default_settings: RewardSettings,
+):
     """Verify that HOLD entries between non-HOLD actions do not prevent whipsaw detection when lookback is 1."""
     default_settings["behavior"]["consistency_penalty"]["lookback"] = 2
     calculator = BehavioralPenaltyCalculator(default_settings)

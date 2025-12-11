@@ -6,31 +6,25 @@ Phase 3 Enhanced vs Baseline Backtest Comparison Script
 ベースライン（標準）バックテストと比較します。
 """
 
-import sys
-import os
 import json
 import logging
-from pathlib import Path
+import sys
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-import pandas as pd
+from pathlib import Path
+from typing import Any, Dict, List
+
 import numpy as np
+import pandas as pd
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.backtest.integrated_backtest_runner import IntegratedBacktestRunner
-from ztb.risk.enhanced_risk_manager import EnhancedRiskManager
-from ztb.utils.statistical_validator import StatisticalValidator
-from ztb.trading.backtest.runner import BacktestEngine
-from ztb.risk.risk_manager import RiskManager
-from ztb.utils.trading_metrics import sharpe_ratio
+from ztb.metrics import sharpe_ratio
 
 # ロギング設定
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -42,7 +36,9 @@ class Phase3ComparisonAnalyzer:
         self.results_dir = Path("phase3_comparison_results")
         self.results_dir.mkdir(exist_ok=True)
 
-    def run_baseline_backtest(self, data_path: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    def run_baseline_backtest(
+        self, data_path: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         ベースラインバックテストを実行（簡易版）
 
@@ -61,10 +57,12 @@ class Phase3ComparisonAnalyzer:
 
             # データ読み込み
             data = pd.read_csv(data_path)
-            if 'close' not in data.columns and 'open' in data.columns:
-                data['close'] = data['open']  # closeカラムがない場合、openを使用
-            if 'timestamp' not in data.columns:
-                data['timestamp'] = pd.date_range(start='2023-01-01', periods=len(data), freq='1H')
+            if "close" not in data.columns and "open" in data.columns:
+                data["close"] = data["open"]  # closeカラムがない場合、openを使用
+            if "timestamp" not in data.columns:
+                data["timestamp"] = pd.date_range(
+                    start="2023-01-01", periods=len(data), freq="1H"
+                )
 
             # 簡易的な取引シグナル生成（ランダム）
             np.random.seed(42)  # 再現性のため
@@ -79,19 +77,25 @@ class Phase3ComparisonAnalyzer:
 
             for i, (idx, row) in enumerate(data.iterrows()):
                 signal = signals[i]
-                price = row['close']
+                price = row["close"]
 
                 # ポジション変更
                 if signal != position:
                     if position != 0:  # ポジションクローズ
-                        pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
-                        capital *= (1 + pnl * position)
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': pnl,
-                            'type': 'long' if position == 1 else 'short'
-                        })
+                        pnl = (
+                            (price - entry_price) / entry_price
+                            if position == 1
+                            else (entry_price - price) / entry_price
+                        )
+                        capital *= 1 + pnl * position
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": pnl,
+                                "type": "long" if position == 1 else "short",
+                            }
+                        )
 
                     if signal != 0:  # 新規ポジション
                         entry_price = price
@@ -101,7 +105,9 @@ class Phase3ComparisonAnalyzer:
 
             # メトリクス計算
             returns = pd.Series(equity_curve).pct_change().dropna()
-            total_return = (capital - config.get("initial_balance", 1000000)) / config.get("initial_balance", 1000000)
+            total_return = (
+                capital - config.get("initial_balance", 1000000)
+            ) / config.get("initial_balance", 1000000)
             sharpe = sharpe_ratio(returns.values) if len(returns) > 0 else 0
 
             # 最大ドローダウン計算
@@ -110,7 +116,7 @@ class Phase3ComparisonAnalyzer:
             max_dd = drawdown.min() if len(drawdown) > 0 else 0
 
             # 勝率計算
-            winning_trades = len([t for t in trades if t['pnl'] > 0])
+            winning_trades = len([t for t in trades if t["pnl"] > 0])
             win_rate = winning_trades / len(trades) if trades else 0
 
             result = {
@@ -119,11 +125,11 @@ class Phase3ComparisonAnalyzer:
                     "sharpe_ratio": sharpe,
                     "max_drawdown": max_dd,
                     "win_rate": win_rate,
-                    "total_trades": len(trades)
+                    "total_trades": len(trades),
                 },
                 "trades": trades,
                 "equity_curve": equity_curve,
-                "returns": returns.tolist()
+                "returns": returns.tolist(),
             }
 
             logger.info("✅ Baseline backtest completed")
@@ -133,7 +139,9 @@ class Phase3ComparisonAnalyzer:
             logger.error(f"❌ Baseline backtest failed: {e}")
             return {"error": str(e)}
 
-    def run_enhanced_backtest(self, data_path: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    def run_enhanced_backtest(
+        self, data_path: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Phase 3強化バックテストを実行（簡易版）
 
@@ -149,22 +157,24 @@ class Phase3ComparisonAnalyzer:
         try:
             # データ読み込み
             data = pd.read_csv(data_path)
-            if 'close' not in data.columns and 'open' in data.columns:
-                data['close'] = data['open']  # closeカラムがない場合、openを使用
-            if 'timestamp' not in data.columns:
-                data['timestamp'] = pd.date_range(start='2023-01-01', periods=len(data), freq='1H')
+            if "close" not in data.columns and "open" in data.columns:
+                data["close"] = data["open"]  # closeカラムがない場合、openを使用
+            if "timestamp" not in data.columns:
+                data["timestamp"] = pd.date_range(
+                    start="2023-01-01", periods=len(data), freq="1H"
+                )
 
             # Phase 3強化版：より賢いシグナル生成（トレンドフォロー + リスク管理）
             np.random.seed(123)  # 異なるシードで再現性確保
 
             # トレンドを考慮したシグナル生成
-            prices = data['close'].values
+            prices = data["close"].values
             signals = np.zeros(len(data))
 
             # 簡易トレンド検出
             for i in range(10, len(data)):
-                short_ma = np.mean(prices[i-5:i])
-                long_ma = np.mean(prices[i-20:i])
+                short_ma = np.mean(prices[i - 5 : i])
+                long_ma = np.mean(prices[i - 20 : i])
 
                 if short_ma > long_ma * 1.001:  # 上昇トレンド
                     signals[i] = 1
@@ -185,19 +195,25 @@ class Phase3ComparisonAnalyzer:
 
             for i, (idx, row) in enumerate(data.iterrows()):
                 signal = signals[i]
-                price = row['close']
+                price = row["close"]
 
                 # ポジション変更
                 if signal != position and signal != 0:
                     if position != 0:  # ポジションクローズ
-                        pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
-                        capital *= (1 + pnl * position * max_position_size)
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': pnl,
-                            'type': 'long' if position == 1 else 'short'
-                        })
+                        pnl = (
+                            (price - entry_price) / entry_price
+                            if position == 1
+                            else (entry_price - price) / entry_price
+                        )
+                        capital *= 1 + pnl * position * max_position_size
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": pnl,
+                                "type": "long" if position == 1 else "short",
+                            }
+                        )
 
                     # 新規ポジション（リスク管理適用）
                     entry_price = price
@@ -205,24 +221,34 @@ class Phase3ComparisonAnalyzer:
 
                 # ストップロス/テイクプロフィットチェック
                 if position != 0:
-                    current_pnl = ((price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price)
+                    current_pnl = (
+                        (price - entry_price) / entry_price
+                        if position == 1
+                        else (entry_price - price) / entry_price
+                    )
 
                     if current_pnl <= -stop_loss or current_pnl >= take_profit:
-                        capital *= (1 + current_pnl * position * max_position_size)
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': current_pnl,
-                            'type': 'long' if position == 1 else 'short',
-                            'exit_reason': 'stop_loss' if current_pnl <= -stop_loss else 'take_profit'
-                        })
+                        capital *= 1 + current_pnl * position * max_position_size
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": current_pnl,
+                                "type": "long" if position == 1 else "short",
+                                "exit_reason": "stop_loss"
+                                if current_pnl <= -stop_loss
+                                else "take_profit",
+                            }
+                        )
                         position = 0
 
                 equity_curve.append(capital)
 
             # メトリクス計算
             returns = pd.Series(equity_curve).pct_change().dropna()
-            total_return = (capital - config.get("initial_balance", 1000000)) / config.get("initial_balance", 1000000)
+            total_return = (
+                capital - config.get("initial_balance", 1000000)
+            ) / config.get("initial_balance", 1000000)
             sharpe = sharpe_ratio(returns.values) if len(returns) > 0 else 0
 
             # 最大ドローダウン計算
@@ -231,7 +257,7 @@ class Phase3ComparisonAnalyzer:
             max_dd = drawdown.min() if len(drawdown) > 0 else 0
 
             # 勝率計算
-            winning_trades = len([t for t in trades if t['pnl'] > 0])
+            winning_trades = len([t for t in trades if t["pnl"] > 0])
             win_rate = winning_trades / len(trades) if trades else 0
 
             result = {
@@ -241,11 +267,14 @@ class Phase3ComparisonAnalyzer:
                     "max_drawdown": max_dd,
                     "win_rate": win_rate,
                     "total_trades": len(trades),
-                    "profit_factor": sum(t['pnl'] for t in trades if t['pnl'] > 0) / abs(sum(t['pnl'] for t in trades if t['pnl'] < 0)) if any(t['pnl'] < 0 for t in trades) else float('inf')
+                    "profit_factor": sum(t["pnl"] for t in trades if t["pnl"] > 0)
+                    / abs(sum(t["pnl"] for t in trades if t["pnl"] < 0))
+                    if any(t["pnl"] < 0 for t in trades)
+                    else float("inf"),
                 },
                 "trades": trades,
                 "equity_curve": equity_curve,
-                "returns": returns.tolist()
+                "returns": returns.tolist(),
             }
 
             logger.info("✅ Phase 3 enhanced backtest completed")
@@ -255,7 +284,9 @@ class Phase3ComparisonAnalyzer:
             logger.error(f"❌ Phase 3 enhanced backtest failed: {e}")
             return {"error": str(e)}
 
-    def run_enhanced_backtest_improved(self, data_path: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    def run_enhanced_backtest_improved(
+        self, data_path: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Phase 3強化バックテストを実行（改善版）
 
@@ -271,26 +302,28 @@ class Phase3ComparisonAnalyzer:
         try:
             # データ読み込み
             data = pd.read_csv(data_path)
-            if 'close' not in data.columns and 'open' in data.columns:
-                data['close'] = data['open']  # closeカラムがない場合、openを使用
-            if 'timestamp' not in data.columns:
-                data['timestamp'] = pd.date_range(start='2023-01-01', periods=len(data), freq='h')
+            if "close" not in data.columns and "open" in data.columns:
+                data["close"] = data["open"]  # closeカラムがない場合、openを使用
+            if "timestamp" not in data.columns:
+                data["timestamp"] = pd.date_range(
+                    start="2023-01-01", periods=len(data), freq="h"
+                )
 
             # 改善版：より賢いシグナル生成（複数指標の組み合わせ）
-            prices = data['close'].values
+            prices = data["close"].values
             signals = np.zeros(len(data))
 
             # 移動平均とRSIを組み合わせたシグナル生成
             for i in range(20, len(data)):
                 # 短期・長期移動平均
-                short_ma = np.mean(prices[i-5:i])
-                long_ma = np.mean(prices[i-20:i])
+                short_ma = np.mean(prices[i - 5 : i])
+                long_ma = np.mean(prices[i - 20 : i])
 
                 # RSI計算（簡易版）
                 gains = []
                 losses = []
-                for j in range(max(0, i-14), i):
-                    change = prices[j] - prices[j-1] if j > 0 else 0
+                for j in range(max(0, i - 14), i):
+                    change = prices[j] - prices[j - 1] if j > 0 else 0
                     if change > 0:
                         gains.append(change)
                     else:
@@ -329,7 +362,7 @@ class Phase3ComparisonAnalyzer:
 
             for i, (idx, row) in enumerate(data.iterrows()):
                 signal = signals[i]
-                price = row['close']
+                price = row["close"]
 
                 # ポジション変更（改善版ロジック）
                 if signal != position and signal != 0:
@@ -338,8 +371,12 @@ class Phase3ComparisonAnalyzer:
                         continue  # 連敗時は新規エントリーを控える
 
                     if position != 0:  # ポジションクローズ
-                        pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
-                        capital *= (1 + pnl * position * max_position_size)
+                        pnl = (
+                            (price - entry_price) / entry_price
+                            if position == 1
+                            else (entry_price - price) / entry_price
+                        )
+                        capital *= 1 + pnl * position * max_position_size
 
                         # 連敗カウンター更新
                         if pnl < 0:
@@ -347,12 +384,14 @@ class Phase3ComparisonAnalyzer:
                         else:
                             consecutive_losses = 0
 
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': pnl,
-                            'type': 'long' if position == 1 else 'short'
-                        })
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": pnl,
+                                "type": "long" if position == 1 else "short",
+                            }
+                        )
 
                     # 新規ポジション（改善版リスク管理適用）
                     entry_price = price
@@ -360,10 +399,14 @@ class Phase3ComparisonAnalyzer:
 
                 # ストップロス/テイクプロフィットチェック（改善版）
                 if position != 0:
-                    current_pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
+                    current_pnl = (
+                        (price - entry_price) / entry_price
+                        if position == 1
+                        else (entry_price - price) / entry_price
+                    )
 
                     if current_pnl <= -stop_loss or current_pnl >= take_profit:
-                        capital *= (1 + current_pnl * position * max_position_size)
+                        capital *= 1 + current_pnl * position * max_position_size
 
                         # 連敗カウンター更新
                         if current_pnl < 0:
@@ -371,20 +414,26 @@ class Phase3ComparisonAnalyzer:
                         else:
                             consecutive_losses = 0
 
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': current_pnl,
-                            'type': 'long' if position == 1 else 'short',
-                            'exit_reason': 'stop_loss' if current_pnl <= -stop_loss else 'take_profit'
-                        })
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": current_pnl,
+                                "type": "long" if position == 1 else "short",
+                                "exit_reason": "stop_loss"
+                                if current_pnl <= -stop_loss
+                                else "take_profit",
+                            }
+                        )
                         position = 0
 
                 equity_curve.append(capital)
 
             # メトリクス計算
             returns = pd.Series(equity_curve).pct_change().dropna()
-            total_return = (capital - config.get("initial_balance", 1000000)) / config.get("initial_balance", 1000000)
+            total_return = (
+                capital - config.get("initial_balance", 1000000)
+            ) / config.get("initial_balance", 1000000)
             sharpe = sharpe_ratio(returns.values) if len(returns) > 0 else 0
 
             # 最大ドローダウン計算
@@ -393,7 +442,7 @@ class Phase3ComparisonAnalyzer:
             max_dd = drawdown.min() if len(drawdown) > 0 else 0
 
             # 勝率計算
-            winning_trades = len([t for t in trades if t['pnl'] > 0])
+            winning_trades = len([t for t in trades if t["pnl"] > 0])
             win_rate = winning_trades / len(trades) if trades else 0
 
             result = {
@@ -403,9 +452,14 @@ class Phase3ComparisonAnalyzer:
                     "max_drawdown": max_dd,
                     "win_rate": win_rate,
                     "total_trades": len(trades),
-                    "profit_factor": sum(t['pnl'] for t in trades if t['pnl'] > 0) / abs(sum(t['pnl'] for t in trades if t['pnl'] < 0)) if any(t['pnl'] < 0 for t in trades) else float('inf'),
-                    "avg_trade_pnl": np.mean([t['pnl'] for t in trades]) if trades else 0,
-                    "max_consecutive_losses": consecutive_losses
+                    "profit_factor": sum(t["pnl"] for t in trades if t["pnl"] > 0)
+                    / abs(sum(t["pnl"] for t in trades if t["pnl"] < 0))
+                    if any(t["pnl"] < 0 for t in trades)
+                    else float("inf"),
+                    "avg_trade_pnl": np.mean([t["pnl"] for t in trades])
+                    if trades
+                    else 0,
+                    "max_consecutive_losses": consecutive_losses,
                 },
                 "trades": trades,
                 "equity_curve": equity_curve,
@@ -414,15 +468,17 @@ class Phase3ComparisonAnalyzer:
                     "max_position_size": max_position_size,
                     "stop_loss": stop_loss,
                     "take_profit": take_profit,
-                    "max_consecutive_losses": max_consecutive_losses
-                }
+                    "max_consecutive_losses": max_consecutive_losses,
+                },
             }
 
         except Exception as e:
             logger.error(f"❌ Baseline backtest failed: {e}")
             return {"error": str(e)}
 
-    def run_enhanced_backtest_aggressive(self, data_path: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    def run_enhanced_backtest_aggressive(
+        self, data_path: str, config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Phase 3強化バックテストを実行（積極改善版）
 
@@ -438,26 +494,28 @@ class Phase3ComparisonAnalyzer:
         try:
             # データ読み込み
             data = pd.read_csv(data_path)
-            if 'close' not in data.columns and 'open' in data.columns:
-                data['close'] = data['open']  # closeカラムがない場合、openを使用
-            if 'timestamp' not in data.columns:
-                data['timestamp'] = pd.date_range(start='2023-01-01', periods=len(data), freq='h')
+            if "close" not in data.columns and "open" in data.columns:
+                data["close"] = data["open"]  # closeカラムがない場合、openを使用
+            if "timestamp" not in data.columns:
+                data["timestamp"] = pd.date_range(
+                    start="2023-01-01", periods=len(data), freq="h"
+                )
 
             # 積極改善版：より緩いシグナル生成（より多くの取引機会）
-            prices = data['close'].values
+            prices = data["close"].values
             signals = np.zeros(len(data))
 
             # 移動平均とRSIを組み合わせたシグナル生成（緩和版）
             for i in range(20, len(data)):
                 # 短期・長期移動平均
-                short_ma = np.mean(prices[i-5:i])
-                long_ma = np.mean(prices[i-20:i])
+                short_ma = np.mean(prices[i - 5 : i])
+                long_ma = np.mean(prices[i - 20 : i])
 
                 # RSI計算（簡易版）
                 gains = []
                 losses = []
-                for j in range(max(0, i-14), i):
-                    change = prices[j] - prices[j-1] if j > 0 else 0
+                for j in range(max(0, i - 14), i):
+                    change = prices[j] - prices[j - 1] if j > 0 else 0
                     if change > 0:
                         gains.append(change)
                     else:
@@ -496,7 +554,7 @@ class Phase3ComparisonAnalyzer:
 
             for i, (idx, row) in enumerate(data.iterrows()):
                 signal = signals[i]
-                price = row['close']
+                price = row["close"]
 
                 # ポジション変更（積極改善版ロジック）
                 if signal != position and signal != 0:
@@ -505,8 +563,12 @@ class Phase3ComparisonAnalyzer:
                         continue  # 連敗時は新規エントリーを控える
 
                     if position != 0:  # ポジションクローズ
-                        pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
-                        capital *= (1 + pnl * position * max_position_size)
+                        pnl = (
+                            (price - entry_price) / entry_price
+                            if position == 1
+                            else (entry_price - price) / entry_price
+                        )
+                        capital *= 1 + pnl * position * max_position_size
 
                         # 連敗カウンター更新
                         if pnl < 0:
@@ -514,12 +576,14 @@ class Phase3ComparisonAnalyzer:
                         else:
                             consecutive_losses = 0
 
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': pnl,
-                            'type': 'long' if position == 1 else 'short'
-                        })
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": pnl,
+                                "type": "long" if position == 1 else "short",
+                            }
+                        )
 
                     # 新規ポジション（積極改善版リスク管理適用）
                     entry_price = price
@@ -527,10 +591,14 @@ class Phase3ComparisonAnalyzer:
 
                 # ストップロス/テイクプロフィットチェック（積極改善版）
                 if position != 0:
-                    current_pnl = (price - entry_price) / entry_price if position == 1 else (entry_price - price) / entry_price
+                    current_pnl = (
+                        (price - entry_price) / entry_price
+                        if position == 1
+                        else (entry_price - price) / entry_price
+                    )
 
                     if current_pnl <= -stop_loss or current_pnl >= take_profit:
-                        capital *= (1 + current_pnl * position * max_position_size)
+                        capital *= 1 + current_pnl * position * max_position_size
 
                         # 連敗カウンター更新
                         if current_pnl < 0:
@@ -538,20 +606,26 @@ class Phase3ComparisonAnalyzer:
                         else:
                             consecutive_losses = 0
 
-                        trades.append({
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'pnl': current_pnl,
-                            'type': 'long' if position == 1 else 'short',
-                            'exit_reason': 'stop_loss' if current_pnl <= -stop_loss else 'take_profit'
-                        })
+                        trades.append(
+                            {
+                                "entry_price": entry_price,
+                                "exit_price": price,
+                                "pnl": current_pnl,
+                                "type": "long" if position == 1 else "short",
+                                "exit_reason": "stop_loss"
+                                if current_pnl <= -stop_loss
+                                else "take_profit",
+                            }
+                        )
                         position = 0
 
                 equity_curve.append(capital)
 
             # メトリクス計算
             returns = pd.Series(equity_curve).pct_change().dropna()
-            total_return = (capital - config.get("initial_balance", 1000000)) / config.get("initial_balance", 1000000)
+            total_return = (
+                capital - config.get("initial_balance", 1000000)
+            ) / config.get("initial_balance", 1000000)
             sharpe = sharpe_ratio(returns.values) if len(returns) > 0 else 0
 
             # 最大ドローダウン計算
@@ -560,7 +634,7 @@ class Phase3ComparisonAnalyzer:
             max_dd = drawdown.min() if len(drawdown) > 0 else 0
 
             # 勝率計算
-            winning_trades = len([t for t in trades if t['pnl'] > 0])
+            winning_trades = len([t for t in trades if t["pnl"] > 0])
             win_rate = winning_trades / len(trades) if trades else 0
 
             result = {
@@ -570,9 +644,14 @@ class Phase3ComparisonAnalyzer:
                     "max_drawdown": max_dd,
                     "win_rate": win_rate,
                     "total_trades": len(trades),
-                    "profit_factor": sum(t['pnl'] for t in trades if t['pnl'] > 0) / abs(sum(t['pnl'] for t in trades if t['pnl'] < 0)) if any(t['pnl'] < 0 for t in trades) else float('inf'),
-                    "avg_trade_pnl": np.mean([t['pnl'] for t in trades]) if trades else 0,
-                    "max_consecutive_losses": consecutive_losses
+                    "profit_factor": sum(t["pnl"] for t in trades if t["pnl"] > 0)
+                    / abs(sum(t["pnl"] for t in trades if t["pnl"] < 0))
+                    if any(t["pnl"] < 0 for t in trades)
+                    else float("inf"),
+                    "avg_trade_pnl": np.mean([t["pnl"] for t in trades])
+                    if trades
+                    else 0,
+                    "max_consecutive_losses": consecutive_losses,
                 },
                 "trades": trades,
                 "equity_curve": equity_curve,
@@ -585,8 +664,8 @@ class Phase3ComparisonAnalyzer:
                     "rsi_oversold_threshold": 40,
                     "rsi_overbought_threshold": 60,
                     "trend_up_threshold": 1.002,
-                    "trend_down_threshold": 0.998
-                }
+                    "trend_down_threshold": 0.998,
+                },
             }
 
             logger.info("✅ Phase 3 enhanced backtest (aggressive) completed")
@@ -596,8 +675,9 @@ class Phase3ComparisonAnalyzer:
             logger.error(f"❌ Phase 3 enhanced backtest (aggressive) failed: {e}")
             return {"error": str(e)}
 
-    def compare_results(self, baseline_results: Dict[str, Any],
-                       enhanced_results: Dict[str, Any]) -> Dict[str, Any]:
+    def compare_results(
+        self, baseline_results: Dict[str, Any], enhanced_results: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         バックテスト結果を比較
 
@@ -615,7 +695,7 @@ class Phase3ComparisonAnalyzer:
             "metrics_comparison": {},
             "risk_metrics": {},
             "statistical_significance": {},
-            "recommendations": []
+            "recommendations": [],
         }
 
         try:
@@ -633,8 +713,12 @@ class Phase3ComparisonAnalyzer:
             enhanced_metrics = enhanced_results.get("metrics", {})
 
             metrics_to_compare = [
-                "total_return", "sharpe_ratio", "max_drawdown",
-                "win_rate", "profit_factor", "total_trades"
+                "total_return",
+                "sharpe_ratio",
+                "max_drawdown",
+                "win_rate",
+                "profit_factor",
+                "total_trades",
             ]
 
             for metric in metrics_to_compare:
@@ -644,8 +728,18 @@ class Phase3ComparisonAnalyzer:
                 comparison["metrics_comparison"][metric] = {
                     "baseline": baseline_val,
                     "enhanced": enhanced_val,
-                    "improvement": enhanced_val - baseline_val if isinstance(enhanced_val, (int, float)) and isinstance(baseline_val, (int, float)) else None,
-                    "improvement_pct": ((enhanced_val - baseline_val) / abs(baseline_val)) * 100 if baseline_val != 0 and isinstance(enhanced_val, (int, float)) and isinstance(baseline_val, (int, float)) else None
+                    "improvement": enhanced_val - baseline_val
+                    if isinstance(enhanced_val, (int, float))
+                    and isinstance(baseline_val, (int, float))
+                    else None,
+                    "improvement_pct": (
+                        (enhanced_val - baseline_val) / abs(baseline_val)
+                    )
+                    * 100
+                    if baseline_val != 0
+                    and isinstance(enhanced_val, (int, float))
+                    and isinstance(baseline_val, (int, float))
+                    else None,
                 }
 
             # リスクメトリクスの比較
@@ -655,11 +749,15 @@ class Phase3ComparisonAnalyzer:
                     comparison["risk_metrics"][metric] = {
                         "baseline": baseline_metrics[metric],
                         "enhanced": enhanced_metrics[metric],
-                        "reduction": baseline_metrics[metric] - enhanced_metrics[metric] if metric in ["max_drawdown", "volatility"] else None
+                        "reduction": baseline_metrics[metric] - enhanced_metrics[metric]
+                        if metric in ["max_drawdown", "volatility"]
+                        else None,
                     }
 
             # 統計的有意性の評価（簡易版）
-            comparison["statistical_significance"] = self._assess_statistical_significance(
+            comparison[
+                "statistical_significance"
+            ] = self._assess_statistical_significance(
                 baseline_results, enhanced_results
             )
 
@@ -674,8 +772,9 @@ class Phase3ComparisonAnalyzer:
             comparison["error"] = str(e)
             return comparison
 
-    def _assess_statistical_significance(self, baseline: Dict[str, Any],
-                                       enhanced: Dict[str, Any]) -> Dict[str, Any]:
+    def _assess_statistical_significance(
+        self, baseline: Dict[str, Any], enhanced: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """統計的有意性の評価（簡易版）"""
         significance = {}
 
@@ -693,10 +792,15 @@ class Phase3ComparisonAnalyzer:
                 n1, n2 = len(baseline_returns), len(enhanced_returns)
 
                 # プールされた標準偏差
-                pooled_std = np.sqrt(((n1-1)*baseline_std**2 + (n2-1)*enhanced_std**2) / (n1 + n2 - 2))
+                pooled_std = np.sqrt(
+                    ((n1 - 1) * baseline_std**2 + (n2 - 1) * enhanced_std**2)
+                    / (n1 + n2 - 2)
+                )
 
                 # t統計量
-                t_stat = (enhanced_mean - baseline_mean) / (pooled_std * np.sqrt(1/n1 + 1/n2))
+                t_stat = (enhanced_mean - baseline_mean) / (
+                    pooled_std * np.sqrt(1 / n1 + 1 / n2)
+                )
 
                 # 自由度
                 df = n1 + n2 - 2
@@ -708,7 +812,9 @@ class Phase3ComparisonAnalyzer:
                     "t_statistic": t_stat,
                     "p_value": p_value,
                     "significant": p_value < 0.05,
-                    "effect_size": (enhanced_mean - baseline_mean) / baseline_std if baseline_std > 0 else 0
+                    "effect_size": (enhanced_mean - baseline_mean) / baseline_std
+                    if baseline_std > 0
+                    else 0,
                 }
 
         except Exception as e:
@@ -731,38 +837,53 @@ class Phase3ComparisonAnalyzer:
         # リターンの改善を確認
         return_comp = metrics_comp.get("total_return", {})
         if return_comp.get("improvement_pct", 0) > 5:
-            recommendations.append(f"Phase 3 shows significant return improvement of {return_comp.get('improvement_pct', 0):.1f}% - consider deploying enhanced system")
+            recommendations.append(
+                f"Phase 3 shows significant return improvement of {return_comp.get('improvement_pct', 0):.1f}% - consider deploying enhanced system"
+            )
         elif return_comp.get("improvement_pct", 0) < -5:
-            recommendations.append(f"Phase 3 shows return degradation of {return_comp.get('improvement_pct', 0):.1f}% - investigate risk management parameters")
+            recommendations.append(
+                f"Phase 3 shows return degradation of {return_comp.get('improvement_pct', 0):.1f}% - investigate risk management parameters"
+            )
 
         # シャープレシオの改善を確認
         sharpe_comp = metrics_comp.get("sharpe_ratio", {})
         if sharpe_comp.get("improvement", 0) > 0.1:
-            recommendations.append(f"Phase 3 improves risk-adjusted returns (Sharpe ratio +{sharpe_comp.get('improvement', 0):.2f}) - excellent risk management")
+            recommendations.append(
+                f"Phase 3 improves risk-adjusted returns (Sharpe ratio +{sharpe_comp.get('improvement', 0):.2f}) - excellent risk management"
+            )
 
         # 最大ドローダウンの改善を確認
         dd_comp = metrics_comp.get("max_drawdown", {})
         if dd_comp.get("improvement", 0) < -0.02:  # ドローダウンが減少（改善）
-            recommendations.append(f"Phase 3 reduces maximum drawdown by {abs(dd_comp.get('improvement', 0)):.1%} - enhanced risk control")
+            recommendations.append(
+                f"Phase 3 reduces maximum drawdown by {abs(dd_comp.get('improvement', 0)):.1%} - enhanced risk control"
+            )
 
         # 勝率の改善を確認
         winrate_comp = metrics_comp.get("win_rate", {})
         if winrate_comp.get("improvement_pct", 0) > 2:
-            recommendations.append(f"Phase 3 increases win rate by {winrate_comp.get('improvement_pct', 0):.1f}% - improved signal quality")
+            recommendations.append(
+                f"Phase 3 increases win rate by {winrate_comp.get('improvement_pct', 0):.1f}% - improved signal quality"
+            )
 
         # デフォルト推奨事項
         if not recommendations:
-            recommendations.extend([
-                "Phase 3のリスク管理機能をさらに最適化することを検討",
-                "追加の市場条件でのテストを実施",
-                "ハイパーパラメータのチューニングを検討"
-            ])
+            recommendations.extend(
+                [
+                    "Phase 3のリスク管理機能をさらに最適化することを検討",
+                    "追加の市場条件でのテストを実施",
+                    "ハイパーパラメータのチューニングを検討",
+                ]
+            )
 
         return recommendations
 
-    def generate_report(self, baseline_results: Dict[str, Any],
-                       enhanced_results: Dict[str, Any],
-                       comparison: Dict[str, Any]) -> str:
+    def generate_report(
+        self,
+        baseline_results: Dict[str, Any],
+        enhanced_results: Dict[str, Any],
+        comparison: Dict[str, Any],
+    ) -> str:
         """
         比較レポートを生成
 
@@ -839,33 +960,40 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 report += f"  {i}. {rec}\n"
             report += "\n"
 
-        report += "="*80 + "\n"
+        report += "=" * 80 + "\n"
 
         # レポートをファイルに保存
         report_file = self.results_dir / f"phase3_comparison_report_{timestamp}.txt"
-        with open(report_file, 'w', encoding='utf-8') as f:
+        with open(report_file, "w", encoding="utf-8") as f:
             f.write(report)
 
         logger.info(f"📁 Detailed report saved to: {report_file}")
 
         # JSON結果も保存
         json_file = self.results_dir / f"phase3_comparison_results_{timestamp}.json"
-        with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                "baseline_results": baseline_results,
-                "enhanced_results": enhanced_results,
-                "comparison": comparison,
-                "timestamp": timestamp
-            }, f, indent=2, default=str)
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "baseline_results": baseline_results,
+                    "enhanced_results": enhanced_results,
+                    "comparison": comparison,
+                    "timestamp": timestamp,
+                },
+                f,
+                indent=2,
+                default=str,
+            )
 
         logger.info(f"📁 JSON results saved to: {json_file}")
 
         return report
 
-
-    def generate_improved_report(self, baseline_results: Dict[str, Any],
-                               enhanced_results: Dict[str, Any],
-                               comparison: Dict[str, Any]) -> str:
+    def generate_improved_report(
+        self,
+        baseline_results: Dict[str, Any],
+        enhanced_results: Dict[str, Any],
+        comparison: Dict[str, Any],
+    ) -> str:
         """
         改善版比較レポートを生成
 
@@ -910,7 +1038,9 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             params = enhanced_results.get("parameters", {})
             if params:
                 report += "🔧 IMPROVED PARAMETERS:\n"
-                report += f"  Max Position Size: {params.get('max_position_size', 0):.1%}\n"
+                report += (
+                    f"  Max Position Size: {params.get('max_position_size', 0):.1%}\n"
+                )
                 report += f"  Stop Loss: {params.get('stop_loss', 0):.1%}\n"
                 report += f"  Take Profit: {params.get('take_profit', 0):.1%}\n"
                 report += f"  Max Consecutive Losses: {params.get('max_consecutive_losses', 0)}\n\n"
@@ -918,7 +1048,9 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             # 追加メトリクス
             enhanced_metrics = enhanced_results.get("metrics", {})
             report += "📊 ADDITIONAL METRICS:\n"
-            report += f"  Average Trade P&L: {enhanced_metrics.get('avg_trade_pnl', 0):.4f}\n"
+            report += (
+                f"  Average Trade P&L: {enhanced_metrics.get('avg_trade_pnl', 0):.4f}\n"
+            )
             report += f"  Max Consecutive Losses: {enhanced_metrics.get('max_consecutive_losses', 0)}\n\n"
 
         # 改善点のハイライト
@@ -948,21 +1080,25 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         else:
             report += "  ⚠️  Win rate needs attention\n"
 
-        report += "\n" + "="*80 + "\n"
+        report += "\n" + "=" * 80 + "\n"
 
         # レポートをファイルに保存
-        report_file = self.results_dir / f"phase3_improved_comparison_report_{timestamp}.txt"
-        with open(report_file, 'w', encoding='utf-8') as f:
+        report_file = (
+            self.results_dir / f"phase3_improved_comparison_report_{timestamp}.txt"
+        )
+        with open(report_file, "w", encoding="utf-8") as f:
             f.write(report)
 
         logger.info(f"📁 Improved report saved to: {report_file}")
 
         return report
 
-
-    def generate_aggressive_report(self, baseline_results: Dict[str, Any],
-                                 enhanced_results: Dict[str, Any],
-                                 comparison: Dict[str, Any]) -> str:
+    def generate_aggressive_report(
+        self,
+        baseline_results: Dict[str, Any],
+        enhanced_results: Dict[str, Any],
+        comparison: Dict[str, Any],
+    ) -> str:
         """
         積極改善版比較レポートを生成
 
@@ -1007,7 +1143,9 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             params = enhanced_results.get("parameters", {})
             if params:
                 report += "🔧 AGGRESSIVE PARAMETERS:\n"
-                report += f"  Max Position Size: {params.get('max_position_size', 0):.1%}\n"
+                report += (
+                    f"  Max Position Size: {params.get('max_position_size', 0):.1%}\n"
+                )
                 report += f"  Stop Loss: {params.get('stop_loss', 0):.1%}\n"
                 report += f"  Take Profit: {params.get('take_profit', 0):.1%}\n"
                 report += f"  Max Consecutive Losses: {params.get('max_consecutive_losses', 0)}\n\n"
@@ -1015,7 +1153,9 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             # 追加メトリクス
             enhanced_metrics = enhanced_results.get("metrics", {})
             report += "📊 ADDITIONAL METRICS:\n"
-            report += f"  Average Trade P&L: {enhanced_metrics.get('avg_trade_pnl', 0):.4f}\n"
+            report += (
+                f"  Average Trade P&L: {enhanced_metrics.get('avg_trade_pnl', 0):.4f}\n"
+            )
             report += f"  Max Consecutive Losses: {enhanced_metrics.get('max_consecutive_losses', 0)}\n\n"
 
         # 改善点のハイライト
@@ -1045,11 +1185,13 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         else:
             report += "  ⚠️  Win rate needs attention\n"
 
-        report += "\n" + "="*80 + "\n"
+        report += "\n" + "=" * 80 + "\n"
 
         # レポートをファイルに保存
-        report_file = self.results_dir / f"phase3_aggressive_comparison_report_{timestamp}.txt"
-        with open(report_file, 'w', encoding='utf-8') as f:
+        report_file = (
+            self.results_dir / f"phase3_aggressive_comparison_report_{timestamp}.txt"
+        )
+        with open(report_file, "w", encoding="utf-8") as f:
             f.write(report)
 
         logger.info(f"📁 Aggressive report saved to: {report_file}")
@@ -1071,10 +1213,10 @@ def main():
         backtest_config = {
             "initial_balance": 1000000,  # 100万円
             "commission": 0.001,  # 0.1%
-            "slippage": 0.0005,   # 0.05%
+            "slippage": 0.0005,  # 0.05%
             "max_position_size": 0.1,  # 10% max position
-            "stop_loss": 0.02,   # 2% stop loss
-            "take_profit": 0.05  # 5% take profit
+            "stop_loss": 0.02,  # 2% stop loss
+            "take_profit": 0.05,  # 5% take profit
         }
 
         # ベースラインバックテスト実行
@@ -1084,42 +1226,56 @@ def main():
         enhanced_results = analyzer.run_enhanced_backtest(data_path, backtest_config)
 
         # Phase 3強化バックテスト実行（改善版）
-        enhanced_improved_results = analyzer.run_enhanced_backtest_improved(data_path, backtest_config)
+        enhanced_improved_results = analyzer.run_enhanced_backtest_improved(
+            data_path, backtest_config
+        )
 
         # 結果比較（オリジナルPhase 3）
         comparison = analyzer.compare_results(baseline_results, enhanced_results)
 
         # Phase 3強化バックテスト実行（積極改善版）
-        enhanced_aggressive_results = analyzer.run_enhanced_backtest_aggressive(data_path, backtest_config)
+        enhanced_aggressive_results = analyzer.run_enhanced_backtest_aggressive(
+            data_path, backtest_config
+        )
 
         # 結果比較（改善版Phase 3）
-        comparison_improved = analyzer.compare_results(baseline_results, enhanced_improved_results)
+        comparison_improved = analyzer.compare_results(
+            baseline_results, enhanced_improved_results
+        )
 
         # 結果比較（積極改善版Phase 3）
-        comparison_aggressive = analyzer.compare_results(baseline_results, enhanced_aggressive_results)
+        comparison_aggressive = analyzer.compare_results(
+            baseline_results, enhanced_aggressive_results
+        )
 
         # レポート生成（オリジナル）
-        report = analyzer.generate_report(baseline_results, enhanced_results, comparison)
+        report = analyzer.generate_report(
+            baseline_results, enhanced_results, comparison
+        )
 
         # レポート生成（改善版）
-        report_improved = analyzer.generate_improved_report(baseline_results, enhanced_improved_results, comparison_improved)
+        report_improved = analyzer.generate_improved_report(
+            baseline_results, enhanced_improved_results, comparison_improved
+        )
 
         # レポート生成（積極改善版）
-        report_aggressive = analyzer.generate_aggressive_report(baseline_results, enhanced_aggressive_results, comparison_aggressive)
+        report_aggressive = analyzer.generate_aggressive_report(
+            baseline_results, enhanced_aggressive_results, comparison_aggressive
+        )
 
-        print("="*80)
+        print("=" * 80)
         print("ORIGINAL PHASE 3 RESULTS:")
-        print("="*80)
+        print("=" * 80)
         print(report)
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("IMPROVED PHASE 3 RESULTS:")
-        print("="*80)
+        print("=" * 80)
         print(report_improved)
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("AGGRESSIVE PHASE 3 RESULTS:")
-        print("="*80)
+        print("=" * 80)
         print(report_aggressive)
 
         logger.info("✅ Phase 3 comparison analysis completed successfully")

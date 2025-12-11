@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\core\registry.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.95, 1.0, 50.0, 60.0, 70.0, 80.0, 85.0, 100, 200, 1000, 5000, 10000, '0', '1', 'ADX', 'ATR', 'Computing features', 'EMA', 'MA', 'MACD', 'MKL_NUM_THREADS', 'MOVING', 'NUMEXPR_NUM_THREADS', 'OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'PYTHONHASHSEED', 'SMA', 'SUPER', 'TREND', 'VOLATILITY', 'chunk_size', 'close', 'correlation', 'correlation_analysis', 'cpu_count', 'df_mb', 'dtype_chunk_size', 'dtype_memory_report', 'enable_chunking', 'failed_features', 'false', 'feature', 'feature2', 'feature_chunk_size', 'feature_float_dtype', 'features_count', 'float16', 'float32', 'gc_collect_interval', 'initial_memory_pct', 'int32', 'max_parallel_workers', 'max_workers', 'memory_log_interval', 'memory_threshold_pct', 'n', 'no', 'off', 'on', 'optimize_dtypes', 'parallel_batch_size', 'r', 'reports', 'rss_mb', 'sequential_fallbacks', 'start_time', 'true', 'utf-8', 'y', 'yes']

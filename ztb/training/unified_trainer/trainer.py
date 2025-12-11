@@ -2137,6 +2137,18 @@ class UnifiedTrainer:
                 config=env_config_obj,
             )
 
+            # Initialize and attach Market Regime Classifier
+            try:
+                from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+
+                classifier = MarketRegimeClassifier()
+                env.enable_market_regime_adaptation(regime_classifier=classifier)
+                self.logger.info("Attached MarketRegimeClassifier to HeavyTradingEnv")
+            except ImportError:
+                self.logger.warning("Could not import MarketRegimeClassifier")
+            except Exception as e:
+                self.logger.warning(f"Failed to attach MarketRegimeClassifier: {e}")
+
             self.logger.info("V433 training environment created successfully")
             return env
 
@@ -2460,14 +2472,9 @@ class UnifiedTrainer:
         if not returns or len(returns) < 2:
             return 0.0
 
-        try:
-            mean_return = sum(returns) / len(returns)
-            std_return = (
-                sum((r - mean_return) ** 2 for r in returns) / len(returns)
-            ) ** 0.5
-            return mean_return / std_return if std_return > 0 else 0.0
-        except:
-            return 0.0
+        from ztb.metrics.metrics import sharpe_ratio
+
+        return sharpe_ratio(returns, period_per_year=1)
 
     def run_multi_period_backtest(
         self,

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\monitoring\safety.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.55, 0.6, 0.7, 0.8, 0.9, 1.0, 3.0, 5.0, 45.0, 60.0, 300, 1000, 3600, 'Cancel recovery', 'Close all positions', 'Disable leverage', 'Monitor risk metrics', 'Return to safe state', 'baseline_mean', 'baseline_std', 'cpu_usage', 'cpu_usage_percent', 'error', 'error_rate', 'error_rates', 'market_conditions', 'market_volatility', 'max_drawdown', 'mean', 'median', 'memory_usage', 'memory_usage_percent', 'q25', 'q75', 'resource_usage', 'std', 'system_health', 'volatility', 'win_rate', 'z_score']

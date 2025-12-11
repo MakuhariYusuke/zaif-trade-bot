@@ -7,14 +7,17 @@ Provides comprehensive performance metrics for trading strategy evaluation.
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, cast
 
-import numpy as np
 import pandas as pd
 
-from ztb.metrics.metrics import autocorrelation
+from ztb.metrics.metrics import autocorrelation, max_drawdown, sharpe_ratio
+from ztb.metrics.statistical_significance import (
+    calculate_bootstrap_pvalue,
+    calculate_deflated_sharpe_ratio,
+)
+from ztb.metrics.statistics import detect_outliers_iqr
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-from ztb.utils.statistics import detect_outliers_iqr
 
 
 @dataclass
@@ -71,61 +74,25 @@ class MetricsCalculator:
         returns: pd.Series, risk_free_rate: float = 0.02
     ) -> float:
         """Calculate Sharpe ratio (annualized)."""
-        if len(returns) < 2:
-            return 0.0
-
-        excess_returns = (
-            returns - risk_free_rate / TRADING_DAYS_PER_YEAR
-        )  # Daily risk-free rate
-
-        std_dev = excess_returns.std()
-        if std_dev == 0 or np.isnan(std_dev) or std_dev < 1e-10:
-            # Handle near-zero or zero volatility - return 0 for no risk-adjusted return
-            return 0.0
-
-        mean_return = excess_returns.mean()
-        if np.isnan(mean_return):
-            return 0.0
-
-        sharpe = mean_return / std_dev * np.sqrt(TRADING_DAYS_PER_YEAR)
-
-        # Cap extreme values to prevent numerical issues
-        if not np.isfinite(sharpe):
-            return 0.0
-
-        return float(sharpe)
+        return sharpe_ratio(
+            returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
+        )
 
     @staticmethod
     def calculate_sortino_ratio(
         returns: pd.Series, risk_free_rate: float = 0.02
     ) -> float:
         """Calculate Sortino ratio (downside deviation only)."""
-        if len(returns) < 2:
-            return 0.0
+        from ztb.metrics.metrics import sortino_ratio
 
-        excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
-        downside_returns = excess_returns[excess_returns < 0]
-
-        if len(downside_returns) == 0 or downside_returns.std() == 0:
-            return 0.0
-
-        sortino = (
-            excess_returns.mean()
-            / downside_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        return sortino_ratio(
+            returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
         )
-        return float(sortino)
 
     @staticmethod
     def calculate_max_drawdown(equity_curve: pd.Series) -> float:
         """Calculate maximum drawdown."""
-        if len(equity_curve) < 2:
-            return 0.0
-
-        peak = equity_curve.expanding().max()
-        drawdown = (equity_curve - peak) / peak
-        max_dd = drawdown.min()
-        return float(max_dd)
+        return max_drawdown(equity_curve)
 
     @staticmethod
     def calculate_calmar_ratio(returns: pd.Series, max_dd: float) -> float:
@@ -241,7 +208,11 @@ class MetricsCalculator:
             if len(equity_curve) > 1
             else 0.0
         )
-        volatility = returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)  # Annualized
+        from ztb.metrics.technical import calculate_volatility_from_returns
+
+        volatility = calculate_volatility_from_returns(
+            returns, window=len(returns), annualize=True
+        )
 
         (
             total_trades,
@@ -283,12 +254,7 @@ class MetricsCalculator:
         returns: pd.Series, num_strategies: int = 1000
     ) -> float:
         """Calculate deflated Sharpe ratio to account for multiple testing."""
-        sharpe = MetricsCalculator.calculate_sharpe_ratio(returns)
-
-        # Deflate by number of strategies tested (simplified)
-        # In practice, this would be more sophisticated
-        deflation_factor = 1.0 / np.sqrt(num_strategies)
-        return cast(float, sharpe * deflation_factor)
+        return calculate_deflated_sharpe_ratio(returns, num_strategies)
 
     @staticmethod
     def calculate_bootstrap_pvalue(
@@ -297,29 +263,9 @@ class MetricsCalculator:
         num_bootstrap: int = 1000,
     ) -> float:
         """Calculate bootstrap p-value for strategy vs benchmark comparison."""
-        if len(strategy_returns) != len(benchmark_returns):
-            raise ValueError("Strategy and benchmark returns must have same length")
-
-        # Calculate observed difference
-        observed_diff = strategy_returns.mean() - benchmark_returns.mean()
-
-        # Bootstrap resampling
-        combined = pd.concat([strategy_returns, benchmark_returns], ignore_index=True)
-        bootstrap_diffs: List[float] = []
-
-        for _ in range(num_bootstrap):
-            # Resample with replacement
-            strat_sample = combined.sample(n=len(strategy_returns), replace=True)
-            bench_sample = combined.sample(n=len(benchmark_returns), replace=True)
-
-            diff = strat_sample.mean() - bench_sample.mean()
-            bootstrap_diffs.append(diff)
-
-        # Calculate p-value (two-tailed)
-        bootstrap_array = np.array(bootstrap_diffs)
-        p_value = np.mean(np.abs(bootstrap_array) >= np.abs(observed_diff))
-
-        return cast(float, p_value)
+        return calculate_bootstrap_pvalue(
+            strategy_returns, benchmark_returns, n_bootstrap=num_bootstrap
+        )
 
     @staticmethod
     def calculate_returns_autocorrelation(returns: pd.Series, lag: int = 1) -> float:

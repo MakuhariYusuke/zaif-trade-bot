@@ -217,8 +217,11 @@ def run_backtest(
         if action in ["buy", "sell"]:
             # 市場ボラティリティチェック
             if len(current_data) > 20:
-                recent_volatility = current_data["close"].pct_change().std() * np.sqrt(
-                    24
+                from ztb.metrics.technical import calculate_volatility_from_returns
+
+                returns = current_data["close"].pct_change()
+                recent_volatility = calculate_volatility_from_returns(
+                    returns, window=len(returns), annualize=True, trading_days=24
                 )  # 日次ボラティリティ
                 if recent_volatility > 0.1:  # 過度なボラティリティ時はhold
                     action = "hold"

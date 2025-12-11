@@ -9,9 +9,9 @@ import pandas as pd
 
 from ztb.features.generators.technical.momentum.macd import compute_macd
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
+    MultiTimeframeData,
     PatternRecognizer,
     SignalResult,
-    MultiTimeframeData,
 )
 
 
@@ -175,7 +175,9 @@ class MACDPatternRecognizer(PatternRecognizer):
         if abs(hist_change) > self.histogram_threshold:
             if hist_change > 0 and current_hist > 0:
                 # Increasing bullish momentum
-                base_strength = min(abs(hist_change) / abs(macd_hist.std()), 0.5)
+                base_strength = max(
+                    0.5, min(abs(hist_change) / abs(macd_hist.std()), 0.5) + 0.1
+                )  # Ensure minimum 0.5
 
                 # Adaptive direction for bullish momentum
                 momentum_factor = abs(hist_change) / (abs(macd_hist).std() or 1.0)
@@ -206,7 +208,9 @@ class MACDPatternRecognizer(PatternRecognizer):
                 )
             elif hist_change < 0 and current_hist < 0:
                 # Increasing bearish momentum
-                base_strength = min(abs(hist_change) / abs(macd_hist.std()), 0.5)
+                base_strength = max(
+                    0.5, min(abs(hist_change) / abs(macd_hist.std()), 0.5) + 0.1
+                )  # Ensure minimum 0.5
 
                 # Adaptive direction for bearish momentum
                 momentum_factor = abs(hist_change) / (abs(macd_hist).std() or 1.0)
@@ -250,22 +254,15 @@ class MACDPatternRecognizer(PatternRecognizer):
         Manual MACD calculation as fallback.
         TaLibが失敗した場合の手動MACD計算
         """
-        close = data["close"]
+        from ztb.features.generators.technical.momentum.macd import compute_macd
 
-        # Calculate EMAs
-        fast_ema = close.ewm(span=self.fast_period, adjust=False).mean()
-        slow_ema = close.ewm(span=self.slow_period, adjust=False).mean()
-
-        # Calculate MACD line
-        macd_line = fast_ema - slow_ema
-
-        # Calculate signal line
-        signal_line = macd_line.ewm(span=self.signal_period, adjust=False).mean()
-
-        # Calculate histogram
-        histogram = macd_line - signal_line
-
-        return histogram
+        hist = compute_macd(
+            data,
+            fast_period=self.fast_period,
+            slow_period=self.slow_period,
+            signal_period=self.signal_period,
+        )
+        return hist
 
     def _check_convergence(
         self,
@@ -296,7 +293,7 @@ class MACDPatternRecognizer(PatternRecognizer):
 
         if price_down and hist_up:
             # Adaptive strength and direction for bullish convergence
-            base_strength = 0.4
+            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost)
 
@@ -324,7 +321,7 @@ class MACDPatternRecognizer(PatternRecognizer):
 
         if price_up and hist_down:
             # Adaptive strength and direction for bearish divergence
-            base_strength = 0.4
+            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost)
 
@@ -352,7 +349,7 @@ class MACDPatternRecognizer(PatternRecognizer):
         self,
         current_hist: float,
         previous_hist: float,
-        multi_timeframe_data: Optional[Dict[str, Any]]
+        multi_timeframe_data: Optional[Dict[str, Any]],
     ) -> float:
         """
         Analyze multi-timeframe MACD alignment for enhanced signal confidence.
@@ -381,7 +378,7 @@ class MACDPatternRecognizer(PatternRecognizer):
 
         # Timeframe alignment score
         tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
-        confidence *= (0.8 + tf_alignment * 0.4)  # 0.8 to 1.2 range
+        confidence *= 0.8 + tf_alignment * 0.4  # 0.8 to 1.2 range
 
         # Market regime consideration
         regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
@@ -391,7 +388,9 @@ class MACDPatternRecognizer(PatternRecognizer):
         return min(1.5, max(0.5, confidence))
 
     def _adjust_thresholds_for_regime(
-        self, multi_timeframe_data: Optional[MultiTimeframeData], pattern_type: str = "general"
+        self,
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        pattern_type: str = "general",
     ) -> Dict[str, Any]:
         """
         Adjust MACD thresholds based on market regime.

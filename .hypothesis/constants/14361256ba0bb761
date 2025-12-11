@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\rewards\forced_balance.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.05, 0.1, 0.15, 0.2, 0.5, 1.0, 2.0, 2.5, 5.0, 6.0, 10.0, 12.0, 20.0, 100, 1000, ', ', '.', 'BUY', 'HOLD', 'SELL', 'balanced', 'base_reward', 'corrective_bonus', 'forced_balance', 'get', 'imbalance_penalty', 'on_target_bonus', 'over', 'under', '|']

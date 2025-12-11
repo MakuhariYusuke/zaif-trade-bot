@@ -1,20 +1,11 @@
 """
-Test script for Action Signal Guide implementation.
-
-This script tests the basic functionality of the ActionSignalGuide class
-and its pattern recognition systems.
+This test module migrated into subfolder `strategies/action_signal_guide` and is kept as a shim.
 """
 
-import os
-import sys
 
-# Add project root to path: tests/unit/trading/strategies -> root
-project_root = os.path.dirname(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
-)
-sys.path.insert(0, project_root)
+def test_shim_import():
+    assert True
+
 
 from datetime import datetime, timedelta
 from typing import List

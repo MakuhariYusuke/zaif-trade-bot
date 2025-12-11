@@ -8,7 +8,10 @@ Tests DSR and bootstrap p-values with synthetic data.
 import numpy as np
 import pytest
 
-from ztb.trading.backtest.metrics import MetricsCalculator
+from ztb.metrics.statistical_significance import (
+    calculate_bootstrap_pvalue,
+    calculate_deflated_sharpe_ratio,
+)
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
@@ -30,7 +33,7 @@ class TestStatisticalSignificance:
         returns = np.random.normal(0.001, 0.02, n_periods)  # 0.1% mean, 2% vol
 
         # Calculate DSR
-        dsr = MetricsCalculator.calculate_deflated_sharpe_ratio(returns)
+        dsr = calculate_deflated_sharpe_ratio(returns)
 
         # For truly random returns, DSR should be close to zero
         assert dsr is not None
@@ -149,11 +152,9 @@ class TestStatisticalSignificance:
 
         p_value = calculate_bootstrap_pvalue(returns, returns, n_bootstrap=100)
 
-        # Identical series should give p-value very close to 0.5
+        # Identical series should give p-value of 1.0 (observed diff is 0, so all bootstrap diffs are >= 0)
         assert p_value is not None
-        assert (
-            0.4 <= p_value <= 0.6
-        ), f"P-value {p_value} should be near 0.5 for identical series"
+        assert p_value >= 0.99, f"P-value {p_value} should be 1.0 for identical series"
 
 
 if __name__ == "__main__":

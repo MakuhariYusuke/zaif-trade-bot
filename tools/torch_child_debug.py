@@ -2,8 +2,10 @@ import os
 import sys
 import traceback
 
-print("PYTHONEXECUTABLE:", sys.executable)
-print("ENVIRONMENT SUMMARY:")
+
+def main() -> int:
+    print("PYTHONEXECUTABLE:", sys.executable)
+    print("ENVIRONMENT SUMMARY:")
 print("  CUDA_VISIBLE_DEVICES=", os.environ.get("CUDA_VISIBLE_DEVICES"))
 print("  TORCH_USE_CUDA=", os.environ.get("TORCH_USE_CUDA"))
 print(
@@ -13,7 +15,7 @@ print("  PYTHONPATH=", os.environ.get("PYTHONPATH"))
 print("  PYTHONHOME=", os.environ.get("PYTHONHOME"))
 print("  VIRTUAL_ENV=", os.environ.get("VIRTUAL_ENV"))
 
-successful = True
+    successful = True
 try:
     import importlib
 
@@ -45,4 +47,10 @@ except Exception:
     traceback.print_exc()
     successful = False
 
-sys.exit(0 if successful else 1)
+    return 0 if successful else 1
+
+
+if __name__ == '__main__':
+    from ztb.utils.cli import run_main
+
+    run_main(main)

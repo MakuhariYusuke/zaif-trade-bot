@@ -725,11 +725,16 @@ class DataIntegrityChecker:
         # タイムスタンプ列の検出
         datetime_cols = []
         for col in data.columns:
-            try:
-                pd.to_datetime(data[col].dropna().head())
+            if pd.api.types.is_datetime64_any_dtype(data[col]):
                 datetime_cols.append(col)
-            except:
                 continue
+
+            # Heuristic: if column name suggests timestamp, coerce and check success rate
+            if any(k in col.lower() for k in ("timestamp", "ts", "date")):
+                coerced = pd.to_datetime(data[col], errors="coerce")
+                if coerced.notna().sum() >= max(1, len(coerced) * 0.7):
+                    datetime_cols.append(col)
+                    continue
 
         if datetime_cols:
             for col in datetime_cols:

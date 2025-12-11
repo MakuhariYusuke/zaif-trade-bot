@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\file_utils.py
+# hypothesis_version: 6.148.6
+
+['.backup', 'a', 'r', 'utf-8', 'w']

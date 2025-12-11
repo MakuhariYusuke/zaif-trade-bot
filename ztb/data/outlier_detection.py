@@ -635,13 +635,13 @@ class OutlierHandler:
                 if base_col in data.columns:
                     outlier_mask = data[col]
 
-                    # 異常値でないデータで補間
-                    valid_data = data.loc[~outlier_mask, base_col]
-                    if len(valid_data) > 1:
-                        interpolated = valid_data.interpolate(method=method)
-                        processed_data.loc[
-                            outlier_mask, base_col
-                        ] = interpolated.reindex(data.index)[outlier_mask]
+                    # Interpolate by replacing outliers with NaN temporarily and interpolating over full series
+                    full_series = processed_data[base_col].copy()
+                    full_series.loc[outlier_mask] = np.nan
+                    interpolated = full_series.interpolate(method=method)
+                    processed_data.loc[outlier_mask, base_col] = interpolated.loc[
+                        outlier_mask
+                    ]
 
         logger.info(f"Interpolated outliers using {method} method")
         return processed_data

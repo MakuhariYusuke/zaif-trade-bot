@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Simple script to aggregate training_report_*.json produced by AB tests/training runs
-and write a summary JSON that CI can upload. The script prints aggregated metrics and
-exits with 0. Non-zero exit codes may be used by CI to flag warnings.
+and write a summary JSON that CI can upload. Reports are grouped by
+`training.model_name` and the output contains `report_count`, `mean_sharpe`,
+`mean_total_return`, and a list of `files` for the run artifacts. The output
+is compatible with `tools/ci/check_optimizer_gates.py` used for gating.
 
 Usage:
-    python tools/ci/evaluate_training_runs.py --out reports/ab_summary.json
+    python tools/ci/evaluate_training_runs.py --out reports/mtf_optimizer_summary.json
 """
 import argparse
 import json
@@ -56,11 +58,22 @@ def main():
 
     # Aggregate each group into a single summary entry
     for name, items in grouped.items():
-        agg: Dict[str, Any] = {"model_name": name, "files": [it.get("file") for it in items]}
+        agg: Dict[str, Any] = {
+            "model_name": name,
+            "files": [it.get("file") for it in items],
+        }
         # compute averages for known metrics
         # We specifically care about sharpe_ratio and total_return
-        sharpe_vals = [float(it.get("sharpe_ratio")) for it in items if it.get("sharpe_ratio") is not None]
-        tr_vals = [float(it.get("total_return")) for it in items if it.get("total_return") is not None]
+        sharpe_vals = [
+            float(it.get("sharpe_ratio"))
+            for it in items
+            if it.get("sharpe_ratio") is not None
+        ]
+        tr_vals = [
+            float(it.get("total_return"))
+            for it in items
+            if it.get("total_return") is not None
+        ]
         agg["report_count"] = len(items)
         agg["mean_sharpe"] = sum(sharpe_vals) / len(sharpe_vals) if sharpe_vals else 0.0
         agg["mean_total_return"] = sum(tr_vals) / len(tr_vals) if tr_vals else 0.0

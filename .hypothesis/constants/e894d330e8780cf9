@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward\action_penalty.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.01, 0.015, 0.04, 1.0]

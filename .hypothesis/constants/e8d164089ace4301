@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\rewards\pnl_focused.py
+# hypothesis_version: 6.148.6
+
+[-0.2, 0.0, 1e-08, 0.01, 0.015, 0.04, 0.8, 1.0, 1.2, 1.3, 1.5, 40.0, 50.0, 60.0, 100.0, '__getitem__', 'base_action_penalty', 'buy_action_penalty', 'get', 'hold_action_penalty', 'hold_penalty_base', 'loss_penalty_coeff', 'pnl_focused', 'sell_action_penalty']

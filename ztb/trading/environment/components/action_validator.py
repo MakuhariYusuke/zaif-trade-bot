@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from ztb.trading.environment.constants import BTC_MIN_UNIT   # 最小取引単位 (0.01 mBTC, 約1,800円相当)
+from ztb.trading.environment.constants import (
+    BTC_MIN_UNIT,
+)  # 最小取引単位 (0.01 mBTC, 約1,800円相当)
 from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
@@ -43,7 +45,9 @@ class ActionValidator:
 
         current_price = self._resolve_price(current_step, price_array, df)
         if current_price == 0.0:
-            logger.warning(f"Price information could not be resolved at step {current_step}. Returning only HOLD as legal action.")
+            logger.warning(
+                f"Price information could not be resolved at step {current_step}. Returning only HOLD as legal action."
+            )
             legal = np.zeros(3, dtype=np.int_)
             legal[0] = 1
             return legal
@@ -103,11 +107,15 @@ class ActionValidator:
         # - 実際の取引ではポジションに関係なくBUY可能
         # - 資金があればいつでも買える
         ideal_buy_cost = position_size * current_price * (1 + transaction_cost)
-        affordable_size = portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+        affordable_size = (
+            portfolio_value * 0.9 / (current_price * (1 + transaction_cost))
+        )
         min_purchase_amount = 10000.0
         min_affordable_value = affordable_size * current_price
-        if (portfolio_value >= ideal_buy_cost or
-            (affordable_size >= BTC_MIN_UNIT and min_affordable_value >= min_purchase_amount)):
+        if portfolio_value >= ideal_buy_cost or (
+            affordable_size >= BTC_MIN_UNIT
+            and min_affordable_value >= min_purchase_amount
+        ):
             legal[1] = 1
 
         # SELL: 常に許可（資金があれば）
@@ -118,12 +126,13 @@ class ActionValidator:
         affordable_size = portfolio_value * 0.9 / current_price
         min_sell_amount = 10000.0
         min_affordable_value = affordable_size * current_price
-        if (portfolio_value >= ideal_sell_value or
-            (affordable_size >= BTC_MIN_UNIT and min_affordable_value >= min_sell_amount)):
+        if portfolio_value >= ideal_sell_value or (
+            affordable_size >= BTC_MIN_UNIT and min_affordable_value >= min_sell_amount
+        ):
             legal[2] = 1
 
         # HOLDは常に合法なので、全て0になることはない
-        logger.debug(
+        logger.info(
             # legal_actions: [HOLD, BUY, SELL] の合法性
             # affordable_size: 現在資金で購入可能なBTC量
             # ideal_buy_cost: 理想的なBUY時の必要資金
@@ -132,12 +141,12 @@ class ActionValidator:
             # position: 現在のポジションサイズ
             # current_price: 現在価格
             f"ActionValidator: legal_actions={[bool(x) for x in legal]}, "  # [HOLD, BUY, SELL] の合法性
-            f"affordable_size={affordable_size:.6f}, "                     # 購入可能BTC量
-            f"ideal_buy_cost={ideal_buy_cost:.2f}, "                       # BUY時必要資金
-            f"ideal_sell_value={ideal_sell_value:.2f}, "                   # SELL時必要資金
-            f"portfolio_value={portfolio_value:.2f}, "                     # ポートフォリオ価値
-            f"position={position:.6f}, "                                   # ポジションサイズ
-        """
+            f"affordable_size={affordable_size:.6f}, "  # 購入可能BTC量
+            f"ideal_buy_cost={ideal_buy_cost:.2f}, "  # BUY時必要資金
+            f"ideal_sell_value={ideal_sell_value:.2f}, "  # SELL時必要資金
+            f"portfolio_value={portfolio_value:.2f}, "  # ポートフォリオ価値
+            f"position={position:.6f}, "  # ポジションサイズ
+            """
         Resolve current price for action validation.
 
         Returns:

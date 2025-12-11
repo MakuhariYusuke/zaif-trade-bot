@@ -5,21 +5,22 @@ Phase 3-2: パラメータ最適化 - 統合最適化システム
 完全なパラメータ最適化システムを実装します。
 """
 
-from typing import Dict, List, Any, Optional, Tuple, Union, Callable
-import pandas as pd
-import numpy as np
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-import logging
 import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
 
-from ztb.analysis.walk_forward_analyzer import (
-    WalkForwardAnalyzer, ParameterSet, OptimizationResult
-)
-from ztb.analysis.kelly_position_sizer import KellyPositionSizer, KellyParameters
+import numpy as np
+import pandas as pd
+
+from ztb.analysis.adaptive_confidence_adjuster import AdaptiveConfidenceAdjuster
 from ztb.analysis.atr_risk_manager import ATRRiskManager, RiskManagementMode
-from ztb.analysis.adaptive_confidence_adjuster import (
-    AdaptiveConfidenceAdjuster, MarketRegime
+from ztb.analysis.kelly_position_sizer import KellyParameters, KellyPositionSizer
+from ztb.analysis.walk_forward_analyzer import (
+    OptimizationResult,
+    ParameterSet,
+    WalkForwardAnalyzer,
 )
 from ztb.utils.performance_profiler import PerformanceProfiler
 
@@ -48,24 +49,26 @@ class IntegratedOptimizationConfig:
     adaptive_thresholds_enabled: bool = True
 
     # 最適化設定
-    optimization_target: str = "sharpe_ratio"  # "sharpe_ratio", "total_return", "win_rate"
+    optimization_target: str = (
+        "sharpe_ratio"  # "sharpe_ratio", "total_return", "win_rate"
+    )
     min_optimization_trades: int = 100
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'train_days': self.train_days,
-            'test_days': self.test_days,
-            'step_days': self.step_days,
-            'min_trades_for_kelly': self.min_trades_for_kelly,
-            'kelly_risk_tolerance': self.kelly_risk_tolerance,
-            'max_position_size': self.max_position_size,
-            'atr_period': self.atr_period,
-            'risk_management_mode': self.risk_management_mode.value,
-            'base_confidence_threshold': self.base_confidence_threshold,
-            'adaptive_thresholds_enabled': self.adaptive_thresholds_enabled,
-            'optimization_target': self.optimization_target,
-            'min_optimization_trades': self.min_optimization_trades
+            "train_days": self.train_days,
+            "test_days": self.test_days,
+            "step_days": self.step_days,
+            "min_trades_for_kelly": self.min_trades_for_kelly,
+            "kelly_risk_tolerance": self.kelly_risk_tolerance,
+            "max_position_size": self.max_position_size,
+            "atr_period": self.atr_period,
+            "risk_management_mode": self.risk_management_mode.value,
+            "base_confidence_threshold": self.base_confidence_threshold,
+            "adaptive_thresholds_enabled": self.adaptive_thresholds_enabled,
+            "optimization_target": self.optimization_target,
+            "min_optimization_trades": self.min_optimization_trades,
         }
 
 
@@ -84,47 +87,53 @@ class IntegratedOptimizationResult:
     @property
     def average_sharpe_ratio(self) -> float:
         """平均Sharpe Ratio"""
-        sharpes = [r.out_of_sample_performance.get('sharpe_ratio', 0)
-                  for r in self.walk_forward_results]
+        sharpes = [
+            r.out_of_sample_performance.get("sharpe_ratio", 0)
+            for r in self.walk_forward_results
+        ]
         return np.mean(sharpes) if sharpes else 0.0
 
     @property
     def average_win_rate(self) -> float:
         """平均勝率"""
-        win_rates = [r.out_of_sample_performance.get('win_rate', 0)
-                    for r in self.walk_forward_results]
+        win_rates = [
+            r.out_of_sample_performance.get("win_rate", 0)
+            for r in self.walk_forward_results
+        ]
         return np.mean(win_rates) if win_rates else 0.0
 
     @property
     def total_return(self) -> float:
         """総リターン"""
-        returns = [r.out_of_sample_performance.get('total_return', 0)
-                  for r in self.walk_forward_results]
+        returns = [
+            r.out_of_sample_performance.get("total_return", 0)
+            for r in self.walk_forward_results
+        ]
         # 複利計算
         if returns:
             cumulative_return = 1.0
             for r in returns:
-                cumulative_return *= (1 + r)
+                cumulative_return *= 1 + r
             return cumulative_return - 1
         return 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'optimal_parameters': self.optimal_parameters.to_dict(),
-            'kelly_parameters': {
-                'win_rate': self.kelly_parameters.win_rate,
-                'win_loss_ratio': self.kelly_parameters.win_loss_ratio,
-                'kelly_fraction': self.kelly_parameters.kelly_fraction,
-                'total_trades': self.kelly_parameters.total_trades
+            "optimal_parameters": self.optimal_parameters.to_dict(),
+            "kelly_parameters": {
+                "win_rate": self.kelly_parameters.win_rate,
+                "win_loss_ratio": self.kelly_parameters.win_loss_ratio,
+                "kelly_fraction": self.kelly_parameters.kelly_fraction,
+                "total_trades": self.kelly_parameters.total_trades,
             },
-            'performance_summary': self.performance_summary,
-            'regime_analysis': self.regime_analysis,
-            'average_sharpe_ratio': self.average_sharpe_ratio,
-            'average_win_rate': self.average_win_rate,
-            'total_return': self.total_return,
-            'optimization_timestamp': self.optimization_timestamp.isoformat(),
-            'config_used': self.config_used.to_dict()
+            "performance_summary": self.performance_summary,
+            "regime_analysis": self.regime_analysis,
+            "average_sharpe_ratio": self.average_sharpe_ratio,
+            "average_win_rate": self.average_win_rate,
+            "total_return": self.total_return,
+            "optimization_timestamp": self.optimization_timestamp.isoformat(),
+            "config_used": self.config_used.to_dict(),
         }
 
 
@@ -149,7 +158,7 @@ class IntegratedParameterOptimizer:
 
     def create_integrated_strategy_evaluator(
         self,
-        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]
+        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
     ) -> Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]:
         """
         統合された戦略評価関数を作成
@@ -160,27 +169,31 @@ class IntegratedParameterOptimizer:
         Returns:
             統合戦略評価関数
         """
-        def integrated_evaluator(data: pd.DataFrame, params: ParameterSet) -> Dict[str, float]:
+
+        def integrated_evaluator(
+            data: pd.DataFrame, params: ParameterSet
+        ) -> Dict[str, float]:
             # 基本戦略評価
             base_performance = base_strategy_func(data, params)
 
             # Kelly基準適用
-            trades = base_performance.get('trades', [])
+            trades = base_performance.get("trades", [])
             if len(trades) >= self.config.min_trades_for_kelly:
                 kelly_decision = self.kelly_sizer.calculate_dynamic_position_size(
                     trades, 10000, self.config.kelly_risk_tolerance
                 )
                 # ポジションサイズをKelly基準で調整
                 adjusted_position_size = min(
-                    kelly_decision.position_size_fraction,
-                    self.config.max_position_size
+                    kelly_decision.position_size_fraction, self.config.max_position_size
                 )
             else:
                 adjusted_position_size = self.config.max_position_size
 
             # ATRリスク管理適用
             if len(data) >= self.config.atr_period:
-                atr_series = self.atr_risk_manager.calculate_atr(data, self.config.atr_period)
+                atr_series = self.atr_risk_manager.calculate_atr(
+                    data, self.config.atr_period
+                )
                 current_atr = atr_series.iloc[-1]
 
                 # リスクレベル評価
@@ -188,46 +201,54 @@ class IntegratedParameterOptimizer:
 
                 # ポジション制限計算
                 limits = self.atr_risk_manager.calculate_position_limits(
-                    entry_price=data['close'].iloc[-1],
+                    entry_price=data["close"].iloc[-1],
                     position_size=adjusted_position_size,
                     current_atr=current_atr,
                     risk_level=risk_level,
-                    mode=self.config.risk_management_mode
+                    mode=self.config.risk_management_mode,
                 )
 
                 # リスク調整リターンを計算
-                risk_adjusted_return = base_performance.get('total_return', 0) / limits.risk_amount \
-                                     if limits.risk_amount > 0 else 0
+                risk_adjusted_return = (
+                    base_performance.get("total_return", 0) / limits.risk_amount
+                    if limits.risk_amount > 0
+                    else 0
+                )
             else:
-                risk_adjusted_return = base_performance.get('total_return', 0)
+                risk_adjusted_return = base_performance.get("total_return", 0)
 
             # 信頼度調整適用
             if self.config.adaptive_thresholds_enabled and len(data) >= 20:
-                threshold_decision = self.confidence_adjuster.calculate_adaptive_threshold(
-                    data, trades
+                threshold_decision = (
+                    self.confidence_adjuster.calculate_adaptive_threshold(data, trades)
                 )
                 # 信頼度フィルタ適用
                 filtered_trades = [
-                    trade for trade in trades
-                    if trade.get('confidence', 0) >= threshold_decision.final_threshold
+                    trade
+                    for trade in trades
+                    if trade.get("confidence", 0) >= threshold_decision.final_threshold
                 ]
                 if filtered_trades:
-                    win_rate = sum(1 for t in filtered_trades if t.get('pnl', 0) > 0) / len(filtered_trades)
+                    win_rate = sum(
+                        1 for t in filtered_trades if t.get("pnl", 0) > 0
+                    ) / len(filtered_trades)
                 else:
-                    win_rate = base_performance.get('win_rate', 0)
+                    win_rate = base_performance.get("win_rate", 0)
             else:
-                win_rate = base_performance.get('win_rate', 0)
+                win_rate = base_performance.get("win_rate", 0)
 
             # 統合パフォーマンス計算
             integrated_performance = base_performance.copy()
-            integrated_performance.update({
-                'risk_adjusted_return': risk_adjusted_return,
-                'kelly_adjusted_position_size': adjusted_position_size,
-                'filtered_win_rate': win_rate,
-                'integrated_score': self._calculate_integrated_score(
-                    base_performance, risk_adjusted_return, win_rate
-                )
-            })
+            integrated_performance.update(
+                {
+                    "risk_adjusted_return": risk_adjusted_return,
+                    "kelly_adjusted_position_size": adjusted_position_size,
+                    "filtered_win_rate": win_rate,
+                    "integrated_score": self._calculate_integrated_score(
+                        base_performance, risk_adjusted_return, win_rate
+                    ),
+                }
+            )
 
             return integrated_performance
 
@@ -237,11 +258,11 @@ class IntegratedParameterOptimizer:
         self,
         base_performance: Dict[str, float],
         risk_adjusted_return: float,
-        filtered_win_rate: float
+        filtered_win_rate: float,
     ) -> float:
         """統合スコアを計算"""
-        sharpe = base_performance.get('sharpe_ratio', 0)
-        max_drawdown = base_performance.get('max_drawdown', 0)
+        sharpe = base_performance.get("sharpe_ratio", 0)
+        max_drawdown = base_performance.get("max_drawdown", 0)
 
         # スコア計算（Sharpe Ratio + リスク調整リターン + 勝率）
         score = sharpe * 0.5 + risk_adjusted_return * 0.3 + filtered_win_rate * 0.2
@@ -257,7 +278,7 @@ class IntegratedParameterOptimizer:
         self,
         market_data: pd.DataFrame,
         base_strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-        parameter_sets: Optional[List[ParameterSet]] = None
+        parameter_sets: Optional[List[ParameterSet]] = None,
     ) -> IntegratedOptimizationResult:
         """
         統合最適化を実行
@@ -273,7 +294,9 @@ class IntegratedParameterOptimizer:
         self.logger.info("統合パラメータ最適化を開始します")
 
         # 統合戦略評価関数作成
-        integrated_evaluator = self.create_integrated_strategy_evaluator(base_strategy_func)
+        integrated_evaluator = self.create_integrated_strategy_evaluator(
+            base_strategy_func
+        )
 
         # ウォークフォワード最適化実行
         walk_forward_results = self.walk_forward_analyzer.walk_forward_optimization(
@@ -283,7 +306,7 @@ class IntegratedParameterOptimizer:
             test_days=self.config.test_days,
             step_days=self.config.step_days,
             parameter_sets=parameter_sets,
-            min_samples=self.config.min_samples
+            min_samples=self.config.min_samples,
         )
 
         # 最適パラメータの選択
@@ -293,7 +316,7 @@ class IntegratedParameterOptimizer:
         # Kellyパラメータ計算
         all_trades = []
         for result in walk_forward_results:
-            trades = result.out_of_sample_performance.get('trades', [])
+            trades = result.out_of_sample_performance.get("trades", [])
             all_trades.extend(trades)
 
         kelly_params = self.kelly_sizer.calculate_kelly_parameters(all_trades, 10000)
@@ -301,10 +324,14 @@ class IntegratedParameterOptimizer:
             kelly_params = KellyParameters(0.5, 1.0, len(all_trades))
 
         # パフォーマンス要約
-        performance_summary = self.walk_forward_analyzer.summarize_results(walk_forward_results)
+        performance_summary = self.walk_forward_analyzer.summarize_results(
+            walk_forward_results
+        )
 
         # レジーム分析
-        regime_analysis = self._analyze_market_regimes(market_data, walk_forward_results)
+        regime_analysis = self._analyze_market_regimes(
+            market_data, walk_forward_results
+        )
 
         # 結果作成
         result = IntegratedOptimizationResult(
@@ -314,36 +341,46 @@ class IntegratedParameterOptimizer:
             performance_summary=performance_summary,
             regime_analysis=regime_analysis,
             optimization_timestamp=datetime.now(),
-            config_used=self.config
+            config_used=self.config,
         )
 
         # 履歴保存
         self.optimization_history.append(result)
 
-        self.logger.info(f"統合最適化完了: 平均Sharpe Ratio = {result.average_sharpe_ratio:.3f}")
+        self.logger.info(
+            f"統合最適化完了: 平均Sharpe Ratio = {result.average_sharpe_ratio:.3f}"
+        )
         return result
 
-    def _select_optimal_parameters(self, results: List[OptimizationResult]) -> OptimizationResult:
+    def _select_optimal_parameters(
+        self, results: List[OptimizationResult]
+    ) -> OptimizationResult:
         """最適パラメータを選択"""
         if not results:
             raise ValueError("最適化結果がありません")
 
         # 設定された最適化目標に基づいて選択
         if self.config.optimization_target == "sharpe_ratio":
-            key_func = lambda r: r.out_of_sample_performance.get('sharpe_ratio', float('-inf'))
+            key_func = lambda r: r.out_of_sample_performance.get(
+                "sharpe_ratio", float("-inf")
+            )
         elif self.config.optimization_target == "total_return":
-            key_func = lambda r: r.out_of_sample_performance.get('total_return', float('-inf'))
+            key_func = lambda r: r.out_of_sample_performance.get(
+                "total_return", float("-inf")
+            )
         elif self.config.optimization_target == "win_rate":
-            key_func = lambda r: r.out_of_sample_performance.get('win_rate', float('-inf'))
+            key_func = lambda r: r.out_of_sample_performance.get(
+                "win_rate", float("-inf")
+            )
         else:
-            key_func = lambda r: r.out_of_sample_performance.get('integrated_score', float('-inf'))
+            key_func = lambda r: r.out_of_sample_performance.get(
+                "integrated_score", float("-inf")
+            )
 
         return max(results, key=key_func)
 
     def _analyze_market_regimes(
-        self,
-        market_data: pd.DataFrame,
-        results: List[OptimizationResult]
+        self, market_data: pd.DataFrame, results: List[OptimizationResult]
     ) -> Dict[str, Any]:
         """市場レジームを分析"""
         regime_performance = {}
@@ -351,63 +388,69 @@ class IntegratedParameterOptimizer:
         for result in results:
             # テスト期間のデータ取得
             test_data = market_data.loc[
-                result.window.test_start:result.window.test_end
+                result.window.test_start : result.window.test_end
             ]
 
             if len(test_data) >= 20:
                 # レジーム検出
-                regime = self.confidence_adjuster.regime_detector.detect_regime(test_data)
+                regime = self.confidence_adjuster.regime_detector.detect_regime(
+                    test_data
+                )
 
                 if regime.value not in regime_performance:
                     regime_performance[regime.value] = []
 
                 regime_performance[regime.value].append(
-                    result.out_of_sample_performance.get('sharpe_ratio', 0)
+                    result.out_of_sample_performance.get("sharpe_ratio", 0)
                 )
 
         # レジーム別平均パフォーマンス
         regime_summary = {}
         for regime, performances in regime_performance.items():
             regime_summary[regime] = {
-                'average_sharpe': np.mean(performances),
-                'best_sharpe': np.max(performances),
-                'worst_sharpe': np.min(performances),
-                'sample_count': len(performances)
+                "average_sharpe": np.mean(performances),
+                "best_sharpe": np.max(performances),
+                "worst_sharpe": np.min(performances),
+                "sample_count": len(performances),
             }
 
         return regime_summary
 
-    def save_optimization_results(self, result: IntegratedOptimizationResult, filepath: str):
+    def save_optimization_results(
+        self, result: IntegratedOptimizationResult, filepath: str
+    ):
         """最適化結果を保存"""
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"最適化結果を保存しました: {filepath}")
 
     def load_optimization_results(self, filepath: str) -> IntegratedOptimizationResult:
         """最適化結果を読み込み"""
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         # データからオブジェクト再構築（簡易版）
-        optimal_params = ParameterSet(**data['optimal_parameters'])
-        kelly_params = KellyParameters(**data['kelly_parameters'])
-        config = IntegratedOptimizationConfig(**data['config_used'])
+        optimal_params = ParameterSet(**data["optimal_parameters"])
+        kelly_params = KellyParameters(**data["kelly_parameters"])
+        config = IntegratedOptimizationConfig(**data["config_used"])
 
         # ウォークフォワード結果の再構築は複雑なので、主要な結果のみ
         result = IntegratedOptimizationResult(
             walk_forward_results=[],  # 再構築しない
             optimal_parameters=optimal_params,
             kelly_parameters=kelly_params,
-            performance_summary=data['performance_summary'],
-            regime_analysis=data['regime_analysis'],
-            optimization_timestamp=pd.Timestamp(data['optimization_timestamp']),
-            config_used=config
+            performance_summary=data["performance_summary"],
+            regime_analysis=data["regime_analysis"],
+            optimization_timestamp=pd.Timestamp(data["optimization_timestamp"]),
+            config_used=config,
         )
 
         return result
 
-    def get_optimization_recommendations(self, result: IntegratedOptimizationResult) -> List[str]:
+    def get_optimization_recommendations(
+        self, result: IntegratedOptimizationResult
+    ) -> List[str]:
         """最適化結果に基づく推奨事項を生成"""
         recommendations = []
 
@@ -421,18 +464,27 @@ class IntegratedParameterOptimizer:
         # Kelly基準の妥当性
         kelly_fraction = result.kelly_parameters.kelly_fraction
         if kelly_fraction > 0.1:
-            recommendations.append(f"Kelly分数 {kelly_fraction:.1%} - 積極的なポジションサイズ可能")
+            recommendations.append(
+                f"Kelly分数 {kelly_fraction:.1%} - 積極的なポジションサイズ可能"
+            )
         elif kelly_fraction < 0.02:
-            recommendations.append(f"Kelly分数 {kelly_fraction:.1%} - 保守的なポジションサイズ推奨")
+            recommendations.append(
+                f"Kelly分数 {kelly_fraction:.1%} - 保守的なポジションサイズ推奨"
+            )
 
         # レジーム分析
         regime_analysis = result.regime_analysis
-        best_regime = max(regime_analysis.items(),
-                         key=lambda x: x[1]['average_sharpe']) if regime_analysis else None
+        best_regime = (
+            max(regime_analysis.items(), key=lambda x: x[1]["average_sharpe"])
+            if regime_analysis
+            else None
+        )
 
         if best_regime:
-            recommendations.append(f"最適レジーム: {best_regime[0]} "
-                                f"(Sharpe: {best_regime[1]['average_sharpe']:.2f})")
+            recommendations.append(
+                f"最適レジーム: {best_regime[0]} "
+                f"(Sharpe: {best_regime[1]['average_sharpe']:.2f})"
+            )
 
         return recommendations
 
@@ -448,13 +500,13 @@ if __name__ == "__main__":
         test_days=20,
         kelly_risk_tolerance="half",
         risk_management_mode=RiskManagementMode.DYNAMIC,
-        adaptive_thresholds_enabled=True
+        adaptive_thresholds_enabled=True,
     )
 
     optimizer = IntegratedParameterOptimizer(config)
 
     # サンプル市場データ生成
-    dates = pd.date_range('2023-01-01', periods=200, freq='D')
+    dates = pd.date_range("2023-01-01", periods=200, freq="D")
     np.random.seed(42)
 
     # トレンド + ノイズのデータ生成
@@ -462,18 +514,23 @@ if __name__ == "__main__":
     noise = np.random.randn(200) * 3
     prices = 100 + trend + noise
 
-    market_data = pd.DataFrame({
-        'open': prices,
-        'high': prices + np.abs(np.random.randn(200)),
-        'low': prices - np.abs(np.random.randn(200)),
-        'close': prices + np.random.randn(200) * 0.5
-    }, index=dates)
+    market_data = pd.DataFrame(
+        {
+            "open": prices,
+            "high": prices + np.abs(np.random.randn(200)),
+            "low": prices - np.abs(np.random.randn(200)),
+            "close": prices + np.random.randn(200) * 0.5,
+        },
+        index=dates,
+    )
 
     # 基本戦略評価関数（モック）
-    def mock_strategy_evaluator(data: pd.DataFrame, params: ParameterSet) -> Dict[str, float]:
+    def mock_strategy_evaluator(
+        data: pd.DataFrame, params: ParameterSet
+    ) -> Dict[str, float]:
         """モック戦略評価関数"""
         # 単純なリターンモデル
-        returns = data['close'].pct_change().dropna()
+        returns = data["close"].pct_change().dropna()
         total_return = (1 + returns).prod() - 1
 
         # 勝率計算（ランダム）
@@ -481,7 +538,9 @@ if __name__ == "__main__":
         win_rate = np.clip(win_rate, 0.3, 0.7)
 
         # Sharpe Ratio
-        sharpe_ratio = returns.mean() / returns.std() * np.sqrt(252) if returns.std() > 0 else 0
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns)
 
         # モックトレード生成
         num_trades = np.random.randint(10, 30)
@@ -489,22 +548,21 @@ if __name__ == "__main__":
         for _ in range(num_trades):
             pnl = np.random.randn() * 100
             confidence = np.random.uniform(0.5, 0.9)
-            trades.append({'pnl': pnl, 'confidence': confidence})
+            trades.append({"pnl": pnl, "confidence": confidence})
 
         return {
-            'total_return': total_return,
-            'sharpe_ratio': sharpe_ratio,
-            'win_rate': win_rate,
-            'max_drawdown': 0.15,  # 固定値
-            'total_trades': num_trades,
-            'trades': trades
+            "total_return": total_return,
+            "sharpe_ratio": sharpe_ratio,
+            "win_rate": win_rate,
+            "max_drawdown": 0.15,  # 固定値
+            "total_trades": num_trades,
+            "trades": trades,
         }
 
     # 統合最適化実行
     print("統合パラメータ最適化を実行中...")
     result = optimizer.run_integrated_optimization(
-        market_data=market_data,
-        base_strategy_func=mock_strategy_evaluator
+        market_data=market_data, base_strategy_func=mock_strategy_evaluator
     )
 
     # 結果表示
@@ -514,7 +572,7 @@ if __name__ == "__main__":
     print(f"総リターン: {result.total_return:.1%}")
     print(f"最適Kelly分数: {result.kelly_parameters.kelly_fraction:.1%}")
 
-    print(f"\n最適パラメータ:")
+    print("\n最適パラメータ:")
     opt_params = result.optimal_parameters
     print(f"  ストップロスATR乗数: {opt_params.stop_loss_atr_multiplier}")
     print(f"  テイクプロフィット乗数: {opt_params.take_profit_risk_multiplier}")

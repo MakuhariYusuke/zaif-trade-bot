@@ -1,0 +1,18 @@
+{
+  "version": "4.5.0-v450.zscore",
+  "training": {
+    "model_name": "sac_v450_zscore",
+    "algorithm": "sac",
+    "total_timesteps": 10000,
+    "environment": {
+      "use_continuous_actions": true,
+      "dynamic_threshold_mode": "z_score",
+      "z_score_window": 50,
+      "z_score_threshold": 3.0,
+      "z_score_method": "mad",
+      "min_action_threshold": 0.002,
+      "max_action_threshold": 0.08,
+      "curriculum_stage": "action_discovery"
+    }
+  }
+}

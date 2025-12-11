@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\core\fusion\__init__.py
+# hypothesis_version: 6.148.6
+
+[0.1, 128, 156, 256, 768, '1.0.0', 'attention', 'bert-base-uncased', 'concat', 'weighted_sum']

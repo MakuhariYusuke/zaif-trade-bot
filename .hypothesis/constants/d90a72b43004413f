@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\sac_strategy.py
+# hypothesis_version: 6.148.6
+
+[-1.0, -0.3, 0.0, 0.3, 1.0, 'BacktestConfig', 'FeatureEngineer', 'RegimeClassifier', 'action', 'action_space', 'buy', 'buy_threshold', 'confidence', 'error', 'hold', 'insufficient_data', 'learning_metrics', 'model_path', 'predict_regime', 'reason', 'records', 'regime', 'regime_distribution', 'regime_performance', 'sell', 'sell_threshold', 'signal', 'size', 'timestamp', 'unknown']

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\ui.py
+# hypothesis_version: 6.148.6
+
+[1000.0, 1000000.0, 1000000000.0, 100, 3600, '\nMember Details:', '\n❌ Training failed', '\n💡 SUGGESTIONS:', '\n📊 KEY METRICS:', '\n🤖 ENSEMBLE STATUS:', '-', '=', 'Adaptation Changes:', 'Market Conditions:', 'Overall Statistics:', 'algorithm', 'avg_confidence', 'buffer_size', 'changes', 'config', 'data_config', 'data_path', 'default', 'market_conditions', 'member_stats', 'model_name', 'overall_stats', 'sac', 'sac_hyperparameters', 'total_timesteps', 'training', 'unknown', '█', '░', '📊 Final Statistics:']

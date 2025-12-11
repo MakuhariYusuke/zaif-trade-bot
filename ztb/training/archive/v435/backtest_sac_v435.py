@@ -13,9 +13,10 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 
+from ztb.metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.risk.risk_manager import RiskManager
-from ztb.utils.statistics import calculate_max_drawdown
-from ztb.utils.trading_metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,9 @@ class SACv435Backtester:
         # Risk management
         risk_manager = None
         if config.get("risk_management", {}).get("dynamic_position_sizing", False):
-            risk_manager = RiskManager(config.get("risk_management", {}))
+            risk_manager = ensure_risk_manager_protocol(
+                RiskManager(config.get("risk_management", {}))
+            )
 
         # Trading parameters
         transaction_cost = config.get("environment", {}).get("transaction_cost", 0.0015)

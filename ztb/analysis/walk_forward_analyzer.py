@@ -5,14 +5,16 @@ Phase 3-2: パラメータ最適化 - ウォークフォワード分析器
 スライディングウィンドウ方式でパラメータを最適化し、アウトオブサンプル性能を検証します。
 """
 
-from typing import Dict, List, Any, Optional, Tuple, Callable, Union
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import timedelta
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import numpy as np
+import pandas as pd
+
+from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 
@@ -51,12 +53,12 @@ class ParameterSet:
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'stop_loss_atr_multiplier': self.stop_loss_atr_multiplier,
-            'take_profit_risk_multiplier': self.take_profit_risk_multiplier,
-            'position_size_kelly_fraction': self.position_size_kelly_fraction,
-            'confidence_threshold': self.confidence_threshold,
-            'max_positions': self.max_positions,
-            'name': self.name
+            "stop_loss_atr_multiplier": self.stop_loss_atr_multiplier,
+            "take_profit_risk_multiplier": self.take_profit_risk_multiplier,
+            "position_size_kelly_fraction": self.position_size_kelly_fraction,
+            "confidence_threshold": self.confidence_threshold,
+            "max_positions": self.max_positions,
+            "name": self.name,
         }
 
 
@@ -73,8 +75,8 @@ class OptimizationResult:
     @property
     def sharpe_ratio_improvement(self) -> float:
         """Sharpe Ratioの改善度"""
-        in_sample = self.in_sample_performance.get('sharpe_ratio', 0)
-        out_sample = self.out_of_sample_performance.get('sharpe_ratio', 0)
+        in_sample = self.in_sample_performance.get("sharpe_ratio", 0)
+        out_sample = self.out_of_sample_performance.get("sharpe_ratio", 0)
         return out_sample - in_sample
 
     @property
@@ -118,7 +120,7 @@ class ParameterSpace:
                                 position_size_kelly_fraction=kelly_frac,
                                 confidence_threshold=conf_thresh,
                                 max_positions=max_pos,
-                                name=name
+                                name=name,
                             )
                             parameter_sets.append(param_set)
 
@@ -132,7 +134,7 @@ class ParameterSpace:
             position_size_kelly_fraction=0.2,
             confidence_threshold=0.7,
             max_positions=3,
-            name="conservative_defaults"
+            name="conservative_defaults",
         )
 
     def get_aggressive_defaults(self) -> ParameterSet:
@@ -143,7 +145,7 @@ class ParameterSpace:
             position_size_kelly_fraction=0.5,
             confidence_threshold=0.6,
             max_positions=5,
-            name="aggressive_defaults"
+            name="aggressive_defaults",
         )
 
 
@@ -161,7 +163,7 @@ class WalkForwardAnalyzer:
         train_days: int = 90,
         test_days: int = 30,
         step_days: int = 15,
-        min_samples: int = 1000
+        min_samples: int = 1000,
     ) -> List[WalkForwardWindow]:
         """
         スライディングウィンドウを作成
@@ -184,7 +186,9 @@ class WalkForwardAnalyzer:
         total_days = (data_end - data_start).days
 
         if total_days < train_days + test_days:
-            raise ValueError(f"データ期間が不足しています: {total_days}日 < {train_days + test_days}日")
+            raise ValueError(
+                f"データ期間が不足しています: {total_days}日 < {train_days + test_days}日"
+            )
 
         windows = []
         window_id = 0
@@ -208,7 +212,7 @@ class WalkForwardAnalyzer:
                     train_end=train_end,
                     test_start=test_start,
                     test_end=test_end,
-                    window_id=window_id
+                    window_id=window_id,
                 )
                 windows.append(window)
                 window_id += 1
@@ -222,7 +226,7 @@ class WalkForwardAnalyzer:
         self,
         train_data: pd.DataFrame,
         strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-        parameter_sets: Optional[List[ParameterSet]] = None
+        parameter_sets: Optional[List[ParameterSet]] = None,
     ) -> Tuple[ParameterSet, Dict[str, float]]:
         """
         トレーニングデータでパラメータを最適化
@@ -239,9 +243,11 @@ class WalkForwardAnalyzer:
             # デフォルトで保守的なパラメータセットのみを使用（計算時間を短縮）
             parameter_sets = [self.parameter_space.get_conservative_defaults()]
 
-        self.logger.info(f"パラメータ最適化開始: {len(parameter_sets)}個のパラメータセットを評価")
+        self.logger.info(
+            f"パラメータ最適化開始: {len(parameter_sets)}個のパラメータセットを評価"
+        )
 
-        best_score = float('-inf')
+        best_score = float("-inf")
         best_params = None
         best_performance = None
 
@@ -251,7 +257,7 @@ class WalkForwardAnalyzer:
                 performance = strategy_func(train_data, param_set)
 
                 # Sharpe Ratioを最適化指標として使用
-                score = performance.get('sharpe_ratio', float('-inf'))
+                score = performance.get("sharpe_ratio", float("-inf"))
                 self.logger.debug(f"スコア: {score:.3f}")
 
                 if score > best_score:
@@ -260,7 +266,9 @@ class WalkForwardAnalyzer:
                     best_performance = performance
 
             except Exception as e:
-                self.logger.warning(f"パラメータセット {param_set.name} の評価に失敗: {e}")
+                self.logger.warning(
+                    f"パラメータセット {param_set.name} の評価に失敗: {e}"
+                )
                 continue
 
         if best_params is None:
@@ -271,31 +279,33 @@ class WalkForwardAnalyzer:
             except Exception as e:
                 self.logger.error(f"デフォルトパラメータ評価に失敗: {e}")
                 best_performance = {
-                    'sharpe_ratio': 0.0,
-                    'total_return': 0.0,
-                    'max_drawdown': 0.0,
-                    'win_rate': 0.0,
-                    'total_trades': 0
+                    "sharpe_ratio": 0.0,
+                    "total_return": 0.0,
+                    "max_drawdown": 0.0,
+                    "win_rate": 0.0,
+                    "total_trades": 0,
                 }
 
         # best_performanceがNoneでないことを保証
         if best_performance is None:
             best_performance = {
-                'sharpe_ratio': 0.0,
-                'total_return': 0.0,
-                'max_drawdown': 0.0,
-                'win_rate': 0.0,
-                'total_trades': 0
+                "sharpe_ratio": 0.0,
+                "total_return": 0.0,
+                "max_drawdown": 0.0,
+                "win_rate": 0.0,
+                "total_trades": 0,
             }
 
-        self.logger.info(f"最適パラメータ: {best_params.name}, Sharpe Ratio: {best_performance['sharpe_ratio']:.3f}")
+        self.logger.info(
+            f"最適パラメータ: {best_params.name}, Sharpe Ratio: {best_performance['sharpe_ratio']:.3f}"
+        )
         return best_params, best_performance
 
     def evaluate_out_of_sample(
         self,
         test_data: pd.DataFrame,
         parameters: ParameterSet,
-        strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]
+        strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
     ) -> Dict[str, float]:
         """
         アウトオブサンプル性能を評価
@@ -310,16 +320,18 @@ class WalkForwardAnalyzer:
         """
         try:
             performance = strategy_func(test_data, parameters)
-            self.logger.info(f"アウトオブサンプル評価完了: Sharpe Ratio = {performance.get('sharpe_ratio', 0):.3f}")
+            self.logger.info(
+                f"アウトオブサンプル評価完了: Sharpe Ratio = {performance.get('sharpe_ratio', 0):.3f}"
+            )
             return performance
         except Exception as e:
             self.logger.error(f"アウトオブサンプル評価に失敗: {e}")
             return {
-                'sharpe_ratio': 0.0,
-                'total_return': 0.0,
-                'max_drawdown': 0.0,
-                'win_rate': 0.0,
-                'total_trades': 0
+                "sharpe_ratio": 0.0,
+                "total_return": 0.0,
+                "max_drawdown": 0.0,
+                "win_rate": 0.0,
+                "total_trades": 0,
             }
 
     @PerformanceProfiler.profile
@@ -331,7 +343,7 @@ class WalkForwardAnalyzer:
         test_days: int = 30,
         step_days: int = 15,
         parameter_sets: Optional[List[ParameterSet]] = None,
-        min_samples: int = 30
+        min_samples: int = 30,
     ) -> List[OptimizationResult]:
         """
         ウォークフォワード最適化を実行
@@ -350,22 +362,30 @@ class WalkForwardAnalyzer:
         self.logger.info("ウォークフォワード最適化を開始します")
 
         # ウィンドウ作成
-        windows = self.create_sliding_windows(data, train_days, test_days, step_days, min_samples)
+        windows = self.create_sliding_windows(
+            data, train_days, test_days, step_days, min_samples
+        )
 
         results = []
 
         for window in windows:
-            self.logger.info(f"ウィンドウ {window.window_id} の処理を開始: {window.train_start.date()} - {window.test_end.date()}")
+            self.logger.info(
+                f"ウィンドウ {window.window_id} の処理を開始: {window.train_start.date()} - {window.test_end.date()}"
+            )
 
             # トレーニングデータとテストデータを分割
-            train_data = pd.DataFrame(data.loc[window.train_start:window.train_end])
-            test_data = pd.DataFrame(data.loc[window.test_start:window.test_end])
+            train_data = pd.DataFrame(data.loc[window.train_start : window.train_end])
+            test_data = pd.DataFrame(data.loc[window.test_start : window.test_end])
 
             # パラメータ最適化
-            best_params, in_sample_perf = self.optimize_parameters(train_data, strategy_func, parameter_sets)
+            best_params, in_sample_perf = self.optimize_parameters(
+                train_data, strategy_func, parameter_sets
+            )
 
             # アウトオブサンプル評価
-            out_sample_perf = self.evaluate_out_of_sample(test_data, best_params, strategy_func)
+            out_sample_perf = self.evaluate_out_of_sample(
+                test_data, best_params, strategy_func
+            )
 
             # 結果保存
             result = OptimizationResult(
@@ -373,16 +393,20 @@ class WalkForwardAnalyzer:
                 best_parameters=best_params,
                 in_sample_performance=in_sample_perf,
                 out_of_sample_performance=out_sample_perf,
-                parameter_scores=[]  # 詳細スコアはオプション
+                parameter_scores=[],  # 詳細スコアはオプション
             )
 
             results.append(result)
 
             # 過学習チェック
             if result.is_overfitted:
-                self.logger.warning(f"ウィンドウ {window.window_id}: 過学習の兆候あり (Sharpe Ratio改善: {result.sharpe_ratio_improvement:.3f})")
+                self.logger.warning(
+                    f"ウィンドウ {window.window_id}: 過学習の兆候あり (Sharpe Ratio改善: {result.sharpe_ratio_improvement:.3f})"
+                )
 
-        self.logger.info(f"ウォークフォワード最適化完了: {len(results)}個のウィンドウを処理")
+        self.logger.info(
+            f"ウォークフォワード最適化完了: {len(results)}個のウィンドウを処理"
+        )
         return results
 
     def summarize_results(self, results: List[OptimizationResult]) -> Dict[str, Any]:
@@ -399,8 +423,12 @@ class WalkForwardAnalyzer:
             return {}
 
         # Sharpe Ratioの統計
-        in_sample_sharpes = [r.in_sample_performance.get('sharpe_ratio', 0) for r in results]
-        out_sample_sharpes = [r.out_of_sample_performance.get('sharpe_ratio', 0) for r in results]
+        in_sample_sharpes = [
+            r.in_sample_performance.get("sharpe_ratio", 0) for r in results
+        ]
+        out_sample_sharpes = [
+            r.out_of_sample_performance.get("sharpe_ratio", 0) for r in results
+        ]
 
         # 過学習の割合
         overfitted_count = sum(1 for r in results if r.is_overfitted)
@@ -409,28 +437,32 @@ class WalkForwardAnalyzer:
         param_stability = self._analyze_parameter_stability(results)
 
         summary = {
-            'total_windows': len(results),
-            'in_sample_sharpe': {
-                'mean': np.mean(in_sample_sharpes),
-                'std': np.std(in_sample_sharpes),
-                'min': np.min(in_sample_sharpes),
-                'max': np.max(in_sample_sharpes)
+            "total_windows": len(results),
+            "in_sample_sharpe": {
+                "mean": np.mean(in_sample_sharpes),
+                "std": np.std(in_sample_sharpes),
+                "min": np.min(in_sample_sharpes),
+                "max": np.max(in_sample_sharpes),
             },
-            'out_sample_sharpe': {
-                'mean': np.mean(out_sample_sharpes),
-                'std': np.std(out_sample_sharpes),
-                'min': np.min(out_sample_sharpes),
-                'max': np.max(out_sample_sharpes)
+            "out_sample_sharpe": {
+                "mean": np.mean(out_sample_sharpes),
+                "std": np.std(out_sample_sharpes),
+                "min": np.min(out_sample_sharpes),
+                "max": np.max(out_sample_sharpes),
             },
-            'overfitting_ratio': overfitted_count / len(results),
-            'sharpe_improvement_avg': np.mean([r.sharpe_ratio_improvement for r in results]),
-            'parameter_stability': param_stability,
-            'recommendations': self._generate_recommendations(results)
+            "overfitting_ratio": overfitted_count / len(results),
+            "sharpe_improvement_avg": np.mean(
+                [r.sharpe_ratio_improvement for r in results]
+            ),
+            "parameter_stability": param_stability,
+            "recommendations": self._generate_recommendations(results),
         }
 
         return summary
 
-    def _analyze_parameter_stability(self, results: List[OptimizationResult]) -> Dict[str, Any]:
+    def _analyze_parameter_stability(
+        self, results: List[OptimizationResult]
+    ) -> Dict[str, Any]:
         """パラメータの安定性を分析"""
         if not results:
             return {}
@@ -440,11 +472,11 @@ class WalkForwardAnalyzer:
         for result in results:
             param_dict = result.best_parameters.to_dict()
             param_key = (
-                param_dict['stop_loss_atr_multiplier'],
-                param_dict['take_profit_risk_multiplier'],
-                param_dict['position_size_kelly_fraction'],
-                param_dict['confidence_threshold'],
-                param_dict['max_positions']
+                param_dict["stop_loss_atr_multiplier"],
+                param_dict["take_profit_risk_multiplier"],
+                param_dict["position_size_kelly_fraction"],
+                param_dict["confidence_threshold"],
+                param_dict["max_positions"],
             )
 
             param_counts[param_key] = param_counts.get(param_key, 0) + 1
@@ -454,9 +486,9 @@ class WalkForwardAnalyzer:
         stability_score = most_common[1] / len(results)
 
         return {
-            'most_common_params': most_common[0],
-            'stability_score': stability_score,
-            'unique_param_sets': len(param_counts)
+            "most_common_params": most_common[0],
+            "stability_score": stability_score,
+            "unique_param_sets": len(param_counts),
         }
 
     def _generate_recommendations(self, results: List[OptimizationResult]) -> List[str]:
@@ -476,7 +508,7 @@ class WalkForwardAnalyzer:
 
         # 安定性のチェック
         stability = self._analyze_parameter_stability(results)
-        if stability.get('stability_score', 0) > 0.7:
+        if stability.get("stability_score", 0) > 0.7:
             recommendations.append("パラメータが安定 - 信頼性の高い最適化")
         else:
             recommendations.append("パラメータが不安定 - より広いパラメータ範囲を検討")
@@ -486,14 +518,13 @@ class WalkForwardAnalyzer:
 
 # ===== 戦略評価関数テンプレート =====
 
+
 class BaseStrategyEvaluator(ABC):
     """戦略評価の基底クラス"""
 
     @abstractmethod
     def evaluate_strategy(
-        self,
-        data: pd.DataFrame,
-        parameters: ParameterSet
+        self, data: pd.DataFrame, parameters: ParameterSet
     ) -> Dict[str, float]:
         """
         戦略を評価
@@ -507,29 +538,22 @@ class BaseStrategyEvaluator(ABC):
         """
         pass
 
-    def calculate_sharpe_ratio(self, returns: pd.Series, risk_free_rate: float = 0.02) -> float:
+    def calculate_sharpe_ratio(
+        self, returns: pd.Series, risk_free_rate: float = 0.02
+    ) -> float:
         """Sharpe Ratioを計算"""
-        if len(returns) < 2:
-            return 0.0
-
-        excess_returns = returns - risk_free_rate / 252  # 日次リスクフリーレート
-        if excess_returns.std() == 0:
-            return 0.0
-
-        return excess_returns.mean() / excess_returns.std() * np.sqrt(252)
+        return sharpe_ratio(returns, rf=risk_free_rate, period_per_year=252)
 
     def calculate_max_drawdown(self, equity_curve: pd.Series) -> float:
         """最大ドローダウンを計算"""
-        peak = equity_curve.expanding().max()
-        drawdown = (equity_curve - peak) / peak
-        return drawdown.min()
+        return max_drawdown(equity_curve)
 
     def calculate_win_rate(self, trades: List[Dict[str, Any]]) -> float:
         """勝率を計算"""
         if not trades:
             return 0.0
 
-        winning_trades = sum(1 for trade in trades if trade.get('pnl', 0) > 0)
+        winning_trades = sum(1 for trade in trades if trade.get("pnl", 0) > 0)
         return winning_trades / len(trades)
 
 

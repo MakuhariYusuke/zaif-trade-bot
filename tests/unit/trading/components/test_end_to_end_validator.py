@@ -1,29 +1,26 @@
 """Tests for End-to-End Validation System component."""
 
 import datetime
-from typing import Any, Dict, List, Optional
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
-import pandas as pd
-import numpy as np
 
 from ztb.trading.end_to_end_validator import (
-    EndToEndValidationSystem,
-    ValidationPipeline,
+    ComponentTest,
     ComponentValidator,
+    EndToEndValidationSystem,
+    HealthCheck,
+    IntegrationTest,
     IntegrationValidator,
+    PerformanceTest,
     PerformanceValidator,
+    PipelineResult,
     SystemHealthValidator,
+    ValidationMetrics,
+    ValidationPipeline,
+    ValidationReport,
     ValidationStage,
     ValidationStatus,
-    ValidationMetrics,
-    ValidationReport,
-    PipelineResult,
-    ComponentTest,
-    IntegrationTest,
-    PerformanceTest,
-    HealthCheck
 )
 
 
@@ -59,7 +56,7 @@ def sample_validation_pipeline():
                 description="Validate individual components",
                 order=1,
                 timeout_seconds=300,
-                required=True
+                required=True,
             ),
             ValidationStage(
                 stage_id="integration_validation",
@@ -67,7 +64,7 @@ def sample_validation_pipeline():
                 description="Validate component integration",
                 order=2,
                 timeout_seconds=600,
-                required=True
+                required=True,
             ),
             ValidationStage(
                 stage_id="performance_validation",
@@ -75,7 +72,7 @@ def sample_validation_pipeline():
                 description="Validate system performance",
                 order=3,
                 timeout_seconds=900,
-                required=True
+                required=True,
             ),
             ValidationStage(
                 stage_id="health_validation",
@@ -83,11 +80,11 @@ def sample_validation_pipeline():
                 description="Validate system health",
                 order=4,
                 timeout_seconds=300,
-                required=True
-            )
+                required=True,
+            ),
         ],
         created_at=datetime.datetime.now(),
-        updated_at=datetime.datetime.now()
+        updated_at=datetime.datetime.now(),
     )
 
 
@@ -101,7 +98,7 @@ def sample_component_tests():
             test_type="unit_test",
             description="Test V433 system initialization and basic functions",
             expected_result=True,
-            timeout_seconds=60
+            timeout_seconds=60,
         ),
         ComponentTest(
             test_id="performance_optimizer_test",
@@ -109,8 +106,8 @@ def sample_component_tests():
             test_type="integration_test",
             description="Test performance optimization components",
             expected_result=True,
-            timeout_seconds=120
-        )
+            timeout_seconds=120,
+        ),
     ]
 
 
@@ -124,7 +121,7 @@ def sample_integration_tests():
             components_involved=["V433 System", "Performance Optimizer"],
             expected_behavior="Data flows correctly between components",
             success_criteria="No data loss, correct transformations",
-            timeout_seconds=300
+            timeout_seconds=300,
         ),
         IntegrationTest(
             test_id="signal_processing_test",
@@ -132,15 +129,17 @@ def sample_integration_tests():
             components_involved=["V433 System", "Position Manager"],
             expected_behavior="Signals processed and executed correctly",
             success_criteria="Signals converted to positions accurately",
-            timeout_seconds=300
-        )
+            timeout_seconds=300,
+        ),
     ]
 
 
 class TestEndToEndValidationSystemInitialization:
     """Initialization tests for End-to-End Validation System"""
 
-    def test_initialization(self, e2e_validator: EndToEndValidationSystem, mock_integration_manager):
+    def test_initialization(
+        self, e2e_validator: EndToEndValidationSystem, mock_integration_manager
+    ):
         """Test successful initialization"""
         assert e2e_validator.integration_manager == mock_integration_manager
         assert isinstance(e2e_validator.component_validator, ComponentValidator)
@@ -151,9 +150,13 @@ class TestEndToEndValidationSystemInitialization:
         assert e2e_validator.is_running is False
         assert e2e_validator.current_pipeline is None
 
-    def test_initialization_with_pipeline(self, mock_integration_manager, sample_validation_pipeline):
+    def test_initialization_with_pipeline(
+        self, mock_integration_manager, sample_validation_pipeline
+    ):
         """Test initialization with validation pipeline"""
-        system = EndToEndValidationSystem(mock_integration_manager, sample_validation_pipeline)
+        system = EndToEndValidationSystem(
+            mock_integration_manager, sample_validation_pipeline
+        )
 
         assert system.current_pipeline == sample_validation_pipeline
         assert len(system.validation_pipelines) == 1
@@ -162,13 +165,19 @@ class TestEndToEndValidationSystemInitialization:
 class TestEndToEndValidationSystemOperations:
     """Operation tests for End-to-End Validation System"""
 
-    def test_run_end_to_end_validation(self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline):
+    def test_run_end_to_end_validation(
+        self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline
+    ):
         """Test end-to-end validation execution"""
-        with patch.object(e2e_validator.component_validator, 'validate_components') as mock_component, \
-             patch.object(e2e_validator.integration_validator, 'validate_integrations') as mock_integration, \
-             patch.object(e2e_validator.performance_validator, 'validate_performance') as mock_performance, \
-             patch.object(e2e_validator.health_validator, 'validate_system_health') as mock_health:
-
+        with patch.object(
+            e2e_validator.component_validator, "validate_components"
+        ) as mock_component, patch.object(
+            e2e_validator.integration_validator, "validate_integrations"
+        ) as mock_integration, patch.object(
+            e2e_validator.performance_validator, "validate_performance"
+        ) as mock_performance, patch.object(
+            e2e_validator.health_validator, "validate_system_health"
+        ) as mock_health:
             # Mock validation results
             mock_component.return_value = PipelineResult(
                 stage_id="component_validation",
@@ -176,7 +185,7 @@ class TestEndToEndValidationSystemOperations:
                 duration_seconds=45.2,
                 metrics=ValidationMetrics(),
                 issues=[],
-                recommendations=[]
+                recommendations=[],
             )
 
             mock_integration.return_value = PipelineResult(
@@ -185,7 +194,7 @@ class TestEndToEndValidationSystemOperations:
                 duration_seconds=120.5,
                 metrics=ValidationMetrics(),
                 issues=[],
-                recommendations=[]
+                recommendations=[],
             )
 
             mock_performance.return_value = PipelineResult(
@@ -194,7 +203,7 @@ class TestEndToEndValidationSystemOperations:
                 duration_seconds=180.3,
                 metrics=ValidationMetrics(),
                 issues=[],
-                recommendations=[]
+                recommendations=[],
             )
 
             mock_health.return_value = PipelineResult(
@@ -203,7 +212,7 @@ class TestEndToEndValidationSystemOperations:
                 duration_seconds=30.1,
                 metrics=ValidationMetrics(),
                 issues=[],
-                recommendations=[]
+                recommendations=[],
             )
 
             result = e2e_validator.run_end_to_end_validation(sample_validation_pipeline)
@@ -215,9 +224,11 @@ class TestEndToEndValidationSystemOperations:
             assert result.total_duration > 0
             assert e2e_validator.current_pipeline == sample_validation_pipeline
 
-    def test_run_validation_pipeline(self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline):
+    def test_run_validation_pipeline(
+        self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline
+    ):
         """Test validation pipeline execution"""
-        with patch.object(e2e_validator, 'run_end_to_end_validation') as mock_run:
+        with patch.object(e2e_validator, "run_end_to_end_validation") as mock_run:
             mock_run.return_value = ValidationReport(
                 pipeline_id=sample_validation_pipeline.pipeline_id,
                 overall_status=ValidationStatus.PASSED,
@@ -226,16 +237,20 @@ class TestEndToEndValidationSystemOperations:
                 validation_metrics=ValidationMetrics(),
                 issues=[],
                 recommendations=[],
-                generated_at=datetime.datetime.now()
+                generated_at=datetime.datetime.now(),
             )
 
-            result = e2e_validator.run_validation_pipeline(sample_validation_pipeline.pipeline_id)
+            result = e2e_validator.run_validation_pipeline(
+                sample_validation_pipeline.pipeline_id
+            )
 
             assert isinstance(result, ValidationReport)
             assert result.pipeline_id == sample_validation_pipeline.pipeline_id
             assert result.overall_status == ValidationStatus.PASSED
 
-    def test_get_validation_status(self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline):
+    def test_get_validation_status(
+        self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline
+    ):
         """Test getting validation status"""
         e2e_validator.current_pipeline = sample_validation_pipeline
         e2e_validator.is_running = True
@@ -248,26 +263,40 @@ class TestEndToEndValidationSystemOperations:
         assert status["current_pipeline"] == sample_validation_pipeline.pipeline_id
         assert status["is_running"] is True
 
-    def test_get_validation_history(self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline):
+    def test_get_validation_history(
+        self, e2e_validator: EndToEndValidationSystem, sample_validation_pipeline
+    ):
         """Test getting validation history"""
         # Add some mock reports
         e2e_validator.validation_pipelines = [sample_validation_pipeline]
 
-        with patch.object(e2e_validator, 'run_validation_pipeline') as mock_run:
-            mock_run.return_value = ValidationReport(
-                pipeline_id=sample_validation_pipeline.pipeline_id,
-                overall_status=ValidationStatus.PASSED,
-                stage_results=[],
-                total_duration=100.0,
-                validation_metrics=ValidationMetrics(),
-                issues=[],
-                recommendations=[],
-                generated_at=datetime.datetime.now()
-            )
+        # Mock return value
+        mock_report = ValidationReport(
+            pipeline_id=sample_validation_pipeline.pipeline_id,
+            overall_status=ValidationStatus.PASSED,
+            stage_results=[],
+            total_duration=100.0,
+            validation_metrics=ValidationMetrics(),
+            issues=[],
+            recommendations=[],
+            generated_at=datetime.datetime.now(),
+        )
+
+        with patch.object(e2e_validator, "run_validation_pipeline") as mock_run:
+            # side_effect to add report to history
+            def add_to_history(pipeline_id):
+                e2e_validator.validation_history.append(mock_report)
+                return mock_report
+
+            mock_run.side_effect = add_to_history
 
             # Run a few validations
-            e2e_validator.run_validation_pipeline(sample_validation_pipeline.pipeline_id)
-            e2e_validator.run_validation_pipeline(sample_validation_pipeline.pipeline_id)
+            e2e_validator.run_validation_pipeline(
+                sample_validation_pipeline.pipeline_id
+            )
+            e2e_validator.run_validation_pipeline(
+                sample_validation_pipeline.pipeline_id
+            )
 
             history = e2e_validator.get_validation_history()
 
@@ -299,15 +328,17 @@ class TestComponentValidator:
         assert validator.integration_manager == mock_integration_manager
         assert validator.component_tests == []
 
-    def test_validate_components(self, mock_integration_manager, sample_component_tests):
+    def test_validate_components(
+        self, mock_integration_manager, sample_component_tests
+    ):
         """Test component validation"""
         validator = ComponentValidator(mock_integration_manager)
         validator.component_tests = sample_component_tests
 
-        with patch.object(validator, '_run_component_test') as mock_run:
+        with patch.object(validator, "_run_component_test") as mock_run:
             mock_run.side_effect = [
                 {"passed": True, "duration": 30.5, "metrics": {"test_score": 0.95}},
-                {"passed": True, "duration": 75.2, "metrics": {"test_score": 0.88}}
+                {"passed": True, "duration": 75.2, "metrics": {"test_score": 0.88}},
             ]
 
             result = validator.validate_components()
@@ -328,10 +359,10 @@ class TestComponentValidator:
             test_type="unit_test",
             description="Test V433 system initialization",
             expected_result=True,
-            timeout_seconds=60
+            timeout_seconds=60,
         )
 
-        with patch.object(validator, '_execute_component_test') as mock_execute:
+        with patch.object(validator, "_execute_component_test") as mock_execute:
             mock_execute.return_value = {"passed": True, "metrics": {"init_time": 2.3}}
 
             result = validator._run_component_test(test)
@@ -345,8 +376,13 @@ class TestComponentValidator:
         """Test component health validation"""
         validator = ComponentValidator(mock_integration_manager)
 
-        with patch.object(validator.integration_manager.component_manager, 'get_component_status') as mock_status:
-            mock_status.return_value = {"status": "healthy", "metrics": {"cpu": 45.0, "memory": 512}}
+        with patch.object(
+            validator.integration_manager.component_manager, "get_component_status"
+        ) as mock_status:
+            mock_status.return_value = {
+                "status": "healthy",
+                "metrics": {"cpu": 45.0, "memory": 512},
+            }
 
             health = validator._validate_component_health("V433 System")
 
@@ -366,15 +402,21 @@ class TestIntegrationValidator:
         assert validator.integration_manager == mock_integration_manager
         assert validator.integration_tests == []
 
-    def test_validate_integrations(self, mock_integration_manager, sample_integration_tests):
+    def test_validate_integrations(
+        self, mock_integration_manager, sample_integration_tests
+    ):
         """Test integration validation"""
         validator = IntegrationValidator(mock_integration_manager)
         validator.integration_tests = sample_integration_tests
 
-        with patch.object(validator, '_run_integration_test') as mock_run:
+        with patch.object(validator, "_run_integration_test") as mock_run:
             mock_run.side_effect = [
                 {"passed": True, "duration": 45.2, "metrics": {"data_loss": 0.0}},
-                {"passed": True, "duration": 67.8, "metrics": {"signal_accuracy": 0.98}}
+                {
+                    "passed": True,
+                    "duration": 67.8,
+                    "metrics": {"signal_accuracy": 0.98},
+                },
             ]
 
             result = validator.validate_integrations()
@@ -394,11 +436,14 @@ class TestIntegrationValidator:
             components_involved=["V433 System", "Performance Optimizer"],
             expected_behavior="Data flows correctly",
             success_criteria="No data loss",
-            timeout_seconds=300
+            timeout_seconds=300,
         )
 
-        with patch.object(validator, '_execute_integration_test') as mock_execute:
-            mock_execute.return_value = {"passed": True, "metrics": {"throughput": 1000}}
+        with patch.object(validator, "_execute_integration_test") as mock_execute:
+            mock_execute.return_value = {
+                "passed": True,
+                "metrics": {"throughput": 1000},
+            }
 
             result = validator._run_integration_test(test)
 
@@ -410,14 +455,19 @@ class TestIntegrationValidator:
         """Test data flow validation"""
         validator = IntegrationValidator(mock_integration_manager)
 
-        with patch.object(validator.integration_manager.component_manager.v433_system, 'get_data_flow_metrics') as mock_metrics:
+        with patch.object(
+            validator.integration_manager.component_manager.v433_system,
+            "get_data_flow_metrics",
+        ) as mock_metrics:
             mock_metrics.return_value = {
                 "data_processed": 10000,
                 "data_lost": 0,
-                "avg_latency": 50.0
+                "avg_latency": 50.0,
             }
 
-            flow_result = validator._validate_data_flow("V433 System", "Performance Optimizer")
+            flow_result = validator._validate_data_flow(
+                "V433 System", "Performance Optimizer"
+            )
 
             assert "data_integrity" in flow_result
             assert "latency_acceptable" in flow_result
@@ -445,13 +495,17 @@ class TestPerformanceValidator:
                 metric_name="avg_latency_ms",
                 target_value=100.0,
                 operator="<=",
-                timeout_seconds=300
+                timeout_seconds=300,
             )
         ]
         validator.performance_tests = performance_tests
 
-        with patch.object(validator, '_run_performance_test') as mock_run:
-            mock_run.return_value = {"passed": True, "duration": 45.2, "metrics": {"avg_latency_ms": 75.0}}
+        with patch.object(validator, "_run_performance_test") as mock_run:
+            mock_run.return_value = {
+                "passed": True,
+                "duration": 45.2,
+                "metrics": {"avg_latency_ms": 75.0},
+            }
 
             result = validator.validate_performance()
 
@@ -469,10 +523,10 @@ class TestPerformanceValidator:
             metric_name="ops_per_second",
             target_value=1000.0,
             operator=">=",
-            timeout_seconds=300
+            timeout_seconds=300,
         )
 
-        with patch.object(validator, '_measure_performance_metric') as mock_measure:
+        with patch.object(validator, "_measure_performance_metric") as mock_measure:
             mock_measure.return_value = 1200.0
 
             result = validator._run_performance_test(test)
@@ -487,11 +541,13 @@ class TestPerformanceValidator:
         """Test performance metric measurement"""
         validator = PerformanceValidator(mock_integration_manager)
 
-        with patch.object(validator.integration_manager.component_manager, 'get_performance_metrics') as mock_metrics:
+        with patch.object(
+            validator.integration_manager.component_manager, "get_performance_metrics"
+        ) as mock_metrics:
             mock_metrics.return_value = {
                 "avg_latency_ms": 45.2,
                 "throughput_ops": 1500,
-                "memory_usage_mb": 512
+                "memory_usage_mb": 512,
             }
 
             latency = validator._measure_performance_metric("avg_latency_ms")
@@ -521,13 +577,17 @@ class TestSystemHealthValidator:
                 description="Check system memory usage",
                 check_type="resource",
                 expected_result=True,
-                timeout_seconds=30
+                timeout_seconds=30,
             )
         ]
         validator.health_checks = health_checks
 
-        with patch.object(validator, '_run_health_check') as mock_run:
-            mock_run.return_value = {"passed": True, "duration": 5.2, "metrics": {"memory_pct": 65.0}}
+        with patch.object(validator, "_run_health_check") as mock_run:
+            mock_run.return_value = {
+                "passed": True,
+                "duration": 5.2,
+                "metrics": {"memory_pct": 65.0},
+            }
 
             result = validator.validate_system_health()
 
@@ -544,10 +604,10 @@ class TestSystemHealthValidator:
             description="Check CPU usage",
             check_type="resource",
             expected_result=True,
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
-        with patch.object(validator, '_execute_health_check') as mock_execute:
+        with patch.object(validator, "_execute_health_check") as mock_execute:
             mock_execute.return_value = {"cpu_usage": 45.0, "status": "healthy"}
 
             result = validator._run_health_check(check)
@@ -560,10 +620,9 @@ class TestSystemHealthValidator:
         """Test system resource checking"""
         validator = SystemHealthValidator(mock_integration_manager)
 
-        with patch('psutil.cpu_percent', return_value=45.0), \
-             patch('psutil.virtual_memory') as mock_memory, \
-             patch('psutil.disk_usage') as mock_disk:
-
+        with patch("psutil.cpu_percent", return_value=45.0), patch(
+            "psutil.virtual_memory"
+        ) as mock_memory, patch("psutil.disk_usage") as mock_disk:
             mock_memory.return_value.percent = 65.0
             mock_disk.return_value.percent = 55.0
 
@@ -616,7 +675,7 @@ class TestValidationStage:
             description="A test validation stage",
             order=1,
             timeout_seconds=300,
-            required=True
+            required=True,
         )
 
         assert stage.stage_id == "test_stage"
@@ -628,10 +687,20 @@ class TestValidationStage:
     def test_is_required(self):
         """Test required check"""
         required_stage = ValidationStage(
-            stage_id="required", name="Required", description="", order=1, timeout_seconds=60, required=True
+            stage_id="required",
+            name="Required",
+            description="",
+            order=1,
+            timeout_seconds=60,
+            required=True,
         )
         optional_stage = ValidationStage(
-            stage_id="optional", name="Optional", description="", order=1, timeout_seconds=60, required=False
+            stage_id="optional",
+            name="Optional",
+            description="",
+            order=1,
+            timeout_seconds=60,
+            required=False,
         )
 
         assert required_stage.is_required() is True
@@ -670,7 +739,7 @@ class TestValidationReport:
             validation_metrics=ValidationMetrics(),
             issues=[],
             recommendations=[],
-            generated_at=datetime.datetime.now()
+            generated_at=datetime.datetime.now(),
         )
 
         assert report.pipeline_id == "test_pipeline"
@@ -680,12 +749,20 @@ class TestValidationReport:
     def test_overall_status_calculation(self):
         """Test overall status calculation from stage results"""
         passed_result = PipelineResult(
-            stage_id="stage1", status=ValidationStatus.PASSED, duration_seconds=10.0,
-            metrics=ValidationMetrics(), issues=[], recommendations=[]
+            stage_id="stage1",
+            status=ValidationStatus.PASSED,
+            duration_seconds=10.0,
+            metrics=ValidationMetrics(),
+            issues=[],
+            recommendations=[],
         )
         failed_result = PipelineResult(
-            stage_id="stage2", status=ValidationStatus.FAILED, duration_seconds=10.0,
-            metrics=ValidationMetrics(), issues=["Error"], recommendations=[]
+            stage_id="stage2",
+            status=ValidationStatus.FAILED,
+            duration_seconds=10.0,
+            metrics=ValidationMetrics(),
+            issues=["Error"],
+            recommendations=[],
         )
 
         # All passed
@@ -697,7 +774,7 @@ class TestValidationReport:
             validation_metrics=ValidationMetrics(),
             issues=[],
             recommendations=[],
-            generated_at=datetime.datetime.now()
+            generated_at=datetime.datetime.now(),
         )
 
         # One failed
@@ -709,7 +786,7 @@ class TestValidationReport:
             validation_metrics=ValidationMetrics(),
             issues=[],
             recommendations=[],
-            generated_at=datetime.datetime.now()
+            generated_at=datetime.datetime.now(),
         )
 
         # The overall_status should be calculated based on stage results
@@ -729,7 +806,7 @@ class TestPipelineResult:
             duration_seconds=45.2,
             metrics=ValidationMetrics(),
             issues=[],
-            recommendations=[]
+            recommendations=[],
         )
 
         assert result.stage_id == "test_stage"
@@ -741,12 +818,20 @@ class TestPipelineResult:
     def test_has_issues(self):
         """Test issues check"""
         result_with_issues = PipelineResult(
-            stage_id="test", status=ValidationStatus.FAILED, duration_seconds=10.0,
-            metrics=ValidationMetrics(), issues=["Error 1", "Error 2"], recommendations=[]
+            stage_id="test",
+            status=ValidationStatus.FAILED,
+            duration_seconds=10.0,
+            metrics=ValidationMetrics(),
+            issues=["Error 1", "Error 2"],
+            recommendations=[],
         )
         result_without_issues = PipelineResult(
-            stage_id="test", status=ValidationStatus.PASSED, duration_seconds=10.0,
-            metrics=ValidationMetrics(), issues=[], recommendations=[]
+            stage_id="test",
+            status=ValidationStatus.PASSED,
+            duration_seconds=10.0,
+            metrics=ValidationMetrics(),
+            issues=[],
+            recommendations=[],
         )
 
         assert result_with_issues.has_issues() is True
@@ -768,10 +853,7 @@ class TestValidationMetrics:
     def test_success_rate(self):
         """Test success rate calculation"""
         metrics = ValidationMetrics(
-            tests_run=10,
-            tests_passed=8,
-            tests_failed=2,
-            avg_duration_seconds=5.5
+            tests_run=10, tests_passed=8, tests_failed=2, avg_duration_seconds=5.5
         )
 
         assert metrics.success_rate == 0.8

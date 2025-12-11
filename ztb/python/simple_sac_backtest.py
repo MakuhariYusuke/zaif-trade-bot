@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from stable_baselines3 import SAC
 
+from ztb.metrics.statistics import calculate_distribution_stats
 from ztb.trading.environment.constants import DEFAULT_TRANSACTION_COST
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -100,11 +101,13 @@ def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10)
     print(f"\n{'='*80}")
     print("BACKTEST RESULTS")
     print(f"{'='*80}")
+
+    reward_stats = calculate_distribution_stats(episode_rewards)
+    return_stats = calculate_distribution_stats(episode_returns)
+
+    print(f"Average Reward:  {reward_stats['mean']:7.2f} ± {reward_stats['std']:6.2f}")
     print(
-        f"Average Reward:  {np.mean(episode_rewards):7.2f} ± {np.std(episode_rewards):6.2f}"
-    )
-    print(
-        f"Average Return:  {np.mean(episode_returns):6.2f}% ± {np.std(episode_returns):5.2f}%"
+        f"Average Return:  {return_stats['mean']:6.2f}% ± {return_stats['std']:5.2f}%"
     )
     print(f"Best Return:     {np.max(episode_returns):6.2f}%")
     print(f"Worst Return:    {np.min(episode_returns):6.2f}%")
@@ -114,10 +117,10 @@ def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10)
 
     return {
         "model_name": model_path.stem,
-        "avg_reward": np.mean(episode_rewards),
-        "std_reward": np.std(episode_rewards),
-        "avg_return": np.mean(episode_returns),
-        "std_return": np.std(episode_returns),
+        "avg_reward": reward_stats["mean"],
+        "std_reward": reward_stats["std"],
+        "avg_return": return_stats["mean"],
+        "std_return": return_stats["std"],
         "best_return": np.max(episode_returns),
         "worst_return": np.min(episode_returns),
         "total_trades": total_trades,

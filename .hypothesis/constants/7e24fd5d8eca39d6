@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\continual_learning.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.01, 0.1, 0.5, 0.8, 1000, '.', 'actions', 'avg_loss', 'config', 'connection_type', 'current_task', 'dones', 'epochs_completed', 'ewc', 'ewc_fisher', 'ewc_params', 'ewc_tasks', 'final_loss', 'fisher_norm', 'knowledge_transfer', 'lateral_connections', 'learned_tasks', 'max_buffer_size', 'memory_stats', 'method', 'next_states', 'note', 'param_count', 'progressive', 'progressive_stats', 'rehearsal', 'rehearsal_config', 'rehearsal_stats', 'rewards', 'source_task', 'states', 'target_task', 'task_buffers', 'task_count', 'task_history', 'task_id', 'task_networks', 'timestamp', 'total_samples', 'training_losses', 'training_stats']

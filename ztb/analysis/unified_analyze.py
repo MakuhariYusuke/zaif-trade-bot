@@ -134,7 +134,10 @@ class UnifiedAnalysisSuite:
             return 0
 
         except Exception as e:
+            import traceback
+
             logger.error(f"Analysis failed: {e}")
+            logger.error(traceback.format_exc())
             return 1
 
 
@@ -623,7 +626,9 @@ class ComparativeAnalysis(BaseAnalyzer):
             "config/v446/sac_v446_multitimeframe_shortterm_optimized.json",
         )
         skip_quality = getattr(args, "skip_quality_filtering", False)
-        output_path = Path(getattr(args, "results", "backtest_results_sac_v446.json"))
+        output_path = Path(
+            getattr(args, "results", None) or "backtest_results_sac_v446.json"
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info("Starting SAC v446 backtest via unified_analyze")
@@ -1069,7 +1074,10 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Paper trading analysis arguments
     parser.add_argument(
-        "--paper-episodes", type=int, default=10, help="Number of episodes for paper trading"
+        "--paper-episodes",
+        type=int,
+        default=10,
+        help="Number of episodes for paper trading",
     )
 
     # Specialized analysis arguments

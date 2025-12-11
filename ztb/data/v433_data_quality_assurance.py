@@ -161,8 +161,8 @@ class DataQualityAssurance:
             stats_check["price_distribution"]["kurtosis"] = kurtosis_val
 
             # 現実的な範囲チェック
-            reasonable_skew = abs(skewness) < 2.0  # 過度な歪みなし
-            reasonable_kurt = kurtosis < 10.0  # 過度な尖りなし
+            reasonable_skew = abs(skewness_val) < 2.0  # 過度な歪みなし
+            reasonable_kurt = kurtosis_val < 10.0  # 過度な尖りなし
             stats_check["price_distribution"]["reasonable_distribution"] = (
                 reasonable_skew and reasonable_kurt
             )
@@ -174,7 +174,11 @@ class DataQualityAssurance:
         # ボラティリティ分析
         try:
             returns = close_prices.pct_change().dropna()
-            volatility = returns.std() * np.sqrt(252)  # 年率化
+            from ztb.metrics.technical import calculate_volatility_from_returns
+
+            volatility = calculate_volatility_from_returns(
+                returns, window=len(returns), annualize=True
+            )
 
             stats_check["volatility_analysis"]["annualized_volatility"] = volatility
             stats_check["volatility_analysis"]["realistic_volatility"] = (

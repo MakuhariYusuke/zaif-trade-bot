@@ -9,6 +9,8 @@ import pandas as pd
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
+_talib = TaLibWrapper()
+
 
 @FeatureRegistry.register("MACD")
 def compute_macd(
@@ -21,7 +23,7 @@ def compute_macd(
     close_prices = np.asarray(df["close"].values)
 
     # Use Ta-Lib if available, otherwise use custom implementation
-    macd, signal, hist = TaLibWrapper.macd(
+    macd, signal, hist = _talib.macd(
         close_prices, fast_period, slow_period, signal_period
     )
 

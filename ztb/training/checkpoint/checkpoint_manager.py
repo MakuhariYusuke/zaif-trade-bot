@@ -229,22 +229,27 @@ class TrainingCheckpointManager:
             payload = snapshot.payload
 
             # Validate model state
-            if "policy_state" not in payload:
+            if "policy_state" not in payload and "model_state" not in payload:
                 validation_result["valid"] = False
-                validation_result["errors"].append("Missing policy state in checkpoint")
+                validation_result["errors"].append(
+                    "Missing policy state or model_state in checkpoint"
+                )
             else:
-                policy_state = payload["policy_state"]
-                if not isinstance(policy_state, dict):
-                    validation_result["valid"] = False
-                    validation_result["errors"].append("Invalid policy state format")
-                elif model is not None:
-                    # Validate against current model
-                    try:
-                        model.policy.load_state_dict(policy_state, strict=False)
-                    except Exception as e:
-                        validation_result["warnings"].append(
-                            f"Policy state loading issue: {e}"
+                if "policy_state" in payload:
+                    policy_state = payload["policy_state"]
+                    if not isinstance(policy_state, dict):
+                        validation_result["valid"] = False
+                        validation_result["errors"].append(
+                            "Invalid policy state format"
                         )
+                    elif model is not None:
+                        # Validate against current model
+                        try:
+                            model.policy.load_state_dict(policy_state, strict=False)
+                        except Exception as e:
+                            validation_result["warnings"].append(
+                                f"Policy state loading issue: {e}"
+                            )
 
             # Validate optimizer state if present
             if self.config.include_optimizer and "optimizer_state" in payload:
@@ -337,6 +342,25 @@ class TrainingCheckpointManager:
 
         if self.config.include_rng_state:
             payload["rng_state"] = self._collect_rng_state()
+
+        # Save VecNormalize stats if available
+        if hasattr(model, "get_vec_normalize_env"):
+            vec_env = model.get_vec_normalize_env()
+            if vec_env is not None:
+                try:
+                    # Save essential stats
+                    payload["vec_normalize_stats"] = {
+                        "obs_rms": vec_env.obs_rms,
+                        "ret_rms": vec_env.ret_rms,
+                        "norm_obs": vec_env.norm_obs,
+                        "norm_reward": vec_env.norm_reward,
+                        "clip_obs": vec_env.clip_obs,
+                        "clip_reward": vec_env.clip_reward,
+                        "gamma": vec_env.gamma,
+                        "epsilon": vec_env.epsilon,
+                    }
+                except Exception:
+                    logger.exception("Failed to serialize VecNormalize stats")
 
         payload["checksum"] = self._compute_checksum(payload)
         return payload

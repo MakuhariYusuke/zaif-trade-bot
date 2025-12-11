@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\common\path_manager.py
+# hypothesis_version: 6.148.6
+
+['*', '.git', 'analysis', 'analysis_results', 'backtest_experiments', 'checkpoints', 'data', 'exports', 'models', 'plots', 'pyproject.toml', 'reports', 'results', 'setup.py', 'temp', 'tensorboard', 'training_results', 'ztb']

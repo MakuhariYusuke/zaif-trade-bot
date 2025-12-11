@@ -120,8 +120,16 @@ def calculate_vif(data: pd.DataFrame, threshold: float = 5.0) -> pd.DataFrame:
         return pd.DataFrame()
 
     numeric_data = data.select_dtypes(include=[np.number])
-    if numeric_data.shape[1] < 1:  # Allow single feature
+    if numeric_data.shape[1] < 1:
         return pd.DataFrame()
+
+    # If only a single numeric feature is present, VIF is 1.0 by definition
+    if numeric_data.shape[1] == 1:
+        vif_data = pd.DataFrame()
+        vif_data["feature"] = numeric_data.columns
+        vif_data["vif"] = [1.0]
+        vif_data["multicollinear"] = [False]
+        return vif_data
 
     vif_data = pd.DataFrame()
     vif_data["feature"] = numeric_data.columns
@@ -164,8 +172,9 @@ def check_leaks(
             results.append(
                 {
                     "feature": col,
-                    "corr_current": 0.0,
-                    "corr_future": 0.0,
+                    # return NaN when there is no target column to indicate undefined correlation
+                    "corr_current": np.nan,
+                    "corr_future": np.nan,
                     "potential_leak": False,
                 }
             )
@@ -210,6 +219,7 @@ def check_leaks(
 
 def generate_synthetic_data(
     n_samples: int = 1000,
+    n_rows: int | None = None,
     n_features: int = 10,
     n_informative: int = 5,
     noise: float = 0.1,
@@ -230,22 +240,25 @@ def generate_synthetic_data(
     """
     np.random.seed(random_state)
 
+    # Support legacy callers using 'n_rows' keyword
+    rows = n_samples if n_rows is None else n_rows
+
     # Generate timestamps
-    timestamps = pd.date_range("2023-01-01", periods=n_samples, freq="1H")
+    timestamps = pd.date_range("2023-01-01", periods=rows, freq="1H")
 
     # Generate price data with trend and noise
     base_price = 100.0
-    trend = np.linspace(0, 10, n_samples)  # Slight upward trend
-    noise_component = np.random.normal(0, 2, n_samples)
+    trend = np.linspace(0, 10, rows)  # Slight upward trend
+    noise_component = np.random.normal(0, 2, rows)
     close_prices = base_price + trend + noise_component
 
     # Generate OHLC data
-    highs = close_prices + np.abs(np.random.normal(0, 1, n_samples))
-    lows = close_prices - np.abs(np.random.normal(0, 1, n_samples))
-    opens = close_prices + np.random.normal(0, 0.5, n_samples)
+    highs = close_prices + np.abs(np.random.normal(0, 1, rows))
+    lows = close_prices - np.abs(np.random.normal(0, 1, rows))
+    opens = close_prices + np.random.normal(0, 0.5, rows)
 
     # Generate volume
-    volume = np.random.lognormal(10, 1, n_samples)
+    volume = np.random.lognormal(10, 1, rows)
 
     # Create DataFrame
     df = pd.DataFrame(
@@ -256,7 +269,7 @@ def generate_synthetic_data(
             "low": lows,
             "close": close_prices,
             "volume": volume,
-            "episode_id": np.repeat(range(n_samples // 100 + 1), 100)[:n_samples],
+            "episode_id": np.repeat(range(rows // 100 + 1), 100)[:rows],
         }
     )
 

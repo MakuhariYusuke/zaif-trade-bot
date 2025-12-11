@@ -40,17 +40,17 @@ class MTFWeightManager:
         # Validate weights
         if not isinstance(weights, dict) or not weights:
             return False
-        # Extract candidate_id if present
-        candidate_id = None
+        # Work on a shallow copy to avoid mutating caller-provided dict
         try:
-            candidate_id = weights.pop("_candidate_id", None)
+            payload = dict(weights)
         except Exception:
-            candidate_id = None
+            return False
+        candidate_id = payload.pop("_candidate_id", None)
 
         with self._lock:
             try:
                 # Build initial candidate vector in same keys
-                new_w = {tf: float(weights.get(tf, 0.0)) for tf in self._weights.keys()}
+                new_w = {tf: float(payload.get(tf, 0.0)) for tf in self._weights.keys()}
                 # Bounded normalize (ensure min <= x <= max and sum(x) == 1)
                 min_w = self._min_weights
                 max_w = self._max_weights
@@ -64,7 +64,9 @@ class MTFWeightManager:
 
                 # Clip to min/max
                 for tf in new_w:
-                    new_w[tf] = max(min_w.get(tf, 0.0), min(max_w.get(tf, 1.0), new_w.get(tf, 0.0)))
+                    new_w[tf] = max(
+                        min_w.get(tf, 0.0), min(max_w.get(tf, 1.0), new_w.get(tf, 0.0))
+                    )
 
                 # Iteratively adjust to meet sum=1 with bounds
                 eps = 1e-9
@@ -74,28 +76,48 @@ class MTFWeightManager:
                         break
                     if total > 1.0:
                         # reduce proportionally from reducible (above min)
-                        reducible_keys = [tf for tf in new_w if new_w[tf] > min_w.get(tf, 0.0) + eps]
+                        reducible_keys = [
+                            tf for tf in new_w if new_w[tf] > min_w.get(tf, 0.0) + eps
+                        ]
                         if not reducible_keys:
                             break
-                        reducible_mass = sum(new_w[tf] - min_w.get(tf, 0.0) for tf in reducible_keys)
+                        reducible_mass = sum(
+                            new_w[tf] - min_w.get(tf, 0.0) for tf in reducible_keys
+                        )
                         if reducible_mass <= 0:
                             break
                         excess = total - 1.0
                         for tf in reducible_keys:
-                            reduce_amount = excess * (new_w[tf] - min_w.get(tf, 0.0)) / reducible_mass
-                            new_w[tf] = max(min_w.get(tf, 0.0), new_w[tf] - reduce_amount)
+                            reduce_amount = (
+                                excess
+                                * (new_w[tf] - min_w.get(tf, 0.0))
+                                / reducible_mass
+                            )
+                            new_w[tf] = max(
+                                min_w.get(tf, 0.0), new_w[tf] - reduce_amount
+                            )
                     else:
                         # total < 1.0 -> increase proportionally for keys below max
-                        increasable_keys = [tf for tf in new_w if new_w[tf] < max_w.get(tf, 1.0) - eps]
+                        increasable_keys = [
+                            tf for tf in new_w if new_w[tf] < max_w.get(tf, 1.0) - eps
+                        ]
                         if not increasable_keys:
                             break
-                        increasable_mass = sum(max_w.get(tf, 1.0) - new_w[tf] for tf in increasable_keys)
+                        increasable_mass = sum(
+                            max_w.get(tf, 1.0) - new_w[tf] for tf in increasable_keys
+                        )
                         if increasable_mass <= 0:
                             break
                         shortage = 1.0 - total
                         for tf in increasable_keys:
-                            increase_amount = shortage * (max_w.get(tf, 1.0) - new_w[tf]) / increasable_mass
-                            new_w[tf] = min(max_w.get(tf, 1.0), new_w[tf] + increase_amount)
+                            increase_amount = (
+                                shortage
+                                * (max_w.get(tf, 1.0) - new_w[tf])
+                                / increasable_mass
+                            )
+                            new_w[tf] = min(
+                                max_w.get(tf, 1.0), new_w[tf] + increase_amount
+                            )
                 # assign and set telemetry
                 self._weights = {tf: float(new_w[tf]) for tf in new_w}
                 self._last_applied_candidate = candidate_id

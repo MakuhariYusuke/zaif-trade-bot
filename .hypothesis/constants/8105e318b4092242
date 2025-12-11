@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\experiments\entropy_temperature.py
+# hypothesis_version: 6.148.6
+
+[0.0, 1e-08, 0.0003, 0.001, 0.01, 0.3, 0.5, 0.7, 1.0, 10.0, '__main__', 'alpha', 'alpha_std', 'cpu', 'current_alpha', 'entropy', 'loss', 'mean_alpha', 'mean_entropy', 'num_updates', 'target_entropy']

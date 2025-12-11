@@ -18,6 +18,15 @@ import numpy as np
 import pandas as pd
 
 from ztb.analysis.market_regime_types import MarketRegime
+from ztb.features.generators.technical.momentum.rsi import compute_rsi
+from ztb.features.generators.technical.momentum.stochastic import compute_stochastic_k
+from ztb.features.generators.technical.momentum.williams_r import compute_williams_r
+from ztb.features.generators.technical.volatility.atr import compute_atr
+from ztb.features.generators.technical.volatility.bollinger import (
+    compute_bb_lower,
+    compute_bb_middle,
+    compute_bb_upper,
+)
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -163,23 +172,25 @@ class MarketRegimeClassifier:
         df["volatility"] = (
             df["returns"].rolling(window=self.config["volatility_window"]).std()
         )
-        df["atr"] = self._calculate_atr(
-            df, high="high", low="low", close=price_column, window=14
-        )
+        df["atr"] = compute_atr(df, period=14)
 
         # Bollinger Bands
-        df["bb_middle"] = df[price_column].rolling(window=20).mean()
-        df["bb_std"] = df[price_column].rolling(window=20).std()
-        df["bb_upper"] = df["bb_middle"] + 2 * df["bb_std"]
-        df["bb_lower"] = df["bb_middle"] - 2 * df["bb_std"]
+        bb_upper = compute_bb_upper(df, period=20)
+        bb_middle = compute_bb_middle(df, period=20)
+        bb_lower = compute_bb_lower(df, period=20)
+
+        df["bb_middle"] = bb_middle
+        df["bb_upper"] = bb_upper
+        df["bb_lower"] = bb_lower
+        df["bb_std"] = (bb_upper - bb_middle) / 2
         df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"]
 
         # Momentum indicators
-        df["rsi"] = self._calculate_rsi(
-            df[price_column], window=self.config["momentum_window"]
-        )
-        df["stoch_k"] = self._calculate_stochastic(df, window=14)
-        df["williams_r"] = self._calculate_williams_r(df, window=14)
+        df["rsi"] = compute_rsi(df, period=self.config["momentum_window"])
+
+        df["stoch_k"] = compute_stochastic_k(df, period=14)
+
+        df["williams_r"] = compute_williams_r(df, period=14)
 
         # Volume indicators
         if volume_column in df.columns:
@@ -193,37 +204,6 @@ class MarketRegimeClassifier:
         df["trend_strength"] = abs(df["trend_direction"])
 
         return df
-
-    def _calculate_atr(
-        self, df: pd.DataFrame, high: str, low: str, close: str, window: int
-    ) -> pd.Series:
-        """Calculate Average True Range."""
-        high_low = df[high] - df[low]
-        high_close = (df[high] - df[close].shift(1)).abs()
-        low_close = (df[low] - df[close].shift(1)).abs()
-
-        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        return tr.rolling(window=window).mean()
-
-    def _calculate_rsi(self, prices: pd.Series, window: int) -> pd.Series:
-        """Calculate Relative Strength Index."""
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
-
-    def _calculate_stochastic(self, df: pd.DataFrame, window: int) -> pd.Series:
-        """Calculate Stochastic Oscillator %K."""
-        lowest_low = df["low"].rolling(window=window).min()
-        highest_high = df["high"].rolling(window=window).max()
-        return 100 * (df["close"] - lowest_low) / (highest_high - lowest_low)
-
-    def _calculate_williams_r(self, df: pd.DataFrame, window: int) -> pd.Series:
-        """Calculate Williams %R."""
-        highest_high = df["high"].rolling(window=window).max()
-        lowest_low = df["low"].rolling(window=window).min()
-        return -100 * (highest_high - df["close"]) / (highest_high - lowest_low)
 
     def _classify_single_period(self, row: pd.Series) -> MarketCondition:
         """

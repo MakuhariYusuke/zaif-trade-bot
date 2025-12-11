@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\metrics\technical.py
+# hypothesis_version: 6.148.6
+
+[0.0, 2.0, 50.0, 100, 'close', 'high', 'low', 'williams_r']

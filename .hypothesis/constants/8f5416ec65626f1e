@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\orders\state.py
+# hypothesis_version: 6.148.6
+
+[0.0, 86400, 'GTC', 'accept', 'accepted', 'average_price', 'cancel', 'cancelled', 'coincheck', 'created', 'error_message', 'expire', 'expired', 'external_order_id', 'fail', 'failed', 'fees', 'fill', 'filled', 'filled_quantity', 'market', 'partial_fill', 'reject', 'rejected', 'reset', 'submit', 'submitted']

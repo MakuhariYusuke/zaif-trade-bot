@@ -12,9 +12,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.trading_metrics import sharpe_ratio
-from ztb.utils.statistics import calculate_max_drawdown
 
 from .signal_definitions import SignalDefinitions, SignalType
 
@@ -233,7 +232,7 @@ class SignalEvaluator:
                     max_return=np.max(returns) if returns else 0.0,
                     min_return=np.min(returns) if returns else 0.0,
                     sharpe_ratio=sharpe_ratio(returns),
-                    max_drawdown=calculate_max_drawdown(np.cumprod(1 + np.array(returns)))['max_drawdown'],
+                    max_drawdown=max_drawdown(np.cumprod(1 + np.array(returns))),
                     total_return=np.sum(returns) if returns else 0.0,
                 )
 

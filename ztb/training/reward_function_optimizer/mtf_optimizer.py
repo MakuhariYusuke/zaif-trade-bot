@@ -8,27 +8,15 @@ from __future__ import annotations
 import json
 import random
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from ztb.training.reward_function_optimizer.candidate_evaluator import (
     evaluate_candidate,
 )
+from ztb.types.common import CandidateConfig, CandidateScore
 
-
-@dataclass
-class CandidateConfig:
-    config_path: str
-    candidate_id: str
-
-
-@dataclass
-class CandidateScore:
-    candidate_id: str
-    mean_sharpe: float = 0.0
-    mean_total_return: float = 0.0
-    composite_score: float = 0.0
+# CandidateConfig and CandidateScore dataclasses are defined in ztb.types.common
 
 
 class MTFOptimizer:
@@ -129,6 +117,8 @@ class MTFOptimizer:
                         mean_sharpe=0.0,
                         mean_total_return=0.0,
                         composite_score=0.0,
+                        report_count=0,
+                        run_artifacts=[],
                     )
                 )
             return results
@@ -153,7 +143,8 @@ class MTFOptimizer:
                     dry_run=False,
                 )
                 # Enforce minimum report_count to trust metrics
-                if int(metrics.get("report_count", 0) or 0) < int(self.per_seed):
+                rc = int(metrics.get("report_count", 0) or 0)
+                if rc < int(self.per_seed):
                     # treat as invalid candidate (failed to produce enough reports)
                     raise RuntimeError("Not enough reports produced for candidate")
                 mean_sharpe = metrics.get("mean_sharpe", 0.0)
@@ -165,6 +156,8 @@ class MTFOptimizer:
                         mean_sharpe=mean_sharpe,
                         mean_total_return=mean_return,
                         composite_score=composite,
+                        report_count=rc,
+                        run_artifacts=metrics.get("run_artifacts", []),
                     )
                 )
             except Exception:
@@ -191,7 +184,7 @@ class MTFOptimizer:
         )
         return best_candidate, best_score
 
-    def apply_candidate_to_manager(self, candidate: CandidateConfig, manager) -> None:
+    def apply_candidate_to_manager(self, candidate: CandidateConfig, manager) -> bool:
         """Apply candidate weights parsed from candidate config into an MTFWeightManager instance.
 
         Args:
@@ -221,6 +214,7 @@ class MTFOptimizer:
                             "manager.set_weights returned False for candidate %s",
                             candidate.candidate_id,
                         )
+                    return bool(ok)
                 except Exception:
                     logger.exception(
                         "manager.set_weights raised an exception for candidate %s",
@@ -232,9 +226,11 @@ class MTFOptimizer:
             # fallback: try to set attributes if manager exposes `_weights`
             try:
                 manager._weights = fw
+                return True
             except Exception:
                 # silently ignore if manager doesn't support weight set
                 pass
+        return False
 
 
 if __name__ == "__main__":

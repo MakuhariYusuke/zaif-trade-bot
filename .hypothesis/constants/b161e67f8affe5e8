@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\multi_timeframe\config.py
+# hypothesis_version: 6.148.6
+
+[1e-08, 0.1, 0.95, 100, 150, 200, 250, 300, 400, 800, 2048, '15min', '1day', '1hour', '1min', '4hour', '5min', 'base_timeframe', 'cache_features', 'config', 'enabled_timeframes', 'feature_prefixing', 'feature_set', 'feature_sets', 'forward_fill', 'full', 'high_quality', 'integration', 'max_correlation', 'max_features', 'max_nan_rate', 'max_timeframe_lag', 'memory_limit_mb', 'min_variance', 'minimal', 'parallel_processing', 'performance', 'quality_control', 'r', 'remove_outliers', 'utf-8', 'w', 'window_sizes']

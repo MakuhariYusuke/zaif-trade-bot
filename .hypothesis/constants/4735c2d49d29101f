@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\global_market.py
+# hypothesis_version: 6.148.6
+
+['_global', 'close', 'close_global', 'ffill', 'high', 'left', 'low', 'open', 'timestamp', 'volume']

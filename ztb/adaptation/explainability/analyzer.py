@@ -12,14 +12,14 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-import numpy as np
-import pandas as pd
 try:
     import torch
     import torch.nn as nn
 except Exception:
-    torch = None  # type: ignore
-    nn = None  # type: ignore
+    pass
+
+import numpy as np
+import pandas as pd
 
 try:
     import shap
@@ -150,7 +150,9 @@ class ExplainabilityAnalyzer:
                 metadata={"error": str(e)},
             )
 
-    def _preprocess_input(self, input_data: Union[np.ndarray, "torch.Tensor", pd.DataFrame]):
+    def _preprocess_input(
+        self, input_data: Union[np.ndarray, "torch.Tensor", pd.DataFrame]
+    ):
         """Preprocess input data into a tensor (if torch available) or numpy array"""
         if torch is None:
             if isinstance(input_data, pd.DataFrame):

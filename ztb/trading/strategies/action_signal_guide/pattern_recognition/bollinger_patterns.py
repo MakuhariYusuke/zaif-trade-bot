@@ -16,14 +16,25 @@ try:
     )
 except ImportError:
     # Mock functions if volatility module is not available
-    def compute_bb_lower(df: pd.DataFrame, period: int = 20, std_dev: int = 2) -> pd.Series:
+    def compute_bb_lower(
+        df: pd.DataFrame, period: int = 20, std_dev: int = 2
+    ) -> pd.Series:
         return pd.Series([df["close"].mean()] * len(df), index=df.index)
+
     def compute_bb_middle(df: pd.DataFrame, period: int = 20) -> pd.Series:
         return pd.Series([df["close"].mean()] * len(df), index=df.index)
-    def compute_bb_upper(df: pd.DataFrame, period: int = 20, std_dev: int = 2) -> pd.Series:
+
+    def compute_bb_upper(
+        df: pd.DataFrame, period: int = 20, std_dev: int = 2
+    ) -> pd.Series:
         return pd.Series([df["close"].mean()] * len(df), index=df.index)
-    def compute_bb_width(df: pd.DataFrame, period: int = 20, std_dev: int = 2) -> pd.Series:
+
+    def compute_bb_width(
+        df: pd.DataFrame, period: int = 20, std_dev: int = 2
+    ) -> pd.Series:
         return pd.Series([0.1] * len(df), index=df.index)
+
+
 from ztb.trading.constants import ACTION_HOLD
 
 from .base import CandlestickPatternRecognizer, SignalResult
@@ -76,21 +87,28 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
         )
         returns = lookback_data["close"].pct_change().dropna()
         current_volatility = returns.std()
+
+        from ztb.features.generators.technical.trend.sma import compute_sma
+
+        rolling_vol = returns.rolling(window=20).std()
         avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
+            rolling_vol.mean() if len(returns) >= 20 else current_volatility
         )
         volatility_ratio = (
             current_volatility / avg_volatility if avg_volatility > 0 else 1.0
         )
 
         # Simple trend strength calculation
-        sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
-        )
+        try:
+            sma_series = compute_sma(lookback_data, period=20)
+            sma_20 = (
+                sma_series.iloc[-1]
+                if not sma_series.empty and not pd.isna(sma_series.iloc[-1])
+                else 0.0
+            )
+        except Exception:
+            sma_20 = lookback_data["close"].mean()
+
         trend_strength = (
             abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
             if sma_20 != 0
