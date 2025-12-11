@@ -163,12 +163,6 @@ class TestSACTransferLearning:
     @patch("torch.nn.Linear")
     def test_freeze_mlp_layers(self, mock_linear_class):
         """Test MLP layer freezing functionality."""
-        # isinstanceチェックをモック
-        mock_linear_class.__instancecheck__ = lambda self, obj: obj in [
-            layer1,
-            layer2,
-            layer3,
-        ]
 
         algorithm = SACAlgorithm()
         model = Mock()
@@ -185,6 +179,12 @@ class TestSACTransferLearning:
         layer2.parameters.return_value = [Mock()]
         layer3 = Mock()  # 凍結対象外
         layer3.parameters.return_value = [Mock()]
+
+        # To handle isinstance checks used in production code, set a dummy Linear class for mocks
+        DummyLinear = type("Linear", (), {})
+        layer1.__class__ = DummyLinear
+        layer2.__class__ = DummyLinear
+        layer3.__class__ = DummyLinear
 
         # modules()が層を返すようにモック
         actor_net.modules.return_value = [actor_net, layer1, layer2, layer3]

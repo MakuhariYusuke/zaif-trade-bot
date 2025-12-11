@@ -36,10 +36,7 @@ class TrainingReporter:
         self._metrics_buffer = []
 
     def log_training_start(
-        self,
-        algorithm: str,
-        config: Dict[str, Any],
-        total_timesteps: int
+        self, algorithm: str, config: Dict[str, Any], total_timesteps: int
     ) -> None:
         """
         Log training start event.
@@ -59,16 +56,15 @@ class TrainingReporter:
             }
 
             self._training_history.append(start_info)
-            self.logger.info(f"Training started: {algorithm} with {total_timesteps} timesteps")
+            self.logger.info(
+                f"Training started: {algorithm} with {total_timesteps} timesteps"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to log training start: {e}")
 
     def log_training_progress(
-        self,
-        step: int,
-        total_steps: int,
-        metrics: Dict[str, Any]
+        self, step: int, total_steps: int, metrics: Dict[str, Any]
     ) -> None:
         """
         Log training progress.
@@ -93,7 +89,9 @@ class TrainingReporter:
             # Log significant milestones
             if step % (total_steps // 10) == 0 or step == total_steps:
                 progress_pct = (step / total_steps) * 100
-                self.logger.info(f"Training progress: {progress_pct:.1f}% ({step}/{total_steps})")
+                self.logger.info(
+                    f"Training progress: {progress_pct:.1f}% ({step}/{total_steps})"
+                )
 
             # Log evaluation milestones
             if step % ENV_EVAL_FREQUENCY == 0:
@@ -106,7 +104,7 @@ class TrainingReporter:
         self,
         final_metrics: Dict[str, Any],
         training_time: float,
-        model_path: Optional[str] = None
+        model_path: Optional[str] = None,
     ) -> None:
         """
         Log training completion.
@@ -132,7 +130,9 @@ class TrainingReporter:
         except Exception as e:
             self.logger.error(f"Failed to log training complete: {e}")
 
-    def log_error(self, error: Exception, context: Optional[Dict[str, Any]] = None) -> None:
+    def log_error(
+        self, error: Exception, context: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Log training error.
 
@@ -184,8 +184,12 @@ class TrainingReporter:
         if not self._training_history:
             return {}
 
-        start_events = [e for e in self._training_history if e["event"] == "training_start"]
-        complete_events = [e for e in self._training_history if e["event"] == "training_complete"]
+        start_events = [
+            e for e in self._training_history if e["event"] == "training_start"
+        ]
+        complete_events = [
+            e for e in self._training_history if e["event"] == "training_complete"
+        ]
 
         summary = {
             "total_sessions": len(start_events),
@@ -194,10 +198,12 @@ class TrainingReporter:
 
         if complete_events:
             latest_complete = complete_events[-1]
-            summary.update({
-                "last_training_time": latest_complete.get("training_time"),
-                "final_metrics": latest_complete.get("final_metrics"),
-            })
+            summary.update(
+                {
+                    "last_training_time": latest_complete.get("training_time"),
+                    "final_metrics": latest_complete.get("final_metrics"),
+                }
+            )
 
         return summary
 
@@ -220,19 +226,23 @@ class TrainingReporter:
             perf_metrics = {}
 
             if all_rewards:
-                perf_metrics.update({
-                    "avg_reward": sum(all_rewards) / len(all_rewards),
-                    "max_reward": max(all_rewards),
-                    "min_reward": min(all_rewards),
-                    "reward_volatility": self._calculate_volatility(all_rewards),
-                })
+                perf_metrics.update(
+                    {
+                        "avg_reward": sum(all_rewards) / len(all_rewards),
+                        "max_reward": max(all_rewards),
+                        "min_reward": min(all_rewards),
+                        "reward_volatility": self._calculate_volatility(all_rewards),
+                    }
+                )
 
             if all_losses:
-                perf_metrics.update({
-                    "avg_loss": sum(all_losses) / len(all_losses),
-                    "final_loss": all_losses[-1] if all_losses else None,
-                    "loss_volatility": self._calculate_volatility(all_losses),
-                })
+                perf_metrics.update(
+                    {
+                        "avg_loss": sum(all_losses) / len(all_losses),
+                        "final_loss": all_losses[-1] if all_losses else None,
+                        "loss_volatility": self._calculate_volatility(all_losses),
+                    }
+                )
 
             return perf_metrics
 
@@ -245,13 +255,17 @@ class TrainingReporter:
         if len(values) < 2:
             return 0.0
 
-        mean = sum(values) / len(values)
-        variance = sum((x - mean) ** 2 for x in values) / len(values)
-        return variance ** 0.5
+        # calculate_volatility expects prices and calculates returns std.
+        # Here we want std of raw values (losses).
+        # So we should use numpy directly or a simple std function.
+        import numpy as np
+
+        return float(np.std(values))
 
     def _get_timestamp(self) -> str:
         """Get current timestamp string."""
         from datetime import datetime
+
         return datetime.now().isoformat()
 
     def clear_history(self) -> None:

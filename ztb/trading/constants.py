@@ -74,3 +74,21 @@ def get_action_count_index(action: int) -> int:
         return MULTIPLIER_INDEX_HOLD
     else:
         return 0  # Default to BUY index
+
+
+def normalize_action(action: float | int) -> int:
+    """Normalize an action value to one of the discrete ACTION_* constants.
+
+    Accepts either already-discrete (-1, 0, 1) or continuous actions in [-1,1].
+    This helper is used by legacy components that expect a normalized action.
+    """
+    try:
+        val = float(action)
+    except Exception:
+        return ACTION_HOLD
+
+    if val >= SAC_CONTINUOUS_THRESHOLD:
+        return ACTION_BUY
+    if val <= SAC_CONTINUOUS_THRESHOLD_NEG:
+        return ACTION_SELL
+    return ACTION_HOLD

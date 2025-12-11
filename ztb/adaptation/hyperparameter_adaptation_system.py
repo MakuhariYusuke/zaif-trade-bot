@@ -5,7 +5,7 @@ Dynamic Hyperparameter Adaptation Integration
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,9 @@ from .market_aware_hyperparameter_manager import (
     MarketAwareHyperparameterManager,
 )
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
-from .online_learning.pipeline import OnlineLearningPipeline
+
+if TYPE_CHECKING:
+    from .online_learning.pipeline import OnlineLearningPipeline
 
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional
 
@@ -34,7 +36,7 @@ class HyperparameterAdaptationSystem:
 
     def __init__(
         self,
-        online_learning_pipeline: OnlineLearningPipeline,
+        online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
         market_regime_detector: Optional[Any] = None,
     ):

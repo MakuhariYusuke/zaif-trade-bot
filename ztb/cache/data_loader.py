@@ -12,13 +12,16 @@ from typing import Callable, Dict, Optional, cast
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
+
 from .memory_cache import default_memory_manager
 
 
 class DataLoader:
     """Unified data loader with caching support"""
 
-    def __init__(self, cache_dir: str = "data/cache", enable_memory_cache: bool = True) -> None:
+    def __init__(
+        self, cache_dir: str = "data/cache", enable_memory_cache: bool = True
+    ) -> None:
         super().__init__()
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -64,8 +67,22 @@ class DataLoader:
 
         data = load_func()
         try:
-            with open(cache_path, "wb") as f:
+            # Write to a temporary file then atomically rename to avoid partial writes or
+            # platform-specific file locking issues (especially on Windows).
+            tmp_path = cache_path.with_suffix(".pkl.tmp")
+            with open(tmp_path, "wb") as f:
                 pickle.dump(data, f)
+                f.flush()
+                try:
+                    # Ensure data is flushed to disk
+                    import os
+
+                    os.fsync(f.fileno())
+                except Exception:
+                    # os.fsync may not be available in some environments; ignore if it fails
+                    pass
+            # Atomic replacement
+            tmp_path.replace(cache_path)
             # Also cache in memory
             if self.memory_manager:
                 self.memory_manager.cache_training_data(key, data)

@@ -71,6 +71,9 @@ def create_balance_configs(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run balance-focused AB tests")
+    from ztb.utils.cli import add_common_cli_args
+
+    add_common_cli_args(parser)
     parser.add_argument(
         "--base-config",
         default="config/v447/sac_v447_1m_multiframe_config.json",
@@ -107,6 +110,9 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+    from ztb.utils.cli import configure_logging_from_args
+
+    configure_logging_from_args(args)
 
     print("=" * 80)
     print("Balance-Focused AB Test Configuration Generator")
@@ -154,7 +160,7 @@ def main() -> None:
             print("\n✅ AB tests completed successfully")
         else:
             print(f"\n❌ AB tests failed with exit code {result.returncode}")
-            sys.exit(result.returncode)
+            return int(result.returncode)
     else:
         print("\nTo run AB tests with these configs:")
         print("  python tools/ab_test_runner.py \\")
@@ -165,4 +171,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

@@ -332,7 +332,13 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
         super().__init__(config)
         self.lookback_period = config.get("lookback_period", 5) if config else 5
         self.tolerance = config.get("tolerance", 0.05) if config else 0.05
+        self.search_window = (
+            config.get("search_window", 30) if config else 30
+        )  # Reduced from 100
         self.harmonic_analyzer = HarmonicAnalyzer()
+        self._pattern_cache: Dict[
+            str, Optional[Dict[str, Any]]
+        ] = {}  # Cache for patterns
 
     def get_lookback_period(self) -> int:
         """Get the lookback period required for this recognizer."""
@@ -345,98 +351,103 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
         multi_timeframe_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[SignalResult]:
         """Recognize Gartley pattern at the given index."""
-        logger.debug(
-            f"GartleyRecognizer.recognize called with index={index}, lookback_period={self.lookback_period}"
-        )
         if index < self.lookback_period:
-            logger.debug(
-                f"GartleyRecognizer.recognize skipped due to insufficient data (index {index} < lookback_period {self.lookback_period})"
-            )
             return None
 
-        # Search for Gartley pattern in recent data (reverse order for better performance)
-        # Increase search window and reduce min_distance for better pattern detection
-        search_window = min(100, index)  # Increased from 60 to 100
-        logger.debug(
-            f"Searching patterns with search_window={search_window}, data_len={len(data)}"
+        # Create cache key
+        cache_key = f"{index}_{self.tolerance}_{len(data)}"
+        if cache_key in self._pattern_cache:
+            pattern = self._pattern_cache[cache_key]
+        else:
+            # Search for Gartley pattern in recent data (reverse order for better performance)
+            pattern = None
+            search_window = min(self.search_window, index)
+            for start_idx in range(
+                min(len(data) - 5, index - 4), max(0, index - search_window) - 1, -1
+            ):
+                pattern = self.harmonic_analyzer.find_harmonic_pattern(
+                    data, "GARTLEY", start_idx, self.tolerance
+                )
+                if pattern and abs(pattern["completion_index"] - index) <= 1:
+                    break  # Found a valid pattern
+
+            # Cache the result
+            self._pattern_cache[cache_key] = pattern
+
+            # Limit cache size
+            if len(self._pattern_cache) > 100:
+                # Remove oldest entries (simple FIFO)
+                oldest_keys = list(self._pattern_cache.keys())[:20]
+                for key in oldest_keys:
+                    del self._pattern_cache[key]
+
+        if not pattern:
+            return None
+
+        # Calculate pattern completeness based on how close price is to completion
+        price_deviation = (
+            abs(data.iloc[index]["close"] - pattern["completion_price"])
+            / pattern["completion_price"]
         )
-        for start_idx in range(
-            min(len(data) - 5, index - 4), max(0, index - search_window) - 1, -1
-        ):
-            logger.debug(f"Trying start_idx={start_idx}")
-            pattern = self.harmonic_analyzer.find_harmonic_pattern(
-                data, "GARTLEY", start_idx, self.tolerance
+        pattern_completeness = 1.0 - min(
+            1.0, price_deviation * 10
+        )  # Closer to completion = higher completeness
+
+        # Use pattern confidence calculation
+        pattern_factors = {
+            "trend_strength": self._calculate_trend_strength(data, index, 20),
+            "candle_size": self._calculate_candle_size_confidence(
+                data, index, 0.6
+            ),  # Harmonic patterns are structural
+            "price_movement": self._calculate_price_movement_confidence(
+                data, index, 0.7
+            ),  # Approaching completion target
+            "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
+        }
+
+        confidence = self._calculate_pattern_confidence(
+            data, index, pattern_factors, base_confidence=pattern["strength"]
+        )
+
+        # Apply multi-timeframe alignment if data is available
+        mtf_confidence = 1.0
+        if multi_timeframe_data:
+            mtf_confidence = self._analyze_multi_timeframe_alignment(
+                data, index, multi_timeframe_data, "harmonic_gartley"
+            )
+            confidence *= mtf_confidence
+
+        # Adjust for market regime
+        regime_adjustments = {}
+        if multi_timeframe_data:
+            regime_adjustments = self._adjust_thresholds_for_regime(
+                multi_timeframe_data, "harmonic_gartley"
             )
 
-            logger.debug(
-                f"find_harmonic_pattern called with start_idx={start_idx}, returned: {pattern is not None}"
-            )
+        confidence = min(
+            confidence, 0.0001
+        )  # Cap confidence to prevent over-performance
+        direction = pattern["direction"]
 
-            if pattern and abs(pattern["completion_index"] - index) <= 1:
-                # Calculate pattern completeness based on how close price is to completion
-                price_deviation = (
-                    abs(data.iloc[index]["close"] - pattern["completion_price"])
-                    / pattern["completion_price"]
-                )
-                pattern_completeness = 1.0 - min(
-                    1.0, price_deviation * 10
-                )  # Closer to completion = higher completeness
+        signal_type = "gartley_bullish" if direction == 1 else "gartley_bearish"
 
-                # Use pattern confidence calculation
-                pattern_factors = {
-                    "trend_strength": self._calculate_trend_strength(data, index, 20),
-                    "candle_size": self._calculate_candle_size_confidence(
-                        data, index, 0.6
-                    ),  # Harmonic patterns are structural
-                    "price_movement": self._calculate_price_movement_confidence(
-                        data, index, 0.7
-                    ),  # Approaching completion target
-                    "pattern_completeness": pattern_completeness,  # How close price is to the harmonic completion
-                }
-
-                confidence = self._calculate_pattern_confidence(
-                    data, index, pattern_factors, base_confidence=pattern["strength"]
-                )
-
-                # Apply multi-timeframe alignment if data is available
-                mtf_confidence = 1.0
-                if multi_timeframe_data:
-                    mtf_confidence = self._analyze_multi_timeframe_alignment(
-                        data, index, multi_timeframe_data, "harmonic_gartley"
-                    )
-                    confidence *= mtf_confidence
-
-                # Adjust for market regime
-                regime_adjustments = {}
-                if multi_timeframe_data:
-                    regime_adjustments = self._adjust_thresholds_for_regime(
-                        multi_timeframe_data, "harmonic_gartley"
-                    )
-
-                confidence = min(
-                    confidence, 0.0001
-                )  # Cap confidence to prevent over-performance
-                direction = pattern["direction"]
-
-                signal_type = "gartley_bullish" if direction == 1 else "gartley_bearish"
-
-                return SignalResult(
-                    signal_type=signal_type,
-                    strength=confidence,
-                    direction=direction,
-                    description="Gartley Harmonic Pattern",
-                    timestamp=data.index[index],
-                    confidence=confidence,
-                    metadata={
-                        "pattern": "gartley",
-                        "completion_price": pattern["completion_price"],
-                        "target_price": pattern["target_price"],
-                        "confidence": confidence,
-                        "pattern_completeness": pattern_completeness,
-                        "mtf_confidence": mtf_confidence,
-                        "regime_adjustments": regime_adjustments,
-                    },
-                )
+        return SignalResult(
+            signal_type=signal_type,
+            strength=confidence,
+            direction=direction,
+            description="Gartley Harmonic Pattern",
+            timestamp=data.index[index],
+            confidence=confidence,
+            metadata={
+                "pattern": "gartley",
+                "completion_price": pattern["completion_price"],
+                "target_price": pattern["target_price"],
+                "confidence": confidence,
+                "pattern_completeness": pattern_completeness,
+                "mtf_confidence": mtf_confidence,
+                "regime_adjustments": regime_adjustments,
+            },
+        )
 
         # If no pattern found, generate a weak synthetic signal to ensure signal generation
         # This ensures HARMONIC pattern always produces signals for testing

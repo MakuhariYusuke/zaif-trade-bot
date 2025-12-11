@@ -1,4 +1,0 @@
-{
-  "environment.reward_settings.skewness_penalty_value": [0.0, 0.005, 0.01, 0.02],
-  "environment.reward_settings.balance_shaping_value": [0.0, 0.05, 0.1]
-}

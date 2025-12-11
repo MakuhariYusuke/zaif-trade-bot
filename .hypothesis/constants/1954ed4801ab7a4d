@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\concept_drift\manager.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.5, 1.0, 10.0, 30.0, 'All detectors reset', 'Empty data provided', 'adwin', 'avg_score', 'confidence', 'ddm', 'detector', 'detector_votes', 'drift_detected', 'eddm', 'individual_results', 'ks_test', 'last_detection', 'severity', 'total_detections', 'total_detectors']

@@ -1,13 +1,5 @@
 """
-Centraliz    try:
-        import numpy as np
-    except Exception:  # pragma: no cover - type checking only
-        np = None  # type: ignore[assignment]
-
-    try:
-        import torch
-    except Exception:  # pragma: no cover - type checking only
-        torch = None  # type: ignore[assignment]anagement for deterministic training.
+Centralized seed management for deterministic training.
 
 This module provides unified seed setting across all random number generators
 used in the training pipeline to ensure reproducibility.
@@ -32,6 +24,10 @@ if TYPE_CHECKING:
     HAS_NUMPY = True
     HAS_TORCH = True
 else:
+    # Avoid importing torch at module import time; import lazily inside functions
+    HAS_TORCH = False
+    torch = None
+
     try:
         import numpy as np
 
@@ -39,11 +35,6 @@ else:
     except ImportError:
         HAS_NUMPY = False
         np = None
-
-    # Do NOT import torch at module import time to avoid DLL initialization
-    # issues that can occur on some Windows environments (e.g. c10.dll load errors)
-    HAS_TORCH = False
-    torch = None
 
 
 class SeedManager:
@@ -73,13 +64,19 @@ class SeedManager:
             np.random.seed(seed)
 
         # Set PyTorch seeds and enable deterministic behavior
-        # Import torch lazily here so we avoid triggering DLL initialization on module import
-        try:
-            import importlib
+        tmod = None
+        if HAS_TORCH and torch is not None:
+            tmod = torch
+        else:
+            try:
+                import importlib
 
-            tmod = importlib.import_module("torch")
-        except Exception:
-            tmod = None
+                tmod = importlib.import_module("torch")
+                # Cache torch global to avoid re-import
+                globals()["torch"] = tmod
+                globals()["HAS_TORCH"] = True
+            except Exception:
+                tmod = None
 
         if tmod is not None:
             tmod.manual_seed(seed)

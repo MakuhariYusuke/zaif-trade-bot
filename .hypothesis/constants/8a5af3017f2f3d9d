@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\tools\data\convert_timeframe.py
+# hypothesis_version: 6.148.6
+
+['+', '--input', '--method', '--outdir', '--targets', '15T', '15m', '1D', '1H', '1T', '1d', '1h', '1m', '30T', '30m', '4H', '4h', '5T', '5m', 'Output directory', '__main__', 'close', 'data', 'first', 'high', 'last', 'low', 'max', 'mean', 'min', 'ohlc', 'open', 'sum', 'timestamp', 'volume']

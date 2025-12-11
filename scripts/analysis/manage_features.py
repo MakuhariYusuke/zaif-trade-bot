@@ -217,7 +217,13 @@ def main():
     update_parser.add_argument("--enable", action="store_true", help="有効化")
     update_parser.add_argument("--disable", action="store_true", help="無効化")
 
+    from ztb.utils.cli import add_common_cli_args
+
+    add_common_cli_args(parser)
     args = parser.parse_args()
+    from ztb.utils.cli import configure_logging_from_args
+
+    configure_logging_from_args(args)
 
     if not args.command:
         parser.print_help()
@@ -243,13 +249,15 @@ def main():
             if args.enable:
                 enabled = True
             elif args.disable:
-                enabled = True  # Note: this should be False, fixing the logic
+                enabled = False
             update_feature_set(manager, args.name, args.description, enabled)
 
     except Exception as e:
         print(f"Error: {e}")
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

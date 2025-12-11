@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\core\idempotency_store.py
+# hypothesis_version: 6.148.6
+
+[0.01, 100, '.lock', ':memory:', 'client_order_id', 'connection', 'created_at', 'order_data', 'order_idempotency', 'status', 'status_breakdown', 'total_orders', 'w']

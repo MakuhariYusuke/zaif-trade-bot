@@ -8,7 +8,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,9 @@ from .dynamic_hyperparameter_adapter import (
     HyperparameterType,
 )
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
-from .online_learning.pipeline import OnlineLearningPipeline
+
+if TYPE_CHECKING:
+    from .online_learning.pipeline import OnlineLearningPipeline
 
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional component
 
@@ -112,7 +114,7 @@ class MarketAwareHyperparameterManager:
 
     def __init__(
         self,
-        online_learning_pipeline: OnlineLearningPipeline,
+        online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
         market_regime_detector: Optional[Any] = None,  # Optional component
         config: Optional[MarketAwareConfig] = None,

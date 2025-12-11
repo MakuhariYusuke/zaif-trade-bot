@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward\trend_detector.py
+# hypothesis_version: 6.148.6
+
+[-1.0, -0.6, -0.3, 0.0, 0.3, 0.6, 1.0, 100, 'Downtrend', 'Neutral', 'Strong Downtrend', 'Strong Uptrend', 'TrendDetector reset', 'Uptrend', 'current_price', 'last_signal', 'price_range', 'samples', 'trend_strength', 'update_count']

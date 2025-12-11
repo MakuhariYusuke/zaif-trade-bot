@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\__init__.py
+# hypothesis_version: 6.148.6
+
+['ActionSignal', 'ActionSignalGuide', 'GuidanceLevel', 'GuidanceMode', 'RecognizerConfig', 'fade_out', 'full', 'minimal', 'none', 'partial']

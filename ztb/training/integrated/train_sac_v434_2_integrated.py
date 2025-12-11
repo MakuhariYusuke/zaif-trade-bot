@@ -13,13 +13,13 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
-from ztb.utils.training_utils import create_checkpoint_callback, create_eval_callback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.trading_metrics import sharpe_ratio as calculate_sharpe_ratio
-from ztb.utils.statistics import calculate_max_drawdown
+from ztb.utils.training_utils import create_checkpoint_callback, create_eval_callback
 
 logger = get_logger(__name__)
 
@@ -568,7 +568,9 @@ def run_trading_backtest(
             returns = np.diff(portfolio_values) / portfolio_values[:-1]
             if len(returns) > 1:
                 sharpe_ratio = calculate_sharpe_ratio(returns)
-                max_drawdown = calculate_max_drawdown(portfolio_values)['max_drawdown'] * 100
+                max_drawdown = (
+                    calculate_max_drawdown(portfolio_values)["max_drawdown"] * 100
+                )
             else:
                 sharpe_ratio = 0.0
                 max_drawdown = 0.0

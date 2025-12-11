@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\safety\__init__.py
+# hypothesis_version: 6.148.6
+
+['4.2.1', 'AnomalyConfig', 'AnomalyDetection', 'AnomalyResult', 'AnomalyType', 'CircuitBreakerState', 'FallbackConfig', 'FallbackManager', 'FallbackMode', 'FallbackStatus', 'FallbackStrategy', 'RecoveryAttempt', 'RecoveryConfig', 'RecoveryManager', 'RecoveryStatus', 'RecoveryStrategy', 'SAC v421 Safety Team', 'SafetyAction', 'SafetyConfig', 'SafetyEvent', 'SafetyEventRecord', 'SafetyLevel', 'SafetyManager']

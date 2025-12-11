@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\correlation.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.8, 'drop', 'fill', 'none', 'pearson', 'spearman']

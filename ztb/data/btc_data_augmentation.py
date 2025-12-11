@@ -463,7 +463,7 @@ class BTCBiasDetector:
     """BTCバイアス検出クラス"""
 
     def __init__(self):
-        self.performance_monitor = PerformanceMonitor("btc_bias_detector")
+        self.performance_monitor = CodePerformanceMonitor("btc_bias_detector")
 
     def detect_data_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Detect various types of bias in BTC trading data"""

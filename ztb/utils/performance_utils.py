@@ -19,14 +19,10 @@ logger = get_logger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-# GPU monitoring (optional)
-try:
-    import torch  # type: ignore[import-untyped]
-
-    TORCH_AVAILABLE = True
-except (ImportError, OSError):
-    TORCH_AVAILABLE = False
-    torch = None  # type: ignore[assignment]
+# GPU monitoring (optional) - import torch lazily to avoid ABI mismatch crashes at test-time
+# TORCH_AVAILABLE will be set dynamically when needed.
+TORCH_AVAILABLE = False
+torch = None
 
 
 def timed(func: F) -> F:
@@ -106,10 +102,23 @@ class CodePerformanceMonitor:
         process = psutil.Process()
         self.start_memory = process.memory_info().rss
 
-        # GPU memory monitoring
-        if TORCH_AVAILABLE and torch is not None and torch.cuda.is_available():
+        # GPU memory monitoring - import torch lazily to avoid module import failures
+        global TORCH_AVAILABLE, torch
+        try:
+            if not TORCH_AVAILABLE:
+                import importlib
+
+                torch_mod = importlib.import_module("torch")
+                torch = torch_mod
+                TORCH_AVAILABLE = True
+        except Exception:
+            TORCH_AVAILABLE = False
+            torch = None
+
+        if TORCH_AVAILABLE and torch is not None:
             try:
-                self.start_gpu_memory = torch.cuda.memory_allocated()
+                if torch.cuda.is_available():
+                    self.start_gpu_memory = torch.cuda.memory_allocated()
             except Exception:
                 self.start_gpu_memory = None
 
@@ -126,11 +135,23 @@ class CodePerformanceMonitor:
         duration = end_time - self.start_time
         memory_delta = end_memory - self.start_memory
 
-        # GPU memory monitoring
+        # GPU memory monitoring - import torch lazily in case it was not loaded yet
         gpu_memory_info = ""
+        try:
+            if not TORCH_AVAILABLE:
+                import importlib
+
+                torch_mod = importlib.import_module("torch")
+                torch = torch_mod
+                TORCH_AVAILABLE = True
+        except Exception:
+            TORCH_AVAILABLE = False
+            torch = None
+
         if (
             TORCH_AVAILABLE
             and torch is not None
+            and hasattr(torch, "cuda")
             and torch.cuda.is_available()
             and self.start_gpu_memory is not None
         ):
@@ -146,6 +167,10 @@ class CodePerformanceMonitor:
             f"{self.name}: {duration:.4f}s, "
             f"CPU memory: {memory_delta / BYTES_PER_MB:+.1f}MB{gpu_memory_info}",
         )
+
+
+# Backwards compatibility alias
+PerformanceMonitor = CodePerformanceMonitor
 
 
 def profile_function(

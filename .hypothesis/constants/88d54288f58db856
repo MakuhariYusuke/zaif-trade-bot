@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\pretraining\anomaly_detection_pretraining.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.1, 0.5, 100, 128, 156, 256, 'cpu', 'cuda', 'loss', 'model_state_dict', 'none', 'optimizer_state_dict', 'val_loss']

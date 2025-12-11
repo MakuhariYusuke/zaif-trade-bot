@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\performance\memory_optimizer.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.001, 5.0, 60.0, 300.0, 100, 500, 1000, 5000, 'average_mb', 'created_count', 'current_mb', 'error', 'exceeded_threshold', 'hit_count', 'hit_rate', 'max_pool_size', 'max_size', 'memory-monitor', 'memory_usage_mb', 'miss_count', 'peak_mb', 'pool_size', 'reset', 'reuse_rate', 'reused_count', 'size', 'threshold_mb']

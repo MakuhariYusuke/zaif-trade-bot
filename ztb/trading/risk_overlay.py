@@ -679,6 +679,7 @@ class RiskOverlay:
         """最大ドローダウンを計算"""
         # 簡易版：過去30日の価格データから計算
         # 実際の実装ではより詳細な履歴が必要
+        # TODO: Use ztb.metrics.metrics.max_drawdown when historical data is available
         return 0.05  # 仮定値
 
     def _calculate_correlation_metrics(self) -> Tuple[float, float]:

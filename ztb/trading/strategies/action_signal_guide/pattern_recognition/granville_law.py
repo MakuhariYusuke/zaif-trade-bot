@@ -12,8 +12,11 @@ import pandas as pd
 try:
     from ztb.features.generators.technical.volume.obv import compute_obv
 except ImportError:
+
     def compute_obv(df: pd.DataFrame) -> pd.Series:
         return pd.Series([1000.0] * len(df), index=df.index)
+
+
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     PatternRecognizer,
     SignalResult,
@@ -155,8 +158,10 @@ class GranvilleLawRecognizer(PatternRecognizer):
 
         # Simple trend determination based on moving averages
         closes = data["close"]
-        ma_short = closes.rolling(window=min(5, len(closes))).mean()
-        ma_long = closes.rolling(window=min(self.trend_period, len(closes))).mean()
+        from ztb.features.generators.technical.trend.sma import compute_sma
+
+        ma_short = compute_sma(data, period=min(5, len(closes)))
+        ma_long = compute_sma(data, period=min(self.trend_period, len(closes)))
 
         if len(ma_short) < 2 or len(ma_long) < 2:
             return "sideways"

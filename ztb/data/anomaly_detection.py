@@ -7,8 +7,27 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
+
+# Lazily import torch if available; avoid import-time failures in environments
+try:
+    import torch
+    import torch.nn as nn
+except Exception:
+    torch = None
+    # Create a minimal fake `nn` object to allow class definitions that subclass
+    # nn.Module to be evaluated at import time without requiring real torch.
+    from types import SimpleNamespace
+
+    def _dummy(*args, **kwargs):
+        raise ImportError("torch is not available or incompatible in this environment")
+
+    nn = SimpleNamespace(
+        Module=object,
+        Linear=_dummy,
+        ReLU=_dummy,
+        Dropout=_dummy,
+        Sequential=lambda *a, **k: None,
+    )
 from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler

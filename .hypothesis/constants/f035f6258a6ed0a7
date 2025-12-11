@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\exchanges\base\broker_interfaces.py
+# hypothesis_version: 6.148.6
+
+['market', 'pending']

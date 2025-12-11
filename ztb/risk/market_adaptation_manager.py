@@ -4,7 +4,7 @@ Market Adaptation Manager for SAC v435
 市場状態変化への適応メカニズム
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import numpy as np
 import pandas as pd
@@ -121,12 +121,16 @@ class MarketAdaptationManager:
         recent_data = df.tail(self.regime_window)
 
         # トレンド計算
-        prices = recent_data["close"].values
+        prices = recent_data["close"].to_numpy(dtype=np.float64)
         trend = (prices[-1] - prices[0]) / prices[0]
 
         # ボラティリティ計算
         returns = np.diff(prices) / prices[:-1]
-        volatility = np.std(returns) * np.sqrt(252)  # 年率化
+        from ztb.metrics.technical import calculate_volatility_from_returns
+
+        volatility = calculate_volatility_from_returns(
+            returns, window=len(returns), annualize=True
+        )
 
         # RSI計算（簡易版）
         gains = np.where(returns > 0, returns, 0)
@@ -136,13 +140,18 @@ class MarketAdaptationManager:
         rsi = 100 - (100 / (1 + avg_gain / max(avg_loss, 1e-8)))
 
         # 状態判定
-        if volatility >= self.regime_definitions["volatile"]["volatility_min"]:
+        if volatility >= cast(
+            float, self.regime_definitions["volatile"]["volatility_min"]
+        ):
             return "volatile"
-        elif abs(trend) >= self.regime_definitions["bull"]["trend_threshold"]:
+        elif abs(trend) >= cast(
+            float, self.regime_definitions["bull"]["trend_threshold"]
+        ):
             return "bull" if trend > 0 else "bear"
-        elif (
-            abs(trend) <= self.regime_definitions["sideways"]["trend_threshold"]
-            and volatility <= self.regime_definitions["sideways"]["volatility_max"]
+        elif abs(trend) <= cast(
+            float, self.regime_definitions["sideways"]["trend_threshold"]
+        ) and volatility <= cast(
+            float, self.regime_definitions["sideways"]["volatility_max"]
         ):
             return "sideways"
         else:

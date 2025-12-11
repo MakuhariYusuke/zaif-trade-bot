@@ -19,6 +19,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.risk.risk_manager import RiskManager
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.types.common import ConfigDict
 from ztb.utils.training_utils import (
     create_checkpoint_callback,
@@ -227,7 +228,9 @@ class SACv435Trainer:
             },
         }
 
-        self.risk_manager = RiskManager(risk_manager_config)
+        self.risk_manager = ensure_risk_manager_protocol(
+            RiskManager(risk_manager_config)
+        )
         logger.info("Risk management setup complete")
 
     def _load_config(self) -> Dict[str, Any]:

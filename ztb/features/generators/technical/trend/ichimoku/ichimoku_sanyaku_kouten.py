@@ -11,8 +11,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from ...base import BaseFeature
-from ...registry import FeatureRegistry
+from ztb.features.core.base import BaseFeature
+from ztb.features.core.registry import FeatureRegistry
+
 from .ichimoku_ext import calculate_ichimoku_extended
 
 

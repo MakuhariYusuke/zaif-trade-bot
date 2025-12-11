@@ -11,15 +11,10 @@ Usage:
 
 import argparse
 import logging
-import sys
 
 import numpy as np
 import pandas as pd
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -140,6 +135,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Re-generate features from corrected volume data"
     )
+    # add common args (log-level etc)
+    from ztb.utils.cli import add_common_cli_args
+
+    add_common_cli_args(parser)
     parser.add_argument(
         "--input", "-i", required=True, help="Input CSV file path (corrected data)"
     )
@@ -166,8 +165,10 @@ def main():
 
     args = parser.parse_args()
 
-    # Set log level
-    logging.getLogger().setLevel(getattr(logging, args.log_level))
+    # Set log level using centralized CLI helper
+    from ztb.utils.cli import configure_logging_from_args
+
+    configure_logging_from_args(args)
 
     try:
         # Read corrected data
@@ -217,8 +218,10 @@ def main():
 
     except Exception as e:
         logger.error(f"❌ Error during feature re-generation: {e}")
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

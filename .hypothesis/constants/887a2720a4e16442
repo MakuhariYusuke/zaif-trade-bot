@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\reporting\generator.py
+# hypothesis_version: 6.148.6
+
+['\n        </ul>', '\n## 🎯 行動分析\n\n', '\n## 📊 パフォーマンス分析\n\n', '\n## 🔄 比較分析\n\n', '\n</body>\n</html>', '    </div>', '%Y%m%d_%H%M%S', '1.0', 'analysis_report.html', 'baseline_comparison', 'behavioral', 'comparison', 'html', 'json', 'markdown', 'metadata', 'performance', 'report_type', 'results', 'risk', 'templates', 'timestamp', 'unified_analysis', 'utf-8', 'version', 'w', 'xml']

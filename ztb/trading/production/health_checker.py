@@ -795,6 +795,10 @@ class HealthChecker:
 
         self.logger.info("Health monitoring started")
 
+    # Backwards-compatible aliases expected by integration tests
+    def start_checking(self) -> None:
+        return self.start_monitoring()
+
     def stop_monitoring(self) -> None:
         """モニタリング停止"""
         self.monitoring_active = False
@@ -802,6 +806,16 @@ class HealthChecker:
             self.monitoring_thread.join(timeout=5.0)
 
         self.logger.info("Health monitoring stopped")
+
+    def stop_checking(self) -> None:
+        return self.stop_monitoring()
+
+    def get_health_status(self) -> Dict[str, Any]:
+        """Return a brief health status summary for external callers."""
+        report = self.get_latest_report()
+        if report is None:
+            return {"status": HealthStatus.UNKNOWN.value}
+        return {"status": report.overall_status.value, "summary": report.summary}
 
     def _monitoring_loop(self) -> None:
         """モニタリングループ"""

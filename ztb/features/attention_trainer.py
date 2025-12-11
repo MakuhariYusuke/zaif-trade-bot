@@ -12,32 +12,71 @@ Attention Model Training for Adaptive Feature Selection
 
 import gc
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    import torch.optim as optim
-    from torch.utils.data import DataLoader, Dataset
-except Exception:
-    # Provide placeholder classes so that the module can be imported in environments
-    # without Torch. Attempting to instantiate the torch-backed classes will raise
-    # a clear runtime error explaining that Torch is required.
-    torch = None  # type: ignore
 
-    class _TorchUnavailablePlaceholder:
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError(
-                "Torch is required to use AttentionTrainer/FeatureAttentionLayer: install/enable PyTorch with CUDA or CPU support."
-            )
+# Import torch only when compatible with NumPy and not at module import time on
+# environments where it would cause an ABI mismatch or a segfault. Tests that
+# require torch should import the module explicitly and expect it to be present.
+torch = None
+nn = None
+F = None
+optim = None
+DataLoader = None
+Dataset = None
 
-    nn = None  # type: ignore
-    F = None  # type: ignore
-    optim = None  # type: ignore
-    DataLoader = None  # type: ignore
-    Dataset = _TorchUnavailablePlaceholder  # type: ignore
+if TYPE_CHECKING:
+    try:
+        import torch as _torch
+        import torch.nn as _nn
+        import torch.nn.functional as _F
+        import torch.optim as _optim
+        from torch.utils.data import DataLoader as _DataLoader
+        from torch.utils.data import Dataset as _Dataset
+    except Exception:
+        _torch = None  # pragma: no cover - for type checking only
+else:
+    try:
+        import numpy as _np
+
+        _np_major = (
+            int(_np.__version__.split(".")[0]) if hasattr(_np, "__version__") else 0
+        )
+    except Exception:
+        _np_major = 0
+
+    # Avoid importing torch when NumPy major version >= 2 to avoid ABI mismatch
+    if _np_major < 2:
+        try:
+            import torch as _torch
+            import torch.nn as _nn
+            import torch.nn.functional as _F
+            import torch.optim as _optim
+            from torch.utils.data import DataLoader as _DataLoader
+            from torch.utils.data import Dataset as _Dataset
+
+            torch = _torch
+            nn = _nn
+            F = _F
+            optim = _optim
+            DataLoader = _DataLoader
+            Dataset = _Dataset
+        except Exception:
+            # Provide placeholder classes for environments without Torch
+            torch = None
+
+            class _TorchUnavailablePlaceholder:
+                def __init__(self, *args, **kwargs):
+                    raise RuntimeError(
+                        "Torch is required to use AttentionTrainer/FeatureAttentionLayer: install/enable PyTorch with CUDA or CPU support."
+                    )
+
+            nn = None
+            F = None
+            optim = None
+            DataLoader = None
+            Dataset = _TorchUnavailablePlaceholder
 
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
@@ -45,7 +84,9 @@ from ztb.utils.path_utils import ensure_dir
 logger = get_logger(__name__)
 
 
-class FeatureAttentionLayer((nn.Module) if nn is not None else _TorchUnavailablePlaceholder):
+class FeatureAttentionLayer(
+    (nn.Module) if nn is not None else _TorchUnavailablePlaceholder
+):
     """Attention-based feature weighting layer"""
 
     def __init__(self, n_features: int, hidden_dim: int = 64):
@@ -90,7 +131,9 @@ class FeatureAttentionLayer((nn.Module) if nn is not None else _TorchUnavailable
         return weights
 
 
-class AttentionTrainingDataset((Dataset) if Dataset is not None else _TorchUnavailablePlaceholder):
+class AttentionTrainingDataset(
+    (Dataset) if Dataset is not None else _TorchUnavailablePlaceholder
+):
     """注意モデルトレーニング用データセット"""
 
     def __init__(

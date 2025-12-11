@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\pretraining\self_supervised_trainer.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.0001, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1.2, 100, 128, 156, 256, 512, '%Y%m%d_%H%M%S', 'AD_training_complete', 'CL_training_complete', 'ad_best', 'ad_model', 'ad_optimizer', 'anomaly', 'anomaly_encoder', 'anomaly_training', 'cl_best', 'cl_model', 'cl_optimizer', 'contrastive', 'contrastive_encoder', 'contrastive_training', 'cpu', 'cuda', 'epochs', 'inf', 'loss', 'masked_ratio', 'max_shift', 'memory_log.csv', 'mpm', 'mpm_best', 'mpm_encoder', 'mpm_model', 'mpm_optimizer', 'mpm_training', 'noise_prob', 'noise_std', 'scale_prob', 'scale_range', 'shift_prob', 'timestamp', 'train_loss', 'training_history', 'val_loss', 'w']

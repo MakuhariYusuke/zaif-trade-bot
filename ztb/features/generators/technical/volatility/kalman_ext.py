@@ -22,7 +22,7 @@ class SimpleKalmanFilter:
 
     def __init__(
         self, process_variance: float = 0.01, measurement_variance: float = 0.1
-    ):
+    ) -> None:
         super().__init__()
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
@@ -177,10 +177,14 @@ def calculate_kalman_extended(
         residual_series.rolling(window=residual_window).std()
     )
     features["kalman_residual_skew"] = np.asarray(
-        residual_series.rolling(window=residual_window).apply(lambda x: skewness(x.values) if len(x) > 0 else np.nan)
+        residual_series.rolling(window=residual_window).apply(
+            lambda x: skewness(x.values) if len(x) > 0 else np.nan
+        )
     )
     features["kalman_residual_kurt"] = np.asarray(
-        residual_series.rolling(window=residual_window).apply(lambda x: kurtosis(x.values) if len(x) > 0 else np.nan)
+        residual_series.rolling(window=residual_window).apply(
+            lambda x: kurtosis(x.values) if len(x) > 0 else np.nan
+        )
     )
 
     # Residual percentiles - vectorized

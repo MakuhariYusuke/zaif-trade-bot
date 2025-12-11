@@ -5,53 +5,16 @@ metrics.py
 
 from typing import Any, Dict, List, Optional, Union, cast
 
-from ztb.utils.types import FeatureMetrics, StatsResult
-
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from ztb.metrics.metrics import action_distribution as calculate_action_distribution
+from ztb.metrics.metrics import win_rate as calculate_win_rate
+from ztb.metrics.statistics import calculate_distribution_stats
+from ztb.utils.types import FeatureMetrics, StatsResult
+
 TRADING_DAYS_PER_YEAR = 252
-
-
-def sharpe_ratio(
-    returns: Union[List[float], NDArray[np.floating]],
-    risk_free_rate: float = 0.0,
-    periods_per_year: int = TRADING_DAYS_PER_YEAR,
-) -> float:
-    """
-    Sharpe ratioを計算（堅牢なNaN処理付き）
-
-    Args:
-        returns: リターンの配列
-        risk_free_rate: 年率無リスク金利（デフォルト0.0）
-        periods_per_year: 年間期間数（日次データの場合252）
-
-    Returns:
-        Sharpe ratio（年率換算）
-    """
-    returns = np.asarray(returns)
-
-    if len(returns) == 0:
-        return 0.0
-
-    # Remove NaN values
-    returns = returns[~np.isnan(returns)]
-
-    if len(returns) == 0:
-        return 0.0
-
-    # 超過リターンの計算
-    excess = returns - risk_free_rate / periods_per_year  # type: ignore
-
-    mean_return = np.mean(excess)
-    std_return = np.std(excess, ddof=1)
-
-    if std_return == 0 or np.isnan(std_return):
-        return 0.0
-
-    # 年率換算
-    return float((mean_return / std_return) * np.sqrt(periods_per_year))
 
 
 def win_rate(returns: Union[List[float], NDArray[np.floating]]) -> float:
@@ -64,22 +27,12 @@ def win_rate(returns: Union[List[float], NDArray[np.floating]]) -> float:
     Returns:
         Win rate (0.0 to 1.0)
     """
-    returns = np.asarray(returns)
-
-    if len(returns) == 0:
-        return 0.0
-
-    # Remove NaN values
-    returns = returns[~np.isnan(returns)]
-
-    if len(returns) == 0:
-        return 0.0
-
-    positive_returns = returns > 0
-    return float(np.mean(positive_returns))
+    return calculate_win_rate(np.asarray(returns))
 
 
-def action_distribution(actions: Union[List[int], NDArray[np.integer]]) -> Dict[str, float]:
+def action_distribution(
+    actions: Union[List[int], NDArray[np.integer]],
+) -> Dict[str, float]:
     """
     アクション分布を計算（HOLD, BUY, SELLの割合）
 
@@ -89,32 +42,7 @@ def action_distribution(actions: Union[List[int], NDArray[np.integer]]) -> Dict[
     Returns:
         アクション分布の辞書 {"HOLD": ratio, "BUY": ratio, "SELL": ratio}
     """
-    from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-
-    actions = np.asarray(actions)
-
-    if len(actions) == 0:
-        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
-
-    # Remove NaN values (though actions should be integers)
-    actions = actions[~np.isnan(actions)]
-
-    if len(actions) == 0:
-        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
-
-    # Shift actions: -1,0,1 -> 0,1,2
-    actions_shifted = actions + 1
-
-    # Count occurrences
-    action_counts = np.bincount(actions_shifted, minlength=3)
-
-    total_actions = len(actions)
-
-    return {
-        "HOLD": action_counts[ACTION_HOLD + 1] / total_actions,
-        "BUY": action_counts[ACTION_BUY + 1] / total_actions,
-        "SELL": action_counts[ACTION_SELL + 1] / total_actions,
-    }
+    return calculate_action_distribution(actions)
 
 
 def sharpe_with_stats(sharpes: List[float]) -> StatsResult:
@@ -127,22 +55,7 @@ def sharpe_with_stats(sharpes: List[float]) -> StatsResult:
     Returns:
         統計情報（平均、標準偏差、95%信頼区間）
     """
-    if len(sharpes) == 0:
-        return {"mean": 0.0, "std": 0.0, "ci95": [0.0, 0.0]}
-
-    sharpes_array = np.array(sharpes)
-    mean = float(np.mean(sharpes_array))
-    std = float(np.std(sharpes_array, ddof=1))
-
-    # 95%信頼区間
-    ci95_low = float(np.percentile(sharpes_array, 2.5))
-    ci95_high = float(np.percentile(sharpes_array, 97.5))
-
-    return {
-        "mean": round(mean, 6),
-        "std": round(std, 6),
-        "ci95": [round(ci95_low, 6), round(ci95_high, 6)],
-    }
+    return cast(StatsResult, calculate_distribution_stats(sharpes))
 
 
 def calculate_delta_sharpe(

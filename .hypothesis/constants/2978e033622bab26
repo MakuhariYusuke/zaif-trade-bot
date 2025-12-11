@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\cache\data_loader.py
+# hypothesis_version: 6.148.6
+
+['*.pkl', '.pkl.tmp', 'data/cache', 'rb', 'wb']

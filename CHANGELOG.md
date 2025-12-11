@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Phase 3 Execution Realism Verification - 2025-12-07
+
+### Execution Realism (Phase 3)
+- **Realistic Execution Model**: Implemented `RealisticExecutionModel` simulating:
+  - **ATR-based Slippage**: Dynamic slippage based on market volatility.
+  - **Latency**: Configurable execution delay (default 50ms + jitter).
+  - **Partial Fills**: Probability-based fill simulation (infrastructure ready).
+- **Verification Experiment**: Created `run_execution_comparison.py`.
+  - Confirmed massive performance gap (-92k reward) between Ideal and Realistic environments.
+  - Identified critical overfitting to zero-friction conditions.
+- **Technical Improvements**:
+  - Refactored `HeavyTradingEnv` initialization to better handle explicit config overrides.
+  - Identified and documented `UnifiedTrainer` configuration propagation limitations.
+
+### Technical Debt Repayment
+- **UnifiedTrainer / SACTrainer**:
+  - Added native support for **Evaluation Environment** configuration.
+  - Implemented `evaluation` config section to allow:
+    - Enabling/disabling evaluation during training.
+    - Overriding environment parameters (e.g., `execution_model`) for evaluation only.
+    - Specifying separate evaluation data.
+  - Integrated `EvalCallback` into the training pipeline.
+  - This resolves the rigidity issue identified in Phase 3 where comparing Ideal vs Realistic models required bypassing the trainer.
+
+## [Unreleased] - Action Signal Guide Phase 3 Implementation Complete - 2025-12-04
+
+### Domain Randomization Enhancements
+- **Intensity Scaling**: Implemented `intensity` parameter (0.0 - 1.0) for Domain Randomization.
+  - Allows gradual scaling of environment difficulty (Curriculum Learning).
+  - Interpolates between Base Profile and Randomized Target values.
+  - Updated `HeavyTradingEnv` to accept `dr_intensity` in `reset(options=...)`.
+  - Exposed DR metrics (`dr_maker_fee`, `dr_slippage`, etc.) in `_get_info` for logging.
+- **Verification**: Added `verify_dr_intensity.py` to confirm correct interpolation of fee and slippage values.
+
+### Phase 3: Advanced Integration System Implementation ✅
+
+#### Machine Learning Integration
+- **PatternOptimizer**: Implemented ML-based pattern optimization with Linear Regression, Random Forest, and Gradient Boosting algorithms
+- **Feature Engineering**: Added comprehensive feature extraction and transformation pipeline
+- **Model Selection**: Implemented cross-validation and ensemble prediction capabilities
+- **Performance Analysis**: Added feature importance analysis and model validation metrics
+
+#### Real-time Adaptation
+- **StreamingProcessor**: Implemented real-time data processing with parallel processing support
+- **AdaptiveThresholds**: Added dynamic threshold adjustment with performance monitoring
+- **FeedbackLoop**: Implemented adaptive learning system with confidence-based adjustments
+- **Anomaly Detection**: Added real-time anomaly detection and data quality assessment
+
+#### Portfolio Optimization
+- **StrategyAllocator**: Implemented multiple allocation strategies (Equal Weight, Risk Parity, Maximum Sharpe, Minimum Variance)
+- **Risk Management**: Added comprehensive risk metrics calculation and contribution analysis
+- **Correlation Management**: Implemented correlation-based diversification analysis
+- **Rebalancing**: Added portfolio rebalancing with market condition awareness
+
+#### Architecture Improvements
+- **Interface-Driven Design**: Created modular interfaces for ML, Portfolio, and Adaptation components
+- **Configuration Management**: Implemented structured configuration system with validation
+- **Factory Pattern**: Added factory functions for component creation and dependency injection
+- **Type Safety**: Enhanced type annotations and error handling throughout
+ - **Risk Manager Protocol**: Added `RiskManagerProtocol`, `GenericRiskManagerAdapter` and `ensure_risk_manager_protocol` for backward compatibility and consistent API across risk manager implementations.
+
+#### Testing & Validation
+- **Integration Tests**: Added comprehensive test coverage for Phase 3 components
+- **Performance Validation**: Implemented backtest validation and statistical analysis
+- **Documentation**: Updated integrated documentation with Phase 3 implementation details
+
+### Configuration Naming Convention Update
+- **File Renaming**: Updated configuration files to use `asg_` prefix for Action Signal Guide specificity:
+  - `ml_config.py` → `asg_ml_config.py`
+  - `portfolio_config.py` → `asg_portfolio_config.py`
+  - `adaptation_config.py` → `asg_adaptation_config.py`
+
+### Expected Benefits
+- **Performance**: 50-70% processing speed improvement through optimized algorithms
+- **Accuracy**: Enhanced signal quality through ML-based optimization
+- **Adaptability**: Real-time adaptation to changing market conditions
+- **Risk Management**: Portfolio-level optimization and risk control
+- **Maintainability**: Modular architecture with clear interfaces and configuration management
+
 ## [Unreleased] - Type Safety and Maintainability Improvements - 2025-01-21
 
 ### Refactoring
@@ -16,11 +95,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ConfigDict Usage**: Updated method signatures to use `ConfigDict` instead of `Any` for configuration parameters
 - **Optional Types**: Improved type annotations for optional parameters and return values
 - **Type Annotations**: Enhanced type safety across training and analysis modules
+- **Metrics Robustness**: Applied `safe_operation` decorator to remaining functions in `metrics.py` (`classify_market_regime` and `multi_market_backtest_analysis`) for consistent error handling
+- **Metrics Consolidation**: Eliminated duplicate metric implementations by replacing custom `compute_sharpe_ratio` and `compute_max_drawdown` functions in `analyze_risk_metrics.py` with centralized `metrics.py` functions, and removed unused `calculate_max_drawdown` from `statistics.py`. Extended consolidation to additional modules: `ztb/trading/backtest/metrics.py`, `ztb/analysis/walk_forward_analyzer.py`, `ztb/analysis/backtest_sac_v423b.py`, and `tests/phase3_validation.py`, ensuring all Sharpe ratio and max drawdown calculations use the centralized, robust implementations.
 
 ### Bug Fixes & Testing
 - **BehavioralPenaltyCalculator**: Fixed the consistency penalty lookback semantics — the consistency window now includes the current action (+ lookback). Added `consistency_min_actions` to require a minimum number of non-HOLD actions to consider a penalty.
 - **Config parsing**: Fixed nested `behavior` scalar key parsing (e.g., `action_entropy_lookback`) so nested scalar values are correctly read from the nested behavior object.
 - **Unit Tests**: Added new tests to cover lookback boundary cases, HOLD-interleaved sequences, and configuration parsing.
+- **Torch DLL Guard**: Consolidated Windows torch DLL search-path handling into `ztb.utils.torch_utils.ensure_torch_dll_search_path()` and introduced a repo-level `sitecustomize.py` bootstrap so pytest/CLI entrypoints import torch before numpy/pandas, eliminating `WinError 1114` crashes during diagnostics and AB runs.
 - **Layer 5 Foundations**: Added Layer 5 design doc and test skeletons (MTF manager and curriculum). Added `mtf_weight_manager` stub to provide safe defaults for MTF weight retrieval.
 
 ### Development Tools

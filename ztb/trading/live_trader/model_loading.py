@@ -3,8 +3,17 @@
 from typing import TYPE_CHECKING, Union
 
 import gymnasium as gym
-from sb3_contrib import MaskablePPO
-from stable_baselines3 import PPO, SAC
+
+if TYPE_CHECKING:
+    try:
+        from sb3_contrib import MaskablePPO  # type: ignore
+    except Exception:
+        MaskablePPO = None  # type: ignore
+    try:
+        from stable_baselines3 import PPO, SAC  # type: ignore
+    except Exception:
+        PPO = None  # type: ignore
+        SAC = None  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
 
@@ -20,7 +29,7 @@ class ModelLoading:
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
 
-    def load_model(self) -> Union[PPO, MaskablePPO, SAC]:
+    def load_model(self) -> "Union[PPO, MaskablePPO, SAC]":
         """Load the trained PPO, MaskablePPO, or SAC model.
 
         Bug #27 Fix: Now properly loads MaskablePPO models and uses
@@ -47,20 +56,50 @@ class ModelLoading:
         )
 
         if algorithm == "sac":
-            model = SAC.load(str(self.live_trader.model_path))
+            # Lazy import SAC to avoid importing torch during module import time
+            try:
+                from stable_baselines3 import SAC as _SAC
+            except Exception:
+                _SAC = None
+
+            if _SAC is None:
+                raise ImportError("stable_baselines3.SAC is required but not available")
+
+            model = _SAC.load(str(self.live_trader.model_path))
             logger.info("Model loaded as SAC")
             self.live_trader._is_maskable_ppo = False  # SAC doesn't use masks
             self.live_trader.algorithm = "sac"
         else:
             # Try loading as MaskablePPO first, fallback to PPO
             try:
-                model = MaskablePPO.load(str(self.live_trader.model_path))
+                # Lazy import MaskablePPO in case sb3_contrib is present
+                try:
+                    from sb3_contrib import MaskablePPO as _MaskablePPO
+                except Exception:
+                    _MaskablePPO = None
+
+                if _MaskablePPO is None:
+                    raise ImportError(
+                        "sb3_contrib.MaskablePPO is required but not available"
+                    )
+
+                model = _MaskablePPO.load(str(self.live_trader.model_path))
                 logger.info("Model loaded as MaskablePPO with action masking support")
                 self.live_trader._is_maskable_ppo = True
                 self.live_trader.algorithm = "ppo"
             except Exception as e:
                 logger.info(f"Not a MaskablePPO model ({e}), loading as standard PPO")
-                model = PPO.load(str(self.live_trader.model_path))
+                try:
+                    from stable_baselines3 import PPO as _PPO
+                except Exception:
+                    _PPO = None
+
+                if _PPO is None:
+                    raise ImportError(
+                        "stable_baselines3.PPO is required but not available"
+                    )
+
+                model = _PPO.load(str(self.live_trader.model_path))
                 logger.info("Model loaded as standard PPO (no action masking)")
                 self.live_trader._is_maskable_ppo = False
                 self.live_trader.algorithm = "ppo"

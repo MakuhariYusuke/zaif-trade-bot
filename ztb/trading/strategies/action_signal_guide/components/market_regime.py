@@ -5,14 +5,16 @@ This module provides market regime detection and analysis capabilities
 to enhance signal generation and validation.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from enum import Enum
 import logging
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 from ztb.analysis.market_regime_types import MarketRegime
+from ztb.trading.signal.common.utilities import (
+    calculate_volatility as calculate_volatility_util,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,12 @@ class MarketRegimeDetector(IMarketRegimeDetector):
     Detects current market regime using multiple indicators.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        use_relative: bool = False,
+        reference_window: int = 1000,
+        percentile_threshold: float = 0.8,
+    ):
         """Initialize market regime detector."""
         self.regime_history = []
         self.transition_threshold = 0.6
@@ -35,6 +42,12 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         self.trend_threshold = 0.02  # 2% trend strength
         self.volatility_threshold = 0.03  # 3% volatility
         self.range_threshold = 0.015  # 1.5% range bound
+        # Relative detection settings
+        self.use_relative = use_relative
+        self.reference_window = (
+            int(reference_window) if reference_window is not None else 1000
+        )
+        self.percentile_threshold = float(percentile_threshold)
 
     def detect_regime(self, market_data: pd.DataFrame) -> MarketRegime:
         """
@@ -60,17 +73,32 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             trend_strength, volatility, range_bound, momentum
         )
 
+        # If relative mode is enabled, override volatility-based classification
+        if self.use_relative:
+            try:
+                vol_percentile = self._calculate_volatility_percentile(
+                    market_data, volatility
+                )
+                if vol_percentile >= self.percentile_threshold:
+                    regime = MarketRegime.HIGH_VOLATILITY_RANGING
+            except Exception:
+                pass
+
         # Store regime for stability analysis
-        self.regime_history.append({
-            "timestamp": market_data.index[-1] if hasattr(market_data.index, '__getitem__') else pd.Timestamp.now(),
-            "regime": regime,
-            "indicators": {
-                "trend_strength": trend_strength,
-                "volatility": volatility,
-                "range_bound": range_bound,
-                "momentum": momentum,
+        self.regime_history.append(
+            {
+                "timestamp": market_data.index[-1]
+                if hasattr(market_data.index, "__getitem__")
+                else pd.Timestamp.now(),
+                "regime": regime,
+                "indicators": {
+                    "trend_strength": trend_strength,
+                    "volatility": volatility,
+                    "range_bound": range_bound,
+                    "momentum": momentum,
+                },
             }
-        })
+        )
 
         # Keep only recent history
         if len(self.regime_history) > 100:
@@ -78,7 +106,38 @@ class MarketRegimeDetector(IMarketRegimeDetector):
 
         return regime
 
-    def detect_regime(self, current_price: float, step: int) -> str:
+    def _calculate_volatility_percentile(
+        self, data: pd.DataFrame, current_vol: float
+    ) -> float:
+        """
+        Compute the percentile rank (0-1) of the current volatility in a reference window.
+        """
+        if len(data) < max(10, self.reference_window):
+            # Not enough history to compute robust percentile - fall back to simple behavior
+            return 0.0
+
+        # Compute volatility for sliding windows over the reference range
+        vols = []
+        window = min(20, len(data))
+        start_idx = max(0, len(data) - self.reference_window)
+        for i in range(start_idx + window, len(data) + 1):
+            sub = data["close"].iloc[i - window : i]
+            if len(sub) < window:
+                continue
+            r = sub.pct_change().dropna()
+            if len(r) == 0:
+                vols.append(0.0)
+            else:
+                vols.append(float(r.std()))
+
+        if len(vols) == 0:
+            return 0.0
+
+        vols_arr = np.array(vols)
+        percentile = float((vols_arr <= current_vol).sum()) / len(vols_arr)
+        return percentile
+
+    def detect_regime_from_data(self, market_data: pd.DataFrame) -> MarketRegime:
         """
         Detect current market regime (IMarketRegimeDetector interface).
 
@@ -106,7 +165,9 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         if len(self.regime_history) < self.stability_window:
             return 0.5
 
-        recent_regimes = [r["regime"] for r in self.regime_history[-self.stability_window:]]
+        recent_regimes = [
+            r["regime"] for r in self.regime_history[-self.stability_window :]
+        ]
         most_common_regime = max(set(recent_regimes), key=recent_regimes.count)
         stability_ratio = recent_regimes.count(most_common_regime) / len(recent_regimes)
 
@@ -122,7 +183,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         Returns:
             Trend strength (-1 to 1, positive = bullish)
         """
-        prices = data['close'].values
+        prices = data["close"].values
         if len(prices) < 20:
             return 0.0
 
@@ -149,15 +210,21 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         Returns:
             Volatility (0-1, higher = more volatile)
         """
-        returns = data['close'].pct_change().dropna()
+        returns = data["close"].pct_change().dropna()
         if len(returns) < 10:
             return 0.0
 
         # Use recent 20 periods
         recent_returns = returns.tail(20)
-        volatility = recent_returns.std()
-
-        return min(1.0, volatility * 10)  # Scale for 0-1 range
+        try:
+            vol = calculate_volatility_util(
+                recent_returns, window=min(20, len(recent_returns)), method="std"
+            )
+            scaled = min(1.0, float(vol) * 10)
+            return scaled
+        except Exception:
+            volatility = recent_returns.std()
+            return min(1.0, float(volatility) * 10)
 
     def _calculate_range_bound(self, data: pd.DataFrame) -> float:
         """
@@ -173,9 +240,9 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             return 0.0
 
         recent_data = data.tail(20)
-        high_max = recent_data['high'].max()
-        low_min = recent_data['low'].min()
-        current_price = recent_data['close'].iloc[-1]
+        high_max = recent_data["high"].max()
+        low_min = recent_data["low"].min()
+        current_price = recent_data["close"].iloc[-1]
 
         # Calculate range as percentage of current price
         price_range = (high_max - low_min) / current_price
@@ -199,7 +266,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             return 0.0
 
         # RSI-style momentum calculation
-        returns = data['close'].pct_change().dropna()
+        returns = data["close"].pct_change().dropna()
         recent_returns = returns.tail(10)
 
         positive_returns = recent_returns[recent_returns > 0]
@@ -229,7 +296,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         trend_strength: float,
         volatility: float,
         range_bound: float,
-        momentum: float
+        momentum: float,
     ) -> MarketRegime:
         """
         Classify market regime based on indicators.
@@ -245,25 +312,25 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         """
         # High volatility regime
         if volatility > self.volatility_threshold:
-            return MarketRegime.HIGH_VOLATILITY
+            return MarketRegime.HIGH_VOLATILITY_RANGING
 
         # Low volatility regime
         if volatility < self.volatility_threshold * 0.3:
-            return MarketRegime.LOW_VOLATILITY
+            return MarketRegime.LOW_VOLATILITY_RANGING
 
         # Trending regimes
         if abs(trend_strength) > self.trend_threshold:
             if trend_strength > 0 and momentum > 0.2:
-                return MarketRegime.TRENDING_BULLISH
+                return MarketRegime.MODERATE_BULL_TREND
             elif trend_strength < 0 and momentum < -0.2:
-                return MarketRegime.TRENDING_BEARISH
+                return MarketRegime.MODERATE_BEAR_TREND
 
         # Ranging regime (default)
         if range_bound > 0.6:
-            return MarketRegime.RANGING
+            return MarketRegime.MODERATE_VOLATILITY_RANGING
 
         # Default to ranging if no clear regime
-        return MarketRegime.RANGING
+        return MarketRegime.MODERATE_VOLATILITY_RANGING
 
 
 class RegimeAdaptiveSignalProcessor:
@@ -278,9 +345,7 @@ class RegimeAdaptiveSignalProcessor:
         self.adaptation_factors = {}
 
     def process_signals_for_regime(
-        self,
-        signals: List["ActionSignal"],
-        market_data: pd.DataFrame
+        self, signals: List["ActionSignal"], market_data: pd.DataFrame
     ) -> List["ActionSignal"]:
         """
         Process signals based on current market regime.
@@ -314,7 +379,7 @@ class RegimeAdaptiveSignalProcessor:
         signal: "ActionSignal",
         regime: MarketRegime,
         stability: float,
-        market_data: pd.DataFrame
+        market_data: pd.DataFrame,
     ) -> Optional["ActionSignal"]:
         """
         Adapt individual signal for specific market regime.
@@ -328,8 +393,8 @@ class RegimeAdaptiveSignalProcessor:
         Returns:
             Adapted signal or None if filtered out
         """
-        pattern_type = getattr(signal, 'pattern_type', 'unknown')
-        original_confidence = getattr(signal, 'confidence', 0.5)
+        pattern_type = getattr(signal, "pattern_type", "unknown")
+        original_confidence = getattr(signal, "confidence", 0.5)
 
         # Regime-specific pattern preferences and adjustments
         regime_config = self._get_regime_config(regime)
@@ -340,7 +405,9 @@ class RegimeAdaptiveSignalProcessor:
             signal.confidence = original_confidence * regime_config["penalty_factor"]
         else:
             # Boost confidence for preferred patterns
-            signal.confidence = min(1.0, original_confidence * regime_config["boost_factor"])
+            signal.confidence = min(
+                1.0, original_confidence * regime_config["boost_factor"]
+            )
 
         # Apply stability adjustment
         stability_adjustment = 1.0 + (stability - 0.5) * 0.2  # ±10% based on stability
@@ -351,15 +418,18 @@ class RegimeAdaptiveSignalProcessor:
             return None
 
         # Add regime metadata
-        if not hasattr(signal, 'regime_analysis'):
+        if not hasattr(signal, "regime_analysis"):
             signal.regime_analysis = {}
 
-        signal.regime_analysis.update({
-            "detected_regime": regime.value,
-            "regime_stability": stability,
-            "confidence_adjustment": signal.confidence / original_confidence,
-            "regime_suitability": pattern_type in regime_config["preferred_patterns"],
-        })
+        signal.regime_analysis.update(
+            {
+                "detected_regime": regime.value,
+                "regime_stability": stability,
+                "confidence_adjustment": signal.confidence / original_confidence,
+                "regime_suitability": pattern_type
+                in regime_config["preferred_patterns"],
+            }
+        )
 
         return signal
 
@@ -375,17 +445,35 @@ class RegimeAdaptiveSignalProcessor:
         """
         configs = {
             MarketRegime.TRENDING_BULLISH: {
-                "preferred_patterns": ["fibonacci", "harmonic", "gann", "dow_theory", "trend"],
+                "preferred_patterns": [
+                    "fibonacci",
+                    "harmonic",
+                    "gann",
+                    "dow_theory",
+                    "trend",
+                ],
                 "boost_factor": 1.3,
                 "penalty_factor": 0.7,
             },
             MarketRegime.TRENDING_BEARISH: {
-                "preferred_patterns": ["fibonacci", "harmonic", "gann", "dow_theory", "trend"],
+                "preferred_patterns": [
+                    "fibonacci",
+                    "harmonic",
+                    "gann",
+                    "dow_theory",
+                    "trend",
+                ],
                 "boost_factor": 1.3,
                 "penalty_factor": 0.7,
             },
             MarketRegime.RANGING: {
-                "preferred_patterns": ["bollinger", "oscillator", "volume", "candlestick", "support_resistance"],
+                "preferred_patterns": [
+                    "bollinger",
+                    "oscillator",
+                    "volume",
+                    "candlestick",
+                    "support_resistance",
+                ],
                 "boost_factor": 1.2,
                 "penalty_factor": 0.8,
             },
@@ -395,7 +483,12 @@ class RegimeAdaptiveSignalProcessor:
                 "penalty_factor": 0.6,
             },
             MarketRegime.LOW_VOLATILITY: {
-                "preferred_patterns": ["fibonacci", "harmonic", "candlestick", "pattern"],
+                "preferred_patterns": [
+                    "fibonacci",
+                    "harmonic",
+                    "candlestick",
+                    "pattern",
+                ],
                 "boost_factor": 1.1,
                 "penalty_factor": 0.9,
             },
@@ -404,10 +497,7 @@ class RegimeAdaptiveSignalProcessor:
         return configs.get(regime, configs[MarketRegime.RANGING])
 
     def _passes_regime_filter(
-        self,
-        signal: "ActionSignal",
-        regime: MarketRegime,
-        market_data: pd.DataFrame
+        self, signal: "ActionSignal", regime: MarketRegime, market_data: pd.DataFrame
     ) -> bool:
         """
         Check if signal passes regime-specific filters.
@@ -420,7 +510,7 @@ class RegimeAdaptiveSignalProcessor:
         Returns:
             True if signal passes filter
         """
-        confidence = getattr(signal, 'confidence', 0.5)
+        confidence = getattr(signal, "confidence", 0.5)
 
         # Minimum confidence thresholds by regime
         min_confidence = {
@@ -446,9 +536,7 @@ class RegimeAdaptiveSignalProcessor:
         return True
 
     def update_regime_performance(
-        self,
-        regime: MarketRegime,
-        signal_performance: float
+        self, regime: MarketRegime, signal_performance: float
     ) -> None:
         """
         Update performance tracking for regime adaptation.
@@ -506,7 +594,9 @@ class MarketConditionAnalyzer:
             "momentum": self._analyze_momentum(market_data),
             "volume": self._analyze_volume(market_data),
             "support_resistance": self._analyze_support_resistance(market_data),
-            "timestamp": market_data.index[-1] if hasattr(market_data.index, '__getitem__') else pd.Timestamp.now(),
+            "timestamp": market_data.index[-1]
+            if hasattr(market_data.index, "__getitem__")
+            else pd.Timestamp.now(),
         }
 
         # Store analysis for historical context
@@ -530,7 +620,7 @@ class MarketConditionAnalyzer:
     def _analyze_trend(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Analyze price trend."""
         recent_data = data.tail(20)
-        prices = recent_data['close'].values
+        prices = recent_data["close"].values
 
         # Linear regression for trend
         x = np.arange(len(prices))
@@ -555,7 +645,7 @@ class MarketConditionAnalyzer:
 
     def _analyze_volatility(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Analyze price volatility."""
-        returns = data['close'].pct_change().dropna().tail(20)
+        returns = data["close"].pct_change().dropna().tail(20)
         volatility = returns.std()
 
         if volatility > 0.04:
@@ -576,8 +666,8 @@ class MarketConditionAnalyzer:
             return {"value": 0.0, "strength": "neutral"}
 
         # Simple momentum calculation
-        current_price = data['close'].iloc[-1]
-        past_price = data['close'].iloc[-14]
+        current_price = data["close"].iloc[-1]
+        past_price = data["close"].iloc[-14]
         momentum_value = (current_price - past_price) / past_price
 
         if momentum_value > 0.02:
@@ -598,10 +688,10 @@ class MarketConditionAnalyzer:
 
     def _analyze_volume(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Analyze volume patterns."""
-        if 'volume' not in data.columns:
+        if "volume" not in data.columns:
             return {"trend": "neutral", "confirmation": False}
 
-        recent_volume = data['volume'].tail(10)
+        recent_volume = data["volume"].tail(10)
         avg_volume = recent_volume.mean()
         current_volume = recent_volume.iloc[-1]
 
@@ -612,7 +702,7 @@ class MarketConditionAnalyzer:
             volume_trend = "decreasing"
 
         # Volume confirmation (high volume with price movement)
-        price_change = data['close'].pct_change().iloc[-1]
+        price_change = data["close"].pct_change().iloc[-1]
         volume_confirmation = abs(price_change) > 0.005 and current_volume > avg_volume
 
         return {
@@ -625,11 +715,11 @@ class MarketConditionAnalyzer:
     def _analyze_support_resistance(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Analyze support and resistance levels."""
         recent_data = data.tail(50)
-        current_price = recent_data['close'].iloc[-1]
+        current_price = recent_data["close"].iloc[-1]
 
         # Simple pivot point analysis
-        highs = recent_data['high']
-        lows = recent_data['low']
+        highs = recent_data["high"]
+        lows = recent_data["low"]
 
         # Find potential support/resistance levels
         resistance_levels = []
@@ -638,17 +728,21 @@ class MarketConditionAnalyzer:
         # Look for local highs and lows
         for i in range(2, len(recent_data) - 2):
             # Resistance (local high)
-            if (highs.iloc[i] > highs.iloc[i-1] and
-                highs.iloc[i] > highs.iloc[i-2] and
-                highs.iloc[i] > highs.iloc[i+1] and
-                highs.iloc[i] > highs.iloc[i+2]):
+            if (
+                highs.iloc[i] > highs.iloc[i - 1]
+                and highs.iloc[i] > highs.iloc[i - 2]
+                and highs.iloc[i] > highs.iloc[i + 1]
+                and highs.iloc[i] > highs.iloc[i + 2]
+            ):
                 resistance_levels.append(highs.iloc[i])
 
             # Support (local low)
-            if (lows.iloc[i] < lows.iloc[i-1] and
-                lows.iloc[i] < lows.iloc[i-2] and
-                lows.iloc[i] < lows.iloc[i+1] and
-                lows.iloc[i] < lows.iloc[i+2]):
+            if (
+                lows.iloc[i] < lows.iloc[i - 1]
+                and lows.iloc[i] < lows.iloc[i - 2]
+                and lows.iloc[i] < lows.iloc[i + 1]
+                and lows.iloc[i] < lows.iloc[i + 2]
+            ):
                 support_levels.append(lows.iloc[i])
 
         # Find nearby levels (within 2% of current price)

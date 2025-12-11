@@ -63,3 +63,25 @@ def test_scheduler_stage_change_callback(tmp_path: Path):
     # callback should have applied scheduler once; manager weights should be updated
     after = mgr.get_weights()
     assert abs(sum(after.values()) - 1.0) < 1e-9
+
+
+def test_mtf_scheduler_gate_prevents_apply(tmp_path: Path):
+    base_cfg = tmp_path / "base_config.json"
+    base_cfg.write_text(
+        '{"training": {"model_name": "mtf_test"}, "multi_timeframe": {"feature_weights": {"1min":0.3, "5min":0.6, "15min":0.1}}}'
+    )
+    cfg = MTFSchedulerConfig(
+        base_config=str(base_cfg),
+        out_dir=str(tmp_path),
+        candidates=3,
+        per_seed=1,
+        timesteps=100,
+        gate_composite_score=1.0,  # high gate so dry-run candidate (0.0 composite) won't pass
+    )
+    mgr = MTFWeightManager(config={})
+    scheduler = MTFScheduler(mgr, cfg)
+    before = mgr.get_weights()
+    best = scheduler.run_once(dry_run=True, apply=True)
+    after = mgr.get_weights()
+    # no change because gate prevents application
+    assert before == after

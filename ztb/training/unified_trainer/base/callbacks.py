@@ -180,18 +180,26 @@ class TrainingProgressCallback(BaseCallback):
                     infos = self.locals.get("infos")
                     if infos and len(infos) > 0:
                         info = infos[0]
-                        if isinstance(info, dict) and "market_regime" in info:
-                            regime = info["market_regime"]
-                            if regime not in self.regime_action_counts:
-                                self.regime_action_counts[regime] = [
-                                    0,
-                                    0,
-                                    0,
-                                ]  # [BUY, SELL, HOLD]
-                            if discrete_action >= 0 and discrete_action <= 2:
-                                self.regime_action_counts[regime][
-                                    get_action_count_index(discrete_action)
-                                ] += 1
+                        if isinstance(info, dict):
+                            if "market_regime" in info:
+                                regime = info["market_regime"]
+                                if regime not in self.regime_action_counts:
+                                    logging.warning(
+                                        f"DEBUG: New regime detected: {regime}"
+                                    )
+                                    self.regime_action_counts[regime] = [
+                                        0,
+                                        0,
+                                        0,
+                                    ]  # [BUY, SELL, HOLD]
+                                if discrete_action >= -1 and discrete_action <= 2:
+                                    self.regime_action_counts[regime][
+                                        get_action_count_index(discrete_action)
+                                    ] += 1
+                            else:
+                                logging.warning(
+                                    f"DEBUG: market_regime MISSING. Keys: {list(info.keys())}"
+                                )
                 except Exception as e:
                     logging.debug(f"Failed to record regime action: {e}")
 

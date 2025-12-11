@@ -13,9 +13,10 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 
+from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.risk.risk_manager import RiskManager
-from ztb.utils.statistics import calculate_max_drawdown
-from ztb.utils.trading_metrics import sharpe_ratio, win_rate
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
+from ztb.utils.trading_metrics import win_rate
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,9 @@ class SACv435Evaluator:
             },
         }
 
-        self.risk_manager = RiskManager(risk_manager_config)
+        self.risk_manager = ensure_risk_manager_protocol(
+            RiskManager(risk_manager_config)
+        )
         logger.info("Risk management setup complete for evaluation")
 
     def load_model(self, model_path: str) -> SAC:
@@ -302,8 +305,8 @@ class SACv435Evaluator:
         cumulative_returns = np.cumprod(1 + returns) - 1
 
         # Maximum drawdown
-        max_drawdown_result = calculate_max_drawdown(portfolio_values)
-        max_drawdown = max_drawdown_result["max_drawdown"]
+        max_drawdown_result = max_drawdown(portfolio_values)
+        max_drawdown_value = max_drawdown_result
 
         # Sharpe ratio (assuming risk-free rate of 0)
         sharpe_ratio_value = sharpe_ratio(returns)
@@ -324,7 +327,7 @@ class SACv435Evaluator:
             position_reduction_ratio = 0
 
         risk_metrics = {
-            "max_drawdown": max_drawdown,
+            "max_drawdown": max_drawdown_value,
             "sharpe_ratio": sharpe_ratio_value,
             "volatility": np.std(returns),
             "total_risk_adjustments": len(risk_adjustments),

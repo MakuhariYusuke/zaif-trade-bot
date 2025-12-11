@@ -4,715 +4,19 @@ Strategy adapters for backtesting.
 Provides adapters to wrap different trading strategies for unified backtest interface.
 """
 
-from re import A
 import time
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol
 
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.walk_forward_analyzer import WalkForwardAnalyzer
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.components.threshold_manager import ThresholdManager
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.trading.risk.backtest_risk_manager import BacktestRiskManager
 from ztb.trading.risk.optimizers.integrated_signal_filter import IntegratedSignalFilter
 from ztb.utils.cache_utils import TTLCache
-
-
-class RiskManager:
-    """Risk management component for trading strategies."""
-
-    def __init__(self):
-        """Initialize risk manager with default parameters."""
-        self.max_drawdown_limit = 0.15  # 15% max drawdown
-        self.max_position_size = 0.1  # 10% of portfolio per position
-        self.stop_loss_atr_multiplier = 2.0  # 2x ATR for stop loss
-        self.take_profit_atr_multiplier = 4.0  # 4x ATR for take profit
-        self.max_consecutive_losses = 3  # Max consecutive losing trades
-        self.circuit_breaker_threshold = 0.05  # 5% loss triggers circuit breaker
-
-        # Risk tracking
-        self.current_drawdown = 0.0
-        self.consecutive_losses = 0
-        self.portfolio_value = 1.0  # Normalized portfolio value
-        self.circuit_breaker_active = False
-
-        # Position tracking
-        self.open_positions = {}  # position_id -> position_data
-
-        # Performance optimization
-        self.atr_cache = TTLCache(ttl_seconds=180)  # 3 minutes cache for ATR
-
-    def calculate_atr_stop_levels(
-        self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
-        """
-        Calculate ATR-based stop loss and take profit levels.
-
-        Args:
-            data: Recent market data with ATR column
-            entry_price: Entry price for the position
-            position_type: 'long' or 'short'
-
-        Returns:
-            Tuple of (stop_loss_price, take_profit_price)
-        """
-        if "atr" not in data.columns:
-            # Fallback to percentage-based stops if ATR not available
-            atr_value = entry_price * 0.02  # 2% of entry price
-        else:
-            atr_value = data["atr"].iloc[-1]
-
-        if position_type == "long":
-            stop_loss = entry_price - (atr_value * self.stop_loss_atr_multiplier)
-            take_profit = entry_price + (atr_value * self.take_profit_atr_multiplier)
-        else:  # short
-            stop_loss = entry_price + (atr_value * self.stop_loss_atr_multiplier)
-            take_profit = entry_price - (atr_value * self.take_profit_atr_multiplier)
-
-        return stop_loss, take_profit
-
-    def should_open_position(
-        self,
-        signal_strength: float,
-        market_volatility: float,
-        current_portfolio_value: float,
-    ) -> bool:
-        """
-        Determine if a new position should be opened based on risk criteria.
-
-        Args:
-            signal_strength: Strength of the trading signal (0-1)
-            market_volatility: Current market volatility measure
-            current_portfolio_value: Current portfolio value
-
-        Returns:
-            True if position should be opened, False otherwise
-        """
-        # Check circuit breaker
-        if self.circuit_breaker_active:
-            return False
-
-        # Check drawdown limit
-        if self.current_drawdown >= self.max_drawdown_limit:
-            return False
-
-        # Check consecutive losses
-        if self.consecutive_losses >= self.max_consecutive_losses:
-            return False
-
-        # Check signal strength threshold
-        min_signal_strength = 0.6 + (
-            market_volatility * 0.2
-        )  # Higher threshold in volatile markets
-        if signal_strength < min_signal_strength:
-            return False
-
-        # Check position size limit
-        max_position_value = current_portfolio_value * self.max_position_size
-        if max_position_value < current_portfolio_value * 0.01:  # Minimum position size
-            return False
-
-        return True
-
-    def should_close_position(
-        self,
-        position_data: Dict[str, Any],
-        current_price: float,
-        current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
-        """
-        Determine if a position should be closed based on risk criteria.
-
-        Args:
-            position_data: Position information including entry price, stop levels
-            current_price: Current market price
-            current_portfolio_value: Current portfolio value
-
-        Returns:
-            Tuple of (should_close, reason)
-        """
-        position_type = position_data["type"]
-        entry_price = position_data["entry_price"]
-        stop_loss = position_data["stop_loss"]
-        take_profit = position_data["take_profit"]
-
-        # Check stop loss
-        if position_type == "long" and current_price <= stop_loss:
-            return True, "stop_loss"
-        elif position_type == "short" and current_price >= stop_loss:
-            return True, "stop_loss"
-
-        # Check take profit
-        if position_type == "long" and current_price >= take_profit:
-            return True, "take_profit"
-        elif position_type == "short" and current_price <= take_profit:
-            return True, "take_profit"
-
-        # Check circuit breaker
-        if self.circuit_breaker_active:
-            return True, "circuit_breaker"
-
-        # Check drawdown limit
-        if self.current_drawdown >= self.max_drawdown_limit:
-            return True, "max_drawdown"
-
-        return False, ""
-
-    def update_risk_metrics(self, trade_result: Optional[Dict[str, Any]] = None):
-        """
-        Update risk metrics after a trade or price movement.
-
-        Args:
-            trade_result: Optional trade result data
-        """
-        if trade_result:
-            pnl = trade_result.get("pnl", 0)
-            if pnl < 0:
-                self.consecutive_losses += 1
-                self.portfolio_value += pnl
-            else:
-                self.consecutive_losses = 0
-                self.portfolio_value += pnl
-
-        # Update drawdown
-        self.current_drawdown = max(0, 1.0 - self.portfolio_value)
-
-        # Check circuit breaker
-        if self.portfolio_value <= (1.0 - self.circuit_breaker_threshold):
-            self.circuit_breaker_active = True
-        elif self.portfolio_value >= 0.98:  # Reset when recovered to 98%
-            self.circuit_breaker_active = False
-
-    def get_risk_adjusted_position_size(
-        self, signal_strength: float, market_volatility: float
-    ) -> float:
-        """
-        Calculate risk-adjusted position size based on signal strength and volatility.
-
-        Args:
-            signal_strength: Strength of the trading signal (0-1)
-            market_volatility: Current market volatility measure
-
-        Returns:
-            Position size as fraction of portfolio (0-1)
-        """
-        # Base position size
-        base_size = self.max_position_size
-
-        # Adjust for signal strength
-        strength_multiplier = 0.5 + (signal_strength * 0.5)  # 0.5 to 1.0
-
-        # Adjust for volatility (smaller positions in high volatility)
-        volatility_multiplier = 1.0 / (1.0 + market_volatility * 2.0)
-
-        # Adjust for consecutive losses
-        loss_multiplier = max(0.3, 1.0 - (self.consecutive_losses * 0.2))
-
-        position_size = (
-            base_size * strength_multiplier * volatility_multiplier * loss_multiplier
-        )
-        return min(position_size, self.max_position_size)
-
-    def calculate_atr_stop_levels(
-        self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
-        """
-        Calculate ATR-based stop loss and take profit levels with caching.
-
-        Args:
-            data: Recent market data with OHLC columns
-            entry_price: Entry price for the position
-            position_type: 'long' or 'short'
-
-        Returns:
-            Tuple of (stop_loss_price, take_profit_price)
-        """
-        # Create cache key
-        cache_key = f"atr_{len(data)}_{hash(str(data.index[-1]) if len(data) > 0 else 'empty')}_{position_type}"
-
-        # Check cache first
-        cached_result = self.atr_cache.get(cache_key)
-        if cached_result is not None:
-            base_atr = cached_result
-        else:
-            # Calculate ATR efficiently
-            if len(data) < 14:
-                # Fallback to percentage-based stops if insufficient data
-                base_atr = entry_price * 0.02  # 2% of entry price
-            else:
-                # Calculate True Range
-                high = data["high"] if "high" in data.columns else data["High"]
-                low = data["low"] if "low" in data.columns else data["Low"]
-                close = data["close"] if "close" in data.columns else data["Close"]
-
-                # True Range calculation
-                tr1 = high - low
-                tr2 = abs(high - close.shift(1))
-                tr3 = abs(low - close.shift(1))
-                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-
-                # ATR calculation (14-period SMA of True Range)
-                base_atr = tr.rolling(14).mean().iloc[-1]
-                if pd.isna(base_atr):
-                    base_atr = entry_price * 0.02
-
-            # Cache the base ATR
-            self.atr_cache.set(cache_key, base_atr)
-
-        if position_type == "long":
-            stop_loss = entry_price - (base_atr * self.stop_loss_atr_multiplier)
-            take_profit = entry_price + (base_atr * self.take_profit_atr_multiplier)
-        else:  # short
-            stop_loss = entry_price + (base_atr * self.stop_loss_atr_multiplier)
-            take_profit = entry_price - (base_atr * self.take_profit_atr_multiplier)
-
-        return stop_loss, take_profit
-
-
-class DynamicThresholdManager:
-    """Advanced dynamic threshold management for trading signals."""
-
-    def __init__(self):
-        """Initialize dynamic threshold manager."""
-        self.regime_window = 50  # Window for regime detection
-        self.adaptation_rate = 0.1  # How quickly thresholds adapt
-        self.performance_memory = 100  # How many past signals to remember
-
-        # Performance tracking
-        self.signal_history = []
-        self.threshold_history = []
-
-        # Regime detection parameters
-        self.trend_threshold = 0.001  # Minimum slope for trend detection
-        self.volatility_threshold = 0.02  # Threshold for high volatility
-
-    def detect_market_regime(self, data: pd.DataFrame) -> str:
-        """
-        Detect current market regime (trending, ranging, volatile).
-
-        Args:
-            data: Recent market data
-
-        Returns:
-            Market regime: 'trending_bull', 'trending_bear', 'ranging', 'volatile'
-        """
-        if len(data) < self.regime_window:
-            return "unknown"
-
-        recent_data = data.iloc[-self.regime_window :]
-
-        # Calculate trend strength
-        prices = recent_data["close"].values
-        x = np.arange(len(prices))
-        slope = np.polyfit(x, prices, 1)[0]
-        trend_strength = abs(slope) / np.mean(prices)
-
-        # Calculate volatility
-        returns = np.diff(prices) / prices[:-1]
-        volatility = np.std(returns)
-
-        # Detect regime
-        if volatility > self.volatility_threshold:
-            return "volatile"
-        elif trend_strength > self.trend_threshold:
-            return "trending_bull" if slope > 0 else "trending_bear"
-        else:
-            return "ranging"
-
-    def calculate_adaptive_thresholds(
-        self,
-        data: pd.DataFrame,
-        base_confidence: float = 0.7,
-        base_strength: float = 0.4,
-    ) -> Dict[str, float]:
-        """
-        Calculate adaptive thresholds based on market regime and performance.
-
-        Args:
-            data: Market data
-            base_confidence: Base confidence threshold
-            base_strength: Base signal strength threshold
-
-        Returns:
-            Dictionary with adaptive thresholds
-        """
-        regime = self.detect_market_regime(data)
-
-        # Base adjustments by regime
-        regime_adjustments = {
-            "trending_bull": {"confidence": 0.9, "strength": 0.8},
-            "trending_bear": {"confidence": 0.9, "strength": 0.8},
-            "ranging": {
-                "confidence": 1.1,
-                "strength": 1.2,
-            },  # Higher thresholds in ranging markets
-            "volatile": {
-                "confidence": 1.2,
-                "strength": 1.3,
-            },  # Much higher in volatile markets
-            "unknown": {"confidence": 1.0, "strength": 1.0},
-        }
-
-        adjustment = regime_adjustments.get(
-            regime, {"confidence": 1.0, "strength": 1.0}
-        )
-
-        # Performance-based adaptation
-        performance_adjustment = self._calculate_performance_adjustment()
-
-        confidence_threshold = (
-            base_confidence
-            * adjustment["confidence"]
-            * performance_adjustment["confidence"]
-        )
-        signal_strength_threshold = (
-            base_strength * adjustment["strength"] * performance_adjustment["strength"]
-        )
-
-        # Ensure reasonable bounds
-        confidence_threshold = np.clip(confidence_threshold, 0.5, 0.9)
-        signal_strength_threshold = np.clip(signal_strength_threshold, 0.2, 0.7)
-
-        thresholds = {
-            "confidence_threshold": confidence_threshold,
-            "signal_strength_threshold": signal_strength_threshold,
-            "regime": regime,
-            "performance_adjustment": performance_adjustment,
-        }
-
-        # Store for performance tracking
-        self.threshold_history.append(thresholds)
-
-        return thresholds
-
-    def _calculate_performance_adjustment(self) -> Dict[str, float]:
-        """
-        Calculate threshold adjustments based on recent performance.
-
-        Returns:
-            Performance-based adjustment factors
-        """
-        if len(self.signal_history) < 10:
-            return {"confidence": 1.0, "strength": 1.0}
-
-        recent_signals = self.signal_history[-20:]  # Last 20 signals
-        win_rate = sum(1 for s in recent_signals if s.get("profitable", False)) / len(
-            recent_signals
-        )
-
-        # Adjust thresholds based on win rate
-        if win_rate > 0.6:  # Good performance, can be less strict
-            adjustment = 0.9
-        elif win_rate < 0.4:  # Poor performance, be more strict
-            adjustment = 1.1
-        else:
-            adjustment = 1.0
-
-        return {"confidence": adjustment, "strength": adjustment}
-
-    def update_performance(self, signal_result: Dict[str, Any]):
-        """
-        Update performance tracking with signal result.
-
-        Args:
-            signal_result: Result of executed signal
-        """
-        self.signal_history.append(signal_result)
-
-        # Keep memory limited
-        if len(self.signal_history) > self.performance_memory:
-            self.signal_history = self.signal_history[-self.performance_memory :]
-
-
-class WalkForwardAnalyzer:
-    """Walk-forward analysis for strategy validation and parameter optimization."""
-
-    def __init__(
-        self, train_window: int = 252, test_window: int = 63, step_size: int = 21
-    ):
-        """
-        Initialize walk-forward analyzer.
-
-        Args:
-            train_window: Number of days for training/optimization
-            test_window: Number of days for testing
-            step_size: Number of days to advance each step
-        """
-        self.train_window = train_window
-        self.test_window = test_window
-        self.step_size = step_size
-
-        # Analysis results storage
-        self.walk_forward_results = []
-        self.performance_metrics = []
-
-    def run_walk_forward_analysis(
-        self, data: pd.DataFrame, strategy_adapter: "ActionSignalGuideAdapter"
-    ) -> Dict[str, Any]:
-        """
-        Run complete walk-forward analysis.
-
-        Args:
-            data: Full historical dataset
-            strategy_adapter: Strategy adapter to test
-
-        Returns:
-            Analysis results and metrics
-        """
-        if len(data) < self.train_window + self.test_window:
-            raise ValueError("Insufficient data for walk-forward analysis")
-
-        results = []
-        start_date = data.index[0]
-
-        # Slide through data with expanding window
-        for i in range(
-            0, len(data) - self.train_window - self.test_window + 1, self.step_size
-        ):
-            train_end = i + self.train_window
-            test_end = train_end + self.test_window
-
-            if test_end > len(data):
-                break
-
-            # Split data
-            train_data = data.iloc[i:train_end]
-            test_data = data.iloc[train_end:test_end]
-
-            # Optimize parameters on training data
-            optimal_params = self._optimize_parameters(train_data, strategy_adapter)
-
-            # Test parameters on test data
-            test_result = self._evaluate_parameters(
-                test_data, strategy_adapter, optimal_params
-            )
-
-            # Store results
-            result = {
-                "train_period": (train_data.index[0], train_data.index[-1]),
-                "test_period": (test_data.index[0], test_data.index[-1]),
-                "optimal_params": optimal_params,
-                "test_performance": test_result,
-                "train_end_date": train_data.index[-1],
-                "test_end_date": test_data.index[-1],
-            }
-
-            results.append(result)
-
-        self.walk_forward_results = results
-
-        # Calculate overall metrics
-        overall_metrics = self._calculate_overall_metrics(results)
-
-        return {
-            "walk_forward_results": results,
-            "overall_metrics": overall_metrics,
-            "analysis_summary": self._generate_analysis_summary(
-                results, overall_metrics
-            ),
-        }
-
-    def _optimize_parameters(
-        self, train_data: pd.DataFrame, strategy_adapter: "ActionSignalGuideAdapter"
-    ) -> Dict[str, float]:
-        """
-        Optimize strategy parameters on training data.
-
-        Args:
-            train_data: Training dataset
-            strategy_adapter: Strategy adapter
-
-        Returns:
-            Optimal parameters
-        """
-        # Simple parameter optimization - in practice, this would use more sophisticated methods
-        best_params = {"confidence_threshold": 0.7, "signal_strength_threshold": 0.4}
-        best_sharpe = -float("inf")
-
-        # Test different parameter combinations
-        confidence_levels = [0.6, 0.7, 0.8]
-        strength_levels = [0.3, 0.4, 0.5]
-
-        for conf in confidence_levels:
-            for strength in strength_levels:
-                # Temporarily set parameters
-                original_params = strategy_adapter.hyperparameters.copy()
-                strategy_adapter.hyperparameters.update(
-                    {
-                        "confidence_threshold": conf,
-                        "signal_strength_threshold": strength,
-                    }
-                )
-
-                # Evaluate performance
-                performance = self._backtest_on_data(train_data, strategy_adapter)
-                sharpe = performance.get("sharpe_ratio", -float("inf"))
-
-                if sharpe > best_sharpe:
-                    best_sharpe = sharpe
-                    best_params = {
-                        "confidence_threshold": conf,
-                        "signal_strength_threshold": strength,
-                    }
-
-                # Restore original parameters
-                strategy_adapter.hyperparameters = original_params
-
-        return best_params
-
-    def _evaluate_parameters(
-        self,
-        test_data: pd.DataFrame,
-        strategy_adapter: "ActionSignalGuideAdapter",
-        params: Dict[str, float],
-    ) -> Dict[str, Any]:
-        """
-        Evaluate parameters on test data.
-
-        Args:
-            test_data: Test dataset
-            strategy_adapter: Strategy adapter
-            params: Parameters to evaluate
-
-        Returns:
-            Performance metrics
-        """
-        # Set parameters
-        original_params = strategy_adapter.hyperparameters.copy()
-        strategy_adapter.hyperparameters.update(params)
-
-        # Run backtest
-        performance = self._backtest_on_data(test_data, strategy_adapter)
-
-        # Restore original parameters
-        strategy_adapter.hyperparameters = original_params
-
-        return performance
-
-    def _backtest_on_data(
-        self, data: pd.DataFrame, strategy_adapter: "ActionSignalGuideAdapter"
-    ) -> Dict[str, Any]:
-        """
-        Run simplified backtest on data.
-
-        Args:
-            data: Data to backtest on
-            strategy_adapter: Strategy adapter
-
-        Returns:
-            Performance metrics
-        """
-        returns = []
-        current_position = 0
-
-        for i in range(len(data)):
-            current_data = data.iloc[: i + 1]
-            signal = strategy_adapter.generate_signal(current_data, current_position)
-
-            if signal["action"] == "buy" and current_position <= 0:
-                current_position = 1
-                entry_price = current_data["close"].iloc[-1]
-            elif signal["action"] == "sell" and current_position >= 0:
-                current_position = -1
-                entry_price = current_data["close"].iloc[-1]
-            elif signal["action"] == "hold":
-                pass
-
-            # Calculate daily return (simplified)
-            if i > 0:
-                daily_return = (
-                    current_data["close"].iloc[-1] - current_data["close"].iloc[-2]
-                ) / current_data["close"].iloc[-2]
-                returns.append(daily_return * current_position)
-
-        # Calculate basic metrics
-        if returns:
-            returns_array = np.array(returns)
-            total_return = np.prod(1 + returns_array) - 1
-            volatility = np.std(returns_array)
-            sharpe_ratio = total_return / volatility if volatility > 0 else 0
-        else:
-            total_return = 0
-            volatility = 0
-            sharpe_ratio = 0
-
-        return {
-            "total_return": total_return,
-            "volatility": volatility,
-            "sharpe_ratio": sharpe_ratio,
-            "num_trades": len(
-                [r for r in returns if abs(r) > 0.001]
-            ),  # Rough trade count
-        }
-
-    def _calculate_overall_metrics(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """
-        Calculate overall walk-forward metrics.
-
-        Args:
-            results: Individual walk-forward results
-
-        Returns:
-            Overall performance metrics
-        """
-        if not results:
-            return {}
-
-        test_performances = [r["test_performance"] for r in results]
-
-        # Calculate averages
-        avg_total_return = np.mean([p["total_return"] for p in test_performances])
-        avg_sharpe = np.mean([p["sharpe_ratio"] for p in test_performances])
-        avg_volatility = np.mean([p["volatility"] for p in test_performances])
-
-        # Calculate consistency metrics
-        sharpe_ratios = [p["sharpe_ratio"] for p in test_performances]
-        sharpe_consistency = (
-            np.std(sharpe_ratios) / abs(np.mean(sharpe_ratios))
-            if np.mean(sharpe_ratios) != 0
-            else float("inf")
-        )
-
-        return {
-            "average_total_return": avg_total_return,
-            "average_sharpe_ratio": avg_sharpe,
-            "average_volatility": avg_volatility,
-            "sharpe_consistency": sharpe_consistency,
-            "num_periods": len(results),
-            "positive_periods": sum(
-                1 for p in test_performances if p["sharpe_ratio"] > 0
-            ),
-        }
-
-    def _generate_analysis_summary(
-        self, results: List[Dict[str, Any]], overall_metrics: Dict[str, Any]
-    ) -> str:
-        """
-        Generate human-readable analysis summary.
-
-        Args:
-            results: Walk-forward results
-            overall_metrics: Overall metrics
-
-        Returns:
-            Analysis summary text
-        """
-        summary = f"""
-Walk-Forward Analysis Summary:
-============================
-Total Analysis Periods: {overall_metrics.get('num_periods', 0)}
-Positive Periods: {overall_metrics.get('positive_periods', 0)}
-
-Performance Metrics:
-- Average Total Return: {overall_metrics.get('average_total_return', 0):.4f}
-- Average Sharpe Ratio: {overall_metrics.get('average_sharpe_ratio', 0):.4f}
-- Sharpe Consistency: {overall_metrics.get('sharpe_consistency', 0):.4f}
-
-Analysis indicates {'good' if overall_metrics.get('sharpe_consistency', 1) < 0.5 else 'poor'} parameter stability.
-"""
-
-        return summary.strip()
 
 
 class StrategyAdapter(Protocol):
@@ -1234,26 +538,38 @@ class ActionSignalGuideAdapter:
         )
 
         self.config = config or {}
-        # Always create our own config for ActionSignalGuide - ignore passed config
-        # Create config object with debug mode - force minimal setup
-        guide_config = ActionSignalGuideConfig(
-            debug_short_mode=True,  # Enable debug short mode for faster processing
-            short_mode_recognizer_limit=5,  # Limit to 5 recognizers for speed
-            guidance_level=ActionSignalGuideConfig().guidance_level,  # Use default guidance level
-            enable_parallel_processing=False,  # Disable parallel for stability
-            enable_candlestick_patterns=True,
-            enable_fibonacci_patterns=False,  # Disable for speed
-            enable_gann_patterns=False,  # Disable for speed
-            enable_wave_patterns=False,  # Disable for speed
-            enable_harmonic_patterns=False,  # Disable for speed
-            enable_oscillator_patterns=True,
-            enable_volume_patterns=False,  # Disable for speed
-            enable_bollinger_patterns=True,
-            enable_adx_patterns=False,  # Disable for speed
-            enable_granville_patterns=False,  # Disable for speed
-            enable_heikin_ashi_patterns=False,  # Disable for speed
-            enable_dow_theory_patterns=False,  # Disable for speed
-        )
+        # Respect a provided ActionSignalGuideConfig or dict, otherwise create a debug-light config
+        if isinstance(self.config, ActionSignalGuideConfig):
+            guide_config = self.config
+        elif isinstance(self.config, dict):
+            # Overlay defaults with provided dict but ensure debug fast-mode is enabled for backtests
+            guide_config = ActionSignalGuideConfig(**self.config)
+            # If not explicitly set, enable debug behavior for speed
+            if not getattr(guide_config, "debug_short_mode", False):
+                guide_config.debug_short_mode = True
+                guide_config.short_mode_recognizer_limit = min(
+                    guide_config.short_mode_recognizer_limit, 5
+                )
+        else:
+            # Create config object with debug mode - force minimal setup
+            guide_config = ActionSignalGuideConfig(
+                debug_short_mode=True,  # Enable debug short mode for faster processing
+                short_mode_recognizer_limit=5,  # Limit to 5 recognizers for speed
+                guidance_level=ActionSignalGuideConfig().guidance_level,  # Use default guidance level
+                enable_parallel_processing=False,  # Disable parallel for stability
+                enable_candlestick_patterns=True,
+                enable_fibonacci_patterns=False,  # Disable for speed
+                enable_gann_patterns=False,  # Disable for speed
+                enable_wave_patterns=False,  # Disable for speed
+                enable_harmonic_patterns=False,  # Disable for speed
+                enable_oscillator_patterns=True,
+                enable_volume_patterns=False,  # Disable for speed
+                enable_bollinger_patterns=True,
+                enable_adx_patterns=False,  # Disable for speed
+                enable_granville_patterns=False,  # Disable for speed
+                enable_heikin_ashi_patterns=False,  # Disable for speed
+                enable_dow_theory_patterns=False,  # Disable for speed
+            )
         print(
             f"Created ActionSignalGuideConfig with enable_candlestick_patterns={guide_config.enable_candlestick_patterns}"
         )
@@ -1269,6 +585,7 @@ class ActionSignalGuideAdapter:
             "confidence_threshold": 0.6,  # Require 60% confidence for signals
             "signal_strength_threshold": 0.3,  # Require 30% signal strength
             "max_signals_per_bar": 5,
+            "force_accept_signals": False,  # If True, bypass filters and accept valid signals
         }
 
         # Signal statistics tracking
@@ -1283,8 +600,33 @@ class ActionSignalGuideAdapter:
         self._batch_signals_cache = None
 
         # Risk management components
-        self.risk_manager = RiskManager()
-        self.threshold_manager = DynamicThresholdManager()
+        self.risk_manager = BacktestRiskManager({"test_mode": True})
+        # When running inside backtests we want to relax risk checks for diagnostic runs;
+        # enable test_mode by default for this adapter to avoid aggressive gating.
+        try:
+            self.risk_manager.test_mode = True
+        except Exception:
+            pass
+
+        # Initialize ThresholdManager with default config for signal management
+        threshold_config = type(
+            "ThresholdConfig",
+            (),
+            {
+                "continuous_to_discrete_threshold": 0.01,
+                "adaptive_threshold_mode": True,
+                "threshold_volatility_multiplier": 1.0,
+                "min_action_threshold": 0.001,
+                "max_action_threshold": 1.0,
+                "regime_detection_window": 50,
+                "threshold_adaptation_rate": 0.1,
+                "performance_memory_size": 100,
+                "trend_detection_threshold": 0.001,
+                "volatility_detection_threshold": 0.02,
+            },
+        )()
+        self.threshold_manager = ThresholdManager(threshold_config)
+
         self.walk_forward_analyzer = WalkForwardAnalyzer()
         self.active_positions = {}  # Track open positions with stop levels
 
@@ -1303,6 +645,20 @@ class ActionSignalGuideAdapter:
         # Phase 3-1: シグナル品質向上 - 統合フィルタ
         self.integrated_filter = IntegratedSignalFilter()
 
+        # Backtest-time: 緩和された基準を使用してより多くのシグナルを検証できるようにする
+        # - permissive_mode にして初期評価を緩くする
+        # - バックテストでは初期閾値を下げて実際の取引生成を確認する
+        try:
+            self.integrated_filter.filter_criteria.permissive_mode = True
+            self.integrated_filter.filter_criteria.min_quality_score = 0.45
+            self.integrated_filter.filter_criteria.min_confidence_score = 0.55
+            # Keep adaptive filtering ON so it can revert later if needed
+            self.integrated_filter.filter_criteria.adaptive_filtering = True
+        except Exception:
+            # If for some reason the filter object doesn't have the expected attributes,
+            # we just continue with defaults to avoid crashing the backtest
+            pass
+
     def _calculate_dynamic_thresholds(self, data: pd.DataFrame) -> Dict[str, float]:
         """Calculate dynamic thresholds using advanced threshold manager with caching."""
         # Create cache key
@@ -1314,7 +670,31 @@ class ActionSignalGuideAdapter:
             return cached_result
 
         # Use the advanced threshold manager for better adaptation
-        thresholds = self.threshold_manager.calculate_adaptive_thresholds(data)
+        # Phase 3: Lower base thresholds to allow more signals while maintaining quality
+        # Use hyperparameters override when present so experiments/backtests can set
+        # desired baselines (e.g. for more permissive testing).
+        base_confidence = self.hyperparameters.get("confidence_threshold", 0.6)
+        base_strength = self.hyperparameters.get("signal_strength_threshold", 0.3)
+        # If in backtest/test mode, allow tests to override computed thresholds
+        # using hyperparameters (safer for diagnostics) to avoid overly strict
+        # dynamic thresholds during controlled debugging runs.
+        if getattr(self, "risk_manager", None) is not None and getattr(
+            self.risk_manager, "test_mode", False
+        ):
+            thresholds = {
+                "confidence_threshold": base_confidence,
+                "signal_strength_threshold": base_strength,
+            }
+            try:
+                print(
+                    f"[DEBUG-ADAPTER-THRESHOLDS] Using test_mode override thresholds: confidence={base_confidence:.3f}, strength={base_strength:.3f}"
+                )
+            except Exception:
+                pass
+        else:
+            thresholds = self.threshold_manager.calculate_adaptive_signal_thresholds(
+                data, base_confidence=base_confidence, base_strength=base_strength
+            )
 
         result = {
             "confidence_threshold": thresholds["confidence_threshold"],
@@ -1323,6 +703,12 @@ class ActionSignalGuideAdapter:
 
         # Cache the result
         self.thresholds_cache.set(cache_key, result)
+        try:
+            print(
+                f"[DEBUG-ADAPTER-THRESHOLDS] base_confidence={base_confidence:.3f}, base_strength={base_strength:.3f}, thresholds={{'confidence':{result['confidence_threshold']:.3f}, 'strength':{result['signal_strength_threshold']:.3f}}}"
+            )
+        except Exception:
+            pass
         return result
 
     def _calculate_market_volatility(self, data: pd.DataFrame) -> float:
@@ -1447,11 +833,28 @@ class ActionSignalGuideAdapter:
         self.active_positions[position_id] = position_data
         return position_id
 
+    def _log_and_return(
+        self, result: Dict[str, Any], tag: str = "ADAPTER-RET"
+    ) -> Dict[str, Any]:
+        """Log the adapter return and return the provided result.
+
+        This is a lightweight helper allowing consistent debug prints for the
+        numerous return locations inside signal generation.
+        """
+        try:
+            print(f"[DEBUG-ADAPTER-RETURN] {tag}: {result}")
+        except Exception:
+            # Don't let logging cause a secondary failure
+            pass
+        return result
+
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
     ) -> Dict[str, Any]:
         """Generate signal using Action Signal Guide with dynamic thresholds and risk management."""
         try:
+            # Debug: ensure adapter generate_signal is being called
+            print(f"[DEBUG-ADAPTER-GEN] Called generate_signal for index {len(data)-1}")
             # Calculate dynamic thresholds based on current market conditions
             dynamic_thresholds = self._calculate_dynamic_thresholds(data)
             current_confidence_threshold = dynamic_thresholds["confidence_threshold"]
@@ -1464,23 +867,38 @@ class ActionSignalGuideAdapter:
             # Use the last index of current data (current bar)
             current_index = len(data) - 1
             signals = self.guide.generate_signals(data, current_index)
+            print(
+                f"[DEBUG-ADAPTER-SIGCNT] idx={current_index} signals_count={len(signals) if signals is not None else 0}"
+            )
+
+            # Debug: log any non-neutral signals to trace behavior
+            if signals:
+                try:
+                    latest = signals[-1]
+                    print(
+                        f"[DEBUG-ADAPTER] {current_index} signals={len(signals)} latest: direction={latest.direction:.3f}, confidence={latest.confidence:.3f}, strength={abs(latest.direction):.3f}"
+                    )
+                except Exception:
+                    print(
+                        f"[DEBUG-ADAPTER] {current_index} signals exist but could not read details"
+                    )
 
             # Debug: print signal information (only for significant signals and not too frequently)
-            if signals and current_index % 500 == 0:  # Print only every 500 bars
-                print(f"Generated {len(signals)} signals at index {current_index}")
-                print(
-                    f"Dynamic thresholds: confidence={current_confidence_threshold:.3f}, strength={current_strength_threshold:.3f}"
-                )
-                print(f"Market volatility: {market_volatility:.3f}")
-                for i, signal in enumerate(signals[:3]):  # Show only first 3 signals
+            if current_index % 100 == 0:  # Print every 100 bars for debugging
+                print(f"[{current_index}] Generated {len(signals)} signals")
+                if signals:
                     print(
-                        f"  Signal {i}: direction={signal.direction:.3f}, confidence={signal.confidence:.3f}, type={signal.signal_type}"
+                        f"  First signal: direction={signals[0].direction:.3f}, confidence={signals[0].confidence:.3f}"
                     )
+                print(
+                    f"  Dynamic thresholds: confidence={current_confidence_threshold:.3f}, strength={current_strength_threshold:.3f}"
+                )
+                print(f"  Market volatility: {market_volatility:.3f}")
 
             if not signals:
                 self.signal_stats["hold_signals"] += 1
                 self.signal_stats["total_signals"] += 1
-                return {"action": "hold"}  # Hold
+                return self._log_and_return({"action": "hold"}, "no_signals")  # Hold
 
             # Use the most recent signal (last in the list)
             latest_signal = signals[-1]
@@ -1491,17 +909,34 @@ class ActionSignalGuideAdapter:
             direction = latest_signal.direction
             confidence = latest_signal.confidence
 
+            print(
+                f"[DEBUG] Latest signal: direction={direction:.3f}, confidence={confidence:.3f}, strength={abs(direction):.3f}"
+            )  # Debug output
+            print(
+                f"[DEBUG] Thresholds: confidence_threshold={current_confidence_threshold:.3f}, strength_threshold={current_strength_threshold:.3f}"
+            )  # Debug output
+
             # Apply dynamic confidence threshold
             if confidence < current_confidence_threshold:
+                print(
+                    f"[DEBUG] Signal filtered by confidence threshold: {confidence:.3f} < {current_confidence_threshold:.3f}"
+                )  # Debug output
                 self.signal_stats["hold_signals"] += 1
                 self.signal_stats["total_signals"] += 1
-                return {"action": "hold"}  # Hold if confidence too low
+                return self._log_and_return(
+                    {"action": "hold"}, "confidence_filtered"
+                )  # Hold if confidence too low
 
             # Apply dynamic signal strength threshold
             if abs(direction) < current_strength_threshold:
+                print(
+                    f"[DEBUG] Signal filtered by strength threshold: {abs(direction):.3f} < {current_strength_threshold:.3f}"
+                )  # Debug output
                 self.signal_stats["hold_signals"] += 1
                 self.signal_stats["total_signals"] += 1
-                return {"action": "hold"}  # Hold if signal too weak
+                return self._log_and_return(
+                    {"action": "hold"}, "strength_filtered"
+                )  # Hold if signal too weak
 
             # Risk management: Check if position should be opened
             signal_strength = abs(direction) * confidence  # Combined signal strength
@@ -1536,21 +971,42 @@ class ActionSignalGuideAdapter:
                 action = "hold"
                 self.signal_stats["hold_signals"] += 1
                 self.signal_stats["total_signals"] += 1
-                return {"action": "hold"}
+                return self._log_and_return({"action": "hold"}, "neutral")
 
             # Risk management: Validate position opening
-            if not self.risk_manager.should_open_position(
-                signal_strength, market_volatility, self.risk_manager.portfolio_value
-            ):
+            current_portfolio_value = getattr(self.risk_manager, "portfolio_value", 1.0)
+            # If forcing acceptance, skip risk checks
+            if self.hyperparameters.get("force_accept_signals"):
+                should_open = True
+            else:
+                should_open = True
+                try:
+                    should_open = self.risk_manager.should_open_position(
+                        signal_strength, market_volatility, current_portfolio_value
+                    )
+                except AttributeError as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Risk manager missing attribute in should_open_position: {e}"
+                    )
+                    should_open = getattr(self.risk_manager, "test_mode", False)
+                except Exception as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Unexpected error calling should_open_position: {e}"
+                    )
+                    should_open = getattr(self.risk_manager, "test_mode", False)
+            if not should_open:
                 self.signal_stats[
                     "hold_signals"
                 ] += 1  # Override to hold due to risk management
                 self.signal_stats["total_signals"] += 1
-                return {
-                    "action": "hold",
-                    "risk_filtered": True,
-                    "reason": "risk_management_blocked",
-                }
+                return self._log_and_return(
+                    {
+                        "action": "hold",
+                        "risk_filtered": True,
+                        "reason": "risk_management_blocked",
+                    },
+                    "risk_filtered",
+                )
 
             # Phase 3-1: シグナル品質向上 - 統合フィルタ適用
             signal_data = {
@@ -1571,17 +1027,28 @@ class ActionSignalGuideAdapter:
                 signal_data, data
             )
 
+            print(
+                f"[DEBUG] Integrated filter result: should_accept={filter_result.should_accept}, quality_score={filter_result.quality_score:.3f}"
+            )  # Debug output
+            if not filter_result.should_accept:
+                print(
+                    f"[DEBUG] Signal filtered by integrated filter: reasons={filter_result.filter_reasons}"
+                )  # Debug output
+
             # フィルタ結果に基づいて最終決定
             if not filter_result.should_accept:
                 self.signal_stats["hold_signals"] += 1
                 self.signal_stats["total_signals"] += 1
-                return {
-                    "action": "hold",
-                    "quality_filtered": True,
-                    "filter_reasons": filter_result.filter_reasons,
-                    "quality_score": filter_result.quality_score,
-                    "recommended_action": filter_result.recommended_action,
-                }
+                return self._log_and_return(
+                    {
+                        "action": "hold",
+                        "quality_filtered": True,
+                        "filter_reasons": filter_result.filter_reasons,
+                        "quality_score": filter_result.quality_score,
+                        "recommended_action": filter_result.recommended_action,
+                    },
+                    "quality_filtered",
+                )
 
             # フィルタ通過時の品質情報を追加
             signal_data.update(
@@ -1593,30 +1060,105 @@ class ActionSignalGuideAdapter:
             )
 
             # Calculate position size and stop levels
-            position_size = self.risk_manager.get_risk_adjusted_position_size(
-                signal_strength, market_volatility
-            )
-            stop_loss, take_profit = self.risk_manager.calculate_atr_stop_levels(
-                data, current_price, position_type
-            )
+            # Defensive call: some RiskManager implementations do not expose
+            # get_risk_adjusted_position_size (e.g. repository-level RiskManager).
+            # Use fallback sizing in that case to keep backtests running.
+            if self.hyperparameters.get("force_accept_signals"):
+                position_size = 0.05
+            elif hasattr(self.risk_manager, "get_risk_adjusted_position_size"):
+                try:
+                    position_size = self.risk_manager.get_risk_adjusted_position_size(
+                        signal_strength, market_volatility
+                    )
+                except AttributeError as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Risk manager method raised AttributeError in get_risk_adjusted_position_size: {e}"
+                    )
+                    base_max = getattr(self.risk_manager, "max_position_size", 0.1)
+                    position_size = min(
+                        base_max, max(0.01, signal_strength * (1.0 - market_volatility))
+                    )
+                except Exception as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Unexpected error calling get_risk_adjusted_position_size: {e}"
+                    )
+                    base_max = getattr(self.risk_manager, "max_position_size", 0.1)
+                    position_size = min(
+                        base_max, max(0.01, signal_strength * (1.0 - market_volatility))
+                    )
+            else:
+                # Fallback: basic percentage sizing based on signal strength and volatility
+                base_max = getattr(self.risk_manager, "max_position_size", 0.1)
+                try:
+                    position_size = min(
+                        base_max, max(0.01, signal_strength * (1.0 - market_volatility))
+                    )
+                except Exception:
+                    position_size = 0.01
+            if self.hyperparameters.get("force_accept_signals"):
+                # Provide generous stop/take profit when forcing acceptance
+                stop_loss = current_price * 0.98
+                take_profit = current_price * 1.02
+            elif hasattr(self.risk_manager, "calculate_atr_stop_levels"):
+                try:
+                    (
+                        stop_loss,
+                        take_profit,
+                    ) = self.risk_manager.calculate_atr_stop_levels(
+                        data, current_price, position_type
+                    )
+                except AttributeError as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Risk manager method raised AttributeError in calculate_atr_stop_levels: {e}"
+                    )
+                    stop_pct = 0.02
+                    if position_type == "long":
+                        stop_loss = current_price * (1 - stop_pct)
+                        take_profit = current_price * (1 + stop_pct * 2)
+                    else:
+                        stop_loss = current_price * (1 + stop_pct)
+                        take_profit = current_price * (1 - stop_pct * 2)
+                except Exception as e:
+                    print(
+                        f"[DEBUG-ADAPTER-RISK] Unexpected error calling calculate_atr_stop_levels: {e}"
+                    )
+                    stop_pct = 0.02
+                    if position_type == "long":
+                        stop_loss = current_price * (1 - stop_pct)
+                        take_profit = current_price * (1 + stop_pct * 2)
+                    else:
+                        stop_loss = current_price * (1 + stop_pct)
+                        take_profit = current_price * (1 - stop_pct * 2)
+            else:
+                # Fallback: simple percentage-based stop/take levels
+                stop_pct = 0.02
+                if position_type == "long":
+                    stop_loss = current_price * (1 - stop_pct)
+                    take_profit = current_price * (1 + stop_pct * 2)
+                else:
+                    stop_loss = current_price * (1 + stop_pct)
+                    take_profit = current_price * (1 - stop_pct * 2)
 
             self.signal_stats["total_signals"] += 1
 
-            return {
-                "action": action,
-                "confidence": confidence,
-                "direction": direction,
-                "signal_type": latest_signal.signal_type,
-                "description": latest_signal.description,
-                "dynamic_thresholds": dynamic_thresholds,
-                "position_size": position_size,
-                "stop_loss": stop_loss,
-                "take_profit": take_profit,
-                "risk_adjusted": True,
-                "quality_score": filter_result.quality_score,
-                "quality_level": filter_result.overall_quality.value,
-                "filter_passed": True,
-            }
+            return self._log_and_return(
+                {
+                    "action": action,
+                    "confidence": confidence,
+                    "direction": direction,
+                    "signal_type": latest_signal.signal_type,
+                    "description": latest_signal.description,
+                    "dynamic_thresholds": dynamic_thresholds,
+                    "position_size": position_size,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "risk_adjusted": True,
+                    "quality_score": filter_result.quality_score,
+                    "quality_level": filter_result.overall_quality.value,
+                    "filter_passed": True,
+                },
+                "accepted",
+            )
 
         except Exception as e:
             # Enhanced error handling with classification and logging
@@ -1654,12 +1196,15 @@ class ActionSignalGuideAdapter:
             # Fallback: return hold signal with error metadata
             self.signal_stats["hold_signals"] += 1
             self.signal_stats["total_signals"] += 1
-            return {
-                "action": "hold",
-                "error": True,
-                "error_category": error_category,
-                "error_message": error_msg[:100],  # Truncate long messages
-            }
+            return self._log_and_return(
+                {
+                    "action": "hold",
+                    "error": True,
+                    "error_category": error_category,
+                    "error_message": error_msg[:100],  # Truncate long messages
+                },
+                "error",
+            )
 
     def generate_signals_batch(self, data: pd.DataFrame) -> List[Dict[str, Any]]:
         """
@@ -1743,9 +1288,9 @@ class ActionSignalGuideAdapter:
         direction = signal.direction
         confidence = signal.confidence
 
-        # Use more conservative thresholds for backtesting
-        confidence_threshold = 0.6  # Require 60% confidence
-        strength_threshold = 0.3  # Require 30% signal strength
+        # Use configured hyperparameters for thresholds (defaults kept as fallback)
+        confidence_threshold = self.hyperparameters.get("confidence_threshold", 0.6)
+        strength_threshold = self.hyperparameters.get("signal_strength_threshold", 0.3)
 
         # Apply confidence threshold
         if confidence < confidence_threshold:

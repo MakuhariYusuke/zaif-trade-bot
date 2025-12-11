@@ -13,6 +13,7 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.metrics.statistics import calculate_distribution_stats
 from ztb.utils.data_utils import load_csv_data_optimized
 
 
@@ -138,11 +139,13 @@ def run_v434_2_quick_backtest(model_path: str, data_path: str, episodes: int = 1
     print(f"\n{'='*80}")
     print("V434.2 BACKTEST RESULTS")
     print(f"{'='*80}")
+
+    reward_stats = calculate_distribution_stats(episode_rewards)
+    return_stats = calculate_distribution_stats(episode_returns)
+
+    print(f"Average Reward:  {reward_stats['mean']:7.2f} ± {reward_stats['std']:6.2f}")
     print(
-        f"Average Reward:  {np.mean(episode_rewards):7.2f} ± {np.std(episode_rewards):6.2f}"
-    )
-    print(
-        f"Average Return:  {np.mean(episode_returns):6.2f}% ± {np.std(episode_returns):5.2f}%"
+        f"Average Return:  {return_stats['mean']:6.2f}% ± {return_stats['std']:5.2f}%"
     )
     print(f"Best Return:     {np.max(episode_returns):6.2f}%")
     print(f"Worst Return:    {np.min(episode_returns):6.2f}%")
@@ -165,10 +168,10 @@ def run_v434_2_quick_backtest(model_path: str, data_path: str, episodes: int = 1
         "model_name": Path(model_path).stem,
         "version": "v434.2_quick_test",
         "timestamp": datetime.now().isoformat(),
-        "avg_reward": float(np.mean(episode_rewards)),
-        "std_reward": float(np.std(episode_rewards)),
-        "avg_return": float(np.mean(episode_returns)),
-        "std_return": float(np.std(episode_returns)),
+        "avg_reward": reward_stats["mean"],
+        "std_reward": reward_stats["std"],
+        "avg_return": return_stats["mean"],
+        "std_return": return_stats["std"],
         "best_return": float(np.max(episode_returns)),
         "worst_return": float(np.min(episode_returns)),
         "total_trades": int(total_trades),

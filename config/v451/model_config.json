@@ -1,0 +1,36 @@
+{
+    "model_name": "sac_v451_phase7_regime_aware",
+    "algorithm": "SAC",
+    "version": "v451",
+    "description": "Phase 7 'Chronos' model with Cyclical Time Features and Volatility Regime Awareness",
+    "env_config": {
+        "initial_balance": 10000.0,
+        "leverage": 1.0,
+        "min_trade_size": 0.001,
+        "trading_fee": 0.001,
+        "window_size": 60,
+        "reward_type": "hybrid",
+        "feature_set": "v451"
+    },
+    "training_config": {
+        "total_timesteps": 20000,
+        "learning_rate": 0.0003,
+        "buffer_size": 100000,
+        "batch_size": 256,
+        "ent_coef": "auto",
+        "gamma": 0.99,
+        "tau": 0.005,
+        "train_freq": 1,
+        "gradient_steps": 1
+    },
+    "feature_engineering": {
+        "class": "SACv451FeatureEngineering",
+        "new_features": [
+            "hour_sin", "hour_cos",
+            "minute_sin", "minute_cos",
+            "day_of_week_sin", "day_of_week_cos",
+            "volatility_rank",
+            "regime_trend", "regime_volatility"
+        ]
+    }
+}

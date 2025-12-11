@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\metrics\__init__.py
+# hypothesis_version: 6.148.6
+
+['autocorrelation', 'kurtosis', 'max_drawdown', 'profit_factor', 'seasonality_analysis', 'sharpe_ratio', 'skewness', 'sortino_ratio', 'test_normality']

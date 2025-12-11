@@ -121,8 +121,8 @@ class MultimodalConfig:
     # サブ設定
     data: DataConfig = field(default_factory=DataConfig)
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
-    model: ModelConfig = field(default_factory=ModelConfig)
-    training: TrainingConfig = field(default_factory=TrainingConfig)
+    model: MultimodalModelConfig = field(default_factory=MultimodalModelConfig)
+    training: MultimodalTrainingConfig = field(default_factory=MultimodalTrainingConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
     hardware: HardwareConfig = field(default_factory=HardwareConfig)
     api: APIConfig = field(default_factory=APIConfig)
@@ -163,8 +163,8 @@ class MultimodalConfig:
         # 各サブ設定を作成
         data_config = DataConfig(**config_dict.get("data", {}))
         features_config = FeaturesConfig(**config_dict.get("features", {}))
-        model_config = ModelConfig(**config_dict.get("model", {}))
-        training_config = TrainingConfig(**config_dict.get("training", {}))
+        model_config = MultimodalModelConfig(**config_dict.get("model", {}))
+        training_config = MultimodalTrainingConfig(**config_dict.get("training", {}))
         evaluation_config = EvaluationConfig(**config_dict.get("evaluation", {}))
         hardware_config = HardwareConfig(**config_dict.get("hardware", {}))
         api_config = APIConfig(**config_dict.get("api", {}))

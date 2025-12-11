@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import scipy.stats as stats
 
+from ztb.adaptation.monitoring.types import RiskMetrics
 from ztb.metrics.metrics import test_normality
 from ztb.trading.production.virtual_portfolio_manager import (
     PortfolioMetrics,
@@ -43,19 +44,7 @@ class StatisticalTest:
     interpretation: str = ""
 
 
-@dataclass
-class RiskMetrics:
-    """リスク指標"""
-
-    volatility: float
-    max_drawdown: Decimal
-    sharpe_ratio: float
-    sortino_ratio: float
-    calmar_ratio: float
-    value_at_risk_95: Decimal
-    expected_shortfall_95: Decimal
-    beta: float = 0.0  # 市場に対するベータ
-    correlation: float = 0.0  # 市場相関
+# Using canonical RiskMetrics from `ztb.adaptation.monitoring.types`
 
 
 @dataclass
@@ -244,7 +233,7 @@ class PerformanceValidator:
                 float(m.total_pnl) for m in portfolio_metrics if m.total_pnl != 0
             ]
             if len(pnl_values) >= 3:
-                normality_results = test_normality(pnl_values)
+                normality_results = test_normality(np.array(pnl_values))
                 shapiro_result = normality_results.get("shapiro_wilk", {})
                 stat = shapiro_result.get("statistic")
                 p_value = shapiro_result.get("p_value")
@@ -351,10 +340,11 @@ class PerformanceValidator:
             )
 
         # リターン計算
-        returns = self._calculate_returns(portfolio_metrics)
+        returns_list = self._calculate_returns(portfolio_metrics)
+        returns = np.array(returns_list)
 
         # ボラティリティ
-        volatility = float(np.std(returns)) if returns else 0.0
+        volatility = np.std(returns)
 
         # 最大ドローダウン
         max_drawdown = max(
@@ -362,32 +352,22 @@ class PerformanceValidator:
         )
 
         # シャープレシオ
-        excess_returns = [
-            r - self.risk_free_rate / 252 for r in returns
-        ]  # 日次リスクフリーレート
-        sharpe_ratio = (
-            float(np.mean(excess_returns) / np.std(excess_returns))
-            if excess_returns and np.std(excess_returns) > 0
-            else 0.0
-        )
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns, rf=self.risk_free_rate)
 
         # ソルティノレシオ
-        downside_returns = [r for r in returns if r < 0]
-        sortino_ratio = (
-            float(np.mean(excess_returns) / np.std(downside_returns))
-            if downside_returns
-            else 0.0
-        )
+        from ztb.metrics.metrics import sortino_ratio as calc_sortino_ratio
+
+        sortino_ratio = calc_sortino_ratio(returns, rf=self.risk_free_rate)
 
         # カルマーレシオ
-        calmar_ratio = (
-            float(np.mean(returns) * 252 / float(max_drawdown))
-            if max_drawdown > 0
-            else 0.0
-        )
+        from ztb.metrics.metrics import calmar_ratio as calc_calmar_ratio
+
+        calmar_ratio = calc_calmar_ratio(returns, rf=self.risk_free_rate)
 
         # VaRとES（95%信頼水準）
-        if returns:
+        if len(returns) > 0:
             value_at_risk_95 = Decimal(str(np.percentile(returns, 5)))
             expected_shortfall_95 = Decimal(
                 str(np.mean([r for r in returns if r <= float(value_at_risk_95)]))

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\strategy_evaluators.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.1, 0.7, 3.0, 'close', 'max_drawdown', 'risk_adjusted_return', 'sharpe_ratio', 'total_return', 'total_trades', 'volatility', 'win_rate']

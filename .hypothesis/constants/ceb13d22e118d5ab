@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\concept_drift\config.py
+# hypothesis_version: 6.148.6
+
+[0.002, 0.05, 100, 300, 1000, 5000, 'INFO', 'long', 'medium', 'short']

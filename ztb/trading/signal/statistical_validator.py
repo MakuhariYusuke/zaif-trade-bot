@@ -4,11 +4,12 @@ Phase 3統合: 統計的有意性評価
 実装完了: 2025年11月12日
 """
 
-import pandas as pd
-import numpy as np
-from scipy import stats
-from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
+import pandas as pd
+from scipy import stats
 
 from ztb.utils.logging_utils import get_logger
 
@@ -18,6 +19,7 @@ logger = get_logger(__name__)
 @dataclass
 class TradeResult:
     """取引結果のデータクラス"""
+
     entry_time: pd.Timestamp
     entry_price: float
     exit_time: Optional[pd.Timestamp] = None
@@ -34,9 +36,11 @@ class StatisticalValidator:
     def __init__(self, significance_level: float = 0.05):
         self.alpha = significance_level
 
-    def validate_signal_quality(self,
-                              trades: List[Union[TradeResult, Dict[str, Any]]],
-                              market_returns: np.ndarray) -> Dict[str, float]:
+    def validate_signal_quality(
+        self,
+        trades: List[Union[TradeResult, Dict[str, Any]]],
+        market_returns: np.ndarray,
+    ) -> Dict[str, float]:
         """
         シグナルの統計的有意性を評価
         """
@@ -45,13 +49,13 @@ class StatisticalValidator:
 
         if len(signal_returns) == 0:
             return {
-                't_statistic': 0.0,
-                'p_value': 1.0,
-                'significant': False,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 0.0,
-                'mean_return': 0.0,
-                'volatility': 0.0
+                "t_statistic": 0.0,
+                "p_value": 1.0,
+                "significant": False,
+                "sharpe_ratio": 0.0,
+                "max_drawdown": 0.0,
+                "mean_return": 0.0,
+                "volatility": 0.0,
             }
 
         # t検定で有意性を確認
@@ -64,18 +68,20 @@ class StatisticalValidator:
         max_drawdown = self._calculate_max_drawdown(signal_returns)
 
         return {
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significant': p_value < self.alpha,
-            'sharpe_ratio': sharpe_ratio,
-            'max_drawdown': max_drawdown,
-            'mean_return': np.mean(signal_returns),
-            'volatility': np.std(signal_returns)
+            "t_statistic": t_stat,
+            "p_value": p_value,
+            "significant": p_value < self.alpha,
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
+            "mean_return": np.mean(signal_returns),
+            "volatility": np.std(signal_returns),
         }
 
-    def _calculate_signal_returns(self,
-                                trades: List[Union[TradeResult, Dict[str, Any]]],
-                                market_returns: np.ndarray) -> np.ndarray:
+    def _calculate_signal_returns(
+        self,
+        trades: List[Union[TradeResult, Dict[str, Any]]],
+        market_returns: np.ndarray,
+    ) -> np.ndarray:
         """シグナルベースのリターン計算"""
         if len(trades) == 0:
             return np.array([])
@@ -88,9 +94,9 @@ class StatisticalValidator:
                 position_size = trade.position_size
             else:
                 # Dictの場合
-                pnl = trade.get('pnl', 0.0)
-                position_size = trade.get('position_size', 1.0)
-            
+                pnl = trade.get("pnl", 0.0)
+                position_size = trade.get("position_size", 1.0)
+
             if pnl is not None and position_size > 0:
                 # パーセンテージリターン = PnL / ポジションサイズ
                 return_pct = pnl / position_size
@@ -100,37 +106,21 @@ class StatisticalValidator:
 
         return np.array(signal_returns)
 
-    def _calculate_sharpe_ratio(self, returns: np.ndarray, risk_free_rate: float = 0.03) -> float:
+    def _calculate_sharpe_ratio(
+        self, returns: np.ndarray, risk_free_rate: float = 0.03
+    ) -> float:
         """シャープレシオ計算"""
-        if len(returns) == 0 or np.std(returns) == 0:
-            return 0.0
+        from ztb.metrics.metrics import sharpe_ratio
 
-        excess_returns = returns - risk_free_rate / 252  # 日次リスクフリーレート
-        return np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
+        return sharpe_ratio(returns, rf=risk_free_rate)
 
     def _calculate_max_drawdown(self, returns: np.ndarray) -> float:
         """最大ドローダウン計算"""
         if len(returns) == 0:
             return 0.0
 
-        # 累積リターンを計算
+        from ztb.metrics.metrics import max_drawdown
+
         cumulative = np.cumprod(1 + returns)
-        
-        # ランニングマックスを計算
-        running_max = np.maximum.accumulate(cumulative)
-        
-        # ドローダウンを計算: (cumulative - running_max) / running_max
-        # ドローダウンは負の値になる
-        drawdown = (cumulative - running_max) / running_max
-        
-        # NaNやinfを除去
-        drawdown = drawdown[np.isfinite(drawdown)]
-        
-        if len(drawdown) == 0:
-            return 0.0
-        
-        # 最大ドローダウン（正の値として返す）
-        # np.min(drawdown) は最も負の値、-np.min(drawdown) で正の最大ドローダウン
-        max_drawdown = -np.min(drawdown) if len(drawdown) > 0 else 0.0
-        
-        return max_drawdown
+        # ztb.metrics.max_drawdown returns negative value, convert to positive
+        return -max_drawdown(cumulative)

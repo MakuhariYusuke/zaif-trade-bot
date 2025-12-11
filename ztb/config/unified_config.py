@@ -53,6 +53,9 @@ class UnifiedConfig:
     # トレーニング設定
     training: Dict[str, Any] = field(default_factory=dict)
 
+    # 環境設定
+    environment: Dict[str, Any] = field(default_factory=dict)
+
     # 特徴量設定
     features: Dict[str, List[str]] = field(default_factory=dict)
 
@@ -112,7 +115,9 @@ class UnifiedConfig:
             elif path.suffix.lower() in [".yaml", ".yml"]:
                 format_type = ConfigFormat.YAML
             else:
-                raise ValueError(f"Unsupported file extension: {path.suffix}. Supported: .json, .yaml, .yml")
+                raise ValueError(
+                    f"Unsupported file extension: {path.suffix}. Supported: .json, .yaml, .yml"
+                )
 
         # ファイル読み込み
         try:
@@ -121,21 +126,29 @@ class UnifiedConfig:
                     try:
                         data = json.load(f)
                     except json.JSONDecodeError as e:
-                        raise json.JSONDecodeError(f"Invalid JSON format in {config_path}: {e}", e.doc, e.pos)
+                        raise json.JSONDecodeError(
+                            f"Invalid JSON format in {config_path}: {e}", e.doc, e.pos
+                        )
                 else:  # YAML
                     try:
                         data = yaml.safe_load(f)
                         if data is None:
-                            raise ValueError(f"YAML file is empty or contains only comments: {config_path}")
+                            raise ValueError(
+                                f"YAML file is empty or contains only comments: {config_path}"
+                            )
                     except yaml.YAMLError as e:
-                        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {e}")
+                        raise yaml.YAMLError(
+                            f"Invalid YAML format in {config_path}: {e}"
+                        )
         except (IOError, OSError) as e:
             raise IOError(f"Failed to read config file {config_path}: {e}")
 
         try:
             return cls.from_dict(data)
         except Exception as e:
-            raise ValueError(f"Failed to create UnifiedConfig from data in {config_path}: {e}") from e
+            raise ValueError(
+                f"Failed to create UnifiedConfig from data in {config_path}: {e}"
+            ) from e
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "UnifiedConfig":
@@ -187,6 +200,7 @@ class UnifiedConfig:
                 algorithm=str(data.get("algorithm", "unknown")).strip().lower(),
                 description=str(data.get("description", "")).strip(),
                 training=data.get("training", {}),
+                environment=data.get("environment", {}),
                 features=processed_features,
                 reward_settings=data.get("reward_settings", {}),
                 ensemble_system=data.get("ensemble_system", {}),
@@ -207,6 +221,7 @@ class UnifiedConfig:
             "algorithm": self.algorithm,
             "description": self.description,
             "training": self.training,
+            "environment": self.environment,
             "features": self.features,
             "reward_settings": self.reward_settings,
             "ensemble_system": self.ensemble_system,
@@ -253,17 +268,26 @@ class UnifiedConfig:
                 errors.append(f"Missing or empty required field: {field}")
 
         # モデル名の形式チェック
-        if self.model_name and not self.model_name.replace("_", "").replace("-", "").isalnum():
-            errors.append(f"Invalid model_name format: {self.model_name}. Use only alphanumeric, underscore, and hyphen")
+        if (
+            self.model_name
+            and not self.model_name.replace("_", "").replace("-", "").isalnum()
+        ):
+            errors.append(
+                f"Invalid model_name format: {self.model_name}. Use only alphanumeric, underscore, and hyphen"
+            )
 
         # バージョンの形式チェック
         if self.version and not self._is_valid_version(self.version):
-            errors.append(f"Invalid version format: {self.version}. Use semantic versioning (e.g., 1.0.0)")
+            errors.append(
+                f"Invalid version format: {self.version}. Use semantic versioning (e.g., 1.0.0)"
+            )
 
         # アルゴリズムのチェック
         supported_algorithms = ["sac", "ppo", "ddpg", "td3"]
         if self.algorithm and self.algorithm.lower() not in supported_algorithms:
-            errors.append(f"Unsupported algorithm: {self.algorithm}. Supported: {supported_algorithms}")
+            errors.append(
+                f"Unsupported algorithm: {self.algorithm}. Supported: {supported_algorithms}"
+            )
 
         # 特徴量のチェック
         if not self.features:
@@ -279,7 +303,9 @@ class UnifiedConfig:
                     # 特徴量名の形式チェック
                     for feature in feature_list:
                         if not isinstance(feature, str) or not feature.strip():
-                            errors.append(f"Invalid feature name in {feature_type}: {feature}")
+                            errors.append(
+                                f"Invalid feature name in {feature_type}: {feature}"
+                            )
 
         # トレーニング設定のチェック
         if not self.training:
@@ -299,7 +325,9 @@ class UnifiedConfig:
             if "base_action_penalty" in self.reward_settings:
                 penalty = self.reward_settings["base_action_penalty"]
                 if not isinstance(penalty, (int, float)) or penalty < 0:
-                    errors.append(f"base_action_penalty must be non-negative number, got: {penalty}")
+                    errors.append(
+                        f"base_action_penalty must be non-negative number, got: {penalty}"
+                    )
 
             # action_bonusesのチェック
             if "action_bonuses" in self.reward_settings:
@@ -309,15 +337,18 @@ class UnifiedConfig:
                 else:
                     for action, bonus in bonuses.items():
                         if not isinstance(bonus, (int, float)):
-                            errors.append(f"action_bonuses[{action}] must be numeric, got: {bonus}")
+                            errors.append(
+                                f"action_bonuses[{action}] must be numeric, got: {bonus}"
+                            )
 
         return errors
 
     def _is_valid_version(self, version: str) -> bool:
         """バージョンの形式を検証"""
         import re
+
         # セマンティックバージョニングの形式 (例: 1.0.0, 2.1.3-alpha)
-        pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$'
+        pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$"
         return bool(re.match(pattern, version))
 
 

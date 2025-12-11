@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\oscillator\cci.py
+# hypothesis_version: 6.148.6
+
+[0.015, 'CCI', 'cci', 'close', 'high', 'low', 'period']

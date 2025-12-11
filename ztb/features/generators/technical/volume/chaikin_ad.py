@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
@@ -54,7 +53,8 @@ class ChaikinAD(BaseFeature):
         money_flow_volume = money_flow_multiplier * df["volume"]
 
         # Calculate Chaikin AD (cumulative sum of MFV)
-        chaikin_ad = money_flow_volume.cumsum()
+        # Scale cumulative MFV by the average volume to normalize across datasets
+        chaikin_ad = money_flow_volume.cumsum() / df["volume"].mean()
 
         return pd.DataFrame({"chaikin_ad": chaikin_ad}, index=df.index)
         return result_df

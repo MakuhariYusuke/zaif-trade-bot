@@ -7,8 +7,10 @@ strict types — it provides pragmatic shims that make incremental typing easier
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     List,
@@ -23,20 +25,16 @@ from typing import (
 import numpy as np
 import pandas as pd
 
-try:
-    from stable_baselines3.common.logger import Logger
-except (ImportError, OSError):
+if TYPE_CHECKING:
+    # Static type-checking only - avoid importing heavy runtime libs during test
+    # collection to prevent unintended imports of `torch` or `stable_baselines3`.
+    from gymnasium import spaces  # type: ignore
+    from stable_baselines3.common.logger import Logger  # type: ignore
+    from torch.utils.data import DataLoader  # type: ignore
+else:
     Logger = Any
-
-try:
-    from gymnasium import spaces
-except ImportError:
-    spaces = Any  # Fallback - gymnasium is required
-
-try:
-    from torch.utils.data import DataLoader
-except (ImportError, OSError):
-    DataLoader = Any  # Fallback if torch not available
+    spaces = Any
+    DataLoader = Any
 
 # Action type for trading environments
 Action = Union[int, float, np.ndarray]
@@ -340,10 +338,24 @@ class SACLikeModelProtocol(Protocol):
 
 # Base classes for components
 class BaseComponent:
-    """Base class for all system components."""
+    """Base class for all system components.
 
-    def __init__(self, name: str = ""):
+    This base class accepts a flexible constructor to support legacy
+    code and tests that pass `config` and other kwargs into
+    component constructors. We store provided config for access
+    while remaining backward compatible.
+    """
+
+    def __init__(
+        self, name: str = "", config: Optional[Dict[str, Any]] = None, **kwargs
+    ):
         self.name = name or self.__class__.__name__
+        self.config = config or {}
+        # Allow additional keyword args passed by callers but ignore them
+        # This ensures compatibility with code creating components with
+        # extra args like 'config', 'enabled' or similar.
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def get_name(self) -> str:
         """Get component name."""
@@ -356,3 +368,61 @@ class BaseComponent:
     def get_status(self) -> Dict[str, Any]:
         """Get component status."""
         return {"name": self.name, "status": "active"}
+
+
+# --- Layer 6 optimizer & curriculum types ---
+class StageChangeEvent(TypedDict, total=False):
+    """Event payload emitted by BalanceCurriculumManager on stage changes.
+
+    Keys:
+      - previous_stage: str
+      - new_stage: str
+      - step: int
+      - emergency: bool
+    """
+
+    previous_stage: str
+    new_stage: str
+    step: int
+    emergency: bool
+
+
+class AppliedCandidateTelemetry(TypedDict, total=False):
+    """Telemetry object written to reports on applied candidate.
+
+    Keys:
+      - candidate_id: str
+      - applied_at: float (timestamp)
+      - weights: Dict[str, float]
+      - composite_score: float
+      - mean_sharpe: float
+      - mean_total_return: float
+    """
+
+    candidate_id: str
+    applied_at: float
+    weights: Dict[str, float]
+    composite_score: float
+    mean_sharpe: float
+    mean_total_return: float
+
+
+@dataclass
+class CandidateConfigDataclass:
+    config_path: str
+    candidate_id: str
+
+
+@dataclass
+class CandidateScoreDataclass:
+    candidate_id: str
+    mean_sharpe: float = 0.0
+    mean_total_return: float = 0.0
+    composite_score: float = 0.0
+    report_count: int = 0
+    run_artifacts: Optional[List[str]] = None
+
+
+# Backwards-compatible aliases used throughout the repo
+CandidateConfig = CandidateConfigDataclass
+CandidateScore = CandidateScoreDataclass

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\ops\rollup\rollup_artifacts.py
+# hypothesis_version: 6.148.6
+
+[3600, '## Acceptance Gate\n\n', '## Artifact Paths\n\n', '## Cost Estimate\n\n', '## Key Metrics\n\n', '## Performance\n\n', '**/eval_*.json', '**/gates.json', '**/metrics.json', '**/run_metadata.json', '--correlation-id', '--interval-minutes', '1.0.0', '__main__', 'acceptance', 'acceptance_gate', 'artifact_paths', 'artifacts', 'best_dsr', 'best_sharpe', 'bootstrap_p_value', 'config', 'correlation_id', 'cost_estimate', 'cost_estimate.json', 'costs', 'dsr', 'eval_files', 'evaluations', 'gate_results', 'gates_json', 'global_step', 'key', 'metadata', 'metadata_json', 'metrics', 'metrics_json', 'password', 'reason', 'reports', 'rss_peak_mb', 'rss_peaks', 'run_id', 'secret', 'sharpe', 'status', 'summary', 'summary.json', 'summary.md', 'threshold', 'timestamp', 'training', 'type', 'value', 'version', 'vram_peak_mb', 'vram_peaks', 'w', 'wall_clock_duration']

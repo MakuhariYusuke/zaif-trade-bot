@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from ztb.trading.position_manager import PositionSignal
+from ztb.utils.logging_utils import get_logger
 from ztb.utils.types import ActionType
 
 # Phase 2適応学習システムのインポート（仮定）

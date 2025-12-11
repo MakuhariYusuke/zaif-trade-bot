@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\simulation\sim_broker.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.01, 5.0, 10000.0, 10000, 30000, 'BTC', 'JPY', 'balance_btc', 'balance_jpy', 'buy', 'cancelled', 'close', 'commission', 'cumulative_pnl', 'filled', 'market', 'pending', 'pnl', 'price', 'quantity', 'rejected', 'side', 'symbol', 'symbols', 'timestamp']

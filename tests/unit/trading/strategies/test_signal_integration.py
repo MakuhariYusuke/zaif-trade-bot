@@ -4,7 +4,7 @@ Test Signal Integration - Unit tests for signal integration functionality.
 Tests the integration between technical signals and reward functions.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -23,11 +23,6 @@ class TestSignalIntegration:
     """Test cases for signal integration functionality."""
 
     @pytest.fixture
-    def mock_base_reward_function(self):
-        """Mock base reward function that returns a fixed value."""
-        return Mock(return_value=1.0)
-
-    @pytest.fixture
     def signal_guide(self):
         """Create a signal guide for testing."""
         guide = ActionSignalGuide(mode=GuidanceMode.FULL_GUIDANCE)
@@ -36,19 +31,18 @@ class TestSignalIntegration:
         return guide
 
     @pytest.fixture
-    def signal_integration(self, signal_guide, mock_base_reward_function):
+    def signal_integration(self, signal_guide):
         """Create signal integration for testing."""
         return SignalIntegration(
             signal_guide=signal_guide,
-            base_reward_function=mock_base_reward_function,
             signal_bonus_weight=0.1,
             signal_penalty_weight=0.05,
+            enable_advanced_integration=False,
         )
 
     def test_signal_integration_creation(self, signal_integration):
         """Test that signal integration is created properly."""
         assert signal_integration.signal_guide is not None
-        assert signal_integration.base_reward_function is not None
         assert signal_integration.signal_bonus_weight == 0.1
         assert signal_integration.signal_penalty_weight == 0.05
 
@@ -59,13 +53,10 @@ class TestSignalIntegration:
             [100.0, 25.0, 0.5, 105.0, 95.0]
         )  # close, rsi, macd, bb_upper, bb_lower
 
-        reward = signal_integration.integrated_reward_function(
+        reward = signal_integration.integrate_signal_reward(
+            reward=1.0,
             observation=observation,
             action=ACTION_BUY,  # BUY action
-            reward=1.0,
-            next_observation=observation,
-            done=False,
-            info={},
             step=0,
         )
 
@@ -79,13 +70,10 @@ class TestSignalIntegration:
             [110.0, 75.0, -0.5, 105.0, 95.0]
         )  # close, rsi, macd, bb_upper, bb_lower
 
-        reward = signal_integration.integrated_reward_function(
+        reward = signal_integration.integrate_signal_reward(
+            reward=1.0,
             observation=observation,
             action=ACTION_SELL,  # SELL action
-            reward=1.0,
-            next_observation=observation,
-            done=False,
-            info={},
             step=0,
         )
 
@@ -97,13 +85,10 @@ class TestSignalIntegration:
         # Create observation with strong SELL signal (RSI overbought, MACD bearish)
         observation = np.array([110.0, 75.0, -0.5, 105.0, 95.0])
 
-        reward = signal_integration.integrated_reward_function(
+        reward = signal_integration.integrate_signal_reward(
+            reward=1.0,
             observation=observation,
             action=ACTION_BUY,  # BUY action (contradicts SELL signal)
-            reward=1.0,
-            next_observation=observation,
-            done=False,
-            info={},
             step=0,
         )
 
@@ -115,13 +100,10 @@ class TestSignalIntegration:
         # Create observation with neutral signals
         observation = np.array([100.0, 50.0, 0.0, 105.0, 95.0])  # neutral signals
 
-        reward = signal_integration.integrated_reward_function(
+        reward = signal_integration.integrate_signal_reward(
+            reward=1.0,
             observation=observation,
             action=1,  # BUY action
-            reward=1.0,
-            next_observation=observation,
-            done=False,
-            info={},
             step=0,
         )
 
@@ -166,13 +148,10 @@ class TestSignalIntegration:
 
         # After some operations
         observation = np.array([100.0, 70.0, -0.5, 105.0, 95.0])
-        signal_integration.integrated_reward_function(
+        signal_integration.integrate_signal_reward(
+            reward=1.0,
             observation=observation,
             action=1,
-            reward=1.0,
-            next_observation=observation,
-            done=False,
-            info={},
             step=1,
         )
 

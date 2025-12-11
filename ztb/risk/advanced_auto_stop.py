@@ -163,9 +163,11 @@ class AdvancedAutoStop:
             prices = [p for _, p in self.price_history[-60:]]  # Last hour
             if len(prices) > 1:
                 returns = np.diff(np.log(prices))
-                self.volatility = np.std(returns) * np.sqrt(
-                    60
-                )  # Annualized hourly volatility
+                from ztb.metrics.technical import calculate_volatility_from_returns
+
+                self.volatility = calculate_volatility_from_returns(
+                    returns, window=len(returns), annualize=True, trading_days=60
+                )  # Hourly volatility (scaled from minute returns)
 
     def update_trade_result(self, pnl: float, trade_info: Dict[str, Any]) -> None:
         """

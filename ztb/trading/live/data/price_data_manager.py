@@ -62,30 +62,21 @@ class PriceDataManager:
 
     def calculate_rsi(self, prices: List[float], period: int = 14) -> float:
         """Calculate RSI (Relative Strength Index)."""
-        if len(prices) < period + 1:
-            return self.config["rsi_neutral_value"]
+        from ztb.features.generators.technical.momentum.rsi import compute_rsi
 
-        try:
-            # Create DataFrame for compute_rsi
-            df = pd.DataFrame({"close": prices})
-            from ztb.utils.ta import compute_rsi  # type: ignore[import-untyped]
-
-            rsi_series = compute_rsi(df, period=period)
-            return (
-                float(rsi_series.iloc[-1])
-                if not rsi_series.empty
-                else cast(float, self.config["rsi_neutral_value"])
-            )
-        except Exception as e:
-            logger.warning(f"Failed to calculate RSI: {e}")
-            return self.config["rsi_neutral_value"]
+        df = pd.DataFrame({"close": prices})
+        rsi_series = compute_rsi(df, period=period)
+        last_val = rsi_series.iloc[-1]
+        return float(last_val) if not pd.isna(last_val) else 50.0
 
     def calculate_sma(self, prices: List[float], period: int) -> float:
         """Calculate Simple Moving Average."""
-        if len(prices) < period:
-            return sum(prices) / len(prices) if prices else 0.0
+        from ztb.features.generators.technical.trend.sma import compute_sma
 
-        return sum(prices[-period:]) / period
+        df = pd.DataFrame({"close": prices})
+        sma_series = compute_sma(df, period=period)
+        last_val = sma_series.iloc[-1]
+        return float(last_val) if not pd.isna(last_val) else 0.0
 
     def compute_live_features(self, prices: List[float]) -> Dict[str, float]:
         """Compute live technical indicators."""

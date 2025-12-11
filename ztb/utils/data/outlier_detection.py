@@ -99,6 +99,53 @@ def _detect_outliers_zscore_impl(
     return outliers
 
 
+def calculate_z_score_single(
+    value: float,
+    history: np.ndarray,
+    min_std: float = 1e-8,
+    method: str = "std",
+) -> float:
+    """
+    Calculate the z-score of a single value against a numeric history array.
+
+    Args:
+        value: Value to compute Z-score for.
+        history: 1D numeric history to compute mean/std from.
+        min_std: Minimum standard deviation to avoid division by zero.
+
+    Returns:
+        Z-score as a float (value - mean) / std. If history is empty or std is
+        extremely small, return 0.0 to indicate no statistical significance.
+    """
+    if history is None or len(history) == 0:
+        return 0.0
+
+    # Allow history to be provided as list-like
+    arr = np.asarray(history, dtype=float)
+    if arr.size == 0:
+        return 0.0
+
+    if method == "std":
+        mean = np.nanmean(arr)
+        std = np.nanstd(arr)
+        if std < min_std:
+            return 0.0
+        z = (value - mean) / std
+        return float(z)
+    elif method == "mad":
+        # Modified z-score using median and MAD for robustness
+        median = np.nanmedian(arr)
+        mad = np.nanmedian(np.abs(arr - median))
+        if mad < min_std:
+            return 0.0
+        # 0.6745 is a constant to make mad comparable to std for normal distributions
+        z = 0.6745 * (value - median) / mad
+        return float(z)
+    else:
+        raise ValueError(f"Unknown method for z-score: {method}")
+    return float(z)
+
+
 def detect_outliers_isolation_forest(
     data: pd.DataFrame, columns: list[str], contamination: float = 0.1
 ) -> pd.DataFrame:

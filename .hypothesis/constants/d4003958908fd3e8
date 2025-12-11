@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\real_data_validator.py
+# hypothesis_version: 6.148.6
+
+[0.0, 'AnomalyDetector', 'DataIntegrityChecker', 'DataQualityMetrics', 'DataSource', 'DataValidationConfig', 'LiveTradeRecord', 'LiveValidationConfig', 'StatisticalValidator', 'ValidationResult', 'mean_score', 'std_score']
