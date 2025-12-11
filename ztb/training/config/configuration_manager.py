@@ -14,12 +14,14 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+
 # from enum import Enum  # duplicate import removed
 from pathlib import Path
 from typing import Dict, List, Optional, Protocol, TypeVar, Union
 
 import jsonschema
 
+from ztb.config.schema import EnvironmentConfig, TrainingConfig
 from ztb.types.common import ConfigDict, ConfigValue
 
 ConfigProfile = Dict[str, ConfigValue]

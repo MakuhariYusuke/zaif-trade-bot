@@ -5,10 +5,10 @@ BacktestAnalyzerクラスの各機能を包括的にテスト
 """
 
 import json
-import pytest
 import sys
 from pathlib import Path
-from unittest.mock import patch, mock_open
+
+import pytest
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
@@ -27,11 +27,11 @@ class TestBacktestAnalyzer:
             "initial_balance": 10000,
             "final_portfolio_value": 12000,
             "total_steps": 1000,
-            "portfolio_values": [10000, 11000, 12000]
+            "portfolio_values": [10000, 11000, 12000],
         }
 
         test_file = tmp_path / "test_backtest.json"
-        with open(test_file, 'w') as f:
+        with open(test_file, "w") as f:
             json.dump(test_data, f)
 
         analyzer = BacktestAnalyzer(str(test_file))
@@ -45,7 +45,7 @@ class TestBacktestAnalyzer:
         test_data = {"portfolio_values": [10000, 11000, 12000]}
 
         test_file = tmp_path / "test_backtest.json"
-        with open(test_file, 'w') as f:
+        with open(test_file, "w") as f:
             json.dump(test_data, f)
 
         with pytest.raises(ValueError, match="Missing required fields"):
@@ -57,7 +57,7 @@ class TestBacktestAnalyzer:
         analyzer.data = {
             "initial_balance": 10000,
             "final_balance": 12000,
-            "portfolio_values": [10000, 11000, 12000]
+            "portfolio_values": [10000, 11000, 12000],
         }
 
         analyzer._validate_data()
@@ -69,9 +69,7 @@ class TestBacktestAnalyzer:
     def test_calculate_win_rate_with_trade_pnls(self):
         """trade_pnlsを使用した勝率計算テスト"""
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
-        analyzer.data = {
-            "trade_pnls": [100, -50, 200, -25, 150]  # 勝ち3、負け2
-        }
+        analyzer.data = {"trade_pnls": [100, -50, 200, -25, 150]}  # 勝ち3、負け2
 
         win_rate = analyzer._calculate_win_rate()
         assert win_rate == 0.6  # 3/5 = 0.6
@@ -79,10 +77,7 @@ class TestBacktestAnalyzer:
     def test_calculate_win_rate_with_winning_trades(self):
         """winning_trades/total_tradesを使用した勝率計算テスト"""
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
-        analyzer.data = {
-            "winning_trades": 7,
-            "total_trades": 10
-        }
+        analyzer.data = {"winning_trades": 7, "total_trades": 10}
 
         win_rate = analyzer._calculate_win_rate()
         assert win_rate == 0.7  # 7/10 = 0.7
@@ -100,7 +95,7 @@ class TestBacktestAnalyzer:
         }
 
         win_rate = analyzer._calculate_win_rate()
-        assert win_rate == 2/3  # 2 winning trades out of 3 actual trades
+        assert win_rate == 2 / 3  # 2 winning trades out of 3 actual trades
 
     def test_calculate_win_rate_no_data(self):
         """データがない場合の勝率計算テスト"""
@@ -113,9 +108,7 @@ class TestBacktestAnalyzer:
     def test_calculate_risk_metrics_with_valid_data(self):
         """有効なデータでのリスク指標計算テスト"""
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
-        analyzer.data = {
-            "portfolio_history": [10000, 10200, 10100, 10300, 10200]
-        }
+        analyzer.data = {"portfolio_history": [10000, 10200, 10100, 10300, 10200]}
 
         metrics = analyzer.calculate_risk_metrics()
 
@@ -131,9 +124,7 @@ class TestBacktestAnalyzer:
     def test_calculate_risk_metrics_empty_portfolio(self):
         """空のportfolio_historyでのリスク指標計算テスト"""
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
-        analyzer.data = {
-            "portfolio_history": []
-        }
+        analyzer.data = {"portfolio_history": []}
 
         metrics = analyzer.calculate_risk_metrics()
 
@@ -146,7 +137,7 @@ class TestBacktestAnalyzer:
             "initial_portfolio": 10000,
             "final_portfolio": 12000,
             "portfolio_history": [10000, 11000, 12000],
-            "trade_pnls": [1000, 2000]
+            "trade_pnls": [1000, 2000],
         }
 
         results = analyzer.analyze()
@@ -163,10 +154,11 @@ class TestBacktestAnalyzer:
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
 
         import numpy as np
+
         returns = np.array([0.01, 0.02, -0.01, 0.015])
 
         sharpe = analyzer.sharpe_ratio(returns, risk_free_rate=0.0, annualize=False)
-        expected = np.mean(returns) / np.std(returns)
+        expected = np.mean(returns) / np.std(returns, ddof=1)
 
         assert abs(sharpe - expected) < 0.001
 
@@ -182,12 +174,15 @@ class TestBacktestAnalyzer:
 
         assert abs(max_dd - expected_dd) < 0.001
 
-    @pytest.mark.parametrize("test_data,expected_win_rate", [
-        ({"trade_pnls": [100, -50, 200]}, 2/3),
-        ({"winning_trades": 5, "total_trades": 8}, 5/8),
-        ({"trades": [{"pnl": 100}, {"pnl": -50}, {"pnl": 200}]}, 2/3),
-        ({}, 0.0),
-    ])
+    @pytest.mark.parametrize(
+        "test_data,expected_win_rate",
+        [
+            ({"trade_pnls": [100, -50, 200]}, 2 / 3),
+            ({"winning_trades": 5, "total_trades": 8}, 5 / 8),
+            ({"trades": [{"pnl": 100}, {"pnl": -50}, {"pnl": 200}]}, 2 / 3),
+            ({}, 0.0),
+        ],
+    )
     def test_calculate_win_rate_parametrized(self, test_data, expected_win_rate):
         """パラメータ化された勝率計算テスト"""
         analyzer = BacktestAnalyzer.__new__(BacktestAnalyzer)
@@ -209,7 +204,7 @@ def test_backtest_analysis():
     test_files = [
         "backtest_results_sac_v444_2.json",
         "backtest_results_sac_v444.json",
-        "backtest_results.json"
+        "backtest_results.json",
     ]
 
     for test_file in test_files:
@@ -256,6 +251,7 @@ def test_backtest_analysis():
         except Exception as e:
             print(f"✗ エラー: {e}")
             import traceback
+
             traceback.print_exc()
 
 
@@ -268,18 +264,13 @@ def test_win_rate_calculation():
     test_cases = [
         {
             "name": "trade_pnls使用",
-            "data": {
-                "trade_pnls": [0.01, -0.005, 0.02, -0.01, 0.015]
-            },
-            "expected_win_rate": 0.6  # 3勝2敗
+            "data": {"trade_pnls": [0.01, -0.005, 0.02, -0.01, 0.015]},
+            "expected_win_rate": 0.6,  # 3勝2敗
         },
         {
             "name": "winning_trades/total_trades使用",
-            "data": {
-                "winning_trades": 7,
-                "total_trades": 10
-            },
-            "expected_win_rate": 0.7
+            "data": {"winning_trades": 7, "total_trades": 10},
+            "expected_win_rate": 0.7,
         },
         {
             "name": "trades配列使用",
@@ -288,16 +279,12 @@ def test_win_rate_calculation():
                     {"type": "BUY", "pnl": 0.01},
                     {"type": "SELL", "pnl": -0.005},
                     {"type": "BUY", "pnl": 0.02},
-                    {"type": "FINAL_CLOSE", "pnl": 0.0}  # このトレードは除外されるべき
+                    {"type": "FINAL_CLOSE", "pnl": 0.0},  # このトレードは除外されるべき
                 ]
             },
-            "expected_win_rate": 2/3  # 2勝1敗（FINAL_CLOSE除外）
+            "expected_win_rate": 2 / 3,  # 2勝1敗（FINAL_CLOSE除外）
         },
-        {
-            "name": "データなし",
-            "data": {},
-            "expected_win_rate": 0.0
-        }
+        {"name": "データなし", "data": {}, "expected_win_rate": 0.0},
     ]
 
     for test_case in test_cases:

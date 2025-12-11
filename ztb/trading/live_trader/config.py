@@ -41,6 +41,7 @@ class LiveTradingOptions:
     metrics_port: int = 8000
     enable_health_check: bool = False
     health_port: int = 8080
+    allow_production: bool = False
 
     @classmethod
     def from_cli_args(cls, args: argparse.Namespace) -> "LiveTradingOptions":
@@ -71,6 +72,10 @@ class LiveTradingOptions:
             metrics_port=metrics_port,
             enable_health_check=enable_health,
             health_port=health_port,
+            allow_production=(
+                os.getenv("ZTB_ALLOW_PRODUCTION", "false").lower() == "true"
+                or getattr(args, "allow_production", False)
+            ),
         )
 
 
@@ -130,6 +135,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Enable dry run mode - no real trades will be executed",
+    )
+    parser.add_argument(
+        "--allow-production",
+        action="store_true",
+        help="Explicitly allow live production trading (requires API credentials and attention).",
     )
     return parser
 

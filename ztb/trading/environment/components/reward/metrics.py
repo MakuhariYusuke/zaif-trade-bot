@@ -13,6 +13,7 @@ from typing import List, Optional
 
 import numpy as np
 
+from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 
@@ -85,19 +86,9 @@ class LongTermMetrics:
         Returns:
             Sharpe ratio. Returns 0.0 if std is zero or insufficient data.
         """
-        if len(returns) < 2:
-            return 0.0
-
-        excess_returns = returns - risk_free_rate
-        mean_excess = excess_returns.mean()
-        std_excess = excess_returns.std()
-
-        if std_excess == 0 or not np.isfinite(std_excess):
-            return 0.0
-
-        sharpe = (mean_excess / std_excess) * np.sqrt(annualization_factor)
-
-        return sharpe if np.isfinite(sharpe) else 0.0
+        return sharpe_ratio(
+            returns, rf=risk_free_rate, period_per_year=int(annualization_factor)
+        )
 
     @staticmethod
     def max_drawdown(portfolio_values: np.ndarray) -> float:
@@ -119,19 +110,7 @@ class LongTermMetrics:
             Maximum drawdown as negative decimal (e.g., -0.25 for 25% drawdown).
             Returns 0.0 if no drawdown or insufficient data.
         """
-        if len(portfolio_values) < 2:
-            return 0.0
-
-        # Calculate running maximum (peak)
-        cummax = np.maximum.accumulate(portfolio_values)
-
-        # Calculate drawdowns from peak
-        drawdowns = (portfolio_values - cummax) / cummax
-
-        # Max drawdown is the minimum (most negative) value
-        max_dd = drawdowns.min()
-
-        return max_dd if np.isfinite(max_dd) else 0.0
+        return max_drawdown(portfolio_values)
 
     @staticmethod
     def action_balance_stability(action_history: List[int], window: int = 100) -> float:
@@ -242,7 +221,7 @@ class LongTermMetrics:
                     'reward', 'stability', 'drawdown', 'sharpe'
 
         Returns:
-            Sustainability score ∈ [0, 1+]
+            Sustainability score in [0, 1+]
         """
         # Default weights
         default_weights = {

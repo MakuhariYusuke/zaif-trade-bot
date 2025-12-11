@@ -4,8 +4,8 @@ SAC v445.2 Backtest Results Analyzer
 簡易的なバックテスト結果分析ツール
 """
 
+import argparse
 import json
-import sys
 from typing import Any, Dict, Optional
 
 
@@ -179,14 +179,26 @@ def analyze_backtest_results(results_file: str, training_file: Optional[str] = N
     print("=" * 80)
 
 
-def main():
+def main() -> int:
     """メイン関数"""
-    if len(sys.argv) < 2:
-        print("Usage: python analyze_backtest_simple.py <results_file> [training_file]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="簡易バックテスト結果分析")
+    parser.add_argument("results_file", help="Backtest results JSON file")
+    parser.add_argument(
+        "training_file",
+        nargs="?",
+        default=None,
+        help="Optional training config/results JSON file",
+    )
+    from ztb.utils.cli import add_common_cli_args
 
-    results_file = sys.argv[1]
-    training_file = sys.argv[2] if len(sys.argv) > 2 else None
+    add_common_cli_args(parser)
+    args = parser.parse_args()
+    from ztb.utils.cli import configure_logging_from_args
+
+    configure_logging_from_args(args)
+
+    results_file = args.results_file
+    training_file = args.training_file
 
     try:
         analyze_backtest_results(results_file, training_file)
@@ -195,8 +207,11 @@ def main():
         import traceback
 
         traceback.print_exc()
-        sys.exit(1)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

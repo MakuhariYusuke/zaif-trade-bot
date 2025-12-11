@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\backtest\config.py
+# hypothesis_version: 6.148.6
+
+[0.0005, 0.001, 0.05, 0.1, 0.2, 100000.0, 'adx', 'bollinger', 'candlestick', 'commission', 'dow_theory', 'fibonacci', 'gann', 'granville', 'harmonic', 'heikin_ashi', 'initial_capital', 'max_drawdown', 'max_position_size', 'oscillator', 'slippage', 'stop_loss', 'take_profit', 'volume', 'wave']

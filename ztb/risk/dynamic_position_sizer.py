@@ -6,7 +6,6 @@ Dynamic Position Sizing for SAC v435
 
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
@@ -99,7 +98,9 @@ class DynamicPositionSizer:
             f"Position sizing: base={base_position:.4f}, adjusted={adjusted_size:.4f}, "
             f"vol_mult={self.volatility_multiplier:.2f}, dd_mult={self.drawdown_multiplier:.2f}, "
             f"regime_mult={self.market_regime_multiplier:.2f}"
-        ) if hasattr(self, '_sizing_step_count') and self._sizing_step_count % 20 == 0 else None
+        ) if hasattr(
+            self, "_sizing_step_count"
+        ) and self._sizing_step_count % 20 == 0 else None
 
         return adjusted_size
 
@@ -131,7 +132,11 @@ class DynamicPositionSizer:
             returns = recent_prices.pct_change().dropna()
 
             if len(returns) > 0:
-                hist_volatility = returns.std() * np.sqrt(252)  # 年率化
+                from ztb.metrics.technical import calculate_volatility_from_returns
+
+                hist_volatility = calculate_volatility_from_returns(
+                    returns, window=len(returns), annualize=True
+                )
                 # ボラティリティが大きいほどポジションを小さく
                 volatility_factor = 1.0 / (1.0 + hist_volatility * 5.0)
                 self.volatility_multiplier = max(0.1, min(2.0, volatility_factor))

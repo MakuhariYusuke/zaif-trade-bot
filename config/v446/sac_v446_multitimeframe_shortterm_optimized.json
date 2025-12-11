@@ -3,7 +3,6 @@
   "algorithm": "sac",
   "model_name": "sac_v446_multitimeframe_shortterm_optimized",
   "description": "SAC v446 Multi-Timeframe Short-Term Optimized Configuration: Enhanced for short-term profitability with CPU optimization and advanced features",
-
   "training": {
     "total_timesteps": 10000,
     "algorithm": "SAC",
@@ -12,7 +11,7 @@
       "learning_rate_schedule": {
         "type": "cosine",
         "initial_lr": 0.0003,
-        "final_lr": 0.00003,
+        "final_lr": 3e-05,
         "warmup_steps": 5000
       },
       "buffer_size": 1000000,
@@ -27,7 +26,6 @@
       "ent_coef_init": 1.0,
       "target_entropy": "auto"
     },
-
     "data_config": {
       "data_path": "data/btc_jpy_real_dataset.csv",
       "validation_split": 0.2,
@@ -35,88 +33,21 @@
       "use_real_data": true,
       "multitimeframe_mixing": {
         "enabled": true,
-        "timeframes": ["1m", "5m", "15m", "1h"],
-        "mixing_ratio": [0.4, 0.3, 0.2, 0.1],
+        "timeframes": [
+          "1m",
+          "5m",
+          "15m",
+          "1h"
+        ],
+        "mixing_ratio": [
+          0.4,
+          0.3,
+          0.2,
+          0.1
+        ],
         "synthetic_shortterm_generation": true
       }
     },
-
-    "environment": {
-      "initial_balance": 10000,
-      "transaction_cost": 0.001,
-      "max_position_size": 1.0,
-      "random_start": true,
-      "use_continuous_actions": true,
-      "continuous_to_discrete_threshold": 0.3333,
-      "continuous_to_discrete_threshold_neg": -0.3333,
-      "curriculum_stage": "multitimeframe_shortterm",
-
-      "feature_engineering": {
-        "enabled": true,
-        "adaptive_selection": true,
-        "correlation_reduction": true,
-        "correlation_threshold": 0.85,
-        "max_features": 120,
-        "shortterm_focus": true
-      },
-
-      "market_regime_detection": {
-        "enabled": true,
-        "regime_window": 50,
-        "trend_threshold": 0.02,
-        "volatility_threshold": 0.15,
-        "shortterm_bias": true
-      },
-
-      "risk_management": {
-        "dynamic_position_sizing": true,
-        "max_drawdown_limit": 0.05,
-        "shortterm_risk_adjustment": true
-      },
-
-      "multi_timeframe_integration": {
-        "enabled": true,
-        "timeframes": ["1m", "5m", "15m", "1h"],
-        "weighting_scheme": "adaptive",
-        "convergence_analysis": true,
-        "shortterm_bias_calculation": true
-      },
-
-      "behavior_optimization": {
-        "action_balance_target": 0.4,
-        "entropy_regularization": 0.0,
-        "action_smoothing": 0.15,
-        "consistency_penalty": 0.01,
-        "balance_penalty": 0.0,
-        "shortterm_action_boost": true
-      },
-
-      "reward_settings": {
-        "reward_scale": 100.0,
-        "reward_clip_min": -200.0,
-        "reward_clip_max": 200.0,
-        "use_simple_reward": false,
-        "profit_bonuses": {
-          "base_profit_atr_coefficient": 1.5,
-          "base_profit_portfolio_coefficient": 1.2,
-          "profit_multipliers": [2.0, 0.6, 0.4],
-          "trading_bonus": 0.01,
-          "trading_bonus_multiplier": 4.0
-        },
-        "action_bonuses": {
-          "buy_action_bonus": -0.01,
-          "sell_action_bonus": 0.02,
-          "hold_action_bonus": 0.01,
-          "balance_penalty_scale": 300.0
-        },
-        "shortterm_rewards": {
-          "quick_profit_bonus": 0.05,
-          "momentum_alignment_bonus": 0.03,
-          "volatility_penalty": -0.02
-        }
-      }
-    },
-
     "cpu_optimization": {
       "enabled": true,
       "parallel_processing": {
@@ -136,7 +67,6 @@
         "gpu_fallback_layer": true
       }
     },
-
     "checkpoint_management": {
       "enabled": true,
       "auto_save_interval": 1000,
@@ -144,7 +74,6 @@
       "resume_from_checkpoint": true,
       "checkpoint_validation": true
     },
-
     "logging_optimization": {
       "structured_logging": true,
       "log_level_control": "dynamic",
@@ -152,7 +81,6 @@
       "memory_tracking": true,
       "step_logging_interval": 100
     },
-
     "advanced_market_regime": {
       "enabled": true,
       "detector_type": "advanced",
@@ -161,7 +89,6 @@
       "regime_smoothing": 0.3,
       "confidence_threshold": 0.6,
       "shortterm_regime_focus": true,
-
       "regime_specific_params": {
         "strong_bull_trend": {
           "ent_coef": 0.01,
@@ -291,7 +218,7 @@
         },
         "high_frequency_noise": {
           "ent_coef": 0.06,
-          "learning_rate": 0.00008,
+          "learning_rate": 8e-05,
           "reward_scale": 0.7,
           "action_balance_target": 0.5,
           "position_size_multiplier": 0.3,
@@ -310,48 +237,189 @@
       }
     }
   },
-
   "features": {
     "type": "V4FeatureExtractor",
     "config": {
       "feature_columns": [
-        "close", "open", "high", "low", "volume",
-        "Realized_Volatility_1m", "Realized_Volatility_5m", "Realized_Volatility_15m",
-        "Tick_Volume_1m", "Order_Flow_1m", "Price_Velocity_1m", "Price_Acceleration_1m",
-        "Micro_Volatility_1m", "Liquidity_Surge_1m",
-        "ADX_M1", "ADX_M5", "ADX_M15", "ADX_H1", "ADX_H4", "ADX_D1",
-        "PlusDI", "PlusDI_M1", "PlusDI_M5", "PlusDI_M15", "PlusDI_H1", "PlusDI_H4", "PlusDI_D1",
-        "MinusDI", "MinusDI_M1", "MinusDI_M5", "MinusDI_M15", "MinusDI_H1", "MinusDI_H4", "MinusDI_D1",
-        "MACD", "PSAR", "PSAR_Trend",
-        "EMACross_Diff", "EMACross_Diff_M1", "EMACross_Diff_M5", "EMACross_Diff_M15", "EMACross_Diff_H1", "EMACross_Diff_H4", "EMACross_Diff_D1",
-        "EMACross_Signal", "EMACross_Signal_M1", "EMACross_Signal_M5", "EMACross_Signal_M15", "EMACross_Signal_H1", "EMACross_Signal_H4", "EMACross_Signal_D1",
-        "TEMA", "ema_5", "VWAP", "rolling_mean_20",
-        "HeikinAshi_Color_M1", "HeikinAshi_Color_M5", "HeikinAshi_Color_M15", "HeikinAshi_Color_H1", "HeikinAshi_Color_H4", "HeikinAshi_Color_D1",
-        "RSI", "RSI_M1", "RSI_M5", "RSI_M15", "RSI_H1", "RSI_H4", "RSI_D1",
-        "CCI", "Stochastic", "Stochastic_Trend_Alignment", "Stochastic_Signal_Strength", "Williams_R", "MFI",
-        "ATR", "ATR_M1", "ATR_M5", "ATR_M15", "ATR_H1", "ATR_H4", "ATR_D1",
-        "ATR_simplified", "ATR_simplified_M1", "ATR_simplified_M5", "ATR_simplified_M15", "ATR_simplified_H1", "ATR_simplified_H4", "ATR_simplified_D1",
-        "Normalized_ATR", "atr_10", "HV", "BB_Position", "Bollinger_Percent_B", "BB_Width",
-        "Bollinger_Band_Expansion", "Keltner_Position", "Keltner_Width",
-        "Donchian_Pos_20", "Donchian_Squeeze_Ratio", "Donchian_Width_Rel_20",
-        "Ichimoku_Tenkan", "Ichimoku_Kijun", "Ichimoku_Senkou_A", "Ichimoku_Senkou_B", "Ichimoku_Chikou",
-        "Ichimoku_Composite_Signal", "Ichimoku_Price_Cloud_Distance", "Ichimoku_Cloud_Thickness", "Ichimoku_Trend",
-        "Ichimoku_Time_Theory", "Ichimoku_Wave_Theory", "Ichimoku_Value_Measurement", "Ichimoku_Momentum_Confirmation",
-        "Ichimoku_Cloud_Slope", "Ichimoku_Sanyaku_Kouten", "Ichimoku_Cloud_Expansion",
-        "Ichimoku_Composite_Signal_M1", "Ichimoku_Composite_Signal_M5", "Ichimoku_Composite_Signal_M15", "Ichimoku_Composite_Signal_H1", "Ichimoku_Composite_Signal_H4", "Ichimoku_Composite_Signal_D1",
-        "Ichimoku_Trend_M1", "Ichimoku_Trend_M5", "Ichimoku_Trend_M15", "Ichimoku_Trend_H1", "Ichimoku_Trend_H4", "Ichimoku_Trend_D1",
-        "Ichimoku_Cloud_Thickness_M1", "Ichimoku_Cloud_Thickness_M5", "Ichimoku_Cloud_Thickness_M15", "Ichimoku_Cloud_Thickness_H1", "Ichimoku_Cloud_Thickness_H4", "Ichimoku_Cloud_Thickness_D1",
-        "Ichimoku_Price_Cloud_Distance_M1", "Ichimoku_Price_Cloud_Distance_M5", "Ichimoku_Price_Cloud_Distance_M15", "Ichimoku_Price_Cloud_Distance_H1", "Ichimoku_Price_Cloud_Distance_H4", "Ichimoku_Price_Cloud_Distance_D1",
-        "Supertrend", "Supertrend_Direction", "Supertrend_Strength", "Supertrend_Trend_Duration",
-        "OBV", "CMF", "Chaikin_AD", "Chaikin_AD_Oscillator", "PriceVolumeCorr", "Volume_Profile_Distribution", "Volume_Profile_Value_Area_High", "liquidity_surge",
-        "ROC", "ZScore", "ReturnMA_Short", "ReturnStdDev", "Kalman_Residual_Norm",
-        "Ultimate_Oscillator", "TSI", "KST",
-        "micro_volatility", "price_velocity", "price_acceleration",
-        "Time_Monthly_Cycle", "Time_Quarterly_Cycle",
-        "optimizer_learning_rate", "optimizer_learning_rate_trend", "optimizer_gradient_norm_avg", "optimizer_gradient_norm_std",
-        "optimizer_step_size_avg", "optimizer_momentum_avg", "optimizer_training_progress", "optimizer_loss_trend",
-        "optimizer_update_frequency_avg", "optimizer_stability_score", "optimizer_adaptive_lr_score",
-        "news_sentiment_score", "news_volume_trend", "market_attention_index"
+        "close",
+        "open",
+        "high",
+        "low",
+        "volume",
+        "Realized_Volatility_1m",
+        "Realized_Volatility_5m",
+        "Realized_Volatility_15m",
+        "Tick_Volume_1m",
+        "Order_Flow_1m",
+        "Price_Velocity_1m",
+        "Price_Acceleration_1m",
+        "Micro_Volatility_1m",
+        "Liquidity_Surge_1m",
+        "ADX_M1",
+        "ADX_M5",
+        "ADX_M15",
+        "ADX_H1",
+        "ADX_H4",
+        "ADX_D1",
+        "PlusDI",
+        "PlusDI_M1",
+        "PlusDI_M5",
+        "PlusDI_M15",
+        "PlusDI_H1",
+        "PlusDI_H4",
+        "PlusDI_D1",
+        "MinusDI",
+        "MinusDI_M1",
+        "MinusDI_M5",
+        "MinusDI_M15",
+        "MinusDI_H1",
+        "MinusDI_H4",
+        "MinusDI_D1",
+        "MACD",
+        "PSAR",
+        "PSAR_Trend",
+        "EMACross_Diff",
+        "EMACross_Diff_M1",
+        "EMACross_Diff_M5",
+        "EMACross_Diff_M15",
+        "EMACross_Diff_H1",
+        "EMACross_Diff_H4",
+        "EMACross_Diff_D1",
+        "EMACross_Signal",
+        "EMACross_Signal_M1",
+        "EMACross_Signal_M5",
+        "EMACross_Signal_M15",
+        "EMACross_Signal_H1",
+        "EMACross_Signal_H4",
+        "EMACross_Signal_D1",
+        "TEMA",
+        "ema_5",
+        "VWAP",
+        "rolling_mean_20",
+        "HeikinAshi_Color_M1",
+        "HeikinAshi_Color_M5",
+        "HeikinAshi_Color_M15",
+        "HeikinAshi_Color_H1",
+        "HeikinAshi_Color_H4",
+        "HeikinAshi_Color_D1",
+        "RSI",
+        "RSI_M1",
+        "RSI_M5",
+        "RSI_M15",
+        "RSI_H1",
+        "RSI_H4",
+        "RSI_D1",
+        "CCI",
+        "Stochastic",
+        "Stochastic_Trend_Alignment",
+        "Stochastic_Signal_Strength",
+        "Williams_R",
+        "MFI",
+        "ATR",
+        "ATR_M1",
+        "ATR_M5",
+        "ATR_M15",
+        "ATR_H1",
+        "ATR_H4",
+        "ATR_D1",
+        "ATR_simplified",
+        "ATR_simplified_M1",
+        "ATR_simplified_M5",
+        "ATR_simplified_M15",
+        "ATR_simplified_H1",
+        "ATR_simplified_H4",
+        "ATR_simplified_D1",
+        "Normalized_ATR",
+        "atr_10",
+        "HV",
+        "BB_Position",
+        "Bollinger_Percent_B",
+        "BB_Width",
+        "Bollinger_Band_Expansion",
+        "Keltner_Position",
+        "Keltner_Width",
+        "Donchian_Pos_20",
+        "Donchian_Squeeze_Ratio",
+        "Donchian_Width_Rel_20",
+        "Ichimoku_Tenkan",
+        "Ichimoku_Kijun",
+        "Ichimoku_Senkou_A",
+        "Ichimoku_Senkou_B",
+        "Ichimoku_Chikou",
+        "Ichimoku_Composite_Signal",
+        "Ichimoku_Price_Cloud_Distance",
+        "Ichimoku_Cloud_Thickness",
+        "Ichimoku_Trend",
+        "Ichimoku_Time_Theory",
+        "Ichimoku_Wave_Theory",
+        "Ichimoku_Value_Measurement",
+        "Ichimoku_Momentum_Confirmation",
+        "Ichimoku_Cloud_Slope",
+        "Ichimoku_Sanyaku_Kouten",
+        "Ichimoku_Cloud_Expansion",
+        "Ichimoku_Composite_Signal_M1",
+        "Ichimoku_Composite_Signal_M5",
+        "Ichimoku_Composite_Signal_M15",
+        "Ichimoku_Composite_Signal_H1",
+        "Ichimoku_Composite_Signal_H4",
+        "Ichimoku_Composite_Signal_D1",
+        "Ichimoku_Trend_M1",
+        "Ichimoku_Trend_M5",
+        "Ichimoku_Trend_M15",
+        "Ichimoku_Trend_H1",
+        "Ichimoku_Trend_H4",
+        "Ichimoku_Trend_D1",
+        "Ichimoku_Cloud_Thickness_M1",
+        "Ichimoku_Cloud_Thickness_M5",
+        "Ichimoku_Cloud_Thickness_M15",
+        "Ichimoku_Cloud_Thickness_H1",
+        "Ichimoku_Cloud_Thickness_H4",
+        "Ichimoku_Cloud_Thickness_D1",
+        "Ichimoku_Price_Cloud_Distance_M1",
+        "Ichimoku_Price_Cloud_Distance_M5",
+        "Ichimoku_Price_Cloud_Distance_M15",
+        "Ichimoku_Price_Cloud_Distance_H1",
+        "Ichimoku_Price_Cloud_Distance_H4",
+        "Ichimoku_Price_Cloud_Distance_D1",
+        "Supertrend",
+        "Supertrend_Direction",
+        "Supertrend_Strength",
+        "Supertrend_Trend_Duration",
+        "OBV",
+        "CMF",
+        "Chaikin_AD",
+        "Chaikin_AD_Oscillator",
+        "PriceVolumeCorr",
+        "Volume_Profile_Distribution",
+        "Volume_Profile_Value_Area_High",
+        "liquidity_surge",
+        "ROC",
+        "ZScore",
+        "ReturnMA_Short",
+        "ReturnStdDev",
+        "Kalman_Residual_Norm",
+        "Ultimate_Oscillator",
+        "TSI",
+        "KST",
+        "micro_volatility",
+        "price_velocity",
+        "price_acceleration",
+        "Time_Monthly_Cycle",
+        "Time_Quarterly_Cycle",
+        "optimizer_learning_rate",
+        "optimizer_learning_rate_trend",
+        "optimizer_gradient_norm_avg",
+        "optimizer_gradient_norm_std",
+        "optimizer_step_size_avg",
+        "optimizer_momentum_avg",
+        "optimizer_training_progress",
+        "optimizer_loss_trend",
+        "optimizer_update_frequency_avg",
+        "optimizer_stability_score",
+        "optimizer_adaptive_lr_score",
+        "news_sentiment_score",
+        "news_volume_trend",
+        "market_attention_index"
       ],
       "sequence_length": 60,
       "prediction_horizon": 1,
@@ -360,7 +428,6 @@
       "shortterm_feature_boost": true
     }
   },
-
   "evaluation": {
     "metrics": [
       "sharpe_ratio",
@@ -397,12 +464,90 @@
       "metric_to_optimize": "shortterm_sharpe_ratio"
     }
   },
-
   "system_optimization": {
     "cpu_cores_utilization": 0.8,
     "memory_limit_mb": 4096,
     "parallel_jobs_limit": 4,
     "gpu_fallback_prepared": true,
     "adaptive_resource_allocation": true
+  },
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "random_start": true,
+    "use_continuous_actions": true,
+    "continuous_to_discrete_threshold": 0.3333,
+    "continuous_to_discrete_threshold_neg": -0.3333,
+    "max_action_threshold": 1.0,
+    "curriculum_stage": "multitimeframe_shortterm",
+    "feature_engineering": {
+      "enabled": true,
+      "adaptive_selection": true,
+      "correlation_reduction": true,
+      "correlation_threshold": 0.85,
+      "max_features": 120,
+      "shortterm_focus": true
+    },
+    "market_regime_detection": {
+      "enabled": true,
+      "regime_window": 50,
+      "trend_threshold": 0.02,
+      "volatility_threshold": 0.15,
+      "shortterm_bias": true
+    },
+    "risk_management": {
+      "dynamic_position_sizing": true,
+      "max_drawdown_limit": 0.05,
+      "shortterm_risk_adjustment": true
+    },
+    "multi_timeframe_integration": {
+      "enabled": true,
+      "timeframes": [
+        "1m",
+        "5m",
+        "15m",
+        "1h"
+      ],
+      "weighting_scheme": "adaptive",
+      "convergence_analysis": true,
+      "shortterm_bias_calculation": true
+    },
+    "behavior_optimization": {
+      "action_balance_target": 0.4,
+      "entropy_regularization": 0.0,
+      "action_smoothing": 0.15,
+      "consistency_penalty": 0.01,
+      "balance_penalty": 0.0,
+      "shortterm_action_boost": true
+    },
+    "reward_settings": {
+      "reward_scale": 100.0,
+      "reward_clip_min": -200.0,
+      "reward_clip_max": 200.0,
+      "use_simple_reward": false,
+      "profit_bonuses": {
+        "base_profit_atr_coefficient": 1.5,
+        "base_profit_portfolio_coefficient": 1.2,
+        "profit_multipliers": [
+          2.0,
+          0.6,
+          0.4
+        ],
+        "trading_bonus": 0.01,
+        "trading_bonus_multiplier": 4.0
+      },
+      "action_bonuses": {
+        "buy_action_bonus": -0.01,
+        "sell_action_bonus": 0.02,
+        "hold_action_bonus": 0.01,
+        "balance_penalty_scale": 300.0
+      },
+      "shortterm_rewards": {
+        "quick_profit_bonus": 0.05,
+        "momentum_alignment_bonus": 0.03,
+        "volatility_penalty": -0.02
+      }
+    }
   }
 }

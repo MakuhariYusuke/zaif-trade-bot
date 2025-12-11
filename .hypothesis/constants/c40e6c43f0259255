@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\utils.py
+# hypothesis_version: 6.148.6
+
+['%Y-%m-%d %H:%M:%S', '_ztb_live_configured', 'log_file', 'logs']

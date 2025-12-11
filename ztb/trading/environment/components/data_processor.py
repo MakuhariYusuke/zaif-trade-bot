@@ -57,7 +57,7 @@ class DataProcessor:
 
         exclude_cols = [
             "ts",
-            # "timestamp",  # Keep timestamp for multi-timeframe features
+            "timestamp",
             "exchange",
             "pair",
             "episode_id",

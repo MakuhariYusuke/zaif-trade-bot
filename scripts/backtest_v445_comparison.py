@@ -38,9 +38,12 @@ def analyze_data_quality(df: pd.DataFrame) -> dict:
     )
 
     # Volatility analysis
-    analysis["volatility"] = (
-        price_changes.std() * np.sqrt(252) * 100
-    )  # Annualized volatility
+    from ztb.metrics.technical import calculate_volatility_from_returns
+
+    vol = calculate_volatility_from_returns(
+        price_changes, window=len(price_changes), annualize=True
+    )
+    analysis["volatility"] = vol * 100
     analysis["max_drawdown"] = (
         (df["close"] - df["close"].expanding().max()) / df["close"].expanding().max()
     ).min() * 100

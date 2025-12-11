@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\safety\types.py
+# hypothesis_version: 6.148.6
+
+['active', 'aggressive_recovery', 'alert', 'anomaly_detected', 'automatic', 'closed', 'completed', 'critical', 'development', 'distribution_shift', 'executing', 'failed', 'fallback_activated', 'gradual', 'gradual_recovery', 'half_open', 'high', 'immediate', 'immediate_recovery', 'in_progress', 'inactive', 'low', 'manual', 'manual_intervention', 'market_anomaly', 'medium', 'monitor', 'open', 'pending', 'performance_drop', 'production', 'recovery', 'recovery_initiated', 'reduce_position_size', 'reduce_risk', 'rollback', 'rollback_to_previous', 'rolled_back', 'staging', 'statistical_outlier', 'stop_trading', 'successful', 'switch_to_baseline', 'system_degraded', 'system_error', 'threshold_exceeded', 'trend_change', 'triggered', 'warning']

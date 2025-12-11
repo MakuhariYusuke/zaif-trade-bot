@@ -14,11 +14,10 @@ from typing import Any, Dict, List
 
 import numpy as np
 
+# Import existing analysis utilities
+from ztb.metrics.statistics import p_mean_method
 from ztb.utils.analysis_formatters import print_formatted_metrics
 from ztb.utils.logging_utils import get_logger
-
-# Import existing analysis utilities
-from ztb.utils.statistics import p_mean_method
 
 logger = get_logger(__name__)
 

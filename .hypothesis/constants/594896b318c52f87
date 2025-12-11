@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\ensemble_mixin.py
+# hypothesis_version: 6.148.6
+
+[0.3, 'Member Performance', 'confidence', 'enabled', 'ensemble', 'ensemble_analysis', 'ensemble_not_enabled', 'error', 'fallback_action', 'majority', 'member_stats', 'num_members', 'performance_score', 'stability_score', 'stability_weight', 'summary', 'voting_method']

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\features\news_feature_processor.py
+# hypothesis_version: 6.148.6
+
+['.csv', '.json', '__main__', 'avg_bert_embedding', 'avg_sentiment_score', 'backward', 'bert_embeddings', 'content', 'embeddings', 'ffill', 'financial_sentiment', 'intensity', 'max_sentiment_score', 'min_sentiment_score', 'news_count', 'news_sentiment', 'price', 'price_impact', 'sentiment_intensity', 'sentiment_score', 'sentiment_scores', 'sentiment_volatility', 'text', 'time_window', 'timestamp', 'volatility_impact', 'volume', 'volume_impact', 'ニュース感情特徴量抽出結果:', 'ニュース特徴量を統合しました', 'ニュース特徴量処理が完了しました', '企業業績が好調で株価が最高値を更新', '市場が下落トレンドにあり、投資家心理悪化', '経済指標が予想を上回り、強気相場が続く', '経済指標が失望を誘い、弱気相場が継続']

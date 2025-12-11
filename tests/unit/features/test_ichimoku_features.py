@@ -181,7 +181,8 @@ class TestIchimokuFeatures:
         """Test NaN handling in Ichimoku calculations"""
         # Add some NaN values
         data_with_nan = sample_data.copy()
-        data_with_nan.loc[10:15, "close"] = np.nan
+        # Use iloc for positional slicing when index is DatetimeIndex
+        data_with_nan.iloc[10:15, data_with_nan.columns.get_loc("close")] = np.nan
 
         result = calculate_ichimoku_extended(data_with_nan)
 

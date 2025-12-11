@@ -17,6 +17,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.metrics import max_drawdown as calc_max_drawdown
+from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+from ztb.metrics.metrics import sortino_ratio as calc_sortino_ratio
 from ztb.trading.environment.utils.config import RewardSettings
 from ztb.types.evaluation_types import EvaluationMetrics
 from ztb.utils.logging_utils import get_logger
@@ -433,29 +436,19 @@ class RewardFunctionEvaluator:
 
         # Sharpe ratio
         risk_free_rate = self.evaluation_settings["risk_free_rate"]
-        if len(returns) > 1:
-            excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate
-            sharpe_ratio = (
-                np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
-            )
-        else:
-            sharpe_ratio = 0.0
+        sharpe_ratio = calc_sharpe_ratio(returns, rf=risk_free_rate)
 
         # Win rate
         winning_trades = [t for t in trade_history if t.get("reward", 0) > 0]
         win_rate = len(winning_trades) / len(trade_history) if trade_history else 0.0
 
         # Maximum drawdown
-        peak = portfolio_values[0]
-        max_drawdown = 0.0
-        for value in portfolio_values:
-            if value > peak:
-                peak = value
-            drawdown = (peak - value) / peak
-            max_drawdown = max(max_drawdown, drawdown)
+        max_drawdown = abs(calc_max_drawdown(pd.Series(portfolio_values)))
 
         # Volatility
-        volatility = np.std(returns) * np.sqrt(252) if len(returns) > 1 else 0.0
+        from ztb.trading.constants import TRADING_DAYS_PER_YEAR
+
+        volatility = np.std(returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
 
         # Consistency score (based on return stability)
         if len(returns) > self.evaluation_settings["consistency_window"]:
@@ -481,11 +474,7 @@ class RewardFunctionEvaluator:
         calmar_ratio = total_return / max_drawdown if max_drawdown > 0 else float("inf")
 
         # Sortino ratio (downside deviation)
-        downside_returns = [r for r in returns if r < 0]
-        if downside_returns:
-            sortino_ratio = np.mean(returns) / np.std(downside_returns) * np.sqrt(252)
-        else:
-            sortino_ratio = float("inf")
+        sortino_ratio = calc_sortino_ratio(returns, rf=risk_free_rate)
 
         # Recovery factor
         recovery_factor = (

@@ -4,14 +4,12 @@ ATRリスクマネージャーの単体テスト
 ATRRiskManagerクラスの機能をテストします。
 """
 
-import pytest
-import pandas as pd
-import numpy as np
-from unittest.mock import Mock
 
-from ztb.analysis.atr_risk_manager import (
-    ATRRiskManager, RiskManagementMode, RiskLevel
-)
+import numpy as np
+import pandas as pd
+import pytest
+
+from ztb.analysis.atr_risk_manager import ATRRiskManager, RiskLevel, RiskManagementMode
 
 
 class TestATRRiskManager:
@@ -20,7 +18,7 @@ class TestATRRiskManager:
     @pytest.fixture
     def sample_market_data(self):
         """サンプル市場データ"""
-        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+        dates = pd.date_range("2023-01-01", periods=100, freq="D")
         np.random.seed(42)
 
         # ボラティリティの異なる期間を含むデータ
@@ -42,12 +40,15 @@ class TestATRRiskManager:
             current_price += change
             prices.append(current_price)
 
-        data = pd.DataFrame({
-            'open': prices,
-            'high': [p + abs(np.random.randn()) for p in prices],
-            'low': [p - abs(np.random.randn()) for p in prices],
-            'close': prices
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + abs(np.random.randn()) for p in prices],
+                "low": [p - abs(np.random.randn()) for p in prices],
+                "close": prices,
+            },
+            index=dates,
+        )
 
         return data
 
@@ -66,7 +67,8 @@ class TestATRRiskManager:
         atr_series = atr_manager.calculate_atr(sample_market_data, period=14)
 
         assert len(atr_series) == len(sample_market_data)
-        assert all(atr_series >= 0)
+        # Only check non-NaN entries for non-negativity
+        assert all(atr_series.dropna() >= 0)
 
         # ATRは期間14で計算されるので、最初の13日はNaNまたは有効な値
         # 実際の実装では最初の値も計算される可能性がある
@@ -75,11 +77,9 @@ class TestATRRiskManager:
 
     def test_calculate_atr_insufficient_data(self, atr_manager):
         """データ不足時のATR計算テスト"""
-        short_data = pd.DataFrame({
-            'high': [100, 101, 102],
-            'low': [99, 100, 101],
-            'close': [100, 101, 102]
-        })
+        short_data = pd.DataFrame(
+            {"high": [100, 101, 102], "low": [99, 100, 101], "close": [100, 101, 102]}
+        )
 
         atr_series = atr_manager.calculate_atr(short_data, period=14)
 
@@ -95,9 +95,9 @@ class TestATRRiskManager:
         risk_level = atr_manager.assess_risk_level(current_atr, sample_market_data)
 
         assert isinstance(risk_level, RiskLevel)
-        assert hasattr(risk_level, 'atr_value')
-        assert hasattr(risk_level, 'volatility_percentile')
-        assert hasattr(risk_level, 'market_regime')
+        assert hasattr(risk_level, "atr_value")
+        assert hasattr(risk_level, "volatility_percentile")
+        assert hasattr(risk_level, "market_regime")
 
     def test_calculate_position_limits(self, atr_manager, sample_market_data):
         """ポジション制限計算テスト"""
@@ -109,19 +109,25 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.5, market_regime="normal_vol"),
-            mode=RiskManagementMode.DYNAMIC
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.5,
+                market_regime="normal_vol",
+            ),
+            mode=RiskManagementMode.DYNAMIC,
         )
 
-        assert hasattr(limits, 'max_position_size')
-        assert hasattr(limits, 'stop_loss_price')
-        assert hasattr(limits, 'take_profit_price')
-        assert hasattr(limits, 'risk_amount')
+        assert hasattr(limits, "max_position_size")
+        assert hasattr(limits, "stop_loss_price")
+        assert hasattr(limits, "take_profit_price")
+        assert hasattr(limits, "risk_amount")
 
         assert limits.max_position_size > 0
         assert limits.risk_amount > 0
 
-    def test_calculate_position_limits_conservative_mode(self, atr_manager, sample_market_data):
+    def test_calculate_position_limits_conservative_mode(
+        self, atr_manager, sample_market_data
+    ):
         """保守的モードのポジション制限計算テスト"""
         entry_price = 100.0
         position_size = 0.1
@@ -131,22 +137,32 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.8, market_regime="high_vol"),
-            mode=RiskManagementMode.CONSERVATIVE
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.8,
+                market_regime="high_vol",
+            ),
+            mode=RiskManagementMode.CONSERVATIVE,
         )
 
         dynamic_limits = atr_manager.calculate_position_limits(
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.8, market_regime="high_vol"),
-            mode=RiskManagementMode.DYNAMIC
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.8,
+                market_regime="high_vol",
+            ),
+            mode=RiskManagementMode.DYNAMIC,
         )
 
         # 保守的モードの方が制限が厳しいはず
         assert conservative_limits.max_position_size <= dynamic_limits.max_position_size
 
-    def test_calculate_position_limits_aggressive_mode(self, atr_manager, sample_market_data):
+    def test_calculate_position_limits_aggressive_mode(
+        self, atr_manager, sample_market_data
+    ):
         """積極的モードのポジション制限計算テスト"""
         entry_price = 100.0
         position_size = 0.1
@@ -156,32 +172,42 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.2, market_regime="low_vol"),
-            mode=RiskManagementMode.CONSERVATIVE
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.2,
+                market_regime="low_vol",
+            ),
+            mode=RiskManagementMode.CONSERVATIVE,
         )
 
         aggressive_limits = atr_manager.calculate_position_limits(
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.2, market_regime="low_vol"),
-            mode=RiskManagementMode.AGGRESSIVE
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.2,
+                market_regime="low_vol",
+            ),
+            mode=RiskManagementMode.AGGRESSIVE,
         )
 
         # 積極的モードの方が大きなポジションサイズを許容するはず
-        assert aggressive_limits.max_position_size >= conservative_limits.max_position_size
+        assert (
+            aggressive_limits.max_position_size >= conservative_limits.max_position_size
+        )
 
     def test_risk_level_thresholds(self, atr_manager, sample_market_data):
         """リスクレベル閾値テスト"""
         # 低ボラティリティ
         low_atr = 0.5
         low_risk = atr_manager.assess_risk_level(low_atr, sample_market_data)
-        assert low_risk.market_regime in ['low_vol', 'normal_vol']
+        assert low_risk.market_regime in ["low_vol", "normal_vol"]
 
         # 高ボラティリティ
         high_atr = 5.0
         high_risk = atr_manager.assess_risk_level(high_atr, sample_market_data)
-        assert high_risk.market_regime in ['high_vol', 'extreme_vol', 'normal_vol']
+        assert high_risk.market_regime in ["high_vol", "extreme_vol", "normal_vol"]
 
     def test_position_limits_validation(self, atr_manager, sample_market_data):
         """ポジション制限の妥当性テスト"""
@@ -193,8 +219,12 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=current_atr,
-            risk_level=RiskLevel(atr_value=current_atr, volatility_percentile=0.5, market_regime="normal_vol"),
-            mode=RiskManagementMode.DYNAMIC
+            risk_level=RiskLevel(
+                atr_value=current_atr,
+                volatility_percentile=0.5,
+                market_regime="normal_vol",
+            ),
+            mode=RiskManagementMode.DYNAMIC,
         )
 
         # ストップロスはエントリー価格より低いはず（ロングポジションの場合）
@@ -217,8 +247,10 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=tiny_atr,
-            risk_level=RiskLevel(atr_value=tiny_atr, volatility_percentile=0.1, market_regime="low_vol"),
-            mode=RiskManagementMode.DYNAMIC
+            risk_level=RiskLevel(
+                atr_value=tiny_atr, volatility_percentile=0.1, market_regime="low_vol"
+            ),
+            mode=RiskManagementMode.DYNAMIC,
         )
 
         # 非常に大きなATR
@@ -227,8 +259,12 @@ class TestATRRiskManager:
             entry_price=entry_price,
             position_size=position_size,
             current_atr=large_atr,
-            risk_level=RiskLevel(atr_value=large_atr, volatility_percentile=0.9, market_regime="extreme_vol"),
-            mode=RiskManagementMode.DYNAMIC
+            risk_level=RiskLevel(
+                atr_value=large_atr,
+                volatility_percentile=0.9,
+                market_regime="extreme_vol",
+            ),
+            mode=RiskManagementMode.DYNAMIC,
         )
 
         # 両方とも正常に処理される

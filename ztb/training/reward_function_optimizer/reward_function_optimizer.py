@@ -13,13 +13,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from ztb.metrics.statistics import calculate_autocorrelation, detect_outliers_iqr
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.statistics import detect_outliers_iqr, calculate_autocorrelation
+
+from .components.evaluation_engine import EvaluationEngine
 
 # Import extracted components
 from .components.optimization_engine import OptimizationEngine
-from .components.evaluation_engine import EvaluationEngine
 
 logger = get_logger(__name__)
 
@@ -1768,7 +1769,9 @@ class RewardFunctionOptimizer:
 
         self.logger.info(f"Optimization report generated: {report_file}")
 
-    def analyze_optimization_statistics(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def analyze_optimization_statistics(
+        self, results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """最適化結果の統計分析を実行"""
         if not results:
             return {}
@@ -1785,11 +1788,13 @@ class RewardFunctionOptimizer:
         outlier_rate = outlier_count / len(outliers)
 
         # 自己相関係数（最適化の安定性を評価）
-        autocorr_1 = calculate_autocorrelation(rewards, lag=1) if len(rewards) > 1 else 0.0
+        autocorr_1 = (
+            calculate_autocorrelation(rewards, lag=1) if len(rewards) > 1 else 0.0
+        )
 
         # 最適化の収束傾向を評価
-        first_half = rewards[:len(rewards)//2]
-        second_half = rewards[len(rewards)//2:]
+        first_half = rewards[: len(rewards) // 2]
+        second_half = rewards[len(rewards) // 2 :]
 
         first_half_mean = sum(first_half) / len(first_half)
         second_half_mean = sum(second_half) / len(second_half)
@@ -1803,5 +1808,6 @@ class RewardFunctionOptimizer:
             "first_half_mean_reward": first_half_mean,
             "second_half_mean_reward": second_half_mean,
             "improvement_trend": improvement_trend,
-            "optimization_stability": 1.0 - abs(autocorr_1),  # 低い相関 = 安定した最適化
+            "optimization_stability": 1.0
+            - abs(autocorr_1),  # 低い相関 = 安定した最適化
         }

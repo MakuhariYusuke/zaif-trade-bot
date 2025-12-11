@@ -1,17 +1,20 @@
 """Risk management component for live trading."""
 
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Dict, Any
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
+from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
+from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.metrics.statistics import calculate_volatility, rolling_statistics
+from ztb.trading.risk.interfaces import RiskManagerProtocol
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_to_float
-from ztb.utils.statistics import calculate_volatility, calculate_sharpe_ratio, calculate_max_drawdown, rolling_statistics
 
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
 
-class RiskManager:
+class RiskManager(RiskManagerProtocol):
     """Manages trading risk limits and emergency stops."""
 
     def __init__(self, live_trader: "LiveTrader"):
@@ -20,10 +23,18 @@ class RiskManager:
         self.logger = get_logger(__name__)
 
         # Risk limits from config
-        self.max_daily_loss = safe_to_float(live_trader.config.get("max_daily_loss", 10000.0))
-        self.max_daily_trades = int(safe_to_float(live_trader.config.get("max_daily_trades", 50)))
-        self.max_trades_per_hour = int(safe_to_float(live_trader.config.get("max_trades_per_hour", 6)))
-        self.emergency_stop_loss = safe_to_float(live_trader.config.get("emergency_stop_loss", 0.05))
+        self.max_daily_loss = safe_to_float(
+            live_trader.config.get("max_daily_loss", 10000.0)
+        )
+        self.max_daily_trades = int(
+            safe_to_float(live_trader.config.get("max_daily_trades", 50))
+        )
+        self.max_trades_per_hour = int(
+            safe_to_float(live_trader.config.get("max_trades_per_hour", 6))
+        )
+        self.emergency_stop_loss = safe_to_float(
+            live_trader.config.get("emergency_stop_loss", 0.05)
+        )
 
         # Tracking variables
         self.daily_start_pnl = live_trader.daily_start_pnl
@@ -34,6 +45,13 @@ class RiskManager:
         # Statistical tracking
         self.pnl_history = []  # Track PnL over time for statistics
         self.last_pnl = live_trader.total_pnl
+        # Protocol attributes
+        self.test_mode: bool = bool(live_trader.config.get("test_mode", False))
+        # Portfolio value estimate: use position_manager or fallback
+        self.portfolio_value: float = float(
+            getattr(live_trader, "total_pnl", 0.0)
+            + getattr(live_trader, "initial_portfolio_value", 0.0)
+        )
 
     def check_daily_loss_limit(self) -> bool:
         """Check if daily loss limit has been exceeded.
@@ -103,7 +121,10 @@ class RiskManager:
             True if trading should continue, False if emergency stop triggered
         """
         if self.live_trader.position != 0 and self.live_trader.entry_price > 0:
-            loss_ratio = abs(current_price - self.live_trader.entry_price) / self.live_trader.entry_price
+            loss_ratio = (
+                abs(current_price - self.live_trader.entry_price)
+                / self.live_trader.entry_price
+            )
             if loss_ratio >= self.emergency_stop_loss:
                 self.logger.critical(
                     f"EMERGENCY STOP LOSS TRIGGERED: {loss_ratio:.3f} >= {self.emergency_stop_loss:.3f}"
@@ -129,11 +150,129 @@ class RiskManager:
             True if trading is allowed, False if any risk limit is violated
         """
         return (
-            self.check_daily_loss_limit() and
-            self.check_daily_trade_limit() and
-            self.check_hourly_trade_limit() and
-            self.check_emergency_stop_loss(current_price)
+            self.check_daily_loss_limit()
+            and self.check_daily_trade_limit()
+            and self.check_hourly_trade_limit()
+            and self.check_emergency_stop_loss(current_price)
         )
+
+    # Protocol methods
+    def should_open_position(
+        self,
+        signal_strength: float,
+        market_volatility: float,
+        current_portfolio_value: float,
+    ) -> bool:
+        """Return True if risk limits allow entering new position.
+
+        Uses existing can_trade() logic and a basic signal strength threshold.
+        """
+        if self.test_mode:
+            return True
+
+        # If we have a last valid price, use it; otherwise use a fallback
+        current_price = getattr(self.live_trader, "_last_valid_price", 0.0)
+        if current_price <= 0:
+            current_price = getattr(self.live_trader, "entry_price", 0.0) or 0.0
+
+        # If `can_trade` requires a price, we call it
+        if not self.can_trade(current_price):
+            return False
+
+        # Minimal signal threshold
+        min_strength = float(self.live_trader.config.get("min_signal_strength", 0.6))
+        if signal_strength < min_strength:
+            return False
+
+        return True
+
+    def should_close_position(
+        self,
+        position_data: Dict[str, Any],
+        current_price: float,
+        current_portfolio_value: float,
+    ) -> Tuple[bool, str]:
+        # Use emergency stop and explicit stops if available in position_data
+        stop_loss = position_data.get("stop_loss")
+        take_profit = position_data.get("take_profit")
+        pos_type = position_data.get("type", "long")
+        if stop_loss is not None and pos_type == "long" and current_price <= stop_loss:
+            return True, "stop_loss"
+        if stop_loss is not None and pos_type == "short" and current_price >= stop_loss:
+            return True, "stop_loss"
+        if (
+            take_profit is not None
+            and pos_type == "long"
+            and current_price >= take_profit
+        ):
+            return True, "take_profit"
+        if (
+            take_profit is not None
+            and pos_type == "short"
+            and current_price <= take_profit
+        ):
+            return True, "take_profit"
+        if not self.check_emergency_stop_loss(current_price):
+            return True, "emergency_stop"
+        return False, ""
+
+    def get_risk_adjusted_position_size(
+        self, signal_strength: float, market_volatility: float
+    ) -> float:
+        # Prefer using position manager if available
+        try:
+            pm = getattr(self.live_trader, "position_manager", None)
+            if pm and hasattr(pm, "min_unit_manager"):
+                # Use minimal unit as rough size
+                min_unit = getattr(
+                    pm.min_unit_manager, "get_min_unit", lambda a, b: 0.0001
+                )("coincheck", "btc_jpy")
+                # Calculate a conservative position size (in units)
+                base = float(self.live_trader.config.get("default_base_position", 0.01))
+                return min(base, float(min_unit))
+        except Exception:
+            pass
+        # fallback
+        return float(self.live_trader.config.get("default_base_position", 0.01))
+
+    def calculate_atr_stop_levels(
+        self, data: Optional[pd.DataFrame], entry_price: float, position_type: str
+    ) -> Tuple[float, float]:
+        if data is not None and ("atr" in data.columns):
+            base_atr = float(data["atr"].iloc[-1])
+        else:
+            base_atr = float(entry_price * 0.02)
+        stop_loss = entry_price - base_atr * float(
+            self.live_trader.config.get("stop_loss_atr_multiplier", 2.0)
+        )
+        take_profit = entry_price + base_atr * float(
+            self.live_trader.config.get("take_profit_atr_multiplier", 4.0)
+        )
+        if position_type == "short":
+            stop_loss, take_profit = -stop_loss, -take_profit
+        return float(stop_loss), float(take_profit)
+
+    def update_risk_metrics(
+        self, trade_result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        if trade_result:
+            pnl = float(trade_result.get("pnl", 0.0))
+            # Update live trader total pnl and our tracked history
+            self.live_trader.total_pnl = float(
+                getattr(self.live_trader, "total_pnl", 0.0) + pnl
+            )
+            self.last_pnl = self.live_trader.total_pnl
+            # Update portfolio estimation
+            self.portfolio_value = float(
+                getattr(self.live_trader, "initial_portfolio_value", 0.0)
+                + self.live_trader.total_pnl
+            )
+        else:
+            # Sync with live_trader if no trade result provided
+            self.portfolio_value = float(
+                getattr(self.live_trader, "initial_portfolio_value", 0.0)
+                + getattr(self.live_trader, "total_pnl", 0.0)
+            )
 
     def record_trade(self) -> None:
         """Record that a trade has been executed for limit tracking."""
@@ -175,7 +314,9 @@ class RiskManager:
             }
 
         # Calculate returns (cumulative PnL as portfolio value proxy)
-        cumulative_pnl = [float(sum(self.pnl_history[:i+1])) for i in range(len(self.pnl_history))]
+        cumulative_pnl = [
+            float(sum(self.pnl_history[: i + 1])) for i in range(len(self.pnl_history))
+        ]
 
         # Calculate rolling statistics
         rolling_window = min(20, len(self.pnl_history))
@@ -189,7 +330,9 @@ class RiskManager:
 
         # Volatility (rolling standard deviation of returns)
         if len(self.pnl_history) >= 20:
-            volatility = calculate_volatility(self.pnl_history, window=min(20, len(self.pnl_history)))
+            volatility = calculate_volatility(
+                self.pnl_history, window=min(20, len(self.pnl_history))
+            )
             current_volatility = volatility[-1] if volatility else 0.0
         else:
             current_volatility = 0.0

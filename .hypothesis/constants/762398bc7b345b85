@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\ops\health\performance_monitor.py
+# hypothesis_version: 6.148.6
+
+[-0.1, 0.0, 0.1, 0.2, 0.3, 1.0, 86400, 604800, '/', 'CPU Usage', 'Disk Usage', 'Memory Usage', 'analysis', 'average_24h', 'average_7d', 'concerning_trends', 'cpu_percent', 'current_snapshot', 'current_value', 'data/performance', 'data_points', 'decreasing', 'disk_usage_percent', 'gpu_memory_used_mb', 'increasing', 'is_concerning', 'memory_percent', 'metric', 'network_bytes_recv', 'network_bytes_sent', 'r', 'stable', 'summary', 'timestamp', 'trend_direction', 'trend_strength', 'trends', 'w']

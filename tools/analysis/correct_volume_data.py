@@ -11,7 +11,6 @@ Usage:
 
 import argparse
 import logging
-import sys
 
 import pandas as pd
 
@@ -169,6 +168,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Correct Yahoo Finance BTC-JPY volume data"
     )
+    from ztb.utils.cli import add_common_cli_args
+
+    add_common_cli_args(parser)
     parser.add_argument("--input", "-i", required=True, help="Input CSV file path")
     parser.add_argument("--output", "-o", required=True, help="Output CSV file path")
     parser.add_argument(
@@ -183,8 +185,9 @@ def main():
 
     args = parser.parse_args()
 
-    # Set log level
-    logging.getLogger().setLevel(getattr(logging, args.log_level))
+    from ztb.utils.cli import configure_logging_from_args
+
+    configure_logging_from_args(args)
 
     try:
         # Read input data
@@ -244,8 +247,10 @@ def main():
 
     except Exception as e:
         logger.error(f"❌ Error during volume correction: {e}")
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

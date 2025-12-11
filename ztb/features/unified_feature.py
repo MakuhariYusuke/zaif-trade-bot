@@ -19,6 +19,7 @@ import pandas as pd
 from ztb.features.core.engine import compute_features_batch
 from ztb.features.core.registry import FeatureRegistry
 from ztb.features.feature_set_manager import get_feature_set
+from ztb.features.global_market import GlobalMarketFeatureEngineer
 from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.utils.logging_utils import get_logger
 
@@ -33,7 +34,9 @@ class UnifiedFeatureEngineer:
     モデル固有の特徴量生成から汎用的な特徴量計算までをサポート
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, config_path: Optional[str] = None):
+    def __init__(
+        self, config: Optional[Dict[str, Any]] = None, config_path: Optional[str] = None
+    ):
         """
         初期化
 
@@ -44,7 +47,10 @@ class UnifiedFeatureEngineer:
         self.config = config or {}
         self.config_path = config_path or "configs/features.yaml"
         self.registry = FeatureRegistry()
-        self.sac_engineer = SACv427FeatureEngineer(config=self.config, config_path=config_path)
+        self.sac_engineer = SACv427FeatureEngineer(
+            config=self.config, config_path=config_path
+        )
+        self.global_engineer = GlobalMarketFeatureEngineer()
 
         # 初期化
         self.registry.initialize()
@@ -55,6 +61,8 @@ class UnifiedFeatureEngineer:
         df: pd.DataFrame,
         feature_set: str = "curated",
         model_type: str = "generic",
+        external_data: Optional[pd.DataFrame] = None,
+        external_suffix: str = "_global",
         **kwargs,
     ) -> pd.DataFrame:
         """
@@ -64,6 +72,8 @@ class UnifiedFeatureEngineer:
             df: 入力データフレーム
             feature_set: 特徴量セット名 ("curated", "full", "minimal")
             model_type: モデルタイプ ("generic", "sac", "v437")
+            external_data: 外部市場データ (Optional)
+            external_suffix: 外部データのサフィックス
             **kwargs: 追加パラメータ
 
         Returns:
@@ -74,11 +84,27 @@ class UnifiedFeatureEngineer:
         start = time.perf_counter()
         logger.info(f"Generating features with set: {feature_set}, model: {model_type}")
 
+        # 外部データが提供された場合、マージしてLead-Lag特徴量を生成
+        if external_data is not None:
+            logger.info(f"Merging external data with suffix: {external_suffix}")
+            df = self.global_engineer.merge_external_data(
+                df, external_data, suffix=external_suffix
+            )
+            lead_lag_features = self.global_engineer.generate_lead_lag_features(
+                df, global_col=f"close{external_suffix}"
+            )
+            df = pd.concat([df, lead_lag_features], axis=1)
+            logger.info(
+                f"Added {len(lead_lag_features.columns)} global market features"
+            )
+
         if model_type.lower() == "sac":
             # SACモデル固有の特徴量生成
             out = self._generate_sac_features(df, **kwargs)
             elapsed = time.perf_counter() - start
-            logger.info(f"Feature generation (SAC) completed in {elapsed:.3f}s; features={len(out.columns)}")
+            logger.info(
+                f"Feature generation (SAC) completed in {elapsed:.3f}s; features={len(out.columns)}"
+            )
             return out
         elif model_type.lower() == "v437":
             # v437モデル固有の特徴量生成
@@ -87,7 +113,9 @@ class UnifiedFeatureEngineer:
             # 汎用特徴量生成
             out = self._generate_generic_features(df, feature_set, **kwargs)
             elapsed = time.perf_counter() - start
-            logger.info(f"Feature generation (generic) completed in {elapsed:.3f}s; features={len(out.columns)}")
+            logger.info(
+                f"Feature generation (generic) completed in {elapsed:.3f}s; features={len(out.columns)}"
+            )
             return out
 
     def _generate_sac_features(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -533,11 +561,13 @@ class V4FeatureExtractor:
 
         # FeatureRegistryの初期化
         from ztb.features.core.registry import FeatureRegistry
+
         FeatureRegistry.initialize()
 
         # scalping featuresをインポートして登録
         try:
             import ztb.features.scalping  # noqa: F401
+
             logger.info("Scalping features loaded")
         except ImportError as e:
             logger.warning(f"Failed to load scalping features: {e}")
@@ -558,12 +588,12 @@ class V4FeatureExtractor:
         try:
             # Extract short-term feature parameters before passing to unified engineer
             short_term_params = {}
-            for param in ['rv_window', 'tv_window']:
+            for param in ["rv_window", "tv_window"]:
                 if param in kwargs:
                     short_term_params[param] = kwargs.pop(param)
 
             # news_data を分離（SAC特徴量生成に渡さない）
-            news_data = kwargs.pop('news_data', None)
+            news_data = kwargs.pop("news_data", None)
 
             # SACモデル向けの特徴量生成
             features_df = self.unified_engineer.generate_features(
@@ -571,7 +601,9 @@ class V4FeatureExtractor:
             )
 
             # 短期間収益性向上のための追加特徴量
-            enhanced_df = self._add_short_term_features(features_df, news_data=news_data, **short_term_params)
+            enhanced_df = self._add_short_term_features(
+                features_df, news_data=news_data, **short_term_params
+            )
 
             logger.info("V4FeatureExtractor: Features extracted successfully")
             return enhanced_df
@@ -593,11 +625,13 @@ class V4FeatureExtractor:
             "tick_volume_ratio",
             "order_flow_imbalance",
             "news_sentiment_score",
-            "news_sentiment_intensity"
+            "news_sentiment_intensity",
         ]
         return base_features + short_term_features
 
-    def _add_short_term_features(self, df: pd.DataFrame, news_data=None, **kwargs) -> pd.DataFrame:
+    def _add_short_term_features(
+        self, df: pd.DataFrame, news_data=None, **kwargs
+    ) -> pd.DataFrame:
         """
         短期間収益性向上のための特徴量を追加
 
@@ -612,28 +646,28 @@ class V4FeatureExtractor:
             from ztb.features.core.registry import FeatureRegistry
 
             # Extract short-term feature parameters to avoid passing them to lower layers
-            rv_window = kwargs.get('rv_window', 10)
-            tv_window = kwargs.get('tv_window', 5)
+            rv_window = kwargs.get("rv_window", 10)
+            tv_window = kwargs.get("tv_window", 5)
 
             df = df.copy()
 
             # Realized Volatility 追加
-            if 'realized_volatility' in FeatureRegistry._registry:
-                rv_func = FeatureRegistry._registry['realized_volatility']
+            if "realized_volatility" in FeatureRegistry._registry:
+                rv_func = FeatureRegistry._registry["realized_volatility"]
                 rv_series = rv_func(df, window=rv_window)
-                df['realized_volatility'] = rv_series
+                df["realized_volatility"] = rv_series
 
             # Tick Volume Ratio 追加
-            if 'tick_volume_ratio' in FeatureRegistry._registry:
-                tv_func = FeatureRegistry._registry['tick_volume_ratio']
+            if "tick_volume_ratio" in FeatureRegistry._registry:
+                tv_func = FeatureRegistry._registry["tick_volume_ratio"]
                 tv_series = tv_func(df, window=tv_window)
-                df['tick_volume_ratio'] = tv_series
+                df["tick_volume_ratio"] = tv_series
 
             # Order Flow Imbalance 追加
-            if 'order_flow_imbalance' in FeatureRegistry._registry:
-                of_func = FeatureRegistry._registry['order_flow_imbalance']
+            if "order_flow_imbalance" in FeatureRegistry._registry:
+                of_func = FeatureRegistry._registry["order_flow_imbalance"]
                 of_series = of_func(df)
-                df['order_flow_imbalance'] = of_series
+                df["order_flow_imbalance"] = of_series
 
             # ニュース感情スコア統合 (オプション)
             df = self._add_news_sentiment_features(df, news_data=news_data, **kwargs)
@@ -645,7 +679,9 @@ class V4FeatureExtractor:
             logger.warning(f"Failed to add short-term features: {e}")
             return df
 
-    def _add_news_sentiment_features(self, df: pd.DataFrame, news_data=None, **kwargs) -> pd.DataFrame:
+    def _add_news_sentiment_features(
+        self, df: pd.DataFrame, news_data=None, **kwargs
+    ) -> pd.DataFrame:
         """
         ニュース感情スコア特徴量を追加
 
@@ -661,7 +697,9 @@ class V4FeatureExtractor:
             if news_data is None or len(news_data) == 0:
                 return df
 
-            from ztb.multimodal.features.news_feature_processor import NewsFeatureProcessor
+            from ztb.multimodal.features.news_feature_processor import (
+                NewsFeatureProcessor,
+            )
 
             processor = NewsFeatureProcessor()
 
@@ -685,11 +723,23 @@ class V4FeatureExtractor:
                         sentiment_intensities = []
 
                         for i in range(n_news):
-                            score = sentiment_features.get('financial_sentiment', [0.0])[i] if i < len(sentiment_features.get('financial_sentiment', [])) else 0.0
-                            intensity = sentiment_features.get('sentiment_intensity', [0.0])[i] if i < len(sentiment_features.get('sentiment_intensity', [])) else 0.0
+                            score = (
+                                sentiment_features.get("financial_sentiment", [0.0])[i]
+                                if i
+                                < len(sentiment_features.get("financial_sentiment", []))
+                                else 0.0
+                            )
+                            intensity = (
+                                sentiment_features.get("sentiment_intensity", [0.0])[i]
+                                if i
+                                < len(sentiment_features.get("sentiment_intensity", []))
+                                else 0.0
+                            )
 
                             # このニュースの期間数
-                            periods_for_news = scores_per_period + (1 if i < remainder else 0)
+                            periods_for_news = scores_per_period + (
+                                1 if i < remainder else 0
+                            )
 
                             sentiment_scores.extend([score] * periods_for_news)
                             sentiment_intensities.extend([intensity] * periods_for_news)
@@ -699,11 +749,15 @@ class V4FeatureExtractor:
                             sentiment_scores = sentiment_scores[:n_periods]
                             sentiment_intensities = sentiment_intensities[:n_periods]
                         elif len(sentiment_scores) < n_periods:
-                            sentiment_scores.extend([0.0] * (n_periods - len(sentiment_scores)))
-                            sentiment_intensities.extend([0.0] * (n_periods - len(sentiment_intensities)))
+                            sentiment_scores.extend(
+                                [0.0] * (n_periods - len(sentiment_scores))
+                            )
+                            sentiment_intensities.extend(
+                                [0.0] * (n_periods - len(sentiment_intensities))
+                            )
 
-                        df['news_sentiment_score'] = sentiment_scores
-                        df['news_sentiment_intensity'] = sentiment_intensities
+                        df["news_sentiment_score"] = sentiment_scores
+                        df["news_sentiment_intensity"] = sentiment_intensities
 
                         logger.info("Added news sentiment features (distributed)")
 

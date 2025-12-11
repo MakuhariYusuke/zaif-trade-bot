@@ -54,6 +54,10 @@ jobs:
       run: |
         python -m pytest tests/test_backtest.py tests/test_risk.py -v --tb=short
 
+    - name: Ensure production mode is disabled in CI
+      run: |
+        if [ -n "${ZTB_ALLOW_PRODUCTION:-}" ]; then echo "ZTB_ALLOW_PRODUCTION must not be set in CI"; exit 1; fi
+
     - name: Run Python integration tests
       run: |
         python -m pytest tests/test_live.py -v --tb=short

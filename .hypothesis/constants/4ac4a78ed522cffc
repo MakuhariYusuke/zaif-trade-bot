@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\inference\decode.py
+# hypothesis_version: 6.148.6
+
+[-1000000000.0, 0.0, 0.0005, 0.001, 0.05, 0.5, 0.7, 1.0, 1.2, 1.5, 20.0, 'advantage_sign', 'cost_gate_triggered', 'estimated_cost', 'legal_sell_rate', 'legal_sell_steps', 'margin', 'overall_sell_rate', 'prob_margin', 'probabilities', 'sell_actions', 'tiebreaker_activated', 'tiebreaker_reason', 'top2_actions', 'top2_probs', 'total_steps']

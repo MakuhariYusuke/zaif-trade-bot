@@ -8,10 +8,10 @@ including config validation, environment setup, and parameter management.
 from typing import Any, Dict, Optional
 
 from ztb.training.constants import (
-    DEFAULT_LEARNING_RATE,
     DEFAULT_BATCH_SIZE_SAC,
-    DEFAULT_TOTAL_TIMESTEPS_SAC,
+    DEFAULT_LEARNING_RATE,
     DEFAULT_TOTAL_TIMESTEPS_PPO,
+    DEFAULT_TOTAL_TIMESTEPS_SAC,
 )
 from ztb.utils.logging_utils import get_logger
 
@@ -65,9 +65,7 @@ class TrainingConfigManager:
 
     def _is_zaif_config(self, config: Any) -> bool:
         """Check if config is a ZaifTradeBotConfig object."""
-        return (
-            hasattr(config, "training") and config.training is not None
-        )
+        return hasattr(config, "training") and config.training is not None
 
     def _process_zaif_config(self, config: Any) -> Dict[str, Any]:
         """Process ZaifTradeBotConfig into training config dict."""
@@ -81,8 +79,10 @@ class TrainingConfigManager:
             config_dict = {
                 "training": {
                     "algorithm": training_config.algorithm,
-                    "total_timesteps": training_config.total_timesteps or (
-                        DEFAULT_TOTAL_TIMESTEPS_SAC if training_config.algorithm == "sac"
+                    "total_timesteps": training_config.total_timesteps
+                    or (
+                        DEFAULT_TOTAL_TIMESTEPS_SAC
+                        if training_config.algorithm == "sac"
                         else DEFAULT_TOTAL_TIMESTEPS_PPO
                     ),
                     "model_name": training_config.model_name,
@@ -106,7 +106,9 @@ class TrainingConfigManager:
                 training_config.algorithm == "sac"
                 and training_config.sac_hyperparameters
             ):
-                config_dict["sac_hyperparameters"] = training_config.sac_hyperparameters.dict()
+                config_dict[
+                    "sac_hyperparameters"
+                ] = training_config.sac_hyperparameters.dict()
             elif training_config.algorithm == "sac":
                 # Use default SAC hyperparameters
                 config_dict["sac_hyperparameters"] = {
@@ -160,15 +162,24 @@ class TrainingConfigManager:
         if not isinstance(regime_config, dict):
             raise TypeError("advanced_market_regime config must be dict")
 
-        required_fields = ["enabled", "detector_type", "detection_window", "adaptation_frequency"]
+        required_fields = [
+            "enabled",
+            "detector_type",
+            "detection_window",
+            "adaptation_frequency",
+        ]
         for field in required_fields:
             if field not in regime_config:
-                raise ValueError(f"Missing required advanced_market_regime field: {field}")
+                raise ValueError(
+                    f"Missing required advanced_market_regime field: {field}"
+                )
 
         # Validate detector type
         valid_detector_types = ["basic", "advanced"]
         if regime_config["detector_type"] not in valid_detector_types:
-            raise ValueError(f"Invalid detector_type. Must be one of: {valid_detector_types}")
+            raise ValueError(
+                f"Invalid detector_type. Must be one of: {valid_detector_types}"
+            )
 
         # Validate regime-specific parameters if present
         if "regime_specific_params" in regime_config:
@@ -179,10 +190,19 @@ class TrainingConfigManager:
             # Validate that all required regimes are present for advanced detector
             if regime_config["detector_type"] == "advanced":
                 required_regimes = [
-                    "strong_bull_trend", "moderate_bull_trend", "weak_bull_trend",
-                    "strong_bear_trend", "moderate_bear_trend", "weak_bear_trend",
-                    "high_volatility_ranging", "moderate_volatility_ranging", "low_volatility_ranging",
-                    "extreme_volatility", "consolidation", "breakout_setup", "breakdown_setup"
+                    "strong_bull_trend",
+                    "moderate_bull_trend",
+                    "weak_bull_trend",
+                    "strong_bear_trend",
+                    "moderate_bear_trend",
+                    "weak_bear_trend",
+                    "high_volatility_ranging",
+                    "moderate_volatility_ranging",
+                    "low_volatility_ranging",
+                    "extreme_volatility",
+                    "consolidation",
+                    "breakout_setup",
+                    "breakdown_setup",
                 ]
 
                 for regime in required_regimes:
@@ -244,3 +264,7 @@ class TrainingConfigManager:
             Feature config
         """
         return config.get("features", {})
+
+
+# Backwards compatibility alias for legacy name
+UnifiedTrainingConfigManager = TrainingConfigManager

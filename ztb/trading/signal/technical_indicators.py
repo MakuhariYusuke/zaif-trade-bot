@@ -12,12 +12,18 @@ Features:
 - Lightweight wrapper for signal quality scoring
 """
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
+
 import numpy as np
 import pandas as pd
 
-from ztb.utils.talib_wrapper import TaLibWrapper
+from ztb.features.generators.technical.momentum.rsi import compute_rsi
+from ztb.features.generators.technical.momentum.stochastic import (
+    compute_stochastic,
+    compute_stochastic_k,
+)
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.talib_wrapper import TaLibWrapper
 
 logger = get_logger(__name__)
 
@@ -32,7 +38,9 @@ class TechnicalIndicators:
     def __init__(self):
         self.talib = TaLibWrapper()
 
-    def calculate_rsi(self, prices: Union[np.ndarray, pd.Series], period: int = 14) -> float:
+    def calculate_rsi(
+        self, prices: Union[np.ndarray, pd.Series], period: int = 14
+    ) -> float:
         """
         Calculate RSI (Relative Strength Index)
 
@@ -44,17 +52,28 @@ class TechnicalIndicators:
             Current RSI value (0-100)
         """
         try:
-            rsi_values = self.talib.rsi(prices, period)
-            # Return the last valid RSI value
-            valid_rsi = rsi_values[~np.isnan(rsi_values)]
-            return float(valid_rsi[-1]) if len(valid_rsi) > 0 else 50.0
+            # Convert to DataFrame
+            if isinstance(prices, pd.Series):
+                df = pd.DataFrame({"close": prices})
+            else:
+                df = pd.DataFrame({"close": prices})
+
+            rsi_series = compute_rsi(df, period=period)
+
+            # Get last valid value
+            last_val = rsi_series.iloc[-1]
+            return float(last_val) if not pd.isna(last_val) else 50.0
         except Exception as e:
             logger.warning(f"RSI calculation failed: {e}")
             return 50.0  # Neutral value
 
-    def calculate_macd(self, prices: Union[np.ndarray, pd.Series],
-                       fast_period: int = 12, slow_period: int = 26,
-                       signal_period: int = 9) -> Tuple[float, float, float]:
+    def calculate_macd(
+        self,
+        prices: Union[np.ndarray, pd.Series],
+        fast_period: int = 12,
+        slow_period: int = 26,
+        signal_period: int = 9,
+    ) -> Tuple[float, float, float]:
         """
         Calculate MACD (Moving Average Convergence Divergence)
 
@@ -80,14 +99,18 @@ class TechnicalIndicators:
             return (
                 get_last_valid(macd_line),
                 get_last_valid(signal_line),
-                get_last_valid(histogram)
+                get_last_valid(histogram),
             )
         except Exception as e:
             logger.warning(f"MACD calculation failed: {e}")
             return (0.0, 0.0, 0.0)
 
-    def calculate_bollinger_bands(self, prices: Union[np.ndarray, pd.Series],
-                                  period: int = 20, std_dev: float = 2.0) -> Tuple[float, float, float]:
+    def calculate_bollinger_bands(
+        self,
+        prices: Union[np.ndarray, pd.Series],
+        period: int = 20,
+        std_dev: float = 2.0,
+    ) -> Tuple[float, float, float]:
         """
         Calculate Bollinger Bands
 
@@ -110,7 +133,7 @@ class TechnicalIndicators:
             return (
                 get_last_valid(upper),
                 get_last_valid(middle),
-                get_last_valid(lower)
+                get_last_valid(lower),
             )
         except Exception as e:
             logger.warning(f"Bollinger Bands calculation failed: {e}")
@@ -124,10 +147,13 @@ class TechnicalIndicators:
                 return (upper, middle, lower)
             return (0.0, 0.0, 0.0)
 
-    def calculate_atr(self, high: Union[np.ndarray, pd.Series],
-                      low: Union[np.ndarray, pd.Series],
-                      close: Union[np.ndarray, pd.Series],
-                      period: int = 14) -> float:
+    def calculate_atr(
+        self,
+        high: Union[np.ndarray, pd.Series],
+        low: Union[np.ndarray, pd.Series],
+        close: Union[np.ndarray, pd.Series],
+        period: int = 14,
+    ) -> float:
         """
         Calculate ATR (Average True Range)
 
@@ -149,10 +175,14 @@ class TechnicalIndicators:
             logger.warning(f"ATR calculation failed: {e}")
             return 0.0
 
-    def calculate_stochastic(self, high: Union[np.ndarray, pd.Series],
-                            low: Union[np.ndarray, pd.Series],
-                            close: Union[np.ndarray, pd.Series],
-                            k_period: int = 14, d_period: int = 3) -> Tuple[float, float]:
+    def calculate_stochastic(
+        self,
+        high: Union[np.ndarray, pd.Series],
+        low: Union[np.ndarray, pd.Series],
+        close: Union[np.ndarray, pd.Series],
+        k_period: int = 14,
+        d_period: int = 3,
+    ) -> Tuple[float, float]:
         """
         Calculate Stochastic Oscillator
 
@@ -167,22 +197,44 @@ class TechnicalIndicators:
             Tuple of (%K, %D)
         """
         try:
-            k_values, d_values = self.talib.stoch(high, low, close, k_period, d_period)
-
-            # Return the last valid values
-            def get_last_valid(arr):
-                valid = arr[~np.isnan(arr)]
-                return float(valid[-1]) if len(valid) > 0 else 50.0
-
-            return (
-                get_last_valid(k_values),
-                get_last_valid(d_values)
+            # Convert to DataFrame
+            df = pd.DataFrame(
+                {
+                    "high": high
+                    if isinstance(high, (pd.Series, np.ndarray))
+                    else np.array(high),
+                    "low": low
+                    if isinstance(low, (pd.Series, np.ndarray))
+                    else np.array(low),
+                    "close": close
+                    if isinstance(close, (pd.Series, np.ndarray))
+                    else np.array(close),
+                }
             )
+
+            d_series = compute_stochastic(df, period=k_period, smooth_k=d_period)
+            k_series = compute_stochastic_k(df, period=k_period, smooth_k=d_period)
+
+            k_val = (
+                float(k_series.iloc[-1])
+                if not k_series.empty and not pd.isna(k_series.iloc[-1])
+                else 50.0
+            )
+            d_val = (
+                float(d_series.iloc[-1])
+                if not d_series.empty and not pd.isna(d_series.iloc[-1])
+                else 50.0
+            )
+
+            return k_val, d_val
         except Exception as e:
             logger.warning(f"Stochastic calculation failed: {e}")
+            return 50.0, 50.0
             return (50.0, 50.0)
 
-    def calculate_momentum(self, prices: Union[np.ndarray, pd.Series], period: int = 10) -> float:
+    def calculate_momentum(
+        self, prices: Union[np.ndarray, pd.Series], period: int = 10
+    ) -> float:
         """
         Calculate Momentum indicator
 
@@ -227,48 +279,54 @@ class TechnicalIndicators:
 
         try:
             # RSI
-            if 'close' in df.columns:
-                signals['rsi'] = self.calculate_rsi(df['close'].values)
+            if "close" in df.columns:
+                signals["rsi"] = self.calculate_rsi(df["close"].to_numpy())
 
             # MACD
-            if 'close' in df.columns:
-                macd_line, signal_line, histogram = self.calculate_macd(df['close'].values)
-                signals['macd_line'] = macd_line
-                signals['macd_signal'] = signal_line
-                signals['macd_histogram'] = histogram
+            if "close" in df.columns:
+                macd_line, signal_line, histogram = self.calculate_macd(
+                    df["close"].to_numpy()
+                )
+                signals["macd_line"] = macd_line
+                signals["macd_signal"] = signal_line
+                signals["macd_histogram"] = histogram
 
             # Bollinger Bands
-            if 'close' in df.columns:
-                upper, middle, lower = self.calculate_bollinger_bands(df['close'].values)
-                signals['bb_upper'] = upper
-                signals['bb_middle'] = middle
-                signals['bb_lower'] = lower
+            if "close" in df.columns:
+                upper, middle, lower = self.calculate_bollinger_bands(
+                    df["close"].to_numpy()
+                )
+                signals["bb_upper"] = upper
+                signals["bb_middle"] = middle
+                signals["bb_lower"] = lower
 
                 # Bollinger Band position (%B)
-                if 'close' in df.columns and len(df) > 0:
-                    current_price = df['close'].iloc[-1]
+                if "close" in df.columns and len(df) > 0:
+                    current_price = df["close"].iloc[-1]
                     if upper > lower:  # Avoid division by zero
-                        signals['bb_position'] = (current_price - lower) / (upper - lower)
+                        signals["bb_position"] = (current_price - lower) / (
+                            upper - lower
+                        )
                     else:
-                        signals['bb_position'] = 0.5
+                        signals["bb_position"] = 0.5
 
             # ATR
-            if all(col in df.columns for col in ['high', 'low', 'close']):
-                signals['atr'] = self.calculate_atr(
-                    df['high'].values, df['low'].values, df['close'].values
+            if all(col in df.columns for col in ["high", "low", "close"]):
+                signals["atr"] = self.calculate_atr(
+                    df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
                 )
 
             # Stochastic Oscillator
-            if all(col in df.columns for col in ['high', 'low', 'close']):
+            if all(col in df.columns for col in ["high", "low", "close"]):
                 stoch_k, stoch_d = self.calculate_stochastic(
-                    df['high'].values, df['low'].values, df['close'].values
+                    df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
                 )
-                signals['stoch_k'] = stoch_k
-                signals['stoch_d'] = stoch_d
+                signals["stoch_k"] = stoch_k
+                signals["stoch_d"] = stoch_d
 
             # Momentum
-            if 'close' in df.columns:
-                signals['momentum'] = self.calculate_momentum(df['close'].values)
+            if "close" in df.columns:
+                signals["momentum"] = self.calculate_momentum(df["close"].to_numpy())
 
         except Exception as e:
             logger.error(f"Error calculating technical signals: {e}")

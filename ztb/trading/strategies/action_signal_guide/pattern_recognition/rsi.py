@@ -9,9 +9,9 @@ import pandas as pd
 
 from ztb.features.generators.technical.momentum.rsi import compute_rsi
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
+    MultiTimeframeData,
     PatternRecognizer,
     SignalResult,
-    MultiTimeframeData,
 )
 
 
@@ -102,13 +102,19 @@ class RSIPatternRecognizer(PatternRecognizer):
         )
 
         # Check for overbought/oversold signals
-        if current_rsi <= regime_adjusted_thresholds["oversold_level"] and previous_rsi > regime_adjusted_thresholds["oversold_level"]:
-            base_strength = (self.oversold_level - current_rsi) / self.oversold_level
+        if (
+            current_rsi <= regime_adjusted_thresholds["oversold_level"]
+            and previous_rsi > regime_adjusted_thresholds["oversold_level"]
+        ):
+            # Fixed: Ensure base_strength is always positive (depth from oversold level)
+            oversold_depth = max(
+                0, (self.oversold_level - current_rsi) / self.oversold_level
+            )
+            base_strength = min(
+                1.0, oversold_depth * 0.8 + 0.2
+            )  # Scale to 0.2-1.0 range
 
             # Adaptive direction based on oversold depth and market conditions
-            oversold_depth = (
-                self.oversold_level - current_rsi
-            ) / self.oversold_level  # 0-1 scale
             direction_factor = oversold_depth * (
                 0.8 + trend_strength * 0.2
             )  # Amplify in strong trends
@@ -188,9 +194,9 @@ class RSIPatternRecognizer(PatternRecognizer):
             trend_amplification = trend_strength * 0.4
             direction = min(1.0, base_direction + trend_amplification)
 
-            base_strength = 0.3
+            base_strength = 0.5  # Increased from 0.3 to meet MODERATE threshold
             volatility_boost = min(0.1, volatility_ratio * 0.05)
-            strength = min(0.6, base_strength + volatility_boost) * mtf_confidence
+            strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
             return SignalResult(
                 signal_type="RSI_centerline_bullish_mtf",
@@ -213,9 +219,9 @@ class RSIPatternRecognizer(PatternRecognizer):
             trend_amplification = trend_strength * 0.4
             direction = max(-1.0, base_direction - trend_amplification)
 
-            base_strength = 0.3
+            base_strength = 0.5  # Increased from 0.3 to meet MODERATE threshold
             volatility_boost = min(0.1, volatility_ratio * 0.05)
-            strength = min(0.6, base_strength + volatility_boost) * mtf_confidence
+            strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
             return SignalResult(
                 signal_type="RSI_centerline_bearish_mtf",
@@ -265,7 +271,7 @@ class RSIPatternRecognizer(PatternRecognizer):
 
         if price_trend and rsi_trend:
             # Adaptive strength and direction for bullish divergence with MTF confidence
-            base_strength = 0.4
+            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
@@ -296,7 +302,7 @@ class RSIPatternRecognizer(PatternRecognizer):
 
         if price_trend and rsi_trend:
             # Adaptive strength and direction for bearish divergence with MTF confidence
-            base_strength = 0.4
+            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
@@ -327,7 +333,7 @@ class RSIPatternRecognizer(PatternRecognizer):
         self,
         current_rsi: float,
         previous_rsi: float,
-        multi_timeframe_data: Optional[Dict[str, Any]]
+        multi_timeframe_data: Optional[Dict[str, Any]],
     ) -> float:
         """
         Analyze multi-timeframe RSI alignment for enhanced signal confidence.
@@ -356,7 +362,7 @@ class RSIPatternRecognizer(PatternRecognizer):
 
         # Timeframe alignment score
         tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
-        confidence *= (0.8 + tf_alignment * 0.4)  # 0.8 to 1.2 range
+        confidence *= 0.8 + tf_alignment * 0.4  # 0.8 to 1.2 range
 
         # Market regime consideration
         regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
@@ -366,7 +372,9 @@ class RSIPatternRecognizer(PatternRecognizer):
         return min(1.5, max(0.5, confidence))
 
     def _adjust_thresholds_for_regime(
-        self, multi_timeframe_data: Optional[MultiTimeframeData], pattern_type: str = "general"
+        self,
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        pattern_type: str = "general",
     ) -> Dict[str, Any]:
         """
         Adjust RSI thresholds based on market regime.

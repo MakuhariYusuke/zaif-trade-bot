@@ -95,7 +95,6 @@ MEMORY_THRESHOLD_MB = 10.0  # 10MB
 MEMORY_LEAK_THRESHOLD_PERCENT = 50.0
 OBJECT_LEAK_THRESHOLD = 10000
 PYTORCH_CUDA_ALLOC_MB = 512  # 512MB for CUDA allocation
-PYTORCH_CUDA_ALLOC_MB = 512  # 512MB for CUDA allocation
 
 # ============================================================================
 # Action Space Constants
@@ -157,9 +156,13 @@ DEFAULT_ACTION_DIVERSITY_BONUS = 0.0
 MODERATE_ACTION_DIVERSITY_BONUS = 0.1
 
 # Balance penalty constants
-DEFAULT_BALANCE_PENALTY_SCALE = 175.0  # Strong penalty for action imbalance (increased from 10.0)
+DEFAULT_BALANCE_PENALTY_SCALE = (
+    175.0  # Strong penalty for action imbalance (increased from 10.0)
+)
 DEFAULT_ACTION_BALANCE_TARGET = 0.333  # Target 33.3% for each action
-DEFAULT_REDUNDANT_TRADE_PENALTY = 10.0  # Penalty for redundant trades at max position (increased from 5.0)
+DEFAULT_REDUNDANT_TRADE_PENALTY = (
+    10.0  # Penalty for redundant trades at max position (increased from 5.0)
+)
 
 # Successful trade bonuses
 DEFAULT_SUCCESSFUL_TRADE_BONUS = 0.0
@@ -245,7 +248,9 @@ DEFAULT_MAX_FEATURES = None  # No limit
 MEMORY_OPTIMIZED_MAX_FEATURES = 50
 
 # Feature quality thresholds
-FEATURE_ZERO_RATE_THRESHOLD = 0.999  # 99.9% max zero rate for feature filtering (relaxed from 99%)
+FEATURE_ZERO_RATE_THRESHOLD = (
+    0.999  # 99.9% max zero rate for feature filtering (relaxed from 99%)
+)
 FEATURE_MIN_COUNT = 30  # Minimum features after quality filtering (reduced from 50)
 FEATURE_VARIANCE_THRESHOLD = 1e-6  # Minimum variance threshold (relaxed from 1e-8)
 FEATURE_NAN_RATE_THRESHOLD = 0.10  # 10% max NaN rate

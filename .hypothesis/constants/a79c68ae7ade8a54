@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\talib_wrapper.py
+# hypothesis_version: 6.148.6
+
+[0.0, 1e-08, 0.015, 0.02, 0.2, 2.0, 50.0, -100, 100, 128, 'ADX', 'ATR', 'Average True Range', 'BBANDS', 'Bollinger Bands', 'CCI', 'EMA', 'KAMA', 'MACD', 'MACD_FAST', 'MACD_SIGNAL', 'MACD_SLOW', 'MFI', 'MINUS_DI', 'Money Flow Index', 'OBV', 'On Balance Volume', 'PLUS_DI', 'Parabolic SAR', 'ROC', 'RSI', 'Rate of Change', 'SAR', 'SAR_ACCELERATION', 'SAR_MAXIMUM', 'SMA', 'STOCH', 'STOCH_FAST_K', 'STOCH_SLOW_D', 'STOCH_SLOW_K', 'TEMA', 'WILLIAMS_R', 'WILLR', 'WMA', 'Williams %R', 'acceleration', 'bbands', 'close', 'data', 'description', 'fast_period', 'fastd_period', 'fastk_period', 'high', 'inputs', 'interpretation', 'low', 'macd', 'maximum', 'nbdevdn', 'nbdevup', 'output_range', 'parameters', 'period', 'signal_period', 'slow_period', 'slowd_period', 'slowk_period', 'sma', 'stoch', 'stochf', 'talib_available', 'valid', 'volume']

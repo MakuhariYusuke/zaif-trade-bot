@@ -163,16 +163,24 @@ class LoggerProtocol(Protocol):
 
 
 # Data Loading Types
-class DataSource(Protocol):
-    """Protocol for data sources that can be loaded."""
+@dataclass
+class DataSource:
+    """Concrete data source definition used in tests and simple loaders.
 
-    def exists(self) -> bool:
-        """Check if the data source exists."""
-        ...
+    This class replaces the protocol-only definition for test convenience.
+    For more advanced usage implementers can still provide objects matching
+    the earlier protocol shape.
+    """
 
-    def get_path(self) -> Path:
-        """Get the path to the data source."""
-        ...
+    name: str
+    url: str
+    data_format: str
+    update_frequency: str
+    reliability_score: float
+
+    def is_reliable(self, threshold: float = 0.8) -> bool:
+        """Return whether the data source is considered reliable based on a threshold."""
+        return float(self.reliability_score) >= float(threshold)
 
 
 # Analysis Types

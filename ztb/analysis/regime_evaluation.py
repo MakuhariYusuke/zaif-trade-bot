@@ -84,9 +84,11 @@ class RegimeEvaluator:
         returns = price_data["close"].pct_change().fillna(0)
 
         # ボラティリティの計算（標準偏差）
-        volatility = returns.rolling(window=self.volatility_window).std() * np.sqrt(
-            TRADING_DAYS_PER_YEAR
-        )  # 年率化
+        from ztb.metrics.technical import calculate_rolling_volatility
+
+        volatility = calculate_rolling_volatility(
+            returns, window=self.volatility_window, annualize=True
+        )
 
         # トレンド方向の計算（移動平均の傾き）
         ma_short = price_data["close"].rolling(window=self.trend_window // 2).mean()

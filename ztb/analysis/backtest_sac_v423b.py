@@ -10,9 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
+
+from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 
 TRADING_DAYS_PER_YEAR = 252
 
@@ -188,33 +189,15 @@ class SACv423bBacktester:
 
     def calculate_max_drawdown(self, equity_curve: list) -> float:
         """Calculate maximum drawdown from equity curve."""
-        if not equity_curve:
-            return 0.0
-
-        peak = equity_curve[0]
-        max_drawdown = 0.0
-
-        for value in equity_curve:
-            if value > peak:
-                peak = value
-            drawdown = (peak - value) / peak
-            max_drawdown = max(max_drawdown, drawdown)
-
-        return max_drawdown
+        return max_drawdown(pd.Series(equity_curve))
 
     def calculate_sharpe_ratio(
         self, returns: pd.Series, risk_free_rate: float = 0.0
     ) -> float:
         """Calculate Sharpe ratio."""
-        if len(returns) == 0 or returns.std() == 0:
-            return 0.0
-
-        excess_returns = (
-            returns - risk_free_rate / TRADING_DAYS_PER_YEAR
-        )  # Daily risk-free rate
-        return (
-            excess_returns.mean() / returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )  # Annualized
+        return sharpe_ratio(
+            returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
+        )
 
 
 def main():

@@ -15,25 +15,32 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.technical import calculate_adx
+
 logger = logging.getLogger(__name__)
 
 
 class RegimeType(Enum):
     """Generic regime type enumeration"""
 
-    STRONG_BULL = "strong_bull"
-    MODERATE_BULL = "moderate_bull"
-    WEAK_BULL = "weak_bull"
-    STRONG_BEAR = "strong_bear"
-    MODERATE_BEAR = "moderate_bear"
-    WEAK_BEAR = "weak_bear"
-    HIGH_VOLATILITY_RANGE = "high_volatility_range"
-    MODERATE_VOLATILITY_RANGE = "moderate_volatility_range"
-    LOW_VOLATILITY_RANGE = "low_volatility_range"
+    STRONG_BULL = "strong_bull_trend"
+    MODERATE_BULL = "moderate_bull_trend"
+    WEAK_BULL = "weak_bull_trend"
+    STRONG_BEAR = "strong_bear_trend"
+    MODERATE_BEAR = "moderate_bear_trend"
+    WEAK_BEAR = "weak_bear_trend"
+    HIGH_VOLATILITY_RANGE = "high_volatility_ranging"
+    MODERATE_VOLATILITY_RANGE = "moderate_volatility_ranging"
+    LOW_VOLATILITY_RANGE = "low_volatility_ranging"
     EXTREME_VOLATILITY = "extreme_volatility"
     CONSOLIDATION = "consolidation"
     BREAKOUT_SETUP = "breakout_setup"
     BREAKDOWN_SETUP = "breakdown_setup"
+    # BUY特化レジーム（対称性確保）
+    BUY_BREAKOUT = "buy_breakout"
+    BUY_DIVERGENCE = "buy_divergence"
+    BUY_MOMENTUM_STRONG = "buy_momentum_strong"
+    BUY_VOLUME_SURGE = "buy_volume_surge"
     # SELL特化レジーム（SELL bias対策）
     SELL_BREAKDOWN = "sell_breakdown"
     SELL_DIVERGENCE = "sell_divergence"
@@ -102,11 +109,13 @@ class MarketRegimeClassifier:
             "lookback_periods", {"short": 20, "medium": 50, "long": 100}
         )
 
+        # Thresholds for regime detection
+        default_thresholds = self._get_default_thresholds()
+        config_thresholds = self.config.get("thresholds", {})
+        self.thresholds = {**default_thresholds, **config_thresholds}
+
         # Initialize regime definitions
         self.regime_definitions = self._load_regime_definitions()
-
-        # Thresholds for regime detection
-        self.thresholds = self.config.get("thresholds", self._get_default_thresholds())
 
         logger.info(
             f"Market Regime Classifier initialized with {len(self.regime_definitions)} regime definitions"
@@ -127,11 +136,11 @@ class MarketRegimeClassifier:
             "strong_trend_threshold": 3.0,
             "moderate_trend_threshold": 2.0,
             "weak_trend_threshold": 1.0,
-            "high_volatility_threshold": 0.15,
-            "moderate_volatility_threshold": 0.10,
-            "extreme_volatility_threshold": 0.20,
-            "consolidation_range_threshold": 0.05,
-            "breakout_setup_threshold": 0.15,
+            "high_volatility_threshold": 0.0005,  # Lowered for 1m data
+            "moderate_volatility_threshold": 0.0002,
+            "extreme_volatility_threshold": 0.0010,
+            "consolidation_range_threshold": 0.0001,
+            "breakout_setup_threshold": 0.0005,
         }
 
     def _load_regime_definitions(self) -> List[RegimeDefinition]:
@@ -192,65 +201,108 @@ class MarketRegimeClassifier:
         ]
 
     def _get_comprehensive_regime_definitions(self) -> List[RegimeDefinition]:
-        """Get comprehensive 16-regime definitions (enhanced for SELL bias correction)"""
+        """Get comprehensive 16-regime definitions (Symmetric for BUY/SELL balance)"""
+        t = self.thresholds
+
         return [
-            # SELL特化レジーム（最高優先度）
+            # BUY Specialized Regimes (High Priority)
+            RegimeDefinition(
+                name="Buy Breakout",
+                regime_type=RegimeType.BUY_BREAKOUT,
+                conditions={
+                    "price_range_ratio": {"min": t["breakout_setup_threshold"]},
+                    "bull_strength": {"min": 1.5},
+                    "volatility": {"min": t["moderate_volatility_threshold"]},
+                },
+                priority=20,
+                description="Strong upward breakout from range",
+            ),
+            RegimeDefinition(
+                name="Buy Divergence",
+                regime_type=RegimeType.BUY_DIVERGENCE,
+                conditions={
+                    "rsi": {"max": 40},
+                    "bull_strength": {"min": 1.0},
+                    "momentum": {"min": 0.5},
+                },
+                priority=19,
+                description="Bullish divergence pattern",
+            ),
+            RegimeDefinition(
+                name="Buy Momentum Strong",
+                regime_type=RegimeType.BUY_MOMENTUM_STRONG,
+                conditions={
+                    "adx": {"min": 25},
+                    "bull_strength": {"min": 2.0},
+                    "momentum": {"min": 1.0},
+                },
+                priority=18,
+                description="Strong bullish momentum",
+            ),
+            RegimeDefinition(
+                name="Buy Volume Surge",
+                regime_type=RegimeType.BUY_VOLUME_SURGE,
+                conditions={
+                    "volume_trend": {"min": 1.5},
+                    "bull_strength": {"min": 1.0},
+                    "price_range_ratio": {"min": t["consolidation_range_threshold"]},
+                },
+                priority=17,
+                description="High volume bullish move",
+            ),
+            # SELL Specialized Regimes (High Priority)
             RegimeDefinition(
                 name="Sell Breakdown",
                 regime_type=RegimeType.SELL_BREAKDOWN,
                 conditions={
-                    "trend_strength": {"max": -2.5},
-                    "bear_strength": {"min": 1.8},
-                    "volatility": {"min": 0.08},
-                    "price_range_ratio": {"min": 0.02},
+                    "price_range_ratio": {"min": t["breakout_setup_threshold"]},
+                    "bear_strength": {"min": 1.5},
+                    "volatility": {"min": t["moderate_volatility_threshold"]},
                 },
-                priority=16,
-                description="Strong breakdown pattern - SELL signal priority",
+                priority=20,
+                description="Strong downward breakdown from range",
             ),
             RegimeDefinition(
                 name="Sell Divergence",
                 regime_type=RegimeType.SELL_DIVERGENCE,
                 conditions={
-                    "trend_strength": {"min": -1.5, "max": 1.5},
-                    "bear_strength": {"min": 1.2},
-                    "macd_signal": {"max": -0.5},
-                    "rsi": {"max": 65},
+                    "rsi": {"min": 60},
+                    "bear_strength": {"min": 1.0},
+                    "momentum": {"max": -0.5},
                 },
-                priority=15,
-                description="Bearish divergence detected - SELL opportunity",
+                priority=19,
+                description="Bearish divergence pattern",
             ),
             RegimeDefinition(
                 name="Sell Momentum Weak",
                 regime_type=RegimeType.SELL_MOMENTUM_WEAK,
                 conditions={
-                    "trend_strength": {"max": -1.0},
-                    "momentum": {"max": -0.3},
-                    "volatility": {"min": 0.05},
-                    "adx": {"min": 20},
+                    "adx": {"min": 25},
+                    "bear_strength": {"min": 2.0},
+                    "momentum": {"max": -1.0},
                 },
-                priority=14,
-                description="Weakening momentum in downtrend - SELL reinforcement",
+                priority=18,
+                description="Strong bearish momentum",
             ),
             RegimeDefinition(
                 name="Sell Volume Surge",
                 regime_type=RegimeType.SELL_VOLUME_SURGE,
                 conditions={
-                    "trend_strength": {"max": -1.2},
-                    "volume_trend": {"min": 0.15},
-                    "price_range_ratio": {"min": 0.015},
-                    "bollinger_position": {"max": 0.3},
+                    "volume_trend": {"min": 1.5},
+                    "bear_strength": {"min": 1.0},
+                    "price_range_ratio": {"min": t["consolidation_range_threshold"]},
                 },
-                priority=13,
-                description="Volume surge in downtrend - SELL confirmation",
+                priority=17,
+                description="High volume bearish move",
             ),
-            # Bull trends (優先度を下げる)
+            # Bull trends
             RegimeDefinition(
                 name="Strong Bull Trend",
                 regime_type=RegimeType.STRONG_BULL,
                 conditions={
-                    "trend_strength": {"min": 3.0},
+                    "trend_strength": {"min": t["strong_trend_threshold"]},
                     "bull_strength": {"min": 2.5},
-                    "volatility": {"max": 0.15},
+                    "volatility": {"max": t["high_volatility_threshold"]},
                 },
                 priority=12,
                 description="Strong upward momentum with high conviction",
@@ -259,9 +311,12 @@ class MarketRegimeClassifier:
                 name="Moderate Bull Trend",
                 regime_type=RegimeType.MODERATE_BULL,
                 conditions={
-                    "trend_strength": {"min": 2.0, "max": 3.0},
+                    "trend_strength": {
+                        "min": t["moderate_trend_threshold"],
+                        "max": t["strong_trend_threshold"],
+                    },
                     "bull_strength": {"min": 1.5, "max": 2.5},
-                    "volatility": {"max": 0.20},
+                    "volatility": {"max": t["extreme_volatility_threshold"]},
                 },
                 priority=11,
                 description="Moderate upward trend with steady gains",
@@ -270,45 +325,54 @@ class MarketRegimeClassifier:
                 name="Weak Bull Trend",
                 regime_type=RegimeType.WEAK_BULL,
                 conditions={
-                    "trend_strength": {"min": 1.0, "max": 2.0},
+                    "trend_strength": {
+                        "min": t["weak_trend_threshold"],
+                        "max": t["moderate_trend_threshold"],
+                    },
                     "bull_strength": {"min": 0.5, "max": 1.5},
-                    "volatility": {"max": 0.25},
+                    "volatility": {"max": t["extreme_volatility_threshold"]},
                 },
                 priority=10,
                 description="Weak upward movement with low momentum",
             ),
-            # Bear trends (SELL bias対策で条件を緩和)
+            # Bear trends
             RegimeDefinition(
                 name="Strong Bear Trend",
                 regime_type=RegimeType.STRONG_BEAR,
                 conditions={
-                    "trend_strength": {"max": -2.8},  # より低い閾値
-                    "bear_strength": {"min": 2.2},  # より低い閾値
-                    "volatility": {"max": 0.18},  # より高い許容値
+                    "trend_strength": {"max": -t["strong_trend_threshold"]},
+                    "bear_strength": {"min": 2.2},
+                    "volatility": {"max": t["high_volatility_threshold"]},
                 },
-                priority=9,
+                priority=12,
                 description="Strong downward momentum with high conviction",
             ),
             RegimeDefinition(
                 name="Moderate Bear Trend",
                 regime_type=RegimeType.MODERATE_BEAR,
                 conditions={
-                    "trend_strength": {"max": -1.8, "min": -2.8},  # より低い閾値
-                    "bear_strength": {"min": 1.3, "max": 2.2},  # より低い閾値
-                    "volatility": {"max": 0.22},  # より高い許容値
+                    "trend_strength": {
+                        "max": -t["moderate_trend_threshold"],
+                        "min": -t["strong_trend_threshold"],
+                    },
+                    "bear_strength": {"min": 1.3, "max": 2.2},
+                    "volatility": {"max": t["extreme_volatility_threshold"]},
                 },
-                priority=8,
+                priority=11,
                 description="Moderate downward trend with steady losses",
             ),
             RegimeDefinition(
                 name="Weak Bear Trend",
                 regime_type=RegimeType.WEAK_BEAR,
                 conditions={
-                    "trend_strength": {"max": -0.8, "min": -1.8},  # より低い閾値
-                    "bear_strength": {"min": 0.3, "max": 1.3},  # より低い閾値
-                    "volatility": {"max": 0.28},  # より高い許容値
+                    "trend_strength": {
+                        "max": -t["weak_trend_threshold"],
+                        "min": -t["moderate_trend_threshold"],
+                    },
+                    "bear_strength": {"min": 0.3, "max": 1.3},
+                    "volatility": {"max": t["extreme_volatility_threshold"]},
                 },
-                priority=7,
+                priority=10,
                 description="Weak downward movement with low momentum",
             ),
             # Range conditions
@@ -316,8 +380,11 @@ class MarketRegimeClassifier:
                 name="High Volatility Range",
                 regime_type=RegimeType.HIGH_VOLATILITY_RANGE,
                 conditions={
-                    "volatility": {"min": 0.15},
-                    "trend_strength": {"min": -2.0, "max": 2.0},
+                    "volatility": {"min": t["high_volatility_threshold"]},
+                    "trend_strength": {
+                        "min": -t["moderate_trend_threshold"],
+                        "max": t["moderate_trend_threshold"],
+                    },
                 },
                 priority=6,
                 description="High volatility sideways movement",
@@ -326,8 +393,14 @@ class MarketRegimeClassifier:
                 name="Moderate Volatility Range",
                 regime_type=RegimeType.MODERATE_VOLATILITY_RANGE,
                 conditions={
-                    "volatility": {"min": 0.10, "max": 0.15},
-                    "trend_strength": {"min": -1.5, "max": 1.5},
+                    "volatility": {
+                        "min": t["moderate_volatility_threshold"],
+                        "max": t["high_volatility_threshold"],
+                    },
+                    "trend_strength": {
+                        "min": -t["weak_trend_threshold"],
+                        "max": t["weak_trend_threshold"],
+                    },
                 },
                 priority=5,
                 description="Moderate volatility consolidation",
@@ -336,8 +409,11 @@ class MarketRegimeClassifier:
                 name="Low Volatility Range",
                 regime_type=RegimeType.LOW_VOLATILITY_RANGE,
                 conditions={
-                    "volatility": {"max": 0.10},
-                    "trend_strength": {"min": -1.0, "max": 1.0},
+                    "volatility": {"max": t["moderate_volatility_threshold"]},
+                    "trend_strength": {
+                        "min": -t["weak_trend_threshold"],
+                        "max": t["weak_trend_threshold"],
+                    },
                 },
                 priority=4,
                 description="Low volatility tight range",
@@ -346,7 +422,7 @@ class MarketRegimeClassifier:
             RegimeDefinition(
                 name="Extreme Volatility",
                 regime_type=RegimeType.EXTREME_VOLATILITY,
-                conditions={"volatility": {"min": 0.20}},
+                conditions={"volatility": {"min": t["extreme_volatility_threshold"]}},
                 priority=3,
                 description="Extreme market volatility conditions",
             ),
@@ -354,7 +430,7 @@ class MarketRegimeClassifier:
                 name="Consolidation",
                 regime_type=RegimeType.CONSOLIDATION,
                 conditions={
-                    "volatility": {"max": 0.08},
+                    "volatility": {"max": t["consolidation_range_threshold"]},
                     "trend_strength": {"min": -0.8, "max": 0.8},
                 },
                 priority=2,
@@ -364,7 +440,7 @@ class MarketRegimeClassifier:
                 name="Breakout Setup",
                 regime_type=RegimeType.BREAKOUT_SETUP,
                 conditions={
-                    "volatility": {"max": 0.12},
+                    "volatility": {"max": t["breakout_setup_threshold"]},
                     "trend_strength": {"min": -1.2, "max": 1.2},
                     "support_resistance_strength": {"min": 0.7},
                 },
@@ -375,7 +451,7 @@ class MarketRegimeClassifier:
                 name="Breakdown Setup",
                 regime_type=RegimeType.BREAKDOWN_SETUP,
                 conditions={
-                    "volatility": {"max": 0.12},
+                    "volatility": {"max": t["breakout_setup_threshold"]},
                     "trend_strength": {"min": -1.2, "max": 1.2},
                     "support_resistance_strength": {"min": 0.7},
                 },
@@ -470,12 +546,19 @@ class MarketRegimeClassifier:
             return 1.0
 
         if multiplier_type == "reward":
-            return adaptation_config.get("regime_reward_multipliers", {}).get(
-                regime, 1.0
+            multipliers = adaptation_config.get("regime_reward_multipliers", {})
+            # Try direct lookup (if key is Enum) or string lookup
+            if regime in multipliers:
+                return multipliers[regime]
+            return multipliers.get(
+                regime.value if hasattr(regime, "value") else str(regime), 1.0
             )
         elif multiplier_type == "penalty":
-            return adaptation_config.get("regime_penalty_multipliers", {}).get(
-                regime, 1.0
+            multipliers = adaptation_config.get("regime_penalty_multipliers", {})
+            if regime in multipliers:
+                return multipliers[regime]
+            return multipliers.get(
+                regime.value if hasattr(regime, "value") else str(regime), 1.0
             )
 
         return 1.0
@@ -578,7 +661,11 @@ class MarketRegimeClassifier:
 
             # Calculate volatility (standard deviation of log returns)
             log_returns = np.log(close / close.shift())
-            volatility = log_returns.rolling(10).std() * np.sqrt(10)
+            from ztb.metrics.technical import calculate_rolling_volatility
+
+            volatility = calculate_rolling_volatility(
+                log_returns, window=10, annualize=True, trading_days=10
+            )
 
             # Calculate raw trend strength
             trend_strength_raw = momentum / (volatility + 1e-8)
@@ -611,15 +698,13 @@ class MarketRegimeClassifier:
     def _calculate_volatility(self, close: pd.Series) -> float:
         """Calculate normalized volatility"""
         try:
-            returns = close.pct_change().fillna(0)
-            volatility = returns.rolling(20).std()
-            scaled_volatility = volatility * 10
+            from ztb.metrics.technical import calculate_volatility_from_returns
 
-            return (
-                float(scaled_volatility.iloc[-1])
-                if not scaled_volatility.empty
-                else 0.0
-            )
+            returns = close.pct_change().fillna(0)
+            # Original logic: returns.rolling(20).std() * 10
+            # We can use calculate_volatility_from_returns(returns, 20) * 10
+            vol = calculate_volatility_from_returns(returns, 20)
+            return vol * 10
 
         except Exception as e:
             logger.warning(f"Error calculating volatility: {e}")
@@ -668,64 +753,21 @@ class MarketRegimeClassifier:
         self, high: pd.Series, low: pd.Series, close: pd.Series
     ) -> float:
         """Calculate ADX (Average Directional Index)"""
-        try:
-            # Simplified ADX calculation
-            high_diff = high - high.shift(1)
-            low_diff = low.shift(1) - low
-
-            plus_dm = np.where((high_diff > low_diff) & (high_diff > 0), high_diff, 0)
-            minus_dm = np.where((low_diff > high_diff) & (low_diff > 0), low_diff, 0)
-
-            tr = np.maximum(
-                high - low,
-                np.maximum(abs(high - close.shift(1)), abs(low - close.shift(1))),
-            )
-
-            plus_di = (
-                100
-                * pd.Series(plus_dm).rolling(14).mean()
-                / pd.Series(tr).rolling(14).mean()
-            )
-            minus_di = (
-                100
-                * pd.Series(minus_dm).rolling(14).mean()
-                / pd.Series(tr).rolling(14).mean()
-            )
-
-            dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
-            adx = dx.rolling(14).mean()
-
-            return float(adx.iloc[-1]) if not adx.empty else 0.0
-
-        except Exception as e:
-            logger.warning(f"Error calculating ADX: {e}")
-            return 0.0
+        return calculate_adx(high, low, close, period=14)
 
     def _calculate_rsi(self, close: pd.Series) -> float:
         """Calculate RSI (Relative Strength Index)"""
-        try:
-            delta = close.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-            rs = gain / loss
-            rsi = 100 - (100 / (1 + rs))
+        from ztb.metrics.technical import calculate_rsi
 
-            return float(rsi.iloc[-1]) if not rsi.empty else 50.0
-
-        except Exception as e:
-            logger.warning(f"Error calculating RSI: {e}")
-            return 50.0
+        return calculate_rsi(close, period=14)
 
     def _calculate_macd_signal(self, close: pd.Series) -> float:
         """Calculate MACD signal"""
         try:
-            ema12 = close.ewm(span=12).mean()
-            ema26 = close.ewm(span=26).mean()
-            macd = ema12 - ema26
-            signal = macd.ewm(span=9).mean()
-            macd_signal = macd - signal
+            from ztb.metrics.technical import calculate_macd
 
-            return float(macd_signal.iloc[-1]) if not macd_signal.empty else 0.0
+            _, _, hist = calculate_macd(close)
+            return float(hist.iloc[-1]) if not hist.empty else 0.0
 
         except Exception as e:
             logger.warning(f"Error calculating MACD signal: {e}")
@@ -734,10 +776,9 @@ class MarketRegimeClassifier:
     def _calculate_bollinger_position(self, close: pd.Series) -> float:
         """Calculate Bollinger Band position"""
         try:
-            sma = close.rolling(20).mean()
-            std = close.rolling(20).std()
-            upper_band = sma + (std * 2)
-            lower_band = sma - (std * 2)
+            from ztb.metrics.technical import calculate_bollinger_bands
+
+            upper_band, _, lower_band = calculate_bollinger_bands(close, period=20)
 
             band_width = upper_band - lower_band
             position = (close - lower_band) / band_width

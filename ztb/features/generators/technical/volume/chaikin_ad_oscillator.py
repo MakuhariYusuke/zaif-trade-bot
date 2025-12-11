@@ -58,6 +58,8 @@ class ChaikinADOscillator(BaseFeature):
 
         # Chaikin AD Oscillator is the difference
         chaikin_ad_oscillator = fast_ema - slow_ema
+        # Normalize oscillator by average volume to keep values in a reasonable range
+        chaikin_ad_oscillator = chaikin_ad_oscillator / df["volume"].mean()
 
         result_df = pd.DataFrame(
             {"chaikin_ad_oscillator": chaikin_ad_oscillator}, index=df.index

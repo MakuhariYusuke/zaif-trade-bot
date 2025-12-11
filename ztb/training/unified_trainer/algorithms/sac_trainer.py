@@ -1,5 +1,6 @@
 """SAC algorithm trainer implementation."""
 
+import copy
 import logging
 import os
 import time
@@ -9,21 +10,25 @@ import numpy as np
 import pandas as pd
 import torch
 from stable_baselines3 import SAC
+from stable_baselines3.common.callbacks import CallbackList, EvalCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.callbacks import CallbackList
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.training.checkpoint.checkpoint_manager import (
+    TrainingCheckpointConfig,
+    TrainingCheckpointManager,
+)
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
-from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager, TrainingCheckpointConfig
-from ztb.utils.training_utils import create_checkpoint_callback
+from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
-from ztb.training.utils.distributed_training import get_distributed_info
+from ztb.utils.training_utils import create_checkpoint_callback
 
 
 class SACTrainer(BaseAlgorithmTrainer):
@@ -69,7 +74,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 async_save=True,
                 include_optimizer=True,
                 include_replay_buffer=False,
-            )
+            ),
         )
 
         # Initialize market regime adaptation if enabled
@@ -90,7 +95,15 @@ class SACTrainer(BaseAlgorithmTrainer):
         if not name:
             return False
         # Valid feature sets include "default" and other predefined sets
-        valid_sets = ["default", "high_quality", "minimal", "full", "no_harmful", "v435_risk_managed", "v435_risk_managed_no_multi_timeframe"]
+        valid_sets = [
+            "default",
+            "high_quality",
+            "minimal",
+            "full",
+            "no_harmful",
+            "v435_risk_managed",
+            "v435_risk_managed_no_multi_timeframe",
+        ]
         return name in valid_sets
 
     def _extract_feature_set(self, source: Any) -> Optional[str]:
@@ -291,6 +304,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             total_timesteps = total_timesteps or config_timesteps
             resume_path = self.config.get("training", {}).get("resume_from", None)
             start_time = start_time or time.time()
+            data_path = self.config.get("data_config", {}).get("data_path")
 
             # Check for resume functionality
             resumed_state = None
@@ -450,13 +464,15 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Convert whatever shape we received into an EnvironmentConfig instance
             # EnvironmentConfig.from_dict can handle nested layouts (training.environment, training.environment.config)
             try:
-                print(f"DEBUG: About to create EnvironmentConfig from actual_env_config")
-                print(f"DEBUG: actual_env_config type: {type(actual_env_config)}")
+                # print(f"DEBUG: About to create EnvironmentConfig from actual_env_config")
+                # print(f"DEBUG: actual_env_config type: {type(actual_env_config)}")
                 if isinstance(actual_env_config, dict):
-                    print(f"DEBUG: actual_env_config keys: {list(actual_env_config.keys())}")
-                    print(f"DEBUG: actual_env_config feature_set: {actual_env_config.get('feature_set', 'NOT_FOUND')}")
-                elif hasattr(actual_env_config, 'feature_set'):
-                    print(f"DEBUG: actual_env_config.feature_set: {actual_env_config.feature_set}")
+                    pass
+                    # print(f"DEBUG: actual_env_config keys: {list(actual_env_config.keys())}")
+                    # print(f"DEBUG: actual_env_config feature_set: {actual_env_config.get('feature_set', 'NOT_FOUND')}")
+                elif hasattr(actual_env_config, "feature_set"):
+                    pass
+                    # print(f"DEBUG: actual_env_config.feature_set: {actual_env_config.feature_set}")
                 if isinstance(actual_env_config, EnvironmentConfig):
                     env_config_obj = actual_env_config
                 elif isinstance(actual_env_config, dict):
@@ -465,8 +481,33 @@ class SACTrainer(BaseAlgorithmTrainer):
                     # Fallback: try converting the whole training section or full config
                     env_config_obj = EnvironmentConfig.from_dict(self.config)
 
-                # DEBUG: Log the feature_set
-                self.logger.info(f"DEBUG: env_config_obj.feature_set = {getattr(env_config_obj, 'feature_set', 'NOT_SET')}")
+                # 🔧 CRITICAL FIX: Inject curriculum_learning config if present in training config
+                # This ensures BalanceCurriculumManager receives the necessary configuration
+                training_cfg = (
+                    self.config.get("training", {})
+                    if isinstance(self.config, dict)
+                    else {}
+                )
+                curriculum_cfg = training_cfg.get("curriculum_learning")
+
+                if curriculum_cfg and hasattr(env_config_obj, "curriculum_learning"):
+                    self.logger.debug(
+                        f"Injecting curriculum_learning config into EnvironmentConfig: {list(curriculum_cfg.keys())}"
+                    )
+                    env_config_obj.curriculum_learning = curriculum_cfg
+                elif curriculum_cfg:
+                    self.logger.warning(
+                        "curriculum_learning found in config but EnvironmentConfig has no such field!"
+                    )
+                else:
+                    self.logger.debug(
+                        "No curriculum_learning config found in training section."
+                    )
+
+                # Log the feature_set
+                self.logger.debug(
+                    f"env_config_obj.feature_set = {getattr(env_config_obj, 'feature_set', 'NOT_SET')}"
+                )
 
                 # Honor explicit flags from the original config dict if present.
                 # Some conversion paths may nest the fields; check common locations.
@@ -561,9 +602,18 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Attempt to capture feature generation time as measured by the environment construction
             try:
                 env._feature_generation_time = time.perf_counter() - feature_start
-                self.logger.info(f"Captured env feature generation time: {env._feature_generation_time:.3f}s")
+                self.logger.info(
+                    f"Captured env feature generation time: {env._feature_generation_time:.3f}s"
+                )
             except Exception:
                 pass
+
+            # Initialize market regime adaptation if enabled and not yet initialized
+            if (
+                self.market_regime_adaptation.get("enabled", False)
+                and self.regime_classifier is None
+            ):
+                self._initialize_market_regime_adaptation()
 
             # Enable market regime adaptation in environment if configured
             if self.regime_classifier is not None:
@@ -572,12 +622,145 @@ class SACTrainer(BaseAlgorithmTrainer):
                     adaptation_config=self.market_regime_adaptation,
                 )
                 self.logger.info("Market regime adaptation enabled in environment")
+
             wrapped_env: Monitor = Monitor(env)
-            self.logger.info(f"Environment observation space: {env.observation_space}")
-            print(f"Environment action space: {env.action_space}")
+
+            # 🔧 CRITICAL FIX: Apply VecNormalize to prevent input saturation
+            # Even though HeavyTradingEnv has internal normalization, VecNormalize handles
+            # reward normalization and clipping which are crucial for stability.
+            # We wrap it in DummyVecEnv first as VecNormalize requires a VecEnv.
+            if not isinstance(wrapped_env, DummyVecEnv):
+                wrapped_env = DummyVecEnv([lambda: wrapped_env])
 
             # Get SAC hyperparameters
             sac_config = self.config.get("training", {}).get("sac_hyperparameters", {})
+
+            # Check if normalization is disabled in config (default: enabled)
+            normalize_kwargs = self.config.get("training", {}).get("normalization", {})
+            if normalize_kwargs.get("enabled", True):
+                self.logger.info("Applying VecNormalize to environment")
+                wrapped_env = VecNormalize(
+                    wrapped_env,
+                    norm_obs=normalize_kwargs.get("norm_obs", True),
+                    norm_reward=normalize_kwargs.get("norm_reward", True),
+                    clip_obs=normalize_kwargs.get("clip_obs", 10.0),
+                    clip_reward=normalize_kwargs.get("clip_reward", 10.0),
+                    gamma=sac_config.get("gamma", 0.99),
+                )
+                self.logger.info(f"VecNormalize applied with: {normalize_kwargs}")
+
+            # Recurrent RL (GRU) Support
+            use_recurrent = sac_config.get("use_recurrent", False)
+            if use_recurrent:
+                n_stack = sac_config.get("n_stack", 60)
+                self.logger.info(f"Enabling Recurrent RL with {n_stack} frame stacking")
+
+                # Wrap in DummyVecEnv to make it compatible with VecFrameStack
+                # Note: We use a lambda to create the env, but here we already have an instance.
+                # DummyVecEnv expects a list of callables.
+                # Since we already have 'wrapped_env' (Monitor), we can wrap it.
+                # However, DummyVecEnv usually takes a list of functions that return envs.
+                # To wrap an existing env instance, we can just return it, but we must be careful about reset().
+                # A safer way is to let DummyVecEnv manage it, but we already created it.
+                # We will use a lambda that returns the *existing* instance.
+                # Warning: This is not standard for parallel envs, but fine for single env.
+                vec_env = DummyVecEnv([lambda: wrapped_env])
+                wrapped_env = VecFrameStack(vec_env, n_stack=n_stack)
+                self.logger.info(
+                    f"Environment wrapped with VecFrameStack (n_stack={n_stack})"
+                )
+
+            # --- Evaluation Environment Setup ---
+            eval_env = None
+            eval_callback = None
+            evaluation_config = self.config.get("evaluation", {})
+
+            if evaluation_config.get("enabled", False):
+                self.logger.info("Setting up evaluation environment...")
+
+                # Determine eval config (merge base env config with eval overrides)
+                eval_overrides = evaluation_config.get("overrides", {})
+
+                # Create a copy of the base config object
+                if isinstance(env_config_obj, EnvironmentConfig):
+                    eval_env_config_obj = copy.deepcopy(env_config_obj)
+                    # Apply overrides
+                    for k, v in eval_overrides.items():
+                        if hasattr(eval_env_config_obj, k):
+                            setattr(eval_env_config_obj, k, v)
+                            self.logger.info(f"Eval Env Override: {k} = {v}")
+                else:
+                    # Fallback for dict config
+                    eval_env_config_obj = env_config_obj.copy()
+                    eval_env_config_obj.update(eval_overrides)
+
+                # Create Eval Env
+                # Note: We use the same df for now. In a real ML pipeline, we should use validation data.
+                # If 'data_path' is specified in evaluation_config, load it.
+                eval_data_path = evaluation_config.get("data_path")
+                if eval_data_path and os.path.exists(eval_data_path):
+                    self.logger.info(f"Loading evaluation data from {eval_data_path}")
+                    eval_df = pd.read_csv(eval_data_path)
+                else:
+                    eval_df = (
+                        df  # Use same dataframe (be careful about leakage if not split)
+                    )
+
+                eval_env_raw = HeavyTradingEnv(
+                    df=eval_df,
+                    config=eval_env_config_obj,
+                    optimizer_tracker=self.optimizer_tracker,
+                )
+
+                # Wrap Eval Env
+                eval_env = Monitor(eval_env_raw)
+                eval_env = DummyVecEnv([lambda: eval_env])
+
+                # Apply VecNormalize if used in training
+                if normalize_kwargs.get("enabled", True):
+                    eval_env = VecNormalize(
+                        eval_env,
+                        norm_obs=normalize_kwargs.get("norm_obs", True),
+                        norm_reward=False,  # Don't normalize rewards during eval usually
+                        clip_obs=normalize_kwargs.get("clip_obs", 10.0),
+                        clip_reward=normalize_kwargs.get("clip_reward", 10.0),
+                        gamma=sac_config.get("gamma", 0.99),
+                        training=False,  # Important: don't update stats during eval
+                    )
+
+                # Apply VecFrameStack if used
+                if use_recurrent:
+                    eval_env = VecFrameStack(eval_env, n_stack=n_stack)
+
+                # Create EvalCallback
+                eval_freq = evaluation_config.get("eval_freq", 5000)
+                n_eval_episodes = evaluation_config.get("n_eval_episodes", 5)
+
+                checkpoint_dir = self.config.get("checkpoint_dir", "models/checkpoints")
+                eval_callback = EvalCallback(
+                    eval_env,
+                    best_model_save_path=os.path.join(checkpoint_dir, "best_model"),
+                    log_path=os.path.join(checkpoint_dir, "eval_logs"),
+                    eval_freq=eval_freq,
+                    n_eval_episodes=n_eval_episodes,
+                    deterministic=True,
+                    render=False,
+                )
+
+                # Add to callback list
+                if isinstance(callback, CallbackList):
+                    callback.callbacks.append(eval_callback)
+                elif callback is not None:
+                    callback = CallbackList([callback, eval_callback])
+                else:
+                    callback = CallbackList([eval_callback])
+
+                self.logger.info("Evaluation environment setup complete.")
+
+            self.logger.info(
+                f"Environment observation space: {wrapped_env.observation_space}"
+            )
+            print(f"Environment action space: {wrapped_env.action_space}")
 
             # Prepare policy kwargs with overfitting prevention parameters
             policy_kwargs = {}
@@ -590,32 +773,46 @@ class SACTrainer(BaseAlgorithmTrainer):
                     f"Applying net_arch from config: {sac_config['net_arch']}"
                 )
                 policy_kwargs["net_arch"] = sac_config["net_arch"]
-            if sac_config.get("net_arch"):
+
+            # Inject GRU Feature Extractor if recurrent mode is enabled
+            if use_recurrent:
+                from ztb.ml.networks.recurrent_features import GRUFeatureExtractor
+
+                policy_kwargs["features_extractor_class"] = GRUFeatureExtractor
+                policy_kwargs["features_extractor_kwargs"] = {
+                    "n_stack": sac_config.get("n_stack", 60),
+                    "hidden_size": sac_config.get("recurrent_hidden_size", 128),
+                    "num_layers": sac_config.get("recurrent_num_layers", 1),
+                    "features_dim": sac_config.get("features_dim", 256),
+                }
                 self.logger.info(
-                    f"Applying net_arch from config: {sac_config['net_arch']}"
+                    f"Using GRUFeatureExtractor with hidden_size={sac_config.get('recurrent_hidden_size', 128)}"
                 )
-                policy_kwargs["net_arch"] = sac_config["net_arch"]
 
             # Create SAC model
-            self.log_structured_event(
-                "model", "creation", {"algorithm": "SAC", "policy": "MlpPolicy"}
-            )
-            self.model = SAC(
-                "MlpPolicy",
-                wrapped_env,
-                learning_rate=sac_config.get("learning_rate", 0.0003),
-                buffer_size=sac_config.get("buffer_size", 1000000),
-                learning_starts=sac_config.get("learning_starts", 100),
-                batch_size=sac_config.get("batch_size", 256),
-                tau=sac_config.get("tau", 0.005),
-                gamma=sac_config.get("gamma", 0.99),
-                train_freq=sac_config.get("train_freq", 1),
-                gradient_steps=sac_config.get("gradient_steps", 1),
-                ent_coef=sac_config.get("ent_coef", "auto"),
-                target_update_interval=sac_config.get("target_update_interval", 1),
-                policy_kwargs=policy_kwargs if policy_kwargs else None,
-                verbose=0,  # We'll handle logging ourselves
-            )
+            if self.model is None:
+                self.log_structured_event(
+                    "model", "creation", {"algorithm": "SAC", "policy": "MlpPolicy"}
+                )
+                self.model = SAC(
+                    "MlpPolicy",
+                    wrapped_env,
+                    learning_rate=sac_config.get("learning_rate", 0.0003),
+                    buffer_size=sac_config.get("buffer_size", 1000000),
+                    learning_starts=sac_config.get("learning_starts", 100),
+                    batch_size=sac_config.get("batch_size", 256),
+                    tau=sac_config.get("tau", 0.005),
+                    gamma=sac_config.get("gamma", 0.99),
+                    train_freq=sac_config.get("train_freq", 1),
+                    gradient_steps=sac_config.get("gradient_steps", 1),
+                    ent_coef=sac_config.get("ent_coef", "auto"),
+                    target_update_interval=sac_config.get("target_update_interval", 1),
+                    policy_kwargs=policy_kwargs if policy_kwargs else None,
+                    verbose=0,  # We'll handle logging ourselves
+                )
+            else:
+                self.logger.info("Using existing model instance")
+                self.model.set_env(wrapped_env)
 
             # Restore training state if resuming
             if resumed_state:
@@ -758,8 +955,15 @@ class SACTrainer(BaseAlgorithmTrainer):
 
             # Collect reward_components from callback if available (for AB analysis)
             try:
-                cb = callback.callbacks[0] if hasattr(callback, "callbacks") else callback
-                if hasattr(cb, "reward_components_history") and cb.reward_components_history:
+                cb = (
+                    callback.callbacks[0]
+                    if hasattr(callback, "callbacks")
+                    else callback
+                )
+                if (
+                    hasattr(cb, "reward_components_history")
+                    and cb.reward_components_history
+                ):
                     # Average reward components across all episodes
                     components = {}
                     for comp_dict in cb.reward_components_history:
@@ -768,7 +972,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                                 components[key] = []
                             components[key].append(float(val))
                     # Average each component
-                    avg_components = {k: sum(v) / len(v) for k, v in components.items() if v}
+                    avg_components = {
+                        k: sum(v) / len(v) for k, v in components.items() if v
+                    }
                     self.training_stats["reward_components"] = avg_components
                     self.logger.info(f"Collected reward_components: {avg_components}")
             except Exception as e:

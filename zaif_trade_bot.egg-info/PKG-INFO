@@ -104,6 +104,23 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 
 ## 🆕 Recent Updates (2025-11-12)
 
+### ThresholdManager統合完了 ✅
+- **コード重複解消**: DynamicThresholdManagerクラスを削除し、既存のThresholdManagerに統合
+- **統一された閾値管理**: ActionSignalGuideとActionSignalGuideAdapterが単一のThresholdManagerを使用
+- **市場レジーム適応**: トレンド/レンジ/ボラティリティ市場の検出と適応的閾値調整
+- **パフォーマンス追跡**: シグナル実行結果に基づく動的閾値適応
+- **高度なレジーム検出**: MarketRegimeDetector統合による正確な市場状態分析
+- **パフォーマンス最適化**: 計算結果のキャッシュによる高速化
+- **テスト検証**: 統合テスト成功、571.73%平均リターンを維持しつつコード品質向上
+
+### ActionSignalGuide改善完了 ✅
+- **メモリ管理強化**: 自動メモリクリーンアップと設定可能な制限値（max_signal_history, memory_cleanup_interval）
+- **パフォーマンス最適化**: 定期的なメモリクリーンアップと詳細なパフォーマンス監視メトリクス
+- **エラーハンドリング改善**: リトライロジック（最大2回）と包括的なエラー分類・報告
+- **コード重複削減**: Recognizer初期化の動的処理と統一された設定管理パターン
+- **設定拡張**: メモリ管理パラメータの追加と包括的な設定検証
+- **ドキュメント充実**: 詳細なクラスドキュメント、使用例、アーキテクチャ説明の追加
+
 ### Phase 3: Ensemble Signal Methods 完了 ✅
 - **EnsembleSignalGenerator実装**: 多ソースシグナル統合による高度なアンサンブル手法
 - **4ソースシグナル統合**: テクニカル分析、パターン認識、センチメント分析、出来高プロファイル
@@ -842,6 +859,13 @@ When adding new V4XX versions:
 The unified system ensures that all V4XX versions maintain consistent behavior and interfaces while allowing for version-specific optimizations and features.
 
 ---
+
+### Risk Manager Protocol
+To maintain consistent risk management across backtests, live systems, and training scripts, we added `RiskManagerProtocol`.
+- Implement the protocol for new risk manager classes; it is defined in `ztb/trading/risk/interfaces.py`.
+- During migration, wrap older implementations with `ensure_risk_manager_protocol(obj)` to avoid runtime attribute errors.
+  This adapter lives in `ztb/trading/risk/compat.py` and is intended for temporary, incremental migration.
+
 
 ### Unified Analysis Suite
 Comprehensive analysis toolkit for all trading system components:

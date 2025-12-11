@@ -263,8 +263,12 @@ class AdaptiveFeatureEngineer:
         # 様々な期間のボラティリティ
         for window in [5, 10, 20, 30]:
             df[f"volatility_{window}d"] = returns.rolling(window=window).std()
-            df[f"volatility_skew_{window}d"] = returns.rolling(window=window).apply(lambda x: skewness(x.values) if len(x) > 0 else np.nan)
-            df[f"volatility_kurt_{window}d"] = returns.rolling(window=window).apply(lambda x: kurtosis(x.values) if len(x) > 0 else np.nan)
+            df[f"volatility_skew_{window}d"] = returns.rolling(window=window).apply(
+                lambda x: skewness(x.values) if len(x) > 0 else np.nan
+            )
+            df[f"volatility_kurt_{window}d"] = returns.rolling(window=window).apply(
+                lambda x: kurtosis(x.values) if len(x) > 0 else np.nan
+            )
 
         # ボラティリティの変化
         df["volatility_trend"] = df["volatility_20d"].pct_change(5)
@@ -479,11 +483,9 @@ class AdaptiveFeatureEngineer:
         """
         RSIの計算
         """
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
+        from ztb.metrics.technical import calculate_rolling_rsi
+
+        return calculate_rolling_rsi(prices, period=window)
 
     def _calculate_stochastic(
         self, close: pd.Series, high: pd.Series, low: pd.Series, window: int
@@ -491,13 +493,11 @@ class AdaptiveFeatureEngineer:
         """
         Stochastic Oscillatorの計算
         """
-        lowest_low = low.rolling(window=window).min()
-        highest_high = high.rolling(window=window).max()
+        from ztb.metrics.technical import calculate_stochastic_fast
 
-        k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
-        d = k.rolling(window=3).mean()
-
-        return k, d
+        return calculate_stochastic_fast(
+            high, low, close, fastk_period=window, fastd_period=3
+        )
 
     def _calculate_williams_r(
         self, close: pd.Series, high: pd.Series, low: pd.Series, window: int
@@ -505,10 +505,9 @@ class AdaptiveFeatureEngineer:
         """
         Williams %Rの計算
         """
-        highest_high = high.rolling(window=window).max()
-        lowest_low = low.rolling(window=window).min()
+        from ztb.metrics.technical import calculate_williams_r
 
-        return -100 * ((highest_high - close) / (highest_high - lowest_low))
+        return calculate_williams_r(high, low, close, period=window)
 
     def _calculate_obv(self, close: pd.Series, volume: pd.Series) -> pd.Series:
         """

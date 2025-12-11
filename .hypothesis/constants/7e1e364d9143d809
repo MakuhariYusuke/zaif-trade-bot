@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\multi_timeframe\engine.py
+# hypothesis_version: 6.148.6
+
+[0.1, 1.0, 100, '.1f', 'close', 'high', 'long_period', 'low', 'medium_period', 'open', 'short_period', 'timeframe_hierarchy', 'timestamp', 'volume']

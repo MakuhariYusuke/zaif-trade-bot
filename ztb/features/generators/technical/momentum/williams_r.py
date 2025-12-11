@@ -10,14 +10,14 @@ from typing import Any
 
 import pandas as pd
 
-from ..base import BaseFeature
-from ..registry import FeatureRegistry
+from ztb.features.core.base import BaseFeature
+from ztb.features.core.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("Williams_R")
-def compute_williams_r(df: pd.DataFrame) -> pd.Series:
+def compute_williams_r(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Williams %R (Williams Percent Range) using Ta-Lib wrapper"""
-    feature = WilliamsR()
+    feature = WilliamsR(period=period)
     result_df = feature.compute(df)
     return result_df["williams_r"]
 

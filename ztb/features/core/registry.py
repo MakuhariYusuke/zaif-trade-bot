@@ -17,8 +17,13 @@ import pandas as pd
 import psutil
 from pandas.api import types as ptypes
 
+from ztb.metrics.statistics import calculate_atr
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.protocols import FeatureRegistryProtocol
+
+# Avoid importing `torch` at module import time to prevent ABI incompatibilities
+# and segfaults on environments with mismatched NumPy/Torch builds.
+
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +177,11 @@ class FeatureRegistry(FeatureRegistryProtocol):
         return cls._registry[name]
 
     @classmethod
+    def get_compute_function(cls, name: str) -> Callable[..., pd.Series]:
+        """Backward-compatible alias for tests/legacy code to retrieve compute functions."""
+        return cls.get(name)
+
+    @classmethod
     def list(cls) -> List[str]:
         return list(cls._registry.keys())
 
@@ -312,19 +322,8 @@ class FeatureRegistry(FeatureRegistryProtocol):
             for period in common_atr_periods:
                 col_name = f"atr_{period}"
                 if col_name not in df.columns:
-                    # Simplified ATR calculation for pre-computation
-                    high = df["high"]
-                    low = df["low"]
-                    close = df["close"]
-                    tr = pd.concat(
-                        [
-                            high - low,
-                            (high - close.shift(1)).abs(),
-                            (low - close.shift(1)).abs(),
-                        ],
-                        axis=1,
-                    ).max(axis=1)
-                    df[col_name] = tr.rolling(window=period).mean()
+                    # Use centralized ATR calculation
+                    df[col_name] = calculate_atr(df, period=period)
 
         return df
 

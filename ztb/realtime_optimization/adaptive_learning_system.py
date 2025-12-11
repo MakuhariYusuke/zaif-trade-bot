@@ -8,12 +8,13 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-import numpy as np
 import threading
 import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LearningExperience:
     """学習経験"""
+
     timestamp: datetime
     market_condition: Dict[str, Any]
     action_taken: str
@@ -32,6 +34,7 @@ class LearningExperience:
 @dataclass
 class StrategyPerformance:
     """戦略パフォーマンス"""
+
     strategy_name: str
     total_trades: int
     win_rate: float
@@ -52,10 +55,12 @@ class AdaptiveLearningSystem:
     - 市場適応
     """
 
-    def __init__(self,
-                 learning_interval: int = 1800,  # 30分
-                 experience_window: int = 1000,  # 1000件の経験
-                 strategy_evaluation_period: int = 24):  # 24時間
+    def __init__(
+        self,
+        learning_interval: int = 1800,  # 30分
+        experience_window: int = 1000,  # 1000件の経験
+        strategy_evaluation_period: int = 24,
+    ):  # 24時間
         """
         初期化
 
@@ -89,9 +94,7 @@ class AdaptiveLearningSystem:
             return
 
         self.is_learning = True
-        self.learning_thread = threading.Thread(
-            target=self._learning_loop
-        )
+        self.learning_thread = threading.Thread(target=self._learning_loop)
         self.learning_thread.daemon = True
         self.learning_thread.start()
 
@@ -142,12 +145,14 @@ class AdaptiveLearningSystem:
         except Exception as e:
             logger.error(f"Error in learning cycle: {e}")
 
-    def add_experience(self,
-                      market_condition: Dict[str, Any],
-                      action_taken: str,
-                      reward: float,
-                      next_state: Dict[str, Any],
-                      strategy_used: str):
+    def add_experience(
+        self,
+        market_condition: Dict[str, Any],
+        action_taken: str,
+        reward: float,
+        next_state: Dict[str, Any],
+        strategy_used: str,
+    ):
         """
         学習経験追加
 
@@ -164,7 +169,7 @@ class AdaptiveLearningSystem:
             action_taken=action_taken,
             reward=reward,
             next_state=next_state,
-            strategy_used=strategy_used
+            strategy_used=strategy_used,
         )
 
         self.learning_experiences.append(experience)
@@ -187,12 +192,14 @@ class AdaptiveLearningSystem:
             if not experiences:
                 continue
 
-            performance = self._calculate_strategy_performance(strategy_name, experiences)
+            performance = self._calculate_strategy_performance(
+                strategy_name, experiences
+            )
             self.strategy_performances[strategy_name] = performance
 
-    def _calculate_strategy_performance(self,
-                                      strategy_name: str,
-                                      experiences: List[LearningExperience]) -> StrategyPerformance:
+    def _calculate_strategy_performance(
+        self, strategy_name: str, experiences: List[LearningExperience]
+    ) -> StrategyPerformance:
         """
         戦略パフォーマンス計算
 
@@ -211,7 +218,7 @@ class AdaptiveLearningSystem:
                 profit_factor=0.0,
                 max_drawdown=0.0,
                 sharpe_ratio=0.0,
-                last_updated=datetime.now()
+                last_updated=datetime.now(),
             )
 
         # 勝率計算
@@ -225,7 +232,7 @@ class AdaptiveLearningSystem:
 
         total_profit = sum(profits)
         total_loss = sum(losses)
-        profit_factor = total_profit / total_loss if total_loss > 0 else float('inf')
+        profit_factor = total_profit / total_loss if total_loss > 0 else float("inf")
 
         # 最大ドローダウン（簡易計算）
         cumulative = np.cumsum([exp.reward for exp in experiences])
@@ -235,10 +242,9 @@ class AdaptiveLearningSystem:
 
         # シャープレシオ（簡易計算）
         returns = np.array([exp.reward for exp in experiences])
-        if len(returns) > 1 and np.std(returns) > 0:
-            sharpe_ratio = np.mean(returns) / np.std(returns) * np.sqrt(252)  # 年率化
-        else:
-            sharpe_ratio = 0.0
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns)
 
         return StrategyPerformance(
             strategy_name=strategy_name,
@@ -247,7 +253,7 @@ class AdaptiveLearningSystem:
             profit_factor=profit_factor,
             max_drawdown=max_drawdown,
             sharpe_ratio=sharpe_ratio,
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
         )
 
     def _select_best_strategy(self):
@@ -257,15 +263,17 @@ class AdaptiveLearningSystem:
 
         # 複合スコアで評価
         best_strategy = None
-        best_score = -float('inf')
+        best_score = -float("inf")
 
         for strategy_name, performance in self.strategy_performances.items():
             # 重み付きスコア計算
             score = (
-                performance.win_rate * 0.3 +
-                min(performance.profit_factor / 3.0, 1.0) * 0.3 +  # 3.0以上を1.0に正規化
-                (1.0 - min(performance.max_drawdown / 0.2, 1.0)) * 0.2 +  # 20%ドローダウンを1.0に正規化
-                max(performance.sharpe_ratio / 2.0, 0.0) * 0.2  # 2.0以上を1.0に正規化
+                performance.win_rate * 0.3
+                + min(performance.profit_factor / 3.0, 1.0) * 0.3
+                + (1.0 - min(performance.max_drawdown / 0.2, 1.0))
+                * 0.2  # 3.0以上を1.0に正規化
+                + max(performance.sharpe_ratio / 2.0, 0.0)
+                * 0.2  # 20%ドローダウンを1.0に正規化  # 2.0以上を1.0に正規化
             )
 
             if score > best_score:
@@ -273,7 +281,9 @@ class AdaptiveLearningSystem:
                 best_strategy = strategy_name
 
         if best_strategy != self.current_best_strategy:
-            logger.info(f"Best strategy changed from {self.current_best_strategy} to {best_strategy}")
+            logger.info(
+                f"Best strategy changed from {self.current_best_strategy} to {best_strategy}"
+            )
             self.current_best_strategy = best_strategy
 
     def _update_learning_model(self):
@@ -301,7 +311,9 @@ class AdaptiveLearningSystem:
             )
 
             # ここではログに記録するだけ（実際のQテーブル更新は別途実装）
-            logger.debug(f"Updated Q-value for {current_exp.action_taken}: {current_q} -> {new_q}")
+            logger.debug(
+                f"Updated Q-value for {current_exp.action_taken}: {current_q} -> {new_q}"
+            )
 
     def _estimate_q_value(self, experience: LearningExperience) -> float:
         """
@@ -318,7 +330,7 @@ class AdaptiveLearningSystem:
 
         # 市場条件による調整
         market_multiplier = 1.0
-        if experience.market_condition.get('volatility', 0.5) > 0.7:
+        if experience.market_condition.get("volatility", 0.5) > 0.7:
             market_multiplier = 0.8  # 高ボラティリティ時は保守的に
 
         return base_value * market_multiplier
@@ -329,8 +341,7 @@ class AdaptiveLearningSystem:
         cutoff_date = datetime.now() - timedelta(days=7)
 
         self.learning_experiences = [
-            exp for exp in self.learning_experiences
-            if exp.timestamp > cutoff_date
+            exp for exp in self.learning_experiences if exp.timestamp > cutoff_date
         ]
 
     def get_best_strategy(self) -> Optional[str]:
@@ -359,16 +370,16 @@ class AdaptiveLearningSystem:
             Dict[str, Any]: 学習ステータス
         """
         return {
-            'is_learning': self.is_learning,
-            'total_experiences': len(self.learning_experiences),
-            'current_best_strategy': self.current_best_strategy,
-            'strategy_count': len(self.strategy_performances),
-            'last_learning_cycle': datetime.now()  # 簡易的に現在時刻
+            "is_learning": self.is_learning,
+            "total_experiences": len(self.learning_experiences),
+            "current_best_strategy": self.current_best_strategy,
+            "strategy_count": len(self.strategy_performances),
+            "last_learning_cycle": datetime.now(),  # 簡易的に現在時刻
         }
 
-    def recommend_action(self,
-                        market_condition: Dict[str, Any],
-                        available_actions: List[str]) -> str:
+    def recommend_action(
+        self, market_condition: Dict[str, Any], available_actions: List[str]
+    ) -> str:
         """
         アクション推奨
 
@@ -391,18 +402,18 @@ class AdaptiveLearningSystem:
         if self.current_best_strategy:
             # 戦略固有の推奨ロジック（ここでは簡易実装）
             return self._get_strategy_specific_action(
-                self.current_best_strategy,
-                market_condition,
-                available_actions
+                self.current_best_strategy, market_condition, available_actions
             )
 
         # デフォルト：リスクベースの選択
         return self._get_risk_based_action(market_condition, available_actions)
 
-    def _get_strategy_specific_action(self,
-                                    strategy: str,
-                                    market_condition: Dict[str, Any],
-                                    available_actions: List[str]) -> str:
+    def _get_strategy_specific_action(
+        self,
+        strategy: str,
+        market_condition: Dict[str, Any],
+        available_actions: List[str],
+    ) -> str:
         """
         戦略固有アクション取得
 
@@ -416,7 +427,7 @@ class AdaptiveLearningSystem:
         """
         # TODO: 各戦略固有のロジック実装
         # ここでは簡易実装
-        volatility = market_condition.get('volatility', 0.5)
+        volatility = market_condition.get("volatility", 0.5)
 
         if strategy == "conservative":
             return "hold" if volatility > 0.7 else "buy"
@@ -425,9 +436,9 @@ class AdaptiveLearningSystem:
         else:
             return available_actions[0] if available_actions else "hold"
 
-    def _get_risk_based_action(self,
-                              market_condition: Dict[str, Any],
-                              available_actions: List[str]) -> str:
+    def _get_risk_based_action(
+        self, market_condition: Dict[str, Any], available_actions: List[str]
+    ) -> str:
         """
         リスクベースアクション取得
 
@@ -438,8 +449,8 @@ class AdaptiveLearningSystem:
         Returns:
             str: アクション
         """
-        volatility = market_condition.get('volatility', 0.5)
-        trend = market_condition.get('trend', 0.0)
+        volatility = market_condition.get("volatility", 0.5)
+        trend = market_condition.get("trend", 0.0)
 
         if volatility > 0.8:
             return "hold"

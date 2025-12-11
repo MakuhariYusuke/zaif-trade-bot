@@ -514,7 +514,7 @@ class TestOptimizationResult:
         assert result.optimization_type == "test"
         assert result.improvement_percent == 20.0
         assert result.success is True
-        assert result.improvement_description == "Improved by 20.1%"
+        assert result.improvement_description == "Improved by 20.0%"
 
     def test_improvement_description_improved(self):
         """Test improvement description for improvement"""

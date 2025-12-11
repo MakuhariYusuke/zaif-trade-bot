@@ -68,7 +68,9 @@ tensorboard/
 # Large/archived data
 data/*.csv
 data/*.zip
+data/metadata/
 
 # Misc
 typescript_legacy.zip
 .positions/
+docs/_build/

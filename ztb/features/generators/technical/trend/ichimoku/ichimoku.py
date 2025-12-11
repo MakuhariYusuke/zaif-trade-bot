@@ -3,8 +3,8 @@ from typing import Any, Tuple
 import numpy as np
 import pandas as pd
 
-from ztb.features.base import ChannelFeature, ComputableFeature
-from ztb.features.registry import FeatureRegistry
+from ztb.features.core.base import ChannelFeature, ComputableFeature
+from ztb.features.core.registry import FeatureRegistry
 
 
 @FeatureRegistry.register("Ichimoku_Diff_Norm")

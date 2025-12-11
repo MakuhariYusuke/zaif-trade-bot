@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\recognizer_factory.py
+# hypothesis_version: 6.148.6
+
+['adx', 'atr', 'bat', 'bearish_engulfing', 'bollinger_bands', 'bullish_engulfing', 'butterfly', 'cci', 'chaikin_ad', 'corrective_wave', 'crab', 'dow_theory', 'evening_star', 'fibonacci_extension', 'fibonacci_projection', 'gann_angle', 'gann_square', 'gann_time_cluster', 'gartley', 'granville_law', 'hammer', 'hanging_man', 'heikin_ashi', 'hierarchical_trend', 'impulse_wave', 'macd', 'mfi', 'morning_star', 'piercing_pattern', 'rising_three_methods', 'rsi', 'sakata_five_methods', 'stochastic', 'three_black_crows', 'three_white_soldiers', 'wave_extension', 'wave_i', 'wave_n', 'wave_p', 'wave_s', 'wave_v', 'wave_y', 'williams_r']

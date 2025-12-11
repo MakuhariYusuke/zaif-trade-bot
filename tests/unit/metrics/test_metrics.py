@@ -405,6 +405,41 @@ class TestMetrics:
             for regime in regimes.unique()
         )
 
+    def test_classify_market_regime(self):
+        """Test market regime classification."""
+        # Create sample price data with different trends
+        dates = pd.date_range("2020-01-01", periods=50, freq="D")
+
+        # Create a bull trend (upward)
+        bull_prices = pd.Series(np.linspace(100, 120, 50), index=dates)
+
+        # Create a bear trend (downward)
+        bear_prices = pd.Series(np.linspace(120, 100, 50), index=dates)
+
+        # Create sideways trend (flat)
+        sideways_prices = pd.Series([100] * 50, index=dates)
+
+        # Test bull regime
+        bull_regimes = classify_market_regime(bull_prices, window=10)
+        assert isinstance(bull_regimes, pd.Series)
+        assert len(bull_regimes) == len(bull_prices)
+        # Should have some bull classifications
+        assert "bull" in bull_regimes.values or "weak_bull" in bull_regimes.values
+
+        # Test bear regime
+        bear_regimes = classify_market_regime(bear_prices, window=10)
+        assert isinstance(bear_regimes, pd.Series)
+        assert len(bear_regimes) == len(bear_prices)
+        # Should have some bear classifications
+        assert "bear" in bear_regimes.values or "weak_bear" in bear_regimes.values
+
+        # Test sideways regime
+        sideways_regimes = classify_market_regime(sideways_prices, window=10)
+        assert isinstance(sideways_regimes, pd.Series)
+        assert len(sideways_regimes) == len(sideways_prices)
+        # Should have sideways classifications
+        assert "sideways" in sideways_regimes.values
+
     def test_multi_market_backtest_analysis(self):
         """Test multi-market backtest analysis."""
         # Create sample data

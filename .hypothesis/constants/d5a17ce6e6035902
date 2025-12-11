@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\constants.py
+# hypothesis_version: 6.148.6
+
+[-1000.0, 0.0, 1e-08, 1e-06, 1e-05, 0.0001, 0.0003, 0.001, 0.01, 0.1, 0.2, 0.5, 0.55, 0.8, 0.95, 1.0, 1.2, 10.0, 1000.0, 100, 128, 130, 256, 512, 1000, 2000, 5000, 10000, 12355, 50000, 100000, 'blue', 'gloo', 'green', 'norm', 'red', 'yellow']

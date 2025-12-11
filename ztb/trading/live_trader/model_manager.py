@@ -3,10 +3,18 @@ Model management for live trading bot.
 """
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
-from sb3_contrib import MaskablePPO
-from stable_baselines3 import PPO, SAC
+if TYPE_CHECKING:
+    try:
+        from sb3_contrib import MaskablePPO  # type: ignore
+    except Exception:
+        MaskablePPO = None  # type: ignore
+    try:
+        from stable_baselines3 import PPO, SAC  # type: ignore
+    except Exception:
+        PPO = None  # type: ignore
+        SAC = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +23,7 @@ class ModelManager:
     """Manages model loading and type detection."""
 
     def __init__(self) -> None:
-        self.model: Optional[Union[PPO, MaskablePPO, SAC]] = None
+        self.model: Optional["Union[PPO, MaskablePPO, SAC]"] = None
         self._is_maskable_ppo: bool = False
         self._is_sac: bool = False
         self.expected_features: Optional[int] = None
@@ -23,7 +31,7 @@ class ModelManager:
         self.model_schema_hash: Optional[str] = None
         self.schema_available: bool = False
 
-    def load_model(self, model_path: Path) -> Union[PPO, MaskablePPO, SAC]:
+    def load_model(self, model_path: Path) -> "Union[PPO, MaskablePPO, SAC]":
         """Load the trained model and detect its type.
 
         Args:
@@ -42,20 +50,44 @@ class ModelManager:
 
         # Try loading as MaskablePPO first, fallback to PPO, then SAC
         try:
-            model = MaskablePPO.load(str(model_path))
+            try:
+                from sb3_contrib import MaskablePPO as _MaskablePPO
+            except Exception:
+                _MaskablePPO = None
+
+            if _MaskablePPO is None:
+                raise ImportError("sb3_contrib.MaskablePPO not available")
+
+            model = _MaskablePPO.load(str(model_path))
             logger.info("Model loaded as MaskablePPO with action masking support")
             self._is_maskable_ppo = True
             self._is_sac = False
         except Exception as e:
             try:
                 logger.info(f"Not a MaskablePPO model ({e}), trying standard PPO")
-                model = PPO.load(str(model_path))
+                try:
+                    from stable_baselines3 import PPO as _PPO
+                except Exception:
+                    _PPO = None
+
+                if _PPO is None:
+                    raise ImportError("stable_baselines3.PPO not available")
+
+                model = _PPO.load(str(model_path))
                 logger.info("Model loaded as standard PPO (no action masking)")
                 self._is_maskable_ppo = False
                 self._is_sac = False
             except Exception as e2:
                 logger.info(f"Not a PPO model ({e2}), trying SAC")
-                model = SAC.load(str(model_path))
+                try:
+                    from stable_baselines3 import SAC as _SAC
+                except Exception:
+                    _SAC = None
+
+                if _SAC is None:
+                    raise ImportError("stable_baselines3.SAC not available")
+
+                model = _SAC.load(str(model_path))
                 logger.info("Model loaded as SAC")
                 self._is_maskable_ppo = False
                 self._is_sac = True

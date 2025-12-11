@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\algorithms\ppo\ppo_algorithm.py
+# hypothesis_version: 6.148.6
+
+[0.0003, 0.01, 0.2, 0.5, 0.95, 0.99, 2048, 'AutoHalt', 'MlpPolicy', 'Standard', 'batch_size', 'clip_range', 'clip_range_vf', 'ent_coef', 'gae_lambda', 'gamma', 'learning_rate', 'max_grad_norm', 'n_epochs', 'n_steps', 'normalize_advantage', 'ppo', 'ppo_hyperparameters', 'sde_sample_freq', 'target_kl', 'use_sde', 'verbose', 'vf_coef']

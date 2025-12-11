@@ -22,13 +22,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
-try:
-    from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
-
-    print("✓ Successfully imported V4XXUnifiedTrainer")
-except ImportError as e:
-    print(f"✗ Failed to import V4XXUnifiedTrainer: {e}")
-    sys.exit(1)
+V4XXUnifiedTrainer = None
 
 
 def main():
@@ -45,7 +39,9 @@ def main():
     print(f"📋 Configuration: {config_path}")
 
     try:
-        # Load and validate configuration
+        # Re-check trainer import
+        if V4XXUnifiedTrainer is None:
+            from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
         with open(config_path, "r") as f:
             config = json.load(f)
 

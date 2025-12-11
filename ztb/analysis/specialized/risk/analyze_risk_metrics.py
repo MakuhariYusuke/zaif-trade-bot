@@ -4,10 +4,11 @@
 
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
+
+from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
@@ -15,29 +16,14 @@ from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
 def compute_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
     """Compute annualized Sharpe ratio."""
-    if len(returns) < 2:
-        return 0.0
-
-    excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
-    if excess_returns.std() == 0:
-        return 0.0
-
-    sharpe = cast(
-        float,
-        excess_returns.mean() / excess_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR),
+    return sharpe_ratio(
+        returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
     )
-    return sharpe
 
 
 def compute_max_drawdown(portfolio_values: pd.Series) -> float:
     """Compute maximum drawdown."""
-    if len(portfolio_values) < 2:
-        return 0.0
-
-    peak = portfolio_values.expanding().max()
-    drawdown = (portfolio_values - peak) / peak
-    max_dd = drawdown.min()
-    return cast(float, abs(max_dd))
+    return max_drawdown(portfolio_values)
 
 
 def analyze_risk_metrics(

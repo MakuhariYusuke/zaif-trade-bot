@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import numpy as np
-import torch as th
 from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -16,6 +15,12 @@ DATA_PATH = Path("btc_jpy_real_dataset.csv")
 
 
 def main() -> None:
+    # Import torch lazily to avoid import-time ABI issues
+    try:
+        import torch as th
+    except Exception:
+        th = None  # type: ignore
+
     df = load_csv_data_optimized(str(DATA_PATH))
     base_env = create_env_from_model_path(str(MODEL_PATH), df)
     vec_env = DummyVecEnv([lambda: base_env])

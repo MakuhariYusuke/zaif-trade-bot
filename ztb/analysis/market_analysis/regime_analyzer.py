@@ -7,20 +7,19 @@ with improved technical indicators and clearer classification logic.
 
 from collections import deque
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from ztb.analysis.market_regime_types import MarketRegime, RegimeDetectionResult
 from ztb.features.generators.technical.momentum.roc import compute_roc
-from ztb.features.generators.technical.momentum.rsi import compute_rsi
-from ztb.features.generators.technical.trend.adx import compute_adx
-from ztb.features.generators.technical.volatility.atr import compute_atr
-from ztb.features.generators.technical.volatility.bollinger import (
-    compute_bb_lower,
-    compute_bb_middle,
-    compute_bb_upper,
+from ztb.metrics.technical import (
+    calculate_adx,
+    calculate_atr,
+    calculate_bollinger_bands,
+    calculate_macd,
+    calculate_rsi,
 )
 
 
@@ -121,34 +120,31 @@ class EnhancedRegimeAnalyzer:
         # Create DataFrame for feature generators
         df = pd.DataFrame({"close": prices, "high": highs, "low": lows})
 
-        # Core indicators using existing feature generators
-        rsi = float(compute_rsi(df).iloc[-1])
-        adx = float(compute_adx(df).iloc[-1])
+        # Core indicators
+        rsi = calculate_rsi(prices, period=14)
+        adx = calculate_adx(highs, lows, prices, period=14)
 
-        # For volatility, use ATR-based approach (similar to existing ATR feature)
-        atr = float(compute_atr(df).iloc[-1])
+        # For volatility, use ATR-based approach
+        atr = calculate_atr(highs, lows, prices, period=14)
         current_price = prices[-1]
         volatility = atr / current_price if current_price > 0 else 0.002
 
         # For momentum, use ROC (Rate of Change) from existing features
         momentum = float(compute_roc(df, period=10).iloc[-1]) / 100.0
 
-        # MACD using TaLib directly for individual components
-        from ztb.utils.talib_wrapper import TaLibWrapper
+        # MACD
+        macd_series, signal_series, hist_series = calculate_macd(prices, 12, 26, 9)
+        macd = float(macd_series.iloc[-1]) if not macd_series.empty else 0.0
+        signal = float(signal_series.iloc[-1]) if not signal_series.empty else 0.0
+        histogram = float(hist_series.iloc[-1]) if not hist_series.empty else 0.0
 
-        talib = TaLibWrapper()
-        macd_line, macd_signal, macd_histogram = talib.macd(prices, 12, 26, 9)
-        macd = float(macd_line[-1]) if len(macd_line) > 0 else 0.0
-        signal = float(macd_signal[-1]) if len(macd_signal) > 0 else 0.0
-        histogram = float(macd_histogram[-1]) if len(macd_histogram) > 0 else 0.0
-
-        # Bollinger Bands using existing feature generators
-        sma = float(compute_bb_middle(df).iloc[-1])
-        bb_upper = float(compute_bb_upper(df).iloc[-1])
-        bb_lower = float(compute_bb_lower(df).iloc[-1])
-
-        # ATR using existing feature generator
-        atr = float(compute_atr(df).iloc[-1])
+        # Bollinger Bands
+        bb_upper_series, bb_middle_series, bb_lower_series = calculate_bollinger_bands(
+            prices
+        )
+        bb_upper = float(bb_upper_series.iloc[-1]) if not bb_upper_series.empty else 0.0
+        bb_lower = float(bb_lower_series.iloc[-1]) if not bb_lower_series.empty else 0.0
+        sma = float(bb_middle_series.iloc[-1]) if not bb_middle_series.empty else 0.0
 
         # Bollinger Band position
         bb_position = (
@@ -322,3 +318,28 @@ class EnhancedRegimeAnalyzer:
         self.regime_confidence = 0.0
         self.step_counter = 0
         self._update_adaptive_thresholds()
+
+    def get_regime_statistics(self) -> Dict[str, Any]:
+        """Get statistics about detected regimes."""
+        if not self.regime_history:
+            return {}
+
+        regime_counts = {}
+        confidence_sum = 0.0
+        for result in self.regime_history:
+            regime_counts[result.regime] = regime_counts.get(result.regime, 0) + 1
+            confidence_sum += result.confidence
+
+        avg_confidence = confidence_sum / len(self.regime_history)
+
+        return {
+            "total_detections": len(self.regime_history),
+            "regime_counts": regime_counts,
+            "current_regime": self.current_regime,
+            "current_confidence": self.regime_confidence,
+            "average_confidence": avg_confidence,
+            "adaptive_thresholds": {
+                "volatility_percentiles": self.volatility_percentiles,
+                "trend_thresholds": self.trend_thresholds,
+            },
+        }

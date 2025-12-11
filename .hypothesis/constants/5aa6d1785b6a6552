@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\__init__.py
+# hypothesis_version: 6.148.6
+
+['ActionSignalGuide', 'BacktestResult', 'GuidanceLevel', 'GuidanceMode', 'SignalDefinitions', 'SignalEvaluator', 'SignalIntegration', 'SignalPerformance', 'SignalStrength', 'SignalType']

@@ -59,10 +59,6 @@ class Trade:
     fee: Decimal = Decimal("0")
 
 
-class MarketData:
-    pass
-
-
 class RiskManager:
     pass
 

@@ -7,8 +7,9 @@ This module contains configuration classes for the Heavy Trading Environment.
 import dataclasses
 from typing import Any, Dict, List, Optional, Union
 
-from ztb.features.feature_set_manager import get_feature_set
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG
+from ztb.trading.environment.utils.domain_randomizer import DomainRandomizationConfig
+from ztb.trading.environment.utils.exchange_profile import ExchangeProfile
 from ztb.training.config.ppo_config import (
     DEFAULT_MAX_CONSECUTIVE_TRADES,
     DEFAULT_MIN_HOLDING_PERIOD,
@@ -100,6 +101,15 @@ class EnvironmentConfig:
     transaction_cost: float = 0.0
     commission: float = 0.0  # Alias for transaction_cost for backward compatibility
     slippage: float = 0.0  # Slippage cost
+    exchange_profile: Optional[
+        ExchangeProfile
+    ] = None  # Exchange profile (fees, liquidity, etc.)
+    execution_model: Optional[
+        Union[Dict[str, Any], bool]
+    ] = None  # Execution model config (Phase 3)
+    domain_randomization: Optional[
+        DomainRandomizationConfig
+    ] = None  # Domain randomization config
     max_steps: Optional[int] = None  # Maximum steps per episode
     train_end_index: Optional[int] = None  # End index for training data subset
     debug_internal_state: bool = False  # Enable debug information in step output
@@ -112,6 +122,7 @@ class EnvironmentConfig:
     ] = None  # Explicit feature list (overrides feature_set)
     correlation_reduction: bool = True
     curriculum_stage: Optional[str] = None  # Set from training.curriculum_learning
+    curriculum_learning: Optional[Dict[str, Any]] = None
     feature_storage_dtype: str = "float16"
     precision_columns: List[str] = dataclasses.field(
         default_factory=lambda: ["close", "open", "high", "low", "volume"]
@@ -188,6 +199,18 @@ class EnvironmentConfig:
         SAC_CONTINUOUS_THRESHOLD_NEG  # Negative threshold for SELL conversion
     )
 
+    # Adaptive Thresholding (v449)
+    adaptive_threshold_mode: bool = False
+    threshold_volatility_multiplier: float = 1.0
+    min_action_threshold: float = 0.001
+
+    # Bankruptcy and Drawdown settings
+    bankruptcy_threshold: float = 2000.0
+    bankruptcy_penalty: float = 1000.0
+    drawdown_penalty_threshold: float = 0.20  # 20% drawdown
+    drawdown_penalty_factor: float = 0.1  # Penalty multiplier for drawdown
+    max_action_threshold: float = 1.0
+
     # Signal guidance settings (v436 enhancement)
     signal_guidance_enabled: bool = False
     signal_guidance_mode: str = "partial"
@@ -211,399 +234,53 @@ class EnvironmentConfig:
         False  # If True, episodes start at random positions in the data
     )
 
-    @classmethod
-    def from_dict(
-        cls,
-        config_dict: Optional[
-            Dict[str, Union[int, float, bool, str, List[Union[int, float, bool, str]]]]
-        ] = None,
-    ) -> "EnvironmentConfig":
-        """Create config from dictionary, with defaults for missing values."""
-        if config_dict is None:
-            return cls()
+    def __post_init__(self):
+        """Initialize derived fields and backward compatibility."""
+        # Sync commission alias
+        if self.commission != 0.0 and self.transaction_cost == 0.0:
+            self.transaction_cost = self.commission
 
-        # Diagnostic logging: show whether the incoming dict explicitly contains use_continuous_actions
-        try:
-            logger.info(
-                "EnvironmentConfig.from_dict received config type=%s, contains_use_continuous=%s",
-                type(config_dict),
-                (
-                    "YES"
-                    if (
-                        isinstance(config_dict, dict)
-                        and "use_continuous_actions" in config_dict
-                    )
-                    else "NO"
-                ),
+        # Initialize exchange profile if not provided
+        if self.exchange_profile is None:
+            # Check if we should use ExchangeFeeModel (if exchange is specific and cost is 0)
+            from ztb.utils.fee_model import ExchangeFeeModel, FixedFeeModel
+
+            fee_model = None
+            fee_rate = self.transaction_cost
+
+            # If transaction cost is 0 (default) and we have a specific exchange, try to use its defaults
+            if fee_rate == 0.0 and self.exchange in [
+                "binance",
+                "bitflyer",
+                "coincheck",
+            ]:
+                try:
+                    exch_model = ExchangeFeeModel()
+                    exch_model.set_exchange(self.exchange)
+                    fee_model = exch_model
+                    # Update legacy cost for compatibility
+                    fee_rate = exch_model.get_fee_rate("buy")
+                    self.transaction_cost = fee_rate
+                except Exception:
+                    pass
+
+            if fee_model is None:
+                fee_model = FixedFeeModel(buy_fee_rate=fee_rate, sell_fee_rate=fee_rate)
+
+            self.exchange_profile = ExchangeProfile(
+                name=self.exchange,
+                fee_model=fee_model,
+                slippage_rate=self.slippage,
+                maker_fee_rate=fee_rate,
+                taker_fee_rate=fee_rate,
             )
-            if isinstance(config_dict, dict):
-                logger.info(
-                    "EnvironmentConfig.from_dict preview use_continuous_actions=%s",
-                    config_dict.get("use_continuous_actions", "NOT_PRESENT"),
-                )
-                # Debug: Check for dict keys
-                for key, value in config_dict.items():
-                    if isinstance(key, dict):
-                        logger.error(f"Found dict as key in config_dict: key={key}, value={value}")
-                        raise TypeError(f"unhashable type: 'dict' - found dict as key: {key}")
-                    logger.debug(f"config_dict key: {key}, type: {type(key)}, value type: {type(value)}")
-        except Exception:
-            logger.exception("Failed to log EnvironmentConfig.from_dict diagnostic")
-
-        # Convert dictionary to config, handling type conversions
-        config_kwargs = {}
-        known_fields = {field.name for field in dataclasses.fields(cls)}
-        for field in dataclasses.fields(cls):
-            if field.name in config_dict:
-                value = config_dict[field.name]
-                # Basic type conversion for common cases
-                if field.name in [
-                    "enable_forced_diversity",
-                    "allow_reverse",
-                    "enforce_reverse_cooldown",
-                    "random_start",
-                    "use_continuous_actions",
-                    "enable_action_masking",
-                    "use_standardized_observations",
-                    "correlation_reduction",
-                    "signal_guidance_enabled",
-                ] and not isinstance(value, bool):
-                    value = cls._as_bool(value)  # type: ignore[arg-type]
-                # Basic type conversion for common cases
-                if field.name in [
-                    "enable_forced_diversity",
-                    "allow_reverse",
-                    "enforce_reverse_cooldown",
-                    "random_start",
-                    "use_continuous_actions",
-                    "enable_action_masking",
-                    "use_standardized_observations",
-                    "correlation_reduction",
-                    "signal_guidance_enabled",
-                ] and not isinstance(value, bool):
-                    value = cls._as_bool(value)  # type: ignore[arg-type]
-                elif field.name in [
-                    "max_consecutive_trades",
-                    "min_holding_period",
-                    "reward_inventory_window",
-                    "reward_trade_cooldown_steps",
-                    "reward_max_consecutive_trades",
-                    "reward_volatility_window",
-                    "target_feature_count",
-                    "max_steps",
-                ] and isinstance(value, (float, str)):
-                    try:
-                        value = int(float(value))
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                elif field.name in [
-                    "reward_scaling",
-                    "transaction_cost",
-                    "commission",
-                    "slippage",
-                    "max_position_size",
-                    "risk_free_rate",
-                    "stop_loss_threshold",
-                    "reward_position_soft_cap",
-                    "reward_position_penalty_scale",
-                    "reward_position_penalty_exponent",
-                    "reward_inventory_penalty_scale",
-                    "reward_trade_frequency_penalty",
-                    "reward_trade_frequency_halflife",
-                    "reward_trade_cooldown_penalty",
-                    "reward_consecutive_trade_penalty",
-                    "reward_volatility_penalty_scale",
-                    "reward_sharpe_bonus_scale",
-                    "reward_clip_value",
-                    "initial_portfolio_value",
-                    "continuous_to_discrete_threshold",
-                    "continuous_to_discrete_threshold_neg",
-                    "signal_bonus_weight",
-                    "signal_penalty_weight",
-                    "signal_weight",
-                    "guidance_decay",
-                ] and isinstance(value, str):
-                    try:
-                        value = float(value)
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                config_kwargs[field.name] = value
-            # Field will use default if not in config_dict
-
-        # Also process any known fields that might be in nested structures
-        for key, value in config_dict.items():
-            if key in known_fields and key not in config_kwargs:
-                # Basic type conversion for known fields
-                if key in [
-                    "enable_forced_diversity",
-                    "allow_reverse",
-                    "enforce_reverse_cooldown",
-                    "random_start",
-                    "use_continuous_actions",
-                    "enable_action_masking",
-                    "use_standardized_observations",
-                    "correlation_reduction",
-                    "signal_guidance_enabled",
-                ] and not isinstance(value, bool):
-                    value = cls._as_bool(value)  # type: ignore[arg-type]
-                elif key in [
-                    "max_consecutive_trades",
-                    "min_holding_period",
-                    "reward_inventory_window",
-                    "reward_trade_cooldown_steps",
-                    "reward_max_consecutive_trades",
-                    "reward_volatility_window",
-                    "target_feature_count",
-                ] and isinstance(value, (float, str)):
-                    try:
-                        value = int(float(value))
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                elif key in [
-                    "reward_scaling",
-                    "transaction_cost",
-                    "max_position_size",
-                    "risk_free_rate",
-                    "stop_loss_threshold",
-                    "reward_position_soft_cap",
-                    "reward_position_penalty_scale",
-                    "reward_position_penalty_exponent",
-                    "reward_inventory_penalty_scale",
-                    "reward_trade_frequency_penalty",
-                    "reward_trade_frequency_halflife",
-                    "reward_trade_cooldown_penalty",
-                    "reward_consecutive_trade_penalty",
-                    "reward_volatility_penalty_scale",
-                    "reward_sharpe_bonus_scale",
-                    "reward_clip_value",
-                    "initial_portfolio_value",
-                    "continuous_to_discrete_threshold",
-                    "continuous_to_discrete_threshold_neg",
-                    "signal_bonus_weight",
-                    "signal_penalty_weight",
-                    "signal_weight",
-                    "guidance_decay",
-                    "base_action_penalty",
-                    "commission",
-                    "slippage",
-                ] and isinstance(value, str):
-                    try:
-                        value = float(value)
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                elif key == "max_steps" and isinstance(value, (float, str)):
-                    try:
-                        value = int(float(value)) if value is not None else None
-                    except (ValueError, TypeError):
-                        pass  # Keep original value
-                elif key == "action_bonuses" and isinstance(value, dict):
-                    # Convert action_bonuses dict values to float
-                    converted_bonuses = {}
-                    for bonus_key, bonus_value in value.items():
-                        if isinstance(bonus_value, (int, float, str)):
-                            try:
-                                converted_bonuses[bonus_key] = float(bonus_value)
-                            except (ValueError, TypeError):
-                                converted_bonuses[bonus_key] = bonus_value
-                        else:
-                            converted_bonuses[bonus_key] = bonus_value
-                    value = converted_bonuses
-                config_kwargs[key] = value
-
-        # Handle nested training.environment section
-        if "training" in config_dict and isinstance(config_dict["training"], dict):
-            training_config = config_dict["training"]
-            # Support both flattened (training.environment.<fields>) and
-            # extra-nested (training.environment.config.<fields>) layouts.
-            env_section = None
-            if "environment" in training_config and isinstance(
-                training_config["environment"], dict
-            ):
-                env_section = training_config["environment"]
-
-            # If there's an inner 'config' dict (v4xx converter sometimes nests under .config)
+        else:
+            # If profile is provided, ensure legacy params are consistent
             if (
-                env_section
-                and "config" in env_section
-                and isinstance(env_section["config"], dict)
+                self.transaction_cost == 0.0
+                and self.exchange_profile.taker_fee_rate > 0
             ):
-                # Merge inner config taking precedence over direct env_section keys
-                inner = dict(env_section.get("config", {}))
-                # shallow-merge so inner config overrides
-                merged_env = dict(env_section)
-                merged_env.update(inner)
-                env_config = merged_env
-            else:
-                env_config = env_section
-
-            if isinstance(env_config, dict):
-                # Copy environment config values to top level for processing
-                for key, value in env_config.items():
-                    if isinstance(key, dict):
-                        logger.error(f"Found dict as key in env_config: key={key}, value={value}")
-                        raise TypeError(f"unhashable type: 'dict' - found dict as key in env_config: {key}")
-                    logger.debug(f"env_config key: {key}, type: {type(key)}, value type: {type(value)}")
-                    if (
-                        key in known_fields and key not in config_kwargs
-                    ):  # Don't override if already set
-                        logger.debug(f"Setting config_kwargs[{key}] = {value}")
-                        config_kwargs[key] = value
-                    elif key == "signal_guidance" and isinstance(
-                        value, dict
-                    ):  # Special handling for signal_guidance
-                        logger.debug(f"Setting config_kwargs[{key}] = {value} (signal_guidance)")
-                        config_kwargs[key] = value
-                    elif key == "market_regime" and isinstance(
-                        value, dict
-                    ):  # Special handling for market_regime
-                        logger.debug(f"Setting config_kwargs[{key}] = {value} (market_regime)")
-                        config_kwargs[key] = value
-                    elif key == "dynamic_reward_shaping" and isinstance(
-                        value, dict
-                    ):  # Special handling for dynamic_reward_shaping
-                        logger.debug(f"Setting config_kwargs[{key}] = {value} (dynamic_reward_shaping)")
-                        config_kwargs[key] = value
-                    elif key == "behavioral_penalty" and isinstance(value, dict):
-                        # Map behavioral_penalty keys into reward_settings dataframe
-                        if not config_kwargs.get("reward_settings"):
-                            config_kwargs["reward_settings"] = {}
-                        # shallow merge - don't override existing reward_settings that were already set
-                        for bp_k, bp_v in value.items():
-                            if bp_k not in config_kwargs["reward_settings"]:
-                                config_kwargs["reward_settings"][bp_k] = bp_v
-
-        # Handle field name mappings
-        if (
-            "initial_balance" in config_kwargs
-            and "initial_portfolio_value" not in config_kwargs
-        ):
-            config_kwargs["initial_portfolio_value"] = float(
-                config_kwargs["initial_balance"]
-            )
-        # Remove deprecated field names
-        config_kwargs.pop("initial_balance", None)
-        signal_guidance_config = None
-        if "signal_guidance" in config_kwargs and isinstance(
-            config_kwargs["signal_guidance"], dict
-        ):
-            signal_guidance_config = config_kwargs["signal_guidance"]
-        elif "signal_guidance" in config_dict and isinstance(
-            config_dict["signal_guidance"], dict
-        ):
-            signal_guidance_config = config_dict["signal_guidance"]
-
-        if signal_guidance_config:
-            enabled = cls._as_bool(signal_guidance_config.get("enabled", False))
-            config_kwargs["signal_guidance_enabled"] = enabled
-            config_kwargs["signal_guidance_mode"] = signal_guidance_config.get(
-                "guidance_mode", "partial"
-            )
-            config_kwargs["signal_bonus_weight"] = float(
-                signal_guidance_config.get("signal_bonus_weight", 0.1)
-            )
-            config_kwargs["signal_penalty_weight"] = float(
-                signal_guidance_config.get("signal_penalty_weight", 0.05)
-            )
-            config_kwargs["guidance_decay"] = float(
-                signal_guidance_config.get("guidance_decay", 0.95)
-            )
-
-        # Apply curated feature set if specified
-        feature_set = config_dict.get("feature_set", "full")
-        if feature_set == "curated" and "feature_names" not in config_dict:
-            try:
-                curated_features = get_feature_set("curated")
-                config_kwargs["feature_names"] = curated_features
-                logger.info(
-                    f"Applied curated feature set with {len(curated_features)} features"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to load curated features: {e}")
-
-        # Handle reward_settings - try from explicit reward_settings first, then behavior_optimization
-        reward_settings_dict = None
-        if "reward_settings" in config_dict and isinstance(
-            config_dict["reward_settings"], dict
-        ):
-            reward_settings_dict = config_dict["reward_settings"]
-        elif "behavior_optimization" in config_dict and isinstance(
-            config_dict["behavior_optimization"], dict
-        ):
-            # Map behavior_optimization to reward_settings keys
-            behavior_opt = config_dict["behavior_optimization"]
-            reward_settings_dict = {}
-            if "action_balance_target" in behavior_opt:
-                reward_settings_dict["action_balance_target"] = behavior_opt[
-                    "action_balance_target"
-                ]
-            if "balance_penalty" in behavior_opt:
-                reward_settings_dict["balance_penalty"] = behavior_opt[
-                    "balance_penalty"
-                ]
-            if "entropy_regularization" in behavior_opt:
-                reward_settings_dict["entropy_regularization"] = behavior_opt[
-                    "entropy_regularization"
-                ]
-
-        if reward_settings_dict:
-            try:
-                config_kwargs["reward_settings"] = RewardSettings(
-                    **reward_settings_dict
-                )
-            except TypeError:
-                # Be tolerant of extra/unknown keys in configs (forward compatibility)
-                rs = RewardSettings()
-                for k, v in reward_settings_dict.items():
-                    if isinstance(k, dict):
-                        logger.error(f"Found dict as reward_settings key: k={k}, v={v}")
-                        raise TypeError(f"unhashable type: 'dict' - found dict as reward_settings key: {k}")
-                    logger.debug(f"Processing reward_settings key: {k}, type: {type(k)}, value type: {type(v)}")
-                    if hasattr(rs, k):
-                        try:
-                            setattr(rs, k, v)
-                        except Exception:
-                            # skip invalid assignments
-                            pass
-                    else:
-                        # Store unknown keys in custom_reward_params for inspection
-                        try:
-                            if isinstance(v, (int, float)):
-                                rs.custom_reward_params[k] = float(v)
-                            else:
-                                rs.custom_reward_params[k] = v
-                        except Exception:
-                            rs.custom_reward_params[k] = v
-                config_kwargs["reward_settings"] = rs
-
-        # If reward_settings was added earlier via env config merges (e.g. behavioral_penalty),
-        # ensure it's also considered for RewardSettings conversion
-        if (reward_settings_dict is None) and ("reward_settings" in config_kwargs) and isinstance(
-            config_kwargs.get("reward_settings"), dict
-        ):
-            reward_settings_dict = config_kwargs.get("reward_settings")
-            try:
-                config_kwargs["reward_settings"] = RewardSettings(**reward_settings_dict)
-            except TypeError:
-                rs = RewardSettings()
-                for k, v in reward_settings_dict.items():
-                    if hasattr(rs, k):
-                        try:
-                            setattr(rs, k, v)
-                        except Exception:
-                            pass
-                    else:
-                        rs.custom_reward_params[k] = v
-                config_kwargs["reward_settings"] = rs
-
-        try:
-            logger.debug(f"Creating EnvironmentConfig with config_kwargs keys: {list(config_kwargs.keys())}")
-            result = cls(**config_kwargs)  # type: ignore[arg-type]
-            logger.debug("EnvironmentConfig created successfully")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to create EnvironmentConfig: {e}")
-            logger.error(f"config_kwargs: {config_kwargs}")
-            raise
+                self.transaction_cost = self.exchange_profile.taker_fee_rate
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
@@ -690,17 +367,30 @@ class EnvironmentConfig:
         # Update fields from config_dict
         for key, value in config_dict.items():
             if isinstance(key, dict):
-                logger.error(f"Found dict as key in config_dict (2nd from_dict): key={key}, value={value}")
-                raise TypeError(f"unhashable type: 'dict' - found dict as key in 2nd from_dict: {key}")
-            logger.debug(f"Processing config_dict key: {key}, type: {type(key)}, value type: {type(value)}")
+                logger.error(
+                    f"Found dict as key in config_dict (2nd from_dict): key={key}, value={value}"
+                )
+                raise TypeError(
+                    f"unhashable type: 'dict' - found dict as key in 2nd from_dict: {key}"
+                )
+            logger.debug(
+                f"Processing config_dict key: {key}, type: {type(key)}, value type: {type(value)}"
+            )
             if key == "environment" and isinstance(value, dict):
                 # Special handling for nested environment config
                 logger.debug("Processing nested environment config")
+                logger.info(f"Environment keys: {list(value.keys())}")
                 for env_key, env_value in value.items():
                     if isinstance(env_key, dict):
-                        logger.error(f"Found dict as env_key: env_key={env_key}, env_value={env_value}")
-                        raise TypeError(f"unhashable type: 'dict' - found dict as env_key: {env_key}")
-                    logger.debug(f"Processing env_key: {env_key}, type: {type(env_key)}, env_value type: {type(env_value)}")
+                        logger.error(
+                            f"Found dict as env_key: env_key={env_key}, env_value={env_value}"
+                        )
+                        raise TypeError(
+                            f"unhashable type: 'dict' - found dict as env_key: {env_key}"
+                        )
+                    logger.debug(
+                        f"Processing env_key: {env_key}, type: {type(env_key)}, env_value type: {type(env_value)}"
+                    )
                     if env_key == "behavior_optimization":
                         # Already handled above
                         continue
@@ -712,12 +402,20 @@ class EnvironmentConfig:
                             converted_bonuses = {}
                             for bonus_key, bonus_value in env_value.items():
                                 if isinstance(bonus_key, dict):
-                                    logger.error(f"Found dict as bonus_key: bonus_key={bonus_key}, bonus_value={bonus_value}")
-                                    raise TypeError(f"unhashable type: 'dict' - found dict as bonus_key: {bonus_key}")
-                                logger.debug(f"Processing bonus_key: {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}")
+                                    logger.error(
+                                        f"Found dict as bonus_key: bonus_key={bonus_key}, bonus_value={bonus_value}"
+                                    )
+                                    raise TypeError(
+                                        f"unhashable type: 'dict' - found dict as bonus_key: {bonus_key}"
+                                    )
+                                logger.debug(
+                                    f"Processing bonus_key: {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}"
+                                )
                                 converted_bonuses[bonus_key] = float(bonus_value)
                             instance.action_bonuses = converted_bonuses
-                    elif env_key == "behavioral_penalty" and isinstance(env_value, dict):
+                    elif env_key == "behavioral_penalty" and isinstance(
+                        env_value, dict
+                    ):
                         # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
                         if not instance.reward_settings:
                             instance.reward_settings = RewardSettings()
@@ -727,9 +425,13 @@ class EnvironmentConfig:
                                     setattr(instance.reward_settings, bp_k, bp_v)
                                 except Exception:
                                     # fallback to custom params
-                                    instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                                    instance.reward_settings.custom_reward_params[
+                                        bp_k
+                                    ] = bp_v
                             else:
-                                instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                                instance.reward_settings.custom_reward_params[
+                                    bp_k
+                                ] = bp_v
                             # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
                             if not instance.reward_settings:
                                 instance.reward_settings = RewardSettings()
@@ -739,9 +441,13 @@ class EnvironmentConfig:
                                         setattr(instance.reward_settings, bp_k, bp_v)
                                     except Exception:
                                         # fallback to custom params
-                                        instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                                        instance.reward_settings.custom_reward_params[
+                                            bp_k
+                                        ] = bp_v
                                 else:
-                                    instance.reward_settings.custom_reward_params[bp_k] = bp_v
+                                    instance.reward_settings.custom_reward_params[
+                                        bp_k
+                                    ] = bp_v
                     elif hasattr(instance, env_key):
                         # Map other environment keys to instance
                         try:
@@ -753,6 +459,11 @@ class EnvironmentConfig:
                                 setattr(instance, env_key, float(env_value))
                             elif env_key == "max_position_size":
                                 setattr(instance, env_key, float(env_value))
+                            elif env_key == "max_action_threshold":
+                                setattr(instance, env_key, float(env_value))
+                                logger.info(
+                                    f"Updated max_action_threshold to {env_value}"
+                                )
                             else:
                                 setattr(instance, env_key, env_value)
                             logger.debug(f"Set environment.{env_key} = {env_value}")
@@ -761,6 +472,14 @@ class EnvironmentConfig:
             elif key == "behavior_optimization":
                 # Already handled above
                 continue
+            elif key == "exchange_profile" and isinstance(value, dict):
+                profile = ExchangeProfile.from_dict(value)
+                setattr(instance, key, profile)
+                # Sync legacy params
+                if instance.transaction_cost == 0.0 and profile.taker_fee_rate > 0:
+                    instance.transaction_cost = profile.taker_fee_rate
+            elif key == "domain_randomization" and isinstance(value, dict):
+                setattr(instance, key, DomainRandomizationConfig.from_dict(value))
             elif hasattr(instance, key):
                 logger.debug(f"Setting {key} = {value}")
                 try:
@@ -769,9 +488,15 @@ class EnvironmentConfig:
                         converted_bonuses = {}
                         for bonus_key, bonus_value in value.items():
                             if isinstance(bonus_key, dict):
-                                logger.error(f"Found dict as bonus_key (2): bonus_key={bonus_key}, bonus_value={bonus_value}")
-                                raise TypeError(f"unhashable type: 'dict' - found dict as bonus_key (2): {bonus_key}")
-                            logger.debug(f"Processing bonus_key (2): {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}")
+                                logger.error(
+                                    f"Found dict as bonus_key (2): bonus_key={bonus_key}, bonus_value={bonus_value}"
+                                )
+                                raise TypeError(
+                                    f"unhashable type: 'dict' - found dict as bonus_key (2): {bonus_key}"
+                                )
+                            logger.debug(
+                                f"Processing bonus_key (2): {bonus_key}, type: {type(bonus_key)}, bonus_value type: {type(bonus_value)}"
+                            )
                             converted_bonuses[bonus_key] = float(bonus_value)
                         setattr(instance, key, converted_bonuses)
                     elif key == "reward_settings" and isinstance(value, dict):
@@ -780,9 +505,15 @@ class EnvironmentConfig:
                             instance.reward_settings = RewardSettings()
                         for rs_key, rs_value in value.items():
                             if isinstance(rs_key, dict):
-                                logger.error(f"Found dict as rs_key: rs_key={rs_key}, rs_value={rs_value}")
-                                raise TypeError(f"unhashable type: 'dict' - found dict as rs_key: {rs_key}")
-                            logger.debug(f"Processing rs_key: {rs_key}, type: {type(rs_key)}, rs_value type: {type(rs_value)}")
+                                logger.error(
+                                    f"Found dict as rs_key: rs_key={rs_key}, rs_value={rs_value}"
+                                )
+                                raise TypeError(
+                                    f"unhashable type: 'dict' - found dict as rs_key: {rs_key}"
+                                )
+                            logger.debug(
+                                f"Processing rs_key: {rs_key}, type: {type(rs_key)}, rs_value type: {type(rs_value)}"
+                            )
                             if rs_key == "action_bonuses" and isinstance(
                                 rs_value, dict
                             ):

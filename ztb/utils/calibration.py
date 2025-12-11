@@ -10,12 +10,15 @@ from typing import Any, Dict, List, Optional, TypedDict
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.metrics.statistics import calculate_distribution_stats
+
 
 class BrierScoreDict(TypedDict):
     """Brier score result dictionary."""
 
     overall_brier: float
     per_action_brier: Dict[str, Optional[float]]  # Can be None when action never occurs
+    overall_brier_stats: Dict[str, float]  # Added stats
 
 
 class ReliabilityCurveDict(TypedDict):
@@ -66,6 +69,7 @@ def compute_brier_score(
     # Compute Brier score: mean squared error between probabilities and one-hot
     brier_per_sample = np.sum((predicted_probs - actual_one_hot) ** 2, axis=1)
     overall_brier = np.mean(brier_per_sample)
+    brier_stats = calculate_distribution_stats(brier_per_sample)
 
     # Per-action Brier score
     per_action_brier: Dict[str, Optional[float]] = {}
@@ -85,6 +89,7 @@ def compute_brier_score(
     return {
         "overall": float(overall_brier),  # For backward compatibility with tests
         "overall_brier": float(overall_brier),
+        "overall_brier_stats": brier_stats,
         "per_action": per_action_brier,  # For backward compatibility with tests
         "per_action_brier": per_action_brier,
     }

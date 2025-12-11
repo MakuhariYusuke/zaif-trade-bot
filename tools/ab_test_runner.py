@@ -20,36 +20,35 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
+# Windows DLL guard: torch must be imported before numpy/scipy/pandas to avoid WinError 1114
+_TORCH_IMPORT_ERROR = None
+try:
+    import torch  # type: ignore  # noqa: F401
+except Exception as _exc:  # pragma: no cover - environment specific
+    _TORCH_IMPORT_ERROR = _exc
+
 from ztb.cache.memory_cache import default_memory_manager
 from ztb.experiments.base import ExperimentResult
 from ztb.utils.parallel_experiments import run_parallel_experiments
+from ztb.utils.report_utils import extract_action_distribution, find_reports_for_model
 
 WRAPPER_PATH = Path(__file__).resolve().parent / "run_child_trainer_wrapper.py"
 
 
 def check_torch_available() -> bool:
     """Check if torch is importable in this environment. Returns True if torch is available."""
-    try:
-        import importlib
-
-        torch = importlib.import_module("torch")
-        # If python successfully imports torch but the DLL initialization fails it'll raise OSError
-        # We can still run CPU-only workloads if installed as CPU-only. Return True if import ok.
+    if _TORCH_IMPORT_ERROR is None:
         return True
-    except Exception as e:
-        print("Warning: PyTorch import failed in this environment.")
-        print(
-            "PyTorch is required for training runs. If you only need CPU-mode, install a CPU-only PyTorch wheel, e.g.:"
-        )
-        print("  pip install --upgrade pip")
-        print(
-            "  pip install " "torch" " --index-url https://download.pytorch.org/whl/cpu"
-        )
-        print(
-            "Otherwise, install the correct torch wheel for your platform (see https://pytorch.org/get-started/locally/)"
-        )
-        print(f"Import error: {e}")
-        return False
+
+    print("Warning: PyTorch failed to import before runner initialization.")
+    print(
+        "When running on Windows, torch must load before numpy/pandas/scipy to avoid DLL conflicts."
+    )
+    print(
+        "Reinstall CPU-only torch if needed: pip install --upgrade pip && pip install torch --index-url https://download.pytorch.org/whl/cpu"
+    )
+    print(f"Import error: {_TORCH_IMPORT_ERROR}")
+    return False
 
 
 def build_child_command(
@@ -144,10 +143,9 @@ class ABTrainingExperiment:
         cmd = build_child_command(cfg_path, seed, timesteps, fast_mode)
         launch_child_training(cmd, seed, cfg_path)
 
-        # attempt to collect reports and return simple ExperimentResult
-        model_name = json.loads(cfg_path.read_text(encoding="utf-8"))["training"][
-            "model_name"
-        ]
+        tempt to collect reports and return simple ExperimentResult
+            from ztb.utils.config_utils import read_model_name_from_config
+            model_name = read_model_name_from_config(cfg_path)
         reports = find_reports_for_model(model_name)
         metrics: Dict[str, object] = {}
         if reports:
@@ -164,27 +162,7 @@ class ABTrainingExperiment:
         )
 
 
-def find_reports_for_model(model_name: str) -> List[Path]:
-    r = Path("reports")
-    matches = []
-    for p in r.glob("training_report_*.json"):
-        try:
-            obj = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        # Drill down to training.model_name if present
-        try:
-            name = obj.get("configuration", {}).get("training", {}).get("model_name")
-        except Exception:
-            name = None
-        if name == model_name:
-            matches.append(p)
-    return matches
 
-
-def extract_action_distribution(report_path: Path) -> Dict[str, float]:
-    obj = json.loads(report_path.read_text(encoding="utf-8"))
-    return obj.get("training_stats", {}).get("action_distribution", {})
 
 
 def main():
@@ -210,13 +188,15 @@ def main():
         default=1,
         help="Number of parallel workers to use for runs (1 = sequential)",
     )
+    from ztb.utils.cli import add_common_cli_args
+    add_common_cli_args(parser)
     args = parser.parse_args()
 
     configs = [Path(p) for p in args.configs]  # Changed to accept multiple configs
     for cfg in configs:
         if not cfg.exists():
             print("Config not found:", cfg)
-            sys.exit(2)
+            return 2
 
     # Build run tasks for seeds
     tasks: List[Dict[str, object]] = []
@@ -236,6 +216,10 @@ def main():
         print(f"Running {len(tasks)} tasks with {args.jobs} parallel workers")
         run_parallel_experiments(ABTrainingExperiment, tasks, max_workers=args.jobs)
     else:
+        # Configure logging via CLI
+        from ztb.utils.cli import configure_logging_from_args
+        configure_logging_from_args(args)
+
         # Check for torch availability and warn; training subprocess will still attempt to import
         if not check_torch_available():
             print(
@@ -250,10 +234,9 @@ def main():
             )
 
     # Aggregate and print
+    from ztb.utils.config_utils import read_model_name_from_config
     for cfg in configs:
-        model_name = json.loads(cfg.read_text(encoding="utf-8"))["training"][
-            "model_name"
-        ]
+        model_name = read_model_name_from_config(cfg)
         reports = find_reports_for_model(model_name)
         print("\nResults for", model_name)
         print("Found reports:", len(reports))
@@ -310,4 +293,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

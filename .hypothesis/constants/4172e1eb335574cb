@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\rewards\trading_focused.py
+# hypothesis_version: 6.148.6
+
+[0.01, 0.05, 0.1, 0.45, 2.0, 8.0, 'balance_penalty', 'get', 'hold_penalty_rate', 'trading_bonus', 'trading_focused']

@@ -10,11 +10,12 @@ import warnings
 from collections import OrderedDict
 from typing import Any, Dict, Tuple, Union, cast
 
-from ztb.utils.types import IndicatorInfo
-
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+
+from ztb.metrics.statistics import calculate_volatility
+from ztb.utils.types import IndicatorInfo
 
 # Try to import Ta-Lib, fallback to custom implementations if not available
 try:
@@ -233,8 +234,9 @@ class TaLibWrapper:
             raise TaLibError(f"SMA calculation failed: {e}")
 
     @timed
+    @staticmethod
     def ema(
-        self, data: Union[NDArray[np.float64], pd.Series], period: int
+        data: Union[NDArray[np.float64], pd.Series], period: int
     ) -> NDArray[np.float64]:
         """
         Exponential Moving Average.
@@ -249,17 +251,12 @@ class TaLibWrapper:
         Raises:
             TaLibError: If input validation fails
         """
-        data = self._validate_input_data(data, "data")
-        period = self._validate_period(period, "period")
+        # Use static validation helpers to keep interface callable as class method
+        data = TaLibWrapper._validate_input_data(data, "data")
+        period = TaLibWrapper._validate_period(period, "period")
 
         if len(data) < period:
             raise TaLibError(f"Data length {len(data)} is less than period {period}")
-
-        # Check cache
-        if self.enable_cache:
-            cache_key = self._get_cache_key("ema", data.tobytes(), period)
-            if cache_key in self._cache:
-                return self._cache[cache_key].copy()
 
         try:
             if TALIB_AVAILABLE:
@@ -273,12 +270,7 @@ class TaLibWrapper:
             else:
                 result = self._ema_custom(data, period)
 
-            # Cache result
-            if self.enable_cache:
-                self._cache[cache_key] = result.copy()
-                if len(self._cache) > self.cache_size:
-                    oldest_key = next(iter(self._cache))
-                    del self._cache[oldest_key]
+            # No caching here when called as staticmethod (keep implementation simple)
 
             return result
 
@@ -584,6 +576,93 @@ class TaLibWrapper:
 
         except Exception as e:
             raise TaLibError(f"Stochastic calculation failed: {e}")
+
+    def stochf(
+        self,
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
+        fastk_period: int = 14,
+        fastd_period: int = 3,
+        fastd_matype: int = 0,
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """
+        Stochastic Fast.
+
+        Args:
+            high: High prices
+            low: Low prices
+            close: Close prices
+            fastk_period: Fast %K period
+            fastd_period: Fast %D period
+            fastd_matype: Fast %D Moving Average Type (0=SMA)
+
+        Returns:
+            Tuple of (Fast %K, Fast %D)
+
+        Raises:
+            TaLibError: If input validation fails
+        """
+        high = self._validate_input_data(high, "high")
+        low = self._validate_input_data(low, "low")
+        close = self._validate_input_data(close, "close")
+        fastk_period = self._validate_period(fastk_period, "fastk_period")
+        fastd_period = self._validate_period(fastd_period, "fastd_period")
+
+        if len(high) != len(low) or len(high) != len(close):
+            raise TaLibError("High, low, and close arrays must have the same length")
+
+        min_length = fastk_period + fastd_period
+        if len(high) < min_length:
+            raise TaLibError(
+                f"Data length {len(high)} is insufficient for Stochastic Fast calculation"
+            )
+
+        cache_key = None
+        if self.enable_cache:
+            cache_key = self._get_cache_key(
+                "stochf",
+                high.tobytes(),
+                low.tobytes(),
+                close.tobytes(),
+                fastk_period,
+                fastd_period,
+                fastd_matype,
+            )
+            if cache_key in self._cache:
+                cached_result = self._cache[cache_key]
+                return (cached_result[0].copy(), cached_result[1].copy())
+
+        try:
+            if TALIB_AVAILABLE:
+                fastk, fastd = talib.STOCHF(
+                    high,
+                    low,
+                    close,
+                    fastk_period=fastk_period,
+                    fastd_period=fastd_period,
+                    fastd_matype=fastd_matype,
+                )
+                result = (
+                    np.nan_to_num(fastk, nan=np.nan),
+                    np.nan_to_num(fastd, nan=np.nan),
+                )
+            else:
+                result = self._stochf_custom(
+                    high, low, close, fastk_period, fastd_period
+                )
+
+            # Cache result
+            if self.enable_cache and cache_key:
+                self._cache[cache_key] = (result[0].copy(), result[1].copy())
+                if len(self._cache) > self.cache_size:
+                    oldest_key = next(iter(self._cache))
+                    del self._cache[oldest_key]
+
+            return result
+
+        except Exception as e:
+            raise TaLibError(f"Stochastic Fast calculation failed: {e}")
 
     @staticmethod
     def adx(
@@ -1265,6 +1344,60 @@ class TaLibWrapper:
         return obv
 
     @staticmethod
+    def ad(
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
+        volume: Union[NDArray[np.float64], pd.Series],
+    ) -> NDArray[np.float64]:
+        """
+        Chaikin Accumulation/Distribution (AD) line.
+
+        Args:
+            high: High prices
+            low: Low prices
+            close: Close prices
+            volume: Volume data
+
+        Returns:
+            AD values
+
+        Raises:
+            TaLibError: If input validation fails
+        """
+        high = TaLibWrapper._validate_input_data(high, "high")
+        low = TaLibWrapper._validate_input_data(low, "low")
+        close = TaLibWrapper._validate_input_data(close, "close")
+        volume = TaLibWrapper._validate_input_data(volume, "volume")
+
+        if len(high) != len(low) or len(high) != len(close) or len(high) != len(volume):
+            raise TaLibError(
+                "High, low, close, and volume arrays must have the same length"
+            )
+
+        try:
+            if TALIB_AVAILABLE:
+                result = talib.AD(high, low, close, volume)
+                return cast(NDArray[np.float64], np.nan_to_num(result, nan=np.nan))
+            else:
+                # Custom AD implementation
+                high = np.asarray(high, dtype=float)
+                low = np.asarray(low, dtype=float)
+                close = np.asarray(close, dtype=float)
+                volume = np.asarray(volume, dtype=float)
+
+                money_flow_multiplier = ((close - low) - (high - close)) / (high - low)
+                # Handle division by zero and infinities
+                money_flow_multiplier = np.nan_to_num(
+                    money_flow_multiplier, nan=0.0, posinf=0.0, neginf=0.0
+                )
+                mfv = money_flow_multiplier * volume
+                ad = np.cumsum(mfv)
+                return cast(NDArray[np.float64], ad)
+        except Exception as e:
+            raise TaLibError(f"AD calculation failed: {e}")
+
+    @staticmethod
     def _sar_custom(
         high: NDArray[np.float64],
         low: NDArray[np.float64],
@@ -1406,11 +1539,9 @@ class TaLibWrapper:
         sma = np.convolve(data, weights, mode="valid").astype(np.float64)
 
         # Calculate rolling standard deviation for the same windows
-        n = len(data)
-        std = np.full(n - period + 1, np.nan)
-        for i in range(len(std)):
-            window = data[i : i + period]
-            std[i] = np.std(window, ddof=1)  # Use ddof=1 for sample standard deviation
+        # Use centralized calculation
+        std_list = calculate_volatility(data, window=period)
+        std = np.array(std_list, dtype=np.float64)
 
         upper = sma + (std * nbdevup)
         lower = sma - (std * nbdevdn)
@@ -1480,6 +1611,38 @@ class TaLibWrapper:
         slowd = TaLibWrapper._sma_custom(slowk, slowd_period)
 
         return slowk, slowd
+
+    @staticmethod
+    def _stochf_custom(
+        high: Union[NDArray[np.float64], pd.Series],
+        low: Union[NDArray[np.float64], pd.Series],
+        close: Union[NDArray[np.float64], pd.Series],
+        fastk_period: int = 14,
+        fastd_period: int = 3,
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Custom Stochastic Fast implementation."""
+        high = np.asarray(high, dtype=float)
+        low = np.asarray(low, dtype=float)
+        close = np.asarray(close, dtype=float)
+
+        # Fast %K
+        lowest_low = (
+            pd.Series(low).rolling(window=fastk_period).min().values.astype(np.float64)
+        )
+        highest_high = (
+            pd.Series(high).rolling(window=fastk_period).max().values.astype(np.float64)
+        )
+
+        # Avoid division by zero
+        denom = highest_high - lowest_low
+        denom[denom == 0] = np.nan
+
+        fastk = 100 * (close - lowest_low) / denom
+
+        # Fast %D (SMA of Fast %K)
+        fastd = TaLibWrapper._sma_custom(fastk, fastd_period)
+
+        return fastk, fastd
 
     @staticmethod
     def _adx_custom(

@@ -70,14 +70,11 @@ def test_basic_functionality():
     observation, feature_names = create_sample_observation()
 
     # Initialize signal guide
-    guide = ActionSignalGuide(
-        mode=GuidanceMode.FULL_GUIDANCE, feature_names=feature_names
-    )
+    guide = ActionSignalGuide(mode=GuidanceMode.FULL_GUIDANCE)
+    guide.set_feature_names(feature_names)
 
     # Test signal evaluation
-    buy_strength = guide._evaluate_signals_for_action(
-        observation, guide.signal_definitions.signals["rsi_oversold"]["type"]
-    )
+    buy_strength = guide.get_signal_strength(observation, 1, 0)
     print(f"RSI Oversold signal strength: {buy_strength}")
 
     # Test action recommendation
@@ -93,11 +90,9 @@ def test_multi_timeframe():
     observation, feature_names = create_sample_observation()
 
     # Initialize with multi-timeframe enabled
-    guide = ActionSignalGuide(
-        mode=GuidanceMode.FULL_GUIDANCE,
-        feature_names=feature_names,
-        multi_timeframe=True,
-    )
+    guide = ActionSignalGuide(mode=GuidanceMode.FULL_GUIDANCE)
+    guide.set_feature_names(feature_names)
+    # guide.use_multi_timeframe = True # If needed, but it's auto-initialized if available
 
     # Test multi-timeframe signal strength
     for action in [0, 1, 2]:  # HOLD, BUY, SELL
@@ -144,11 +139,8 @@ def test_adaptive_features():
 
     observation, feature_names = create_sample_observation()
 
-    guide = ActionSignalGuide(
-        mode=GuidanceMode.FULL_GUIDANCE,
-        feature_names=feature_names,
-        multi_timeframe=True,
-    )
+    guide = ActionSignalGuide(mode=GuidanceMode.FULL_GUIDANCE)
+    guide.set_feature_names(feature_names)
 
     # Test adaptive signal strength
     for action in [1, 2]:  # BUY, SELL

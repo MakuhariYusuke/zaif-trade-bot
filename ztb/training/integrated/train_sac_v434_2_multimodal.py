@@ -556,9 +556,9 @@ def run_trading_backtest(
             # 簡易的なリスク指標
             returns = np.diff(portfolio_values) / portfolio_values[:-1]
             if len(returns) > 1:
-                sharpe_ratio = (
-                    np.mean(returns) / (np.std(returns) + 1e-8) * np.sqrt(252)
-                )
+                from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+                sharpe_ratio = calc_sharpe_ratio(returns)
                 max_drawdown = (min_portfolio - max_portfolio) / max_portfolio * 100
             else:
                 sharpe_ratio = 0.0

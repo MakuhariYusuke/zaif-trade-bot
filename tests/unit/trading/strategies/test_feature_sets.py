@@ -15,7 +15,7 @@ import pandas as pd
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
+from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 
 
 def create_test_data(n_points=100):

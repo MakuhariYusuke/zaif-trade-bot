@@ -12,9 +12,6 @@ from ztb.trading.constants import (
     ACTION_BUY,
     ACTION_HOLD,
     ACTION_SELL,
-    MULTIPLIER_INDEX_BUY,
-    MULTIPLIER_INDEX_HOLD,
-    MULTIPLIER_INDEX_SELL,
 )
 from ztb.trading.environment.constants import EPSILON
 
@@ -50,8 +47,10 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
     ) -> float:
         """Calculate PnL-focused reward with trend analysis and fair action penalties."""
         # Log curriculum stage for debugging
-        curriculum_stage = getattr(self.config, 'curriculum_stage', None)
-        self.logger.info(f"PnLFocusedRewardCalculator: curriculum_stage={curriculum_stage}, step={step}")
+        curriculum_stage = getattr(self.config, "curriculum_stage", None)
+        self.logger.info(
+            f"PnLFocusedRewardCalculator: curriculum_stage={curriculum_stage}, step={step}"
+        )
 
         # Simplified reward: focus on portfolio return with small action penalty
         # Remove complex profit_bonus and position_penalty calculations
@@ -107,10 +106,10 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
                 elif trend_ratio < 1.0 and action == ACTION_SELL:
                     return 1.2
 
-                # Oversold/Overbought signals
+                # Oversold/Overbought signals (Symmetric Implementation)
                 if rsi > 60.0 and trend_ratio > 1.0 and action == ACTION_SELL:
                     return 1.3
-                elif rsi < 40.0 and trend_ratio < 1.0 and action == ACTION_SELL:
+                elif rsi < 40.0 and trend_ratio < 1.0 and action == ACTION_BUY:
                     return 1.3
         except (IndexError, TypeError, ValueError):
             pass

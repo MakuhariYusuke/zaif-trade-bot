@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\candidate_evaluator.py
+# hypothesis_version: 6.148.6
+
+[0.0, 2000, '--configs', '--seeds', '--timesteps', 'CandidateEvaluator', '__file__', 'configuration', 'mean_sharpe', 'mean_total_return', 'model_name', 'report_count', 'reports', 'run_artifacts', 'sharpe_ratio', 'total_return', 'training', 'training_stats', 'utf-8']

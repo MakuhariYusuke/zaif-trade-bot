@@ -7,16 +7,15 @@ including performance analysis, correlation analysis, risk analysis,
 and SAC model comparison.
 """
 
-import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from .unified_backtester import BacktestResult
-from ...metrics import BacktestMetrics, MetricsCalculator
 from ....utils.logging_utils import get_logger
+from ..metrics import MetricsCalculator
+from .unified_backtester import BacktestResult
 
 logger = get_logger(__name__)
 
@@ -38,9 +37,7 @@ class BacktestAnalyzer:
         self.metrics_calculator = MetricsCalculator()
 
     def analyze_single_result(
-        self,
-        result: BacktestResult,
-        benchmark_result: Optional[BacktestResult] = None
+        self, result: BacktestResult, benchmark_result: Optional[BacktestResult] = None
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze a single backtest result.
@@ -61,14 +58,14 @@ class BacktestAnalyzer:
         }
 
         if benchmark_result:
-            analysis["benchmark_comparison"] = self._compare_with_benchmark(result, benchmark_result)
+            analysis["benchmark_comparison"] = self._compare_with_benchmark(
+                result, benchmark_result
+            )
 
         return analysis
 
     def compare_strategies(
-        self,
-        results: Dict[str, BacktestResult],
-        statistical_tests: bool = True
+        self, results: Dict[str, BacktestResult], statistical_tests: bool = True
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Compare multiple strategies.
@@ -95,7 +92,7 @@ class BacktestAnalyzer:
     def analyze_sac_learning_outcomes(
         self,
         sac_results: Dict[str, BacktestResult],
-        learning_metadata: Optional[Dict[str, Union[str, int, float]]] = None
+        learning_metadata: Optional[Dict[str, Union[str, int, float]]] = None,
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze SAC learning outcomes across different models/versions.
@@ -111,18 +108,20 @@ class BacktestAnalyzer:
             "model_count": len(sac_results),
             "learning_progression": self._analyze_learning_progression(sac_results),
             "regime_adaptation": self._analyze_regime_adaptation(sac_results),
-            "hyperparameter_sensitivity": self._analyze_hyperparameter_sensitivity(sac_results),
+            "hyperparameter_sensitivity": self._analyze_hyperparameter_sensitivity(
+                sac_results
+            ),
         }
 
         if learning_metadata:
-            analysis["training_insights"] = self._extract_training_insights(learning_metadata)
+            analysis["training_insights"] = self._extract_training_insights(
+                learning_metadata
+            )
 
         return analysis
 
     def analyze_signal_quality(
-        self,
-        signal_strategy_result: BacktestResult,
-        market_data: pd.DataFrame
+        self, signal_strategy_result: BacktestResult, market_data: pd.DataFrame
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze signal quality for signal-based strategies.
@@ -135,16 +134,22 @@ class BacktestAnalyzer:
             Signal quality analysis
         """
         return {
-            "signal_distribution": self._analyze_signal_distribution(signal_strategy_result),
-            "signal_timing": self._analyze_signal_timing(signal_strategy_result, market_data),
-            "signal_effectiveness": self._analyze_signal_effectiveness(signal_strategy_result),
-            "pattern_recognition": self._analyze_pattern_recognition(signal_strategy_result),
+            "signal_distribution": self._analyze_signal_distribution(
+                signal_strategy_result
+            ),
+            "signal_timing": self._analyze_signal_timing(
+                signal_strategy_result, market_data
+            ),
+            "signal_effectiveness": self._analyze_signal_effectiveness(
+                signal_strategy_result
+            ),
+            "pattern_recognition": self._analyze_pattern_recognition(
+                signal_strategy_result
+            ),
         }
 
     def analyze_sac_signal_correlation(
-        self,
-        sac_result: BacktestResult,
-        signal_result: BacktestResult
+        self, sac_result: BacktestResult, signal_result: BacktestResult
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze correlation between SAC decisions and Action Signal Guide signals.
@@ -157,10 +162,18 @@ class BacktestAnalyzer:
             Correlation analysis results
         """
         return {
-            "action_correlation": self._calculate_action_correlation(sac_result, signal_result),
-            "performance_correlation": self._calculate_performance_correlation(sac_result, signal_result),
-            "regime_correlation": self._calculate_regime_correlation(sac_result, signal_result),
-            "signal_contribution": self._assess_signal_contribution(sac_result, signal_result),
+            "action_correlation": self._calculate_action_correlation(
+                sac_result, signal_result
+            ),
+            "performance_correlation": self._calculate_performance_correlation(
+                sac_result, signal_result
+            ),
+            "regime_correlation": self._calculate_regime_correlation(
+                sac_result, signal_result
+            ),
+            "signal_contribution": self._assess_signal_contribution(
+                sac_result, signal_result
+            ),
         }
 
     def _create_performance_summary(self, result: BacktestResult) -> Dict[str, float]:
@@ -211,7 +224,10 @@ class BacktestAnalyzer:
         durations = []
         for trade in trades:
             if "entry_time" in trade and "exit_time" in trade:
-                duration = (pd.to_datetime(trade["exit_time"]) - pd.to_datetime(trade["entry_time"])).total_seconds() / 3600  # hours
+                duration = (
+                    pd.to_datetime(trade["exit_time"])
+                    - pd.to_datetime(trade["entry_time"])
+                ).total_seconds() / 3600  # hours
                 durations.append(duration)
 
         return {
@@ -221,12 +237,14 @@ class BacktestAnalyzer:
             "min_trade_duration_hours": float(np.min(durations)) if durations else 0.0,
         }
 
-    def _analyze_temporal_patterns(self, result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _analyze_temporal_patterns(
+        self, result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Analyze temporal patterns in performance."""
         portfolio_values = pd.Series(result.portfolio_values)
 
         # Monthly returns
-        monthly_returns = portfolio_values.resample('M').last().pct_change().dropna()
+        monthly_returns = portfolio_values.resample("M").last().pct_change().dropna()
 
         # Best and worst months
         best_month = monthly_returns.max()
@@ -249,22 +267,29 @@ class BacktestAnalyzer:
         }
 
     def _compare_with_benchmark(
-        self,
-        result: BacktestResult,
-        benchmark: BacktestResult
+        self, result: BacktestResult, benchmark: BacktestResult
     ) -> Dict[str, float]:
         """Compare strategy with benchmark."""
         return {
-            "return_difference": result.performance_metrics.total_return - benchmark.performance_metrics.total_return,
-            "sharpe_difference": result.performance_metrics.sharpe_ratio - benchmark.performance_metrics.sharpe_ratio,
-            "drawdown_difference": result.performance_metrics.max_drawdown - benchmark.performance_metrics.max_drawdown,
+            "return_difference": result.performance_metrics.total_return
+            - benchmark.performance_metrics.total_return,
+            "sharpe_difference": result.performance_metrics.sharpe_ratio
+            - benchmark.performance_metrics.sharpe_ratio,
+            "drawdown_difference": result.performance_metrics.max_drawdown
+            - benchmark.performance_metrics.max_drawdown,
         }
 
-    def _compare_performance(self, results: Dict[str, BacktestResult]) -> Dict[str, list]:
+    def _compare_performance(
+        self, results: Dict[str, BacktestResult]
+    ) -> Dict[str, list]:
         """Compare performance across strategies."""
         strategy_names = list(results.keys())
-        total_returns = [results[name].performance_metrics.total_return for name in strategy_names]
-        sharpe_ratios = [results[name].performance_metrics.sharpe_ratio for name in strategy_names]
+        total_returns = [
+            results[name].performance_metrics.total_return for name in strategy_names
+        ]
+        sharpe_ratios = [
+            results[name].performance_metrics.sharpe_ratio for name in strategy_names
+        ]
 
         return {
             "strategy_names": strategy_names,
@@ -276,8 +301,12 @@ class BacktestAnalyzer:
     def _compare_risk(self, results: Dict[str, BacktestResult]) -> Dict[str, list]:
         """Compare risk metrics across strategies."""
         strategy_names = list(results.keys())
-        max_drawdowns = [results[name].performance_metrics.max_drawdown for name in strategy_names]
-        volatilities = [results[name].performance_metrics.volatility for name in strategy_names]
+        max_drawdowns = [
+            results[name].performance_metrics.max_drawdown for name in strategy_names
+        ]
+        volatilities = [
+            results[name].performance_metrics.volatility for name in strategy_names
+        ]
 
         return {
             "strategy_names": strategy_names,
@@ -289,8 +318,12 @@ class BacktestAnalyzer:
     def _compare_trades(self, results: Dict[str, BacktestResult]) -> Dict[str, list]:
         """Compare trading patterns across strategies."""
         strategy_names = list(results.keys())
-        total_trades = [results[name].performance_metrics.total_trades for name in strategy_names]
-        win_rates = [results[name].performance_metrics.win_rate for name in strategy_names]
+        total_trades = [
+            results[name].performance_metrics.total_trades for name in strategy_names
+        ]
+        win_rates = [
+            results[name].performance_metrics.win_rate for name in strategy_names
+        ]
 
         return {
             "strategy_names": strategy_names,
@@ -298,7 +331,9 @@ class BacktestAnalyzer:
             "win_rates": win_rates,
         }
 
-    def _perform_statistical_tests(self, results: Dict[str, BacktestResult]) -> Dict[str, Union[float, str]]:
+    def _perform_statistical_tests(
+        self, results: Dict[str, BacktestResult]
+    ) -> Dict[str, Union[float, str]]:
         """Perform statistical significance tests."""
         if len(results) < 2:
             return {"error": "Need at least 2 strategies for statistical tests"}
@@ -311,20 +346,28 @@ class BacktestAnalyzer:
             "note": "Statistical testing requires detailed return series",
         }
 
-    def _analyze_learning_progression(self, sac_results: Dict[str, BacktestResult]) -> Dict[str, Union[float, list]]:
+    def _analyze_learning_progression(
+        self, sac_results: Dict[str, BacktestResult]
+    ) -> Dict[str, Union[float, list]]:
         """Analyze learning progression across SAC versions."""
         # Sort by version/model name (assuming naming convention)
         sorted_results = sorted(sac_results.items(), key=lambda x: x[0])
 
         progression = {
             "versions": [name for name, _ in sorted_results],
-            "returns_progression": [result.performance_metrics.total_return for _, result in sorted_results],
-            "sharpe_progression": [result.performance_metrics.sharpe_ratio for _, result in sorted_results],
+            "returns_progression": [
+                result.performance_metrics.total_return for _, result in sorted_results
+            ],
+            "sharpe_progression": [
+                result.performance_metrics.sharpe_ratio for _, result in sorted_results
+            ],
         }
 
         return progression
 
-    def _analyze_regime_adaptation(self, sac_results: Dict[str, BacktestResult]) -> Dict[str, Union[float, str]]:
+    def _analyze_regime_adaptation(
+        self, sac_results: Dict[str, BacktestResult]
+    ) -> Dict[str, Union[float, str]]:
         """Analyze regime adaptation effectiveness."""
         # Placeholder for regime analysis
         return {
@@ -332,7 +375,9 @@ class BacktestAnalyzer:
             "note": "Regime analysis requires regime classification data",
         }
 
-    def _analyze_hyperparameter_sensitivity(self, sac_results: Dict[str, BacktestResult]) -> Dict[str, Union[float, str]]:
+    def _analyze_hyperparameter_sensitivity(
+        self, sac_results: Dict[str, BacktestResult]
+    ) -> Dict[str, Union[float, str]]:
         """Analyze hyperparameter sensitivity."""
         # Placeholder for hyperparameter analysis
         return {
@@ -340,48 +385,72 @@ class BacktestAnalyzer:
             "note": "Requires hyperparameter metadata",
         }
 
-    def _extract_training_insights(self, metadata: Dict[str, Union[str, int, float]]) -> Dict[str, Union[str, int, float]]:
+    def _extract_training_insights(
+        self, metadata: Dict[str, Union[str, int, float]]
+    ) -> Dict[str, Union[str, int, float]]:
         """Extract insights from training metadata."""
         return metadata
 
-    def _analyze_signal_distribution(self, result: BacktestResult) -> Dict[str, Union[int, float]]:
+    def _analyze_signal_distribution(
+        self, result: BacktestResult
+    ) -> Dict[str, Union[int, float]]:
         """Analyze signal distribution."""
         # Placeholder - would need signal data from strategy
         return {"total_signals": 0, "note": "Signal data not available in result"}
 
-    def _analyze_signal_timing(self, result: BacktestResult, market_data: pd.DataFrame) -> Dict[str, Union[float, str]]:
+    def _analyze_signal_timing(
+        self, result: BacktestResult, market_data: pd.DataFrame
+    ) -> Dict[str, Union[float, str]]:
         """Analyze signal timing."""
         return {"timing_analysis": "pending", "note": "Requires signal timing data"}
 
-    def _analyze_signal_effectiveness(self, result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _analyze_signal_effectiveness(
+        self, result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Analyze signal effectiveness."""
         return {"effectiveness_score": 0.0, "note": "Requires signal outcome data"}
 
-    def _analyze_pattern_recognition(self, result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _analyze_pattern_recognition(
+        self, result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Analyze pattern recognition accuracy."""
         return {"pattern_accuracy": 0.0, "note": "Requires pattern data"}
 
-    def _calculate_action_correlation(self, sac_result: BacktestResult, signal_result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _calculate_action_correlation(
+        self, sac_result: BacktestResult, signal_result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Calculate action correlation between SAC and signals."""
         return {"correlation_coefficient": 0.0, "note": "Requires aligned action data"}
 
-    def _calculate_performance_correlation(self, sac_result: BacktestResult, signal_result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _calculate_performance_correlation(
+        self, sac_result: BacktestResult, signal_result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Calculate performance correlation."""
-        return {"performance_correlation": 0.0, "note": "Requires detailed performance data"}
+        return {
+            "performance_correlation": 0.0,
+            "note": "Requires detailed performance data",
+        }
 
-    def _calculate_regime_correlation(self, sac_result: BacktestResult, signal_result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _calculate_regime_correlation(
+        self, sac_result: BacktestResult, signal_result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Calculate regime correlation."""
         return {"regime_correlation": 0.0, "note": "Requires regime data"}
 
-    def _assess_signal_contribution(self, sac_result: BacktestResult, signal_result: BacktestResult) -> Dict[str, Union[float, str]]:
+    def _assess_signal_contribution(
+        self, sac_result: BacktestResult, signal_result: BacktestResult
+    ) -> Dict[str, Union[float, str]]:
         """Assess signal contribution to SAC performance."""
-        return {"signal_contribution_score": 0.0, "note": "Requires integrated analysis"}
+        return {
+            "signal_contribution_score": 0.0,
+            "note": "Requires integrated analysis",
+        }
 
     def analyze_risk_metrics_detailed(
         self,
         result: BacktestResult,
         confidence_level: float = 0.95,
-        risk_free_rate: float = 0.02
+        risk_free_rate: float = 0.02,
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Detailed risk metrics analysis using archived analysis functions.
@@ -401,18 +470,25 @@ class BacktestAnalyzer:
             return {"error": "Insufficient data for risk analysis"}
 
         # Basic risk metrics
-        volatility = returns.std() * np.sqrt(252)  # Annualized
+        from ztb.metrics.technical import calculate_volatility_from_returns
+
+        volatility = calculate_volatility_from_returns(
+            returns, window=len(returns), annualize=True
+        )
 
         # Sharpe ratio
-        excess_returns = returns - risk_free_rate / 252
-        sharpe_ratio = excess_returns.mean() / excess_returns.std() * np.sqrt(252)
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns, rf=risk_free_rate)
 
         # Value at Risk (Historical simulation)
         var_historical = np.percentile(returns, (1 - confidence_level) * 100)
 
         # Expected Shortfall (CVaR)
         tail_returns = returns[returns <= var_historical]
-        expected_shortfall = tail_returns.mean() if len(tail_returns) > 0 else var_historical
+        expected_shortfall = (
+            tail_returns.mean() if len(tail_returns) > 0 else var_historical
+        )
 
         # Maximum drawdown
         peak = portfolio_values.expanding().max()
@@ -420,16 +496,27 @@ class BacktestAnalyzer:
         max_drawdown = drawdown.min()
 
         # Calmar ratio
-        calmar_ratio = abs(result.performance_metrics.total_return / max_drawdown) if max_drawdown != 0 else 0
+        calmar_ratio = (
+            abs(result.performance_metrics.total_return / max_drawdown)
+            if max_drawdown != 0
+            else 0
+        )
 
         # Sortino ratio (downside deviation)
-        downside_returns = returns[returns < 0]
-        sortino_ratio = (returns.mean() / downside_returns.std() * np.sqrt(252)) if len(downside_returns) > 0 else 0
+        from ztb.metrics.metrics import sortino_ratio as calc_sortino_ratio
+
+        sortino_ratio = calc_sortino_ratio(returns)
 
         # Omega ratio
         threshold = 0.0  # Minimum acceptable return
-        omega_ratio = (returns[returns > threshold].sum() /
-                      abs(returns[returns < threshold].sum())) if returns[returns < threshold].sum() != 0 else float('inf')
+        omega_ratio = (
+            (
+                returns[returns > threshold].sum()
+                / abs(returns[returns < threshold].sum())
+            )
+            if returns[returns < threshold].sum() != 0
+            else float("inf")
+        )
 
         return {
             "volatility_annualized": float(volatility),
@@ -450,7 +537,7 @@ class BacktestAnalyzer:
         self,
         feature_data: pd.DataFrame,
         target_column: str = "action",
-        method: str = "permutation"
+        method: str = "permutation",
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze feature importance using archived feature analysis functions.
@@ -469,8 +556,10 @@ class BacktestAnalyzer:
         # Identify feature columns
         exclude_cols = ["timestamp", "ts", "pair", "side", "pnl", "win", "source"]
         feature_cols = [
-            col for col in feature_data.columns
-            if col not in exclude_cols and col != target_column
+            col
+            for col in feature_data.columns
+            if col not in exclude_cols
+            and col != target_column
             and feature_data[col].dtype in ["float64", "int64"]
         ]
 
@@ -488,12 +577,16 @@ class BacktestAnalyzer:
             from sklearn.inspection import permutation_importance
             from sklearn.model_selection import train_test_split
 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42
+            )
 
             model = RandomForestClassifier(n_estimators=100, random_state=42)
             model.fit(X_train, y_train)
 
-            perm_importance = permutation_importance(model, X_test, y_test, n_repeats=10, random_state=42)
+            perm_importance = permutation_importance(
+                model, X_test, y_test, n_repeats=10, random_state=42
+            )
 
             importance_results = {
                 "method": "permutation_importance",
@@ -509,7 +602,9 @@ class BacktestAnalyzer:
                 corr = abs(X[col].corr(y))
                 correlations[col] = float(corr) if not np.isnan(corr) else 0.0
 
-            sorted_features = sorted(correlations.items(), key=lambda x: x[1], reverse=True)
+            sorted_features = sorted(
+                correlations.items(), key=lambda x: x[1], reverse=True
+            )
 
             importance_results = {
                 "method": "correlation",
@@ -523,7 +618,7 @@ class BacktestAnalyzer:
         self,
         price_data: pd.DataFrame,
         returns_data: Optional[pd.Series] = None,
-        method: str = "volatility_clustering"
+        method: str = "volatility_clustering",
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Analyze market regimes using archived regime evaluation functions.
@@ -537,7 +632,7 @@ class BacktestAnalyzer:
             Market regime analysis results
         """
         if returns_data is None:
-            returns_data = price_data['close'].pct_change().dropna()
+            returns_data = price_data["close"].pct_change().dropna()
 
         # Simple regime detection based on volatility clustering
         if method == "volatility_clustering":
@@ -559,8 +654,8 @@ class BacktestAnalyzer:
 
         elif method == "trend_following":
             # Simple trend-based regime detection
-            ma_short = price_data['close'].rolling(window=10).mean()
-            ma_long = price_data['close'].rolling(window=30).mean()
+            ma_short = price_data["close"].rolling(window=10).mean()
+            ma_long = price_data["close"].rolling(window=30).mean()
 
             regimes = []
             for i in range(len(price_data)):
@@ -575,7 +670,7 @@ class BacktestAnalyzer:
         # Analyze regime distribution
         regime_counts = pd.Series(regimes).value_counts().to_dict()
         total_periods = len(regimes)
-        regime_distribution = {k: v/total_periods for k, v in regime_counts.items()}
+        regime_distribution = {k: v / total_periods for k, v in regime_counts.items()}
 
         return {
             "method": method,
@@ -585,7 +680,9 @@ class BacktestAnalyzer:
             "regime_transitions": self._analyze_regime_transitions(regimes),
         }
 
-    def _analyze_regime_transitions(self, regimes: list) -> Dict[str, Union[int, float]]:
+    def _analyze_regime_transitions(
+        self, regimes: list
+    ) -> Dict[str, Union[int, float]]:
         """Analyze regime transition patterns."""
         transitions = {}
         for i in range(1, len(regimes)):
@@ -599,8 +696,8 @@ class BacktestAnalyzer:
         data: pd.DataFrame,
         strategy_func: callable,
         window_size: int = 252,  # 1 year
-        step_size: int = 21,    # 1 month
-        min_train_size: int = 126  # 6 months
+        step_size: int = 21,  # 1 month
+        min_train_size: int = 126,  # 6 months
     ) -> Dict[str, Union[float, str, dict, list]]:
         """
         Perform walkforward analysis using archived walkforward functions.
@@ -637,7 +734,11 @@ class BacktestAnalyzer:
             val_data = data.iloc[train_end:val_end] if val_end > train_end else None
 
             # Test data
-            test_data = data.iloc[val_end:test_end] if test_end > val_end else data.iloc[train_end:test_end]
+            test_data = (
+                data.iloc[val_end:test_end]
+                if test_end > val_end
+                else data.iloc[train_end:test_end]
+            )
 
             try:
                 # Train strategy
@@ -645,24 +746,31 @@ class BacktestAnalyzer:
 
                 # Evaluate on test data (simplified - would need actual backtest)
                 # This is a placeholder for the actual walkforward implementation
-                test_returns = test_data['close'].pct_change().dropna()
+                test_returns = test_data["close"].pct_change().dropna()
+
+                from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+                from ztb.metrics.technical import calculate_volatility_from_returns
 
                 window_metrics = {
                     "window_id": window_id,
                     "train_periods": len(train_data),
                     "test_periods": len(test_data),
                     "test_return": float(test_returns.mean() * 252),  # Annualized
-                    "test_volatility": float(test_returns.std() * np.sqrt(252)),
-                    "test_sharpe": float(test_returns.mean() / test_returns.std() * np.sqrt(252)) if test_returns.std() > 0 else 0.0,
+                    "test_volatility": calculate_volatility_from_returns(
+                        test_returns, window=len(test_returns), annualize=True
+                    ),
+                    "test_sharpe": calc_sharpe_ratio(test_returns),
                 }
 
                 metrics_history.append(window_metrics)
-                windows.append({
-                    "window_id": window_id,
-                    "train_end": train_end,
-                    "test_start": val_end,
-                    "test_end": test_end,
-                })
+                windows.append(
+                    {
+                        "window_id": window_id,
+                        "train_end": train_end,
+                        "test_start": val_end,
+                        "test_end": test_end,
+                    }
+                )
 
             except Exception as e:
                 self.logger.warning(f"Failed to analyze window {window_id}: {e}")
@@ -687,6 +795,10 @@ class BacktestAnalyzer:
                 "std_sharpe": float(np.std(sharpe_ratios)),
                 "mean_return": float(np.mean(returns)),
                 "std_return": float(np.std(returns)),
-                "sharpe_consistency": float(np.mean(sharpe_ratios) / np.std(sharpe_ratios)) if np.std(sharpe_ratios) > 0 else 0.0,
+                "sharpe_consistency": float(
+                    np.mean(sharpe_ratios) / np.std(sharpe_ratios)
+                )
+                if np.std(sharpe_ratios) > 0
+                else 0.0,
             },
         }

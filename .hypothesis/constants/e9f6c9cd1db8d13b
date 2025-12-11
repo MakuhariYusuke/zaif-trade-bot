@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\system_optimizer.py
+# hypothesis_version: 6.148.6
+
+[100.0, 1000000.0, 100, 300, 'GPU cache cleared', 'MKL_NUM_THREADS', 'OMP_NUM_THREADS', '_iterator', 'avg_cpu_percent', 'avg_memory_mb', 'avg_step_time', 'cache_hit_rate', 'cache_hits', 'cache_misses', 'cache_size', 'cpu_count', 'cpu_freq_current', 'cpu_percent', 'current_memory_mb', 'gpu_allocated_mb', 'gpu_reserved_mb', 'io_caching_enabled', 'peak_memory_mb', 'pin_memory', 'rss_mb', 'step_counter', 'step_name', 'step_time', 'timestamp', 'training_step', 'vms_mb']

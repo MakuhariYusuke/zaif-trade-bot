@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_ext.py
+# hypothesis_version: 6.148.6
+
+[100, 150, 175, 200, 1000, 5000, 'Ichimoku_Chikou', 'Ichimoku_Kijun', 'Ichimoku_Senkou_A', 'Ichimoku_Senkou_B', 'Ichimoku_Tenkan', 'Ichimoku_Trend', 'Ichimoku_Trend_D1', 'Ichimoku_Trend_H1', 'Ichimoku_Trend_H4', 'Ichimoku_Trend_M1', 'Ichimoku_Trend_M15', 'Ichimoku_Trend_M5', '__main__', 'close', 'high', 'ichimoku_chikou', 'ichimoku_cloud_color', 'ichimoku_kijun', 'ichimoku_kijun_ratio', 'ichimoku_senkou_a', 'ichimoku_senkou_b', 'ichimoku_tenkan', 'ichimoku_tk_cross', 'ichimoku_trend', 'kijun', 'low', 'senkou_b', 'tenkan', 'volume']

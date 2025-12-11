@@ -177,7 +177,10 @@ class TestAdditionalFeatures:
         """Test NaN handling in new features"""
         # Add some NaN values
         data_with_nan = sample_data.copy()
-        data_with_nan.loc[10:15, ["high", "low", "close"]] = np.nan
+        # Use positional iloc slicing when index is DatetimeIndex to avoid TypeError
+        data_with_nan.iloc[
+            10:15, data_with_nan.columns.get_indexer(["high", "low", "close"])
+        ] = np.nan
 
         # Features should handle NaN gracefully
         try:

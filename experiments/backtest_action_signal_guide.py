@@ -103,6 +103,7 @@ def run_action_signal_guide_backtest():
             "confidence_threshold": 0.3,  # Lower threshold from 0.5 to 0.3
             "signal_strength_threshold": 0.1,  # Lower threshold from 0.3 to 0.1
             "max_signals_per_bar": 5,  # Increased from 3 to 5
+            "force_accept_signals": True,  # Diagnostic: force acceptance of signals
         }
     )
     engine = BacktestEngine(
@@ -121,14 +122,14 @@ def run_action_signal_guide_backtest():
     start_time = datetime.now()
 
     # For debugging, limit to first 50 steps
-    debug_limit = 50
-    print(f"Debug mode: limiting to first {debug_limit} steps")
+    debug_limit = None  # Remove debug limit for full backtest
+    print("Running full backtest (no debug limit)")
 
     results = engine.run_backtest(
-        strategy=adapter, data=data[:debug_limit]
-    )  # Limit data for debugging
+        strategy=adapter, data=data if debug_limit is None else data[:debug_limit]
+    )
 
-    equity_curve, orders, adaptation_history = results
+    equity_curve, orders, adaptation_history, signal_performance = results
 
     end_time = datetime.now()
     duration = end_time - start_time

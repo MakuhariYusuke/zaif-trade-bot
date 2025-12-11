@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\frameworks\multitimeframe_validator.py
+# hypothesis_version: 6.148.6
+
+[-0.002, 0.0, 0.002, 0.2, 0.3, 0.5, 0.7, 1.0, 100, '15m', '1d', '1h', '1m', '1w', '30m', '4h', '5m', 'action', 'aligned_timeframes', 'buy', 'close', 'confidence', 'description', 'hold', 'sell', 'strength', 'supported_timeframes', 'timestamp', 'type', 'unknown', 'マルチタイムフレーム整合性検証システム']

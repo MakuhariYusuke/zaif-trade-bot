@@ -4,10 +4,9 @@ Unit tests for Enhanced Regime Analyzer.
 
 import numpy as np
 
-from ztb.analysis.market_analysis import (
-    EnhancedRegimeAnalyzer,
+from ztb.analysis.market_analysis import EnhancedRegimeAnalyzer, MarketRegime
+from ztb.analysis.market_analysis.technical_indicators import (
     EnhancedTechnicalIndicators,
-    MarketRegime,
 )
 
 

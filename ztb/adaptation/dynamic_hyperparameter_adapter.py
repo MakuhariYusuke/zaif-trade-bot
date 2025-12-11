@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,9 @@ from scipy import stats
 from scipy.optimize import minimize_scalar
 
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
-from .online_learning.pipeline import OnlineLearningPipeline
+
+if TYPE_CHECKING:
+    from .online_learning.pipeline import OnlineLearningPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ class DynamicHyperparameterAdapter:
 
     def __init__(
         self,
-        online_learning_pipeline: OnlineLearningPipeline,
+        online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
         config: Optional[HyperparameterConfig] = None,
     ):

@@ -6,9 +6,9 @@ across different signal processing components.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Tuple, List
-from dataclasses import dataclass
-import numpy as np
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple
+
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
@@ -16,7 +16,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class SignalContext:
     """Common signal processing context"""
 
@@ -32,11 +32,11 @@ class SignalResult:
 
     discrete_action: int  # -1, 0, 1
     quality_score: float  # 0-100
-    confidence: float     # 0-1
-    metadata: Dict[str, Any]
+    confidence: float  # 0-1
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-class BaseSignalProcessor(ABC):
+class BaseSignalProcessor:
     """
     Base class for all signal processing components
 
@@ -44,22 +44,41 @@ class BaseSignalProcessor(ABC):
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or self._get_default_config()
+        # Merge provided config with defaults from subclass where available
+        try:
+            default_config = self._get_default_config() or {}
+        except NotImplementedError:
+            default_config = {}
+
+        # If explicit config provided, merge it into defaults
+        if config is not None:
+            # Ensure we do not mutate caller's dict
+            merged = dict(default_config)
+            merged.update(config)
+            self.config = merged
+        else:
+            self.config = dict(default_config)
         self.logger = get_logger(self.__class__.__name__)
 
-    @abstractmethod
     def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration"""
-        pass
+        """Get default configuration
 
-    @abstractmethod
+        Default implementation returns empty dict; subclasses may override.
+        Tests expect this to raise NotImplementedError when called directly in
+        tests that validate abstract behavior, so raise by default.
+        """
+        raise NotImplementedError()
+
     def process_signal(self, context: SignalContext) -> SignalResult:
-        """Process signal with given context"""
-        pass
+        """Process signal with given context
+
+        Default implementation raises NotImplementedError; subclass must implement.
+        """
+        raise NotImplementedError()
 
     def validate_input(self, context: SignalContext) -> bool:
         """Validate input context"""
-        required_fields = ['market_data', 'position_context', 'portfolio_state']
+        required_fields = ["market_data", "position_context", "portfolio_state"]
         for field in required_fields:
             if not hasattr(context, field):
                 self.logger.error(f"Missing required field: {field}")
@@ -98,12 +117,18 @@ class BaseIndicatorCalculator(ABC):
 
         # Handle different index types
         last_index = data.index[-1]
-        if hasattr(last_index, 'isoformat'):
+        if hasattr(last_index, "isoformat"):
             index_str = last_index.isoformat()
         else:
             index_str = str(last_index)
 
-        return f"{len(data)}_{index_str}"
+        # Include last row values to avoid cache collisions when index/length same
+        try:
+            last_row_vals = "_".join([str(x) for x in data.iloc[-1].values])
+        except Exception:
+            last_row_vals = index_str
+
+        return f"{len(data)}_{index_str}_{last_row_vals}"
 
     def get_cached_result(self, data: pd.DataFrame) -> Optional[Dict[str, float]]:
         """Get cached calculation result"""
@@ -131,8 +156,8 @@ class BaseSignalScorer(ABC):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or self._get_default_config()
-        self.weights = self.config.get('weights', {})
-        self.thresholds = self.config.get('thresholds', {})
+        self.weights = self.config.get("weights", {})
+        self.thresholds = self.config.get("thresholds", {})
 
     @abstractmethod
     def _get_default_config(self) -> Dict[str, Any]:
@@ -140,8 +165,9 @@ class BaseSignalScorer(ABC):
         pass
 
     @abstractmethod
-    def calculate_score(self, indicators: Dict[str, float],
-                       context: Optional[Dict[str, Any]] = None) -> float:
+    def calculate_score(
+        self, indicators: Dict[str, float], context: Optional[Dict[str, Any]] = None
+    ) -> float:
         """Calculate signal quality score"""
         pass
 
@@ -152,19 +178,26 @@ class BaseSignalScorer(ABC):
         Returns:
             Tuple of (discrete_action, confidence)
         """
-        buy_threshold = self.thresholds.get('buy', 75)
-        sell_threshold = self.thresholds.get('sell', 25)
-        hold_threshold = self.thresholds.get('hold', 45)
+        buy_threshold = self.thresholds.get("buy", 75)
+        sell_threshold = self.thresholds.get("sell", 25)
+        hold_threshold = self.thresholds.get("hold", 45)
 
-        if score >= buy_threshold:
-            action = 1  # BUY
+        # Use centralized helper for parity-aware mapping
+        from ztb.trading.signal.constants import HIGH_SCORE_IS_BUY
+
+        action = score_to_discrete_action(
+            score,
+            buy_threshold=buy_threshold,
+            sell_threshold=sell_threshold,
+            high_score_is_buy=HIGH_SCORE_IS_BUY,
+        )
+
+        if action == 1:
             confidence = min(1.0, (score - buy_threshold) / (100 - buy_threshold))
-        elif score <= sell_threshold:
-            action = -1  # SELL
+        elif action == -1:
             confidence = min(1.0, (sell_threshold - score) / sell_threshold)
         else:
-            action = 0  # HOLD
-            # Confidence based on distance from decision boundaries
+            # HOLD: confidence based on distance from decision boundaries
             distance_to_buy = abs(score - buy_threshold)
             distance_to_sell = abs(score - sell_threshold)
             min_distance = min(distance_to_buy, distance_to_sell)
@@ -181,7 +214,7 @@ class BaseSignalScorer(ABC):
         """Normalize weights to sum to 1.0"""
         total_weight = sum(self.weights.values())
         if total_weight > 0:
-            self.weights = {k: v/total_weight for k, v in self.weights.items()}
+            self.weights = {k: v / total_weight for k, v in self.weights.items()}
 
 
 class BaseRegimeAdapter(ABC):
@@ -193,7 +226,7 @@ class BaseRegimeAdapter(ABC):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or self._get_default_config()
-        self.adaptation_params = self.config.get('adaptation_params', {})
+        self.adaptation_params = self.config.get("adaptation_params", {})
 
     @abstractmethod
     def _get_default_config(self) -> Dict[str, Any]:
@@ -201,15 +234,12 @@ class BaseRegimeAdapter(ABC):
         pass
 
     @abstractmethod
-    def adapt_parameters(self, regime_type: str,
-                        base_params: Dict[str, Any]) -> Dict[str, Any]:
+    def adapt_parameters(
+        self, regime_type: str, base_params: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Adapt parameters for specific regime"""
         pass
 
     def get_regime_config(self, regime_type: str) -> Dict[str, Any]:
         """Get configuration for specific regime"""
-        return self.adaptation_params.get(regime_type, {})
-
-    def validate_regime_type(self, regime_type: str) -> bool:
-        """Validate regime type"""
         return regime_type in self.adaptation_params

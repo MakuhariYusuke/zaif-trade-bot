@@ -131,7 +131,7 @@ class TestMarketRegimeClassifier:
             "custom_regime_definitions": [
                 {
                     "name": "Custom Bull",
-                    "regime_type": "strong_bull",
+                    "regime_type": "strong_bull_trend",
                     "conditions": {"trend_strength": {"min": 2.0}},
                     "priority": 10,
                 }

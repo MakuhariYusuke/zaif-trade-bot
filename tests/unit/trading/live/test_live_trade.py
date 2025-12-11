@@ -141,11 +141,7 @@ class TestBugFixDocumentation:
 
     def test_action_constants_defined(self):
         """Verify ACTION_* constants are defined in live_trade.py."""
-        from ztb.trading.live_trader.live_trader import (
-            ACTION_BUY,
-            ACTION_HOLD,
-            ACTION_SELL,
-        )
+        from ztb.trading.live_trader.live_trader import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
         assert ACTION_HOLD == 0
         assert ACTION_BUY == 1
@@ -250,6 +246,9 @@ class TestLiveTraderInitialization:
             }
 
             # This should not raise an exception due to error handling
+            import os
+            old_allow = os.environ.get("ZTB_ALLOW_PRODUCTION")
+            os.environ["ZTB_ALLOW_PRODUCTION"] = "1"
             trader = LiveTrader(
                 model_path=model_path,
                 config=config,
@@ -258,8 +257,14 @@ class TestLiveTraderInitialization:
             )
 
             # Verify trader was created but adapter is None
+                assert trader.exchange_adapter is None
+            # Verify after the context that trader.exchange_adapter is still None
             assert trader.exchange_adapter is None
-        assert trader.exchange_adapter is None
+            # Restore env
+            if old_allow is not None:
+                os.environ["ZTB_ALLOW_PRODUCTION"] = old_allow
+            else:
+                os.environ.pop("ZTB_ALLOW_PRODUCTION", None)
 
     @patch("ztb.trading.live_trader.live_trader.get_broker_registry")
     @patch("ztb.trading.live_trader.live_trader.DiscordNotifier")
@@ -298,7 +303,9 @@ class TestLiveTraderInitialization:
             import os
 
             old_webhook = os.environ.get("DISCORD_WEBHOOK_URL")
+            old_allow = os.environ.get("ZTB_ALLOW_PRODUCTION")
             os.environ["DISCORD_WEBHOOK_URL"] = "dummy_webhook"
+            os.environ["ZTB_ALLOW_PRODUCTION"] = "1"
 
             try:
                 trader = LiveTrader(
@@ -316,6 +323,11 @@ class TestLiveTraderInitialization:
                     os.environ["DISCORD_WEBHOOK_URL"] = old_webhook
                 else:
                     os.environ.pop("DISCORD_WEBHOOK_URL", None)
+                # Restore allow production env var
+                if old_allow is not None:
+                    os.environ["ZTB_ALLOW_PRODUCTION"] = old_allow
+                else:
+                    os.environ.pop("ZTB_ALLOW_PRODUCTION", None)
 
     def test_dry_run_initialization(self):
         """Test dry-run mode initialization works correctly."""

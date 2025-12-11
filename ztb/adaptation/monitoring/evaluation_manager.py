@@ -8,7 +8,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -16,7 +16,11 @@ from ..concept_drift.manager import ConceptDriftManager
 from ..explainability.analyzer import ExplainabilityAnalyzer
 from ..monitoring.monitor import PerformanceMonitor
 from ..monitoring.safety import SafetyManager
-from ..online_learning.pipeline import OnlineLearningPipeline
+
+if TYPE_CHECKING:
+    # Import for type checking only; avoid importing heavy modules (e.g., torch) at module import time
+    from ..online_learning.pipeline import OnlineLearningPipeline
+
 from .evaluation_types import (
     AlertLevel,
     AlertType,
@@ -37,7 +41,7 @@ class ContinuousEvaluationManager:
         monitor: PerformanceMonitor,
         safety_manager: SafetyManager,
         drift_manager: ConceptDriftManager,
-        online_learning: Optional[OnlineLearningPipeline] = None,
+        online_learning: Optional["OnlineLearningPipeline"] = None,
         explainability_analyzer: Optional[ExplainabilityAnalyzer] = None,
     ):
         self.monitor = monitor

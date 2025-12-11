@@ -23,14 +23,12 @@ Objective:
 import argparse
 import itertools
 import json
-import math
 import shutil
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from ztb.utils.parallel_experiments import run_parallel_experiments
-import sys
-from pathlib import Path
 
 # Ensure tools package path is importable when running as a script
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,16 +36,17 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 import importlib.util
+
 module_path = Path(__file__).parent / "ab_test_runner.py"
 spec = importlib.util.spec_from_file_location("tools.ab_test_runner", str(module_path))
 ab_mod = importlib.util.module_from_spec(spec)
 sys.modules["tools.ab_test_runner"] = ab_mod
 spec.loader.exec_module(ab_mod)
 ABTrainingExperiment = ab_mod.ABTrainingExperiment
-find_reports_for_model = ab_mod.find_reports_for_model
-extract_action_distribution = ab_mod.extract_action_distribution
-from ztb.training.unified_optimizer import UnifiedOptimizer, OptimizationConfig
 import uuid
+
+from ztb.training.unified_optimizer import OptimizationConfig, UnifiedOptimizer
+from ztb.utils.report_utils import extract_action_distribution, find_reports_for_model
 
 
 def set_nested(dictionary: Dict[str, Any], dotted_key: str, value: Any) -> None:
@@ -58,7 +57,9 @@ def set_nested(dictionary: Dict[str, Any], dotted_key: str, value: Any) -> None:
     d[keys[-1]] = value
 
 
-def generate_grid(template: Dict[str, Any], grid: Dict[str, List[Any]]) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
+def generate_grid(
+    template: Dict[str, Any], grid: Dict[str, List[Any]]
+) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
     keys = list(grid.keys())
     values = [grid[k] for k in keys]
     combinations = list(itertools.product(*values))
@@ -89,11 +90,26 @@ def main():
     parser.add_argument("--grid", required=True)
     parser.add_argument("--seeds", type=int, default=3)
     parser.add_argument("--jobs", type=int, default=1)
-    parser.add_argument("--method", choices=["grid", "bayesian", "random"], default="grid")
-    parser.add_argument("--objective", choices=["balance", "min_sell"], default="balance")
-    parser.add_argument("--fast-mode", action="store_true", help="Use fast-mode defaults to speed up AB jobs (minimal features, skip quality filtering)")
-    parser.add_argument("--out", default="reports/ab_searches/ab_param_search_summary.json")
-    parser.add_argument("--timesteps", type=int, default=2000, help="Total timesteps per run (passes to ab_test_runner)")
+    parser.add_argument(
+        "--method", choices=["grid", "bayesian", "random"], default="grid"
+    )
+    parser.add_argument(
+        "--objective", choices=["balance", "min_sell"], default="balance"
+    )
+    parser.add_argument(
+        "--fast-mode",
+        action="store_true",
+        help="Use fast-mode defaults to speed up AB jobs (minimal features, skip quality filtering)",
+    )
+    parser.add_argument(
+        "--out", default="reports/ab_searches/ab_param_search_summary.json"
+    )
+    parser.add_argument(
+        "--timesteps",
+        type=int,
+        default=2000,
+        help="Total timesteps per run (passes to ab_test_runner)",
+    )
     args = parser.parse_args()
 
     template = json.loads(Path(args.template).read_text(encoding="utf-8"))
@@ -124,7 +140,9 @@ def main():
         # append a short unique suffix and set ab_tag so reports are clearly labelled
         conf["training"]["model_name"] = f"{base_name}__ab_{i}"
         conf["ab_tag"] = f"ab_balance_small_{i}"
-        name = "absearch_" + "_".join([f"{k.split('.')[-1]}={str(v)}" for k, v in params.items()])
+        name = "absearch_" + "_".join(
+            [f"{k.split('.')[-1]}={str(v)}" for k, v in params.items()]
+        )
         cfg_path = tmp_dir / f"{name}_{i}.json"
         # Apply fast-mode defaults if requested - reduce feature set and disable expensive quality filtering
         if args.fast_mode:
@@ -140,7 +158,14 @@ def main():
         cfg_paths.append((cfg_path, params))
         if args.seeds > 0:
             for seed in range(1, args.seeds + 1):
-                tasks.append({"config_path": cfg_path.as_posix(), "seed": seed, "timesteps": args.timesteps, "fast_mode": args.fast_mode})
+                tasks.append(
+                    {
+                        "config_path": cfg_path.as_posix(),
+                        "seed": seed,
+                        "timesteps": args.timesteps,
+                        "fast_mode": args.fast_mode,
+                    }
+                )
     # --timesteps handled earlier in parser
 
     # Run AB runs (only if not using the UnifiedOptimizer for grid search)
@@ -201,9 +226,18 @@ def main():
                 # build tasks for seeds and run with parallel_experiments utility
                 tasks_local = []
                 for seed in range(1, args.seeds + 1):
-                    tasks_local.append({"config_path": tmp.as_posix(), "seed": seed, "timesteps": args.timesteps, "fast_mode": args.fast_mode})
+                    tasks_local.append(
+                        {
+                            "config_path": tmp.as_posix(),
+                            "seed": seed,
+                            "timesteps": args.timesteps,
+                            "fast_mode": args.fast_mode,
+                        }
+                    )
 
-                run_parallel_experiments(ABTrainingExperiment, tasks_local, max_workers=args.jobs)
+                run_parallel_experiments(
+                    ABTrainingExperiment, tasks_local, max_workers=args.jobs
+                )
 
                 for seed in range(1, args.seeds + 1):
                     reports = find_reports_for_model(run_cfg["training"]["model_name"])
@@ -234,15 +268,25 @@ def main():
             else:
                 param_space[k] = v
 
-        res = optimizer.optimize_hyperparameters(objective_wrapper, param_space, method=args.method)
+        res = optimizer.optimize_hyperparameters(
+            objective_wrapper, param_space, method=args.method
+        )
         # Save optimization result summary
-        Path(args.out).write_text(json.dumps({"best": res.best_params, "score": res.best_score}, ensure_ascii=False, indent=2))
+        Path(args.out).write_text(
+            json.dumps(
+                {"best": res.best_params, "score": res.best_score},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         print(f"Saved unified optimizer result to {args.out}")
         # also include full results
         return
     all_records = []
     for cfg_path, params in cfg_paths:
-        model_name = json.loads(cfg_path.read_text(encoding="utf-8"))["training"]["model_name"]
+        from ztb.utils.config_utils import read_model_name_from_config
+
+        model_name = read_model_name_from_config(cfg_path)
         reports = find_reports_for_model(model_name)
         all_dists = []
         for rp in reports:
