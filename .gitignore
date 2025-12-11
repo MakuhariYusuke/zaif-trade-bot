@@ -74,3 +74,9 @@ data/metadata/
 typescript_legacy.zip
 .positions/
 docs/_build/
+
+# Prevent accidental addition of large backtest CSV files
+backtest_experiments/**/trades_history.csv
+backtest_results/trades_history.csv
+test_backtest_results/trades_history.csv
+remove_paths.txt

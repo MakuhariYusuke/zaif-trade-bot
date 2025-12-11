@@ -2,6 +2,9 @@
 *.lib filter=lfs diff=lfs merge=lfs -text
 *.pyd filter=lfs diff=lfs merge=lfs -text
 *.whl filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+backtest_experiments/**/trades_history.csv filter=lfs diff=lfs merge=lfs -text
+backtest_results/trades_history.csv filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
 *.parquet filter=lfs diff=lfs merge=lfs -text
 models/** filter=lfs diff=lfs merge=lfs -text
@@ -13,7 +16,6 @@ data/**/*.csv filter=lfs diff=lfs merge=lfs -text
 *.tfevents filter=lfs diff=lfs merge=lfs -text
 *.npz filter=lfs diff=lfs merge=lfs -text
 *.exe filter=lfs diff=lfs merge=lfs -text
-backtest_experiments/**/trades_history.csv filter=lfs diff=lfs merge=lfs -text
 data/features/**/*.parquet filter=lfs diff=lfs merge=lfs -text
 data/data/archives/**/*.exe filter=lfs diff=lfs merge=lfs -text
 node_modules/@esbuild/** filter=lfs diff=lfs merge=lfs -text
