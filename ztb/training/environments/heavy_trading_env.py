@@ -13,9 +13,8 @@ import pandas as pd
 from gymnasium import spaces
 
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
-from ztb.trading.environment.utils.config import RewardSettings
-
-from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.environment.components.threshold_manager import ThresholdManager
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.types.protocols import TradingEnvironment
 
 logger = logging.getLogger(__name__)
@@ -55,10 +54,12 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             f"HeavyTradingEnv initialized with {len(self.feature_columns)} feature columns: {self.feature_columns}"
         )
 
-        # Pre-compute trading thresholds so they can be reused in the hot path
-        self.action_threshold = getattr(
-            self.config, "continuous_to_discrete_threshold", 0.01
-        )
+        # Initialize ThresholdManager
+        self.threshold_manager = ThresholdManager(self.config)
+
+        # Pre-compute trading thresholds (legacy support / initial values)
+        self.action_threshold = self.threshold_manager.base_threshold
+
         negative_threshold = getattr(
             self.config, "continuous_to_discrete_threshold_neg", None
         )
@@ -137,12 +138,16 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             base_action_penalty=self.config.base_action_penalty,
             action_bonuses=self.config.action_bonuses,
         )
+        if hasattr(self.config, "behavior"):
+            setattr(trading_config, "behavior", getattr(self.config, "behavior"))
 
         self.reward_calculator = RewardCalculator(
             config=trading_config,
             reward_settings=self.reward_settings,
             initial_portfolio_value=self.config.initial_portfolio_value,
         )
+        # Expose optional MTFScheduler to the environment for diagnostics/tests
+        self.mtf_scheduler = getattr(self.reward_calculator, "mtf_scheduler", None)
 
         # Initialize state
         self.reset()
@@ -188,8 +193,23 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         if np.isnan(action_value) or np.isinf(action_value):
             action_value = 0.0  # Default to HOLD
 
+        # Get current market data for adaptive threshold
+        current_data = self.data.iloc[self.current_step]
+        current_price = float(current_data["close"])
+
+        # Get volatility (ATR)
+        volatility = 0.0
+        if "atr_14" in current_data:
+            volatility = float(current_data["atr_14"])
+        elif "volatility_10" in current_data:
+            volatility = float(current_data["volatility_10"])
+
         # Convert to position size: absolute value determines position size, sign determines direction
-        threshold = getattr(self, "action_threshold", 0.01)
+        threshold = self.threshold_manager.get_threshold(volatility, current_price)
+
+        # Update legacy attribute for compatibility
+        self.action_threshold = threshold
+
         threshold_suppressed = False
         if abs(action_value) < threshold:
             new_position = 0.0
@@ -229,15 +249,15 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         self.hold_duration = 5  # Fixed hold duration for simplicity
 
         # Calculate reward
-        reward = self._calculate_reward()
+        reward = self._calculate_reward(action_value)
 
         # Move to next step
         self.current_step += 1
 
         # Check if episode is done
-        terminated = (
-            self.current_step >= len(self.data) - 1
-            or (self.config.max_steps is not None and self.current_step >= self.config.max_steps)
+        terminated = self.current_step >= len(self.data) - 1 or (
+            self.config.max_steps is not None
+            and self.current_step >= self.config.max_steps
         )
         truncated = False  # Not using truncation in this simple environment
 
@@ -250,9 +270,12 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             "current_step": self.current_step,
             "action_value": action_value,
             "position_change_threshold": position_change_threshold,
-            "portfolio_value": self.balance + self.unrealized_pnl,  # ポートフォリオ価値を追加
-            "btc_balance": getattr(self, 'btc_balance', 0),  # BTC残高
-            "current_price": self.data.iloc[self.current_step]["close"] if self.current_step < len(self.data) else 0,  # 現在価格
+            "portfolio_value": self.balance
+            + self.unrealized_pnl,  # ポートフォリオ価値を追加
+            "btc_balance": getattr(self, "btc_balance", 0),  # BTC残高
+            "current_price": self.data.iloc[self.current_step]["close"]
+            if self.current_step < len(self.data)
+            else 0,  # 現在価格
             "signal_strength": getattr(
                 self.reward_calculator, "last_signal_strength", 0.0
             ),
@@ -262,7 +285,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             "suppressed_this_step": threshold_suppressed,
         }
 
-        if self.current_step > 0 and self.current_step % 200 == 0:
+        if self.current_step > 0 and self.current_step % 1000 == 0:
             logger.info(
                 "Scalping diagnostics - step=%s trades=%s threshold_supp=%s min_trade_supp=%s last_signal=%.3f",
                 self.current_step,
@@ -365,7 +388,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         else:
             self.unrealized_pnl = 0.0
 
-    def _calculate_reward(self) -> float:
+    def _calculate_reward(self, action_value: float = 0.0) -> float:
         """Calculate reward for current step using RewardCalculator."""
         if self.current_step == 0:
             return 0.0
@@ -416,11 +439,20 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         # Get observation
         observation = self._get_observation()
 
-        # Determine action (simplified)
-        if abs(self.position) > 0.01:
-            action = 1 if self.position > 0 else -1
+        # Determine action based on intent (action_value) vs current position
+        # This allows rewarding the INTENT to trade even if suppressed
+        max_pos_size = getattr(self.config, "max_position_size", 1.0)
+        target_position = float(np.clip(action_value, -max_pos_size, max_pos_size))
+
+        # Determine if this is a BUY, SELL or HOLD intent
+        intent_threshold = 1e-4
+
+        if target_position > self.position + intent_threshold:
+            action = 1  # BUY intent
+        elif target_position < self.position - intent_threshold:
+            action = -1  # SELL intent
         else:
-            action = 0
+            action = 0  # HOLD intent
 
         # Calculate reward using RewardCalculator
         try:

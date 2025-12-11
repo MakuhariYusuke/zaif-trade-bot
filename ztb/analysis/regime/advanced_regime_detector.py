@@ -85,13 +85,11 @@ class TechnicalIndicators:
     @staticmethod
     def calculate_volatility(prices: np.ndarray, period: int = 20) -> float:
         """Calculate price volatility."""
-        if len(prices) < period:
-            return 0.0
+        from ztb.metrics.technical import calculate_volatility
 
-        returns = np.diff(np.log(prices))
-        volatility = np.std(returns[-period:]) * np.sqrt(252)  # Annualized volatility
-
-        return float(volatility)
+        # Use centralized implementation with annualization
+        # Note: This uses simple returns (pct_change) instead of log returns.
+        return calculate_volatility(prices, window=period, annualize=True)
 
     @staticmethod
     def calculate_momentum(prices: np.ndarray, period: int = 10) -> float:
@@ -194,7 +192,9 @@ class AdvancedRegimeDetector:
                 for i in range(min(10, len(self.price_buffer) // 20))
             ]
             volatility_percentile = (
-                np.percentile(recent_volatility, 70) if recent_volatility else 0.5
+                float(np.percentile(recent_volatility, 70))
+                if recent_volatility
+                else 0.5
             )
         else:
             volatility_percentile = 0.5

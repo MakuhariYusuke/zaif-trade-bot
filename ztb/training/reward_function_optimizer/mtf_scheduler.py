@@ -7,12 +7,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from time import sleep
-from typing import Optional
+from typing import Callable, Optional
 
-from ztb.training.reward_function_optimizer.mtf_optimizer import (
-    CandidateConfig,
-    MTFOptimizer,
-)
+from ztb.training.reward_function_optimizer.mtf_optimizer import MTFOptimizer
+from ztb.types.common import CandidateConfig, StageChangeEvent
 
 
 @dataclass
@@ -24,6 +22,8 @@ class MTFSchedulerConfig:
     timesteps: int = 2000
     strategy: str = "random"
     seed: int = 42
+    gate_composite_score: Optional[float] = None
+    gate_min_reports: Optional[int] = None
 
 
 class MTFScheduler:
@@ -53,15 +53,83 @@ class MTFScheduler:
             f"Scheduler found best candidate: {best_candidate.candidate_id}"
         )
         if apply and self.manager is not None and best_candidate is not None:
-            self._optimizer.apply_candidate_to_manager(best_candidate, self.manager)
-            self.logger.info(
-                f"Applied candidate {best_candidate.candidate_id} to MTFWeightManager"
+            # Apply gating checks if configured
+            gate_ok = True
+            if (
+                self.config.gate_composite_score is not None
+                and getattr(best_score, "composite_score", 0.0)
+                < self.config.gate_composite_score
+            ):
+                self.logger.warning(
+                    "Candidate %s rejected by composite_score gate: %s < %s",
+                    best_candidate.candidate_id,
+                    getattr(best_score, "composite_score", 0.0),
+                    self.config.gate_composite_score,
+                )
+                gate_ok = False
+            if (
+                self.config.gate_min_reports is not None
+                and getattr(best_score, "report_count", 0)
+                < self.config.gate_min_reports
+            ):
+                self.logger.warning(
+                    "Candidate %s rejected by report_count gate: %s < %s",
+                    best_candidate.candidate_id,
+                    getattr(best_score, "report_count", 0),
+                    self.config.gate_min_reports,
+                )
+                gate_ok = False
+            if not gate_ok:
+                self.logger.info("Not applying candidate due to gating conditions")
+                return best_candidate
+            ok = self._optimizer.apply_candidate_to_manager(
+                best_candidate, self.manager
             )
+            if ok:
+                self.logger.info(
+                    f"Applied candidate {best_candidate.candidate_id} to MTFWeightManager"
+                )
+                # Persist telemetry for applied candidate
+                try:
+                    import json
+                    from pathlib import Path
+
+                    rpt_dir = Path("reports")
+                    rpt_dir.mkdir(parents=True, exist_ok=True)
+                    cid, ts = self.manager.get_last_applied_info()
+                    applied_path = rpt_dir / f"applied_candidate_{cid}.json"
+                    cfg = json.loads(
+                        Path(best_candidate.config_path).read_text(encoding="utf-8")
+                    )
+                    from ztb.types.common import AppliedCandidateTelemetry
+
+                    applied_data: AppliedCandidateTelemetry = {
+                        "candidate_id": cid,
+                        "applied_at": ts,
+                        "weights": cfg.get("multi_timeframe", {}).get(
+                            "feature_weights", {}
+                        ),
+                        "composite_score": getattr(best_score, "composite_score", None),
+                        "mean_sharpe": getattr(best_score, "mean_sharpe", None),
+                        "mean_total_return": getattr(
+                            best_score, "mean_total_return", None
+                        ),
+                    }
+                    applied_path.write_text(
+                        json.dumps(applied_data, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                except Exception:
+                    self.logger.exception("Failed to persist applied candidate info")
+            else:
+                self.logger.warning(
+                    f"MTFWeightManager rejected candidate {best_candidate.candidate_id} (set_weights returned False)"
+                )
         return best_candidate
 
     def create_stage_change_callback(
         self, stage_filter: Optional[list] = None, dry_run: bool = True
-    ):
+    ) -> Callable[[StageChangeEvent], None]:
         """Create a callback to be used by BalanceCurriculumManager stage change listeners.
 
         The returned callback can be registered with `BalanceCurriculumManager.add_stage_change_listener`.
@@ -69,7 +137,8 @@ class MTFScheduler:
         """
 
         def _cb(**kwargs):
-            stage = kwargs.get("stage")
+            # event uses `new_stage` to indicate the stage progressed to
+            stage = kwargs.get("new_stage") or kwargs.get("stage")
             emergency = kwargs.get("emergency", False)
             if stage_filter and stage not in stage_filter:
                 return

@@ -6,7 +6,7 @@ combining ActionSignalGuide functionality with reward calculation logic.
 Enhanced to support new pattern recognition systems (Granville's Law, Dow Theory, Heikin-Ashi).
 """
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -156,12 +156,14 @@ class SignalRewardIntegrator:
             f"integrate_signal_reward called: action={action}, step={step}"
         )
 
-        if observation is None or not self.enable_advanced_integration:
+        if observation is None:
             return reward
 
         try:
             if self.enable_advanced_integration:
-                return self._advanced_signal_integration(reward, observation, action, step)
+                return self._advanced_signal_integration(
+                    reward, observation, action, step
+                )
             else:
                 return self._basic_signal_integration(reward, observation, action, step)
 
@@ -252,7 +254,7 @@ class SignalRewardIntegrator:
             self._update_advanced_tracking(pattern_analysis)
 
             # Log reward modifier by action type for analysis
-            action_name = {0: 'HOLD', 1: 'BUY', -1: 'SELL'}[action]
+            action_name = {0: "HOLD", 1: "BUY", -1: "SELL"}[action]
             self.logger.info(
                 f"SignalRewardIntegrator: action={action_name}, reward_modifier={reward_modifier:.4f}, "
                 f"base_reward={reward:.4f}, modified_reward={modified_reward:.4f}"
@@ -283,58 +285,77 @@ class SignalRewardIntegrator:
         signals = []
 
         # Get signals from each pattern group
-        if hasattr(self.signal_guide, 'granville_recognizers'):
+        if hasattr(self.signal_guide, "granville_recognizers"):
             for recognizer in self.signal_guide.granville_recognizers:
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, "granville")
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, "granville"
+                )
                 if signal:
                     signals.append(signal)
 
-        if hasattr(self.signal_guide, 'dow_theory_recognizers'):
+        if hasattr(self.signal_guide, "dow_theory_recognizers"):
             for recognizer in self.signal_guide.dow_theory_recognizers:
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, "dow_theory")
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, "dow_theory"
+                )
                 if signal:
                     signals.append(signal)
 
-        if hasattr(self.signal_guide, 'heikin_ashi_recognizers'):
+        if hasattr(self.signal_guide, "heikin_ashi_recognizers"):
             for recognizer in self.signal_guide.heikin_ashi_recognizers:
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, "heikin_ashi")
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, "heikin_ashi"
+                )
                 if signal:
                     signals.append(signal)
 
         # New oscillator patterns
-        if hasattr(self.signal_guide, 'oscillator_recognizers'):
+        if hasattr(self.signal_guide, "oscillator_recognizers"):
             for recognizer in self.signal_guide.oscillator_recognizers:
                 pattern_type = self._get_oscillator_pattern_type(recognizer)
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, pattern_type)
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, pattern_type
+                )
                 if signal:
                     signals.append(signal)
 
         # New volume patterns
-        if hasattr(self.signal_guide, 'volume_recognizers'):
+        if hasattr(self.signal_guide, "volume_recognizers"):
             for recognizer in self.signal_guide.volume_recognizers:
                 pattern_type = self._get_volume_pattern_type(recognizer)
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, pattern_type)
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, pattern_type
+                )
                 if signal:
                     signals.append(signal)
 
         # Bollinger Bands patterns
-        if hasattr(self.signal_guide, 'bollinger_recognizers'):
+        if hasattr(self.signal_guide, "bollinger_recognizers"):
             for recognizer in self.signal_guide.bollinger_recognizers:
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, "bollinger")
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, "bollinger"
+                )
                 if signal:
                     signals.append(signal)
 
         # ADX patterns
-        if hasattr(self.signal_guide, 'adx_recognizers'):
+        if hasattr(self.signal_guide, "adx_recognizers"):
             for recognizer in self.signal_guide.adx_recognizers:
-                signal = self._get_recognizer_signal(recognizer, observation, action, step, "adx")
+                signal = self._get_recognizer_signal(
+                    recognizer, observation, action, step, "adx"
+                )
                 if signal:
                     signals.append(signal)
 
         return signals
 
     def _get_recognizer_signal(
-        self, recognizer: Any, observation: np.ndarray, action: int, step: int, pattern_type: str
+        self,
+        recognizer: Any,
+        observation: np.ndarray,
+        action: int,
+        step: int,
+        pattern_type: str,
     ) -> Optional[Dict[str, Any]]:
         """
         Get signal from a specific recognizer.
@@ -371,17 +392,19 @@ class SignalRewardIntegrator:
                 alignment = -1  # Contradictory
 
             return {
-                'pattern_type': pattern_type,
-                'signal_type': signal_result.signal_type,
-                'direction': signal_result.direction,
-                'strength': signal_result.strength,
-                'alignment': alignment,
-                'description': signal_result.description,
-                'metadata': signal_result.metadata,
+                "pattern_type": pattern_type,
+                "signal_type": signal_result.signal_type,
+                "direction": signal_result.direction,
+                "strength": signal_result.strength,
+                "alignment": alignment,
+                "description": signal_result.description,
+                "metadata": signal_result.metadata,
             }
 
         except Exception as e:
-            self.logger.debug(f"Failed to get signal from {recognizer.__class__.__name__}: {e}")
+            self.logger.debug(
+                f"Failed to get signal from {recognizer.__class__.__name__}: {e}"
+            )
             return None
 
     def _analyze_pattern_signals(
@@ -398,53 +421,102 @@ class SignalRewardIntegrator:
             Analysis dictionary with pattern metrics
         """
         analysis = {
-            'granville': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'dow_theory': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'heikin_ashi': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'rsi': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'macd': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'atr': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'ichimoku': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'cci': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'stochastic': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'williams_r': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'mfi': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'chaikin_ad': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
+            "granville": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "dow_theory": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "heikin_ashi": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "rsi": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "macd": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "atr": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "ichimoku": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "cci": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "stochastic": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "williams_r": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "mfi": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "chaikin_ad": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
             # Bollinger Bands and ADX patterns
-            'bollinger': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'adx': {'signals': [], 'weighted_strength': 0.0, 'alignment_score': 0.0},
-            'total_signals': len(signals),
-            'supporting_signals': 0,
-            'contradicting_signals': 0,
+            "bollinger": {
+                "signals": [],
+                "weighted_strength": 0.0,
+                "alignment_score": 0.0,
+            },
+            "adx": {"signals": [], "weighted_strength": 0.0, "alignment_score": 0.0},
+            "total_signals": len(signals),
+            "supporting_signals": 0,
+            "contradicting_signals": 0,
         }
 
         for signal in signals:
-            pattern_type = signal['pattern_type']
+            pattern_type = signal["pattern_type"]
             if pattern_type in analysis:
-                analysis[pattern_type]['signals'].append(signal)
+                analysis[pattern_type]["signals"].append(signal)
 
                 # Apply pattern-specific weighting
                 weight = self._get_pattern_weight(pattern_type)
-                weighted_strength = signal['strength'] * weight
+                weighted_strength = signal["strength"] * weight
 
-                analysis[pattern_type]['weighted_strength'] += weighted_strength
-                analysis[pattern_type]['alignment_score'] += signal['alignment'] * weighted_strength
+                analysis[pattern_type]["weighted_strength"] += weighted_strength
+                analysis[pattern_type]["alignment_score"] += (
+                    signal["alignment"] * weighted_strength
+                )
 
-                if signal['alignment'] == 1:
-                    analysis['supporting_signals'] += 1
-                elif signal['alignment'] == -1:
-                    analysis['contradicting_signals'] += 1
+                if signal["alignment"] == 1:
+                    analysis["supporting_signals"] += 1
+                elif signal["alignment"] == -1:
+                    analysis["contradicting_signals"] += 1
 
         # Calculate averages
-        for pattern_type in ['granville', 'dow_theory', 'heikin_ashi', 'rsi', 'macd', 'atr', 'ichimoku', 'cci', 'stochastic', 'williams_r', 'mfi', 'chaikin_ad']:
-            signal_count = len(analysis[pattern_type]['signals'])
+        for pattern_type in [
+            "granville",
+            "dow_theory",
+            "heikin_ashi",
+            "rsi",
+            "macd",
+            "atr",
+            "ichimoku",
+            "cci",
+            "stochastic",
+            "williams_r",
+            "mfi",
+            "chaikin_ad",
+        ]:
+            signal_count = len(analysis[pattern_type]["signals"])
             if signal_count > 0:
-                analysis[pattern_type]['avg_strength'] = (
-                    analysis[pattern_type]['weighted_strength'] / signal_count
+                analysis[pattern_type]["avg_strength"] = (
+                    analysis[pattern_type]["weighted_strength"] / signal_count
                 )
-                analysis[pattern_type]['avg_alignment'] = (
-                    analysis[pattern_type]['alignment_score'] / analysis[pattern_type]['weighted_strength']
-                    if analysis[pattern_type]['weighted_strength'] > 0 else 0
+                analysis[pattern_type]["avg_alignment"] = (
+                    analysis[pattern_type]["alignment_score"]
+                    / analysis[pattern_type]["weighted_strength"]
+                    if analysis[pattern_type]["weighted_strength"] > 0
+                    else 0
                 )
 
         return analysis
@@ -460,21 +532,21 @@ class SignalRewardIntegrator:
             Weight multiplier
         """
         weights = {
-            'granville': self.granville_weight,
-            'dow_theory': self.dow_theory_weight,
-            'heikin_ashi': self.heikin_ashi_weight,
-            'rsi': self.rsi_weight,
-            'macd': self.macd_weight,
-            'atr': self.atr_weight,
-            'ichimoku': self.ichimoku_weight,
-            'cci': self.cci_weight,
-            'stochastic': self.stochastic_weight,
-            'williams_r': self.williams_r_weight,
-            'mfi': self.mfi_weight,
-            'chaikin_ad': self.chaikin_ad_weight,
+            "granville": self.granville_weight,
+            "dow_theory": self.dow_theory_weight,
+            "heikin_ashi": self.heikin_ashi_weight,
+            "rsi": self.rsi_weight,
+            "macd": self.macd_weight,
+            "atr": self.atr_weight,
+            "ichimoku": self.ichimoku_weight,
+            "cci": self.cci_weight,
+            "stochastic": self.stochastic_weight,
+            "williams_r": self.williams_r_weight,
+            "mfi": self.mfi_weight,
+            "chaikin_ad": self.chaikin_ad_weight,
             # Bollinger Bands and ADX weights
-            'bollinger': self.bollinger_weight,
-            'adx': self.adx_weight,
+            "bollinger": self.bollinger_weight,
+            "adx": self.adx_weight,
         }
         return weights.get(pattern_type, 1.0)
 
@@ -525,13 +597,13 @@ class SignalRewardIntegrator:
 
     def _calculate_dow_theory_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
         """Calculate Dow Theory specific modifier."""
-        dow_data = pattern_analysis['dow_theory']
-        if not dow_data['signals']:
+        dow_data = pattern_analysis["dow_theory"]
+        if not dow_data["signals"]:
             return 0.0
 
         # Dow Theory gets bonus for strong alignment (multi-timeframe confirmation)
-        alignment = dow_data.get('avg_alignment', 0.0)
-        strength = dow_data.get('avg_strength', 0.0)
+        alignment = dow_data.get("avg_alignment", 0.0)
+        strength = dow_data.get("avg_strength", 0.0)
 
         # Multi-timeframe confirmation is valuable
         if alignment > 0.7 and strength > 0.6:
@@ -545,13 +617,13 @@ class SignalRewardIntegrator:
 
     def _calculate_granville_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
         """Calculate Granville's Law specific modifier."""
-        granville_data = pattern_analysis['granville']
-        if not granville_data['signals']:
+        granville_data = pattern_analysis["granville"]
+        if not granville_data["signals"]:
             return 0.0
 
         # Granville's Law is good for volume-price analysis
-        alignment = granville_data.get('avg_alignment', 0.0)
-        strength = granville_data.get('avg_strength', 0.0)
+        alignment = granville_data.get("avg_alignment", 0.0)
+        strength = granville_data.get("avg_strength", 0.0)
 
         # Volume confirmation is valuable but can be noisy
         if alignment > 0.6 and strength > 0.5:
@@ -561,15 +633,17 @@ class SignalRewardIntegrator:
 
         return 0.0
 
-    def _calculate_heikin_ashi_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
+    def _calculate_heikin_ashi_modifier(
+        self, pattern_analysis: Dict[str, Any]
+    ) -> float:
         """Calculate Heikin-Ashi specific modifier."""
-        heikin_data = pattern_analysis['heikin_ashi']
-        if not heikin_data['signals']:
+        heikin_data = pattern_analysis["heikin_ashi"]
+        if not heikin_data["signals"]:
             return 0.0
 
         # Heikin-Ashi provides smoothed trend signals
-        alignment = heikin_data.get('avg_alignment', 0.0)
-        strength = heikin_data.get('avg_strength', 0.0)
+        alignment = heikin_data.get("avg_alignment", 0.0)
+        strength = heikin_data.get("avg_strength", 0.0)
 
         # Trend continuation signals are moderately valuable
         if alignment > 0.5 and strength > 0.4:
@@ -585,8 +659,8 @@ class SignalRewardIntegrator:
         supporting_patterns = 0
         contradicting_patterns = 0
 
-        for pattern_type in ['granville', 'dow_theory', 'heikin_ashi']:
-            avg_alignment = pattern_analysis[pattern_type].get('avg_alignment', 0.0)
+        for pattern_type in ["granville", "dow_theory", "heikin_ashi"]:
+            avg_alignment = pattern_analysis[pattern_type].get("avg_alignment", 0.0)
             if avg_alignment > 0.4:
                 supporting_patterns += 1
             elif avg_alignment < -0.4:
@@ -605,58 +679,62 @@ class SignalRewardIntegrator:
         """Update advanced integration tracking statistics."""
         for pattern_type, data in pattern_analysis.items():
             if pattern_type in [
-                'granville', 
-                'dow_theory', 
-                'heikin_ashi', 
-                'rsi', 
-                'macd', 
-                'atr', 
-                'ichimoku', 
-                'cci', 
-                'stochastic', 
-                'williams_r', 
-                'mfi', 
-                'chaikin_ad',
+                "granville",
+                "dow_theory",
+                "heikin_ashi",
+                "rsi",
+                "macd",
+                "atr",
+                "ichimoku",
+                "cci",
+                "stochastic",
+                "williams_r",
+                "mfi",
+                "chaikin_ad",
                 # Bollinger Bands and ADX patterns
-                'bollinger',
-                'adx'
-                ]:
-                signal_count = len(data['signals'])
+                "bollinger",
+                "adx",
+            ]:
+                signal_count = len(data["signals"])
                 if signal_count > 0:
-                    if pattern_type == 'granville':
+                    if pattern_type == "granville":
                         self.granville_signals_used += signal_count
-                    elif pattern_type == 'dow_theory':
+                    elif pattern_type == "dow_theory":
                         self.dow_theory_signals_used += signal_count
-                    elif pattern_type == 'heikin_ashi':
+                    elif pattern_type == "heikin_ashi":
                         self.heikin_ashi_signals_used += signal_count
-                    elif pattern_type == 'rsi':
+                    elif pattern_type == "rsi":
                         self.rsi_signals_used += signal_count
-                    elif pattern_type == 'macd':
+                    elif pattern_type == "macd":
                         self.macd_signals_used += signal_count
-                    elif pattern_type == 'atr':
+                    elif pattern_type == "atr":
                         self.atr_signals_used += signal_count
-                    elif pattern_type == 'ichimoku':
+                    elif pattern_type == "ichimoku":
                         self.ichimoku_signals_used += signal_count
-                    elif pattern_type == 'cci':
+                    elif pattern_type == "cci":
                         self.cci_signals_used += signal_count
-                    elif pattern_type == 'stochastic':
+                    elif pattern_type == "stochastic":
                         self.stochastic_signals_used += signal_count
-                    elif pattern_type == 'williams_r':
+                    elif pattern_type == "williams_r":
                         self.williams_r_signals_used += signal_count
-                    elif pattern_type == 'mfi':
+                    elif pattern_type == "mfi":
                         self.mfi_signals_used += signal_count
-                    elif pattern_type == 'chaikin_ad':
+                    elif pattern_type == "chaikin_ad":
                         self.chaikin_ad_signals_used += signal_count
-                    elif pattern_type == 'bollinger':
+                    elif pattern_type == "bollinger":
                         self.bollinger_signals_used += signal_count
-                    elif pattern_type == 'adx':
+                    elif pattern_type == "adx":
                         self.adx_signals_used += signal_count
 
     def _get_oscillator_pattern_type(self, recognizer: Any) -> str:
         """Get pattern type for oscillator recognizers."""
         from .action_signal_guide.pattern_recognition.oscillator_patterns import (
-            CCIRecognizer, StochasticRecognizer, WilliamsRRecognizer, MFIRecognizer
+            CCIRecognizer,
+            MFIRecognizer,
+            StochasticRecognizer,
+            WilliamsRRecognizer,
         )
+
         if isinstance(recognizer, CCIRecognizer):
             return "cci"
         elif isinstance(recognizer, StochasticRecognizer):
@@ -670,7 +748,10 @@ class SignalRewardIntegrator:
 
     def _get_volume_pattern_type(self, recognizer: Any) -> str:
         """Get pattern type for volume recognizers."""
-        from .action_signal_guide.pattern_recognition.volume_patterns import ChaikinADRecognizer
+        from .action_signal_guide.pattern_recognition.volume_patterns import (
+            ChaikinADRecognizer,
+        )
+
         if isinstance(recognizer, ChaikinADRecognizer):
             return "chaikin_ad"
         else:

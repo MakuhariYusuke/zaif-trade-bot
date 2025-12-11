@@ -10,6 +10,7 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.metrics.statistics import calculate_distribution_stats
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.utils.data_utils import load_csv_data_optimized
 
@@ -100,11 +101,13 @@ def run_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
     print(f"\n{'='*80}")
     print("BACKTEST RESULTS")
     print(f"{'='*80}")
+
+    reward_stats = calculate_distribution_stats(episode_rewards)
+    return_stats = calculate_distribution_stats(episode_returns)
+
+    print(f"Average Reward:  {reward_stats['mean']:7.2f} ± {reward_stats['std']:6.2f}")
     print(
-        f"Average Reward:  {np.mean(episode_rewards):7.2f} ± {np.std(episode_rewards):6.2f}"
-    )
-    print(
-        f"Average Return:  {np.mean(episode_returns):6.2f}% ± {np.std(episode_returns):5.2f}%"
+        f"Average Return:  {return_stats['mean']:6.2f}% ± {return_stats['std']:5.2f}%"
     )
     print(f"Best Return:     {np.max(episode_returns):6.2f}%")
     print(f"Worst Return:    {np.min(episode_returns):6.2f}%")

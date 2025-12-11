@@ -8,11 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
-import numpy as np
 import pandas as pd
 
 # 年間取引日数
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
 
 @dataclass
@@ -61,14 +59,9 @@ class BuyAndHoldStrategy(BaselineStrategy):
 
         # Calculate basic metrics
         returns = price_data["close"].pct_change().dropna()
-        sharpe_ratio = cast(
-            float,
-            (
-                returns.mean() / returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
-                if len(returns) > 0
-                else 0
-            ),
-        )
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns)
 
         # Max drawdown
         cumulative = (1 + returns).cumprod()
@@ -127,14 +120,9 @@ class SMAStrategy(BaselineStrategy):
         )
         returns = price_data["strategy_returns"].dropna()
 
-        sharpe_ratio = cast(
-            float,
-            (
-                returns.mean() / returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
-                if len(returns) > 0 and returns.std() > 0
-                else 0
-            ),
-        )
+        from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+
+        sharpe_ratio = calc_sharpe_ratio(returns)
 
         # Max drawdown
         cumulative = (1 + returns).cumprod()

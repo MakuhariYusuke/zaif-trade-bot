@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\momentum\williams_r.py
+# hypothesis_version: 6.148.6
+
+[-100, 'WilliamsR', 'Williams_R', 'close', 'high', 'low', 'period', 'williams_r']

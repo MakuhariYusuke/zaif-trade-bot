@@ -7,17 +7,24 @@ Phase 3: Risk Management & Statistical Validation
 包括的なバックテストシステム。
 """
 
-from typing import Callable, Dict, List, Any
+# Workaround for [WinError 1114] DLL initialization failed
+# Torch must be imported before pandas/scipy/numpy in some environments
+try:
+    import torch
+except ImportError:
+    pass
+
+from datetime import datetime
+from typing import Any, Callable, Dict, List, cast
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-import json
 
-from ztb.trading.backtest.adapters import StrategyAdapter, create_adapter
-from ztb.trading.backtest.metrics import BacktestMetrics, MetricsCalculator
-from ztb.trading.backtest.runner import BacktestEngine
+from ztb.metrics.statistical_validator import StatisticalValidator
+from ztb.metrics.statistics import calculate_atr
 from ztb.risk.enhanced_risk_manager import EnhancedRiskManager
-from ztb.utils.statistical_validator import StatisticalValidator
+from ztb.trading.backtest.runner import BacktestEngine
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -48,14 +55,20 @@ class IntegratedBacktestRunner:
             risk_profile=backtest_config.get("risk_profile", "balanced"),
             target_vol=backtest_config.get("target_vol"),
             enable_adaptation=backtest_config.get("enable_adaptation", False),
-            max_position_size=backtest_config.get("max_position_size", 1.0)
+            max_position_size=backtest_config.get("max_position_size", 1.0),
         )
-        self.risk_manager = EnhancedRiskManager(config.get("risk_config", {}))
-        self.statistical_validator = StatisticalValidator(config.get("validation_config", {}))
+        self.risk_manager = ensure_risk_manager_protocol(
+            EnhancedRiskManager(config.get("risk_config", {}))
+        )
+        self.statistical_validator = StatisticalValidator(
+            config.get("validation_config", {})
+        )
 
         # 統合設定
         self.enable_risk_management = config.get("enable_risk_management", True)
-        self.enable_statistical_validation = config.get("enable_statistical_validation", True)
+        self.enable_statistical_validation = config.get(
+            "enable_statistical_validation", True
+        )
         self.multi_timeframe_enabled = config.get("multi_timeframe_enabled", True)
 
         # テスト設定
@@ -73,7 +86,7 @@ class IntegratedBacktestRunner:
         strategy_func: Callable,
         market_data: pd.DataFrame,
         initial_capital: float = 10000.0,
-        commission: float = 0.001
+        commission: float = 0.001,
     ) -> Dict[str, Any]:
         """
         統合バックテスト実行
@@ -87,16 +100,18 @@ class IntegratedBacktestRunner:
         Returns:
             統合バックテスト結果
         """
-        results = {
+        results: Dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "config": self.config,
-            "iterations": []
+            "iterations": [],
         }
 
         try:
             # 複数イテレーション実行
             for i in range(self.n_iterations):
-                logger.info(f"Running integrated backtest iteration {i+1}/{self.n_iterations}")
+                logger.info(
+                    f"Running integrated backtest iteration {i+1}/{self.n_iterations}"
+                )
 
                 iteration_result = self._run_single_integrated_backtest(
                     strategy_func, market_data, initial_capital, commission, iteration=i
@@ -105,12 +120,18 @@ class IntegratedBacktestRunner:
                 results["iterations"].append(iteration_result)
 
                 if iteration_result.get("error"):
-                    logger.warning(f"Iteration {i+1} failed: {iteration_result['error']}")
+                    logger.warning(
+                        f"Iteration {i+1} failed: {iteration_result['error']}"
+                    )
 
             # 統合結果集計
             results["summary"] = self._aggregate_results(results["iterations"])
-            results["risk_analysis"] = self._analyze_risk_across_iterations(results["iterations"])
-            results["statistical_validation"] = self._validate_statistically(results["iterations"])
+            results["risk_analysis"] = self._analyze_risk_across_iterations(
+                results["iterations"]
+            )
+            results["statistical_validation"] = self._validate_statistically(
+                results["iterations"]
+            )
 
             results["success"] = True
 
@@ -127,7 +148,7 @@ class IntegratedBacktestRunner:
         market_data: pd.DataFrame,
         initial_capital: float,
         commission: float,
-        iteration: int = 0
+        iteration: int = 0,
     ) -> Dict[str, Any]:
         """
         単一統合バックテスト実行
@@ -146,7 +167,7 @@ class IntegratedBacktestRunner:
             "iteration": iteration,
             "trades": [],
             "portfolio_values": [],
-            "risk_adjustments": []
+            "risk_adjustments": [],
         }
 
         try:
@@ -156,11 +177,11 @@ class IntegratedBacktestRunner:
             )
 
             result.update(backtest_result)
-            
+
             # equity_curveをportfolio_valuesに変換
             if "equity_curve" in backtest_result:
                 result["portfolio_values"] = backtest_result["equity_curve"].tolist()
-            
+
             # tradesを更新
             if "trades" in backtest_result:
                 result["trades"] = backtest_result["trades"]
@@ -171,15 +192,19 @@ class IntegratedBacktestRunner:
 
             # 統計的検証
             if self.enable_statistical_validation and result["portfolio_values"]:
-                returns = self._calculate_returns_from_portfolio_values(result["portfolio_values"])
-                result["statistical_metrics"] = self.statistical_validator.validate_performance_metrics(
-                    returns
+                returns = self._calculate_returns_from_portfolio_values(
+                    cast(List[float], result["portfolio_values"])
                 )
+                result[
+                    "statistical_metrics"
+                ] = self.statistical_validator.validate_performance_metrics(returns)
 
             result["success"] = True
 
         except Exception as e:
-            logger.error(f"Single integrated backtest iteration {iteration} failed: {e}")
+            logger.error(
+                f"Single integrated backtest iteration {iteration} failed: {e}"
+            )
             result["error"] = str(e)
             result["success"] = False
 
@@ -190,7 +215,7 @@ class IntegratedBacktestRunner:
         strategy_func: Callable,
         market_data: pd.DataFrame,
         initial_capital: float,
-        commission: float
+        commission: float,
     ) -> Dict[str, Any]:
         """
         リスク管理統合拡張バックテスト
@@ -204,18 +229,23 @@ class IntegratedBacktestRunner:
         Returns:
             拡張バックテスト結果
         """
+
         # 基本バックテスト実行
         # strategy_funcをStrategyAdapterでラップ
         class FunctionStrategyAdapter:
             def __init__(self, strategy_func):
                 self.strategy_func = strategy_func
 
-            def generate_signal(self, data: pd.DataFrame, current_position: int) -> Dict[str, Any]:
+            def generate_signal(
+                self, data: pd.DataFrame, current_position: int
+            ) -> Dict[str, Any]:
                 # データの最新行を取得
                 latest_data = data.iloc[-1].to_dict()
                 # strategy_funcを呼び出し
-                result = self.strategy_func(latest_data, 1000.0)  # portfolio_valueは仮定
-                
+                result = self.strategy_func(
+                    latest_data, 1000.0
+                )  # portfolio_valueは仮定
+
                 # signalをactionに変換
                 signal_value = result.get("signal", 0)
                 if signal_value == 1:
@@ -224,27 +254,30 @@ class IntegratedBacktestRunner:
                     action = "sell"
                 else:
                     action = None  # 何もしない
-                
+
                 return {
                     "action": action,
                     "position_size": result.get("position_size", 0.0),
-                    "price": result.get("price", latest_data.get("close", 0))
+                    "price": result.get("price", latest_data.get("close", 0)),
                 }
 
             def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
                 pass  # ハイパーパラメータ更新は未実装
 
         strategy_adapter = FunctionStrategyAdapter(strategy_func)
-        equity_curve, trades_df, metadata, signal_performance_summary = self.backtest_runner.run_backtest(
-            strategy_adapter, market_data
-        )
+        (
+            equity_curve,
+            trades_df,
+            metadata,
+            signal_performance_summary,
+        ) = self.backtest_runner.run_backtest(strategy_adapter, market_data)
 
         # 結果を辞書形式に変換
         basic_result = {
             "equity_curve": equity_curve,
             "trades": trades_df,
             "metadata": metadata or {},
-            "signal_performance_summary": signal_performance_summary or {}
+            "signal_performance_summary": signal_performance_summary or {},
         }
 
         # リスク管理統合
@@ -252,9 +285,17 @@ class IntegratedBacktestRunner:
             enhanced_trades = []
             risk_adjustments = []
 
-            for trade in basic_result.get("trades", []).to_dict('records') if hasattr(basic_result.get("trades", []), 'to_dict') else basic_result.get("trades", []):
+            trades_list: List[Dict[str, Any]] = []
+            if isinstance(trades_df, pd.DataFrame):
+                trades_list = cast(List[Dict[str, Any]], trades_df.to_dict("records"))
+            elif isinstance(trades_df, list):
+                trades_list = trades_df
+
+            for trade in trades_list:
                 # リスク調整適用
-                risk_adjusted_trade = self._apply_risk_management_to_trade(trade, market_data)
+                risk_adjusted_trade = self._apply_risk_management_to_trade(
+                    trade, market_data
+                )
                 enhanced_trades.append(risk_adjusted_trade)
                 risk_adjustments.append(risk_adjusted_trade.get("risk_info", {}))
 
@@ -264,9 +305,7 @@ class IntegratedBacktestRunner:
         return basic_result
 
     def _apply_risk_management_to_trade(
-        self,
-        trade: Dict[str, Any],
-        market_data: pd.DataFrame
+        self, trade: Dict[str, Any], market_data: pd.DataFrame
     ) -> Dict[str, Any]:
         """
         取引にリスク管理を適用
@@ -295,7 +334,7 @@ class IntegratedBacktestRunner:
                 current_price=current_price,
                 portfolio_value=portfolio_value,
                 atr=atr,
-                df=market_data
+                df=market_data,
             )
 
             # ポジションサイズ調整
@@ -311,22 +350,15 @@ class IntegratedBacktestRunner:
         return enhanced_trade
 
     def _calculate_atr(self, data: pd.DataFrame, period: int = 14) -> float:
-        """ATR計算（簡易版）"""
-        if len(data) < period:
-            return 0.01  # デフォルト値
+        """ATR計算"""
+        atr_series = calculate_atr(data, period)
+        if atr_series.empty or pd.isna(atr_series.iloc[-1]):
+            return 0.01
+        return float(atr_series.iloc[-1])
 
-        high = data["high"].rolling(period).max()
-        low = data["low"].rolling(period).min()
-        close = data["close"].shift(1)
-
-        tr = np.maximum(
-            high - low,
-            np.maximum(abs(high - close), abs(low - close))
-        )
-
-        return tr.rolling(period).mean().iloc[-1]
-
-    def _analyze_iteration_risk(self, iteration_result: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_iteration_risk(
+        self, iteration_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """イテレーション別リスク分析"""
         risk_adjustments = iteration_result.get("risk_adjustments", [])
 
@@ -334,9 +366,14 @@ class IntegratedBacktestRunner:
             return {"error": "No risk adjustments available"}
 
         # リスク調整の統計
-        risk_levels = [adj.get("risk_level", 0.0) for adj in risk_adjustments if "risk_level" in adj]
+        risk_levels = [
+            adj.get("risk_level", 0.0)
+            for adj in risk_adjustments
+            if "risk_level" in adj
+        ]
         position_adjustments = [
-            adj.get("adjusted_position", 1.0) / max(adj.get("original_position", 1.0), 0.001)
+            adj.get("adjusted_position", 1.0)
+            / max(adj.get("original_position", 1.0), 0.001)
             for adj in risk_adjustments
             if "adjusted_position" in adj and "original_position" in adj
         ]
@@ -344,8 +381,10 @@ class IntegratedBacktestRunner:
         return {
             "avg_risk_level": float(np.mean(risk_levels)) if risk_levels else 0.0,
             "max_risk_level": float(np.max(risk_levels)) if risk_levels else 0.0,
-            "avg_position_adjustment": float(np.mean(position_adjustments)) if position_adjustments else 1.0,
-            "risk_adjustment_count": len(risk_adjustments)
+            "avg_position_adjustment": float(np.mean(position_adjustments))
+            if position_adjustments
+            else 1.0,
+            "risk_adjustment_count": len(risk_adjustments),
         }
 
     def _aggregate_results(self, iterations: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -360,12 +399,10 @@ class IntegratedBacktestRunner:
             it.get("portfolio_values", [10000.0])[-1] for it in successful_iterations
         ]
 
-        total_returns = [
-            (pv - 10000.0) / 10000.0 for pv in final_portfolio_values
-        ]
+        total_returns = [(pv - 10000.0) / 10000.0 for pv in final_portfolio_values]
 
         # 統計量計算
-        summary = {
+        summary: Dict[str, Any] = {
             "total_iterations": len(iterations),
             "successful_iterations": len(successful_iterations),
             "success_rate": len(successful_iterations) / len(iterations),
@@ -375,7 +412,9 @@ class IntegratedBacktestRunner:
             "std_total_return": float(np.std(total_returns)),
             "max_portfolio": float(np.max(final_portfolio_values)),
             "min_portfolio": float(np.min(final_portfolio_values)),
-            "sharpe_ratio": float(np.mean(total_returns) / np.std(total_returns)) if np.std(total_returns) > 0 else 0.0
+            "sharpe_ratio": float(np.mean(total_returns) / np.std(total_returns))
+            if np.std(total_returns) > 0
+            else 0.0,
         }
 
         # 信頼区間
@@ -385,10 +424,13 @@ class IntegratedBacktestRunner:
 
         return summary
 
-    def _analyze_risk_across_iterations(self, iterations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_risk_across_iterations(
+        self, iterations: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """イテレーション間リスク分析"""
         risk_analyses = [
-            it.get("risk_analysis", {}) for it in iterations
+            it.get("risk_analysis", {})
+            for it in iterations
             if it.get("success") and "risk_analysis" in it
         ]
 
@@ -398,22 +440,28 @@ class IntegratedBacktestRunner:
         # リスク指標集計
         avg_risk_levels = [ra.get("avg_risk_level", 0.0) for ra in risk_analyses]
         max_risk_levels = [ra.get("max_risk_level", 0.0) for ra in risk_analyses]
-        position_adjustments = [ra.get("avg_position_adjustment", 1.0) for ra in risk_analyses]
+        position_adjustments = [
+            ra.get("avg_position_adjustment", 1.0) for ra in risk_analyses
+        ]
 
         return {
             "avg_risk_level_across_iterations": float(np.mean(avg_risk_levels)),
             "std_risk_level_across_iterations": float(np.std(avg_risk_levels)),
             "max_risk_level_across_iterations": float(np.max(max_risk_levels)),
-            "avg_position_adjustment_across_iterations": float(np.mean(position_adjustments)),
-            "risk_stability_score": 1.0 / (1.0 + np.std(avg_risk_levels))  # リスクの安定性スコア
+            "avg_position_adjustment_across_iterations": float(
+                np.mean(position_adjustments)
+            ),
+            "risk_stability_score": 1.0
+            / (1.0 + np.std(avg_risk_levels)),  # リスクの安定性スコア
         }
 
-    def _validate_statistically(self, iterations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _validate_statistically(
+        self, iterations: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """統計的検証"""
         # 有効なイテレーションの収集
         valid_iterations = [
-            it for it in iterations
-            if it.get("success") and "statistical_metrics" in it
+            it for it in iterations if it.get("success") and "statistical_metrics" in it
         ]
 
         if not valid_iterations:
@@ -424,7 +472,9 @@ class IntegratedBacktestRunner:
         for it in valid_iterations:
             portfolio_values = it.get("portfolio_values", [])
             if len(portfolio_values) > 1:
-                returns = self._calculate_returns_from_portfolio_values(portfolio_values)
+                returns = self._calculate_returns_from_portfolio_values(
+                    portfolio_values
+                )
                 all_returns.extend(returns)
 
         if not all_returns:
@@ -440,25 +490,33 @@ class IntegratedBacktestRunner:
         for it in valid_iterations:
             portfolio_values = it.get("portfolio_values", [])
             if len(portfolio_values) > 1:
-                returns = self._calculate_returns_from_portfolio_values(portfolio_values)
+                returns = self._calculate_returns_from_portfolio_values(
+                    portfolio_values
+                )
                 if returns:
-                    iteration_returns.append(np.mean(returns))
+                    iteration_returns.append(float(np.mean(returns)))
 
         if len(iteration_returns) >= 3:
-            validation_result["iteration_consistency"] = self.statistical_validator.validate_multiple_strategies(
+            validation_result[
+                "iteration_consistency"
+            ] = self.statistical_validator.validate_multiple_strategies(
                 {"iteration_" + str(i): [r] for i, r in enumerate(iteration_returns)}
             )
 
         return validation_result
 
-    def _calculate_returns_from_portfolio_values(self, portfolio_values: List[float]) -> List[float]:
+    def _calculate_returns_from_portfolio_values(
+        self, portfolio_values: List[float]
+    ) -> List[float]:
         """ポートフォリオ価値からリターンを計算"""
         if len(portfolio_values) < 2:
             return []
 
         returns = []
         for i in range(1, len(portfolio_values)):
-            ret = (portfolio_values[i] - portfolio_values[i-1]) / portfolio_values[i-1]
+            ret = (portfolio_values[i] - portfolio_values[i - 1]) / portfolio_values[
+                i - 1
+            ]
             returns.append(ret)
 
         return returns
@@ -474,7 +532,9 @@ class IntegratedBacktestRunner:
             レポート文字列
         """
         if not results.get("success"):
-            return f"Integrated Backtest Failed: {results.get('error', 'Unknown error')}"
+            return (
+                f"Integrated Backtest Failed: {results.get('error', 'Unknown error')}"
+            )
 
         summary = results.get("summary", {})
         risk_analysis = results.get("risk_analysis", {})

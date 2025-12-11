@@ -42,8 +42,13 @@ def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> Dict[str, Any]:
     returns = np.diff(values) / values[:-1]
 
     # リスク指標
-    volatility = np.std(returns) * np.sqrt(252)  # 年率化
-    sharpe_ratio = np.mean(returns) / (np.std(returns) + 1e-8) * np.sqrt(252)
+    from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
+    from ztb.metrics.technical import calculate_volatility_from_returns
+
+    volatility = calculate_volatility_from_returns(
+        returns, window=len(returns), annualize=True
+    )
+    sharpe_ratio = calc_sharpe_ratio(returns)
 
     # ドローダウン分析
     peak = np.maximum.accumulate(values)

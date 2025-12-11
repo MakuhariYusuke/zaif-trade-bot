@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\action_prediction.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.1, 'LiveTrader', 'algorithm', 'constant', 'sac']

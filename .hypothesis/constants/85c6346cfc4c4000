@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\config\lagrange_defaults.py
+# hypothesis_version: 6.148.6
+
+[0.042625, 0.062875, 0.175, 3.875, 3874, 'eta', 'lambda_max', 'r_target', 'tolerance', 'warmup_steps']

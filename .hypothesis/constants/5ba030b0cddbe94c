@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volume\mfi.py
+# hypothesis_version: 6.148.6
+
+[0.0, 100, 'MFI', 'close', 'high', 'low', 'mfi', 'period', 'volume']

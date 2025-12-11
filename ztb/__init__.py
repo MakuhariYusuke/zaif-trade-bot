@@ -19,9 +19,40 @@ Main Components:
 
 from typing import TYPE_CHECKING
 
+from .utils.torch_utils import ensure_torch_dll_search_path
+
 __version__ = "4.2.0"
 __author__ = "MakuhariYusuke"
 __description__ = "Advanced trading bot with reinforcement learning"
+
+# ---------------------------------------------------------------------------
+# Windows DLL guard: torch import is optionally performed to avoid importing
+# into incompatible NumPy/Torch environments during package import. We lazily
+# import torch only if the NumPy major version indicates compatibility.
+# ---------------------------------------------------------------------------
+_TORCH_IMPORT_ERROR = None
+ensure_torch_dll_search_path()
+try:
+    # Only import torch automatically when NumPy major version < 2, otherwise
+    # skip automatic torch import to prevent ABI incompatibilities that may
+    # manifest as access violations in tests or during import time.
+    import numpy as _np
+
+    np_major = (
+        int(_np.__version__.split(".", 1)[0]) if hasattr(_np, "__version__") else 0
+    )
+except Exception:
+    np_major = 0
+
+if np_major < 2:
+    try:  # pragma: no cover - platform/env dependent behavior
+        import torch  # type: ignore  # noqa: F401
+    except Exception as _torch_exc:  # pragma: no cover - diagnostics only
+        _TORCH_IMPORT_ERROR = _torch_exc
+else:
+    # Do not auto-import torch; tests or code that require it should import
+    # torch explicitly; this avoids causing segfaults in incompatible envs.
+    _TORCH_IMPORT_ERROR = None
 
 if TYPE_CHECKING:
     from .config.schema import GlobalConfig

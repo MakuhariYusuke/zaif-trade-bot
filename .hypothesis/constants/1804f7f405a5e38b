@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\strategy_base.py
+# hypothesis_version: 6.148.6
+
+['BacktestConfig', 'FeatureEngineer', 'Indicator', 'current_position', 'data', 'generate_signal', 'hyperparameters', 'name']

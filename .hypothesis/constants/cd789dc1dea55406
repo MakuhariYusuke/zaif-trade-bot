@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\ops\monitoring\health_monitor.py
+# hypothesis_version: 6.148.6
+
+[0.0, 100, 1024, 3600, '/', 'Health check failed', 'checks', 'config', 'config/default.yaml', 'config_files', 'connections', 'cpu', 'degraded', 'disk', 'error', 'exists', 'failed_checks', 'free_gb', 'health_check', 'healthy', 'limit_mb', 'logs', 'memory', 'metrics', 'open_files', 'process_id', 'service', 'size_mb', 'status', 'threads', 'timestamp', 'total_gb', 'trade-config.json', 'trading_service', 'trading_service.log', 'unhealthy', 'uptime', 'uptime_hours', 'uptime_seconds', 'used_mb', 'used_percent']

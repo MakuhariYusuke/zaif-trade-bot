@@ -2,8 +2,13 @@
 """
 Check optimizer gates from a summary JSON and exit with non-zero if none meet the gates.
 
+This script evaluates an aggregated summary file (produced by
+`tools/ci/evaluate_training_runs.py` or `tools/training/confirm_candidate.py`) and
+applies gates on `mean_sharpe` and `mean_total_return`.  Use `--min-reports` to
+ensure only candidates with sufficient `report_count` are considered.
+
 Usage:
-  python tools/ci/check_optimizer_gates.py --summary reports/mtf_optimizer_summary.json --sharpe 0.5 --return 0.05
+    python tools/ci/check_optimizer_gates.py --summary reports/mtf_optimizer_summary.json --sharpe 0.5 --return 0.05 --min-reports 3
 """
 import argparse
 import json

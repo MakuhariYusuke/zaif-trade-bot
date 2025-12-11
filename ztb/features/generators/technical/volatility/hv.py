@@ -11,7 +11,6 @@ import pandas as pd
 from ztb.features.registry import FeatureRegistry
 
 # 年間取引日数（一般的に252日）
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
 
 @FeatureRegistry.register("HV")
@@ -27,7 +26,9 @@ def compute_hv(df: pd.DataFrame, period: int = 14) -> "pd.Series":
         pd.Series: Annualized historical volatility.
     """
     log_returns = np.log(df["close"] / df["close"].shift(1))
-    hv = pd.Series(log_returns).rolling(window=period).std() * np.sqrt(
-        TRADING_DAYS_PER_YEAR
+    from ztb.metrics.technical import calculate_rolling_volatility
+
+    hv = calculate_rolling_volatility(
+        log_returns, window=period, annualize=True
     )  # 年換算ボラティリティ
     return cast("pd.Series", hv)

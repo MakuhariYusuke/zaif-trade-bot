@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 
 # 年間取引日数
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 from ztb.utils.errors import safe_operation
 
 from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
@@ -368,7 +367,11 @@ class PositionSizer:
             returns = prices.pct_change().dropna()
 
             # Rolling volatility (annualized)
-            vol = returns.rolling(window).std() * np.sqrt(TRADING_DAYS_PER_YEAR)
-            volatilities[symbol] = vol.iloc[-1] if not vol.empty else 0.5
+            from ztb.metrics.technical import calculate_volatility_from_returns
+
+            vol = calculate_volatility_from_returns(
+                returns, window=window, annualize=True
+            )
+            volatilities[symbol] = vol
 
         return volatilities

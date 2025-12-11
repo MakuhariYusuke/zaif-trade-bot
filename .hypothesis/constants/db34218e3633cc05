@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_momentum_confirmation.py
+# hypothesis_version: 6.148.6
+
+[0.001, 0.01, 0.1, 0.2, 0.3, 'close', 'high', 'ichimoku_chikou', 'ichimoku_kijun', 'ichimoku_tenkan', 'low']

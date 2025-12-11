@@ -1,4 +1,0 @@
-{
-  "environment.reward_settings.skewness_penalty_value": [0.0, 0.01, 0.02, 0.05],
-  "environment.reward_settings.skewness_lookback": [10, 20]
-}

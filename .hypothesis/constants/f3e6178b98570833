@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\dow_theory.py
+# hypothesis_version: 6.148.6
+
+[-1.0, 0.0, 1e-06, 1e-05, 0.0001, 0.002, 0.02, 0.1, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 'bb_period', 'bearish', 'bullish', 'close', 'confidence', 'description', 'direction', 'dow_theory', 'period', 'primary_trend_period', 'reversal_threshold', 'short_trend_period', 'slope', 'strength', 'supertrend_direction', 'use_bollinger', 'use_supertrend', 'volatility', 'volatility_threshold', 'volume']

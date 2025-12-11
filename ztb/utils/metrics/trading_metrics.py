@@ -8,48 +8,14 @@ from typing import Any, Dict, List, Optional, Union, cast
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.metrics import calmar_ratio as calculate_calmar_ratio
+from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
+from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
+from ztb.metrics.metrics import sortino_ratio as calculate_sortino_ratio
+from ztb.metrics.metrics import win_rate as calculate_win_rate
+from ztb.metrics.statistics import calculate_distribution_stats
+
 # 年間取引日数
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-
-
-def sharpe_ratio(
-    returns: Union[List[float], np.ndarray[Any, np.dtype[Any]]],
-    risk_free_rate: float = 0.0,
-    periods_per_year: int = TRADING_DAYS_PER_YEAR,
-) -> float:
-    """
-    Sharpe ratioを計算（堅牢なNaN処理付き）
-
-    Args:
-        returns: リターンの配列
-        risk_free_rate: 年率無リスク金利（デフォルト0.0）
-        periods_per_year: 年間期間数（日次データの場合252）
-
-    Returns:
-        Sharpe ratio（年率換算）
-    """
-    returns = np.asarray(returns)
-
-    if len(returns) == 0:
-        return 0.0
-
-    # Remove NaN values
-    returns = returns[~np.isnan(returns)]
-
-    if len(returns) == 0:
-        return 0.0
-
-    # 超過リターンの計算
-    excess = returns - risk_free_rate / periods_per_year  # type: ignore
-
-    mean_return = np.mean(excess)
-    std_return = np.std(excess, ddof=1)
-
-    if std_return == 0 or np.isnan(std_return):
-        return 0.0
-
-    # 年率換算
-    return float((mean_return / std_return) * np.sqrt(periods_per_year))
 
 
 def sharpe_with_stats(sharpes: List[float]) -> Dict[str, Union[float, List[float]]]:
@@ -62,22 +28,9 @@ def sharpe_with_stats(sharpes: List[float]) -> Dict[str, Union[float, List[float
     Returns:
         統計情報（平均、標準偏差、95%信頼区間）
     """
-    if len(sharpes) == 0:
-        return {"mean": 0.0, "std": 0.0, "ci95": [0.0, 0.0]}
-
-    sharpes_array = np.array(sharpes)
-    mean = float(np.mean(sharpes_array))
-    std = float(np.std(sharpes_array, ddof=1))
-
-    # 95%信頼区間
-    ci95_low = float(np.percentile(sharpes_array, 2.5))
-    ci95_high = float(np.percentile(sharpes_array, 97.5))
-
-    return {
-        "mean": round(mean, 6),
-        "std": round(std, 6),
-        "ci95": [round(ci95_low, 6), round(ci95_high, 6)],
-    }
+    return cast(
+        Dict[str, Union[float, List[float]]], calculate_distribution_stats(sharpes)
+    )
 
 
 def calculate_delta_sharpe(
@@ -200,41 +153,19 @@ def calculate_feature_metrics(
     cumulative = (1 + strategy_returns).cumprod()
 
     # Win rate
-    win_rate = (strategy_returns > 0).mean()
+    win_rate = calculate_win_rate(strategy_returns)
 
     # Max drawdown
-    peak = cumulative.expanding().max()
-    drawdown = (cumulative - peak) / peak
-    max_drawdown = drawdown.min()
+    max_drawdown = calculate_max_drawdown(cumulative)
 
     # Sharpe ratio
-    if strategy_returns.std() > 0:
-        sharpe_ratio = (
-            strategy_returns.mean()
-            / strategy_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
-    else:
-        sharpe_ratio = 0.0
+    sharpe_ratio = calculate_sharpe_ratio(strategy_returns)
 
     # Sortino ratio
-    downside_returns = strategy_returns[strategy_returns < 0]
-    if len(downside_returns) > 0 and downside_returns.std() > 0:
-        sortino_ratio = (
-            strategy_returns.mean()
-            / downside_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
-    else:
-        sortino_ratio = 0.0
+    sortino_ratio = calculate_sortino_ratio(strategy_returns)
 
     # Calmar ratio
-    if abs(max_drawdown) > 0:
-        calmar_ratio = (
-            strategy_returns.mean() * TRADING_DAYS_PER_YEAR / abs(max_drawdown)
-        )
-    else:
-        calmar_ratio = 0.0
+    calmar_ratio = calculate_calmar_ratio(strategy_returns)
 
     return {
         "win_rate": win_rate,

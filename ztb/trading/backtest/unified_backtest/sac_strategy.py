@@ -6,16 +6,14 @@ Implements SAC (Soft Actor-Critic) based trading strategy for the unified backte
 Supports regime adaptation and leverages SAC learning outcomes.
 """
 
-import logging
 from pathlib import Path
 from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
-from stable_baselines3 import SAC
 
-from .strategy_base import MLTradingStrategy
 from ....utils.logging_utils import get_logger
+from .strategy_base import MLTradingStrategy
 
 logger = get_logger(__name__)
 
@@ -36,7 +34,7 @@ class SACStrategy(MLTradingStrategy):
         name: str,
         model_path: str,
         regime_classifier_path: Optional[str] = None,
-        feature_engineer: Optional['FeatureEngineer'] = None
+        feature_engineer: Optional["FeatureEngineer"] = None,
     ):
         """
         Initialize SAC strategy.
@@ -52,7 +50,7 @@ class SACStrategy(MLTradingStrategy):
         self.feature_engineer = feature_engineer
 
         # SAC-specific attributes
-        self.regime_classifier: Optional['RegimeClassifier'] = None
+        self.regime_classifier: Optional["RegimeClassifier"] = None
         self.current_regime: Optional[str] = None
         self.action_space: tuple[float, float] = (-1.0, 1.0)
 
@@ -61,10 +59,7 @@ class SACStrategy(MLTradingStrategy):
         self.regime_performance: Dict[str, list] = {}
 
     def initialize(
-        self,
-        data: pd.DataFrame,
-        backtest_config: 'BacktestConfig',
-        **kwargs
+        self, data: pd.DataFrame, backtest_config: "BacktestConfig", **kwargs
     ) -> None:
         """
         Initialize the SAC strategy.
@@ -102,7 +97,16 @@ class SACStrategy(MLTradingStrategy):
             raise FileNotFoundError(f"SAC model not found: {self.model_path}")
 
         try:
-            self.model = SAC.load(self.model_path)
+            # Import SAC lazily to avoid importing torch/stable_baselines3 at module import time
+            try:
+                from stable_baselines3 import SAC as _SAC
+            except Exception:
+                _SAC = None
+
+            if _SAC is None:
+                raise ImportError("stable_baselines3.SAC is required to load models")
+
+            self.model = _SAC.load(self.model_path)
             logger.info(f"Loaded SAC model from {self.model_path}")
         except Exception as e:
             logger.error(f"Failed to load SAC model: {e}")
@@ -119,14 +123,14 @@ class SACStrategy(MLTradingStrategy):
 
             self.regime_classifier = V444RegimeClassifier()
             # Note: load_model method may not exist, using alternative approach
-            logger.info(f"Regime classifier initialized from {self.regime_classifier_path}")
+            logger.info(
+                f"Regime classifier initialized from {self.regime_classifier_path}"
+            )
         except Exception as e:
             logger.warning(f"Failed to load regime classifier: {e}")
 
     def generate_signal(
-        self,
-        data: pd.DataFrame,
-        current_position: int
+        self, data: pd.DataFrame, current_position: int
     ) -> Dict[str, Union[str, int, float, bool]]:
         """
         Generate trading signal using SAC model.
@@ -146,9 +150,11 @@ class SACStrategy(MLTradingStrategy):
                 return {"action": "hold", "reason": "insufficient_data"}
 
             # Get current regime if classifier available
-            if self.regime_classifier and hasattr(self.regime_classifier, 'predict_regime'):
+            if self.regime_classifier and hasattr(
+                self.regime_classifier, "predict_regime"
+            ):
                 # Get latest data point for regime prediction
-                latest_data = data.iloc[-1:].to_dict('records')[0]
+                latest_data = data.iloc[-1:].to_dict("records")[0]
                 self.current_regime = self.regime_classifier.predict_regime(latest_data)
             else:
                 self.current_regime = "unknown"
@@ -168,7 +174,9 @@ class SACStrategy(MLTradingStrategy):
             logger.warning(f"Error generating SAC signal: {e}")
             return {"action": "hold", "reason": "error"}
 
-    def _convert_action_to_signal(self, action: float) -> Dict[str, Union[str, int, float, bool]]:
+    def _convert_action_to_signal(
+        self, action: float
+    ) -> Dict[str, Union[str, int, float, bool]]:
         """
         Convert SAC continuous action to discrete trading signal.
 
@@ -209,9 +217,7 @@ class SACStrategy(MLTradingStrategy):
             }
 
     def _track_regime_performance(
-        self,
-        signal: Dict[str, Union[str, int, float, bool]],
-        regime: str
+        self, signal: Dict[str, Union[str, int, float, bool]], regime: str
     ) -> None:
         """
         Track performance metrics by regime.
@@ -223,11 +229,13 @@ class SACStrategy(MLTradingStrategy):
         if regime not in self.regime_performance:
             self.regime_performance[regime] = []
 
-        self.regime_performance[regime].append({
-            "signal": signal.get("action", "hold"),
-            "confidence": signal.get("confidence", 0.0),
-            "timestamp": pd.Timestamp.now().isoformat(),
-        })
+        self.regime_performance[regime].append(
+            {
+                "signal": signal.get("action", "hold"),
+                "confidence": signal.get("confidence", 0.0),
+                "timestamp": pd.Timestamp.now().isoformat(),
+            }
+        )
 
     def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
         """
@@ -261,7 +269,9 @@ class SACStrategy(MLTradingStrategy):
 
         # Analyze regime distribution
         if self.regime_performance:
-            total_signals = sum(len(signals) for signals in self.regime_performance.values())
+            total_signals = sum(
+                len(signals) for signals in self.regime_performance.values()
+            )
             regime_dist: Dict[str, float] = {}
             for regime, signals in self.regime_performance.items():
                 regime_dist[regime] = len(signals) / total_signals
@@ -272,10 +282,12 @@ class SACStrategy(MLTradingStrategy):
     def get_config(self) -> Dict[str, Union[str, int, float, bool]]:
         """Get strategy configuration."""
         config: Dict[str, Union[str, int, float, bool]] = super().get_config()
-        config.update({
-            "model_path": self.model_path,
-            "regime_classifier_path": self.regime_classifier_path,
-            "action_space": self.action_space,
-            "has_regime_classifier": self.regime_classifier is not None,
-        })
+        config.update(
+            {
+                "model_path": self.model_path,
+                "regime_classifier_path": self.regime_classifier_path,
+                "action_space": self.action_space,
+                "has_regime_classifier": self.regime_classifier is not None,
+            }
+        )
         return config

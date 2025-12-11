@@ -11,6 +11,14 @@
       "data_path": "data/btc_jpy_1m_dataset.csv",
       "validation_split": 0.2
     },
+    "market_regime_adaptation": {
+      "enabled": true,
+      "regime_window_size": 20,
+      "regime_thresholds": {
+        "volatility": 0.0001,
+        "trend": 0.0001
+      }
+    },
     "environment": {
       "timeframe": "1m",
       "initial_balance": 200000.0,

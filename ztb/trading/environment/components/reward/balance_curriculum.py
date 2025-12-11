@@ -6,11 +6,12 @@ dynamic progression and emergency intervention capabilities.
 """
 
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.types.common import StageChangeEvent
 from ztb.utils.logging_utils import get_logger
 
 
@@ -36,6 +37,7 @@ class BalanceCurriculumManager:
 
     # Define stage progression order
     STAGE_SEQUENCE = [
+        "action_discovery",
         "forced_balance",
         "balanced_transition",
         "pnl_focused",
@@ -67,7 +69,7 @@ class BalanceCurriculumManager:
 
         # Initialize current stage from config, fallback to forced_balance if None
         self.current_stage = (
-            getattr(config, "curriculum_stage", None) or "forced_balance"
+            getattr(config, "curriculum_stage", None) or "action_discovery"
         )
         self.stage_start_step = 0
         self.total_steps = 0
@@ -79,7 +81,7 @@ class BalanceCurriculumManager:
         self.recent_rewards = deque(maxlen=100)
         self.stage_rewards = deque(maxlen=50)
         # listeners for external stage change handling
-        self.stage_change_listeners: List[callable] = []
+        self.stage_change_listeners: List[Callable[[StageChangeEvent], None]] = []
 
         # Stage progression conditions (can be overridden by config)
         self.stage_conditions = self._initialize_stage_conditions()
@@ -418,7 +420,8 @@ class BalanceCurriculumManager:
         }
         for ls in list(self.stage_change_listeners):
             try:
-                ls(event)
+                # call listener with event as kwargs for compatibility with generated callbacks
+                ls(**event)
             except Exception:
                 self.logger.exception("Stage change listener error")
 
@@ -438,7 +441,7 @@ class BalanceCurriculumManager:
             }
             for ls in list(self.stage_change_listeners):
                 try:
-                    ls(event)
+                    ls(**event)
                 except Exception:
                     self.logger.exception("Stage change listener error")
 
@@ -483,7 +486,9 @@ class BalanceCurriculumManager:
         self.total_steps = 0
         self.emergency_count = 0
 
-    def add_stage_change_listener(self, callback: callable) -> None:
+    def add_stage_change_listener(
+        self, callback: Callable[[StageChangeEvent], None]
+    ) -> None:
         """Register a stage-change listener callable.
 
         The callback will be invoked with a dict event containing keys:

@@ -22,14 +22,24 @@ from ztb.utils.path_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
+from typing import TYPE_CHECKING
+
+import gymnasium as gym
 import numpy as np
 import pandas as pd
 import requests
-import gymnasium as gym
-from dotenv import load_dotenv  # type: ignore[import-untyped]
 from numpy.typing import NDArray
-from sb3_contrib import MaskablePPO
-from stable_baselines3 import PPO, SAC
+
+if TYPE_CHECKING:
+    try:
+        from sb3_contrib import MaskablePPO  # type: ignore
+    except Exception:
+        MaskablePPO = None  # type: ignore
+    try:
+        from stable_baselines3 import PPO, SAC  # type: ignore
+    except Exception:
+        PPO = None  # type: ignore
+        SAC = None  # type: ignore
 
 from ztb.trading.environment.constants import (
     DEFAULT_CLEANUP_INTERVAL,
@@ -38,10 +48,10 @@ from ztb.trading.environment.constants import (
 from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskProvider
 from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.trading.live_trader.components.order_manager import OrderManager
-from ztb.trading.live_trader.components.risk_manager import RiskManager
 from ztb.trading.live_trader.config import LiveTradingOptions
-from ztb.utils.logging_utils import get_logger, create_structured_logger
-from ztb.utils.safety import safe_get_nested_value, safe_divide, safe_to_int, safe_to_bool, validate_range
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
+from ztb.utils.logging_utils import create_structured_logger, get_logger
+from ztb.utils.safety import safe_divide, safe_get_nested_value, safe_to_int
 
 # Import feature computation
 try:
@@ -70,19 +80,19 @@ try:
 except ImportError:
     position_manager_available = False
 
+# Import extracted components
+from ztb.trading.live_trader.components.live_trading_components import (
+    FeatureComputer,
+    ModelManager,
+    TradingLoopManager,
+)
+
 # Import utility modules
 from ztb.utils.cache_utils import TTLCache
 
 # Import configuration management
 from ztb.utils.config import ZTBConfig
-from ztb.utils.errors import ValidationError, validate_price, validate_quantity
-
-# Import extracted components
-from ztb.trading.live_trader.components.live_trading_components import (
-    ModelManager,
-    FeatureComputer,
-    TradingLoopManager,
-)
+from ztb.utils.errors import ValidationError, validate_price
 
 # Import Discord notifier
 from ztb.utils.notify.discord import DiscordNotifier
@@ -102,8 +112,14 @@ try:
 except ImportError:
     auto_stop_available = False
 
-# Load environment variables from .env file
-load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore[import-untyped]
+
+    # Load environment variables from .env file
+    load_dotenv()
+except Exception:
+    # dotenv not installed or .env file not present; continue without loading
+    pass
 
 # Cross-platform path handling - add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -249,9 +265,13 @@ class LiveTrader:
 
             # Initialize action mask provider for dry-run
             mask_config = ActionMaskConfig(
-                min_holding_period=safe_to_int(safe_get_nested_value(self.config, ["min_holding_period"], 5)),
+                min_holding_period=safe_to_int(
+                    safe_get_nested_value(self.config, ["min_holding_period"], 5)
+                ),
                 enable_forced_close=True,
-                max_position_age=safe_to_int(safe_get_nested_value(self.config, ["max_position_age"], 1000)),
+                max_position_age=safe_to_int(
+                    safe_get_nested_value(self.config, ["max_position_age"], 1000)
+                ),
             )
             self.mask_provider = ActionMaskProvider(mask_config)
             self._is_maskable_ppo = False
@@ -364,6 +384,18 @@ class LiveTrader:
                 logger.warning(
                     "Set environment variables or create .env file with API credentials for live trading"
                 )
+            # If API credentials are provided and not in dry-run, require explicit allow_production
+            if not self.demo_mode:
+                allow_production_flag = getattr(self.options, "allow_production", False)
+                env_allow = os.getenv("ZTB_ALLOW_PRODUCTION", "false").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
+                if not (allow_production_flag or env_allow):
+                    raise TradingError(
+                        "Production trading is disabled by default. Set --allow-production or ZTB_ALLOW_PRODUCTION=1 to enable live trading."
+                    )
 
         try:
             broker_registry = get_broker_registry()
@@ -449,9 +481,13 @@ class LiveTrader:
 
         # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
         mask_config = ActionMaskConfig(
-            min_holding_period=safe_to_int(safe_get_nested_value(self.config, ["min_holding_period"], 5)),
+            min_holding_period=safe_to_int(
+                safe_get_nested_value(self.config, ["min_holding_period"], 5)
+            ),
             enable_forced_close=True,
-            max_position_age=safe_to_int(safe_get_nested_value(self.config, ["max_position_age"], 1000)),
+            max_position_age=safe_to_int(
+                safe_get_nested_value(self.config, ["max_position_age"], 1000)
+            ),
         )
         self.mask_provider = ActionMaskProvider(mask_config)
         self._is_maskable_ppo = False  # Will be set in _load_model()
@@ -510,7 +546,7 @@ class LiveTrader:
         self.feature_computation = FeatureComputation(self)
         self.action_prediction = ActionPrediction(self)
         self.health_monitoring = HealthMonitoring(self)
-        self.risk_manager = RiskManager(self)
+        self.risk_manager = ensure_risk_manager_protocol(RiskManager(self))
         self.order_manager = OrderManager(self)
         # self.model_loading = ModelLoading(self)  # Already initialized above
 
@@ -551,8 +587,7 @@ class LiveTrader:
         """Run the main trading loop for live trading."""
         # Delegate to TradingLoopManager
         self.trading_loop_manager.run_trading_loop(
-            duration_hours=duration_hours,
-            live_trader=self
+            duration_hours=duration_hours, live_trader=self
         )
 
         start_time = datetime.now()
@@ -577,8 +612,8 @@ class LiveTrader:
                             extra={
                                 "iteration": iteration_count,
                                 "price": current_price,
-                                "timestamp": datetime.now().isoformat()
-                            }
+                                "timestamp": datetime.now().isoformat(),
+                            },
                         )
                         logger.info(
                             f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}"
@@ -1056,7 +1091,7 @@ class LiveTrader:
             ),  # Initial portfolio value for position sizing
         }
 
-    def _load_model(self) -> PPO | MaskablePPO | SAC:
+    def _load_model(self) -> "PPO | MaskablePPO | SAC":
         """Load the trained PPO, MaskablePPO, or SAC model.
 
         Bug #27 Fix: Now properly loads MaskablePPO models and uses
@@ -1066,9 +1101,7 @@ class LiveTrader:
         """
         # Delegate to ModelManager
         return self.model_manager.load_model(
-            model_path=self.model_path,
-            options=self.options,
-            live_trader=self
+            model_path=self.model_path, options=self.options, live_trader=self
         )
 
         logger = get_logger(__name__)
@@ -1313,50 +1346,23 @@ class LiveTrader:
             current_price = self._get_current_price()
             return [current_price] * 14
 
-    def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:  # type: ignore[no-any-return]
+    def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:
         """Calculate RSI (Relative Strength Index) using existing utility."""
-        if len(prices) < self.config["rsi_period"] + 1:
-            return self.config["rsi_neutral_value"]  # Configurable neutral RSI
+        from ztb.features.generators.technical.momentum.rsi import compute_rsi
 
-        try:
-            # Create DataFrame for compute_rsi
-            df = pd.DataFrame({"close": prices})
-            rsi_series = cast(pd.Series, compute_rsi(df, period=period))  # type: ignore[name-defined]
-            return rsi_value if not rsi_series.empty else neutral_value  # type: ignore[no-any-return]
-        except Exception as e:
-            logger = get_logger(__name__)
-            logger.warning(
-                f"Failed to compute RSI with utility: {e}, falling back to manual calculation"
-            )
-            # Fallback to manual calculation
-            gains = []
-            losses = []
-
-            for i in range(1, len(prices)):
-                change = prices[i] - prices[i - 1]
-                if change > 0:
-                    gains.append(change)
-                    losses.append(0)
-                else:
-                    gains.append(0)
-                    losses.append(abs(change))
-
-            avg_gain = cast(float, sum(gains[-period:]) / period)
-            avg_loss = cast(float, sum(losses[-period:]) / period)
-
-            if avg_loss == 0:
-                return cast(float, 100.0)  # type: ignore[no-any-return]
-
-            rs = cast(float, avg_gain / avg_loss)
-            rsi = cast(float, 100 - (100 / (1 + rs)))
-            return max(0, min(100, rsi))  # Clamp between 0-100
+        df = pd.DataFrame({"close": prices})
+        rsi_series = compute_rsi(df, period=period)
+        last_val = rsi_series.iloc[-1]
+        return float(last_val) if not pd.isna(last_val) else 50.0
 
     def _calculate_sma(self, prices: List[float], period: int) -> float:
         """Calculate Simple Moving Average."""
-        if len(prices) < period:
-            return prices[-1] if prices else 0.0
+        from ztb.features.generators.technical.trend.sma import compute_sma
 
-        return sum(prices[-period:]) / period
+        df = pd.DataFrame({"close": prices})
+        sma_series = compute_sma(df, period=period)
+        last_val = sma_series.iloc[-1]
+        return float(last_val) if not pd.isna(last_val) else 0.0
 
     @timed
     def _compute_live_features(self, prices: List[float]) -> Dict[str, float]:
@@ -1632,6 +1638,18 @@ class LiveTrader:
 
     def _execute_trade(self, side: str, amount: float) -> bool:
         """Execute trade using OrderManager."""
+        # Validate amount
+        if amount <= 0:
+            raise ValidationError("amount must be positive")
+
+        # If running in demo/dry-run mode, do not execute real trades
+        if getattr(self, "dry_run", False) or getattr(self, "demo_mode", False):
+            return True
+
+        # Otherwise, require an order manager
+        if not hasattr(self, "order_manager") or self.order_manager is None:
+            raise TradingError("Order manager not initialized")
+
         return self.order_manager.execute_trade(side, amount)
 
     def _update_position(self, action: int, current_price: float) -> None:

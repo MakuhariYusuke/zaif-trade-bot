@@ -13,7 +13,7 @@ This module provides comprehensive trading performance metrics with:
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, TypedDict, Union, cast
+from typing import Any, Dict, List, Optional, TypedDict, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,12 @@ from numpy.typing import NDArray
 from scipy import stats
 
 # Trading constants
-from ztb.trading.constants import TRADING_DAYS_PER_YEAR
+from ztb.trading.constants import (
+    ACTION_BUY,
+    ACTION_HOLD,
+    ACTION_SELL,
+    TRADING_DAYS_PER_YEAR,
+)
 from ztb.utils.errors import safe_operation
 
 
@@ -337,22 +342,13 @@ def _calmar_ratio_impl(
 
 def win_rate(returns: Union[pd.Series, NDArray[Any]]) -> float:
     """
-    Calculate win rate (percentage of positive returns).
-
-    Win rate measures the proportion of profitable periods/trades.
-    A higher win rate indicates more consistent positive performance.
+    Calculate win rate (proportion of positive returns).
 
     Args:
-        returns: Return series (pandas Series or numpy array)
+        returns: Return series
 
     Returns:
-        Win rate as float between 0 and 1 (e.g., 0.65 for 65% win rate)
-
-    Examples:
-        >>> import numpy as np
-        >>> returns = np.array([0.01, -0.02, 0.03, -0.01, 0.02])
-        >>> win_rate(returns)
-        0.6
+        Win rate as float (0.0 to 1.0)
     """
     return cast(
         float,
@@ -366,20 +362,16 @@ def win_rate(returns: Union[pd.Series, NDArray[Any]]) -> float:
 
 
 def _win_rate_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
-    """Implementation of win rate calculation."""
     returns = np.asarray(returns)
-
     if len(returns) == 0:
         return 0.0
 
-    # Remove NaN values
+    # Filter out NaN
     returns = returns[~np.isnan(returns)]
-
     if len(returns) == 0:
         return 0.0
 
-    positive_returns = returns > 0
-    return float(np.mean(positive_returns))
+    return float(np.mean(returns > 0))
 
 
 def profit_factor(returns: Union[pd.Series, NDArray[Any]]) -> float:
@@ -500,11 +492,11 @@ def _expected_value_impl(returns: Union[pd.Series, NDArray[Any]]) -> float:
     if len(losing_trades) == 0:
         return np.mean(winning_trades)  # All wins
 
-    win_rate = len(winning_trades) / len(returns)
+    win_rate_val = _win_rate_impl(returns)
     avg_win = np.mean(winning_trades)
     avg_loss = np.mean(np.abs(losing_trades))  # Use absolute value for losses
 
-    return float((win_rate * avg_win) - ((1 - win_rate) * avg_loss))
+    return float((win_rate_val * avg_win) - ((1 - win_rate_val) * avg_loss))
 
 
 def recovery_factor(
@@ -822,14 +814,17 @@ def _seasonality_analysis_impl(
         return {}
 
     # If dates are not provided, create synthetic dates
+    analysis_dates: Any
     if dates is None:
         # Assume daily returns starting from a reference date
-        dates = pd.date_range(start="2020-01-01", periods=len(returns), freq="D")
+        analysis_dates = pd.date_range(
+            start="2020-01-01", periods=len(returns), freq="D"
+        )
     else:
-        dates = pd.to_datetime(dates)
+        analysis_dates = pd.to_datetime(dates)
 
     # Create DataFrame for analysis
-    df = pd.DataFrame({"returns": returns, "dates": dates})
+    df = pd.DataFrame({"returns": returns, "dates": analysis_dates})
 
     # Extract seasonal components
     df["month"] = df["dates"].dt.month
@@ -837,7 +832,7 @@ def _seasonality_analysis_impl(
     df["year"] = df["dates"].dt.year
     df["day_of_year"] = df["dates"].dt.dayofyear
 
-    results = {}
+    results: Dict[str, Any] = {}
 
     # Monthly analysis
     monthly_stats = (
@@ -945,6 +940,19 @@ def classify_market_regime(
     Returns:
         Series with regime labels: 'bull', 'bear', 'sideways', 'volatile'
     """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _classify_market_regime_impl(prices, returns, window),
+        context="classify_market_regime",
+        default_result=pd.Series(),
+    )
+
+
+def _classify_market_regime_impl(
+    prices: Union[pd.Series, NDArray[Any]],
+    returns: Optional[Union[pd.Series, NDArray[Any]]] = None,
+    window: int = 20,
+) -> pd.Series:
     prices = pd.Series(prices)
 
     if returns is None:
@@ -1006,6 +1014,21 @@ def multi_market_backtest_analysis(
     Returns:
         Dictionary with performance analysis by market regime
     """
+    return safe_operation(
+        logger=None,
+        operation=lambda: _multi_market_backtest_analysis_impl(
+            returns, prices, regime_window
+        ),
+        context="multi_market_backtest_analysis",
+        default_result={},
+    )
+
+
+def _multi_market_backtest_analysis_impl(
+    returns: Union[pd.Series, NDArray[Any]],
+    prices: Union[pd.Series, NDArray[Any]],
+    regime_window: int = 20,
+) -> Dict[str, Any]:
     returns = pd.Series(returns)
     prices = pd.Series(prices)
 
@@ -1032,7 +1055,7 @@ def multi_market_backtest_analysis(
             }
 
     # Perform statistical tests between regimes if we have multiple regimes with sufficient data
-    statistical_tests_results = {}
+    statistical_tests_results: Dict[str, Any] = {}
     regime_list = [regime for regime in unique_regimes if regime != "unknown"]
 
     if len(regime_list) >= 2:
@@ -1081,7 +1104,7 @@ def multi_market_backtest_analysis(
 
 def _analyze_regime_transitions(regimes: pd.Series) -> Dict[str, Any]:
     """Analyze transitions between market regimes."""
-    transitions = {}
+    transitions: Dict[str, int] = {}
     prev_regime = None
 
     for regime in regimes:
@@ -1155,6 +1178,11 @@ def calculate_all_metrics(
                 expected_value=0.0,
                 recovery_factor=0.0,
                 num_periods=0,
+                seasonality_analysis=None,
+                market_regime_analysis=None,
+                walkforward_analysis=None,
+                stress_test_analysis=None,
+                statistical_tests=None,
             ),  # Return default metrics on failure
         ),
     )
@@ -1586,7 +1614,11 @@ def test_normality(
         context="normality_test_calculation",
         default_result={
             "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
-            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "kolmogorov_smirnov": {
+                "statistic": 0.0,
+                "p_value": 0.0,
+                "is_normal": False,
+            },
             "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
         },
     )
@@ -1599,7 +1631,11 @@ def _test_normality_impl(returns: Union[pd.Series, NDArray[Any]]) -> Dict[str, A
     if len(returns) < 3:
         return {
             "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
-            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "kolmogorov_smirnov": {
+                "statistic": 0.0,
+                "p_value": 0.0,
+                "is_normal": False,
+            },
             "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
         }
 
@@ -1609,7 +1645,11 @@ def _test_normality_impl(returns: Union[pd.Series, NDArray[Any]]) -> Dict[str, A
     if len(returns) < 3:
         return {
             "shapiro_wilk": {"statistic": None, "p_value": None, "is_normal": False},
-            "kolmogorov_smirnov": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
+            "kolmogorov_smirnov": {
+                "statistic": 0.0,
+                "p_value": 0.0,
+                "is_normal": False,
+            },
             "jarque_bera": {"statistic": 0.0, "p_value": 0.0, "is_normal": False},
         }
 
@@ -1684,7 +1724,9 @@ def autocorrelation(
     )
 
 
-def _autocorrelation_impl(returns: Union[pd.Series, NDArray[Any]], lag: int = 1) -> float:
+def _autocorrelation_impl(
+    returns: Union[pd.Series, NDArray[Any]], lag: int = 1
+) -> float:
     """Implementation of autocorrelation calculation."""
     returns = np.asarray(returns)
 
@@ -1700,3 +1742,55 @@ def _autocorrelation_impl(returns: Union[pd.Series, NDArray[Any]], lag: int = 1)
     # Calculate autocorrelation using numpy
     autocorr = np.corrcoef(returns[lag:], returns[:-lag])[0, 1]
     return float(autocorr) if not np.isnan(autocorr) else 0.0
+
+
+def action_distribution(
+    actions: Union[List[int], NDArray[np.integer]],
+) -> Dict[str, float]:
+    """
+    Calculate action distribution (proportion of HOLD, BUY, SELL).
+
+    Args:
+        actions: Array of actions (-1: SELL, 0: HOLD, 1: BUY)
+
+    Returns:
+        Dictionary with action distribution {"HOLD": ratio, "BUY": ratio, "SELL": ratio}
+    """
+    return cast(
+        Dict[str, float],
+        safe_operation(
+            logger=None,
+            operation=lambda: _action_distribution_impl(actions),
+            context="action_distribution_calculation",
+            default_result={"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0},
+        ),
+    )
+
+
+def _action_distribution_impl(
+    actions: Union[List[int], NDArray[np.integer]],
+) -> Dict[str, float]:
+    actions_np = np.asarray(actions)
+
+    if len(actions_np) == 0:
+        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
+
+    # Remove NaN values
+    actions_np = actions_np[~np.isnan(actions_np)]
+
+    if len(actions_np) == 0:
+        return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
+
+    # Shift actions: -1,0,1 -> 0,1,2
+    actions_shifted = actions_np + 1
+
+    # Count occurrences
+    action_counts = np.bincount(actions_shifted.astype(int), minlength=3)
+
+    total_actions = len(actions_np)
+
+    return {
+        "HOLD": float(action_counts[ACTION_HOLD + 1] / total_actions),
+        "BUY": float(action_counts[ACTION_BUY + 1] / total_actions),
+        "SELL": float(action_counts[ACTION_SELL + 1] / total_actions),
+    }

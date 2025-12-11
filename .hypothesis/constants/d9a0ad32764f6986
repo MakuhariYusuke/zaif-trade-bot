@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\ab_test\executor.py
+# hypothesis_version: 6.148.6
+
+[0.01, 0.05, 0.1, 100, 1000, 'A', 'B', 'early_stop_triggered', 'executor', 'regression_detected', 'sample_balance']

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\environments\heavy_trading_env.py
+# hypothesis_version: 6.148.6
+
+[-1.0, 0.0, 1e-05, 0.0001, 0.001, 0.005, 0.01, 0.02, 1.0, 5.0, 10.0, -100, 100, 1000, '_old_position', 'action_value', 'atr_14', 'balance', 'base_action_penalty', 'behavior', 'btc_balance', 'close', 'current_price', 'current_step', 'custom_reward_params', 'hold_penalty_base', 'human', 'last_signal_reward', 'last_signal_strength', 'long_short_asymmetry', 'loss_penalty_coeff', 'max_position_size', 'min_position_change', 'min_trade_size', 'mtf_scheduler', 'portfolio_value', 'position', 'reward_history', 'risk_adjusted_bonus', 'scalping_mode', 'signal_reward', 'signal_strength', 'suppressed_this_step', 'total_pnl', 'trades_count', 'unrealized_pnl', 'volatility_10']

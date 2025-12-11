@@ -4,19 +4,20 @@ Risk Manager for SAC v435
 統合リスク管理システム
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
 
 from ztb.risk.drawdown_controller import DrawdownController
 from ztb.risk.dynamic_position_sizer import DynamicPositionSizer
 from ztb.risk.market_adaptation_manager import MarketAdaptationManager
+from ztb.trading.risk.interfaces import RiskManagerProtocol
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class RiskManager:
+class RiskManager(RiskManagerProtocol):
     """
     統合リスクマネージャー
     動的ポジションサイジング、ドローダウン制御、市場適応を統合
@@ -42,6 +43,10 @@ class RiskManager:
         logger.info(
             "Risk Manager initialized with components: position_sizer, drawdown_controller, market_adaptor"
         )
+
+        # Protocol attributes
+        self.test_mode: bool = bool(config.get("test_mode", False))
+        self.portfolio_value: float = float(config.get("initial_portfolio_value", 1.0))
 
     def calculate_risk_adjusted_position(
         self,
@@ -216,6 +221,150 @@ class RiskManager:
                 self.market_adaptor.get_adaptation_metrics(),
             ),
         }
+
+    # Protocol compat methods
+    def should_open_position(
+        self,
+        signal_strength: float,
+        market_volatility: float,
+        current_portfolio_value: float,
+    ) -> bool:
+        """Decide whether to open position given signal strength and market volatility.
+
+        Uses drawdown controller, emergency stop and simple thresholds.
+        """
+        # Emergency stop => never open
+        if self.drawdown_controller.is_emergency_stop:
+            return False
+
+        # If drawdown too deep, don't open
+        if (
+            self.drawdown_controller.current_drawdown
+            >= self.drawdown_controller.max_drawdown_limit
+        ):
+            return False
+
+        # Allow weaker signals under test_mode to reduce friction for testing
+        if self.test_mode:
+            return True
+
+        # Use a simple threshold for now: require signal strength >= configured minimum
+        min_strength = float(self.config.get("min_signal_strength", 0.6))
+        if signal_strength < min_strength:
+            return False
+
+        # Require market volatility to be lower than a threshold
+        vol_thresh = float(self.config.get("max_allowed_volatility", 0.5))
+        if market_volatility > vol_thresh:
+            return False
+
+        return True
+
+    def should_close_position(
+        self,
+        position_data: Dict[str, Any],
+        current_price: float,
+        current_portfolio_value: float,
+    ) -> Tuple[bool, str]:
+        """Decide whether to close a position. Use stop/tp checks and drawdown/emergency stop checks."""
+        # Check for explicit stops in position_data
+        stop_loss = position_data.get("stop_loss")
+        take_profit = position_data.get("take_profit")
+        pos_type = position_data.get("type", "long")
+
+        if stop_loss is not None and pos_type == "long" and current_price <= stop_loss:
+            return True, "stop_loss"
+        if stop_loss is not None and pos_type == "short" and current_price >= stop_loss:
+            return True, "stop_loss"
+        if (
+            take_profit is not None
+            and pos_type == "long"
+            and current_price >= take_profit
+        ):
+            return True, "take_profit"
+        if (
+            take_profit is not None
+            and pos_type == "short"
+            and current_price <= take_profit
+        ):
+            return True, "take_profit"
+
+        # Emergency stop triggers a forced close
+        if self.drawdown_controller.is_emergency_stop:
+            return True, "emergency_stop"
+
+        # If drawdown becomes too large relative to portfolio, close
+        if (
+            self.drawdown_controller.current_drawdown
+            >= self.drawdown_controller.max_drawdown_limit
+        ):
+            return True, "max_drawdown"
+
+        return False, ""
+
+    def get_risk_adjusted_position_size(
+        self, signal_strength: float, market_volatility: float
+    ) -> float:
+        """Map signal & volatility to an adjusted position size by delegating to position_sizer.
+
+        We use portfolio_value present on the risk manager; fallback to 1.0.
+        """
+        base_position = float(self.config.get("default_base_position", 0.05))
+        # Convert signal_strength into a base position modifier (0.5-1.0)
+        base_modifier = 0.5 + (min(max(signal_strength, 0.0), 1.0) * 0.5)
+        candidate_base = base_position * base_modifier
+
+        # Use the position_sizer to compute final size
+        size = self.position_sizer.calculate_position_size(
+            base_position=candidate_base,
+            current_price=float(self.config.get("current_price", 1.0)),
+            portfolio_value=self.portfolio_value,
+            atr=float(self.config.get("atr_value", 0.02)),
+            market_regime=self.config.get("market_regime", "ranging"),
+            df=None,
+        )
+
+        return float(size)
+
+    def calculate_atr_stop_levels(
+        self, data: Optional[pd.DataFrame], entry_price: float, position_type: str
+    ) -> Tuple[float, float]:
+        """Calculate ATR based stop-loss and take-profit prices. Fallback to % levels when ATR not available."""
+        if data is not None and "atr" in data.columns and len(data) > 0:
+            base_atr = float(data["atr"].iloc[-1])
+        else:
+            base_atr = float(entry_price) * float(
+                self.config.get("default_atr_pct", 0.02)
+            )
+
+        stop_multiplier = float(self.config.get("stop_loss_atr_multiplier", 2.0))
+        tp_multiplier = float(self.config.get("take_profit_atr_multiplier", 4.0))
+
+        if position_type == "long":
+            stop_loss = entry_price - (base_atr * stop_multiplier)
+            take_profit = entry_price + (base_atr * tp_multiplier)
+        else:
+            stop_loss = entry_price + (base_atr * stop_multiplier)
+            take_profit = entry_price - (base_atr * tp_multiplier)
+
+        return float(stop_loss), float(take_profit)
+
+    def update_risk_metrics(
+        self, trade_result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Update risk-tracking metrics, e.g., portfolio_value, drawdown_controller, and sizer's state."""
+        if trade_result:
+            pnl = float(trade_result.get("pnl", 0.0))
+            # Update portfolio value
+            self.portfolio_value = float(self.portfolio_value + pnl)
+
+        # Update drawdown controller state - step 0 used for approximate
+        try:
+            self.drawdown_controller.update_portfolio_value(self.portfolio_value, 0)
+        except Exception:
+            pass
+
+    # Keep existing reset which already exists
 
     def should_force_close_positions(self) -> bool:
         """

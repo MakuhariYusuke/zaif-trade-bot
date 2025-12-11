@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\environments\environment_config.py
+# hypothesis_version: 6.148.6
+
+[1e-05, 0.0005, 0.001, 0.02, 1.0, 10000.0, 1000, 'EnvironmentConfig', 'action_bonuses', 'commission', 'curriculum_stage', 'feature_names', 'feature_set', 'high_quality', 'initial_balance', 'market_regime', 'max_position_size', 'max_steps', 'min_position_change', 'min_trade_size', 'observation_window', 'pnl_focused', 'reward_scaling', 'signal_guidance', 'slippage']

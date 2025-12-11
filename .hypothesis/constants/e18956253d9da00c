@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\training_utils.py
+# hypothesis_version: 6.148.6
+
+[0.01, '.zip', 'CheckpointCallback', 'EvalCallback', 'SAC', 'batch_size', 'environment', 'errors', 'learning_rate', 'model', 'rl_model', 'total_timesteps', 'training', 'transaction_cost', 'utf-8', 'valid', 'w', 'warnings']

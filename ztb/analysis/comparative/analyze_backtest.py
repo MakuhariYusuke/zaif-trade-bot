@@ -9,6 +9,22 @@ including risk metrics, temporal analysis, and market condition analysis.
 
 from __future__ import annotations
 
+try:
+    import numpy as _np
+
+    np_major = (
+        int(_np.__version__.split(".", 1)[0]) if hasattr(_np, "__version__") else 0
+    )
+except Exception:
+    np_major = 0
+
+# Import torch only when compatible with NumPy (to avoid ABI mismatch crashes)
+if np_major < 2:
+    try:
+        import torch
+    except ImportError:
+        pass
+
 import gc
 import json
 from concurrent.futures import ThreadPoolExecutor
@@ -46,7 +62,7 @@ from ztb.trading.environment.constants import (
 from ztb.types.common import AnalysisData
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.memory_utils import temporary_array
-from ztb.utils.performance_utils import PerformanceMonitor
+from ztb.utils.performance_utils import CodePerformanceMonitor as PerformanceMonitor
 from ztb.utils.trading_metrics import action_distribution
 
 # Import type definitions
@@ -225,9 +241,6 @@ class BacktestAnalyzer(BaseAnalyzer):
                     logger.warning(f"Failed to calculate {metric_name}: {e}")
                     metrics_results[metric_name] = 0.0
 
-        # max_drawdownは正の値に変換
-        metrics_results["max_drawdown"] = abs(metrics_results["max_drawdown"])
-
         return {
             "total_return": float(total_return),
             "sharpe_ratio": float(metrics_results["sharpe_ratio"]),
@@ -322,8 +335,15 @@ class BacktestAnalyzer(BaseAnalyzer):
         # If primary fields are missing, check for alternative field names
         if "initial_portfolio" not in self.data and "initial_balance" in self.data:
             self.data["initial_portfolio"] = self.data["initial_balance"]
-        if "final_portfolio" not in self.data and "final_portfolio_value" in self.data:
-            self.data["final_portfolio"] = self.data["final_portfolio_value"]
+        if "final_portfolio" not in self.data:
+            if "final_portfolio_value" in self.data:
+                self.data["final_portfolio"] = self.data["final_portfolio_value"]
+            elif "final_balance" in self.data:
+                self.data["final_portfolio"] = self.data["final_balance"]
+
+        # Map legacy portfolio_values -> portfolio_history
+        if "portfolio_history" not in self.data and "portfolio_values" in self.data:
+            self.data["portfolio_history"] = self.data["portfolio_values"]
 
         # BTC-related field mapping
         if "initial_btc" not in self.data and "initial_btc_balance" in self.data:
@@ -333,8 +353,18 @@ class BacktestAnalyzer(BaseAnalyzer):
         if "btc_holdings" not in self.data and "btc_history" in self.data:
             self.data["btc_holdings"] = self.data["btc_history"]
 
+        # Map total_steps from portfolio_history or steps if available
+        if "total_steps" not in self.data and "portfolio_history" in self.data:
+            try:
+                self.data["total_steps"] = int(len(self.data["portfolio_history"]))
+            except Exception:
+                pass
+
         # Re-check after mapping alternative fields
         missing_fields = [field for field in required_fields if field not in self.data]
+        # Map alternative field for total_steps
+        if "total_steps" not in self.data and "steps" in self.data:
+            self.data["total_steps"] = self.data["steps"]
         if missing_fields:
             raise ValueError(f"Missing required fields in results: {missing_fields}")
 
@@ -880,18 +910,8 @@ class BacktestAnalyzer(BaseAnalyzer):
         self, returns: np.ndarray, risk_free_rate: float = 0.0, annualize: bool = True
     ) -> float:
         """シャープレシオを計算（metrics.pyの関数を使用）"""
-        if not annualize:
-            # 非年率化の場合は直接計算
-            returns = np.asarray(returns)
-            if len(returns) == 0 or np.std(returns) == 0:
-                return 0.0
-            excess_returns = returns - risk_free_rate
-            return float(np.mean(excess_returns) / np.std(returns))
-        else:
-            # 年率化の場合はmetrics.pyの関数を使用
-            return sharpe_ratio(
-                returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
-            )
+        period_per_year = TRADING_DAYS_PER_YEAR if annualize else 1
+        return sharpe_ratio(returns, rf=risk_free_rate, period_per_year=period_per_year)
 
     def max_drawdown(self, portfolio_values: np.ndarray) -> float:
         """最大ドローダウンを計算（metrics.pyの関数を使用）"""
@@ -1114,17 +1134,17 @@ class BacktestAnalyzer(BaseAnalyzer):
                 ) / len(btc_history)
                 btc_analysis["btc_trade_frequency"] = float(btc_trade_frequency)
 
-        # USD vs BTC パフォーマンス比較
-        usd_return = self.data.get("total_return_pct", 0.0)
-        btc_analysis["usd_return_pct"] = float(usd_return)
+        # JPY vs BTC パフォーマンス比較
+        jpy_return = self.data.get("total_return_pct", 0.0)
+        btc_analysis["jpy_return_pct"] = float(jpy_return)
 
         if abs(btc_return) > 0.01:  # ゼロ除算を避ける
-            btc_vs_usd_ratio = (
-                usd_return / btc_return if btc_return != 0 else float("inf")
+            btc_vs_jpy_ratio = (
+                jpy_return / btc_return if btc_return != 0 else float("inf")
             )
-            btc_analysis["btc_vs_usd_performance_ratio"] = float(btc_vs_usd_ratio)
+            btc_analysis["btc_vs_jpy_performance_ratio"] = float(btc_vs_jpy_ratio)
         else:
-            btc_analysis["btc_vs_usd_performance_ratio"] = 0.0
+            btc_analysis["btc_vs_jpy_performance_ratio"] = 0.0
 
         # BTCポジションの安定性分析
         if "btc_holdings" in self.data and len(self.data["btc_holdings"]) > 1:
@@ -1392,12 +1412,8 @@ class BacktestAnalyzer(BaseAnalyzer):
                         report_lines.append(
                             f"リターン標準偏差: {np.std(pnl_returns):.6f}"
                         )
-                        report_lines.append(
-                            f"歪度: {skewness(pnl_returns):.3f}"
-                        )
-                        report_lines.append(
-                            f"尖度: {kurtosis(pnl_returns):.3f}"
-                        )
+                        report_lines.append(f"歪度: {skewness(pnl_returns):.3f}")
+                        report_lines.append(f"尖度: {kurtosis(pnl_returns):.3f}")
                         report_lines.append("")
                     except Exception as e:
                         logger.warning(f"統計的検定エラー: {e}")

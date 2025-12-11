@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\position_manager.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.001, 0.02, 0.05, 0.1, 0.5, 0.7, 0.8, 1.0, 1.2, 1.645, 1000.0, 300, 3600, '0.0001', '0.001', '0.01', '1', 'PositionManager', '__main__', 'adjust', 'available_capital', 'bcc_jpy', 'bitflyer', 'btc_jpy', 'buy', 'capital_buffer_ok', 'close_long', 'close_short', 'coincheck', 'current_price', 'down', 'eth_jpy', 'mona_jpy', 'open_long', 'open_short', 'portfolio_risk', 'portfolio_risk_ok', 'portfolio_state', 'position_count', 'positions', 'realized_pnl', 'rebalancing', 'risk_adjusted_return', 'risk_checks', 'risk_metrics', 'sell', 'stop_loss', 'take_profit', 'test_signal', 'total_capital', 'total_exposure', 'total_value', 'unrealized_pnl', 'up', 'xrp_jpy', 'zaif']

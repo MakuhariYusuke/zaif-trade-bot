@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\errors.py
+# hypothesis_version: 6.148.6
+
+[1e-06, 1.0, 1000.0, 100000000.0, 'context', 'default_result', 'error_types', 'fallback', 'logger', 'operation', 'operation_name', 'portfolio_value', 'price', 'quantity', 'reraise_critical', 'value', 'volatility']

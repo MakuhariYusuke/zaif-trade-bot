@@ -7,22 +7,13 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-try:
-    from ztb.features.generators.technical.volatility.atr import compute_atr
-except ImportError:
-    # Mock function if volatility module is not available
-    def compute_atr(df, period=14):
-        # Simple ATR approximation using rolling standard deviation
-        high_low = df['high'] - df['low']
-        high_close = (df['high'] - df['close'].shift(1)).abs()
-        low_close = (df['low'] - df['close'].shift(1)).abs()
-        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        return true_range.rolling(window=period).mean()
+from ztb.features.generators.technical.volatility.atr import compute_atr
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
+    MultiTimeframeData,
     PatternRecognizer,
     SignalResult,
-    MultiTimeframeData,
 )
+
 
 class ATRPatternRecognizer(PatternRecognizer):
     """
@@ -83,7 +74,12 @@ class ATRPatternRecognizer(PatternRecognizer):
         if current_atr > avg_atr * regime_adjusted_thresholds["volatility_threshold"]:
             # High volatility - potential breakout
             breakout_signal = self._analyze_breakout_mtf(
-                data, current_atr, avg_atr, index, mtf_confidence, regime_adjusted_thresholds
+                data,
+                current_atr,
+                avg_atr,
+                index,
+                mtf_confidence,
+                regime_adjusted_thresholds,
             )
             if breakout_signal:
                 return breakout_signal
@@ -96,8 +92,21 @@ class ATRPatternRecognizer(PatternRecognizer):
             return trend_signal
 
         # Low volatility consolidation with regime context
-        if current_atr < avg_atr * regime_adjusted_thresholds["low_volatility_threshold"]:
-            strength = max(0.1, (avg_atr * regime_adjusted_thresholds["low_volatility_threshold"] - current_atr) / avg_atr) * mtf_confidence
+        if (
+            current_atr
+            < avg_atr * regime_adjusted_thresholds["low_volatility_threshold"]
+        ):
+            strength = (
+                max(
+                    0.1,
+                    (
+                        avg_atr * regime_adjusted_thresholds["low_volatility_threshold"]
+                        - current_atr
+                    )
+                    / avg_atr,
+                )
+                * mtf_confidence
+            )
             return SignalResult(
                 signal_type="ATR_low_volatility_mtf",
                 strength=strength,
@@ -224,7 +233,7 @@ class ATRPatternRecognizer(PatternRecognizer):
         self,
         current_atr: float,
         avg_atr: float,
-        multi_timeframe_data: Optional[Dict[str, Any]]
+        multi_timeframe_data: Optional[Dict[str, Any]],
     ) -> float:
         """
         Analyze multi-timeframe volatility alignment for enhanced signal confidence.
@@ -253,7 +262,7 @@ class ATRPatternRecognizer(PatternRecognizer):
 
         # Timeframe alignment score
         tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
-        confidence *= (0.8 + tf_alignment * 0.4)  # 0.8 to 1.2 range
+        confidence *= 0.8 + tf_alignment * 0.4  # 0.8 to 1.2 range
 
         # Market regime consideration
         regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
@@ -263,7 +272,9 @@ class ATRPatternRecognizer(PatternRecognizer):
         return min(1.5, max(0.5, confidence))
 
     def _adjust_thresholds_for_regime(
-        self, multi_timeframe_data: Optional[MultiTimeframeData], pattern_type: str = "general"
+        self,
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        pattern_type: str = "general",
     ) -> Dict[str, Any]:
         """
         Adjust ATR thresholds based on market regime.
@@ -307,7 +318,7 @@ class ATRPatternRecognizer(PatternRecognizer):
         avg_atr: float,
         index: int,
         mtf_confidence: float,
-        regime_adjusted_thresholds: Dict[str, float]
+        regime_adjusted_thresholds: Dict[str, float],
     ) -> Optional[SignalResult]:
         """
         Analyze potential breakout during high volatility with multi-timeframe confirmation.
@@ -324,7 +335,13 @@ class ATRPatternRecognizer(PatternRecognizer):
         ) / recent_prices.iloc[0]
 
         volatility_ratio = current_atr / avg_atr
-        strength = min(volatility_ratio / regime_adjusted_thresholds["volatility_threshold"], 1.0) * mtf_confidence
+        strength = (
+            min(
+                volatility_ratio / regime_adjusted_thresholds["volatility_threshold"],
+                1.0,
+            )
+            * mtf_confidence
+        )
 
         if abs(price_change) > 0.005:  # 0.5% price movement
             if price_change > 0:
@@ -384,7 +401,7 @@ class ATRPatternRecognizer(PatternRecognizer):
         atr_values: pd.Series,
         index: int,
         mtf_confidence: float,
-        regime_adjusted_thresholds: Dict[str, float]
+        regime_adjusted_thresholds: Dict[str, float],
     ) -> Optional[SignalResult]:
         """
         Analyze trend strength using ATR changes with multi-timeframe support.

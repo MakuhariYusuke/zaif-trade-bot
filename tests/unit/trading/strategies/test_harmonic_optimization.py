@@ -54,7 +54,7 @@ def generate_test_data(length=1000):
     return df
 
 
-def test_recognizer_performance(recognizer_class, data, name):
+def run_recognizer_performance(recognizer_class, data, name):
     """Test performance of a single recognizer"""
     recognizer = recognizer_class(lookback_period=60, tolerance=0.05)
 
@@ -93,7 +93,7 @@ def main():
     total_time = 0
 
     for recognizer_class, name in recognizers:
-        signals, duration = test_recognizer_performance(recognizer_class, data, name)
+        signals, duration = run_recognizer_performance(recognizer_class, data, name)
         total_signals += signals
         total_time += duration
 

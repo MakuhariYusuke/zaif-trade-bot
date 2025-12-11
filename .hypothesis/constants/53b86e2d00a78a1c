@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\optimization\stratified_sampler.py
+# hypothesis_version: 6.148.6
+
+[0.001, 100, 150, 200, 210, 1000, '__main__', 'bucket_counts', 'bucket_samples_drawn', 'total_batches']

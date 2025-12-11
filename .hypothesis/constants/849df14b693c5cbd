@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\signal_performance\signal_tracker.py
+# hypothesis_version: 6.148.6
+
+[-1.1, -0.1, 0.0, 0.1, 1.1, 100, 10000, 'Signal tracker reset', 'buy', 'close', 'confidence', 'direction', 'executed_trades', 'high', 'hold', 'low', 'max', 'mean', 'min', 'open', 'pattern_count', 'position_change', 'position_change_rate', 'returns', 'sell', 'signal_confidence', 'signal_strength', 'signal_type', 'source_patterns', 'std', 'strength', 'timestamp', 'total_patterns_used', 'total_signals', 'trade_executed', 'trade_execution_rate', 'unique_signal_types', 'unknown', 'volume']

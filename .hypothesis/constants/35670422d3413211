@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\components\pattern_statistics.py
+# hypothesis_version: 6.148.6
+
+[0.0, -500, -250, 100, 500, 1000, 3600, 10000, 'ActionSignal', 'PatternStats', 'SignalMetadata', 'accuracy_rate', 'accuracy_samples', 'avg', 'combinations', 'confidence', 'detected', 'error', 'failed_detections', 'frequency', 'max', 'metadata', 'min', 'min_frequency', 'overall_success_rate', 'pattern_type', 'patterns', 'samples', 'signal_confidence', 'signal_strength', 'strength', 'success_rate', 'time_span_hours', 'timestamp', 'total_combinations', 'total_detections', 'unique_patterns', 'uptime_hours', 'window_hours']

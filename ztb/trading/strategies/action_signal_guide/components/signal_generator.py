@@ -179,12 +179,14 @@ class SignalGenerator(ISignalGenerator):
                 GartleyRecognizer,
             )
             from ..pattern_recognition.heikin_ashi import HeikinAshiRecognizer
+            from ..pattern_recognition.macd import MACDPatternRecognizer
             from ..pattern_recognition.oscillator_patterns import (
                 CCIRecognizer,
                 MFIRecognizer,
                 StochasticRecognizer,
                 WilliamsRRecognizer,
             )
+            from ..pattern_recognition.rsi import RSIPatternRecognizer
             from ..pattern_recognition.volume_patterns import ChaikinADRecognizer
             from ..pattern_recognition.wave_counting import (
                 CorrectiveWaveRecognizer,
@@ -278,6 +280,8 @@ class SignalGenerator(ISignalGenerator):
                         StochasticRecognizer(),
                         WilliamsRRecognizer(),
                         MFIRecognizer(),
+                        RSIPatternRecognizer(),
+                        MACDPatternRecognizer(),
                     ]
                 )
 
@@ -598,9 +602,7 @@ class SignalGenerator(ISignalGenerator):
                 )
 
             # Aggregate signals based on guidance level
-            final_signal = self._aggregate_signals_to_final(
-                all_signals, data, current_index
-            )
+            final_signal = self._aggregate_signals(all_signals, pattern_signals)
 
             processing_time = time.time() - start_time
 
@@ -735,11 +737,15 @@ class SignalGenerator(ISignalGenerator):
                 market_context["sac_decision"] = self._current_sac_decision
 
             # Apply adaptive filtering
+            if hasattr(self, "_current_data"):
+                current_data = self._current_data
+            else:
+                import pandas as pd
+
+                current_data = pd.DataFrame()
             filtered_signals = self.apply_adaptive_filtering(
                 filtered_signals,
-                self._current_data
-                if hasattr(self, "_current_data")
-                else pd.DataFrame(),
+                current_data,
                 market_context,
                 self._current_multi_timeframe_data
                 if hasattr(self, "_current_multi_timeframe_data")
@@ -1238,3 +1244,36 @@ class SignalGenerator(ISignalGenerator):
             filtered_signals.append(signal)
 
         return filtered_signals
+
+    def _filter_by_guidance_level(
+        self, signals: List["ActionSignal"]
+    ) -> List["ActionSignal"]:
+        """
+        Filter signals based on guidance level.
+
+        Args:
+            signals: Raw signals to filter
+
+        Returns:
+            Filtered signals based on guidance level
+        """
+        if not signals:
+            return signals
+
+        guidance_level = getattr(self.config, "guidance_level", "STRONG")
+
+        if guidance_level == "FULL":
+            # Full guidance: return all signals
+            return signals
+        elif guidance_level == "STRONG":
+            # Strong guidance: filter out very weak signals
+            return [s for s in signals if s.confidence >= 0.3 and s.strength >= 0.3]
+        elif guidance_level == "MODERATE":
+            # Moderate guidance: filter out weak signals
+            return [s for s in signals if s.confidence >= 0.5 and s.strength >= 0.5]
+        elif guidance_level == "WEAK":
+            # Weak guidance: only very strong signals
+            return [s for s in signals if s.confidence >= 0.7 and s.strength >= 0.7]
+        else:
+            # Default to strong filtering
+            return [s for s in signals if s.confidence >= 0.3 and s.strength >= 0.3]

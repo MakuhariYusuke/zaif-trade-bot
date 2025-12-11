@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\data\data_validation.py
+# hypothesis_version: 6.148.6
+
+[-0.1, 0.0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.7, 0.75, 0.8, 0.95, 0.99, 1.0, '-', '/', '\\', 'accuracy', 'amount', 'close', 'coerce', 'column_consistency', 'columns', 'completeness', 'consistency', 'data_type', 'date', 'datetime', 'datetime64[ns]', 'details', 'error', 'errors', 'float', 'float64', 'high', 'index_integrity', 'info', 'int', 'int64', 'integer', 'level', 'low', 'messages', 'metrics', 'not_null', 'object', 'open', 'p_value', 'params', 'pattern', 'price', 'quantity', 'range', 'required', 'statistic', 'string', 'temporal_consistency', 'temporal_order', 'time', 'timeliness', 'timestamp', 'ts', 'type', 'uniqueness', 'valid', 'validity', 'value_range_validity', 'volume', 'warning', 'warnings']

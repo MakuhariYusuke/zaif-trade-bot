@@ -24,9 +24,15 @@ from ztb.trading.environment.components import (
     StreamingHandler,
 )
 from ztb.trading.environment.components.action_executor import ActionExecutor
-from ztb.trading.environment.components.statistics_calculator import StatisticsCalculator
+from ztb.trading.environment.components.statistics_calculator import (
+    StatisticsCalculator,
+)
+from ztb.trading.environment.components.threshold_manager import ThresholdManager
 from ztb.trading.environment.heavy_env.components.state_manager import StateManager
-from ztb.trading.environment.heavy_env.components.validation_manager import ValidationManager
+from ztb.trading.environment.heavy_env.components.validation_manager import (
+    ValidationManager,
+)
+from ztb.trading.execution.realistic import RealisticExecutionModel
 from ztb.utils.errors import ValidationError
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root, safe_path_join
@@ -268,6 +274,8 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         # Check if multi-timeframe features should be included
         if feature_flags.get("include_multi_timeframe_features", False):
             # Add multi-timeframe features if available
+            import gc
+
             from ztb.features.multi_timeframe import MultiTimeframeFeatureSystem
 
             try:
@@ -302,7 +310,7 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                         logger.info(
                             f"Added {len(mtf_features)} multi-timeframe features and merged into dataframe"
                         )
-                    
+
                     # Clear mtf_data to free memory
                     del mtf_data
                     del mtf_system
@@ -424,9 +432,16 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     # Calculate observation space dimensions
     obs_dim = len(self.features)
 
+    # Ensure feature_names is synced with features for external components (e.g. SignalIntegrator)
+    self.feature_names = self.features
+    # Also update config.feature_names so SignalIntegrator can access it
+    self.config.feature_names = self.features
+
     # Add optimizer features dimension if tracker is available
     if hasattr(self, "optimizer_tracker") and self.optimizer_tracker is not None:
-        from ztb.features.processors.optimization.features import OptimizerFeatureTracker
+        from ztb.features.processors.optimization.features import (
+            OptimizerFeatureTracker,
+        )
 
         if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
             obs_dim += len(self.optimizer_tracker.get_feature_names())
@@ -453,45 +468,14 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     # Determine whether to use continuous actions. Support both explicit boolean
     # flag (`use_continuous_actions`) and legacy/string flag (`action_space_type`).
     # Treat any value that looks like 'continuous' as enabling continuous actions.
-    # Diagnostic logging: show what form the config is at runtime so we can
-    # diagnose why continuous actions may not be picked up.
-    try:
-        cfg_type = type(self.config)
-        if hasattr(self.config, "items") and not hasattr(self.config, "__dict__"):
-            # Likely a plain dict-like config
-            cfg_preview = {k: self.config.get(k) for k in list(self.config.keys())[:10]}
-        else:
-            # Object-like config (dataclass / pydantic model)
-            try:
-                cfg_preview = getattr(self.config, "__dict__", repr(self.config))
-            except Exception:
-                cfg_preview = repr(self.config)
-    except Exception:
-        cfg_type = type(self.config)
-        cfg_preview = repr(self.config)
-
-    # Log diagnostics explicitly so they appear in standard log output
-    try:
-        logger.info(
-            "Env config runtime diagnostics: type=%s, preview=%s, use_continuous_actions=%s, action_space_type=%s",
-            str(cfg_type),
-            repr(cfg_preview),
-            getattr(self.config, "use_continuous_actions", None) if hasattr(self.config, "use_continuous_actions") else self.config.get("use_continuous_actions", None) if isinstance(self.config, dict) else None,
-            getattr(self.config, "action_space_type", None) if hasattr(self.config, "action_space_type") else self.config.get("action_space_type", None) if isinstance(self.config, dict) else None,
-        )
-    except Exception:
-        logger.info("Env config runtime diagnostics: failed to stringify config")
-
     # Handle both dict and object-style configs
     if isinstance(self.config, dict):
         explicit_continuous = self.config.get("use_continuous_actions", False)
         action_space_type = self.config.get("action_space_type", "")
-        logger.info(f"DEBUG: Config is dict, use_continuous_actions={explicit_continuous}")
     else:
         explicit_continuous = getattr(self.config, "use_continuous_actions", False)
         action_space_type = getattr(self.config, "action_space_type", "")
-        logger.info(f"DEBUG: Config is object, use_continuous_actions={explicit_continuous}")
-    
+
     try:
         action_space_type_str = (
             str(action_space_type).strip().lower()
@@ -505,8 +489,6 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         isinstance(action_space_type_str, str)
         and action_space_type_str.startswith("cont")
     )
-
-    logger.info(f"DEBUG: Final use_continuous_actions={use_continuous_actions}")
 
     if use_continuous_actions:
         # Continuous action space for SAC and other continuous algorithms
@@ -542,9 +524,7 @@ def _setup_scaler(self: Any) -> None:
         logger.info("No scaler data provided")
 
 
-def _compute_scaler_from_data(
-    self: Any, train_end_index: Optional[int] = None
-) -> None:
+def _compute_scaler_from_data(self: Any, train_end_index: Optional[int] = None) -> None:
     """
     データからスケーラーを計算（標準化用の平均・標準偏差）。
     データリークを防ぐため、訓練データのみを使用する。
@@ -579,8 +559,9 @@ def _compute_scaler_from_data(
                 "This may cause data leakage if the dataset includes validation/test data."
             )
         else:
-            logger.info("train_end_index is beyond data length. Using entire dataset for scaler.")
-
+            logger.info(
+                "train_end_index is beyond data length. Using entire dataset for scaler."
+            )
 
     # 特徴量行列の訓練データ部分から平均・標準偏差を計算
     # axis=0: 各特徴量ごとに計算（列方向）
@@ -604,9 +585,41 @@ def _compute_scaler_from_data(
 
 def _initialize_remaining_components(self: Any) -> None:
     """Finalize runtime component setup once data is ready."""
+
+    # Initialize Execution Model if configured
+    execution_model = None
+    execution_config = getattr(self.config, "execution_model", None)
+
+    if execution_config:
+        try:
+            # If it's a dict, use it as kwargs
+            if isinstance(execution_config, dict):
+                execution_model = RealisticExecutionModel(**execution_config)
+            # If it's an object (pydantic), convert to dict
+            elif hasattr(execution_config, "__dict__"):
+                # Filter out internal attributes
+                kwargs = {
+                    k: v
+                    for k, v in execution_config.__dict__.items()
+                    if not k.startswith("_")
+                }
+                execution_model = RealisticExecutionModel(**kwargs)
+            # If it's just a boolean True, use defaults
+            elif execution_config is True:
+                execution_model = RealisticExecutionModel()
+
+            if execution_model:
+                logger.info(
+                    f"Initialized RealisticExecutionModel: {execution_model.__dict__}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to initialize ExecutionModel: {e}")
+            execution_model = None
+
     self.position_manager = PositionManager(
         config=self.config,
         get_price_callback=self._resolve_price,
+        execution_model=execution_model,
     )
 
     self.reward_calculator = RewardCalculator(
@@ -696,6 +709,10 @@ def _initialize_remaining_components(self: Any) -> None:
     self.statistics_calculator = StatisticsCalculator()
 
     self.state_manager = StateManager(self)
+
+    self.threshold_manager = ThresholdManager(
+        config=self.config,
+    )
 
     self.action_executor = ActionExecutor(
         action_threshold=self.action_threshold,
@@ -981,7 +998,8 @@ def _extract_numeric_column(
         series = self.df[name]
         if not ptypes.is_numeric_dtype(series):
             continue
-        array = np.ascontiguousarray(series.to_numpy(dtype=np.float32, copy=False))
+        # Force copy=True to ensure the array is writable for np.nan_to_num
+        array = np.ascontiguousarray(series.to_numpy(dtype=np.float32, copy=True))
         if fallback is not None and array.size:
             np.nan_to_num(
                 array, copy=False, nan=fallback, posinf=fallback, neginf=fallback

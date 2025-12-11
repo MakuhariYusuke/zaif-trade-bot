@@ -15,6 +15,10 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+import pandas as pd
+
+from ztb.trading.signal.common.utilities import calculate_volatility_from_prices
+
 
 # Mock classes for testing
 @dataclass
@@ -50,10 +54,6 @@ class OrderBook:
     bids: List[tuple[Decimal, Decimal]]  # (price, quantity)
     asks: List[tuple[Decimal, Decimal]]  # (price, quantity)
     timestamp: datetime
-
-
-class MarketData:
-    pass
 
 
 class MarketDataProvider:
@@ -431,22 +431,27 @@ class MarketDataSimulator:
         if len(history) < 2:
             return 0.0
 
-        # 価格変化の標準偏差を計算
-        prices = [float(tick.price) for tick in history]
-        returns = []
-        for i in range(1, len(prices)):
-            ret = (prices[i] - prices[i - 1]) / prices[i - 1]
-            returns.append(ret)
+        # Use centralised helper to compute volatility (std of returns)
+        try:
+            prices = pd.Series([float(tick.price) for tick in history])
+            vol = calculate_volatility_from_prices(prices, window=20)
+            # preserve original scaling (multiplied by 10 and capped at 1.0)
+            return min(1.0, float(vol) * 10)
+        except Exception:
+            # Fallback to legacy simple calculation
+            prices = [float(tick.price) for tick in history]
+            returns = []
+            for i in range(1, len(prices)):
+                ret = (prices[i] - prices[i - 1]) / prices[i - 1]
+                returns.append(ret)
+            if not returns:
+                return 0.0
+            import math
 
-        if not returns:
-            return 0.0
-
-        mean_return = sum(returns) / len(returns)
-        variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-        volatility = variance**0.5
-
-        # 0-1の範囲に正規化
-        return min(1.0, volatility * 10)  # スケーリング調整
+            mean_return = sum(returns) / len(returns)
+            variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
+            volatility = math.sqrt(variance)
+            return min(1.0, volatility * 10)
 
     def _calculate_volume_impact(
         self, symbol: str, quantity: Decimal, latest_tick: SimulatedTick

@@ -22,7 +22,9 @@ import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+
+from ztb.utils.torch_utils import ensure_torch_dll_search_path
 
 LOG_PATH = Path("logs") / "child_wrapper_debug.jsonl"
 
@@ -78,53 +80,6 @@ def snapshot_environment() -> Dict[str, Any]:
         "env": env,
         "sys_path": sys.path,
     }
-
-
-def ensure_torch_dll_search_path() -> Dict[str, Any]:
-    """
-    On Windows, explicitly add torch/lib to DLL search paths to avoid c10.dll issues.
-
-    Returns a small summary of candidate/added paths for logging.
-    """
-    summary: Dict[str, Any] = {
-        "candidates": [],
-        "added_to_dll_dir": [],
-        "added_to_path": [],
-    }
-    if os.name != "nt":
-        return summary
-
-    try:
-        import site
-
-        site_roots: List[Path] = []
-        site_roots.extend(Path(p) for p in site.getsitepackages())
-        user_site = site.getusersitepackages()
-        if user_site:
-            site_roots.append(Path(user_site))
-
-        for root in site_roots:
-            candidate = root / "torch" / "lib"
-            if candidate.exists():
-                summary["candidates"].append(str(candidate))
-                try:
-                    if hasattr(os, "add_dll_directory"):
-                        os.add_dll_directory(str(candidate))
-                        summary["added_to_dll_dir"].append(str(candidate))
-                except Exception as e:
-                    summary.setdefault("dll_dir_errors", []).append(str(e))
-
-                try:
-                    path_val = os.environ.get("PATH", "")
-                    if str(candidate) not in path_val.split(os.pathsep):
-                        os.environ["PATH"] = str(candidate) + os.pathsep + path_val
-                        summary["added_to_path"].append(str(candidate))
-                except Exception as e:
-                    summary.setdefault("path_errors", []).append(str(e))
-    except Exception as e:
-        summary["error"] = str(e)
-
-    return summary
 
 
 def attempt_torch_import() -> Dict[str, Any]:
@@ -348,17 +303,19 @@ def main() -> None:
 
     if args.diagnostics_only:
         print(f"[child-wrapper] diagnostics-only requested; status ok={diagnostics_ok}")
-        sys.exit(0 if diagnostics_ok else 1)
+        return 0 if diagnostics_ok else 1
 
     if not diagnostics_ok:
         print(
             "[child-wrapper] diagnostics failed; skipping training. Check logs/child_wrapper_debug.jsonl."
         )
-        sys.exit(1)
+        return 1
 
     exit_code = run_training(args)
-    sys.exit(exit_code)
+    return int(exit_code)
 
 
 if __name__ == "__main__":
-    main()
+    from ztb.utils.cli import run_main
+
+    run_main(main)

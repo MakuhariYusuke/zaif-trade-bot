@@ -28,6 +28,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from ztb.metrics.technical import calculate_adx
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +60,16 @@ class RegimeType(Enum):
     CONSOLIDATION = "consolidation"
     BREAKOUT_SETUP = "breakout_setup"
     BREAKDOWN_SETUP = "breakdown_setup"
+    # BUY Specialized
+    BUY_BREAKOUT = "buy_breakout"
+    BUY_DIVERGENCE = "buy_divergence"
+    BUY_MOMENTUM_STRONG = "buy_momentum_strong"
+    BUY_VOLUME_SURGE = "buy_volume_surge"
+    # SELL Specialized
+    SELL_BREAKDOWN = "sell_breakdown"
+    SELL_DIVERGENCE = "sell_divergence"
+    SELL_MOMENTUM_WEAK = "sell_momentum_weak"
+    SELL_VOLUME_SURGE = "sell_volume_surge"
 
 
 @dataclass
@@ -324,8 +336,10 @@ class V444RegimeClassifier:
 
             # Calculate volatility (standard deviation of log returns, scaled)
             log_returns = np.log(close / close.shift())
-            volatility = log_returns.rolling(10).std() * np.sqrt(
-                10
+            from ztb.metrics.technical import calculate_rolling_volatility
+
+            volatility = calculate_rolling_volatility(
+                log_returns, window=10, annualize=True, trading_days=10
             )  # Scale to match volatility calculation
 
             # Calculate raw trend strength with direction
@@ -426,51 +440,7 @@ class V444RegimeClassifier:
         self, high: pd.Series, low: pd.Series, close: pd.Series
     ) -> float:
         """Calculate ADX (Average Directional Index)"""
-        try:
-            # Convert to pandas Series if not already
-            if not isinstance(high, pd.Series):
-                high = pd.Series(high)
-            if not isinstance(low, pd.Series):
-                low = pd.Series(low)
-            if not isinstance(close, pd.Series):
-                close = pd.Series(close)
-
-            # Calculate True Range
-            tr = np.maximum(
-                high - low,
-                np.maximum(abs(high - close.shift(1)), abs(low - close.shift(1))),
-            )
-
-            # Calculate Directional Movement
-            dm_plus = np.where(
-                (high - high.shift(1)) > (low.shift(1) - low),
-                np.maximum(high - high.shift(1), 0),
-                0,
-            )
-            dm_minus = np.where(
-                (low.shift(1) - low) > (high - high.shift(1)),
-                np.maximum(low.shift(1) - low, 0),
-                0,
-            )
-
-            # Convert to pandas Series for rolling operations
-            tr_series = pd.Series(tr)
-            dm_plus_series = pd.Series(dm_plus)
-            dm_minus_series = pd.Series(dm_minus)
-
-            period = 14
-            atr = tr_series.rolling(period).mean()
-            di_plus = (dm_plus_series.rolling(period).mean() / atr).fillna(0)
-            di_minus = (dm_minus_series.rolling(period).mean() / atr).fillna(0)
-
-            dx = abs(di_plus - di_minus) / (di_plus + di_minus + 1e-10)
-            adx = dx.rolling(period).mean()
-
-            return float(adx.iloc[-1]) if not adx.empty else 0.0
-
-        except Exception as e:
-            logger.warning(f"Error calculating ADX: {e}")
-            return 0.0
+        return calculate_adx(high, low, close, period=14)
 
     def _calculate_rsi(self, close: pd.Series) -> float:
         """Calculate RSI (Relative Strength Index)"""
@@ -490,13 +460,10 @@ class V444RegimeClassifier:
     def _calculate_macd_signal(self, close: pd.Series) -> float:
         """Calculate MACD signal strength"""
         try:
-            ema12 = close.ewm(span=12).mean()
-            ema26 = close.ewm(span=26).mean()
-            macd = ema12 - ema26
-            signal = macd.ewm(span=9).mean()
-            macd_signal = macd - signal
+            from ztb.metrics.technical import calculate_macd
 
-            return float(macd_signal.iloc[-1]) if not macd_signal.empty else 0.0
+            _, _, hist = calculate_macd(close)
+            return float(hist.iloc[-1]) if not hist.empty else 0.0
 
         except Exception as e:
             logger.warning(f"Error calculating MACD signal: {e}")
@@ -505,10 +472,9 @@ class V444RegimeClassifier:
     def _calculate_bollinger_position(self, close: pd.Series) -> float:
         """Calculate position within Bollinger Bands"""
         try:
-            sma = close.rolling(20).mean()
-            std = close.rolling(20).std()
-            upper = sma + 2 * std
-            lower = sma - 2 * std
+            from ztb.metrics.technical import calculate_bollinger_bands
+
+            upper, _, lower = calculate_bollinger_bands(close, period=20)
 
             position = (close - lower) / (upper - lower + 1e-10)
             position = position.clip(0, 1)  # Normalize to 0-1

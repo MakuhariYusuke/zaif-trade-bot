@@ -24,9 +24,9 @@ from typing import (
 
 import numpy as np
 
+from ztb.metrics import sharpe_ratio
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.run_metadata import RunMetadata
-from ztb.utils.trading_metrics import sharpe_ratio
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import PipelineStats, StreamingPipeline

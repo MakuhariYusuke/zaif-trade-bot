@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\components\cache_manager.py
+# hypothesis_version: 6.148.6
+
+[300, 1000, 'ActionSignal', 'CacheStats', 'cache_hits', 'cache_misses', 'cache_ttl', 'evictions', 'hit_rate', 'max_cache_size', 'signal_cache_size', 'total_cache_size']

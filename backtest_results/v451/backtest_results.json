@@ -1,0 +1,31 @@
+{
+    "model_name": "sac_v451_phase7_regime_aware",
+    "total_steps": 19999,
+    "initial_balance": 1000000.0,
+    "final_balance": 1088710.6969226361,
+    "total_pnl": 88710.69692263613,
+    "return_pct": 8.87106969226361,
+    "action_counts": {
+        "SELL": 10347,
+        "BUY": 8087,
+        "HOLD": 1565
+    },
+    "regime_counts": {
+        "RegimeType.HIGH_VOLATILITY_RANGING": 10624,
+        "RegimeType.BUY_BREAKOUT": 3296,
+        "RegimeType.SELL_BREAKDOWN": 3207,
+        "RegimeType.SELL_VOLUME_SURGE": 1525,
+        "RegimeType.EXTREME_VOLATILITY": 529,
+        "RegimeType.BUY_VOLUME_SURGE": 222,
+        "RegimeType.STRONG_BEAR_TREND": 118,
+        "RegimeType.CONSOLIDATION": 98,
+        "RegimeType.STRONG_BULL_TREND": 89,
+        "RegimeType.WEAK_BULL_TREND": 84,
+        "RegimeType.MODERATE_VOLATILITY_RANGING": 68,
+        "RegimeType.WEAK_BEAR_TREND": 53,
+        "RegimeType.MODERATE_BULL_TREND": 47,
+        "RegimeType.MODERATE_BEAR_TREND": 34,
+        "RegimeType.LOW_VOLATILITY_RANGING": 4,
+        "RegimeType.SELL_MOMENTUM_WEAK": 1
+    }
+}

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\warmup_calculator.py
+# hypothesis_version: 6.148.6
+
+[0.1, 1.0, 100, 200, 'adx_14', 'atr_14', 'bollinger', 'cci_20', 'ema_12', 'ema_26', 'ichimoku', 'macd', 'max_lookback', 'obv', 'price_return', 'rsi_14', 'rsi_28', 'safety_margin', 'sma_10', 'sma_100', 'sma_20', 'sma_200', 'sma_5', 'sma_50', 'stochastic_14', 'volume_return', 'vwap', 'warmup', 'williams_r_14']

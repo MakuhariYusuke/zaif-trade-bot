@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\core\stats.py
+# hypothesis_version: 6.148.6
+
+[0.0, 'bollinger', 'cci', 'channel', 'dema', 'donchian', 'ema', 'envelope', 'ichimoku', 'kama', 'macd', 'obv', 'oscillator', 'other', 'rsi', 'sma', 'stoch', 'tema', 'trend', 'volume', 'vpt', 'vwap', 'williams', 'wma']

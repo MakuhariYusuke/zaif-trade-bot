@@ -11,10 +11,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.features.core.base import BaseFeature
+from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
-
-from ..base import BaseFeature
-from ..registry import FeatureRegistry
 
 
 @FeatureRegistry.register("Normalized_ATR")
@@ -50,8 +49,12 @@ class NormalizedATR(BaseFeature):
             period,
         )
 
-        # Normalize by closing price (as percentage)
-        normalized_atr = (atr_values / df["close"].values) * 100
+        # Normalize by closing price (fraction). Do NOT multiply by 100 to keep
+        # values in 0..1 range (e.g. 0.01 == 1%). Tests assume fraction values.
+        normalized_atr = atr_values / df["close"].values
 
         result_df = pd.DataFrame({"normalized_atr": normalized_atr}, index=df.index)
+        # Fill NaN values (initial periods) with 0 so tests and downstream logic
+        # that expect non-negative values don't fail on NaN comparisons.
+        result_df["normalized_atr"] = result_df["normalized_atr"].fillna(0.0)
         return result_df

@@ -9,6 +9,8 @@ from typing import Any, Callable, Optional
 
 from ztb.risk.risk_manager import RiskManager
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.execution.model import ExecutionModel
+from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -29,6 +31,7 @@ class PositionManager:
         self,
         config: Any,  # EnvironmentConfig
         get_price_callback: Callable[[], float],  # Function to get current price
+        execution_model: Optional[ExecutionModel] = None,
     ):
         """
         Initialize PositionManager.
@@ -36,9 +39,11 @@ class PositionManager:
         Args:
             config: Environment configuration
             get_price_callback: Callback function to get current price
+            execution_model: Optional execution model for realistic simulation
         """
         self.config = config
         self._get_price = get_price_callback
+        self.execution_model = execution_model
 
         # Position state
         self.position: float = 0.0
@@ -55,7 +60,8 @@ class PositionManager:
 
         # Risk management (v435 enhancement)
         risk_config = getattr(config, "risk_management", {})
-        self.risk_manager = RiskManager(risk_config)
+        # Ensure the instantiated risk manager conforms to the RiskManagerProtocol
+        self.risk_manager = ensure_risk_manager_protocol(RiskManager(risk_config))
 
     def execute_action(
         self,
@@ -103,7 +109,7 @@ class PositionManager:
 
         if action == ACTION_BUY:
             if self.position < 0:  # Short position held
-                trade_pnl = self.close_position()
+                trade_pnl = self.close_position(current_step=current_step, atr=atr)
                 self._last_trade_step = current_step  # Update last trade step for close
                 self._consecutive_trade_steps += 1
 
@@ -122,7 +128,7 @@ class PositionManager:
 
         elif action == ACTION_SELL:
             if self.position > 0:  # Long position held
-                trade_pnl = self.close_position()
+                trade_pnl = self.close_position(current_step=current_step, atr=atr)
                 self._last_trade_step = current_step  # Update last trade step for close
                 self._consecutive_trade_steps += 1
 
@@ -176,11 +182,43 @@ class PositionManager:
 
         # リスク管理適用 (v435 enhancement)
         current_price = self._get_price()
+
+        # Determine execution price
+        if self.execution_model:
+            # Use model to simulate execution
+            # Note: We don't know the exact size yet, so we simulate with base size 1.0 to get price
+            action_type = "buy" if direction > 0 else "sell"
+            sim_result = self.execution_model.simulate_execution(
+                action_type=action_type,
+                requested_price=current_price,
+                requested_size=1.0,  # Placeholder for price estimation
+                current_atr=atr,
+            )
+            execution_price = sim_result.executed_price
+            slippage_rate = sim_result.slippage_rate
+        else:
+            # Apply slippage to execution price (Legacy)
+            slippage_rate = 0.0
+            if (
+                hasattr(self.config, "exchange_profile")
+                and self.config.exchange_profile
+            ):
+                slippage_rate = self.config.exchange_profile.slippage_rate
+            elif hasattr(self.config, "slippage"):
+                slippage_rate = float(self.config.slippage)
+
+            # Buy: price increases (worse), Sell: price decreases (worse)
+            execution_price = (
+                current_price * (1 + slippage_rate)
+                if direction > 0
+                else current_price * (1 - slippage_rate)
+            )
+
         portfolio_value = initial_portfolio + self.realized_pnl
 
         risk_adjusted = self.risk_manager.calculate_risk_adjusted_position(
             base_position=base_position_size,
-            current_price=current_price,
+            current_price=execution_price,  # Use execution price for sizing
             portfolio_value=portfolio_value,
             atr=atr,
             df=df,
@@ -197,7 +235,7 @@ class PositionManager:
 
         # 実際に購入可能なサイズ（利用可能資金の90%まで）
         affordable_funds = available_funds * 0.9
-        affordable_size = affordable_funds / (current_price * (1 + transaction_cost))
+        affordable_size = affordable_funds / (execution_price * (1 + transaction_cost))
 
         # 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）
         actual_position_size = min(max_position_size, affordable_size)
@@ -208,13 +246,38 @@ class PositionManager:
             logger.warning(
                 "Insufficient funds for minimum trade size: available=%.2f, required=%.2f (min_size=%.4f BTC)",
                 available_funds,
-                min_trade_size * current_price * (1 + transaction_cost),
+                min_trade_size * execution_price * (1 + transaction_cost),
                 min_trade_size,
             )
             actual_position_size = min_trade_size  # 最小単位で取引試行
 
         # Calculate entry cost based on actual size
-        entry_cost = abs(float(actual_position_size)) * current_price * transaction_cost
+        if self.execution_model:
+            action_type = "buy" if direction > 0 else "sell"
+            # Re-simulate with actual size to get accurate fee and potentially size-dependent slippage
+            sim_result = self.execution_model.simulate_execution(
+                action_type=action_type,
+                requested_price=current_price,
+                requested_size=actual_position_size,
+                current_atr=atr,
+            )
+            execution_price = sim_result.executed_price
+            entry_cost = sim_result.fee
+        else:
+            trade_value = abs(float(actual_position_size)) * execution_price
+
+            # Use ExchangeProfile fee model if available
+            if (
+                hasattr(self.config, "exchange_profile")
+                and self.config.exchange_profile
+            ):
+                trade_type = "buy" if direction > 0 else "sell"
+                entry_cost = self.config.exchange_profile.fee_model.calculate_fee(
+                    trade_value, trade_type
+                )
+            else:
+                # Fallback to legacy transaction_cost
+                entry_cost = trade_value * float(self.config.transaction_cost)
 
         # Check if we have enough funds
         if available_funds < entry_cost:
@@ -231,29 +294,33 @@ class PositionManager:
 
         # Open position with actual size
         self.position = direction * actual_position_size
-        self.entry_price = current_price
+        self.entry_price = execution_price  # Use execution price as entry price
         self.trades_count += 1
         self._last_trade_step = current_step
 
         logger.debug(
-            "Opened %s position: size=%.4f (max=%.4f, affordable=%.4f), price=%.2f, cost=%.2f, funds=%.2f",
+            "Opened %s position: size=%.4f (max=%.4f, affordable=%.4f), price=%.2f (slip=%.4f), cost=%.2f, funds=%.2f",
             "Long" if direction > 0 else "Short",
             actual_position_size,
             max_position_size,
             affordable_size,
-            current_price,
+            execution_price,
+            slippage_rate,
             entry_cost,
             available_funds,
         ) if self.trades_count % 5 == 0 else None
 
         return entry_cost
 
-    def close_position(self, current_step: Optional[int] = None) -> float:
+    def close_position(
+        self, current_step: Optional[int] = None, atr: float = 0.0
+    ) -> float:
         """
         Close current position.
 
         Args:
             current_step: Current step number (optional, for trade tracking)
+            atr: Current ATR for slippage calculation
 
         Returns:
             Realized PnL from closing the position
@@ -263,13 +330,57 @@ class PositionManager:
 
         # Calculate realized PnL before closing
         current_price = self._get_price()
-        price_change = current_price - self.entry_price
+
+        if self.execution_model:
+            # Closing Long (SELL) or Closing Short (BUY)
+            action_type = "sell" if self.position > 0 else "buy"
+            sim_result = self.execution_model.simulate_execution(
+                action_type=action_type,
+                requested_price=current_price,
+                requested_size=abs(self.position),
+                current_atr=atr,
+            )
+            execution_price = sim_result.executed_price
+            slippage_rate = sim_result.slippage_rate
+            exit_cost = sim_result.fee
+        else:
+            # Apply slippage to execution price (Legacy)
+            slippage_rate = 0.0
+            if (
+                hasattr(self.config, "exchange_profile")
+                and self.config.exchange_profile
+            ):
+                slippage_rate = self.config.exchange_profile.slippage_rate
+            elif hasattr(self.config, "slippage"):
+                slippage_rate = float(self.config.slippage)
+
+            # Closing Long (SELL): price decreases (worse)
+            # Closing Short (BUY): price increases (worse)
+            execution_price = (
+                current_price * (1 - slippage_rate)
+                if self.position > 0
+                else current_price * (1 + slippage_rate)
+            )
+
+            trade_value = abs(self.position) * execution_price
+
+            # Use ExchangeProfile fee model if available
+            if (
+                hasattr(self.config, "exchange_profile")
+                and self.config.exchange_profile
+            ):
+                # Closing Long (SELL) or Closing Short (BUY)
+                trade_type = "sell" if self.position > 0 else "buy"
+                exit_cost = self.config.exchange_profile.fee_model.calculate_fee(
+                    trade_value, trade_type
+                )
+            else:
+                # Fallback to legacy transaction_cost
+                exit_cost = trade_value * float(self.config.transaction_cost)
+
+        price_change = execution_price - self.entry_price
         realized_trade_pnl = float(self.position) * price_change
 
-        # Deduct transaction cost (exit cost)
-        exit_cost = (
-            abs(self.position) * current_price * float(self.config.transaction_cost)
-        )
         realized_trade_pnl -= exit_cost
 
         # Accumulate realized PnL
@@ -282,9 +393,10 @@ class PositionManager:
             self._consecutive_trade_steps += 1
 
         logger.debug(
-            "Closed %s position: price=%.2f, entry=%.2f, pnl=%.2f, cost=%.2f",
+            "Closed %s position: price=%.2f (slip=%.4f), entry=%.2f, pnl=%.2f, cost=%.2f",
             "Long" if self.position > 0 else "Short",
-            current_price,
+            execution_price,
+            slippage_rate,
             self.entry_price,
             realized_trade_pnl + exit_cost,  # PnL before cost
             exit_cost,

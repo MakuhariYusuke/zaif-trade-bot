@@ -32,13 +32,18 @@ class BehavioralPenaltyCalculator:
         self.logger = get_logger(self.__class__.__name__)
         self._load_settings()
 
-        # Keep enough history to support all lookback-based calculations
-        max_lookback = max(
+        # Keep enough history to support all lookback-based calculations.
+        # Forced balance and balance-penalty logic operate on the same action window,
+        # so ensure we can hold at least that many entries before trimming.
+        history_windows = [
             self.lookback,
             getattr(self, "skewness_lookback", 0),
             getattr(self, "action_entropy_lookback", 0),
-        )
-        max_lookback = max(1, max_lookback)
+            getattr(self, "balance_penalty_min_actions", 0),
+            getattr(self, "forced_balance_min_actions", 0),
+        ]
+        max_lookback = max(1, max(history_windows))
+
         # Reserve an extra slot for the 'current' action when doing lookback-based checks
         # NOTE: lookback semantics in this component are defined such that a "lookback" value
         # indicates the number of prior steps to examine; the consistency check includes the
@@ -58,7 +63,9 @@ class BehavioralPenaltyCalculator:
         else:
             reward_settings = getattr(self.config, "reward_settings", None)
             # Support EnvironmentConfig.formatted configs that store optimization under 'behavior_optimization'
-            if reward_settings is None and hasattr(self.config, "behavior_optimization"):
+            if reward_settings is None and hasattr(
+                self.config, "behavior_optimization"
+            ):
                 reward_settings = getattr(self.config, "behavior_optimization", None)
 
         # Flexible accessor for reward settings: support dicts or RewardSettings dataclass.
@@ -73,7 +80,9 @@ class BehavioralPenaltyCalculator:
                     else None
                 )
                 # Support alternate key name 'behavior_optimization' used in some configs
-                if isinstance(behavior, dict) is False and isinstance(reward_settings, dict):
+                if isinstance(behavior, dict) is False and isinstance(
+                    reward_settings, dict
+                ):
                     behavior = reward_settings.get("behavior_optimization")
                 if isinstance(behavior, dict):
                     # If the nested behavior dict contains a generic key, prefer it.
@@ -84,7 +93,11 @@ class BehavioralPenaltyCalculator:
                         if not isinstance(val, dict):
                             return val
                     # consistency penalty
-                    if key in ["consistency_penalty_enabled", "consistency_penalty", "consistency_lookback"]:
+                    if key in [
+                        "consistency_penalty_enabled",
+                        "consistency_penalty",
+                        "consistency_lookback",
+                    ]:
                         cp = behavior.get("consistency_penalty")
                         if isinstance(cp, dict):
                             if key == "consistency_penalty_enabled":
@@ -96,7 +109,10 @@ class BehavioralPenaltyCalculator:
                                 return cp.get("lookback", default)
 
                     # emergency intervention settings (allow flat or nested under 'emergency_intervention')
-                    if key.startswith("emergency_intervention") or key == "balance_penalty_min_actions":
+                    if (
+                        key.startswith("emergency_intervention")
+                        or key == "balance_penalty_min_actions"
+                    ):
                         # First, look for nested dict behavior['emergency_intervention']
                         ei = behavior.get("emergency_intervention")
                         if isinstance(ei, dict):
@@ -128,11 +144,17 @@ class BehavioralPenaltyCalculator:
                     if isinstance(reward_settings, dict)
                     else None
                 )
-                if isinstance(behavior, dict) is False and isinstance(reward_settings, dict):
+                if isinstance(behavior, dict) is False and isinstance(
+                    reward_settings, dict
+                ):
                     behavior = reward_settings.get("behavior_optimization")
                 if isinstance(behavior, dict):
                     # consistency penalty
-                    if key in ["consistency_penalty_enabled", "consistency_penalty", "consistency_lookback"]:
+                    if key in [
+                        "consistency_penalty_enabled",
+                        "consistency_penalty",
+                        "consistency_lookback",
+                    ]:
                         cp = behavior.get("consistency_penalty")
                         if isinstance(cp, dict):
                             if key == "consistency_penalty_enabled":
@@ -144,7 +166,10 @@ class BehavioralPenaltyCalculator:
                                 return cp.get("lookback", default)
 
                     # emergency intervention settings
-                    if key.startswith("emergency_intervention") or key == "balance_penalty_min_actions":
+                    if (
+                        key.startswith("emergency_intervention")
+                        or key == "balance_penalty_min_actions"
+                    ):
                         ei = behavior.get("emergency_intervention")
                         if isinstance(ei, dict):
                             if key == "emergency_intervention_enabled":
@@ -195,10 +220,16 @@ class BehavioralPenaltyCalculator:
                 _rs_get("balance_penalty_min_actions", 1)
             )  # type: ignore
 
-            # Emergency intervention settings (SAC v448 Layer 2)
-            self.emergency_intervention_enabled = bool(
-                _rs_get("emergency_intervention_enabled", True)
+            # Forced balance stage shares the same action history window; default to 100 so
+            # existing configs without the key are unaffected while explicit configs enlarge it.
+            self.forced_balance_min_actions = int(
+                _rs_get("forced_balance_min_actions", 100)
             )
+
+            # Emergency intervention settings (SAC v448 Layer 2)
+            # MODIFIED: Disabled by default to prevent early convergence to HOLD
+            val = _rs_get("emergency_intervention_enabled", False)
+            self.emergency_intervention_enabled = bool(val)
             self.emergency_intervention_threshold = float(
                 _rs_get("emergency_intervention_threshold", 0.30)
             )  # type: ignore
@@ -258,10 +289,11 @@ class BehavioralPenaltyCalculator:
             self.hold_target = 0.4
             self.buy_target = 0.3
             self.sell_target = 0.3
+            self.forced_balance_min_actions = 0
+            self.emergency_intervention_enabled = False
 
         if self.lookback < 0:
             self.lookback = 0  # 0 disables consistency penalty
-
 
     def record_action(self, action: int):
         """
@@ -538,7 +570,7 @@ class BehavioralPenaltyCalculator:
         Returns:
             Emergency penalty if bias is extreme, 0.0 otherwise.
         """
-        if not getattr(self, "emergency_intervention_enabled", True):
+        if not getattr(self, "emergency_intervention_enabled", False):
             return 0.0
 
         counts = self._get_recent_counts()
@@ -607,6 +639,16 @@ class BehavioralPenaltyCalculator:
             "buy_target": adjusted_buy,
             "sell_target": adjusted_sell,
         }
+
+    def get_target_ratios(self) -> Dict[str, float]:
+        """Public accessor for the current target ratios (hold, buy, sell).
+
+        This is used by other components (e.g., RewardCalculator) to query
+        what behavioral targets should currently be used when enforcing balance
+        penalties. It delegates to _adjust_targets_by_trend to honor trend
+        adjustments when enabled.
+        """
+        return self._adjust_targets_by_trend()
 
     def reset(self):
         """Resets the internal state of the calculator."""

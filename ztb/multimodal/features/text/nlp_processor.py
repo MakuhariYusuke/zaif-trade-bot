@@ -8,7 +8,16 @@ from typing import Dict, List
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import AutoModel, AutoTokenizer
+
+try:
+    # Transformers is an optional dependency used for heavy NLP features; tests
+    # should not fail import if it's missing or incompatible with the torch
+    # installed in CI. We import lazily and fallback to None to avoid import
+    # errors during test collection.
+    from transformers import AutoModel, AutoTokenizer
+except Exception:  # pragma: no cover - optional runtime dep
+    AutoModel = None  # type: ignore
+    AutoTokenizer = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 

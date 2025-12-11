@@ -55,14 +55,20 @@ def monitor_training_process(pid: int, duration_seconds: int = 60) -> None:
         print(f"❌ Error: {e}")
 
 
-if __name__ == "__main__":
+def main() -> int:
     import sys
 
     if len(sys.argv) < 2:
         print("Usage: python monitor_training_memory.py <PID> [duration_seconds]")
-        sys.exit(1)
+        return 1
 
     pid = int(sys.argv[1])
     duration = int(sys.argv[2]) if len(sys.argv) > 2 else 60
-
     monitor_training_process(pid, duration)
+    return 0
+
+
+if __name__ == "__main__":
+    from ztb.utils.cli import run_main
+
+    run_main(main)

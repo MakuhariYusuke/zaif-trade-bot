@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\constants.py
+# hypothesis_version: 6.148.6
+
+[0.0, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.8, 1.0, 2.0, 5.0, 10.0, 100, 200, 300, 600, 1000, 1800, 4096, 5000, 'DEBUG', 'ERROR', 'INFO', 'MedianPruner', 'TPESampler', '_checkpoint.db', '_results.json', 'convergence_slow', 'evaluation_failed', 'maximize', 'memory_warning', 'optimization_results', 'sqlite', 'timeout_warning']

@@ -373,21 +373,25 @@ class GannAngleRecognizer(CandlestickPatternRecognizer):
         # Calculate market conditions for adaptive parameters
         returns = lookback_data["close"].pct_change().dropna()
         current_volatility = returns.std()
+
+        from ztb.features.generators.technical.trend.sma import compute_sma
+
+        rolling_vol = returns.rolling(window=20).std()
         avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
+            rolling_vol.mean() if len(returns) >= 20 else current_volatility
         )
         volatility_ratio = (
             current_volatility / avg_volatility if avg_volatility > 0 else 1.0
         )
 
         # Simple trend strength calculation
+        sma_series = compute_sma(lookback_data, period=20)
         sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
+            sma_series.iloc[-1]
+            if not sma_series.empty and not pd.isna(sma_series.iloc[-1])
+            else 0.0
         )
+
         trend_strength = (
             abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
             if sma_20 != 0
@@ -517,21 +521,25 @@ class GannSquareRecognizer(CandlestickPatternRecognizer):
         # Calculate market conditions for adaptive parameters
         returns = lookback_data["close"].pct_change().dropna()
         current_volatility = returns.std()
+
+        from ztb.features.generators.technical.trend.sma import compute_sma
+
+        rolling_vol = returns.rolling(window=20).std()
         avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
+            rolling_vol.mean() if len(returns) >= 20 else current_volatility
         )
         volatility_ratio = (
             current_volatility / avg_volatility if avg_volatility > 0 else 1.0
         )
 
         # Simple trend strength calculation
+        sma_series = compute_sma(lookback_data, period=20)
         sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
+            sma_series.iloc[-1]
+            if not sma_series.empty and not pd.isna(sma_series.iloc[-1])
+            else 0.0
         )
+
         trend_strength = (
             abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
             if sma_20 != 0
@@ -665,21 +673,25 @@ class GannTimeClusterRecognizer(CandlestickPatternRecognizer):
         lookback_data = data.iloc[index - self.lookback_period : index + 1]
         returns = lookback_data["close"].pct_change().dropna()
         current_volatility = returns.std()
+
+        from ztb.features.generators.technical.trend.sma import compute_sma
+
+        rolling_vol = returns.rolling(window=20).std()
         avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
+            rolling_vol.mean() if len(returns) >= 20 else current_volatility
         )
         volatility_ratio = (
             current_volatility / avg_volatility if avg_volatility > 0 else 1.0
         )
 
         # Simple trend strength calculation
+        sma_series = compute_sma(lookback_data, period=20)
         sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
+            sma_series.iloc[-1]
+            if not sma_series.empty and not pd.isna(sma_series.iloc[-1])
+            else 0.0
         )
+
         trend_strength = (
             abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
             if sma_20 != 0
