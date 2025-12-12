@@ -70,6 +70,19 @@ data/*.csv
 data/*.zip
 data/metadata/
 
+# Backtest/results/artifacts
+results/
+backtest_results/
+backtest_experiments/
+eval_logs/
+runs/
+exports/
+training_results/
+analysis_results/
+best_model/
+temp/
+temp_model/
+
 # Misc
 typescript_legacy.zip
 .positions/
