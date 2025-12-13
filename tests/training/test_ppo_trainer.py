@@ -11,6 +11,7 @@ Tests cover:
 """
 
 # mypy: disable-error-code="no-untyped-def,arg-type,attr-defined,var-annotated,union-attr,import-untyped,no-any-return,misc"
+# ci: trigger python-validation (noop)
 
 import tempfile
 from pathlib import Path
