@@ -12,11 +12,11 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
-COPY requirements.txt requirements-dev.txt ./
+COPY config/requirements/requirements.txt config/requirements/requirements-dev.txt ./
 
 RUN python -m pip install --upgrade pip
 RUN pip install -r requirements.txt || true
-RUN pip install -r requirements-dev.txt || true
+RUN pip install -r config/requirements/requirements-dev.txt || true
 RUN pip install pytest pytest-cov mypy flake8 ruff
 
 COPY tools/ci-entrypoint.sh /usr/local/bin/ci-entrypoint.sh
