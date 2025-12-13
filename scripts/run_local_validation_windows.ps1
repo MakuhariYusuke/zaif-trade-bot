@@ -58,6 +58,7 @@ Write-Host "Running ruff..." | Tee-Object -FilePath $LogFile -Append
 python -m ruff check ztb/ 2>&1 | Tee-Object -FilePath $LogFile -Append
 
 Write-Host "Running a small pytest subset (skip heavy modules)" | Tee-Object -FilePath $LogFile -Append
-python -m pytest tests/test_backtest.py tests/test_risk.py -v --tb=short 2>&1 | Tee-Object -FilePath $LogFile -Append
+# Use a lightweight, cross-platform subset of tests that avoid heavy imports
+python -m pytest tests/test_position_scaling.py tests/test_trailing_stop_placeholder.py -v --tb=short 2>&1 | Tee-Object -FilePath $LogFile -Append
 
 Write-Host "Validation complete. Logs written to $LogFile"
