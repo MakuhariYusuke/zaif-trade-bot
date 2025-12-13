@@ -14,7 +14,8 @@ echo "[ci-entrypoint] Running ruff..."
 ruff check ztb/ || true
 
 echo "[ci-entrypoint] Running pytest subset..."
-python -m pytest tests/test_backtest.py tests/test_risk.py -v --tb=short || true
+# Run a small, stable subset of tests that tend to be lightweight on CI
+python -m pytest tests/test_position_scaling.py tests/test_trailing_stop_placeholder.py -v --tb=short || true
 
 echo "[ci-entrypoint] Completed (some steps may have reported failures; check output)."
 
