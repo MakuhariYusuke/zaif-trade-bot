@@ -4,6 +4,7 @@ This will detect an existing .venv and use it; otherwise it'll create a venv at 
 #>
 param(
     [switch]$CreateVenv = $false,
+    [switch]$InstallProd = $false,
     [string]$LogFile = "logs/ci-local-windows-$(Get-Date -Format yyyyMMddHHmmss).log"
 )
 
@@ -21,9 +22,15 @@ if (Test-Path $activate) { . $activate }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot '..\logs') | Out-Null
 
-Write-Host "Installing dev requirements..."
+Write-Host "Installing dev requirements (production deps skipped by default)..."
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt -r requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+if ($InstallProd) {
+    Write-Host "Installing production requirements as well (this may be slow and include heavy native packages)..." | Tee-Object -FilePath $LogFile -Append
+    python -m pip install -r requirements.txt -r requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+} else {
+    # Only dev requirements to speed up local runs and avoid heavy packages like torch
+    python -m pip install -r requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+}
 
 Write-Host "Running mypy..." | Tee-Object -FilePath $LogFile -Append
 python -m mypy ztb/ --ignore-missing-imports 2>&1 | Tee-Object -FilePath $LogFile -Append
