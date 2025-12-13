@@ -45,7 +45,7 @@ if ($InstallProd) {
     python -m pip install -r config/requirements/requirements.txt -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
 } else {
     # Only a minimal dev set to ensure the tools run locally on Windows; this avoids heavy or platform-constrained packages
-    python -m pip install mypy flake8 ruff pytest pytest-cov pyyaml | Tee-Object -FilePath $LogFile -Append
+    python -m pip install mypy flake8 ruff pytest pytest-cov pyyaml pydantic | Tee-Object -FilePath $LogFile -Append
 }
 
 Write-Host "Running mypy..." | Tee-Object -FilePath $LogFile -Append
