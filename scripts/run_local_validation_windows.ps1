@@ -44,8 +44,8 @@ if ($InstallProd) {
     Write-Host "Installing production requirements as well (this may be slow and include heavy native packages)..." | Tee-Object -FilePath $LogFile -Append
     python -m pip install -r config/requirements/requirements.txt -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
 } else {
-    # Only dev requirements to speed up local runs and avoid heavy packages like torch
-    python -m pip install -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+    # Only a minimal dev set to ensure the tools run locally on Windows; this avoids heavy or platform-constrained packages
+    python -m pip install mypy flake8 ruff pytest pytest-cov | Tee-Object -FilePath $LogFile -Append
 }
 
 Write-Host "Running mypy..." | Tee-Object -FilePath $LogFile -Append
