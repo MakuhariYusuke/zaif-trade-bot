@@ -74,6 +74,22 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Test Coverage**: 100% pass rate across all 29 tests with comprehensive component validation
 - **Bug Fixes**: Resolved AutomaticOptimizationPipeline system_optimizer attribute issue
 
+---
+
+## 🔧 Repository maintenance notice
+
+- **History rewrite & Git LFS migration (2025-12-13)**: Large historical artifacts were migrated to Git LFS and the repository history was rewritten to remove oversized blobs. The repository pack size is now dramatically reduced.
+- **Action for contributors / forks**: If you have an existing clone of this repository, **please re-clone** or run:
+
+```bash
+git fetch origin --prune
+git reset --hard origin/main
+git lfs install --local
+git lfs pull --all
+```
+
+This ensures your local clone matches the rewritten history and has all LFS objects. If you maintain forks or CI checkouts, update them accordingly.
+
 ### Week 11-12: Advanced Automatic Optimization 完了 ✅
 - **3層最適化アーキテクチャ**: ハイパーパラメータ→マルチタイムフレーム→A/Bテストの深い最適化層
 - **UnifiedOptimizer拡張**: 既存アセット（BayesianOptimizer, IntegratedParameterOptimizer）を活用した統合最適化システム
