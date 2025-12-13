@@ -18,7 +18,23 @@ if (-not (Test-Path -Path (Join-Path $PSScriptRoot '..\.venv\Scripts\Activate.ps
 }
 
 $activate = (Join-Path $PSScriptRoot '..\.venv\Scripts\Activate.ps1')
-if (Test-Path $activate) { . $activate }
+if (Test-Path $activate) {
+    # If the existing .venv's python points to a non-existent executable (e.g., removed Python version), recreate the venv
+    $pycfg = Join-Path $PSScriptRoot '..\.venv\pyvenv.cfg'
+    $recreate = $false
+    if (Test-Path $pycfg) {
+        $content = Get-Content $pycfg -Raw
+        if ($content -match 'executable\s*=\s*(.+)') {
+            $exe = $matches[1].Trim()
+            if (-not (Test-Path $exe)) { $recreate = $true }
+        }
+    }
+    if ($recreate -or $CreateVenv) {
+        Write-Host "Recreating .venv with current python executable..."
+        python -m venv .venv --clear
+    }
+    . $activate
+}
 
 New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot '..\logs') | Out-Null
 
