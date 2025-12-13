@@ -28,12 +28,12 @@ training_results/**/*.zip filter=lfs diff=lfs merge=lfs -text
 .mypy_cache/** filter=lfs diff=lfs merge=lfs -text
 results/evaluation_raw_20250920_103303.json filter=lfs diff=lfs merge=lfs -text
 node_modules/typescript/** filter=lfs diff=lfs merge=lfs -text
-models/**/*.zip filter=lfs diff=lfs merge=lfs -text
-backtest_experiments/** filter=lfs diff=lfs merge=lfs -text
 coverage/** filter=lfs diff=lfs merge=lfs -text
 vitest-report*.json filter=lfs diff=lfs merge=lfs -text
 temp_model/** filter=lfs diff=lfs merge=lfs -text
 data/metadata/** filter=lfs diff=lfs merge=lfs -text
+models/**/*.zip filter=lfs diff=lfs merge=lfs -text
+backtest_experiments/** filter=lfs diff=lfs merge=lfs -text
 training_log_*.txt filter=lfs diff=lfs merge=lfs -text
 btc_jpy*/*.csv filter=lfs diff=lfs merge=lfs -text
 btc_jpy_*.csv filter=lfs diff=lfs merge=lfs -text
