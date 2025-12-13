@@ -32,14 +32,14 @@ coverage/** filter=lfs diff=lfs merge=lfs -text
 vitest-report*.json filter=lfs diff=lfs merge=lfs -text
 temp_model/** filter=lfs diff=lfs merge=lfs -text
 data/metadata/** filter=lfs diff=lfs merge=lfs -text
+data/datasets/** filter=lfs diff=lfs merge=lfs -text
+data/benchmarks/** filter=lfs diff=lfs merge=lfs -text
+data/cache/** filter=lfs diff=lfs merge=lfs -text
 models/**/*.zip filter=lfs diff=lfs merge=lfs -text
 backtest_experiments/** filter=lfs diff=lfs merge=lfs -text
 training_log_*.txt filter=lfs diff=lfs merge=lfs -text
 btc_jpy*/*.csv filter=lfs diff=lfs merge=lfs -text
 btc_jpy_*.csv filter=lfs diff=lfs merge=lfs -text
-data/datasets/** filter=lfs diff=lfs merge=lfs -text
-data/benchmarks/** filter=lfs diff=lfs merge=lfs -text
-data/cache/** filter=lfs diff=lfs merge=lfs -text
 training_log*.txt filter=lfs diff=lfs merge=lfs -text
 *.bak filter=lfs diff=lfs merge=lfs -text
 btc_jpy_* filter=lfs diff=lfs merge=lfs -text
