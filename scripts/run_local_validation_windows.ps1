@@ -42,10 +42,10 @@ Write-Host "Installing dev requirements (production deps skipped by default)..."
 python -m pip install --upgrade pip
 if ($InstallProd) {
     Write-Host "Installing production requirements as well (this may be slow and include heavy native packages)..." | Tee-Object -FilePath $LogFile -Append
-    python -m pip install -r requirements.txt -r requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+    python -m pip install -r config/requirements/requirements.txt -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
 } else {
     # Only dev requirements to speed up local runs and avoid heavy packages like torch
-    python -m pip install -r requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
+    python -m pip install -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
 }
 
 Write-Host "Running mypy..." | Tee-Object -FilePath $LogFile -Append
