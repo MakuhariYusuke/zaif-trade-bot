@@ -14,11 +14,25 @@ Tests cover:
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
 
 from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
+
+if TYPE_CHECKING:
+    from ztb.training.config.trainer_params import TrainerParams
+    from ztb.training.core.ppo_trainer import (
+        PPOTrainer,
+        PPOTrainerAutoHalt,
+        TrainingConfig,
+    )
+else:
+    TrainerParams = object
+    PPOTrainer = object
+    PPOTrainerAutoHalt = object
+    TrainingConfig = object
 
 
 class TestPPOTrainerAutoHalt:
@@ -67,7 +81,7 @@ class TestPPOTrainerAutoHalt:
         assert str(trainer.checkpoint_dir) == str(trainer_params.checkpoint_dir)
         assert hasattr(trainer, "training_config")
         assert isinstance(trainer.training_config, TrainingConfig)
-        assert trainer.eval_gates.enabled == False  # Should be disabled from config
+        assert trainer.eval_gates.enabled is False  # Should be disabled from config
 
     def test_initialization_validation_missing_data_path(self, temp_dir, sample_config):
         """Test initialization fails with missing data_path."""
@@ -471,7 +485,7 @@ class TestPPOTrainerAutoHalt:
             assert env == mock_action_masker_instance
 
 
-class TestPPOTrainerBasic:
+class TestPPOTrainerBasicExtended:
     """Test PPOTrainer functionality."""
 
     @pytest.fixture
@@ -548,7 +562,7 @@ class TestTrainingConfig:
         assert config.max_grad_norm == 1.0
         assert config.total_timesteps == 5000
         assert config.reward_scaling == 2.0
-        assert config.use_custom_ppo == True
+        assert config.use_custom_ppo is True
 
     def test_from_dict_defaults(self):
         """Test TrainingConfig.from_dict with minimal config (uses defaults)."""
@@ -568,7 +582,7 @@ class TestTrainingConfig:
         assert config.vf_coef == 0.5
         assert config.max_grad_norm == 0.5
         # Note: use_custom_ppo defaults to True in TrainingConfig
-        assert config.use_custom_ppo == True
+        assert config.use_custom_ppo is True
 
 
 class TestPPOTrainerBasic:
@@ -644,7 +658,7 @@ class TestPPOTrainerBasic:
         assert trainer.training_config.ent_coef == 0.0
         assert trainer.training_config.vf_coef == 0.5
         assert trainer.training_config.max_grad_norm == 0.5
-        assert trainer.training_config.use_custom_ppo == False
+        assert trainer.training_config.use_custom_ppo is False
 
     def test_ppo_trainer_initialization_missing_data_path(
         self, temp_dir, sample_config
@@ -826,13 +840,15 @@ class TestPPOAlgorithmTrainer:
 
     def test_ppo_algorithm_trainer_initialization(self, temp_dir, sample_config):
         """Test PPOAlgorithmTrainer initialization."""
-        from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
+        from ztb.training.unified_trainer.components.config_manager import (
+            TrainingConfigManager,
+        )
 
         config_manager = TrainingConfigManager()
         trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
 
         assert trainer.config_manager == config_manager
-        assert trainer.progress_bar_enabled == True
-        assert hasattr(trainer, 'ui_manager')
-        assert hasattr(trainer, 'reporter')
+        assert trainer.progress_bar_enabled is True
+        assert hasattr(trainer, "ui_manager")
+        assert hasattr(trainer, "reporter")
         assert trainer.logger is not None
