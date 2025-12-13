@@ -8,6 +8,8 @@ __LAZY_MODULE_ATTRS__ = {
     ),
 }
 
+# CI trigger: no-op change to force GitHub Actions run
+
 
 def __getattr__(name: str):
     if name in __LAZY_MODULE_ATTRS__:
