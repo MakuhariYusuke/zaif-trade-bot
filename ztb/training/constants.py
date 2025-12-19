@@ -23,6 +23,7 @@ DEFAULT_BATCH_SIZE_DQN = 32
 
 # Buffer sizes for replay buffers
 DEFAULT_BUFFER_SIZE_SAC = 1000000
+DEFAULT_BUFFER_SIZE_MEDIUM = 100000  # Medium buffer size for standard training
 DEFAULT_BUFFER_SIZE_AGGRESSIVE = 10000  # Smaller buffer for aggressive exploration
 
 # General batch sizes for environments
@@ -36,6 +37,16 @@ BATCH_SIZE_XLARGE = 512
 DEFAULT_TOTAL_TIMESTEPS_PPO = 100000
 DEFAULT_TOTAL_TIMESTEPS_SAC = 100000
 DEFAULT_TOTAL_TIMESTEPS_DQN = 50000
+
+# Learning starts
+DEFAULT_LEARNING_STARTS_SAC = 1000
+DEFAULT_LEARNING_STARTS_MINIMAL = 100
+
+# Discount factor
+DEFAULT_GAMMA = 0.99
+
+# Target network update rate
+DEFAULT_TAU = 0.005
 
 # ============================================================================
 # Training Environment Constants

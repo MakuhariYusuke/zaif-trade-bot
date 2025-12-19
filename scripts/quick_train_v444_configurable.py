@@ -29,6 +29,7 @@ try:
     from stable_baselines3 import SAC
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
     from ztb.utils.constants import DEFAULT_SEED
+    from ztb.training.constants import DEFAULT_BUFFER_SIZE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU
 except ImportError as e:
     print(f"⚠️ Import error: {e}")
     print("Attempting to continue with available modules...")
@@ -123,12 +124,12 @@ class DirectTrainer:
             model = SAC(
                 "MlpPolicy",
                 env,
-                learning_rate=0.0003,
-                buffer_size=1000000,
-                learning_starts=1000,
-                batch_size=256,
-                tau=0.005,
-                gamma=0.99,
+                learning_rate=DEFAULT_LEARNING_RATE_SAC,
+                buffer_size=DEFAULT_BUFFER_SIZE_SAC,
+                learning_starts=DEFAULT_LEARNING_STARTS_SAC,
+                batch_size=DEFAULT_BATCH_SIZE_SAC,
+                tau=DEFAULT_TAU,
+                gamma=DEFAULT_GAMMA,
                 ent_coef='auto_1.0',
                 target_update_interval=1,
                 verbose=2 if self.verbose else 0,

@@ -14,6 +14,7 @@ import gymnasium as gym
 import numpy as np
 
 from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
+from ztb.training.constants import DEFAULT_BUFFER_SIZE_AGGRESSIVE, BATCH_SIZE_SMALL, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_MINIMAL, DEFAULT_GAMMA, DEFAULT_TAU
 from ztb.utils.file_utils import get_project_root
 
 from stable_baselines3 import SAC
@@ -91,12 +92,12 @@ def main():
     model = SAC(
         "MlpPolicy",
         env,
-        learning_rate=3e-4,
-        buffer_size=10000,  # Smaller buffer for quick training
-        learning_starts=100,
-        batch_size=64,  # Smaller batch for quick training
-        tau=0.005,
-        gamma=0.99,
+        learning_rate=DEFAULT_LEARNING_RATE_SAC,
+        buffer_size=DEFAULT_BUFFER_SIZE_AGGRESSIVE,  # Smaller buffer for quick training
+        learning_starts=DEFAULT_LEARNING_STARTS_MINIMAL,
+        batch_size=BATCH_SIZE_SMALL,  # Smaller batch for quick training
+        tau=DEFAULT_TAU,
+        gamma=DEFAULT_GAMMA,
         ent_coef=0.1,
         target_update_interval=1,
         verbose=1,
