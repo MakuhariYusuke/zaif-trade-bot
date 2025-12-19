@@ -24,6 +24,7 @@ except Exception:
 # avoids side-effects or expensive imports during test collection.
 import importlib.util
 
+from ztb.analysis.common.types import TrainerProtocol
 from ztb.training.constants import DEFAULT_LEARNING_RATE
 from ztb.training.trainers.base_trainer import BaseTrainer
 from ztb.types.common import (
@@ -106,7 +107,7 @@ if TYPE_CHECKING:
     # Type-only import to avoid name collision with runtime EnsemblePredictor
 
 
-class UnifiedTrainer(BaseTrainer):
+class UnifiedTrainer(BaseTrainer, TrainerProtocol):
     """
     Refactored Unified training interface with enhanced UI and modularity.
 
