@@ -5,7 +5,7 @@ Central configuration management for ZTB system
 """
 
 import os
-from typing import Any, Dict, List, Optional, TypeVar, cast
+from typing import Any, Dict, List, Optional, TypeVar, Union, cast, overload
 
 try:
     import jsonschema
@@ -45,9 +45,18 @@ class ZTBConfig:
         "additionalProperties": True,
     }
 
-    def get(self, key: str, default: T = None) -> str | T:
+    @overload
+    def get(self, key: str) -> str | None: ...
+
+    @overload
+    def get(self, key: str, default: str) -> str: ...
+
+    @overload
+    def get(self, key: str, default: T) -> T: ...
+
+    def get(self, key: str, default: str | T | None = None) -> str | T:
         """Get configuration value from environment variables"""
-        return os.getenv(key, default)
+        return cast(Union[str, T], os.getenv(key, default))
 
     def get_bool(self, key: str, default: bool = False) -> bool:
         """Get boolean configuration value"""
@@ -95,8 +104,9 @@ class ZTBConfig:
             return True
 
         # Collect current configuration
-        config_dict = {}
-        for key in self.CONFIG_SCHEMA.get("properties", {}):
+        config_dict: Dict[str, Any] = {}
+        properties = cast(Dict[str, Any], self.CONFIG_SCHEMA.get("properties", {}))
+        for key in properties:
             value = os.getenv(key)
             if value is not None:
                 # Convert string values to appropriate types
@@ -147,7 +157,8 @@ class ZTBConfig:
             raise ValueError("Configuration validation failed")
 
         config = {}
-        for key in self.CONFIG_SCHEMA.get("properties", {}):
+        properties = cast(Dict[str, Any], self.CONFIG_SCHEMA.get("properties", {}))
+        for key in properties:
             value = os.getenv(key)
             if value is not None:
                 config[key] = value
@@ -161,7 +172,7 @@ class ZTBConfig:
         Returns:
             Environment name
         """
-        return cast(str, self.get("ZTB_ENV", "development"))
+        return self.get("ZTB_ENV", "development")
 
     def is_development(self) -> bool:
         """Check if running in development environment."""
@@ -185,7 +196,7 @@ class ZTBConfig:
         env = self.get_environment()
 
         # Base configuration for all environments
-        config = {
+        config: Dict[str, Any] = {
             "debug": self.is_development(),
             "log_level": "DEBUG" if self.is_development() else "INFO",
             "enable_profiling": self.is_development(),
@@ -214,7 +225,7 @@ class ZTBConfig:
 
     def get_model_dir(self) -> str:
         """Get the base directory for model files."""
-        return cast(str, self.get("ZTB_MODEL_DIR", "models"))
+        return self.get("ZTB_MODEL_DIR", "models")
 
     def get_model_path(self, model_name: str) -> str:
         """Get full path for a specific model file."""
@@ -242,15 +253,11 @@ def get_config_value(
             return default
 
         if expected_type is str:
-            return str(raw_value)  # type: ignore
+            return cast(T, str(raw_value))
         elif expected_type is int:
-            return int(raw_value) if isinstance(raw_value, (int, str)) else default  # type: ignore
+            return cast(T, int(raw_value)) if isinstance(raw_value, (int, str)) else default
         elif expected_type is float:
-            return (
-                float(raw_value)
-                if isinstance(raw_value, (int, float, str))
-                else default
-            )  # type: ignore
+            return cast(T, float(raw_value)) if isinstance(raw_value, (int, float, str)) else default
         elif expected_type is bool:
             if isinstance(raw_value, bool):
                 return raw_value  # type: ignore
