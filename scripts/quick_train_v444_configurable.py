@@ -29,7 +29,7 @@ try:
     from stable_baselines3 import SAC
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
     from ztb.utils.constants import DEFAULT_SEED
-    from ztb.training.constants import DEFAULT_BUFFER_SIZE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU
+    from ztb.training.constants import DEFAULT_BUFFER_SIZE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU, DEFAULT_ENT_COEF_AUTO, DEFAULT_TARGET_UPDATE_INTERVAL
 except ImportError as e:
     print(f"⚠️ Import error: {e}")
     print("Attempting to continue with available modules...")
@@ -130,8 +130,8 @@ class DirectTrainer:
                 batch_size=DEFAULT_BATCH_SIZE_SAC,
                 tau=DEFAULT_TAU,
                 gamma=DEFAULT_GAMMA,
-                ent_coef='auto_1.0',
-                target_update_interval=1,
+                ent_coef=DEFAULT_ENT_COEF_AUTO,
+                target_update_interval=DEFAULT_TARGET_UPDATE_INTERVAL,
                 verbose=2 if self.verbose else 0,
             )
 

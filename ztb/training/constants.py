@@ -48,6 +48,16 @@ DEFAULT_GAMMA = 0.99
 # Target network update rate
 DEFAULT_TAU = 0.005
 
+# Entropy coefficient for SAC
+DEFAULT_ENT_COEF_SAC = 0.1
+DEFAULT_ENT_COEF_AUTO = 'auto_1.0'
+
+# Target update interval
+DEFAULT_TARGET_UPDATE_INTERVAL = 1
+
+# Verbosity level
+DEFAULT_VERBOSE = 1
+
 # ============================================================================
 # Training Environment Constants
 # ============================================================================

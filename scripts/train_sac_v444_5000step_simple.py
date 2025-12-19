@@ -25,7 +25,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
-from ztb.training.constants import DEFAULT_BUFFER_SIZE_MEDIUM, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU
+from ztb.training.constants import DEFAULT_BUFFER_SIZE_MEDIUM, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU, DEFAULT_ENT_COEF_SAC, DEFAULT_TARGET_UPDATE_INTERVAL, DEFAULT_VERBOSE
 from ztb.utils.logging_utils import setup_logging
 
 setup_logging()
@@ -128,9 +128,9 @@ def main():
         batch_size=DEFAULT_BATCH_SIZE_SAC,
         tau=DEFAULT_TAU,
         gamma=DEFAULT_GAMMA,
-        ent_coef=0.1,
-        target_update_interval=1,
-        verbose=1,
+        ent_coef=DEFAULT_ENT_COEF_SAC,
+        target_update_interval=DEFAULT_TARGET_UPDATE_INTERVAL,
+        verbose=DEFAULT_VERBOSE,
     )
 
     # Setup checkpoint callback
