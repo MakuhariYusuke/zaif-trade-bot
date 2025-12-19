@@ -8,6 +8,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -17,6 +18,8 @@ import numpy as np
 # Add project root to path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
+
+from ztb.utils.training_utils import display_training_complete, save_model
 
 try:
     import gymnasium as gym
@@ -338,7 +341,7 @@ class SimplifiedAggressiveTrainer:
         # モデル保存
         if self.model:
             model_file = output_path / f"simplified_aggressive_model_{timestamp}"
-            self.model.save(model_file)
+            save_model(self.model, str(model_file))
             self.logger.info(f"Model saved to {model_file}")
 
         self.logger.info(f"Results saved to {output_path}")
@@ -365,13 +368,20 @@ def main():
 
     args = parser.parse_args()
 
+    start_time = time.time()
+
     trainer = SimplifiedAggressiveTrainer(args.config, args.verbose)
 
     try:
         results = trainer.train()
         trainer.save_results(args.output_dir)
-        print("🎉 Simplified Aggressive Performance Training completed successfully!")
-        print(f"Results saved to {args.output_dir}")
+
+        training_time = time.time() - start_time
+        final_metrics = {
+            "training_success": True,
+            "results_saved_to": args.output_dir,
+        }
+        display_training_complete(final_metrics, training_time)
 
     except Exception as e:
         print(f"❌ Training failed: {e}")

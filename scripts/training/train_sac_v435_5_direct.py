@@ -6,6 +6,7 @@ SAC v435.5 Training Script - Micro frequency penalty scalping
 
 import json
 import logging
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
+from ztb.utils.training_utils import display_training_complete, save_model
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,8 @@ logger = logging.getLogger(__name__)
 def main():
     print("🚀 SAC v435.5 Training - Micro frequency penalty scalping")
     print("=" * 60)
+
+    start_time = time.time()
 
     # Load configuration
     config_dir = Path("backtest_experiments/v435.5")
@@ -99,15 +103,16 @@ def main():
 
     # Save final model
     model_path = f"models/{config['model_name']}.zip"
-    model.save(model_path)
-    print(f"✅ Model saved to {model_path}")
+    save_model(model, model_path)
 
-    print("\n" + "=" * 60)
-    print("✅ SAC v435.5 training completed successfully!")
-    print(f"Model: {config['model_name']}")
-    print(f"Timesteps: {total_timesteps:,}")
-    print(f"Frequency penalty: {config['reward_function']['action_frequency_penalty']}")
-    print("=" * 60)
+    training_time = time.time() - start_time
+    final_metrics = {
+        "model_name": config['model_name'],
+        "timesteps": total_timesteps,
+        "frequency_penalty": config['reward_function']['action_frequency_penalty'],
+        "training_success": True,
+    }
+    display_training_complete(final_metrics, training_time)
 
 
 if __name__ == "__main__":

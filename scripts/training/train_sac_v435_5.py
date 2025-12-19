@@ -4,14 +4,18 @@ SAC v435.5 Training - Micro frequency penalty scalping
 微少な高頻度ペナルティを課すスケルピングモデル
 """
 import json
+import time
 from pathlib import Path
 
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
     print("🚀 SAC v435.5 Training - Micro frequency penalty scalping")
     print("=" * 60)
+
+    start_time = time.time()
 
     # 設定ファイルのパス
     config_dir = Path("backtest_experiments/v435.5")
@@ -52,13 +56,19 @@ def main():
     trainer = create_algorithm_trainer("sac", config)
     result = trainer.train()
 
-    print("\n" + "=" * 60)
+    training_time = time.time() - start_time
     if result:
-        print("✅ Training completed successfully!")
         stats = trainer.get_training_stats()
-        print(f"Model saved to: {stats.get('model_path', 'N/A')}")
-        print(f"Final reward: {stats.get('final_reward', 'N/A')}")
-        print(f"Training time: {stats.get('training_time', 'N/A')}")
+        final_metrics = {
+            "model_path": stats.get('model_path', 'N/A'),
+            "final_reward": stats.get('final_reward', 'N/A'),
+            "training_success": True,
+        }
+    else:
+        final_metrics = {
+            "training_success": False,
+        }
+    display_training_complete(final_metrics, training_time)
     else:
         print("❌ Training failed")
     print("=" * 60)

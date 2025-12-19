@@ -156,6 +156,7 @@ def _compute_max_drawdown_pct(values: Sequence[float]) -> float:
                 max_drawdown = drawdown
     return max_drawdown * 100.0
 
+
 def _run_episode(
     *,
     env: HeavyTradingEnv,
@@ -330,6 +331,11 @@ def run_grid_search(
         logger.info(
             f"{i+1}. Return: {r['total_return_pct']:.2f}% | Trades: {r['total_trades']} | Win: {r.get('win_rate', 0.0):.1%} | Sharpe: {r.get('sharpe_ratio', 0.0):.3f} | DD: {r.get('max_drawdown_pct', 0.0):.2f}% | Z={r['entry_zscore_threshold']} TP={r['take_profit_pct']} SL={r['stop_loss_pct']}"
         )
+
+    try:
+        env.close()
+    except Exception:
+        pass
 
     return 0
 
