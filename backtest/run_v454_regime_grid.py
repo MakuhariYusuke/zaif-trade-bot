@@ -367,7 +367,7 @@ def main() -> int:
     parser.add_argument("--data-path", default="data/btc_jpy_1m_v454.csv")
     parser.add_argument(
         "--entry-source",
-        choices=["zscore", "model"],
+        choices=["zscore", "model", "pullback"],
         default="zscore",
         help="Entry source override for the target regime",
     )

@@ -1007,6 +1007,38 @@ class HeavyTradingEnv(
                                             debug_info["entry_action_source"] = "zscore"
                                             debug_info["entry_filter_zscore"] = z_val
                                             debug_info["entry_filter_threshold"] = z_thr
+                                    elif entry_source == "pullback":
+                                        # Pullback-aware trend following: Buy dips in bull trends, sell rallies in bear trends.
+                                        rsi_col = "rsi_risk_adjusted_14"
+                                        atr_col = "ATR_simplified"
+                                        ma_col = "RollingMean14"
+                                        
+                                        try:
+                                            rsi_val = float(self.df.iloc[self.current_step][rsi_col])
+                                            atr_val = float(self.df.iloc[self.current_step][atr_col])
+                                            ma_val = float(self.df.iloc[self.current_step][ma_col])
+                                            close_val = float(self.df.iloc[self.current_step]["close"])
+                                        except Exception:
+                                            rsi_val = atr_val = ma_val = close_val = float("nan")
+                                        
+                                        if np.isfinite(rsi_val) and np.isfinite(atr_val) and np.isfinite(ma_val) and np.isfinite(close_val):
+                                            # Determine trend direction from regime
+                                            is_bull = "bull" in regime_str.lower()
+                                            is_bear = "bear" in regime_str.lower()
+                                            
+                                            if is_bull and rsi_val < 30.0:  # Oversold in bull trend -> BUY
+                                                actual_action = ACTION_BUY
+                                            elif is_bear and rsi_val > 70.0:  # Overbought in bear trend -> SELL
+                                                actual_action = ACTION_SELL
+                                            else:
+                                                actual_action = ACTION_HOLD
+                                            
+                                            if isinstance(debug_info, dict):
+                                                debug_info["entry_action_source"] = "pullback"
+                                                debug_info["entry_filter_rsi"] = rsi_val
+                                                debug_info["entry_filter_regime"] = regime_str
+                                        else:
+                                            actual_action = ACTION_HOLD
                                     elif actual_action in (ACTION_BUY, ACTION_SELL):
                                         # Sanity check: only allow model entries that align with the z-score extreme.
                                         allow = True

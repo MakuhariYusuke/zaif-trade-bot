@@ -112,7 +112,7 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
@@ -124,7 +124,7 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
@@ -136,7 +136,7 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
@@ -148,7 +148,7 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
@@ -160,7 +160,7 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
@@ -172,7 +172,7 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "model",
+              "entry_action_source": "pullback",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,

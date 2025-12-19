@@ -42,6 +42,16 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
         return default
 
 
+def get_project_root() -> Path:
+    """
+    Get the project root directory.
+
+    Returns:
+        Path to the project root directory
+    """
+    return Path(__file__).resolve().parent.parent.parent
+
+
 def safe_json_dump(
     data: Any, file_path: Union[str, Path], indent: int = 2, default: Any = None
 ) -> bool:
