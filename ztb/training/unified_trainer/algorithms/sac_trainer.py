@@ -37,7 +37,7 @@ from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointManager,
 )
 from ztb.training.config.configuration_manager import ConfigurationManager
-from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC
+from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC, DEFAULT_BATCH_SIZE_SAC
 from ztb.training.unified_trainer.base.base_trainer import (
     BaseAlgorithmTrainer,
     ModelError,
@@ -860,7 +860,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                         learning_rate=sac_config.get("learning_rate", DEFAULT_LEARNING_RATE_SAC),
                         buffer_size=sac_config.get("buffer_size", 1000000),
                         learning_starts=sac_config.get("learning_starts", 100),
-                        batch_size=sac_config.get("batch_size", 256),
+                        batch_size=sac_config.get("batch_size", DEFAULT_BATCH_SIZE_SAC),
                         tau=sac_config.get("tau", 0.005),
                         gamma=sac_config.get("gamma", 0.99),
                         train_freq=sac_config.get("train_freq", 1),
@@ -1505,7 +1505,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 .get("learning_rate", 3e-4),
                 "batch_size": unified_config.get("training", {})
                 .get("sac_hyperparameters", {})
-                .get("batch_size", 256),
+                .get("batch_size", DEFAULT_BATCH_SIZE_SAC),
                 "buffer_size": unified_config.get("training", {})
                 .get("sac_hyperparameters", {})
                 .get("buffer_size", 1000000),

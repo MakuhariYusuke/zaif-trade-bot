@@ -58,7 +58,7 @@ def create_ppo_model(
         env,
         learning_rate=ppo_config.get("learning_rate", 3e-4),
         n_steps=ppo_config.get("n_steps", PPO_DEFAULT_N_STEPS),
-        batch_size=ppo_config.get("batch_size", 64),
+        batch_size=ppo_config.get("batch_size", DEFAULT_BATCH_SIZE_PPO),
         n_epochs=ppo_config.get("n_epochs", 10),
         gamma=ppo_config.get("gamma", 0.99),
         gae_lambda=ppo_config.get("gae_lambda", 0.95),

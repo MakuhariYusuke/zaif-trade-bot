@@ -20,11 +20,12 @@ class LoadableClass(Protocol):
         ...
 
 
-from ztb.utils.types import TrainingResult, ValidationResult
+from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO
 
 if TYPE_CHECKING:
     # For type checking only; avoid importing stable_baselines3 at module import time
     from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback  # type: ignore
+    from stable_baselines3 import SAC  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
 
@@ -134,7 +135,7 @@ def save_model(model: SaveableModel, model_path: str, verbose: bool = True) -> b
         return False
 
 
-def load_model(model_path: str, verbose: bool = True) -> Optional[Any]:
+def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
     """
     モデルを読み込み
 
