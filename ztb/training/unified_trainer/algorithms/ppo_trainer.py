@@ -14,7 +14,7 @@ import pandas as pd
 _SB3_PPO = None
 
 from ztb.training.config.configuration_manager import ConfigurationManager
-from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_BATCH_SIZE_PPO
+from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA
 from ztb.training.environments.environment_config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
@@ -185,7 +185,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
             n_steps=ppo_config.get("n_steps", 2048),
             batch_size=ppo_config.get("batch_size", DEFAULT_BATCH_SIZE_PPO),
             n_epochs=ppo_config.get("n_epochs", 10),
-            gamma=ppo_config.get("gamma", 0.99),
+            gamma=ppo_config.get("gamma", DEFAULT_GAMMA),
             gae_lambda=ppo_config.get("gae_lambda", 0.95),
             clip_range=ppo_config.get("clip_range", 0.2),
             ent_coef=ppo_config.get("ent_coef", 0.0),

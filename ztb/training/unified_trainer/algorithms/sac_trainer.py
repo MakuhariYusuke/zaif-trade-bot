@@ -37,7 +37,7 @@ from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointManager,
 )
 from ztb.training.config.configuration_manager import ConfigurationManager
-from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC, DEFAULT_BATCH_SIZE_SAC
+from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_GAMMA, DEFAULT_TAU
 from ztb.training.unified_trainer.base.base_trainer import (
     BaseAlgorithmTrainer,
     ModelError,
@@ -663,7 +663,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                     norm_reward=normalize_kwargs.get("norm_reward", True),
                     clip_obs=normalize_kwargs.get("clip_obs", 10.0),
                     clip_reward=normalize_kwargs.get("clip_reward", 10.0),
-                    gamma=sac_config.get("gamma", 0.99),
+                    gamma=sac_config.get("gamma", DEFAULT_GAMMA),
                 )
                 self.logger.info(f"VecNormalize applied with: {normalize_kwargs}")
 
@@ -742,7 +742,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                         norm_reward=False,  # Don't normalize rewards during eval usually
                         clip_obs=normalize_kwargs.get("clip_obs", 10.0),
                         clip_reward=normalize_kwargs.get("clip_reward", 10.0),
-                        gamma=sac_config.get("gamma", 0.99),
+                        gamma=sac_config.get("gamma", DEFAULT_GAMMA),
                         training=False,  # Important: don't update stats during eval
                     )
 
@@ -861,8 +861,8 @@ class SACTrainer(BaseAlgorithmTrainer):
                         buffer_size=sac_config.get("buffer_size", 1000000),
                         learning_starts=sac_config.get("learning_starts", 100),
                         batch_size=sac_config.get("batch_size", DEFAULT_BATCH_SIZE_SAC),
-                        tau=sac_config.get("tau", 0.005),
-                        gamma=sac_config.get("gamma", 0.99),
+                        tau=sac_config.get("tau", DEFAULT_TAU),
+                        gamma=sac_config.get("gamma", DEFAULT_GAMMA),
                         train_freq=sac_config.get("train_freq", 1),
                         gradient_steps=sac_config.get("gradient_steps", 1),
                         ent_coef=sac_config.get("ent_coef", "auto"),
