@@ -58,6 +58,12 @@ DEFAULT_TARGET_UPDATE_INTERVAL = 1
 # Verbosity level
 DEFAULT_VERBOSE = 1
 
+# Maximum training steps for configurable training
+DEFAULT_MAX_TRAIN_STEPS = 2000
+
+# Buffer steps to leave in data
+DEFAULT_BUFFER_STEPS = 10
+
 # ============================================================================
 # Training Environment Constants
 # ============================================================================

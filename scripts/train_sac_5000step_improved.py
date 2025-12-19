@@ -17,6 +17,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
+from ztb.utils.file_utils import get_project_root
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
@@ -24,7 +25,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 

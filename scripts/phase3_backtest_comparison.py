@@ -22,11 +22,10 @@ sys.path.insert(0, str(project_root))
 
 from ztb.metrics import sharpe_ratio
 from ztb.utils.constants import DEFAULT_SEED
+from ztb.utils.logging_utils import setup_logging
 
 # ロギング設定
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

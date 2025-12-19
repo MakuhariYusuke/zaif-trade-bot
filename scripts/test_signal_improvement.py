@@ -26,10 +26,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem
 from ztb.utils.constants import DEFAULT_SEED
-from ztb.utils.logging_utils import get_logger
+from ztb.utils.logging_utils import get_logger, setup_logging
 
 # Enable debug logging for all loggers
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+setup_logging()
 
 logger = get_logger(__name__)
 

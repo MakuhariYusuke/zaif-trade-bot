@@ -29,7 +29,7 @@ try:
     from stable_baselines3 import SAC
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
     from ztb.utils.constants import DEFAULT_SEED
-    from ztb.training.constants import DEFAULT_BUFFER_SIZE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU, DEFAULT_ENT_COEF_AUTO, DEFAULT_TARGET_UPDATE_INTERVAL
+    from ztb.training.constants import DEFAULT_BUFFER_SIZE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_LEARNING_RATE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_GAMMA, DEFAULT_TAU, DEFAULT_ENT_COEF_AUTO, DEFAULT_TARGET_UPDATE_INTERVAL, DEFAULT_MAX_TRAIN_STEPS, DEFAULT_BUFFER_STEPS
 except ImportError as e:
     print(f"⚠️ Import error: {e}")
     print("Attempting to continue with available modules...")
@@ -144,7 +144,7 @@ class DirectTrainer:
             
             # Get maximum available steps from environment
             max_steps = env.data_manager.n_steps
-            train_steps = min(2000, max_steps - 10)  # Leave some buffer
+            train_steps = min(DEFAULT_MAX_TRAIN_STEPS, max_steps - DEFAULT_BUFFER_STEPS)  # Leave some buffer
             
             self.logger.info(f"Training for {train_steps} timesteps (data allows up to {max_steps})")
             

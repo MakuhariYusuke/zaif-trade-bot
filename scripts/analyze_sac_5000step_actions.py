@@ -14,13 +14,15 @@ import numpy as np
 from stable_baselines3 import SAC
 
 from ztb.utils.constants import DEFAULT_SEED
+from ztb.utils.file_utils import get_project_root
+from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 
