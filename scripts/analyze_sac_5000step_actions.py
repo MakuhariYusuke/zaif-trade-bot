@@ -13,6 +13,8 @@ import gymnasium as gym
 import numpy as np
 from stable_baselines3 import SAC
 
+from ztb.utils.constants import DEFAULT_SEED
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ sys.path.insert(0, str(project_root))
 def create_minimal_trading_env():
     """Create a minimal trading environment for testing"""
     # Create simple price data
-    np.random.seed(42)
+    np.random.seed(DEFAULT_SEED)
     n_steps = 1000
 
     # Generate trending price data

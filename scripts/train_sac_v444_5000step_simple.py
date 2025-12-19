@@ -24,6 +24,7 @@ sys.path.insert(0, str(ztb_path))
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
 from ztb.utils.logging_utils import setup_logging
 
 setup_logging()
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def create_sample_data():
     """Create sample data for quick training"""
-    np.random.seed(42)
+    np.random.seed(DEFAULT_SEED)
     dates = pd.date_range("2023-01-01", periods=5000, freq="1h")
 
     # Generate sample price data with trends and volatility
@@ -133,7 +134,7 @@ def main():
 
     # Setup checkpoint callback
     checkpoint_callback = CheckpointCallback(
-        save_freq=1000,
+        save_freq=DEFAULT_CHECKPOINT_FREQ,
         save_path="models/checkpoints_5000step/",
         name_prefix="sac_5000step",
     )
@@ -143,7 +144,7 @@ def main():
     training_start_time = time.time()
     try:
         model.learn(
-            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
+            total_timesteps=DEFAULT_TOTAL_TIMESTEPS, callback=checkpoint_callback, progress_bar=DEFAULT_PROGRESS_BAR
         )
         training_time = time.time() - training_start_time
         logger.info("Training completed successfully")

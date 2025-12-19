@@ -21,6 +21,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from ztb.metrics import sharpe_ratio
+from ztb.utils.constants import DEFAULT_SEED
 
 # ロギング設定
 logging.basicConfig(
@@ -65,7 +66,7 @@ class Phase3ComparisonAnalyzer:
                 )
 
             # 簡易的な取引シグナル生成（ランダム）
-            np.random.seed(42)  # 再現性のため
+            np.random.seed(DEFAULT_SEED)  # 再現性のため
             signals = np.random.choice([-1, 0, 1], size=len(data), p=[0.3, 0.4, 0.3])
 
             # 簡易バックテスト実行

@@ -13,6 +13,8 @@ from pathlib import Path
 import gymnasium as gym
 import numpy as np
 
+from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
+
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
@@ -30,7 +32,7 @@ sys.path.insert(0, str(project_root))
 def create_minimal_trading_env():
     """Create a minimal trading environment for testing"""
     # Create simple price data
-    np.random.seed(42)
+    np.random.seed(DEFAULT_SEED)
     n_steps = 1000
 
     # Generate trending price data
@@ -128,7 +130,7 @@ def main():
     try:
         training_start_time = time.time()
         model.learn(
-            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
+            total_timesteps=DEFAULT_TOTAL_TIMESTEPS, callback=checkpoint_callback, progress_bar=DEFAULT_PROGRESS_BAR
         )
         training_time = time.time() - training_start_time
         logger.info("Training completed successfully")

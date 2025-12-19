@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.volatility.normalized_atr import compute_normalized_atr
+from ztb.utils.constants import DEFAULT_SEED
 
-np.random.seed(42)
+np.random.seed(DEFAULT_SEED)
 n = 200
 close = np.random.uniform(100, 200, n)
 high = close + np.random.uniform(0, 10, n)

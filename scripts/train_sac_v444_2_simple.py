@@ -27,6 +27,7 @@ sys.path.insert(0, str(ztb_path))
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.utils.constants import DEFAULT_SEED
 from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete, save_model
 
@@ -68,7 +69,7 @@ def load_config(config_path: str) -> dict:
 def create_environment(config: dict):
     """Create trading environment from configuration."""
     # Create sample data for testing
-    np.random.seed(42)
+    np.random.seed(DEFAULT_SEED)
     dates = pd.date_range("2023-01-01", periods=10000, freq="1h")
 
     # Generate realistic price data

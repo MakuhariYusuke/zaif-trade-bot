@@ -28,6 +28,7 @@ sys.path.insert(0, str(project_root))
 try:
     from stable_baselines3 import SAC
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+    from ztb.utils.constants import DEFAULT_SEED
 except ImportError as e:
     print(f"⚠️ Import error: {e}")
     print("Attempting to continue with available modules...")
@@ -62,7 +63,7 @@ class DirectTrainer:
 
     def _load_data(self) -> pd.DataFrame:
         """Load sample data."""
-        np.random.seed(42)
+        np.random.seed(DEFAULT_SEED)
         dates = pd.date_range("2023-01-01", periods=2000, freq="1h")
         base_price = 5000000
         price_changes = np.random.normal(0, 0.005, 2000).cumsum()

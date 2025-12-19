@@ -25,6 +25,7 @@ import logging
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem
+from ztb.utils.constants import DEFAULT_SEED
 from ztb.utils.logging_utils import get_logger
 
 # Enable debug logging for all loggers
@@ -61,7 +62,7 @@ class SignalGuidanceBacktestValidator:
 
         # For this validation, we'll generate synthetic but realistic data
         # In production, this would load from actual market data sources
-        np.random.seed(42)
+        np.random.seed(DEFAULT_SEED)
 
         # Generate data for the specified number of days (5-minute intervals)
         intervals_per_day = 288  # 24 hours * 12 (5-min intervals)

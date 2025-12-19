@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.volume.chaikin_ad_oscillator import compute_chaikin_ad_oscillator
+from ztb.utils.constants import DEFAULT_SEED
 
-np.random.seed(42)
+np.random.seed(DEFAULT_SEED)
 n = 200
 close = np.random.uniform(100, 200, n)
 high = close + np.random.uniform(0, 10, n)

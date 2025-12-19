@@ -14,6 +14,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.signal.phase3_backtest_comparison import IntegratedBacktestRunner
+from ztb.utils.constants import DEFAULT_SEED
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 
 def create_sample_market_data(n_points: int = 1000) -> pd.DataFrame:
     """サンプル市場データ生成"""
-    np.random.seed(42)  # 再現性のために固定
+    np.random.seed(DEFAULT_SEED)  # 再現性のために固定
 
     # 基本価格トレンド
     base_price = 100.0

@@ -14,6 +14,7 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
+from ztb.utils.constants import DEFAULT_CHECKPOINT_FREQ, DEFAULT_CHECKPOINT_PATH, DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging

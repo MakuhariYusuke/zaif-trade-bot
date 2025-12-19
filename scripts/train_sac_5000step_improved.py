@@ -16,6 +16,7 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
+from ztb.utils.constants import DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
@@ -53,7 +54,7 @@ sys.path.insert(0, str(project_root))
     training_start_time = time.time()
     try:
         model.learn(
-            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
+            total_timesteps=DEFAULT_TOTAL_TIMESTEPS, callback=checkpoint_callback, progress_bar=DEFAULT_PROGRESS_BAR
         )
         training_time = time.time() - training_start_time
         logger.info("Training completed successfully")
