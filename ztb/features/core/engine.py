@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.data.data_generation import generate_synthetic_market_data
-from ztb.utils.errors import safe_operation
+from ztb.analysis.common.types import FeatureCalculator
 
 # Optimize GC for better memory management - more aggressive
 gc.set_threshold(100, 5, 5)  # Even more aggressive garbage collection
@@ -70,6 +70,21 @@ def compute_features_batch(
             print(f"Warning: Memory optimization failed: {e}")
 
     return result
+
+
+class FeatureEngine(FeatureCalculator):
+    """Feature computation engine implementing FeatureCalculator protocol."""
+
+    def calculate(self, data: Any) -> Any:
+        """Calculate features from input data."""
+        if not isinstance(data, pd.DataFrame):
+            raise ValueError("Input data must be a pandas DataFrame")
+        return compute_features_batch(data)
+
+    @property
+    def feature_names(self) -> List[str]:
+        """Get list of feature names."""
+        return list(FeatureRegistry._registry.keys())
 
 
 def run_100k_experiment() -> pd.DataFrame:

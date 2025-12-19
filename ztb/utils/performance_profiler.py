@@ -16,10 +16,10 @@ import pandas as pd
 import psutil
 
 from ztb.features import FeatureRegistry
-from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.analysis.common.types import PerformanceMonitorProtocol
 
 
-class PerformanceProfiler:
+class PerformanceProfiler(PerformanceMonitorProtocol):
     """Performance profiling utilities for feature computation"""
 
     def __init__(self) -> None:
@@ -449,3 +449,13 @@ class MemoryProfiler:
             )
 
         return profile_result
+
+    # Protocol implementation methods
+    def record_decision(self, decision: Any) -> None:
+        """Record a decision for performance monitoring."""
+        # Implementation for performance monitoring
+        pass
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get current performance metrics."""
+        return self.get_memory_usage()

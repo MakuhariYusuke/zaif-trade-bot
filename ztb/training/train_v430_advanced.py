@@ -35,7 +35,7 @@ from ztb.evaluation.evaluator import Evaluator
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.training.unified_trainer.parallel_trainer import ParallelTrainer
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.memory_utils import OperationMemoryTracker
+from ztb.training.constants import DEFAULT_LEARNING_RATE, DEFAULT_TOTAL_TIMESTEPS
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 logger = get_logger(__name__)
@@ -94,6 +94,10 @@ class SACv430AdvancedTrainer:
 
         if config.get("version") != "v430":
             logger.warning(f"Config version is {config.get('version')}, expected v430")
+
+        # Set defaults
+        config.setdefault("training", {}).setdefault("learning_rate", DEFAULT_LEARNING_RATE)
+        config.setdefault("training", {}).setdefault("total_timesteps", DEFAULT_TOTAL_TIMESTEPS)
 
         return config
 
