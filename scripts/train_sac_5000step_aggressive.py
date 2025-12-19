@@ -15,6 +15,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 from ztb.utils.constants import DEFAULT_CHECKPOINT_FREQ, DEFAULT_CHECKPOINT_PATH, DEFAULT_PROGRESS_BAR, DEFAULT_SEED, DEFAULT_TOTAL_TIMESTEPS
+from ztb.training.constants import DEFAULT_BUFFER_SIZE_AGGRESSIVE, DEFAULT_LEARNING_RATE_AGGRESSIVE
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
@@ -40,8 +41,8 @@ def main():
     model = SAC(
         "MlpPolicy",
         env,
-        learning_rate=5e-4,  # Higher learning rate
-        buffer_size=10000,
+        learning_rate=DEFAULT_LEARNING_RATE_AGGRESSIVE,  # Higher learning rate
+        buffer_size=DEFAULT_BUFFER_SIZE_AGGRESSIVE,
     print("=" * 50)
     print(f"Status: {training_stats['final_status']}")
     print(f"Timesteps: {training_stats['total_timesteps']}")

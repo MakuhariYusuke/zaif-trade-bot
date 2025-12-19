@@ -12,6 +12,7 @@ organized by functional area for better maintainability.
 # Default learning rates for different algorithms
 DEFAULT_LEARNING_RATE_PPO = 3e-4
 DEFAULT_LEARNING_RATE_SAC = 3e-4
+DEFAULT_LEARNING_RATE_AGGRESSIVE = 5e-4  # Higher learning rate for aggressive exploration
 DEFAULT_LEARNING_RATE_DQN = 1e-3
 DEFAULT_LEARNING_RATE = 0.001  # General default for environments
 
@@ -19,6 +20,10 @@ DEFAULT_LEARNING_RATE = 0.001  # General default for environments
 DEFAULT_BATCH_SIZE_PPO = 64
 DEFAULT_BATCH_SIZE_SAC = 256
 DEFAULT_BATCH_SIZE_DQN = 32
+
+# Buffer sizes for replay buffers
+DEFAULT_BUFFER_SIZE_SAC = 1000000
+DEFAULT_BUFFER_SIZE_AGGRESSIVE = 10000  # Smaller buffer for aggressive exploration
 
 # General batch sizes for environments
 BATCH_SIZE_SMALL = 32
