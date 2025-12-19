@@ -2,10 +2,11 @@
 SAC v395f - Revolutionary Simple Reward Function
 複雑な報酬関数を捨て、純粋なPnLベースの報酬へ
 """
-import json
 import time
+from pathlib import Path
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.file_utils import safe_json_load
 from ztb.utils.training_utils import display_training_complete
 
 
@@ -18,8 +19,7 @@ def main():
     config_path = "configs/sac_v395f_simple_reward.json"
 
     # 設定ファイル読み込み
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = safe_json_load(Path(config_path))
 
     print("💡 Reward Function Redesign:")
     print("-" * 80)

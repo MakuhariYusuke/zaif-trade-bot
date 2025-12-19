@@ -2,11 +2,11 @@
 Training script for reward function improvements (v378, v379, v380)
 Run all three reward configurations with full 30k timesteps
 """
-import json
 import sys
 import time
 from typing import Any, Dict
 
+from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import get_file_dir
 from ztb.utils.training_utils import display_training_complete
 
@@ -37,8 +37,7 @@ def run_training(config_info: Dict[str, Any]) -> None:
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = safe_json_load(config_path)
 
     session_id = config["session_id"]
 

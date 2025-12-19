@@ -109,6 +109,14 @@ def _normalize_regime_name(regime_name: str) -> str:
     return _REGIME_ALIASES.get(normalized, normalized)
 
 
+def _slice_df(df: pd.DataFrame, start: int = 0, end: int | None = None) -> pd.DataFrame:
+    if start < 0:
+        raise ValueError("--start must be >= 0")
+    if end is not None and end <= start:
+        raise ValueError("--end must be > --start")
+    return df.iloc[start:end] if end is not None else df.iloc[start:]
+
+
 def _apply_regime_params(
     config: ConfigDict,
     regime_name: str,
@@ -200,8 +208,11 @@ def run_grid_search(
     sl_grid: list[float],
     tp_grid: list[float],
     report_path: str,
+    start: int = 0,
+    end: int | None = None,
     deterministic: bool = True,
     restrict_to_regime: bool = False,
+    entry_source: str = "zscore",
 ) -> int:
     regime_name = _normalize_regime_name(regime_name)
 
@@ -218,6 +229,7 @@ def run_grid_search(
     df = pd.read_csv(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df.set_index("timestamp", inplace=True, drop=False)
+    df = _slice_df(df, start=start, end=end)
 
     # Initialize environment
     env = HeavyTradingEnv(df=df, config=config)
@@ -280,7 +292,7 @@ def run_grid_search(
             entry_zscore_threshold=z,
             stop_loss_pct=sl,
             take_profit_pct=tp,
-            entry_action_source="zscore",  # Force Z-score source for grid search
+            entry_action_source=entry_source,
         )
         
         # Update env config in-place
@@ -354,6 +366,14 @@ def main() -> int:
     parser.add_argument("--config-path", default="config/v454/sac_v454_config.json")
     parser.add_argument("--data-path", default="data/btc_jpy_1m_v454.csv")
     parser.add_argument(
+        "--entry-source",
+        choices=["zscore", "model"],
+        default="zscore",
+        help="Entry source override for the target regime",
+    )
+    parser.add_argument("--start", type=int, default=0, help="Row start index (0-based)")
+    parser.add_argument("--end", type=int, default=None, help="Row end index (0-based, exclusive)")
+    parser.add_argument(
         "--restrict-to-regime",
         action="store_true",
         help="Exclude all non-target regimes during the grid run",
@@ -369,8 +389,11 @@ def main() -> int:
         z_grid=args.z_grid,
         sl_grid=args.sl_grid,
         tp_grid=args.tp_grid,
+        start=args.start,
+        end=args.end,
         report_path=args.report_path,
         restrict_to_regime=args.restrict_to_regime,
+        entry_source=args.entry_source,
     )
 
 if __name__ == "__main__":
