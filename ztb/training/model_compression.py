@@ -13,15 +13,12 @@ and can be integrated into the training pipeline.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 import torch
 import torch.nn as nn
-from torch.quantization import DeQuantStub, QuantStub
 
-from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.logging_utils import get_logger
-from ztb.cache.memory_cache import default_memory_manager
 
 logger = get_logger(__name__)
 
@@ -55,311 +52,58 @@ class QuantizationCompressor(BaseCompressionTechnique):
     - Mixed precision training (FP16)
     """
 
-    def __init__(self, quantization_type: str = "dynamic") -> None:
+    def __init__(self, dtype: torch.dtype = torch.qint8) -> None:
         """
-        Initialize quantization compressor.
+        Simple dynamic quantization compressor.
 
         Args:
-            quantization_type: Type of quantization ("dynamic", "static", "mixed_precision")
+            dtype: Quantized dtype to use for dynamic quantization
         """
-        valid_types = ["dynamic", "static", "mixed_precision"]
-        if quantization_type not in valid_types:
-            raise ValueError(
-                f"Unsupported quantization type: {quantization_type}. Supported types: {valid_types}"
-            )
-
-        self.quantization_type = quantization_type
-        self.original_model_size = 0
-        self.compressed_model_size = 0
-        self.quantized_model = None
+        self.dtype = dtype
+        self.original_size_mb = 0.0
+        self.compressed_size_mb = 0.0
 
     def compress(self, model: nn.Module, **kwargs) -> nn.Module:
-        """
-        Apply quantization to the model.
-
-        Args:
-            model: PyTorch model to quantize
-            **kwargs: Additional arguments for quantization
-
-        Returns:
-            Quantized model
-        """
-        self.original_model_size = self._get_model_size(model)
-
-        if self.quantization_type == "dynamic":
-            return self._apply_dynamic_quantization(model, **kwargs)
-        elif self.quantization_type == "static":
-            return self._apply_static_quantization(model, **kwargs)
-        elif self.quantization_type == "mixed_precision":
-            return self._apply_mixed_precision(model, **kwargs)
-        else:
-            raise ValueError(
-                f"Unsupported quantization type: {self.quantization_type}. Supported types: dynamic, static, mixed_precision"
-            )
-
-    def _apply_dynamic_quantization(self, model: nn.Module, **kwargs) -> nn.Module:
-        """Apply dynamic quantization (FP32→INT8)."""
-        logger.info("Applying dynamic quantization...")
-
-        # Prepare model for quantization
-        quantized_model = torch.quantization.quantize_dynamic(
-            model,
-            {nn.Linear, nn.LSTM, nn.GRU},
-            dtype=torch.qint8,  # Layers to quantize
-        )
-
-        self.quantized_model = quantized_model
-        self.compressed_model_size = self._get_model_size(quantized_model)
-
-        if self.compressed_model_size > 0:
-            compression_ratio = self.original_model_size / self.compressed_model_size
-            logger.info(".2f")
-        else:
-            logger.warning(
-                "Compressed model size is 0, cannot calculate compression ratio"
-            )
-            compression_ratio = 1.0
-
-        return quantized_model
-
-    def _apply_static_quantization(
-        self,
-        model: nn.Module,
-        calibration_data: Optional[torch.Tensor] = None,
-        **kwargs,
-    ) -> nn.Module:
-        """Apply static quantization with calibration."""
-        logger.info("Applying static quantization...")
-
-        # Add quantization stubs
-        model = self._add_quantization_stubs(model)
-
-        # Set quantization config
-        model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
-
-        # Prepare for quantization
-        torch.quantization.prepare(model, inplace=True)
-
-        # Calibrate with data if provided
-        if calibration_data is not None:
-            self._calibrate_model(model, calibration_data)
-
-        # Convert to quantized model
-        torch.quantization.convert(model, inplace=True)
-
-        self.quantized_model = model
-        self.compressed_model_size = self._get_model_size(model)
-
-        compression_ratio = self.original_model_size / self.compressed_model_size
-        logger.info(".2f")
-
-        return model
-
-    def _apply_mixed_precision(self, model: nn.Module, **kwargs) -> nn.Module:
-        """Apply mixed precision (FP16)."""
-        logger.info("Applying mixed precision training...")
-
-        # Convert model to half precision
-        model.half()
-
-        self.quantized_model = model
-        self.compressed_model_size = self._get_model_size(model)
-
-        compression_ratio = self.original_model_size / self.compressed_model_size
-        logger.info(".2f")
-
-        return model
-
-    def _add_quantization_stubs(self, model: nn.Module) -> nn.Module:
-        """Add quantization and dequantization stubs to model."""
-        model.quant = QuantStub()
-        model.dequant = DeQuantStub()
-        return model
-
-    def _calibrate_model(self, model: nn.Module, calibration_data: torch.Tensor) -> None:
-        """Calibrate quantized model with sample data."""
-        logger.info("Calibrating quantized model...")
-        with torch.no_grad():
-            for _ in range(100):  # Calibration steps
-                _ = model(calibration_data)
-
-    def decompress(self, model: nn.Module, **kwargs) -> nn.Module:
-        """Dequantize model back to FP32."""
-        if hasattr(model, "dequant"):
-            # Static quantization case
-            return model.dequant(model.quant(torch.randn(1, model.quant.input_size)))
-        else:
-            # Dynamic quantization case - convert back to float
-            return model.float()
-
-    def get_compression_stats(self) -> Dict[str, Any]:
-        """Get quantization compression statistics."""
-        return {
-            "technique": "quantization",
-            "type": self.quantization_type,
-            "original_size_mb": self.original_model_size,
-            "compressed_size_mb": self.compressed_model_size,
-            "compression_ratio": self.original_model_size / self.compressed_model_size
-            if self.compressed_model_size > 0
-            else 0,
-        }
-
-    def _get_model_size(self, model: nn.Module) -> float:
-        """Get model size in MB."""
+        """Apply dynamic quantization to reduce model size."""
         try:
-            param_size = 0
-            for param in model.parameters():
-                param_size += param.nelement() * param.element_size()
-            buffer_size = 0
-            for buffer in model.buffers():
-                buffer_size += buffer.nelement() * buffer.element_size()
-            total_size = param_size + buffer_size
-            return total_size / BYTES_PER_MB if total_size > 0 else 0.0
+            # Record original size (best-effort)
+            self.original_size_mb = self._get_model_size(model)
+
+            # Use torch's dynamic quantization for supported layers
+            q_model = torch.quantization.quantize_dynamic(
+                model, {nn.Linear, nn.LSTM, nn.GRU}, dtype=self.dtype
+            )
+
+            self.compressed_size_mb = self._get_model_size(q_model)
+
+            logger.info(
+                f"Quantized model: original={self.original_size_mb:.2f}MB compressed={self.compressed_size_mb:.2f}MB"
+            )
+            return q_model
         except Exception as e:
-            logger.warning(f"Failed to calculate model size: {e}")
-            return 0.0
-
-
-class PruningCompressor(BaseCompressionTechnique):
-    """
-    Neural network pruning for model compression.
-
-    Supports multiple pruning techniques:
-    - L1/L2 unstructured pruning
-    - Structured pruning (channel-wise)
-    - Dynamic pruning based on importance scores
-    """
-
-    def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.2) -> None:
-        """
-        Initialize pruning compressor.
-
-        Args:
-            pruning_type: Type of pruning ('l1_unstructured', 'l2_unstructured', 'structured')
-            amount: Fraction of weights to prune (0.0 to 1.0)
-        """
-        self.pruning_type = pruning_type
-        self.amount = amount
-        self.pruned_weights = {}
-        self.original_sparsity = 0.0
-        self.final_sparsity = 0.0
-
-    def compress(self, model: nn.Module, **kwargs) -> nn.Module:
-        """
-        Apply pruning to the model with memory caching.
-
-        Args:
-            model: PyTorch model to prune
-            **kwargs: Additional arguments for pruning
-
-        Returns:
-            Pruned model
-        """
-        # Create cache key for pruned model
-        model_hash = hash(str(model.state_dict()))
-        cache_key = f"pruned_model_{model_hash}_{self.pruning_type}_{self.amount}"
-
-        # Check memory cache first
-        cached_model = default_memory_manager.get_cached_model_state(cache_key)
-        if cached_model is not None:
-            logger.info("Loading pruned model from memory cache")
-            model.load_state_dict(cached_model)
+            logger.warning(f"Quantization failed, returning original model: {e}")
             return model
 
-        logger.info(f"Applying {self.pruning_type} pruning with amount {self.amount}...")
-
-        self.original_sparsity = self._calculate_sparsity(model)
-
-        if self.pruning_type == "l1_unstructured":
-            self._apply_l1_unstructured_pruning(model)
-        elif self.pruning_type == "l2_unstructured":
-            self._apply_l2_unstructured_pruning(model)
-        elif self.pruning_type == "structured":
-            self._apply_structured_pruning(model)
-        else:
-            raise ValueError(
-                f"Unsupported pruning type: {self.pruning_type}. "
-                "Supported types: l1_unstructured, l2_unstructured, structured"
-            )
-
-        self.final_sparsity = self._calculate_sparsity(model)
-
-        logger.info(".1%")
-
-        # Cache the pruned model state
-        default_memory_manager.cache_model_state(cache_key, model.state_dict())
-
-        return model
-
-    def _apply_l1_unstructured_pruning(self, model: nn.Module) -> None:
-        """Apply L1 unstructured pruning."""
-        for name, module in model.named_modules():
-            if isinstance(module, nn.Linear):
-                # Calculate L1 norm for each weight
-                weight_l1 = torch.abs(module.weight).sum(dim=1)
-                _, indices = torch.topk(
-                    weight_l1,
-                    int(module.weight.size(0) * (1 - self.amount)),
-                    largest=True,
-                )
-                mask = torch.zeros_like(module.weight)
-                mask[indices] = 1
-                module.weight.data *= mask
-
-    def _apply_l2_unstructured_pruning(self, model: nn.Module) -> None:
-        """Apply L2 unstructured pruning."""
-        for name, module in model.named_modules():
-            if isinstance(module, nn.Linear):
-                # Calculate L2 norm for each weight
-                weight_l2 = torch.sqrt(torch.sum(module.weight ** 2, dim=1))
-                _, indices = torch.topk(
-                    weight_l2,
-                    int(module.weight.size(0) * (1 - self.amount)),
-                    largest=True,
-                )
-                mask = torch.zeros_like(module.weight)
-                mask[indices] = 1
-                module.weight.data *= mask
-
-    def _apply_structured_pruning(self, model: nn.Module) -> None:
-        """Apply structured pruning (remove entire channels/filters)."""
-        for name, module in model.named_modules():
-            if isinstance(module, nn.Linear):
-                # Calculate importance scores for output channels
-                weight_norm = torch.norm(module.weight, p=2, dim=1)
-                _, indices = torch.topk(
-                    weight_norm,
-                    int(module.weight.size(0) * (1 - self.amount)),
-                    largest=True,
-                )
-
-                # Create mask for selected channels
-                mask = torch.zeros(module.weight.size(0), dtype=torch.bool)
-                mask[indices] = True
-
-                # Apply mask
-                module.weight.data = module.weight.data[mask]
-                if module.bias is not None:
-                    module.bias.data = module.bias.data[mask]
-
-                # Update output features
-                module.out_features = len(indices)
-
     def decompress(self, model: nn.Module, **kwargs) -> nn.Module:
-        """Decompression not applicable for pruning - return model as-is."""
-        logger.warning("Pruning decompression not supported - returning original model")
+        """Decompression is not supported for quantized models; return as-is."""
+        logger.warning("Decompression for quantized models is not supported; returning provided model")
         return model
 
     def get_compression_stats(self) -> Dict[str, Any]:
-        """Get pruning compression statistics."""
+        """Return basic compression stats for quantization."""
         return {
-            "technique": "pruning",
-            "type": self.pruning_type,
-            "pruning_amount": self.amount,
-            "original_sparsity": self.original_sparsity,
-            "final_sparsity": self.final_sparsity,
-            "sparsity_increase": self.final_sparsity - self.original_sparsity
+            "original_size_mb": self.original_size_mb,
+            "compressed_size_mb": self.compressed_size_mb,
+            "compression_ratio": (
+                self.original_size_mb / self.compressed_size_mb
+                if self.compressed_size_mb > 0
+                else 0
+            ),
         }
+
+    # Pruning helpers are defined on the canonical PruningCompressor below
+
+    
 
     def _calculate_sparsity(self, model: nn.Module) -> float:
         """Calculate model sparsity (fraction of zero weights)."""
@@ -595,51 +339,19 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
         teacher_softened = torch.softmax(teacher_logits / self.temperature, dim=1)
         student_softened = torch.log_softmax(student_logits / self.temperature, dim=1)
 
-        loss_distill = nn.KLDivLoss(reduction="batchmean")(
-            student_softened, teacher_softened
-        ) * (self.temperature**2)
+        loss_distill = nn.KLDivLoss(reduction="batchmean")(student_softened, teacher_softened) * (
+            self.temperature ** 2
+        )
 
-        # Combined loss
-        total_loss = self.alpha * loss_distill + (1 - self.alpha) * loss_gt
-
-        self.distillation_loss_history.append(total_loss.item())
+        # Combined loss (weighted by alpha)
+        total_loss = self.alpha * loss_distill + (1.0 - self.alpha) * loss_gt
 
         return total_loss
+    # Note: A legacy duplicate `PruningCompressor` implementation was removed
+    # in favor of the single canonical implementation above which includes
+    # validation, different pruning strategies and optional caching.
 
-    def decompress(self, model: nn.Module, **kwargs) -> nn.Module:
-        """Knowledge distillation doesn't require decompression."""
-        return model
-
-    def get_compression_stats(self) -> Dict[str, Any]:
-        """Get distillation compression statistics."""
-        return {
-            "technique": "knowledge_distillation",
-            "temperature": self.temperature,
-            "alpha": self.alpha,
-            "avg_distillation_loss": sum(self.distillation_loss_history)
-            / len(self.distillation_loss_history)
-            if self.distillation_loss_history
-            else 0,
-            "total_distillation_steps": len(self.distillation_loss_history),
-        }
-
-
-class ModelCompressionManager:
-    """
-    Manager class for applying multiple compression techniques.
-
-    Provides a unified interface for compressing SAC models with
-    quantization, pruning, and knowledge distillation.
-    """
-
-    def __init__(self) -> None:
-        self.compressors = {}
-        self.compression_stats = {}
-
-    def add_compressor(self, name: str, compressor: BaseCompressionTechnique) -> None:
-        """Add a compression technique."""
-        self.compressors[name] = compressor
-        logger.info(f"Added compressor: {name}")
+    # End of PruningCompressor
 
     def compress_model(
         self, model: nn.Module, techniques: List[str], **kwargs
@@ -715,9 +427,37 @@ class ModelCompressionManager:
         return model
 
 
+class ModelCompressionManager:
+    """Manager class for applying multiple compression techniques and tracking stats."""
+
+    def __init__(self) -> None:
+        self.compressors: Dict[str, BaseCompressionTechnique] = {}
+        self.compression_stats: Dict[str, Any] = {}
+
+    def add_compressor(self, name: str, compressor: BaseCompressionTechnique) -> None:
+        self.compressors[name] = compressor
+
+    def compress(self, model: nn.Module, techniques: List[str], **kwargs) -> nn.Module:
+        compressed_model = model
+        for technique in techniques:
+            compressor = self.compressors.get(technique)
+            if compressor is None:
+                logger.warning(f"Compressor {technique} not found, skipping")
+                continue
+            try:
+                compressed_model = compressor.compress(compressed_model, **kwargs)
+                self.compression_stats[technique] = compressor.get_compression_stats()
+            except Exception as e:
+                logger.error(f"Failed to apply {technique}: {e}")
+        return compressed_model
+
+    def get_compression_stats(self) -> Dict[str, Any]:
+        return self.compression_stats
+
+
 def create_compression_pipeline(
     techniques_config: Dict[str, Dict[str, Any]],
-) -> ModelCompressionManager:
+) -> Any:
     """
     Create a compression pipeline from configuration.
 

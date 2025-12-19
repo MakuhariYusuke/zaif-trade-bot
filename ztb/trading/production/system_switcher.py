@@ -163,9 +163,7 @@ class SystemSwitcher:
             rule: 切り替えルール
         """
         self.switch_rules[rule.rule_id] = rule
-        self.condition_states[rule.rule_id] = {
-            i: 0 for i in range(len(rule.conditions))
-        }
+        self.condition_states[rule.rule_id] = dict.fromkeys(range(len(rule.conditions)), 0)
 
         # メトリクスバッファ初期化
         for condition in rule.conditions:
@@ -775,9 +773,7 @@ class SystemSwitcher:
                 )
 
                 self.switch_rules[rule.rule_id] = rule
-                self.condition_states[rule.rule_id] = {
-                    i: 0 for i in range(len(conditions))
-                }
+                self.condition_states[rule.rule_id] = dict.fromkeys(range(len(conditions)), 0)
 
             # 履歴復元
             self.switch_history = []

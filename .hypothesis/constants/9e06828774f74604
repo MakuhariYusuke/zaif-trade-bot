@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\quality\scorer.py
+# hypothesis_version: 6.140.3
+
+[-1.0, 0.0, 0.05, 0.1, 0.15, 0.2, 0.5, 0.8, 1.0, 1.2, 2.0, 10.0, 20.0, 25.0, 30.0, 50.0, 70.0, 75.0, 80.0, 100.0, 100, 'Invalid market data', 'atr', 'bollinger', 'bollinger_position', 'btc_balance', 'buy', 'buy_threshold', 'close', 'confidence_threshold', 'current_price', 'error', 'fast_period', 'hold', 'hold_gap', 'hold_threshold', 'indicator_values', 'indicators', 'jpy_balance', 'macd', 'macd_histogram', 'macd_line', 'macd_signal', 'market_regime', 'momentum', 'periods', 'position_ratio', 'rsi', 'sell', 'sell_threshold', 'signal_period', 'slow_period', 'stochastic', 'strength_multiplier', 'strong_buy', 'strong_sell', 'thresholds', 'thresholds_used', 'trend', 'trend_strength', 'volatility', 'weights', 'weights_used']

@@ -7,7 +7,6 @@ Each scenario runs for 10,000 steps to evaluate feature impact.
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Any
@@ -18,8 +17,6 @@ import subprocess
 project_root = Path(__file__).parent.parent.parent  # scripts/training -> scripts -> project_root
 sys.path.insert(0, str(project_root))
 
-from ztb.config.schema import ZaifTradeBotConfig
-from ztb.training.unified_trainer.trainer import UnifiedTrainer
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.logging_utils import get_logger
 

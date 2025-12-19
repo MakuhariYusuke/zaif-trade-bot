@@ -154,10 +154,7 @@ class SACQuantizer:
         try:
             quantized_model = torch.quantization.quantize_dynamic(
                 model,
-                {
-                    module_cls: self.config["dtype"]
-                    for module_cls in self.config["quantizable_modules"]
-                },
+                dict.fromkeys(self.config["quantizable_modules"], self.config["dtype"]),
                 inplace=False,
             )
 

@@ -264,9 +264,9 @@ class TrainingReporter:
 
     def _get_timestamp(self) -> str:
         """Get current timestamp string."""
-        from datetime import datetime
+        from ztb.training.utils.common_utils import get_timestamp
 
-        return datetime.now().isoformat()
+        return get_timestamp()
 
     def clear_history(self) -> None:
         """Clear training history and metrics buffer."""

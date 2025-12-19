@@ -5,11 +5,12 @@ This module provides integration between Action Signal Guide and SAC (Soft Actor
 reinforcement learning system for enhanced signal validation and decision making.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 import logging
+
+if TYPE_CHECKING:
+    from ..action_signal_guide import ActionSignal
 
 logger = logging.getLogger(__name__)
 

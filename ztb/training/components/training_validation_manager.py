@@ -1,15 +1,14 @@
 """Training validation component."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
-from ztb.utils.exceptions.custom_exceptions import ValidationError, RewardValidationError, ActionValidationError
+from ztb.utils.exceptions.custom_exceptions import ActionValidationError
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_guards import (
-    is_valid_action, is_valid_reward, is_valid_loss, is_valid_observation,
-    is_valid_probability_distribution, validate_type_with_guard
+    is_valid_action
 )
 
 if TYPE_CHECKING:

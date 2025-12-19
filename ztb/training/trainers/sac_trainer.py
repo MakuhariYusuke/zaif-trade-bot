@@ -11,7 +11,32 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
-from stable_baselines3.common.callbacks import BaseCallback
+try:
+    from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+except Exception:
+    # Some SB3 variants may not expose CallbackList in the same way; provide a
+    # minimal fallback to allow tests to import and instantiate trainers.
+    from stable_baselines3.common.callbacks import BaseCallback
+
+    class CallbackList(list):
+        """Minimal fallback CallbackList implementation."""
+
+        def __init__(self, callbacks=None):
+            super().__init__(callbacks or [])
+
+        def on_training_start(self, *args, **kwargs):
+            for cb in self:
+                try:
+                    getattr(cb, "on_training_start", lambda *a, **k: None)(*args, **kwargs)
+                except Exception:
+                    pass
+
+        def on_training_end(self, *args, **kwargs):
+            for cb in self:
+                try:
+                    getattr(cb, "on_training_end", lambda *a, **k: None)(*args, **kwargs)
+                except Exception:
+                    pass
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed import

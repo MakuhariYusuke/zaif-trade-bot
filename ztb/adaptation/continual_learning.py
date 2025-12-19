@@ -417,7 +417,7 @@ class ContinualLearner:
         self,
         task_data: TaskData,
         loss_fn: Callable,
-        optimizer: optim.Optimizer,
+        optimizer: "optim.Optimizer",
         num_epochs: int = 10,
     ) -> Dict[str, Any]:
         """新規タスクの学習"""
@@ -474,7 +474,7 @@ class ContinualLearner:
         task_model: nn.Module,
         task_data: TaskData,
         loss_fn: Callable,
-        optimizer: optim.Optimizer,
+        optimizer: "optim.Optimizer",
         num_epochs: int,
     ) -> Dict[str, Any]:
         """タスクモデルの学習"""

@@ -156,26 +156,8 @@ class ActionPrediction:
 
             logger.debug(f"Converted action: {final_action}")
 
-            # Clamp action to valid range [0, 1, 2]
-            if final_action < 0:
-                logger.warning(f"Action {final_action} is negative, clamping to 0")
-                final_action = 0
-            elif final_action > 2:
-                logger.warning(f"Action {final_action} is > 2, clamping to 2")
-                final_action = 2
-
-            # Additional validation (should be 0, 1, or 2 now)
-            if final_action not in [
-                ACTION_HOLD,
-                1,
-                2,
-            ]:  # Using numeric values since ACTION_* constants may not be imported
-                logger.error(
-                    f"Action {final_action} still invalid after clamping, using HOLD"
-                )
-                final_action = ACTION_HOLD
-
-            # Legacy support: normalize old ACTION_SELL=2 to new ACTION_SELL=-1
+            # Normalize discrete legacy (0/1/2) and continuous into internal ACTION_* values
+            # Note: ACTION_SELL is -1 internally, but many upstream models/configs still emit 2.
             final_action = normalize_action(final_action)
 
             action = final_action

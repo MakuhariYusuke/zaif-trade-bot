@@ -8,9 +8,6 @@ import sys
 import os
 import pytest
 import numpy as np
-import pandas as pd
-from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
 
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))

@@ -2,13 +2,10 @@
 Tests for threshold management utilities.
 """
 
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from pathlib import Path
-import pandas as pd
 
 from ztb.utils.thresholds import AdaptiveThresholdManager
-from ztb.utils.types import ThresholdManagerProtocol
 
 
 class TestAdaptiveThresholdManager:

@@ -15,6 +15,7 @@ import pickle
 import random
 import threading
 import time
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -31,7 +32,6 @@ else:
     BaseAlgorithm = Any  # type: ignore
 
 from ztb.trading.environment.constants import BYTES_PER_MB
-from ztb.types.common import ConfigDict
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
 
@@ -193,6 +193,9 @@ class CheckpointManager:
         # Sort by step number (handle both full and diff checkpoints)
         def get_step(path: Path) -> int:
             stem = path.stem
+            # Handle cases where an additional suffix (like .pkl) remains in the stem
+            if stem.endswith(".pkl"):
+                stem = stem[:-4]
             if stem.startswith("checkpoint_diff_"):
                 return int(stem.split("_")[2])
             else:
@@ -266,9 +269,12 @@ class CheckpointManager:
         import gc
         import traceback
 
-        from ztb.utils.notify import get_notifier
+        try:
+            from ztb.utils.notify import get_notifier
+        except Exception:
+            get_notifier = None  # type: ignore[assignment]
 
-        notifier = get_notifier()
+        notifier = get_notifier() if get_notifier else None
         logged_errors = set()  # Track logged errors to prevent spam
 
         while True:

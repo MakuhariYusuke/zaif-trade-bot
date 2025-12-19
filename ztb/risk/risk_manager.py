@@ -165,7 +165,9 @@ class RiskManager(RiskManagerProtocol):
         """
         # 現時点では基本的な制限のみ
         # 将来的には複数資産間の相関を考慮した制御を実装
-        return min(1.0, position / self.max_correlation_exposure)
+        if position <= 0:
+            return 1.0
+        return min(1.0, self.max_correlation_exposure / position)
 
     def _calculate_overall_risk_level(
         self, drawdown_info: Dict[str, Any], adaptation_info: Dict[str, Any]

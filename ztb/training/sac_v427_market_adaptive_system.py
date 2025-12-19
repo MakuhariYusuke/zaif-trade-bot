@@ -121,7 +121,7 @@ class SACv427MarketAdaptiveSystem:
         prices = price_data["close"].values[-window:]
         x = np.arange(len(prices))
         slope = np.polyfit(x, prices, 1)[0]
-        trend_strength = abs(slope) / prices.mean()
+        abs(slope) / prices.mean()
 
         # Classify regime
         if slope > 0.001:  # Bull market

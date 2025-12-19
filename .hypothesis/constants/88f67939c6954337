@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\common\types.py
+# hypothesis_version: 6.140.3
+
+[0.8, 'T', 'aggressive', 'balanced', 'buy', 'conservative']

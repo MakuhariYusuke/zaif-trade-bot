@@ -4,14 +4,13 @@ Minute-level Data Pipeline for Phase 4
 分足データ取得・処理・管理パイプライン
 """
 
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Any
 import asyncio
 import time
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-import aiohttp
 
 from ztb.utils.logging_utils import get_logger
 

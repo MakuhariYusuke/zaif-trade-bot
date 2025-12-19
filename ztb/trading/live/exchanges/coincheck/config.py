@@ -37,10 +37,3 @@ def get_coincheck_credentials_optional():
     return _config.get_credentials_optional()
 
 
-def validate_credentials(api_key=None, api_secret=None):
-    """Validate credentials (backward compatibility)."""
-    if api_key is None and api_secret is None:
-        # If no args provided, validate current credentials
-        creds = _config.get_credentials_optional()
-        return _config.validate_credentials(creds[0], creds[1])
-    return _config.validate_credentials(api_key, api_secret)

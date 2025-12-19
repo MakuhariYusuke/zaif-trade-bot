@@ -538,20 +538,6 @@ class RecoveryManager:
                 logger.error(f"Stability monitoring failed: {e}")
                 time.sleep(10)
 
-    def _get_current_metrics(self) -> Dict[str, float]:
-        """現在のメトリクスを取得"""
-        try:
-            # SafetyManagerからメトリクスを取得
-            return {
-                "cpu_usage": 45.5,
-                "memory_usage": 67.8,
-                "error_rate": 0.02,
-                "response_time": 150.0,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to get current metrics: {e}")
-            return {}
 
     def _create_backup(self, recovery_attempt: RecoveryAttempt) -> bool:
         """バックアップを作成"""

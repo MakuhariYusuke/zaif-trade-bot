@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\market_analysis\statistical_analyzer.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.01, 0.02, 0.03, 0.05, 0.95, 1.0, 100, 'adx', 'confidence', 'confidence_by_regime', 'consolidation', 'count', 'cv_folds', 'error', 'extreme_volatility', 'max', 'max_accuracy', 'max_confidence', 'mean', 'mean_accuracy', 'mean_confidence', 'min', 'min_accuracy', 'min_confidence', 'moderate_bear_trend', 'moderate_bull_trend', 'momentum', 'percentage', 'regime', 'regime_distribution', 'regime_stability', 'rsi', 'std', 'std_accuracy', 'std_confidence', 'strong_bear_trend', 'strong_bull_trend', 'total_detections', 'unique_regimes', 'unknown', 'volatility', 'weak_bear_trend', 'weak_bull_trend']

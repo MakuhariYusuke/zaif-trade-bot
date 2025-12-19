@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC v432.1 Training Script with Advanced Position Management
 Enhanced position management with negative HOLD penalty
@@ -64,7 +65,7 @@ def train_sac_v432_1():
 def main():
     """Main function"""
     try:
-        results = train_sac_v432_1()
+        train_sac_v432_1()
         print("🎉 SAC v432.1 training completed!")
         return 0
     except Exception as e:

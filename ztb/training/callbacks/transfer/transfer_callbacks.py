@@ -231,43 +231,23 @@ class DomainAdaptationCallback(MemoryOptimizedCallback):
 
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
 
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of training."""
         pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
         pass
 
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
         """Called at the end of each batch."""
         pass
 
 
 class FineTuningCallback(MemoryOptimizedCallback):
-    """
-    Fine-tuning monitoring callback.
-
-    Monitors fine-tuning progress including catastrophic forgetting,
-    layer-wise learning rates, and task-specific performance.
     """
 
     def __init__(
@@ -275,11 +255,6 @@ class FineTuningCallback(MemoryOptimizedCallback):
         compute_frequency: int = 1,
         freeze_layers: Optional[List[str]] = None,
         monitor_catastrophic_forgetting: bool = True,
-    ):
-        super().__init__(cache_size=1000)
-        self.compute_frequency = compute_frequency
-        self.freeze_layers = freeze_layers or []
-        self.monitor_catastrophic_forgetting = monitor_catastrophic_forgetting
 
         # Fine-tuning metrics
         self.layer_learning_rates: Dict[str, List[float]] = {}
@@ -458,11 +433,6 @@ class FineTuningCallback(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of training."""
         pass
-
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
         pass
 
     def on_epoch_start(
@@ -474,11 +444,6 @@ class FineTuningCallback(MemoryOptimizedCallback):
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of each batch."""
         pass
@@ -490,11 +455,6 @@ class TransferPerformanceCallback(MemoryOptimizedCallback):
 
     Monitors the effectiveness of transfer learning by comparing
     performance on source vs target domains and tracking generalization.
-    """
-
-    def __init__(
-        self, compute_frequency: int = 1, evaluation_metrics: Optional[List[str]] = None
-    ):
         super().__init__(cache_size=1000)
         self.compute_frequency = compute_frequency
         self.evaluation_metrics = evaluation_metrics or ["accuracy", "f1"]
@@ -506,11 +466,6 @@ class TransferPerformanceCallback(MemoryOptimizedCallback):
 
         # Generalization metrics
         self.generalization_scores: List[float] = []
-        self.overfitting_indicators: List[float] = []
-
-        self.logger = logging.getLogger(__name__)
-
-    def on_epoch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Monitor transfer performance."""
@@ -522,11 +477,6 @@ class TransferPerformanceCallback(MemoryOptimizedCallback):
 
         try:
             # Track source domain performance
-            if "source_predictions" in logs and "source_labels" in logs:
-                source_perf = self._compute_performance_metrics(
-                    logs["source_predictions"], logs["source_labels"]
-                )
-                self._update_performance_history(self.source_performance, source_perf)
 
             # Track target domain performance
             if "target_predictions" in logs and "target_labels" in logs:
@@ -753,11 +703,6 @@ class TransferPerformanceCallback(MemoryOptimizedCallback):
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of training."""
-        pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
         """Called at the start of each epoch."""
         pass
 
@@ -774,11 +719,6 @@ class TransferPerformanceCallback(MemoryOptimizedCallback):
         pass
 
 
-# Factory functions for easy instantiation
-def create_domain_adaptation(**kwargs) -> DomainAdaptationCallback:
-    """Create domain adaptation callback with default settings."""
-    defaults = {"compute_frequency": 1, "adaptation_method": "auto"}
-    defaults.update(kwargs)
     return DomainAdaptationCallback(**defaults)
 
 

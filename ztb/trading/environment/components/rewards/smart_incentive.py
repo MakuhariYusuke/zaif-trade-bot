@@ -21,10 +21,6 @@ class SmartIncentiveReward(RewardComponent):
     def get_name(self) -> str:
         return "smart_incentive"
 
-    def _get_setting(self, context: RewardContext, key: str, default: Any) -> Any:
-        if hasattr(context.config, "get"):
-            return context.config.get(key, default)
-        return default
 
     def calculate(self, context: RewardContext) -> float:
         """

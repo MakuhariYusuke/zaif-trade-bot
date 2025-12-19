@@ -81,7 +81,7 @@ def create_v427_environment(
     padding_features = len([col for col in features_df.columns if col.startswith('padding')])
     real_features = generated_features - padding_features
 
-    logger.info(f"Feature breakdown:")
+    logger.info("Feature breakdown:")
     logger.info(f"  - Original OHLCV columns: {original_cols}")
     logger.info(f"  - Generated features: {generated_features}")
     logger.info(f"  - Real quality-filtered features: {real_features}")

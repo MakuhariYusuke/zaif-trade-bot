@@ -77,32 +77,6 @@ def calculate_delta_sharpe(
     }
 
 
-def validate_ablation_results(results: Dict[str, Any]) -> bool:
-    """
-    アブレーション結果の妥当性を検証
-
-    Args:
-        results: アブレーション結果
-
-    Returns:
-        妥当性（True: 有効、False: 無効）
-    """
-    # delta_sharpeがNoneでないことを確認
-    if "delta_sharpe" not in results or results["delta_sharpe"] is None:
-        return False
-
-    # 統計情報が揃っていることを確認
-    ds = results["delta_sharpe"]
-    required_keys = ["mean", "std", "ci95"]
-
-    for key in required_keys:
-        if key not in ds:
-            return False
-
-    if not isinstance(ds["ci95"], list) or len(ds["ci95"]) != 2:
-        return False
-
-    return True
 
 
 def calculate_feature_metrics(

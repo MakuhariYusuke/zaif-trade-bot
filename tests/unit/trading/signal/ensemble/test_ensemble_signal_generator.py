@@ -8,7 +8,7 @@ dynamic weight adjustment, confidence calculation, and error handling.
 import unittest
 import pandas as pd
 import numpy as np
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from ztb.trading.signal.ensemble_signal_generator import (
     EnsembleSignalGenerator,

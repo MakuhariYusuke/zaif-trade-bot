@@ -1,4 +1,4 @@
-from ztb.trading.strategies.action_signal_guide import ActionSignalGuide, ActionSignalGuideConfig
+from ztb.trading.strategies.action_signal_guide import ActionSignalGuide
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.bollinger_patterns import BollingerBandsRecognizer
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.adx_patterns import ADXRecognizer
 import pandas as pd

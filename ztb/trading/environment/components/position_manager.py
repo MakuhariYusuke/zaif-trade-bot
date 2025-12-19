@@ -5,6 +5,7 @@ This module separates position-related logic from the main environment class,
 including execution of trades, trade accounting, and position state tracking.
 """
 
+import math
 from typing import Any, Callable, Optional
 
 from ztb.risk.risk_manager import RiskManager
@@ -70,6 +71,10 @@ class PositionManager:
         min_holding_period: int = 0,
         df: Optional[Any] = None,
         atr: float = 0.0,
+        market_regime: str = "UNKNOWN",
+        current_hour: Optional[int] = None,
+        current_volatility: Optional[float] = None,
+        hybrid_filters: Optional[dict] = None,
     ) -> float:
         """
         Execute trading action.
@@ -87,10 +92,108 @@ class PositionManager:
             action: Action to execute (0=HOLD, 1=BUY, 2=SELL)
             current_step: Current step number
             min_holding_period: Minimum steps to hold position before reversal (prevents allow_reverse during this period)
+            market_regime: Current market regime (v452)
+            current_hour: Current hour of day (v453)
+            current_volatility: Current volatility (v453)
+            hybrid_filters: Configuration for hybrid filters (v453)
 
         Returns:
             trade_pnl: PnL from this specific trade INCLUDING entry fees (negative for new positions)
         """
+        # --- v453 Hybrid Filtering ---
+        filter_active = False
+        force_no_reverse = False
+        if hybrid_filters and hybrid_filters.get("enabled", False):
+            # Time Filter
+            time_filter = hybrid_filters.get("time_filter", {})
+            if time_filter.get("enabled", False):
+                excluded = time_filter.get("excluded_hours", [])
+                if current_hour is not None and current_hour in excluded:
+                    filter_active = True
+
+            # Volatility Filter
+            vol_filter = hybrid_filters.get("volatility_filter", {})
+            if vol_filter.get("enabled", False):
+                v_min = vol_filter.get("danger_zone_min", 0.0)
+                v_max = vol_filter.get("danger_zone_max", 1.0)
+                if current_volatility is not None and v_min <= current_volatility <= v_max:
+                    filter_active = True
+
+            # Regime Filter (v454 Soft/Hard)
+            regime_filter = hybrid_filters.get("regime_filter", {})
+            if regime_filter.get("enabled", False):
+                mode = str(regime_filter.get("mode", "hard")).lower()
+
+                permission_raw: Any = None
+                regime_constraint: Optional[dict[str, Any]] = None
+                if mode == "soft":
+                    constraints = regime_filter.get("regime_constraints", {})
+                    if isinstance(constraints, dict) and market_regime:
+                        maybe_constraint = constraints.get(market_regime)
+                        if isinstance(maybe_constraint, dict):
+                            regime_constraint = maybe_constraint
+                            permission_raw = maybe_constraint.get("action_permission")
+
+                # Backward compatibility: fall back to excluded_regimes for hard bans.
+                if (mode != "soft" or permission_raw is None) and market_regime:
+                    excluded_regimes = regime_filter.get("excluded_regimes", [])
+                    if market_regime in excluded_regimes:
+                        permission_raw = "deny"
+
+                permission = str(permission_raw or "allow").lower()
+
+                # Optional directional gating: allow only specified entry actions from flat.
+                if regime_constraint and market_regime:
+                    allowed_entries_raw = (
+                        regime_constraint.get("allowed_entry_actions")
+                        or regime_constraint.get("allowed_actions")
+                    )
+                    if isinstance(allowed_entries_raw, (list, tuple, set)):
+                        allowed_entries = {
+                            str(v).strip().lower() for v in allowed_entries_raw
+                        }
+                        action_key = (
+                            "buy"
+                            if action == ACTION_BUY
+                            else "sell"
+                            if action == ACTION_SELL
+                            else "hold"
+                        )
+                        if self.position == 0 and action_key in {"buy", "sell"}:
+                            if action_key not in allowed_entries:
+                                return 0.0
+
+                        # Prevent auto-reversal into a disallowed direction (close is still allowed).
+                        if self.position > 0 and action == ACTION_SELL:
+                            force_no_reverse = "sell" not in allowed_entries
+                        elif self.position < 0 and action == ACTION_BUY:
+                            force_no_reverse = "buy" not in allowed_entries
+
+                if permission == "deny":
+                    filter_active = True
+                    # Force Exit Logic (keep for hard bans)
+                    if regime_filter.get("force_exit", False) and self.position != 0:
+                        # Avoid stdout spam in long backtests
+                        logger.debug(
+                            "Force exit triggered (regime=%s, position=%s)",
+                            market_regime,
+                            self.position,
+                        )
+                        # Override action to close position
+                        if self.position > 0:  # Long -> Sell to close
+                            action = ACTION_SELL
+                        elif self.position < 0:  # Short -> Buy to close
+                            action = ACTION_BUY
+
+        if filter_active:
+            # Block new entries from flat
+            if action in [ACTION_BUY, ACTION_SELL] and self.position == 0:
+                # logger.debug(f"Hybrid Filter: Blocking entry")
+                return 0.0
+            # If holding position, allow closing but prevent reversal (opening new leg)
+            # We handle this by temporarily treating allow_reverse as False
+        # -----------------------------
+
         if action == ACTION_HOLD:
             self._consecutive_trade_steps = 0
             return 0.0
@@ -105,6 +208,13 @@ class PositionManager:
             self.config, "enforce_reverse_cooldown", False
         )
 
+        # Determine if reversal is allowed
+        allow_reverse = self.config.allow_reverse
+        if filter_active:
+            allow_reverse = False
+        if force_no_reverse:
+            allow_reverse = False
+
         trade_pnl = 0.0  # Track PnL from this action (closes + entries)
 
         if action == ACTION_BUY:
@@ -114,16 +224,31 @@ class PositionManager:
                 self._consecutive_trade_steps += 1
 
                 # Only open Long immediately if allow_reverse=True AND not within min_holding_period
-                if self.config.allow_reverse and (
+                if allow_reverse and (
                     not enforce_reverse_cooldown or not within_min_holding
                 ):
-                    entry_cost = self.open_position(1, current_step, df, atr)
+                    entry_cost = self.open_position(
+                        1,
+                        current_step,
+                        df,
+                        atr,
+                        market_regime=market_regime,
+                        hybrid_filters=hybrid_filters,
+                    )
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
 
             elif self.position == 0:  # Flat
-                entry_cost = self.open_position(1, current_step, df, atr)
+                entry_cost = self.open_position(
+                    1,
+                    current_step,
+                    df,
+                    atr,
+                    market_regime=market_regime,
+                    hybrid_filters=hybrid_filters,
+                )
                 trade_pnl -= entry_cost  # Entry fee is negative PnL
-                self._consecutive_trade_steps += 1
+                if self.position != 0:  # Only increment if trade actually happened
+                    self._consecutive_trade_steps += 1
             # position > 0 (already Long): do nothing
 
         elif action == ACTION_SELL:
@@ -133,16 +258,31 @@ class PositionManager:
                 self._consecutive_trade_steps += 1
 
                 # Only open Short immediately if allow_reverse=True AND not within min_holding_period
-                if self.config.allow_reverse and (
+                if allow_reverse and (
                     not enforce_reverse_cooldown or not within_min_holding
                 ):
-                    entry_cost = self.open_position(-1, current_step, df, atr)
+                    entry_cost = self.open_position(
+                        -1,
+                        current_step,
+                        df,
+                        atr,
+                        market_regime=market_regime,
+                        hybrid_filters=hybrid_filters,
+                    )
                     trade_pnl -= entry_cost  # Entry fee is negative PnL
 
             elif self.position == 0:  # Flat
-                entry_cost = self.open_position(-1, current_step, df, atr)
+                entry_cost = self.open_position(
+                    -1,
+                    current_step,
+                    df,
+                    atr,
+                    market_regime=market_regime,
+                    hybrid_filters=hybrid_filters,
+                )
                 trade_pnl -= entry_cost  # Entry fee is negative PnL
-                self._consecutive_trade_steps += 1
+                if self.position != 0:  # Only increment if trade actually happened
+                    self._consecutive_trade_steps += 1
             # position < 0 (already Short): do nothing
 
         return trade_pnl
@@ -153,6 +293,9 @@ class PositionManager:
         current_step: int,
         df: Optional[Any] = None,
         atr: float = 0.0,
+        regime_data: Optional[Any] = None,
+        market_regime: Optional[str] = None,
+        hybrid_filters: Optional[dict] = None,
     ) -> float:
         """
         Open position (entry cost immediately reflected).
@@ -179,6 +322,30 @@ class PositionManager:
 
         # 基本ポジションサイズ
         base_position_size = getattr(self.config, "max_position_size", 1.0)
+
+        # Regime-based scaling (tests expect scaling depending on regime)
+        if regime_data is not None:
+            try:
+                from ztb.analysis.v444_regime_classifier import RegimeType
+
+                primary = getattr(regime_data, "primary_regime", None)
+                confidence = float(getattr(regime_data, "confidence", 0.0))
+
+                if primary == RegimeType.EXTREME_VOLATILITY:
+                    scale = 1.0 + confidence
+                elif primary in (
+                    RegimeType.STRONG_BULL_TREND,
+                    RegimeType.STRONG_BEAR_TREND,
+                ):
+                    # Moderate boost for strong trends (50% of confidence)
+                    scale = 1.0 + (confidence * 0.5)
+                else:
+                    scale = 1.0
+
+                base_position_size = base_position_size * scale
+            except Exception:
+                # Be defensive: if regime classifier isn't available, fall back to defaults
+                pass
 
         # リスク管理適用 (v435 enhancement)
         current_price = self._get_price()
@@ -238,18 +405,65 @@ class PositionManager:
         affordable_size = affordable_funds / (execution_price * (1 + transaction_cost))
 
         # 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）
-        actual_position_size = min(max_position_size, affordable_size)
+        # Fix: Use risk-adjusted size instead of raw max_position_size
+        actual_position_size = min(risk_adjusted["adjusted_position"], affordable_size)
+        pre_multiplier_size = actual_position_size
 
-        # 最小取引単位チェック (0.001 BTC = 1 mBTC ≈ 5,000円)
-        min_trade_size = 0.001
+        # --- v454 Soft Regime Control: position multiplier ---
+        position_multiplier = 1.0
+        if hybrid_filters and hybrid_filters.get("enabled", False) and market_regime:
+            regime_filter = hybrid_filters.get("regime_filter", {})
+            if regime_filter.get("enabled", False) and str(
+                regime_filter.get("mode", "hard")
+            ).lower() == "soft":
+                constraints = regime_filter.get("regime_constraints", {})
+                if isinstance(constraints, dict):
+                    constraint = constraints.get(market_regime)
+                    if isinstance(constraint, dict):
+                        permission = str(
+                            constraint.get("action_permission", "allow")
+                        ).lower()
+                        if permission == "restricted":
+                            try:
+                                position_multiplier = float(
+                                    constraint.get("position_multiplier", 1.0)
+                                )
+                            except (TypeError, ValueError):
+                                position_multiplier = 1.0
+
+        if not math.isfinite(position_multiplier):
+            position_multiplier = 1.0
+        position_multiplier = max(0.0, min(1.0, position_multiplier))
+
+        # 最小取引単位チェック (default: 0.001 BTC)
+        risk_cfg = getattr(self.config, "risk_management", {}) or {}
+        min_trade_size = getattr(self.config, "min_trade_size", None)
+        if min_trade_size is None:
+            min_trade_size = risk_cfg.get("min_trade_size", 0.001)
+        try:
+            min_trade_size = float(min_trade_size)
+        except (TypeError, ValueError):
+            min_trade_size = 0.001
+        if not math.isfinite(min_trade_size) or min_trade_size < 0.0:
+            min_trade_size = 0.001
+
+        if position_multiplier != 1.0:
+            scaled_size = pre_multiplier_size * position_multiplier
+            # If we intentionally downscale below the exchange minimum, keep the minimum as a "probe" order.
+            if pre_multiplier_size >= min_trade_size and scaled_size < min_trade_size:
+                actual_position_size = min_trade_size
+            else:
+                actual_position_size = scaled_size
+
         if actual_position_size < min_trade_size:
-            logger.warning(
-                "Insufficient funds for minimum trade size: available=%.2f, required=%.2f (min_size=%.4f BTC)",
+            logger.debug(
+                "Insufficient funds or risk constraint for minimum trade size: available=%.2f, required=%.2f (min_size=%.4f BTC). Trade aborted.",
                 available_funds,
                 min_trade_size * execution_price * (1 + transaction_cost),
                 min_trade_size,
             )
-            actual_position_size = min_trade_size  # 最小単位で取引試行
+            # Abort trade if size is too small
+            return 0.0
 
         # Calculate entry cost based on actual size
         if self.execution_model:

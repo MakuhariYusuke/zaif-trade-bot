@@ -155,11 +155,11 @@ def print_analysis_report(analysis: Dict[str, Any], output_file: Optional[Path] 
     print("-"*80)
     print(f"  Report: {best['report_file']}")
     print(f"  Balance Score: {best['balance_score']:.4f}")
-    print(f"  Action Distribution:")
+    print("  Action Distribution:")
     print(f"    BUY:  {best['action_distribution']['buy']:.2%}")
     print(f"    SELL: {best['action_distribution']['sell']:.2%}")
     print(f"    HOLD: {best['action_distribution']['hold']:.2%}")
-    print(f"\n  Reward Components:")
+    print("\n  Reward Components:")
     for key, value in best['reward_components'].items():
         print(f"    {key:20s}: {value:8.6f}")
     

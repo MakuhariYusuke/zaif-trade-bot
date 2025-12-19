@@ -958,6 +958,15 @@ This project implements multiple security measures:
 - **Security**: No high/critical security issues
 - **Documentation**: Update docs for API changes
 - **Style**: Follow PEP 8 with Black formatting
+- **Docstrings / Comments**: Prefer ASCII punctuation in `ztb/` docstrings/comments to avoid import-time issues and improve cross-team readability. Use the helper scripts:
+
+```bash
+# Dry-run (report occurrences)
+python scripts/check_docstring_ascii.py
+
+# Apply conservative replacements (creates .bak files)
+python scripts/fix_docstring_punctuation.py --apply
+```
 
 ## 📈 Performance
 

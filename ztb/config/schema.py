@@ -51,6 +51,8 @@ class FeaturesConfig(BaseModel):
 class RewardSettings(BaseModel):
     """Reward function configuration."""
 
+    model_config = ConfigDict(extra="allow")
+
     use_simple_reward: bool = False
     reward_scale: float = 100.0
     trading_bonus: float = 0.01
@@ -64,7 +66,7 @@ class EnvironmentConfig(BaseModel):
     """Trading environment configuration."""
 
     model_config = ConfigDict(extra="allow")
-    
+
     initial_balance: float = DEFAULT_INITIAL_BALANCE
     transaction_cost: float = DEFAULT_TRANSACTION_COST
     max_position_size: float = 1.0
@@ -82,7 +84,7 @@ class CurriculumLearningConfig(BaseModel):
     """Curriculum learning configuration."""
 
     model_config = ConfigDict(extra="allow")
-    
+
     enabled: bool = False
     curriculum_stage: str = "pnl_focused"
     stage_progression: List[str] = Field(default_factory=list)

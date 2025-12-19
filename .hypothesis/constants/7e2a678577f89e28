@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\mtf_scheduler.py
+# hypothesis_version: 6.140.3
+
+[0.0, 2000, 3600, 'applied_at', 'candidate_id', 'composite_score', 'emergency', 'feature_weights', 'mean_sharpe', 'mean_total_return', 'multi_timeframe', 'new_stage', 'random', 'report_count', 'reports', 'stage', 'utf-8', 'weights']

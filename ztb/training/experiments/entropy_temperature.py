@@ -88,9 +88,6 @@ class TargetEntropyController:
         self.history: Dict[str, List[float]] = {"alpha": [], "entropy": [], "loss": []}
 
     @property
-    def alpha(self) -> float:
-        """Get current temperature (α = exp(log_alpha))."""
-        return cast(float, torch.exp(self.log_alpha).item())
 
     def compute_entropy(
         self, action_logits: torch.Tensor, actions: Optional[torch.Tensor] = None
@@ -184,82 +181,6 @@ class TargetEntropyController:
     def should_update(self, step: int, update_frequency: int = 1) -> bool:
         """
         Check if temperature should be updated at this step.
-
-        Args:
-            step: Current training step
-            update_frequency: How often to update (default: every step)
-
-        Returns:
-            True if should update
-        """
-        return (step % update_frequency) == 0
-
-
-def test_target_entropy_controller() -> None:
-    """Test Target Entropy Controller functionality."""
-    print("Testing Target Entropy Controller...")
-
-    # Initialize controller
-    controller = TargetEntropyController(
-        n_actions=3,
-        target_entropy_ratio=0.7,
-        initial_temperature=0.01,
-        lr_temperature=1e-3,
-    )
-
-    print(f"\nTarget Entropy: {controller.target_entropy:.4f}")
-    print(f"Initial Alpha: {controller.alpha:.6f}")
-
-    # Simulate training with varying entropy
-    print("\n=== Simulating Training ===")
-
-    # Scenario 1: Low entropy (collapsed exploration)
-    print("\nScenario 1: Low Entropy (Exploration Collapsed)")
-    for i in range(5):
-        # Very peaked distribution (low entropy)
-        logits = torch.tensor([[10.0, 0.0, 0.0]] * 10)  # Strongly prefer action 0
-        entropy = controller.compute_entropy(logits)
-
-        loss, alpha = controller.update(entropy)
-        print(f"  Step {i+1}: H={entropy:.4f}, α={alpha:.6f}, loss={loss:.6f}")
-
-    print("  → Alpha should increase to boost exploration")
-
-    # Scenario 2: High entropy (too random)
-    print("\nScenario 2: High Entropy (Too Random)")
-    for i in range(5):
-        # Uniform distribution (high entropy)
-        logits = torch.tensor([[0.0, 0.0, 0.0]] * 10)  # Uniform
-        entropy = controller.compute_entropy(logits)
-
-        loss, alpha = controller.update(entropy)
-        print(f"  Step {i+1}: H={entropy:.4f}, α={alpha:.6f}, loss={loss:.6f}")
-
-    print("  → Alpha should decrease to reduce randomness")
-
-    # Scenario 3: Ideal entropy
-    print("\nScenario 3: Ideal Entropy (Near Target)")
-    for i in range(5):
-        # Moderate distribution (near target)
-        logits = torch.tensor([[1.0, 0.5, 0.3]] * 10)
-        entropy = controller.compute_entropy(logits)
-
-        loss, alpha = controller.update(entropy)
-        print(f"  Step {i+1}: H={entropy:.4f}, α={alpha:.6f}, loss={loss:.6f}")
-
-    print("  → Alpha should stabilize")
-
-    # Final statistics
-    print("\n=== Final Statistics ===")
-    stats = controller.get_statistics()
-    for key, value in stats.items():
-        if isinstance(value, float):
-            print(f"{key}: {value:.6f}")
-        else:
-            print(f"{key}: {value}")
-
-    print("\n✅ Target Entropy Controller test passed!")
-
 
 if __name__ == "__main__":
     test_target_entropy_controller()

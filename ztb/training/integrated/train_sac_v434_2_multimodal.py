@@ -166,7 +166,6 @@ class MultimodalSACv434Trainer:
             else:
                 obs = reset_result
 
-            total_reward = 0
             episode_rewards = []
             for episode in range(5):  # 5エピソード評価
                 episode_reward = 0

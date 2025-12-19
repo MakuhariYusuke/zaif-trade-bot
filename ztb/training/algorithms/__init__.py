@@ -34,6 +34,7 @@ from .algorithm_factory import AlgorithmFactory
 from .base_algorithm import BaseRLAlgorithm
 from .ppo import PPOAlgorithm
 from .sac import SACAlgorithm
+import logging
 
 # ========================================
 # アルゴリズム登録
@@ -71,8 +72,6 @@ __version__ = "1.0.0"
 __author__ = "Zaif Trade Bot Team"
 
 # 初期化時にアルゴリズム情報を表示
-import logging
-
 logger = logging.getLogger(__name__)
 
 info = AlgorithmFactory.get_info()

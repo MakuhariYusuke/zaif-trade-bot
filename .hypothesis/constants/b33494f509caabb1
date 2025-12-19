@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\utils\exchange_profile.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.001, 'ExchangeProfile', 'buy_fee_rate', 'fee_model', 'fixed', 'generic', 'latency_ms', 'maker_fee_rate', 'name', 'sell_fee_rate', 'slippage_rate', 'taker_fee_rate', 'type']

@@ -17,12 +17,8 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 # Check for Stable-Baselines3 availability
-try:
-    import stable_baselines3
-
-    STABLE_BASELINES3_AVAILABLE = True
-except ImportError:
-    STABLE_BASELINES3_AVAILABLE = False
+import importlib.util  # noqa: E402
+STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
 
 
 def configure_progress_bar(

@@ -3,7 +3,6 @@ Unit tests for UnifiedTrainer component integration.
 """
 
 import pytest
-from unittest.mock import Mock, patch
 
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
 

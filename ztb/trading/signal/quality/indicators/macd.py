@@ -6,7 +6,6 @@ Calculates MACD for trend analysis and momentum signals.
 
 from typing import Dict, Any, Optional
 import pandas as pd
-import numpy as np
 
 from ztb.trading.signal.quality.indicators.base import BaseTrendIndicator
 

@@ -40,14 +40,6 @@ class TradingStrategy(Protocol):
         """
         ...
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
-        """
-        Update strategy hyperparameters.
-
-        Args:
-            hyperparameters: Dictionary of hyperparameter names and values
-        """
-        ...
 
 
 def validate_trading_strategy(strategy: Any) -> bool:

@@ -7,9 +7,7 @@ Tests the integration of SignalPerformanceAnalyzer with unified backtest framewo
 
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
-import pandas as pd
-import numpy as np
+from unittest.mock import patch
 import sys
 import os
 
@@ -19,8 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..
 from ztb.trading.backtest.unified_backtest.signal_performance import (
     BacktestSignalPerformanceAnalyzer,
     SignalTracker,
-    BacktestPerformanceAnalyzer,
-    TrackedSignal
+    BacktestPerformanceAnalyzer
 )
 
 

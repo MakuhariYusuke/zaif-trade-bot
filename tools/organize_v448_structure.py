@@ -9,8 +9,6 @@ v448ディレクトリ構造整理スクリプト
 import argparse
 import shutil
 from pathlib import Path
-from typing import List
-import json
 
 
 class V448StructureOrganizer:
@@ -121,7 +119,7 @@ class V448StructureOrganizer:
         if not dry_run:
             print(f"✅ {len(old_versions)}個のバージョンをアーカイブ完了\n")
         else:
-            print(f"ℹ️  [DRY-RUN] 実際には移動していません\n")
+            print("ℹ️  [DRY-RUN] 実際には移動していません\n")
     
     def move_active_configs(self, dry_run: bool = False):
         """v447をactive/に移動"""
@@ -139,10 +137,10 @@ class V448StructureOrganizer:
             return
         
         if dry_run:
-            print(f"  [DRY-RUN] v447/ → active/v447/")
+            print("  [DRY-RUN] v447/ → active/v447/")
         else:
             shutil.copytree(str(v447_dir), str(active_v447))
-            print(f"  ✅ v447/ → active/v447/")
+            print("  ✅ v447/ → active/v447/")
         
         print("✅ アクティブ設定の移動完了\n")
     

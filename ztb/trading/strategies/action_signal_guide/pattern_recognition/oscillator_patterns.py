@@ -32,7 +32,7 @@ except ImportError:
     def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
         return pd.Series([50.0] * len(df), index=df.index)
 
-from .base import PatternRecognizer, SignalResult, MultiTimeframeData, PatternThresholds, SignalMetadata
+from .base import PatternRecognizer, SignalResult, MultiTimeframeData
 
 try:
     from ..types import RegimeAdjustment

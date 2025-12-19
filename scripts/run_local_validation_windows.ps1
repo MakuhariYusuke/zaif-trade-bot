@@ -44,8 +44,10 @@ if ($InstallProd) {
     Write-Host "Installing production requirements as well (this may be slow and include heavy native packages)..." | Tee-Object -FilePath $LogFile -Append
     python -m pip install -r config/requirements/requirements.txt -r config/requirements/requirements-dev.txt | Tee-Object -FilePath $LogFile -Append
 } else {
-    # Only a minimal dev set to ensure the tools run locally on Windows; this avoids heavy or platform-constrained packages
-    python -m pip install mypy flake8 ruff pytest pytest-cov pyyaml pydantic | Tee-Object -FilePath $LogFile -Append
+    # Only a minimal dev set to ensure the tools run locally on Windows; this avoids heavy or platform-constrained packages.
+    # Add lightweight scientific packages needed for basic test collection (numpy/pandas).
+    # Use --prefer-binary to prefer wheels when available and avoid building from source.
+    python -m pip install --prefer-binary mypy flake8 ruff pytest pytest-cov pyyaml pydantic numpy pandas psutil scipy gymnasium scikit-learn | Tee-Object -FilePath $LogFile -Append
 }
 
 Write-Host "Running mypy..." | Tee-Object -FilePath $LogFile -Append

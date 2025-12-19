@@ -126,9 +126,6 @@ class TechnicalIndicators:
             upper, middle, lower = self.talib.bbands(prices, period, std_dev)
 
             # Return the last valid values
-            def get_last_valid(arr):
-                valid = arr[~np.isnan(arr)]
-                return float(valid[-1]) if len(valid) > 0 else 0.0
 
             return (
                 get_last_valid(upper),

@@ -6,7 +6,6 @@ in learning callbacks to ensure proper error handling behavior.
 """
 
 import unittest
-from unittest.mock import Mock, patch
 
 from ztb.training.callbacks.shared.base.learning_callback import ErrorHandlingStrategy
 

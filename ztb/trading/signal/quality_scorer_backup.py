@@ -283,11 +283,3 @@ class SignalQualityScorer:
         else:
             return 0  # HOLD
 
-    def _fallback_action(self, continuous_action: float) -> int:
-        """Fallback action conversion from continuous action"""
-        if continuous_action > 0.3:  # Higher threshold for fallback BUY
-            return 1
-        elif continuous_action < -0.3:  # Lower threshold for fallback SELL
-            return -1
-        else:
-            return 0

@@ -21,17 +21,11 @@ from virtual_portfolio_manager import VirtualPortfolioManager
 
 
 # Mock classes for testing
-class OrderSide(Enum):
-    BUY = "buy"
-    SELL = "sell"
 
 
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
-
-
-@dataclass
 class Order:
     order_id: str
     symbol: str

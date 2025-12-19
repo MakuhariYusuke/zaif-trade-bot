@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\memory_monitor.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1.0, 5.0, 100, 1000, 1500, 'ZTB_DEV_MEMORY_WARN', 'average_mb', 'current_mb', 'decreasing', 'increasing', 'insufficient_data', 'memory_mb', 'peak_mb', 'samples', 'stable', 'timestamp']

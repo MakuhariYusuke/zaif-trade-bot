@@ -45,7 +45,7 @@ def analyze_report(report_path):
             "ab_tag": data.get("metadata", {}).get("ab_tag", "unknown"),
             "time": datetime.fromtimestamp(report_path.stat().st_mtime).strftime("%H:%M:%S"),
         }
-    except Exception as e:
+    except Exception:
         return None
 
 

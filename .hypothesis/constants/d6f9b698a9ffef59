@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\ensemble_signal_generator.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.8, 0.9, 1.0, 1.2, 2.0, 30.0, 35.0, 50.0, 65.0, 70.0, 100.0, 100, 1000, 'agreement_level', 'bb_position', 'buy', 'close', 'continuous_action', 'df', 'ensemble_confidence', 'ensemble_score', 'ensemble_weights', 'error', 'hold', 'hold_low_confidence', 'macd', 'macd_signal', 'min_periods', 'moderate', 'overall_reliability', 'pattern', 'portfolio', 'recommendation', 'rsi', 'sell', 'sentiment', 'sentiment_window', 'signal_strength', 'source_confidences', 'source_reliabilities', 'source_scores', 'strong', 'technical', 'volume', 'volume_window', 'weak']

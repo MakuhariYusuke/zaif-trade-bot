@@ -5,11 +5,9 @@ Tracks Action Signal Guide signals during backtest execution,
 collecting data for performance analysis.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
-import numpy as np
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger

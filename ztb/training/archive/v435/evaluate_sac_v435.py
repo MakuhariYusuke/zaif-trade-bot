@@ -16,6 +16,7 @@ from stable_baselines3 import SAC
 from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.risk.risk_manager import RiskManager
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
+from ztb.training.utils.risk_management_utils import setup_risk_management_config
 from ztb.utils.trading_metrics import win_rate
 
 logger = logging.getLogger(__name__)
@@ -44,37 +45,16 @@ class SACv435Evaluator:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        from ztb.training.utils.common_utils import load_config_file
+
+        return load_config_file(self.config_path)
 
     def _setup_risk_management(self):
         """Setup risk management for evaluation"""
         logger.info("Setting up risk management for v435 evaluation")
 
         risk_config = self.config.get("risk_management", {})
-
-        risk_manager_config = {
-            "position_sizer": {
-                "enabled": risk_config.get("dynamic_position_sizing", True),
-                "volatility_adjustment": risk_config.get("volatility_adjustment", True),
-                "min_position_size": 0.001,
-                "max_position_size": 0.2,
-                "base_position_size": 0.1,
-            },
-            "drawdown_controller": {
-                "enabled": risk_config.get("drawdown_control", True),
-                "max_drawdown_limit": risk_config.get("max_drawdown_limit", 0.1),
-                "emergency_stop_threshold": 0.15,
-                "recovery_threshold": 0.05,
-            },
-            "market_adaptor": {
-                "enabled": True,
-                "adaptation_window": 50,
-                "volatility_threshold": 0.02,
-                "trend_strength_threshold": 0.01,
-                "regime_change_threshold": 0.7,
-            },
-        }
+        risk_manager_config = setup_risk_management_config(risk_config)
 
         self.risk_manager = ensure_risk_manager_protocol(
             RiskManager(risk_manager_config)
@@ -108,8 +88,6 @@ class SACv435Evaluator:
 
         # Initialize simple backtest
         initial_balance = 100000
-        portfolio_values = [initial_balance]
-        trades = []
 
         # Run simplified backtest with risk management
         results = self._run_simplified_backtest(test_df, initial_balance)
@@ -158,7 +136,7 @@ class SACv435Evaluator:
 
         for i in range(test_steps):
             current_data = test_df.iloc[i]
-            next_data = test_df.iloc[i + 1]
+            test_df.iloc[i + 1]
 
             # Get model prediction
             obs = self._prepare_observation(current_data)
@@ -242,7 +220,7 @@ class SACv435Evaluator:
         self, backtest_results: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Calculate basic performance metrics"""
-        portfolio_values = backtest_results["portfolio_values"]
+        backtest_results["portfolio_values"]
         trades = backtest_results["trades"]
 
         # Basic metrics
@@ -302,7 +280,7 @@ class SACv435Evaluator:
 
         # Basic risk metrics
         returns = np.diff(portfolio_values) / portfolio_values[:-1]
-        cumulative_returns = np.cumprod(1 + returns) - 1
+        np.cumprod(1 + returns) - 1
 
         # Maximum drawdown
         max_drawdown_result = max_drawdown(portfolio_values)
@@ -315,7 +293,7 @@ class SACv435Evaluator:
         if risk_adjustments:
             original_positions = [adj["original_position"] for adj in risk_adjustments]
             adjusted_positions = [adj["adjusted_position"] for adj in risk_adjustments]
-            risk_levels = [adj["risk_level"] for adj in risk_adjustments]
+            [adj["risk_level"] for adj in risk_adjustments]
 
             position_reduction_ratio = np.mean(
                 [

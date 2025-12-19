@@ -5,15 +5,18 @@ This module provides validation, helper functions, and utility classes
 to support Action Signal Guide operations.
 """
 
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Dict, List, Any, Tuple, TYPE_CHECKING
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import logging
-import re
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    # Import ActionSignal only for static type checking to avoid runtime import
+    # side-effects during test collection.
+    from ..action_signal_guide import ActionSignal  # type: ignore
 
 
 @dataclass

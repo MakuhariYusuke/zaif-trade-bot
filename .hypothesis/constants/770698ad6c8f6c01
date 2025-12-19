@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\timeseries.py
+# hypothesis_version: 6.140.3
+
+['correlation', 'feature1', 'feature2', 'lag']

@@ -44,12 +44,6 @@ class ModelError(TrainingError):
     pass
 
 
-class ModelError(TrainingError):
-    """Raised when model operations fail."""
-
-    pass
-
-
 class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
     """Base class for algorithm-specific trainers with common training optimizations."""
 

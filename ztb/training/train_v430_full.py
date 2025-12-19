@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 # Direct imports to avoid complex dependencies
 try:
     import pandas as pd
-    import torch
     from stable_baselines3 import SAC
     from ztb.utils.training_utils import create_checkpoint_callback
     from stable_baselines3.common.monitor import Monitor
@@ -54,7 +53,7 @@ class TrainingCallback(BaseCallback):
 
             # Log episode stats if available
             if len(self.episode_rewards) > 0:
-                avg_reward = sum(self.episode_rewards[-10:]) / min(
+                sum(self.episode_rewards[-10:]) / min(
                     10, len(self.episode_rewards)
                 )
                 print(".3f")
@@ -68,14 +67,6 @@ class TrainingCallback(BaseCallback):
             self.episode_lengths.extend(self.locals["episode_lengths"])
 
 
-def load_optimized_config():
-    """Load the optimized SAC v430 configuration."""
-
-    config_path = "configs/v430/sac_v430_optimized.json"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-
-    return config
 
 
 def run_full_training():

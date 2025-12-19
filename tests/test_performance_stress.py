@@ -10,7 +10,6 @@ import sys
 import unittest
 import time
 from pathlib import Path
-from unittest.mock import Mock
 
 import pandas as pd
 import numpy as np
@@ -36,30 +35,9 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
 )
 
 
-class MockActionSignal:
-    """Mock ActionSignal for testing."""
-
-    def __init__(self, **kwargs):
-        self.action = kwargs.get('action', 'BUY')
-        self.confidence = kwargs.get('confidence', 0.8)
-        self.pattern_type = kwargs.get('pattern_type', 'fibonacci')
-        self.price = kwargs.get('price', 100.0)
-        self.timestamp = kwargs.get('timestamp', pd.Timestamp.now())
-        self.stop_loss = kwargs.get('stop_loss', 95.0)
-        self.take_profit = kwargs.get('take_profit', 110.0)
-        self.signal_type = kwargs.get('signal_type', 'test')
 
 
 class TestPerformanceAndStress(unittest.TestCase):
-    """Performance and stress tests for Action Signal Guide components."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.signal_validator = SignalValidator()
-        self.data_sanitizer = DataSanitizer()
-        self.performance_tracker = PerformanceTracker()
-        self.sac_validator = SACSignalValidator()
-        self.decision_integrator = SACDecisionIntegrator()
         self.performance_monitor = SACPerformanceMonitor()
         self.regime_detector = MarketRegimeDetector()
         self.regime_processor = RegimeAdaptiveSignalProcessor()

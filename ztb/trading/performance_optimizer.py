@@ -64,9 +64,6 @@ class SystemPerformanceMetrics:
     memory_efficiency: float = 0.0  # 操作あたりのメモリ使用量
     cpu_efficiency: float = 0.0  # 操作あたりのCPU使用量
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return asdict(self)
 
 
 @dataclass
@@ -291,10 +288,6 @@ class LatencyOptimizer:
             async def send_signal():
                 await self.integration_manager.component_manager.position_manager.submit_signal(
                     signal
-                )
-
-            asyncio.run(send_signal())
-
     def _analyze_bottlenecks(self, profile_output: str) -> List[Dict[str, Any]]:
         """ボトルネックの分析"""
         bottlenecks = []
@@ -469,10 +462,6 @@ class LatencyOptimizer:
 
             latency, _ = self.measure_operation_latency(asyncio.run, send_signal)
             latencies.append(latency)
-
-        return SystemPerformanceMetrics(
-            avg_latency_ms=np.mean(latencies),
-            p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
             max_latency_ms=max(latencies),
         )
@@ -711,14 +700,6 @@ class MemoryOptimizer:
 
         efficiency = {
             "memory_per_thread_gb": recent["rss_gb"] / max(recent["thread_count"], 1),
-            "memory_per_connection_gb": recent["rss_gb"]
-            / max(
-                _safe_len(
-                    getattr(
-                        getattr(
-                            getattr(
-                                self.integration_manager, "component_manager", None
-                            ),
                             "v433_system",
                             None,
                         ),

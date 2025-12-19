@@ -99,7 +99,7 @@ def run_multi_stage_phase(phase_name, timesteps, focus, base_config):
 
         # Progress reporting
         if step % (timesteps // 5) == 0 and step > 0:
-            progress = (step / timesteps) * 100
+            (step / timesteps) * 100
             print(".1f")
 
     elapsed_time = time.time() - start_time
@@ -112,7 +112,7 @@ def run_multi_stage_phase(phase_name, timesteps, focus, base_config):
 
     print("Action Distribution:")
     for action, count in actions_taken.items():
-        percentage = (count / timesteps) * 100
+        (count / timesteps) * 100
         print(".1f")
 
     return {
@@ -179,22 +179,15 @@ def run_multi_stage_training():
 
     print("\nOverall Action Distribution:")
     for action, count in overall_actions.items():
-        percentage = (count / total_timesteps) * 100
+        (count / total_timesteps) * 100
         print(".1f")
 
     # Phase progression analysis
     print("\nPhase Progression Analysis:")
     for i, result in enumerate(multi_stage_results):
         phase = result["phase"]
-        focus = result["focus"]
-        avg_r = result["avg_reward"]
-        entropy = (
-            "High"
-            if "exploration" in focus
-            else "Low"
-            if "refinement" in focus
-            else "Medium"
-        )
+        result["focus"]
+        result["avg_reward"]
         print(".4f")
 
     # Learning curve analysis

@@ -9,7 +9,6 @@ components including Fibonacci patterns, technical indicators, and pattern analy
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pandas as pd
 import numpy as np
@@ -21,8 +20,6 @@ sys.path.insert(0, str(project_root))
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.fibonacci_patterns import (
     FibonacciAnalyzer,
     FibonacciRetracementRecognizer,
-    FibonacciExtensionRecognizer,
-    FibonacciProjectionRecognizer,
 )
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import SignalResult
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.rsi import RSIPatternRecognizer

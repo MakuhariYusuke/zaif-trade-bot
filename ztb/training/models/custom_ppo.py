@@ -127,6 +127,22 @@ class CustomPPO(MaskablePPO):
         self.enable_stratified_sampling = enable_stratified_sampling
         self.enable_lagrange = enable_lagrange
 
+        # Ensure action_space exists on the model in case base class didn't
+        # populate it during initialization (some SB3 versions or stubs
+        # may not set this attribute reliably at __init__ time).
+        if not hasattr(self, "action_space") or self.action_space is None:
+            try:
+                # If env is a Gym env instance, use its action_space
+                if hasattr(env, "action_space"):
+                    self.action_space = env.action_space
+            except Exception:
+                # Best-effort: fall back to Discrete(3) for trading actions
+                try:
+                    # `spaces` is imported at module level; use it if available
+                    self.action_space = spaces.Discrete(3)
+                except Exception:
+                    pass
+
         # Initialize custom components
         self.pan_normalizer: Optional[PerActionAdvantageNormalizer] = None
         self.entropy_controller: Optional[TargetEntropyController] = None
@@ -283,14 +299,26 @@ class CustomPPO(MaskablePPO):
                 if self.enable_lagrange and self.lagrange is not None:
                     # Get action masks from rollout data (MaskableRolloutBuffer stores these)
                     # action_masks shape: [batch_size, n_actions]
-                    if hasattr(rollout_data, "action_masks"):
-                        action_masks_np = rollout_data.action_masks.cpu().numpy()
+                        # Prefer using rollout-provided action_masks when available.
                         actions_np = actions.cpu().numpy()
+                        if hasattr(rollout_data, "action_masks"):
+                            action_masks_np = rollout_data.action_masks.cpu().numpy()
+                        else:
+                            # If no action_masks are present (older SB3 versions or
+                            # custom rollout buffers), assume all actions legal so
+                            # Lagrange still receives updates during training.
+                            import numpy as _np
+
+                            n_actions = (
+                                int(self.action_space.n)
+                                if isinstance(self.action_space, spaces.Discrete)
+                                else 3
+                            )
+                            action_masks_np = _np.ones((len(actions_np), n_actions))
 
                         # Compute penalty and update dual variable
                         penalty_value, lagrange_info = self.lagrange.compute_penalty(
-                            actions=actions_np,
-                            legal_masks=action_masks_np,
+                            actions=actions_np, legal_masks=action_masks_np
                         )
                         lagrange_penalty = penalty_value
 

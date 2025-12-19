@@ -7,9 +7,8 @@ Tests the integration of SignalPerformanceAnalyzer with unified backtest framewo
 
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import pandas as pd
-import numpy as np
 import sys
 import os
 
@@ -26,9 +25,6 @@ from ztb.trading.backtest.unified_backtest.signal_performance import (
 class TestSignalTracker(unittest.TestCase):
     """Test SignalTracker functionality."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.tracker = SignalTracker()
 
     def test_track_signal(self):
         """Test signal tracking."""
@@ -91,9 +87,6 @@ class TestBacktestPerformanceAnalyzer(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.analyzer = BacktestPerformanceAnalyzer()
-
-    def test_record_trade_outcome(self):
-        """Test recording trade outcome."""
         timestamp = pd.Timestamp(datetime(2023, 1, 1, 12, 0, 0))
         trade_result = {
             "action": "buy",
@@ -149,9 +142,6 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
 
     def test_track_signal_integration(self):
         """Test signal tracking through main analyzer."""
-        timestamp = pd.Timestamp(datetime(2023, 1, 1, 12, 0, 0))
-        signal_data = {
-            "signal_type": "buy", "direction": 1.0, "strength": 0.8,
             "confidence": 0.9, "source_patterns": ["pattern1"]
         }
         market_data = pd.Series({"close": 50000, "volume": 100})

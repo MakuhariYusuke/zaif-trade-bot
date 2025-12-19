@@ -89,7 +89,7 @@ def objective_function(
             checkpoint_dir=config["checkpoint_dir"],
         )
 
-        model = trainer.train(session_id=f"bayes_opt_{hash(str(params))}")
+        trainer.train(session_id=f"bayes_opt_{hash(str(params))}")
 
         # Evaluate performance (use validation reward as objective)
         eval_reward = float(trainer.get_reward_stats().get("mean_reward", -1000))

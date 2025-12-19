@@ -165,55 +165,30 @@ class ClusteringMetricsCallback(MemoryOptimizedCallback):
 
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
 
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of training."""
         pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
         pass
 
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
         """Called at the end of each batch."""
         pass
 
 
 class DimensionalityReductionMetricsCallback(MemoryOptimizedCallback):
     """
-    Dimensionality reduction metrics callback.
-
-    Monitors the quality of dimensionality reduction techniques
-    including explained variance, reconstruction error, and preservation
-    of local/global structure.
     """
 
     def __init__(
         self, compute_frequency: int = 1, original_data: Optional[np.ndarray] = None
     ):
         super().__init__(cache_size=500)
-        self.compute_frequency = compute_frequency
-        self.original_data = original_data
-
-        # Metrics history
-        self.explained_variance_history: List[float] = []
         self.reconstruction_error_history: List[float] = []
         self.trustworthiness_history: List[float] = []
         self.continuity_history: List[float] = []
@@ -240,21 +215,30 @@ class DimensionalityReductionMetricsCallback(MemoryOptimizedCallback):
                     explained_var = float(np.sum(explained_var))
                 self.explained_variance_history.append(explained_var)
 
+            # Allow original data to be supplied either at construction or in logs
+            orig_data = self.original_data
+            if logs is not None and "original_data" in logs:
+                orig_data = logs["original_data"]
+
             # Compute reconstruction error if original data available
-            if self.original_data is not None and "reconstructed_data" in logs:
+            if orig_data is not None and "reconstructed_data" in logs:
                 reconstructed = logs["reconstructed_data"]
-                reconstruction_error = np.mean(
-                    np.square(self.original_data - reconstructed)
-                )
-                self.reconstruction_error_history.append(reconstruction_error)
+                try:
+                    reconstruction_error = np.mean(np.square(orig_data - reconstructed))
+                    self.reconstruction_error_history.append(reconstruction_error)
+                except Exception as e:
+                    self.logger.warning(f"Failed to compute reconstruction error: {e}")
 
             # Compute neighborhood preservation metrics
-            if self.original_data is not None:
-                trustworthiness, continuity = self._compute_neighborhood_preservation(
-                    self.original_data, embeddings
-                )
-                self.trustworthiness_history.append(trustworthiness)
-                self.continuity_history.append(continuity)
+            if orig_data is not None:
+                try:
+                    trustworthiness, continuity = self._compute_neighborhood_preservation(
+                        orig_data, embeddings
+                    )
+                    self.trustworthiness_history.append(trustworthiness)
+                    self.continuity_history.append(continuity)
+                except Exception as e:
+                    self.logger.warning(f"Failed to compute neighborhood preservation: {e}")
 
             # Cache metrics
             metrics_key = f"dim_reduction_epoch_{context.epoch}"
@@ -374,11 +358,6 @@ class DimensionalityReductionMetricsCallback(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of training."""
         pass
-
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
         pass
 
     def on_epoch_start(
@@ -390,11 +369,6 @@ class DimensionalityReductionMetricsCallback(MemoryOptimizedCallback):
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of each batch."""
         pass
@@ -406,11 +380,6 @@ class EmbeddingQualityCallback(MemoryOptimizedCallback):
 
     Evaluates the quality of learned embeddings using various metrics
     including clustering quality, neighborhood preservation, and
-    downstream task performance.
-    """
-
-    def __init__(
-        self, compute_frequency: int = 5, assessment_tasks: Optional[List[str]] = None
     ):
         super().__init__(cache_size=1000)
         self.compute_frequency = compute_frequency
@@ -422,11 +391,6 @@ class EmbeddingQualityCallback(MemoryOptimizedCallback):
 
         # Quality metrics history
         self.embedding_quality_scores: Dict[str, List[float]] = {}
-        self.downstream_performance: Dict[str, List[float]] = {}
-
-        self.logger = logging.getLogger(__name__)
-
-    def on_epoch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Assess embedding quality."""
@@ -438,11 +402,6 @@ class EmbeddingQualityCallback(MemoryOptimizedCallback):
 
         embeddings = logs["embeddings"]
         quality_scores = {}
-
-        try:
-            # Assess clustering quality
-            if "clustering" in self.assessment_tasks and "cluster_labels" in logs:
-                cluster_labels = logs["cluster_labels"]
                 if len(np.unique(cluster_labels)) > 1:
                     silhouette = silhouette_score(embeddings, cluster_labels)
                     quality_scores["clustering_silhouette"] = silhouette
@@ -604,11 +563,6 @@ class EmbeddingQualityCallback(MemoryOptimizedCallback):
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of training."""
-        pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
         """Called at the start of each epoch."""
         pass
 
@@ -625,11 +579,6 @@ class EmbeddingQualityCallback(MemoryOptimizedCallback):
         pass
 
 
-class ConvergenceMonitorCallback(MemoryOptimizedCallback):
-    """
-    Convergence monitoring callback for unsupervised learning.
-
-    Monitors convergence of unsupervised learning algorithms
     including changes in loss, cluster assignments, and embedding positions.
     """
 
@@ -646,11 +595,6 @@ class ConvergenceMonitorCallback(MemoryOptimizedCallback):
 
         # Convergence tracking
         self.loss_history: List[float] = []
-        self.convergence_detected = False
-        self.convergence_epoch = 0
-        self.patience_counter = 0
-
-        # Change tracking
         self.previous_embeddings: Optional[np.ndarray] = None
         self.embedding_changes: List[float] = []
 
@@ -667,11 +611,6 @@ class ConvergenceMonitorCallback(MemoryOptimizedCallback):
             return
 
         # Track loss convergence
-        if "loss" in logs:
-            current_loss = logs["loss"]
-            self.loss_history.append(current_loss)
-
-            # Check for loss convergence
             if len(self.loss_history) >= 3:
                 recent_losses = self.loss_history[-3:]
                 loss_change = abs(recent_losses[-1] - recent_losses[-2])
@@ -688,11 +627,6 @@ class ConvergenceMonitorCallback(MemoryOptimizedCallback):
                             f"loss change: {loss_change:.6f}"
                         )
                 else:
-                    self.patience_counter = 0
-
-        # Track embedding changes
-        if "embeddings" in logs:
-            current_embeddings = logs["embeddings"]
 
             if self.previous_embeddings is not None:
                 # Compute embedding change (simplified)
@@ -742,11 +676,6 @@ class ConvergenceMonitorCallback(MemoryOptimizedCallback):
     def on_epoch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
         pass
@@ -768,11 +697,6 @@ def create_clustering_metrics(**kwargs) -> ClusteringMetricsCallback:
 
 def create_dim_reduction_metrics(**kwargs) -> DimensionalityReductionMetricsCallback:
     """Create dimensionality reduction metrics callback with default settings."""
-    defaults = {"compute_frequency": 1}
-    defaults.update(kwargs)
-    return DimensionalityReductionMetricsCallback(**defaults)
-
-
 def create_embedding_quality(**kwargs) -> EmbeddingQualityCallback:
     """Create embedding quality callback with default settings."""
     defaults = {

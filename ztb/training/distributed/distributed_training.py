@@ -13,8 +13,35 @@ from contextlib import contextmanager
 from typing import Any, Callable, Dict, List, Optional
 
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
+try:
+    import torch.distributed as dist
+except Exception:
+    # Provide a lightweight stub when torch.distributed is not available in
+    # minimal test environments to avoid import-time failures.
+    class _DistStub:
+        @staticmethod
+        def is_initialized():
+            return False
+
+    dist = _DistStub()
+
+try:
+    import torch.multiprocessing as mp
+except Exception:
+    class _MPStub:
+        class Process:
+            def __init__(self, *a, **k):
+                raise RuntimeError("multiprocessing not available in this test environment")
+
+        @staticmethod
+        def get_context(*a, **k):
+            return _MPStub
+
+        @staticmethod
+        def cpu_count():
+            return 1
+
+    mp = _MPStub()
 import torch.nn as nn
 
 logger = logging.getLogger(__name__)
@@ -168,7 +195,7 @@ class DistributedTrainer:
     def save_checkpoint(
         self,
         checkpoint_path: str,
-        optimizer: Optional[torch.optim.Optimizer] = None,
+        optimizer: Optional["torch.optim.Optimizer"] = None,
         scheduler: Optional[Any] = None,
         epoch: int = 0,
         **kwargs,

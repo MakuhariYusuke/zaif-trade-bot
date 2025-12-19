@@ -10,7 +10,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 
 def run_ab_search(
@@ -183,17 +183,17 @@ def main():
     print(f"\nAnalysis saved to: {analysis_path}")
     
     # Print summary
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Total reports: {analysis['total_reports']}")
     print(f"  With reward_components: {analysis['with_reward_components']}")
     print(f"  Best balance score: {analysis['best_balance_score']:.4f}")
     
     if analysis["best_balanced_config"]:
-        print(f"\nBest balanced configuration:")
+        print("\nBest balanced configuration:")
         best = analysis["best_balanced_config"]
         print(f"  Report: {best['report']}")
         print(f"  Action distribution: {best['action_distribution']}")
-        print(f"  Key reward_components:")
+        print("  Key reward_components:")
         for key, value in best.get("reward_components", {}).items():
             if key in ["balance_penalty", "balance_shaping", "skew_penalty", "action_bonus"]:
                 print(f"    {key}: {value:.6f}")

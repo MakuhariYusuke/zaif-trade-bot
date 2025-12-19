@@ -33,9 +33,9 @@ class GradientAccumulator:
 
     def step(
         self,
-        optimizer: torch.optim.Optimizer,
+        optimizer: "torch.optim.Optimizer",
         loss: torch.Tensor,
-        scaler: Optional[torch.cuda.amp.GradScaler] = None,
+        scaler: Optional["torch.cuda.amp.GradScaler"] = None,
     ) -> bool:
         """
         Perform gradient accumulation step.
@@ -71,7 +71,7 @@ class DynamicLRScheduler:
 
     def __init__(
         self,
-        optimizer: Optional[torch.optim.Optimizer],
+        optimizer: Optional["torch.optim.Optimizer"],
         patience: int = 10,
         factor: float = 0.5,
         min_lr: float = 1e-6,

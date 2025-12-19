@@ -41,7 +41,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
         Backtest results summary
     """
     config_path = f"config/{config_name}.json"
-    model_path = f"models/v435_unified/sac_v435_final.zip"
+    model_path = "models/v435_unified/sac_v435_final.zip"
 
     # Check if files exist
     if not os.path.exists(config_path):

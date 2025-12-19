@@ -7,7 +7,11 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from stable_baselines3 import PPO
+
+# Avoid importing stable_baselines3 at module import time to prevent
+# collection-time failures in minimal test environments. Import lazily
+# in the training method when actually needed.
+_SB3_PPO = None
 
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.environments.environment_config import EnvironmentConfig
@@ -16,6 +20,8 @@ from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
+from ztb.features.processors.optimization.features import OptimizerFeatureTracker
+from ztb.training.unified_trainer.base.base_trainer import DataError, ModelError
 
 # from stable_baselines3.common.monitor import Monitor  # Removed to prevent reward corruption
 
@@ -159,11 +165,19 @@ class PPOTrainer(BaseAlgorithmTrainer):
         # Get PPO hyperparameters
         ppo_config = self.config.get("training", {}).get("ppo_hyperparameters", {})
 
-        # Create PPO model
+        # Create PPO model (import SB3 lazily)
         self.log_structured_event(
             "model", "creation", {"algorithm": "PPO", "policy": "MlpPolicy"}
         )
-        self.model = PPO(
+        try:
+            from stable_baselines3 import PPO as _LocalPPO
+        except Exception:
+            _LocalPPO = None
+
+        if _LocalPPO is None:
+            raise ModelError("stable_baselines3.PPO is not available in this environment")
+
+        self.model = _LocalPPO(
             "MlpPolicy",
             wrapped_env,
             learning_rate=ppo_config.get("learning_rate", 0.0003),
@@ -251,7 +265,14 @@ class PPOTrainer(BaseAlgorithmTrainer):
         """Load a trained PPO model from file."""
         try:
             self.logger.info(f"Loading PPO model from {model_path}")
-            self.model = PPO.load(model_path)
+            try:
+                from stable_baselines3 import PPO as _LocalPPO
+            except Exception:
+                _LocalPPO = None
+            if _LocalPPO is None:
+                raise ModelError("stable_baselines3.PPO is not available in this environment")
+
+            self.model = _LocalPPO.load(model_path)
             self.logger.info("✅ Model loaded successfully")
             return True
         except Exception as e:

@@ -6,12 +6,11 @@ Tests for UnifiedOptimizer, MultiTimeframeOptimizer, ABTestingFramework,
 AutomaticOptimizationPipeline, OptimizationResultPersistence, and ParallelOptimizer.
 """
 
-import json
 import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

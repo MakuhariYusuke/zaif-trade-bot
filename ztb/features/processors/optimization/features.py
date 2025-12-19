@@ -547,7 +547,7 @@ class OptimizerFeatureTracker:
             except Exception as e:
                 self.logger.error(f"Failed to compute feature vector: {e}")
                 # フォールバック：ゼロ特徴量を返す
-                self._feature_cache = {name: 0.0 for name in self.get_feature_names()}
+                self._feature_cache = dict.fromkeys(self.get_feature_names(), 0.0)
 
         result = self._feature_cache.copy()
 

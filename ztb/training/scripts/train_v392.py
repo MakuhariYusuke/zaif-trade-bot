@@ -1,5 +1,6 @@
 """v392訓練スクリプト - random_startバグ修正後"""
 
+# ruff: noqa: E402
 import os
 
 os.environ["MPLBACKEND"] = "Agg"  # matplotlibバックエンド設定

@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-from unittest.mock import Mock
 
 from ztb.trading.environment.components.action_validator import ActionValidator
 from ztb.trading.environment.utils.config import EnvironmentConfig

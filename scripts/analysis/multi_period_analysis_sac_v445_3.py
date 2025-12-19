@@ -44,10 +44,6 @@ class SACV445MultiPeriodTester:
         self.df = None
         self.results = {}
 
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from JSON file."""
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
 
     def _initialize_components(self):
         """Initialize model and data."""
@@ -536,17 +532,6 @@ class SACV445MultiPeriodTester:
             if isinstance(obj, (np.float32, np.float64)):
                 return float(obj)
             elif isinstance(obj, (np.int32, np.int64)):
-                return int(obj)
-            elif isinstance(obj, dict):
-                return {k: convert_numpy_types(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_numpy_types(item) for item in obj]
-            else:
-                return obj
-
-        serializable_results = convert_numpy_types(self.results)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(serializable_results, f, indent=2, ensure_ascii=False)
         logger.info(f"Results saved to {output_path}")
 
     def print_summary(self):

@@ -159,23 +159,6 @@ def memory_cached(max_memory_mb: float = 50.0) -> Callable[[F], F]:
     """
     cache = MemoryAwareCache(max_memory_mb)
 
-    def decorator(func: F) -> F:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Create cache key from function arguments
-            key = f"{func.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
-
-            # Try to get from cache
-            result = cache.get(key)
-            if result is not None:
-                return result
-
-            # Compute and cache result
-            result = func(*args, **kwargs)
-            cache.set(key, result)
-            return result
-
-        return wrapper  # type: ignore[return-value]
 
     return decorator
 

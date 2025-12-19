@@ -2,7 +2,6 @@
 Tests for fee model utilities.
 """
 
-import pytest
 from ztb.utils.fee_model import FeeModel, FixedFeeModel, TieredFeeModel, ExchangeFeeModel
 from ztb.utils.types import FeeModelProtocol
 

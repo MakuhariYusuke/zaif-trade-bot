@@ -17,7 +17,7 @@ from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
 from ztb.training.utils.parallel_utils import DataLoaderParallelizer, default_processor
-from ztb.cache.memory_cache import default_memory_manager, default_buffer_manager
+from ztb.cache.memory_cache import default_memory_manager
 
 
 def setup_project_path() -> Path:

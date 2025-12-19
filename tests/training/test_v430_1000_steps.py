@@ -148,17 +148,6 @@ def run_test_training():
     return success
 
 
-def main():
-    """Main function."""
-    try:
-        success = run_test_training()
-        return 0 if success else 1
-    except Exception as e:
-        logger.error(f"Test training failed with error: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
 
 
 if __name__ == "__main__":

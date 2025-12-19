@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\core\preprocessing\__init__.py
+# hypothesis_version: 6.140.3
+
+[0.1, 1.5, 3.0, 100.0, 100, 1000, '1min', '2023-01-01', 'AnomalyDetector', 'NoiseFilter', '_is_outlier', 'contamination', 'iqr', 'iqr_multiplier', 'isolation_forest', 'local_outlier_factor', 'multiplier', 'number', 'preprocess_data', 'price', 'random_state', 'statistical', 'threshold', 'timestamp', 'type', 'volume', 'z_score', 'zscore_threshold', '市場は横ばいです。様子見を推奨します。']

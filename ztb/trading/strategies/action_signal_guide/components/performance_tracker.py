@@ -19,6 +19,7 @@ from .interfaces import IPerformanceTracker
 
 if TYPE_CHECKING:
     from ..types import PerformanceStats
+    from ..action_signal_guide import ActionSignal
 
 
 class PerformanceTracker(IPerformanceTracker):

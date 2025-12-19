@@ -3,7 +3,6 @@
 動的量子化、静的量子化、量子化対応トレーニングを提供。
 """
 
-from ctypes.wintypes import BYTE
 import logging
 from typing import Any, Dict, List
 

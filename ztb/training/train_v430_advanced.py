@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC v430 Advanced Training Suite - Efficient Learning with Curriculum & Optimization
 
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import torch
+import copy
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -286,7 +288,7 @@ class SACv430AdvancedTrainer:
             stage_output_dir.mkdir(exist_ok=True)
 
             # Redirect output to stage directory
-            original_model_dir = stage_config.get("logging", {}).get(
+            stage_config.get("logging", {}).get(
                 "model_dir", "models"
             )
             stage_config["logging"]["model_dir"] = str(stage_output_dir / "models")
@@ -425,8 +427,8 @@ class SACv430AdvancedTrainer:
         try:
             parallel_trainer = ParallelTrainer(trainers)
             success = parallel_trainer.train_all()
-        except:
-            # Fallback to sequential training
+        except Exception:
+                # Fallback to sequential training
             logger.warning("Parallel training failed, falling back to sequential...")
             success = True
             for i, trainer in enumerate(trainers):

@@ -857,11 +857,6 @@ class ComprehensiveTestSuite:
         signals = self.test_data_generator.generate_trading_signals(50)
         start_time = time.time()
 
-        async def send_signals():
-            for signal in signals:
-                await self.integration_manager.component_manager.position_manager.submit_signal(
-                    signal
-                )
 
         asyncio.run(send_signals())
         end_time = time.time()

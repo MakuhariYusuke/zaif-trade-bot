@@ -218,6 +218,16 @@ class ActionSignalGuide:
 
         self.logger.info("Multi-timeframe signal evaluation enabled")
 
+    def get_system_status(self) -> dict:
+        """Return a compact system status summary used by scripts/tests."""
+        return {
+            "status": "ok",
+            "mode": self.mode.value if hasattr(self, "mode") else None,
+            "num_signals": len(getattr(self, "signal_definitions", {}).signals)
+            if hasattr(self, "signal_definitions")
+            else 0,
+        }
+
     def set_feature_names(self, feature_names: Optional[List[str]]) -> None:
         """Set the feature names for signal evaluation."""
         self.feature_names = feature_names

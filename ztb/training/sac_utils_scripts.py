@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC Utilities Suite - Comprehensive utility tools for SAC development
 
@@ -327,7 +328,7 @@ class SACUtilities:
                 with open(py_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
 
-                original_lines = len(lines)
+                len(lines)
                 fixed_lines = [line.rstrip() + "\n" for line in lines]
 
                 if fixed_lines != lines:

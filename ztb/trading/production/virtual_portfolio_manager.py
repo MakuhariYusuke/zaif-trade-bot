@@ -16,31 +16,17 @@ from typing import Dict, List, Optional
 
 
 # Mock classes for testing
-class OrderSide(Enum):
-    BUY = "buy"
-    SELL = "sell"
 
 
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
-
-
-@dataclass
 class Order:
     order_id: str
     symbol: str
     side: OrderSide
     quantity: Decimal
     price: Optional[Decimal] = None
-    order_type: OrderType = OrderType.MARKET
-    timestamp: Optional[datetime] = None
-
-
-@dataclass
-class Position:
-    symbol: str
-    quantity: Decimal
     average_price: Decimal
     current_price: Optional[Decimal] = None
     unrealized_pnl: Decimal = Decimal("0")
@@ -52,13 +38,6 @@ class Trade:
     trade_id: str
     order_id: str
     symbol: str
-    side: OrderSide
-    quantity: Decimal
-    price: Decimal
-    timestamp: datetime
-    fee: Decimal = Decimal("0")
-
-
 class RiskManager:
     pass
 
@@ -69,15 +48,6 @@ class PortfolioState(Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     STOPPED = "stopped"
-
-
-@dataclass
-class VirtualPosition:
-    """仮想ポジション"""
-
-    symbol: str
-    side: OrderSide
-    quantity: Decimal
     entry_price: Decimal
     current_price: Decimal
     unrealized_pnl: Decimal = field(default=Decimal("0"))

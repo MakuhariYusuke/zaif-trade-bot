@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC Training Suite - Unified training tools for SAC models
 
@@ -50,14 +51,13 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration file."""
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            logger.info(f"Config loaded from {self.config_path}")
-            return config
-        except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-            raise
+        from ztb.training.utils.common_utils import load_config_file
+        from ztb.training.utils.logging_utils import get_logger
+
+        logger = get_logger(__name__)
+        config = load_config_file(self.config_path)
+        logger.info(f"Config loaded from {self.config_path}")
+        return config
 
     def setup_trainer(self):
         """Setup the unified trainer."""

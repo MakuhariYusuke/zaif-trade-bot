@@ -1,7 +1,6 @@
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 
 def test_ab_param_search_generates_configs(tmp_path):

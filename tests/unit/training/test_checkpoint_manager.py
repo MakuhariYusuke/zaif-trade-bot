@@ -9,10 +9,17 @@ import os
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
-import numpy as np
 import torch
-from stable_baselines3 import SAC
-from stable_baselines3.common.policies import ActorCriticPolicy
+try:
+    from stable_baselines3 import SAC
+    from stable_baselines3.common.policies import ActorCriticPolicy
+except Exception as e:
+    try:
+        import pytest
+
+        pytest.skip(f"Required packages not available: {e}", allow_module_level=True)
+    except Exception:
+        raise
 
 from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.training.checkpoint.checkpoint_manager import (

@@ -246,9 +246,6 @@ class TestV433IntegrationManagerOperations:
         """Test trading signal submission when system not running"""
         signal = {"action": "open_long", "symbol": "btc_jpy", "quantity": 0.001}
 
-        async def test_submit():
-            result = await integration_manager.submit_trading_signal(signal)
-            return result
 
         result = asyncio.run(test_submit())
 
@@ -313,9 +310,6 @@ class TestV433IntegrationManagerErrorHandling:
         async def test_submit():
             result = await integration_manager.submit_trading_signal(signal)
             return result
-
-        result = asyncio.run(test_submit())
-
         assert result is False
 
     def test_system_start_with_component_failure(

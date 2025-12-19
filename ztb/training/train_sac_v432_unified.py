@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC v432 Training Script using Unified Trainer
 Enhanced ensemble learning with optimized reward structure
@@ -52,10 +53,10 @@ def train_sac_v432():
     # Load configuration
     logger.info(f"Loading configuration from {config_path}")
     config = load_config(str(config_path))
-    training_config = get_training_config(config)
+    get_training_config(config)
 
     # Create ensemble configuration
-    ensemble_config = create_v432_ensemble_config()
+    create_v432_ensemble_config()
 
     # Initialize Unified Trainer
     trainer = UnifiedTrainer(config=config)
@@ -87,7 +88,7 @@ def train_sac_v432():
 def main():
     """Main function"""
     try:
-        results = train_sac_v432()
+        train_sac_v432()
         print("🎉 SAC v432 training completed!")
         return 0
     except Exception as e:

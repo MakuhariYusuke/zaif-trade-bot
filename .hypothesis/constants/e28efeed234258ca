@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\utils\domain_randomizer.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.0005, 0.002, 0.005, 1.0, 500.0, 'enabled', 'intensity', 'latency_range', 'maker_fee_range', 'slippage_range', 'taker_fee_range']

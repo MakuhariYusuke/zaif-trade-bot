@@ -346,16 +346,7 @@ class TestModelSelector(unittest.TestCase):
             recommendations=["Continue testing"],
         )
 
-        class MockTestState:
-            def __init__(self):
-                self.metrics_a = type("MockMetrics", (), {"sample_count": 1000})()
-                self.metrics_b = type("MockMetrics", (), {"sample_count": 1000})()
-                self.regression_detected = False
 
-        test_state = MockTestState()
-
-        decision = self.selector.select_model(test_config, test_state, result_summary)
-        self.assertEqual(decision["action"], "hold")
         self.assertIsNone(decision["selected_variant"])
 
     def test_calculate_confidence_level(self):

@@ -13,7 +13,6 @@ import pandas as pd
 
 # Import the protocol directly to avoid torch dependency issues
 from ztb.trading.backtest.unified_backtest.strategy_base import (
-    TradingStrategy,
     BaseTradingStrategy,
     MLTradingStrategy,
     SignalBasedStrategy,

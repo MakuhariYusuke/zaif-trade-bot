@@ -12,41 +12,10 @@ class UltraProfitReward(RewardComponent):
     Ported from RewardCalculator._calculate_ultra_profit_reward.
     """
 
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.ACTION_BUY = 1
-        self.ACTION_SELL = 2
-        self.ACTION_HOLD = 0
 
     def get_name(self) -> str:
         return "ultra_profit"
 
-    def _get_setting_float(
-        self, context: RewardContext, key: str, default: float
-    ) -> float:
-        if context.reward_settings:
-            if hasattr(context.reward_settings, "get"):
-                val = context.reward_settings.get(key)
-                if val is not None:
-                    try:
-                        return float(val)
-                    except (ValueError, TypeError):
-                        pass
-            elif hasattr(context.reward_settings, key):
-                val = getattr(context.reward_settings, key)
-                if val is not None:
-                    try:
-                        return float(val)
-                    except (ValueError, TypeError):
-                        pass
-
-        if hasattr(context.config, "get"):
-            val = context.config.get(key, default)
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-        return default
 
     def calculate(self, context: RewardContext) -> float:
         reward = 0.0

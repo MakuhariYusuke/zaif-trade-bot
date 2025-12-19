@@ -8,13 +8,13 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import time
 import threading
 
-from .trading_api import TradingAPI, OrderInfo, BalanceInfo, TickerInfo
+from .trading_api import TradingAPI, OrderInfo
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,6 @@ sys.path.insert(0, str(project_root))
 # Direct imports to avoid complex dependencies
 try:
     import pandas as pd
-    import torch
     from stable_baselines3 import SAC
     from stable_baselines3.common.callbacks import BaseCallback
     from stable_baselines3.common.monitor import Monitor
@@ -23,15 +22,20 @@ try:
 
     # Import environment and data handling
     from ztb.trading.environment import HeavyTradingEnv
-    from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+    from ztb.trading.environment.utils.config import EnvironmentConfig
     from ztb.utils.logging_utils import get_logger
 
     logger = get_logger(__name__)
 
 except ImportError as e:
-    print(f"Import error: {e}")
-    print("Required packages not available. Please install dependencies.")
-    sys.exit(1)
+    try:
+        import pytest
+
+        pytest.skip(f"Required packages not available: {e}", allow_module_level=True)
+    except Exception:
+        print(f"Import error: {e}")
+        print("Required packages not available. Please install dependencies.")
+        sys.exit(1)
 
 
 def create_v433_test_config():
@@ -94,9 +98,6 @@ def create_v433_test_config():
 class TrainingProgressCallback(BaseCallback):
     """Callback for monitoring training progress."""
 
-    def __init__(self, verbose=0):
-        super().__init__(verbose)
-        self.start_time = time.time()
 
     def _on_training_start(self):
         """Called at the beginning of training."""

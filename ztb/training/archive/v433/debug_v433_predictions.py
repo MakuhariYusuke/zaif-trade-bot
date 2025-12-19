@@ -17,9 +17,9 @@ from stable_baselines3 import SAC
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.utils.logging_utils import get_logger
+from ztb.trading.environment import HeavyTradingEnv  # noqa: E402
+from ztb.trading.environment.utils.config import EnvironmentConfig  # noqa: E402
+from ztb.utils.logging_utils import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

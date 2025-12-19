@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 Refactored Unified Trainer implementation with enhanced UI and modularity.
 """
@@ -23,7 +24,6 @@ from ztb.types.common import (
     AnomalyDetectorProtocol,
     ConfigDict,
     ContinualLearnerProtocol,
-    EnsemblePredictor,
     FederatedLearnerProtocol,
     MetaLearnerProtocol,
     TrainingStats,
@@ -32,13 +32,12 @@ from ztb.utils.exceptions.custom_exceptions import TrainingError
 from ztb.utils.memory_utils import cleanup_training_memory
 from ztb.utils.performance_profiler import MemoryProfiler
 
-# Try to import federated learning and mixed precision dependencies
-try:
-    import opacus  # type: ignore[import-untyped]
+# Try to detect optional dependencies without importing heavy packages at
+# module import time. Use importlib.util.find_spec to check availability which
+# avoids side-effects or expensive imports during test collection.
+import importlib.util
 
-    OPACUS_AVAILABLE = True
-except ImportError:
-    OPACUS_AVAILABLE = False
+OPACUS_AVAILABLE = importlib.util.find_spec("opacus") is not None
 
 AMP_AVAILABLE = False
 if torch is not None:
@@ -62,7 +61,6 @@ from ztb.adaptation.continual_learning import (
 from ztb.adaptation.meta_learning import MarketMetaLearner
 from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
 from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager
-from ztb.training.distillation.distiller import *
 
 # Import distributed training utilities
 from ztb.training.distributed.distributed_training import (
@@ -103,9 +101,10 @@ if TYPE_CHECKING:
         OnlineLearningEngine,
     )
     from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
+    # Type-only import to avoid name collision with runtime EnsemblePredictor
 
 
-class UnifiedTrainer:
+class UnifiedTrainer(BaseTrainer):
     """
     Refactored Unified training interface with enhanced UI and modularity.
 
@@ -148,6 +147,9 @@ class UnifiedTrainer:
             world_size: Number of processes for distributed training
             distributed_backend: Backend for distributed training ('gloo' or 'nccl')
         """
+        # Initialize base class
+        super().__init__(config)
+
         # Initialize components first
         self.logger = get_logger(__name__)
         self.config_manager = TrainingConfigManager()
@@ -381,6 +383,14 @@ class UnifiedTrainer:
         """
         return self.run()
 
+    def run_training(self) -> None:
+        """
+        Run training with error handling.
+        """
+        success = self.train()
+        if not success:
+            raise RuntimeError("Training failed")
+
     def run(self) -> bool:
         """
         Execute training based on configured algorithm.
@@ -392,7 +402,7 @@ class UnifiedTrainer:
             # Display header
             algorithm = self.config.get("training", {}).get("algorithm", "unknown")
             config_name = self.config.get("model_name", "unnamed")
-            total_timesteps = self.config.get("training", {}).get("total_timesteps", 0)
+            self.config.get("training", {}).get("total_timesteps", 0)
             self.ui.print_header(algorithm, config_name)
 
             # Display configuration summary
@@ -1308,7 +1318,7 @@ class UnifiedTrainer:
             return self.grad_scaler.scale(loss)
         return loss
 
-    def _step_optimizer(self, optimizer: torch.optim.Optimizer) -> None:
+    def _step_optimizer(self, optimizer: "torch.optim.Optimizer") -> None:
         """
         Perform optimizer step with mixed precision support.
 
@@ -1587,7 +1597,7 @@ class UnifiedTrainer:
                 )
                 return
 
-            results = fed.train_all_markets(dummy_loss)
+            fed.train_all_markets(dummy_loss)
             self.logger.info("Federated learning aggregation completed")
             if hasattr(fed, "get_federated_stats"):
                 self.training_stats["federated_learning"] = fed.get_federated_stats()
@@ -2034,6 +2044,23 @@ class UnifiedTrainer:
             self.logger.error(f"V433 adaptive training failed: {e}")
             return False
 
+    def _validate_v454_columns(self, df: pd.DataFrame, data_path: str) -> None:
+        """
+        Validate that the DataFrame contains v454 specific columns.
+        Logs a warning if missing.
+        """
+        v454_cols = ["vol_ema_14", "trend_dev_100", "noise_index"]
+        missing = [col for col in v454_cols if col not in df.columns]
+
+        if missing:
+            self.logger.warning(
+                f"⚠️  MISSING v454 FEATURES in {data_path}: {missing}. "
+                "If you are training a v454 model, performance may be degraded. "
+                "Please regenerate data using scripts/generate_v454_data.py."
+            )
+        else:
+            self.logger.info(f"✅  v454 features validation passed for {data_path}")
+
     def _create_v433_training_environment(self) -> Optional[Any]:
         """V433トレーニング環境を作成"""
         try:
@@ -2092,6 +2119,8 @@ class UnifiedTrainer:
             try:
                 data = pd.read_csv(data_path)
                 self.logger.info(f"Loaded data from {data_path}, shape: {data.shape}")
+                # Validate v454 columns
+                self._validate_v454_columns(data, str(data_path))
             except Exception as e:
                 self.logger.error(f"Failed to load data from {data_path}: {e}")
                 return None
@@ -2156,7 +2185,7 @@ class UnifiedTrainer:
             self.logger.error(f"Failed to create V433 training environment: {e}")
             return None
 
-    def run_multi_period_backtest(
+    def run_multi_period_backtest_v433(
         self,
         model_path: str,
         data_path: Optional[str] = None,
@@ -2184,7 +2213,6 @@ class UnifiedTrainer:
             import json
             from pathlib import Path
 
-            import numpy as np
             import pandas as pd
             from stable_baselines3 import PPO
 
@@ -2450,7 +2478,6 @@ class UnifiedTrainer:
                 "sharpe_ratio": self._calculate_sharpe_ratio(returns),
             }
 
-        # By trend type analysis
         for trend_type, trend_results in trend_groups.items():
             if trend_results:
                 returns = [r["total_return_pct"] for r in trend_results]
@@ -2466,7 +2493,6 @@ class UnifiedTrainer:
                 }
 
         return analysis
-
     def _calculate_sharpe_ratio(self, returns: List[float]) -> float:
         """Calculate Sharpe ratio from returns list."""
         if not returns or len(returns) < 2:

@@ -526,12 +526,6 @@ class CompositeTrainingCallback(BaseCallback):
             if hasattr(self.grad_probe_guard, "_on_rollout_end"):
                 self.grad_probe_guard._on_rollout_end()
 
-    def _on_training_end(self) -> None:
-        """Clean up progress bar when training ends."""
-        if self.progress:
-            self.progress.stop()
-            self.progress = None
-            self.task_id = None
 
 
 class CheckpointGCCallback(BaseCallback):

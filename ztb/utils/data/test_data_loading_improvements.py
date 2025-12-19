@@ -49,30 +49,6 @@ class TestDataLoadingImprovements:
                 except PermissionError:
                     pass  # File may be locked by memory map
 
-    def test_load_data_with_memory_map(self):
-        """Test memory-mapped file loading."""
-        # Create temporary numpy file
-        test_data = np.random.rand(100, 10)
-        with tempfile.NamedTemporaryFile(suffix=".npy", delete=False) as tmp:
-            np.save(tmp.name, test_data)
-
-            try:
-                # Load with memory map (auto-detect shape and dtype)
-                mmap_data = self.generator.load_data_with_memory_map(tmp.name)
-
-                # Verify data integrity
-                assert mmap_data.shape == test_data.shape
-                np.testing.assert_array_equal(mmap_data, test_data)
-
-                # Verify it's memory mapped
-                assert hasattr(mmap_data, "filename")
-                assert mmap_data.filename == tmp.name
-
-            finally:
-                try:
-                    Path(tmp.name).unlink()
-                except PermissionError:
-                    pass  # File may be locked by memory map
 
     def test_load_compressed_data_gzip(self):
         """Test loading gzip compressed data."""

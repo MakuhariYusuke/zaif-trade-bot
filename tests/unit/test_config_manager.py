@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-import yaml
 
 from ztb.utils.config_manager import ConfigManager as UtilsConfigManager, validate_config
 from ztb.training.core.config_manager import ConfigManager as TrainingConfigManager

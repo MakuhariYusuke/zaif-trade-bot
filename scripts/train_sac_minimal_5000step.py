@@ -11,7 +11,6 @@ from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
-import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
@@ -52,40 +51,12 @@ def create_minimal_trading_env():
             self.prices = prices
             self.reset()
 
-        def reset(self, seed=None, options=None):
-            self.current_step = 0
-            self.balance = 200000.0
-            self.position = 0.0
-            return self._get_observation(), {}
 
         def step(self, action):
             # Simple trading logic
             action_value = float(action[0])
 
             # Execute trade
-            price = self.prices[self.current_step]
-            if action_value > 0.1:  # Buy signal
-                if self.balance > price * 0.1:  # Can afford
-                    self.position += 0.1
-                    self.balance -= price * 0.1
-            elif action_value < -0.1:  # Sell signal
-                if self.position > 0.1:
-                    self.position -= 0.1
-                    self.balance += price * 0.1
-
-            # Calculate reward (portfolio value change)
-            portfolio_value = self.balance + self.position * price
-            reward = portfolio_value - 200000.0  # Change from initial
-
-            self.current_step += 1
-            done = self.current_step >= len(self.prices) - 1
-
-            return self._get_observation(), reward, done, False, {}
-
-        def _get_observation(self):
-            price = self.prices[self.current_step]
-            # Simple features: price, trend, position, balance_ratio, step_ratio
-            trend = (price - self.prices[max(0, self.current_step-10)]) / self.prices[max(0, self.current_step-10)]
             return np.array([
                 price / 10000000,  # Normalized price
                 trend,  # Price trend

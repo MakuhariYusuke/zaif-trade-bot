@@ -43,7 +43,7 @@ class UnifiedBase(ABC):
                 if isinstance(log_level, str):
                     log_level = getattr(logging, log_level.upper(), logging.INFO)
                 setup_logging(level=log_level)
-            except:
+            except Exception:
                 setup_logging(level=logging.INFO)
 
     def load_config(self, config_path: str) -> Dict[str, Any]:

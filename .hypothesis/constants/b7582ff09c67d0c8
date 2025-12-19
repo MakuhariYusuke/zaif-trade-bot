@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\wave3_diag.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 0.5, 0.95, 1.0, 5.0, 100.0, 100, 1000, '1H', '2023-01-01', 'close', 'corr_current', 'corr_future', 'episode_id', 'feature', 'high', 'low', 'multicollinear', 'mutual_info', 'open', 'pearson', 'potential_leak', 'return', 'spearman', 'ts', 'vif', 'volume']

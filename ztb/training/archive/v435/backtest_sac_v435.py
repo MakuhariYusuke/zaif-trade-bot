@@ -132,9 +132,8 @@ class SACv435Backtester:
         portfolio_values = [initial_balance]
 
         # Risk management
-        risk_manager = None
         if config.get("risk_management", {}).get("dynamic_position_sizing", False):
-            risk_manager = ensure_risk_manager_protocol(
+            ensure_risk_manager_protocol(
                 RiskManager(config.get("risk_management", {}))
             )
 
@@ -321,7 +320,7 @@ def main():
         return
 
     # Run backtests
-    results = backtester.run_backtests()
+    backtester.run_backtests()
 
     # Print summary
     backtester.print_summary()

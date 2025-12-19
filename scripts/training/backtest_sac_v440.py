@@ -7,8 +7,6 @@ Backtest the simplified PnL-based SAC model.
 
 import argparse
 import json
-import logging
-import os
 import sys
 from pathlib import Path
 from datetime import datetime

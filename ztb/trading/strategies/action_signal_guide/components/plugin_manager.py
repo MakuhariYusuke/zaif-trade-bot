@@ -5,7 +5,7 @@ Provides plugin architecture for Action Signal Guide.
 Enables easy addition of new pattern recognizers and signal processors.
 """
 
-from typing import Dict, List, Optional, Any, Type, Callable
+from typing import Dict, Optional, Any, Type, Callable
 import importlib
 import inspect
 from pathlib import Path
@@ -27,15 +27,15 @@ class PluginManager:
 
     def __init__(self):
         self.logger = get_logger("ztb.trading.strategies.plugin_manager")
-        
+
         # Plugin registries
         self.pattern_recognizers: Dict[str, Type[PatternRecognizer]] = {}
         self.signal_processors: Dict[str, Callable] = {}
         self.analyzers: Dict[str, Callable] = {}
-        
+
         # Plugin metadata
         self.plugin_metadata: Dict[str, Dict[str, Any]] = {}
-        
+
         # Plugin directories
         self.plugin_dirs = [
             Path(__file__).parent.parent / "pattern_recognition",
@@ -54,7 +54,7 @@ class PluginManager:
         for file_path in directory.glob("*.py"):
             if file_path.name.startswith("_"):
                 continue
-                
+
             try:
                 self._load_plugin_from_file(file_path)
             except Exception as e:
@@ -64,10 +64,10 @@ class PluginManager:
         """Load plugins from a Python file."""
         # Convert path to module path
         module_path = self._path_to_module_path(file_path)
-        
+
         try:
             module = importlib.import_module(module_path)
-            
+
             # Find plugin classes/functions
             for name, obj in inspect.getmembers(module):
                 if self._is_pattern_recognizer(obj):
@@ -76,7 +76,7 @@ class PluginManager:
                     self.register_signal_processor(name, obj)
                 elif self._is_analyzer(obj):
                     self.register_analyzer(name, obj)
-                    
+
         except ImportError as e:
             self.logger.debug(f"Could not import {module_path}: {e}")
 
@@ -201,18 +201,18 @@ class PluginManager:
         """Unload a plugin."""
         if name in self.plugin_metadata:
             plugin_type = self.plugin_metadata[name]['type']
-            
+
             if plugin_type == 'pattern_recognizer':
                 self.pattern_recognizers.pop(name, None)
             elif plugin_type == 'signal_processor':
                 self.signal_processors.pop(name, None)
             elif plugin_type == 'analyzer':
                 self.analyzers.pop(name, None)
-                
+
             self.plugin_metadata.pop(name, None)
             self.logger.info(f"Unloaded plugin: {name}")
             return True
-            
+
         return False
 
     def reload_plugins(self) -> None:
@@ -222,7 +222,7 @@ class PluginManager:
         self.signal_processors.clear()
         self.analyzers.clear()
         self.plugin_metadata.clear()
-        
+
         # Re-discover plugins
         self.discover_plugins()
         self.logger.info("Reloaded all plugins")

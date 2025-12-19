@@ -19,6 +19,7 @@ from .coordinator import (
     DistributedCallbackMixin,
     DistributedConfig,
     DistributedCoordinator,
+    WorkerInfo,
 )
 from .worker import WorkerPool
 
@@ -233,11 +234,11 @@ class DistributedTrainingManager:
         # Initialize worker states
         if self.distributed_mode:
             for worker_id in range(1, self.config.num_workers + 1):
-                worker_info = {
-                    "worker_id": worker_id,
-                    "training_config": config,
-                    "start_time": datetime.now().isoformat(),
-                }
+                worker_info = WorkerInfo(
+                    worker_id=worker_id,
+                    host="localhost",
+                    port=self.config.master_port + worker_id,
+                )
                 self.coordinator.register_worker(worker_info)
 
     def _cleanup_training_state(self) -> None:

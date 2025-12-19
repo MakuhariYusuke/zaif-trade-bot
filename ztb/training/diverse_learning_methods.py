@@ -223,7 +223,6 @@ class DiverseLearningMethods:
         """Setup BOHB optimizer."""
         try:
             import hpbandster.core.nameserver as hpns
-            import hpbandster.core.result as hpres
             from hpbandster.core.worker import Worker
             from hpbandster.optimizers import BOHB
 

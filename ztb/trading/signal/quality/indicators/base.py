@@ -5,13 +5,12 @@ This module provides base classes and interfaces for technical indicator
 calculations, promoting code reuse and consistency.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Dict, Any, Optional, List
 import pandas as pd
-import numpy as np
 
 from ztb.trading.signal.common.base_classes import BaseIndicatorCalculator
-from ztb.trading.signal.common.utilities import validate_market_data, smooth_series
+from ztb.trading.signal.common.utilities import validate_market_data
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)

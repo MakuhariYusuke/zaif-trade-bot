@@ -8,7 +8,7 @@ Tests:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from ztb.trading.environment.components.behavioral_penalty_calculator import (
     BehavioralPenaltyCalculator,
 )

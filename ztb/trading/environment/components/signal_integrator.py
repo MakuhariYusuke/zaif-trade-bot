@@ -5,19 +5,21 @@ This component integrates signal-based rewards into the main reward calculation.
 Follows Single Responsibility Principle by focusing only on signal integration.
 """
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 
-from ztb.trading.strategies.action_signal_guide import (
-    ActionSignalGuide,
-    ActionSignalGuideConfig,
-    GuidanceMode,
-)
-from ztb.trading.strategies.signal_reward_integrator import SignalRewardIntegrator
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import ISignalIntegrator
+
+if TYPE_CHECKING:
+    from ztb.trading.strategies.action_signal_guide import (  # noqa: F401
+        ActionSignalGuide,
+        ActionSignalGuideConfig,
+        GuidanceMode,
+    )
+    from ztb.trading.strategies.signal_reward_integrator import SignalRewardIntegrator  # noqa: F401
 
 
 class SignalIntegrator(ISignalIntegrator):
@@ -60,8 +62,8 @@ class SignalIntegrator(ISignalIntegrator):
         self.enabled = enabled
         self.logger = get_logger("ztb.trading.environment.signal_integrator")
 
-        self.signal_guide: Optional[ActionSignalGuide] = None
-        self.signal_integration: Optional[SignalRewardIntegrator] = None
+        self.signal_guide: Optional[Any] = None
+        self.signal_integration: Optional[Any] = None
         self._signal_guide_available = False
 
         if enabled:
@@ -87,6 +89,16 @@ class SignalIntegrator(ISignalIntegrator):
     ):
         """Initialize the action signal guide and integration."""
         try:
+            # Import heavy strategy modules only when signal integration is enabled.
+            from ztb.trading.strategies.action_signal_guide import (
+                ActionSignalGuide,
+                ActionSignalGuideConfig,
+                GuidanceMode,
+            )
+            from ztb.trading.strategies.signal_reward_integrator import (
+                SignalRewardIntegrator,
+            )
+
             # Initialize signal guide
             feature_names = getattr(self.config, "feature_names", None)
 
@@ -150,9 +162,9 @@ class SignalIntegrator(ISignalIntegrator):
         Returns:
             Modified reward with signal integration
         """
-        self.logger.debug(
-            f"integrate_signal called: enabled={self.enabled}, action={action}, step={step}"
-        ) if step % 50 == 0 else None
+        # self.logger.debug(
+        #     f"integrate_signal called: enabled={self.enabled}, action={action}, step={step}"
+        # ) if step % 50 == 0 else None
         if not self.enabled or self.signal_integration is None:
             return reward
 

@@ -237,6 +237,60 @@ class ThresholdManager:
 
         return base_threshold
 
+    def _apply_hybrid_regime_threshold_modifier(
+        self, base_threshold: float, regime: Optional[str]
+    ) -> float:
+        """Apply HybridConfig regime_filter threshold modifier (v454 soft mode)."""
+        if not regime:
+            return base_threshold
+
+        hybrid_config: Any = None
+        if isinstance(self.config, dict):
+            hybrid_config = self.config.get("hybrid_config")
+        else:
+            hybrid_config = getattr(self.config, "hybrid_config", None)
+
+        if not isinstance(hybrid_config, dict) or not hybrid_config.get("enabled", False):
+            return base_threshold
+
+        regime_filter = hybrid_config.get("regime_filter", {})
+        if not isinstance(regime_filter, dict) or not regime_filter.get("enabled", False):
+            return base_threshold
+
+        if str(regime_filter.get("mode", "hard")).lower() != "soft":
+            return base_threshold
+
+        constraints = regime_filter.get("regime_constraints", {})
+        if not isinstance(constraints, dict):
+            return base_threshold
+
+        constraint = constraints.get(str(regime))
+        if not isinstance(constraint, dict):
+            return base_threshold
+
+        permission = str(constraint.get("action_permission", "allow")).lower()
+        if permission == "deny":
+            return base_threshold
+
+        modifier_raw = constraint.get("confidence_threshold_modifier")
+        if modifier_raw is None:
+            return base_threshold
+
+        try:
+            modifier = float(modifier_raw)
+        except (TypeError, ValueError):
+            return base_threshold
+
+        if not np.isfinite(modifier) or modifier == 0.0:
+            return base_threshold
+
+        sign = 1.0 if base_threshold >= 0 else -1.0
+        magnitude = abs(base_threshold)
+        adjusted_magnitude = float(
+            np.clip(magnitude + modifier, self.min_threshold, self.max_threshold)
+        )
+        return sign * adjusted_magnitude
+
     def get_threshold(
         self,
         volatility: Optional[float] = None,
@@ -259,6 +313,7 @@ class ThresholdManager:
             The threshold value to use for action discretization.
         """
         base = base_value if base_value is not None else self.base_threshold
+        base = self._apply_hybrid_regime_threshold_modifier(base, regime)
 
         # Z-Score based dynamic thresholding
         if self.dynamic_threshold_mode == "z_score" and raw_action_value is not None:
@@ -295,6 +350,7 @@ class ThresholdManager:
                 "BUY_MOMENTUM_STRONG",
                 "BUY_VOLUME_SURGE",
                 "STRONG_BULL",
+                "MODERATE_BULL",  # Added for v453 improvement
             ]
             sell_favorable_regimes = [
                 "SELL_BREAKDOWN",
@@ -302,6 +358,8 @@ class ThresholdManager:
                 "SELL_MOMENTUM_WEAK",
                 "SELL_VOLUME_SURGE",
                 "STRONG_BEAR",
+                "MODERATE_BEAR",  # Added for v453 improvement
+                "BREAKDOWN",      # Added for v453 improvement (covers BREAKDOWN_SETUP)
             ]
 
             if any(r in regime_upper for r in buy_favorable_regimes):
@@ -313,8 +371,8 @@ class ThresholdManager:
                     )
                 else:  # Sell threshold
                     # Discourage Sell: Make threshold more negative (larger magnitude)
-                    # v451 Optimization: Drastically increased from 2.0 to 10.0 to prevent selling in bull
-                    adjusted_threshold *= 10.0
+                    # v453 Optimization: Relaxed from 10.0 to 1.0 to allow full counter-trend scalping (v3 behavior)
+                    adjusted_threshold *= 1.0
                     logger.debug(
                         f"Increased SELL threshold (discourage) for {regime}: {adjusted_threshold:.4f}"
                     )
@@ -322,8 +380,8 @@ class ThresholdManager:
             elif any(r in regime_upper for r in sell_favorable_regimes):
                 if base > 0:  # Buy threshold
                     # Discourage Buy: Raise the threshold
-                    # v451 Optimization: Drastically increased from 2.0 to 10.0 to prevent buying in bear
-                    adjusted_threshold *= 10.0
+                    # v453 Optimization: Relaxed from 10.0 to 1.0 to allow full counter-trend scalping (v3 behavior)
+                    adjusted_threshold *= 1.0
                     logger.debug(
                         f"Increased BUY threshold (discourage) for {regime}: {adjusted_threshold:.4f}"
                     )
@@ -336,14 +394,23 @@ class ThresholdManager:
 
             elif any(
                 r in regime_upper
-                for r in ["SIDEWAYS", "RANGING", "CONSOLIDATION", "HIGH_VOLATILITY"]
+                for r in ["HIGH_VOLATILITY"]
             ):
-                # Increase threshold in ranging market to reduce noise entries
-                # Range markets often have choppy price action
-                # v451 Optimization: Increased from 3.0 to 10.0 to force HOLD in chop
-                adjusted_threshold *= 10.0
+                # Increase threshold in high volatility ranging to reduce noise entries
+                # v453 Optimization: Relaxed from 10.0 to 1.0 to avoid missing opportunities (v3 behavior)
+                adjusted_threshold *= 1.0
                 logger.debug(
-                    f"Increased threshold for ranging market: {adjusted_threshold:.4f}"
+                    f"Increased threshold for high volatility market: {adjusted_threshold:.4f}"
+                )
+            elif any(
+                r in regime_upper
+                for r in ["SIDEWAYS", "RANGING", "CONSOLIDATION"]
+            ):
+                # Restore baseline behavior for normal ranging/consolidation
+                # v453 Final Fix: Set to 1.0 to allow profitable range trading (same as "Unknown" regime)
+                adjusted_threshold *= 1.0
+                logger.debug(
+                    f"Threshold multiplier 1.0 applied for ranging market: {adjusted_threshold:.4f}"
                 )
             elif any(r in regime_upper for r in ["TRENDING", "BULL", "BEAR"]):
                 # Slightly decrease threshold in strong trends to ensure we don't miss moves?

@@ -39,13 +39,13 @@ class OpportunityCostPenaltyCalculator:
             self.consecutive_flat_holds += 1
         elif action in [ACTION_BUY, ACTION_SELL]:
             self.consecutive_flat_holds = 0
-        
+
         if self.consecutive_flat_holds > 0:
             penalty = self.base_penalty + (self.increase_rate * (self.consecutive_flat_holds - 1))
             return -min(penalty, self.base_penalty + self.increase_rate * (self.max_steps -1))
-        
+
         return 0.0
-    
+
     def get_consecutive_flat_holds(self) -> int:
         """Returns the current count of consecutive flat holds."""
         return self.consecutive_flat_holds

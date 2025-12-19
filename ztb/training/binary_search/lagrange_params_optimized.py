@@ -25,15 +25,15 @@ from typing import Any, Dict, Tuple, Union
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor  # noqa: E402
+from stable_baselines3.common.vec_env import DummyVecEnv  # noqa: E402
 
-from ztb.training.binary_search.base_optimizer import (
+from ztb.training.binary_search.base_optimizer import (  # noqa: E402
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
-from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
-from ztb.training.models.custom_ppo import CustomPPO
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS  # noqa: E402
+from ztb.training.models.custom_ppo import CustomPPO  # noqa: E402
 
 
 class LagrangeOptimizerBase(HyperparameterOptimizer):

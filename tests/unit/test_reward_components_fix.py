@@ -2,10 +2,9 @@
 """Unit test to verify reward_components fix in calculate_reward_simple."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
-from ztb.trading.environment.utils.config import RewardSettings
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD
 
 
 @patch('ztb.trading.environment.components.reward_calculator.BehavioralPenaltyCalculator')

@@ -22,7 +22,6 @@ from ztb.analysis.walk_forward_analyzer import WalkForwardAnalyzer, ParameterSet
 from ztb.analysis.integrated_optimizer import IntegratedParameterOptimizer, IntegratedOptimizationConfig
 from ztb.analysis.strategy_evaluators import create_simple_strategy_evaluator
 from ztb.analysis.atr_risk_manager import RiskManagementMode
-from ztb.utils.performance_profiler import PerformanceProfiler
 
 # ログ設定
 logging.basicConfig(
@@ -186,7 +185,7 @@ def test_integrated_optimizer():
             base_strategy_func=mock_strategy_evaluator
         )
 
-        logger.info(f"統合最適化完了")
+        logger.info("統合最適化完了")
         assert results is not None, "統合最適化結果がNoneです"
 
         # 結果確認

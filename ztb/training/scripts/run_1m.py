@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 Canonical 1M Training Runner for Zaif Trade Bot.
 
@@ -42,13 +43,6 @@ def _create_streaming_pipeline(
     return pipeline
 
 
-def setup_logging(verbose: bool) -> logging.Logger:
-    """Setup logging configuration."""
-    log_level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    return logging.getLogger(__name__)
 
 
 def validate_training_setup(
@@ -58,26 +52,6 @@ def validate_training_setup(
     logger = logging.getLogger(__name__)
 
     # Validate data path
-    data_path_obj = Path(data_path)
-    if not data_path_obj.exists():
-        logger.error(f"Data file not found: {data_path_obj}")
-        return False
-
-    # Check for duplication (resume invariants)
-    session_dir = Path(checkpoint_dir) / correlation_id
-    if session_dir.exists():
-        logger.warning(f"Session {correlation_id} already exists at {session_dir}")
-        logger.warning("Use resume functionality or choose a different correlation-id")
-        return False
-
-    return True
-
-
-def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge two dictionaries without mutating inputs."""
-
-    def _merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
-        result: Dict[str, Any] = copy.deepcopy(a)
         for key, value in b.items():
             if (
                 key in result

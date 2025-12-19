@@ -271,7 +271,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
             return {}
 
         weight = 1.0 / n
-        return {strategy: weight for strategy in strategy_performance.keys()}
+        return dict.fromkeys(strategy_performance.keys(), weight)
 
     def _risk_parity_allocation(
         self,
@@ -414,7 +414,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         if n == 0:
             return {}
         weight = 1.0 / n
-        return {strategy: weight for strategy in data.keys()}
+        return dict.fromkeys(data.keys(), weight)
 
     def _create_covariance_matrix(
         self, risks: Dict[str, float], correlations: pd.DataFrame
@@ -529,7 +529,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         port_risk = np.sqrt(weights.T @ cov_matrix @ weights)
 
         if port_risk == 0:
-            return {s: 0.0 for s in allocations.keys()}
+            return dict.fromkeys(allocations.keys(), 0.0)
 
         marginal_contribs = cov_matrix @ weights
         risk_contribs = weights * marginal_contribs / port_risk
@@ -745,7 +745,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             # Fallback to equal weights
             n_assets = len(returns_data.columns)
             equal_weight = 1.0 / n_assets
-            return {col: equal_weight for col in returns_data.columns}
+            return dict.fromkeys(returns_data.columns, equal_weight)
 
     def _apply_allocation_constraints(
         self, weights: Dict[str, float], constraints: Dict[str, Any]

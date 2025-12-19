@@ -33,14 +33,6 @@ except ImportError as e:
     sys.exit(1)
 
 
-def load_optimized_config():
-    """Load the optimized SAC v430 configuration."""
-
-    config_path = "configs/v430/sac_v430_optimized.json"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-
-    return config
 
 
 def run_backtest():
@@ -189,26 +181,6 @@ def run_backtest():
         return None
 
 
-def main():
-    """Main function."""
-    try:
-        results_path = run_backtest()
-        if results_path:
-            print()
-            print("🎯 Next step: Run validation analysis")
-            print(
-                f"python ztb/analysis/unified_analyze.py comparative analyze_backtest --results {results_path}"
-            )
-            return 0
-        else:
-            return 1
-
-    except Exception as e:
-        logger.error(f"Backtest failed with error: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
 
 
 if __name__ == "__main__":

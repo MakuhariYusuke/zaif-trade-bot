@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\metrics.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.02, 0.5, 1.0, 1.5, 5.0, 1000, 10000, 'D', 'inf', 'notional', 'pnl']

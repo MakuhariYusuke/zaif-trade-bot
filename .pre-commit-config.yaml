@@ -54,3 +54,8 @@ repos:
         language: system
         files: \.py$
         args: ["--config-file", "mypy.ini"]
+      - id: check-docstring-ascii
+        name: Check docstring ASCII punctuation
+        entry: python scripts/check_docstring_ascii.py
+        language: system
+        files: ^ztb/.*\.py$

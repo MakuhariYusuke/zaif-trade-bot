@@ -1,0 +1,12 @@
+{
+  "name": "sac_v433_production_migration",
+  "policy": "MlpPolicy",
+  "learning_rate": 0.001,
+  "gamma": 0.99,
+  "tau": 0.005
+  ,
+  "training": {
+    "total_timesteps": 10000,
+    "algorithm": "SAC"
+  }
+}

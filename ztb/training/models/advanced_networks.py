@@ -11,7 +11,11 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch.nn.functional as F
+except Exception:
+
+    F = _F
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 

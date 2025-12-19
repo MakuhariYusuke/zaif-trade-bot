@@ -3,7 +3,6 @@ Unit tests for BasicRegimeDetector.
 """
 
 import numpy as np
-import pytest
 
 from ztb.analysis.regime.basic_regime_detector import MarketRegimeDetector
 

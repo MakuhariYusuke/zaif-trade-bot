@@ -1,4 +1,3 @@
-import pytest
 
 from ztb.trading.environment.components.reward.balance_curriculum import BalanceCurriculumManager
 from ztb.trading.environment.utils.config import EnvironmentConfig

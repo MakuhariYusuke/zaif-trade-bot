@@ -320,9 +320,21 @@ class WorkerPool:
     Pool of distributed workers for load balancing and fault tolerance.
     """
 
-    def __init__(
-        self, num_workers: int = 4, config: Optional[DistributedConfig] = None
-    ):
+    def __init__(self, *args, config: Optional[DistributedConfig] = None):
+        """Initialize WorkerPool with flexible signature.
+
+        Supports both:
+            WorkerPool(num_workers, config)
+            WorkerPool(config=config)
+        """
+        # Backwards-compatible parsing of positional args
+        num_workers = 4
+        if len(args) == 1 and isinstance(args[0], int):
+            num_workers = args[0]
+        elif len(args) >= 2 and isinstance(args[0], int):
+            num_workers = args[0]
+            config = args[1]
+
         self.config = config or DistributedConfig()
         self.config.num_workers = num_workers
         self.logger = logging.getLogger(__name__)

@@ -190,9 +190,7 @@ class CheckpointCallback(BaseCallback):
 
         return None
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
-        """Called when training ends."""
-        return self._save_checkpoint(context, "final")
+    # on_training_end handled further down (keeps single canonical impl)
 
     def _save_checkpoint(self, context: CallbackContext, suffix: str) -> CallbackResult:
         """Save a checkpoint."""
@@ -350,12 +348,7 @@ class MetricsCallback(BaseCallback):
         self._collect_metrics(context)
         return CallbackResult(success=True)
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
-        """Called when training ends."""
-        self._log_final_metrics_summary()
-        if self._tensorboard_writer:
-            self._tensorboard_writer.close()
-        return CallbackResult(success=True)
+    # on_training_end removed here (duplicate); kept canonical implementation later
 
     def _collect_metrics(self, context: CallbackContext) -> None:
         """Collect metrics from context."""

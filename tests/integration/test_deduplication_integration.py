@@ -13,7 +13,6 @@ import pandas as pd
 
 from ztb.analysis.evaluator.evaluator import TradingEvaluator
 from ztb.trading.backtest.unified_backtest.strategy_base import TradingStrategy
-from ztb.trading.backtest.unified_backtest.unified_backtester import UnifiedBacktester
 from ztb.training.callbacks.shared.base.learning_callback import ErrorHandlingStrategy
 
 
@@ -69,7 +68,6 @@ class TestDeduplicationIntegration(unittest.TestCase):
 
             # This would normally create a backtester, but we're mocking it
             # The important thing is that the import works and protocol is satisfied
-            from ztb.trading.backtest.unified_backtest.unified_backtester import UnifiedBacktester
 
     def test_error_handling_strategy_integration(self):
         """Test that ErrorHandlingStrategy works with learning callbacks."""
@@ -195,13 +193,9 @@ class TestDeduplicationIntegration(unittest.TestCase):
     def test_module_structure_integrity(self):
         """Test that module structure remains intact after deduplication."""
         # Test that key classes are still accessible from their expected locations
-        from ztb.trading.backtest.unified_backtest.strategy_base import (
-            TradingStrategy, BaseTradingStrategy
-        )
         from ztb.training.callbacks.shared.base.learning_callback import (
-            ErrorHandlingStrategy, LearningCallback
+            ErrorHandlingStrategy
         )
-        from ztb.analysis.evaluator.evaluator import TradingEvaluator
 
         # Verify these are classes/types
         self.assertTrue(hasattr(TradingStrategy, '__protocol_attrs__') or hasattr(TradingStrategy, '__annotations__'))

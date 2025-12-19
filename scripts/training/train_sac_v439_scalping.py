@@ -8,8 +8,6 @@ Features action signal guidance and reduced trading barriers for active trading.
 
 import argparse
 import json
-import logging
-import os
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -19,10 +17,8 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import pandas as pd
-import numpy as np
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.callbacks import CheckpointCallback
 
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.environments.environment_config import EnvironmentConfig
@@ -31,10 +27,6 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-def load_config(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, 'r') as f:
-        return json.load(f)
 
 
 def create_environment(config: dict, data_path: str):

@@ -1,8 +1,7 @@
 """Tests for balance penalty targets in BehavioralPenaltyCalculator."""
 
-from unittest.mock import Mock
 
-from ztb.trading.constants import ACTION_BUY, ACTION_SELL, ACTION_HOLD
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 from ztb.trading.environment.components.behavioral_penalty_calculator import (
     BehavioralPenaltyCalculator,
 )

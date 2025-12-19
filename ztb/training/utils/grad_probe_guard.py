@@ -101,7 +101,17 @@ class GradProbeGuard(BaseCallback):
         session_id: Optional[str] = None,
         verbose: int = 1,
     ) -> None:
-        super().__init__(verbose)
+        # BaseCallback implementations in some test stubs may not accept
+        # arguments or may be a bare object; guard the call to avoid
+        # TypeError during tests in minimal environments.
+        try:
+            super().__init__(verbose)
+        except TypeError:
+            try:
+                super().__init__()
+            except Exception:
+                # Last-resort: ignore if super init isn't available in stub
+                pass
 
         self.config = config or GradProbeConfig()
         self.checkpoint_dir = Path(checkpoint_dir)
@@ -113,9 +123,7 @@ class GradProbeGuard(BaseCallback):
 
         # Monitoring state
         self.history: Deque[GradProbeStats] = deque(maxlen=1000)
-        self.consecutive_zeros: Dict[str, int] = {
-            action: 0 for action in self.config.monitor_actions
-        }
+        self.consecutive_zeros: Dict[str, int] = dict.fromkeys(self.config.monitor_actions, 0)
         self.last_check_step = 0
         self.halt_triggered = False
         self.halt_reason: Optional[str] = None

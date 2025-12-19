@@ -1,4 +1,3 @@
-import pytest
 
 from ztb.trading.environment.components.reward import mtf_weight_manager
 from ztb.trading.environment.utils.config import EnvironmentConfig

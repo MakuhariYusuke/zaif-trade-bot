@@ -57,13 +57,13 @@ class BackgroundMemoryMonitor:
         self.monitoring_active = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=1.0)
-        
+
         # Memory leak prevention: force garbage collection
         import gc
         collected = gc.collect()
         if collected > 0:
             logger.debug(f"Memory monitor cleanup: garbage collection freed {collected} objects")
-        
+
         logger.info("Memory monitoring stopped")
 
     def _monitor_loop(self, interval: float) -> None:

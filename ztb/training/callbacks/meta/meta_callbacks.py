@@ -428,43 +428,23 @@ class FewShotCallback(MemoryOptimizedCallback):
 
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
 
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of training."""
         pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
         pass
 
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
         """Called at the end of each batch."""
         pass
 
 
 class MetaAdaptationCallback(MemoryOptimizedCallback):
-    """
-    Meta adaptation monitoring callback.
-
-    Monitors adaptation to new tasks in meta learning scenarios,
-    including adaptation speed, stability, and generalization.
     """
 
     def __init__(
@@ -472,11 +452,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
         compute_frequency: int = 1,
         adaptation_steps: int = 10,
         stability_threshold: float = 0.01,
-    ):
-        super().__init__(cache_size=1000)
-        self.compute_frequency = compute_frequency
-        self.adaptation_steps = adaptation_steps
-        self.stability_threshold = stability_threshold
 
         # Adaptation tracking
         self.adaptation_curves: List[
@@ -664,11 +639,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of training."""
         pass
-
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
         pass
 
     def on_epoch_start(
@@ -680,11 +650,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of each batch."""
         pass
@@ -696,11 +661,6 @@ def create_maml(**kwargs) -> MAMLCallback:
     defaults = {"compute_frequency": 1, "num_inner_steps": 5, "adaptation_lr": 0.01}
     defaults.update(kwargs)
     return MAMLCallback(**defaults)
-
-
-def create_few_shot(n_way: int = 5, k_shot: int = 1, **kwargs) -> FewShotCallback:
-    """Create few-shot learning callback with default settings."""
-    defaults = {"compute_frequency": 1}
     defaults.update(kwargs)
     return FewShotCallback(n_way, k_shot, **defaults)
 

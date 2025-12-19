@@ -230,7 +230,7 @@ class CallbackManager:
             if name not in self.callbacks:
                 return False
 
-            callback = self.callbacks[name]
+            self.callbacks[name]
 
             # Remove from event handlers
             for event_handlers in self.event_handlers.values():

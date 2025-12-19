@@ -19,10 +19,6 @@ from ztb.trading.environment.heavy_env import HeavyEnvironment
 from ztb.training.base_trainer import TrainerConfig, TrainingSession
 
 
-def load_config(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def create_training_session(config: dict) -> TrainingSession:

@@ -9,7 +9,7 @@ import pytest
 import pandas as pd
 import numpy as np
 import inspect
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from ztb.trading.signal.quality.indicators.base import (
     BaseTechnicalIndicator, BaseOscillatorIndicator, BaseTrendIndicator,

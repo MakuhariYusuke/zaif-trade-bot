@@ -16,7 +16,11 @@ from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch.nn.functional as F
+except Exception:
+
+    F = _F
 
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
@@ -249,7 +253,15 @@ class ContrastiveLearningTrainer:
             device: デバイス
             memory_manager: メモリマネージャー（オプション）
         """
-        self.model = model.to(device)
+        # Only move model to device when it's not CPU to avoid triggering
+        # CUDA lazy init on CPU-only environments.
+        try:
+            if device != "cpu":
+                self.model = model.to(device)
+            else:
+                self.model = model
+        except Exception:
+            self.model = model
         self.optimizer = optimizer
         self.augmentation = augmentation
         self.device = device
@@ -269,7 +281,11 @@ class ContrastiveLearningTrainer:
             メトリクス辞書
         """
         self.model.train()
-        batch = batch.to(self.device)
+        if self.device != "cpu":
+            try:
+                batch = batch.to(self.device)
+            except Exception:
+                pass
 
         # Create two augmented views
         x1 = self.augmentation(batch)
@@ -316,7 +332,12 @@ class ContrastiveLearningTrainer:
 
         with torch.no_grad():
             for i in range(0, len(val_data), batch_size):
-                batch = val_data[i : i + batch_size].to(self.device)
+                batch = val_data[i : i + batch_size]
+                if self.device != "cpu":
+                    try:
+                        batch = batch.to(self.device)
+                    except Exception:
+                        pass
 
                 # Create two augmented views
                 x1 = self.augmentation(batch)
@@ -346,7 +367,12 @@ class ContrastiveLearningTrainer:
 
         with torch.no_grad():
             for i in range(0, len(data), batch_size):
-                batch = data[i : i + batch_size].to(self.device)
+                batch = data[i : i + batch_size]
+                if self.device != "cpu":
+                    try:
+                        batch = batch.to(self.device)
+                    except Exception:
+                        pass
                 emb = self.model.encode(batch)
                 embeddings.append(emb.cpu())
 

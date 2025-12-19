@@ -162,7 +162,7 @@ class BinarySearchOptimizer(OptimizerBase):
 
             # 進捗表示
             current_best = min(f1, f2)
-            current_range = abs(b - a)
+            abs(b - a)
             print(
                 f"  区間: [{self._from_search_space(a):.6e}, "
                 f"{self._from_search_space(b):.6e}], "

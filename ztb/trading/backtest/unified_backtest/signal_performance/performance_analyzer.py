@@ -5,7 +5,6 @@ Provides signal performance analysis specifically designed for backtest environm
 integrating with the unified backtest framework.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np

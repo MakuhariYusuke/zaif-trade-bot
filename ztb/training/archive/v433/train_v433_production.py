@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 # Direct imports to avoid complex dependencies
 try:
     import pandas as pd
-    import torch
     from stable_baselines3 import SAC
     from stable_baselines3.common.callbacks import BaseCallback
     from stable_baselines3.common.monitor import Monitor
@@ -249,19 +248,6 @@ class ProductionTrainingCallback(BaseCallback):
         logger.info(f"Training completed in {elapsed:.1f} seconds")
 
 
-def load_data(csv_path):
-    """Load and prepare data."""
-    try:
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"Data file not found: {csv_path}")
-
-        df = pd.read_csv(csv_path)
-        logger.info(f"Loaded data: {len(df)} rows, {len(df.columns)} columns")
-        return df
-
-    except Exception as e:
-        logger.error(f"Failed to load data: {e}")
-        raise
 
 
 def create_environment(config, data_df):
@@ -277,28 +263,6 @@ def create_environment(config, data_df):
         )
 
         env = HeavyTradingEnv(df=data_df, config=env_config, random_start=True)
-        env = Monitor(env)
-        env = DummyVecEnv([lambda: env])
-
-        logger.info("Environment created successfully")
-        return env
-
-    except Exception as e:
-        logger.error(f"Failed to create environment: {e}")
-        raise
-
-
-def main():
-    """Main production training function."""
-    try:
-        logger.info("🤖 SAC v433 Production Training (150,000 steps)")
-        logger.info("=" * 80)
-        logger.info("Applying v432 lessons learned:")
-        logger.info("  - HOLD penalty: -0.02 → -0.002 (balanced behavior)")
-        logger.info("  - Enhanced entry/exit strategies")
-        logger.info("  - Production migration capabilities")
-        logger.info("=" * 80)
-
         # Create configuration
         config = create_v433_production_config()
         logger.info("Configuration created")

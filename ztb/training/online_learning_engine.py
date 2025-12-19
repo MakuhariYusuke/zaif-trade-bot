@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 V433 Online Learning Engine
 リアルタイム適応学習システム
@@ -549,7 +550,7 @@ class OnlineLearningEngine:
 
         # 適応最適化の実行
         try:
-            adaptation_result = self.unified_optimizer.adaptive_optimize(
+            self.unified_optimizer.adaptive_optimize(
                 current_performance={"score": 0.5},
                 market_regime="volatile",  # ドリフト時はvolatileと仮定
             )

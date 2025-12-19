@@ -8,7 +8,22 @@ import logging
 from typing import Iterator
 
 import torch
-from torch.utils.data import DataLoader, Dataset
+try:
+    from torch.utils.data import DataLoader, Dataset
+except Exception:
+    # Provide lightweight fallbacks for environments without full torch
+    class _SimpleDataLoader(list):
+        def __init__(self, dataset, *args, **kwargs):
+            super().__init__(list(dataset))
+
+        def __iter__(self):
+            return super().__iter__()
+
+        def __len__(self):
+            return super().__len__()
+
+    DataLoader = _SimpleDataLoader
+    Dataset = object
 
 logger = logging.getLogger(__name__)
 

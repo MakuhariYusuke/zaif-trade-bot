@@ -4,7 +4,7 @@
 import sys
 from unittest.mock import Mock, patch
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD
+from ztb.trading.constants import ACTION_BUY
 
 
 @patch('ztb.trading.environment.components.reward_calculator.BehavioralPenaltyCalculator')

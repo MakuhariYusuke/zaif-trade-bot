@@ -88,12 +88,6 @@ class CoincheckAdapter(IBroker):
         self._order_counter = 0
         self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}  # Sample price
 
-    async def _simulate_delay(self) -> None:
-        """Simulate API call delay."""
-        if not self.dry_run:
-            await asyncio.sleep(random.uniform(0.1, 0.5))
-        else:
-            await asyncio.sleep(0.01)  # Minimal delay for dry-run
 
     def _create_signature(self, message: str) -> str:
         """Create HMAC-SHA256 signature for Coincheck API.
@@ -191,10 +185,6 @@ class CoincheckAdapter(IBroker):
             await self.rate_limiter.wait()
 
     def _generate_order_id(self) -> str:
-        """Generate unique order ID."""
-        self._order_counter += 1
-        return f"cc_dry_{self._order_counter}_{int(time.time())}"
-
     async def place_order(
         self,
         symbol: str,

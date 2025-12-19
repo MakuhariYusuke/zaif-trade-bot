@@ -9,7 +9,6 @@ including MarketRegimeDetector, RegimeAdaptiveSignalProcessor, and MarketConditi
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pandas as pd
 import numpy as np

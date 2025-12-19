@@ -105,7 +105,6 @@ class SACv434Trainer:
             else:
                 obs = reset_result
 
-            total_reward = 0
             episode_rewards = []
             for episode in range(5):  # 5エピソード評価
                 episode_reward = 0
@@ -189,7 +188,6 @@ class SACv434Trainer:
             else:
                 obs = reset_result
 
-            total_reward = 0
             episode_rewards = []
             for episode in range(5):  # 5エピソード評価
                 episode_reward = 0
@@ -312,7 +310,7 @@ class SACv434Trainer:
         logger.info("SACモデル設定を開始")
 
         # 特徴量分析結果を活用
-        feature_analysis = self.integrated_learner.analyze_and_select_features(
+        self.integrated_learner.analyze_and_select_features(
             self.config.get("data_path", "data/train.csv")
         )
 
@@ -560,8 +558,8 @@ def run_trading_backtest(
         # ポートフォリオ指標の計算
         if portfolio_values:
             final_portfolio_value = portfolio_values[-1]
-            max_portfolio = max(portfolio_values)
-            min_portfolio = min(portfolio_values)
+            max(portfolio_values)
+            min(portfolio_values)
             portfolio_return = (final_portfolio_value - 10000.0) / 10000.0 * 100
 
             # 簡易的なリスク指標
@@ -627,69 +625,7 @@ def run_trading_backtest(
         return {"error": str(e)}
 
 
-def main():
-    """メイン関数"""
-    print("=== SAC v434.2統合学習システム開始 ===")
-    parser = argparse.ArgumentParser(description="SAC v434.2拡張トレーニング")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="config/sac_v434_2_integrated_config.json",
-        help="設定ファイルパス",
-    )
-    parser.add_argument(
-        "--data",
-        type=str,
-        default="data/btc_jpy_featured_dataset.csv",
-        help="トレーニングデータパス",
-    )
-    parser.add_argument(
-        "--news-data", type=str, default=None, help="ニュースデータパス"
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default="models/sac_v434_2_integrated",
-        help="出力ディレクトリ",
-    )
-    parser.add_argument(
-        "--timesteps", type=int, default=1000000, help="総トレーニングステップ数"
-    )
-    parser.add_argument(
-        "--curriculum", action="store_true", default=True, help="カリキュラム学習を使用"
-    )
 
-    args = parser.parse_args()
-    print(f"設定: data={args.data}, output={args.output}")
-
-    # 統合学習マネージャー設定
-    config = {
-        "data_path": args.data,
-        "news_data_path": args.news_data,
-        "output_dir": args.output,
-        "total_timesteps": args.timesteps,
-        "curriculum_learning": args.curriculum,
-        "checkpoint_interval": 50000,
-        "evaluation_interval": 10000,
-        "max_features": 50,
-    }
-
-    print("トレーナー初期化開始...")
-    # トレーナー実行
-    trainer = SACv434Trainer(config)
-    print("トレーナー初期化完了")
-
-    print("トレーニング開始...")
-    result = trainer.train_integrated()
-
-    if "error" in result:
-        logger.error(f"トレーニング失敗: {result['error']}")
-        print(f"トレーニング失敗: {result['error']}")
-        return 1
-    else:
-        logger.info("トレーニング成功完了")
-        print("トレーニング成功完了")
-        return 0
 
 
 def main():

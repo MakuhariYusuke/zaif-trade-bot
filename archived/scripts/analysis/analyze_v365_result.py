@@ -13,11 +13,6 @@ CONSOLE_OUTPUT = """
 """
 
 
-def parse_pan_counts(text: str) -> List[Tuple[int, int, int]]:
-    """Parse pan_action_counts from console output."""
-    pattern = r"pan_action_counts\s*\|\s*\[(\d+),\s*(\d+),\s*(\d+)\]"
-    matches = re.findall(pattern, text)
-    return [(int(m[0]), int(m[1]), int(m[2])) for m in matches]
 
 
 def main() -> None:

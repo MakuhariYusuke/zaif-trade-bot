@@ -10,13 +10,20 @@ import pandas as pd
 
 sys.path.insert(0, str(Path.cwd()))
 
-from stable_baselines3 import PPO
+try:
+    from stable_baselines3 import PPO
+except Exception:
+    PPO = None  # type: ignore
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 
 def main():
     print("Testing SAC v445.3 model for SELL actions...")
+
+    if PPO is None:
+        print("stable_baselines3.PPO not available; skipping sell action script")
+        return
 
     # Load the trained model
     model_path = "models/sac_v445.3_strong_selling_optimized_final.zip"

@@ -9,7 +9,6 @@ memory-efficient processing, and integration with MemoryManager.
 import unittest
 from unittest.mock import Mock, patch
 import numpy as np
-import pandas as pd
 
 from ztb.utils.memory_utils import (
     OperationMemoryTracker,

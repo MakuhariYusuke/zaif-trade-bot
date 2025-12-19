@@ -62,6 +62,12 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         Args:
             params: TrainerParams containing all training configuration
         """
+        # Validate config type early and raise a clear error message to help
+        # callers and tests. Previously passing a non-dict (e.g. str) resulted
+        # in an opaque ValueError coming from `dict()` conversion.
+        if not isinstance(params.config, dict):
+            raise ValueError("config must be a dictionary")
+
         super().__init__(dict(params.config))  # ConfigurableMixin expects dict
         self.data_path = params.data_path
         self.checkpoint_dir = Path(params.checkpoint_dir)

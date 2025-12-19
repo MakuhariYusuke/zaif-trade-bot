@@ -47,13 +47,10 @@ if not TALIB_AVAILABLE:
 
 logger = logging.getLogger(__name__)
 
+# ruff: noqa: E402
 from ztb.utils.performance_utils import timed
 
 
-class TaLibError(Exception):
-    """Custom exception for Ta-Lib related errors."""
-
-    pass
 
 
 class TaLibWrapper:
@@ -268,7 +265,7 @@ class TaLibWrapper:
                 result = ema_indicator.ema_indicator().values
                 result = cast(NDArray[np.float64], result)
             else:
-                result = self._ema_custom(data, period)
+                result = TaLibWrapper._ema_custom(data, period)
 
             # No caching here when called as staticmethod (keep implementation simple)
 
@@ -320,24 +317,14 @@ class TaLibWrapper:
         nbdevdn: float = 2.0,
     ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """
-        Bollinger Bands.
-
-        Bollinger Bands are volatility bands placed above and below a moving average.
-        Volatility is based on the standard deviation, which changes as volatility increases or decreases.
-        The bands automatically widen when volatility increases and narrow when volatility decreases.
-
-        Args:
-            data: Input price data (typically closing prices)
-            period: Period for moving average calculation (default: 20)
-            nbdevup: Standard deviation multiplier for upper band (default: 2.0)
-            nbdevdn: Standard deviation multiplier for lower band (default: 2.0)
+        Bollinger Bands calculation.
 
         Returns:
             Tuple of (Upper Band, Middle Band (SMA), Lower Band)
-
-        Raises:
-            TaLibError: If input validation fails
         """
+
+        # Use the staticmethod implementation below for bbands calculations.
+        return TaLibWrapper._bbands_custom(data, period, nbdevup, nbdevdn)
         data = self._validate_input_data(data, "data")
         period = self._validate_period(period, "period")
 
@@ -1241,48 +1228,9 @@ class TaLibWrapper:
         except Exception as e:
             raise TaLibError(f"ATR calculation failed: {e}")
 
-    @staticmethod
-    def bbands(
-        data: Union[NDArray[np.float64], pd.Series],
-        period: int = 20,
-        nbdevup: float = 2.0,
-        nbdevdn: float = 2.0,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
-        """
-        Bollinger Bands.
-
-        Args:
-            data: Input price data
-            period: Period for moving average
-            nbdevup: Standard deviation multiplier for upper band
-            nbdevdn: Standard deviation multiplier for lower band
-
-        Returns:
-            Tuple of (upper_band, middle_band, lower_band)
-
-        Raises:
-            TaLibError: If input validation fails
-        """
-        data = TaLibWrapper._validate_input_data(data, "data")
-        period = TaLibWrapper._validate_period(period, "period")
-
-        if len(data) < period:
-            raise TaLibError(f"Data length {len(data)} is less than period {period}")
-
-        try:
-            if TALIB_AVAILABLE:
-                upper, middle, lower = talib.BBANDS(
-                    data, timeperiod=period, nbdevup=nbdevup, nbdevdn=nbdevdn
-                )
-                return (
-                    np.nan_to_num(upper, nan=np.nan),
-                    np.nan_to_num(middle, nan=np.nan),
-                    np.nan_to_num(lower, nan=np.nan),
-                )
-            else:
-                return TaLibWrapper._bbands_custom(data, period, nbdevup, nbdevdn)
-        except Exception as e:
-            raise TaLibError(f"BBANDS calculation failed: {e}")
+    # Static bbands implementation removed: use instance method `bbands` which
+    # delegates to the private `_bbands_custom` implementation. This avoids
+    # duplicate definitions and centralizes validation and caching behavior.
 
     @staticmethod
     def _mfi_custom(

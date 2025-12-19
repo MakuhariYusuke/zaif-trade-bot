@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\advanced_auto_stop.py
+# hypothesis_version: 6.140.3
+
+[-0.05, -0.02, 0.0, 0.03, 0.05, 0.1, 0.7, 0.8, 1.5, 2.0, 120, 240, 300, 720, 900, 1440, 1800, 3600, 7200, 21600, 28800, 'Volatility normal', '__main__', 'active_conditions', 'consecutive_losses', 'cooldown_period', 'cooldown_until', 'critical', 'current_drawdown', 'drawdown_limit', 'drawdown_stop', 'enabled', 'info', 'is_active', 'manual_override', 'market_condition', 'performance_stop', 'pnl', 'severity', 'stop_reason', 'threshold', 'time_limit', 'time_stop', 'timestamp', 'total_trades', 'volatility', 'volatility_spike', 'volatility_stop', 'warning', 'window_size']

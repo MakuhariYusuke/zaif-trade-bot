@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\processors\optimization\features.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-08, 0.001, 0.1, 0.5, 1.0, 1.5, 2.0, 100, 1000, '_debug_info', 'correlations', 'error_count', 'gradient_norm', 'gradient_norms', 'history_lengths', 'importance_scores', 'last_update_time', 'learning_rate', 'learning_rates', 'loss', 'loss_values', 'momentum', 'momentum_values', 'optimizer_loss_trend', 'robust', 'step_size', 'step_sizes', 'update_count', 'update_frequencies', 'update_frequency']

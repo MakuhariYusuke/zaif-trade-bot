@@ -6,8 +6,6 @@ Tests the complete integration of signal performance analysis during backtesting
 """
 
 import unittest
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
 import pandas as pd
 import numpy as np
 

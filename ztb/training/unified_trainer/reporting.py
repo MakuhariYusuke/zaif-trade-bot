@@ -611,7 +611,6 @@ class TrainingEventLogger:
         # リスク指標の計算
         drawdown_analysis: List[float] = []
         volatility_analysis: List[float] = []
-        risk_adjusted_returns: List[float] = []
 
         current_drawdown: float = 0.0
         peak_value: float = 0.0

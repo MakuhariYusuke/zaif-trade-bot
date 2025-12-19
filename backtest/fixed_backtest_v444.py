@@ -2,7 +2,6 @@
 """
 Fixed SAC v444 Backtest - Uses same environment as training
 """
-import json
 import logging
 import sys
 from pathlib import Path
@@ -14,7 +13,6 @@ sys.path.insert(0, str(project_root))
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from ztb.utils.normalization import load_scaler
 
@@ -29,7 +27,6 @@ logging.getLogger("ztb").setLevel(logging.INFO)
 sys.path.append(str(Path(__file__).parent))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 
 

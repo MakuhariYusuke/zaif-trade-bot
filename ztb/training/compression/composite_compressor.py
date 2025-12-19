@@ -142,8 +142,12 @@ class CompositeCompressor:
     def _apply_pruning(self, model: nn.Module) -> nn.Module:
         """Apply pruning compression."""
         try:
-            pruned_model = self.pruner.apply_global_pruning(model)
-            return pruned_model
+            res = self.pruner.apply_pruning(model)
+            # Some implementations return (model, stats)
+            if isinstance(res, tuple) and len(res) >= 1:
+                pruned_model = res[0]
+                return pruned_model
+            return res
         except Exception as e:
             logger.warning(f"Pruning failed: {e}, skipping")
             return model
@@ -153,8 +157,11 @@ class CompositeCompressor:
     ) -> nn.Module:
         """Apply quantization compression."""
         try:
-            quantized_model = self.quantizer.quantize_model(model, calibration_data)
-            return quantized_model
+            res = self.quantizer.quantize_model(model, calibration_data)
+            if isinstance(res, tuple) and len(res) >= 1:
+                quantized_model = res[0]
+                return quantized_model
+            return res
         except Exception as e:
             logger.warning(f"Quantization failed: {e}, skipping")
             return model
@@ -162,8 +169,11 @@ class CompositeCompressor:
     def _apply_low_rank(self, model: nn.Module) -> nn.Module:
         """Apply low-rank approximation."""
         try:
-            low_rank_model = self.low_rank.apply_low_rank_approximation(model)
-            return low_rank_model
+            res = self.low_rank.apply_low_rank_approximation(model)
+            if isinstance(res, tuple) and len(res) >= 1:
+                low_rank_model = res[0]
+                return low_rank_model
+            return res
         except Exception as e:
             logger.warning(f"Low-rank approximation failed: {e}, skipping")
             return model
@@ -173,8 +183,11 @@ class CompositeCompressor:
     ) -> nn.Module:
         """Apply knowledge distillation."""
         try:
-            distilled_model = self.distiller.distill_model(model, teacher_model)
-            return distilled_model
+            res = self.distiller.distill_model(model, teacher_model)
+            if isinstance(res, tuple) and len(res) >= 1:
+                distilled_model = res[0]
+                return distilled_model
+            return res
         except Exception as e:
             logger.warning(f"Distillation failed: {e}, skipping")
             return model
@@ -337,23 +350,23 @@ def benchmark_compression(
             _ = original_model(test_data)
             _ = compressed_model(test_data)
 
-    # Benchmark original model
+    # Benchmark original model (use perf_counter for higher resolution)
     original_times = []
     with torch.no_grad():
         for _ in range(num_runs):
-            start = time.time()
+            start = time.perf_counter()
             _ = original_model(test_data)
             torch.cuda.synchronize() if device.type == "cuda" else None
-            original_times.append(time.time() - start)
+            original_times.append(time.perf_counter() - start)
 
     # Benchmark compressed model
     compressed_times = []
     with torch.no_grad():
         for _ in range(num_runs):
-            start = time.time()
+            start = time.perf_counter()
             _ = compressed_model(test_data)
             torch.cuda.synchronize() if device.type == "cuda" else None
-            compressed_times.append(time.time() - start)
+            compressed_times.append(time.perf_counter() - start)
 
     return {
         "original_avg_time": np.mean(original_times),

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Action constants
 ACTION_HOLD = 0
 ACTION_BUY = 1
-ACTION_SELL = 2
+ACTION_SELL = -1
 ACTION_NAMES = ["HOLD", "BUY", "SELL"]
 
 

@@ -5,14 +5,13 @@ Phase 3-3 Live Trading Integration Test
 """
 
 import sys
-import os
 import json
 import pandas as pd
 import numpy as np
 import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -24,10 +23,7 @@ from ztb.live_trading.trading_api import TradingAPI
 from ztb.live_trading.live_trader import LiveTrader
 from ztb.training.scripts.paper_trade import detect_algorithm
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.trading.environment.constants import continuous_to_discrete_action
-from ztb.trading.env_config import get_trading_env_config
-from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem, GuidanceConfig
+from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem
 
 
 class PaperTradingExperiment:
@@ -476,7 +472,7 @@ class PaperTradingExperiment:
             experiment_name = f"sac_v445_3_paper_trading_{days}days"
             result_file = self.save_results(portfolio, metrics, experiment_name)
 
-            print(f"\nExperiment completed successfully!")
+            print("\nExperiment completed successfully!")
             print(f"Results saved to: {result_file}")
 
             return metrics

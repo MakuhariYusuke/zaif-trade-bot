@@ -60,12 +60,12 @@ else:
             f"Error: {e}"
         ) from e
 
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
-from ztb.utils.cli_common import CLIFormatter
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL  # noqa: E402
+from ztb.trading.environment.environment import HeavyTradingEnv  # noqa: E402
+from ztb.trading.environment.utils.config import EnvironmentConfig  # noqa: E402
+from ztb.training.config.ppo_config import PPOConfig, get_ppo_config  # noqa: E402
+from ztb.utils.cli_common import CLIFormatter  # noqa: E402
+from ztb.utils.data_utils import load_csv_data_optimized  # noqa: E402
 
 
 class TrainingCallback(BaseCallback):
@@ -1201,7 +1201,7 @@ class BinarySearchArgumentParser:
         default_value: Union[int, float],
     ) -> None:
         """Add parameter-specific argument to parser."""
-        if param_type == int:
+        if param_type is int:
             parser.add_argument(
                 f"--{param_name}",
                 type=int,

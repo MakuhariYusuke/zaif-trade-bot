@@ -37,12 +37,12 @@ class OptimizationEngine:
 
     def _check_optuna_available(self) -> bool:
         """Check if Optuna is available."""
-        try:
-            import optuna
-            return True
-        except ImportError:
+        import importlib.util
+
+        available = importlib.util.find_spec("optuna") is not None
+        if not available:
             self.logger.warning("Optuna not available for optimization")
-            return False
+        return available
 
     def define_parameter_space(
         self,
@@ -186,7 +186,7 @@ class OptimizationEngine:
                 except Exception as e:
                     self.logger.warning(f"Evaluation failed for trial {trial.number}: {e}")
                     # Return poor scores for failed evaluations
-                    scores = {obj: -999 for obj in objectives}
+                    scores = dict.fromkeys(objectives, -999)
 
                 # Store trial information
                 trial_info = {

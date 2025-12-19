@@ -231,9 +231,6 @@ class TrainingUI:
         """Print success message."""
         print(f"✅ {message}")
 
-    def print_error(self, error: str) -> None:
-        """Print error message."""
-        print(f"❌ {error}")
 
     def print_info(self, message: str) -> None:
         """Print info message."""

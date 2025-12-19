@@ -6,7 +6,6 @@ This script compares the output of the original multi_period_analysis_sac_v445_3
 with the integrated functionality in unified_trainer and v4xx_unified_analyzer.
 """
 
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict

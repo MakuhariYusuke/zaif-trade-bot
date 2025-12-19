@@ -254,23 +254,4 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    )
-
-    base_config = build_base_config(args)
-
-    trained_models: List[Path] = []
-    for spec in MODEL_SPECS:
-        trained_models.append(train_model(base_config, spec, args))
-
-    LOGGER.info("Training completed for %d ensemble members", len(trained_models))
-    LOGGER.info("Models saved: %s", ", ".join(str(p) for p in trained_models))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+# Main function removed - use scripts/train_ensemble_models.py instead

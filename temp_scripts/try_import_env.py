@@ -21,5 +21,5 @@ try:
     df = create_synthetic_df(200)
     env = HeavyTradingEnv(df=df, config={"feature_set":"minimal","curriculum_stage":"forced_balance","curriculum_learning":{"enabled":True,"auto_progression":False}})
     print('Instantiated OK')
-except Exception as e:
+except Exception:
     traceback.print_exc()

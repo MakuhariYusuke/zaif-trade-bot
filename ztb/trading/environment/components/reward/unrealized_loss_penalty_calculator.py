@@ -1,7 +1,6 @@
 """
 Calculates a penalty for holding a position with unrealized losses over time.
 """
-import math
 
 from ztb.trading.environment.utils.config import RewardSettings
 

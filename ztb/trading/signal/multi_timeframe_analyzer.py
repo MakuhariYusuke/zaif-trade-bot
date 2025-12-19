@@ -11,11 +11,10 @@ Features:
 - 短期・中期トレンドの統合評価
 """
 
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import numpy as np
-import pandas as pd
 from collections import deque
 
 from ztb.utils.logging_utils import get_logger

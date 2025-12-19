@@ -29,23 +29,9 @@ from ztb.training.distributed.distributed_training import (
 )
 
 
-class SimpleModel(nn.Module):
-    """Simple model for testing."""
-
-    def __init__(self, input_size=10, hidden_size=5, output_size=1):
-        super().__init__()
-        self.linear = nn.Linear(input_size, hidden_size)
-        self.output = nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        return self.output(torch.relu(self.linear(x)))
 
 
 class TestDistributedTrainingConfig:
-    """Test DistributedTrainingConfig class."""
-
-    def test_config_initialization(self):
-        """Test config initialization."""
         config = DistributedTrainingConfig(
             world_size=4,
             rank=1,

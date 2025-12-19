@@ -30,9 +30,14 @@ try:
     logger = get_logger(__name__)
 
 except ImportError as e:
-    print(f"Import error: {e}")
-    print("Required packages not available. Please install dependencies.")
-    sys.exit(1)
+    try:
+        import pytest
+
+        pytest.skip(f"Required packages not available: {e}", allow_module_level=True)
+    except Exception:
+        print(f"Import error: {e}")
+        print("Required packages not available. Please install dependencies.")
+        sys.exit(1)
 
 
 def create_test_config():

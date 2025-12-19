@@ -713,12 +713,7 @@ class AdaptiveFeatureSelector:
                 selected_features=self.selected_features[:10]
                 if self.selected_features
                 else [],
-                feature_weights={
-                    name: 1.0
-                    for name in (
-                        self.selected_features[:10] if self.selected_features else []
-                    )
-                },
+                feature_weights=dict.fromkeys(self.selected_features[:10] if self.selected_features else [], 1.0),
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
@@ -747,14 +742,7 @@ class AdaptiveFeatureSelector:
                 selected_features=self.all_features[: self.config.target_features]
                 if self.all_features
                 else [],
-                feature_weights={
-                    name: 1.0
-                    for name in (
-                        self.all_features[: self.config.target_features]
-                        if self.all_features
-                        else []
-                    )
-                },
+                feature_weights=dict.fromkeys(self.all_features[:self.config.target_features] if self.all_features else [], 1.0),
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=MarketCondition.CALM,
                 timestamp=datetime.now(),

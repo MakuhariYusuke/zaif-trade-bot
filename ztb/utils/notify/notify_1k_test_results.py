@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 1kステップ強化学習テスト結果通知スクリプト
 既存のDiscordNotifierクラスを使用

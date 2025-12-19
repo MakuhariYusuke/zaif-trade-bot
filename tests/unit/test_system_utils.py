@@ -5,7 +5,6 @@ Unit tests for system_utils.py
 Tests for library availability checking and system utilities.
 """
 
-import importlib
 from unittest.mock import patch
 
 import pytest

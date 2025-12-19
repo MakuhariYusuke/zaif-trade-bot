@@ -6,7 +6,6 @@ Tests for MultiTimeframeAnalyzer and TrendConvergenceCalculator
 """
 
 import pytest
-import numpy as np
 import pandas as pd
 from unittest.mock import Mock, patch
 

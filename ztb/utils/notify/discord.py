@@ -140,13 +140,6 @@ class DiscordNotifier:
             logger.error(f"Failed to send Discord notification: {e}")
             return False
 
-    def notify_data_pipeline_status(self, status: str, details: Dict[str, Any]) -> None:
-        """Notify about data pipeline status"""
-        title = f"📊 Data Pipeline {status.title()}"
-        message = "Data acquisition and integrity check completed"
-        self.send_notification(
-            title, message, "success" if status == "success" else "error", details
-        )
 
     def notify_job_completion(
         self, job_id: str, success: bool, metrics: Dict[str, Any]
@@ -155,15 +148,6 @@ class DiscordNotifier:
         status = "✅ Success" if success else "❌ Failed"
         title = f"🔬 ML Job {status}"
         message = f"Job {job_id} completed"
-        color = "success" if success else "error"
-        self.send_notification(title, message, color, metrics)
-
-    def notify_risk_alert(self, alert_type: str, details: Dict[str, Any]) -> None:
-        """Notify about risk management alerts"""
-        title = f"⚠️ Risk Alert: {alert_type}"
-        message = "Risk management threshold exceeded"
-        self.send_notification(title, message, "warning", details)
-
     def notify_trading_signal(
         self, symbol: str, signal: str, confidence: float
     ) -> None:
@@ -174,28 +158,12 @@ class DiscordNotifier:
             "success" if signal == "buy" else "error" if signal == "sell" else "info"
         )
         fields = {"Symbol": symbol, "Signal": signal, "Confidence": f"{confidence:.2%}"}
-        self.send_notification(title, message, color, fields)
-
-    def notify_drift_alert(
-        self, drift_type: str, severity: str, details: Dict[str, Any]
-    ) -> None:
         """Notify about data or model drift detection"""
         title = f"🔄 Drift Alert: {drift_type.title()}"
         message = f"Drift detected with severity: {severity.upper()}"
 
         # Set color based on severity
         color_map = {
-            "low": "info",
-            "medium": "warning",
-            "high": "error",
-            "critical": "error",
-        }
-        color = color_map.get(severity.lower(), "warning")
-
-        self.send_notification(title, message, color, details)
-
-    def notify_quality_gate_failure(
-        self, gate_type: str, reason: str, details: Dict[str, Any]
     ) -> None:
         """Notify about quality gate failures"""
         title = f"🚫 Quality Gate Failed: {gate_type}"
@@ -208,32 +176,6 @@ MockNotifier = DiscordNotifier
 
 # Global notifier instance (initialized from environment)
 _default_notifier: Optional[DiscordNotifier] = None
-
-
-def get_notifier() -> DiscordNotifier:
-    """Get global notifier instance"""
-    global _default_notifier
-    if _default_notifier is None:
-        import os
-
-        webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
-        _default_notifier = DiscordNotifier(webhook_url)
-    return _default_notifier
-
-
-def send_notification(
-    title: str,
-    message: str,
-    priority: str = "normal",
-    fields: Optional[Dict[str, Any]] = None,
-) -> bool:
-    """
-    Send notification using global notifier.
-
-    Args:
-        title: Notification title
-        message: Main message content
-        priority: Priority level ('low', 'normal', 'high')
         fields: Additional fields
 
     Returns:

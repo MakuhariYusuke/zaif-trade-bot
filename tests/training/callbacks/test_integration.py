@@ -53,9 +53,6 @@ class TestCallbackSystemIntegration(unittest.TestCase):
         self.manager.register_callback(self.metrics_callback)
         self.manager.register_callback(self.logging_callback)
 
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
 
     def test_full_training_simulation(self):
         """Test a complete training simulation with all callbacks."""

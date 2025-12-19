@@ -36,7 +36,7 @@ for i, report_path in enumerate(reports, 1):
         
         if has_components:
             components = data.get('reward_components', stats.get('reward_components', {}))
-            print(f"   Components:")
+            print("   Components:")
             for key, value in list(components.items())[:5]:
                 print(f"     {key}: {value:.6f}")
         

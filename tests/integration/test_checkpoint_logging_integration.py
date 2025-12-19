@@ -11,13 +11,11 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 import numpy as np
-import torch
 from stable_baselines3 import SAC
 
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager, TrainingCheckpointConfig
-from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.utils.logging_utils import StructuredLogger
 
@@ -315,7 +313,6 @@ class TestPerformanceUnderLoad(unittest.TestCase):
     def test_memory_usage_during_checkpoint_operations(self):
         """Test memory usage during intensive checkpoint operations."""
         import psutil
-        import os
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB

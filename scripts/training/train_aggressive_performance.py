@@ -45,13 +45,6 @@ class SimplifiedAggressiveTrainer:
         self.training_results = {}
         self.performance_metrics = {}
 
-    def _load_config(self) -> Dict[str, Any]:
-        """設定ファイルを読み込む"""
-        if not Path(self.config_path).exists():
-            raise FileNotFoundError(f"Config file not found: {self.config_path}")
-
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
 
     def _setup_logging(self) -> logging.Logger:
         """ログ設定"""

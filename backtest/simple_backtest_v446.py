@@ -56,7 +56,6 @@ from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.utils.analysis_formatters import print_formatted_metrics
 
 importlib.reload(ztb.features.models.sac.sac_v427_feature_engineering)
-from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 
 
 def run_simple_backtest(

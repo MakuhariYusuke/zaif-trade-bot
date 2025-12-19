@@ -127,6 +127,16 @@ class FeatureSetConfig:
             "include_risk_features": True,
             "include_multi_timeframe_features": False,
         },
+        "v454": {
+            "name": "SAC v454 Signal Quality",
+            "description": "Phase 8 feature set with noise filtering and signal quality improvements",
+            "excluded_features": [],
+            "include_regime_features": True,
+            "include_correlation_features": True,
+            "include_ensemble_features": True,
+            "include_risk_features": True,
+            "include_multi_timeframe_features": False,
+        },
     }
 
     def __init__(self, config_path: str = None):

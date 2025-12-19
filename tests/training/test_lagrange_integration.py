@@ -127,7 +127,7 @@ class TestLagrangeConstraintUnit:
         # 10 actions, but only 5 legal steps (where SELL is legal)
         actions = np.array(
             [
-                ACTION_HOLD,
+                ACTION_SELL,  # fixed: first entry should be SELL as the comment
                 ACTION_SELL,
                 ACTION_HOLD,
                 ACTION_HOLD,

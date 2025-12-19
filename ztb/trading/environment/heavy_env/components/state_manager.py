@@ -1,9 +1,7 @@
 """State management component for HeavyTradingEnv."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict
 
-import numpy as np
-from numpy.typing import NDArray
 
 from ztb.trading.constants import get_action_count_index
 from ztb.utils.logging_utils import get_logger

@@ -11,7 +11,6 @@ sys.path.insert(0, project_root)
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
 from ztb.trading.signal.quality_scorer import SignalQualityScorer
 
 def create_test_market_data():
@@ -395,7 +394,7 @@ def main():
 
     # Debug: Print score distribution
     if 'score_counts' in result:
-        print(f"\n🎯 SIGNAL DISTRIBUTION")
+        print("\n🎯 SIGNAL DISTRIBUTION")
         print("-" * 40)
         score_counts = result['score_counts']
         total_signals = sum(score_counts.values())
@@ -403,7 +402,7 @@ def main():
         print(f"Sell signals: {score_counts['sell_signals']} ({score_counts['sell_signals']/total_signals*100:.1f}%)")
         print(f"Hold signals: {score_counts['hold_signals']} ({score_counts['hold_signals']/total_signals*100:.1f}%)")
 
-        print(f"\n📊 SCORE RANGE DISTRIBUTION")
+        print("\n📊 SCORE RANGE DISTRIBUTION")
         print("-" * 40)
         score_ranges = result['score_ranges']
         for range_name, count in score_ranges.items():

@@ -5,7 +5,7 @@ This module provides specific type aliases and definitions to replace generic An
 used in the ActionSignalGuide system.
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TYPE_CHECKING
 
 # Type aliases for configuration dictionaries
 SignalConfig = Dict[str, Union[bool, int, float, str, List[str], Dict[str, Union[int, float, None]]]]
@@ -50,3 +50,14 @@ RegimeAdjustment = Dict[str, Union[int, float, str]]
 # Type aliases for validation and error handling structures
 ValidationResult = Dict[str, Union[bool, str, List[str]]]
 ErrorInfo = Dict[str, Union[str, int, Dict[str, Any]]]
+
+
+if TYPE_CHECKING:
+	# Import concrete classes for static type checking only to satisfy forward
+	# references used throughout the package. These imports are guarded to
+	# avoid runtime import side effects during test collection.
+	from .action_signal_guide import (
+		ActionSignal,
+		ActionSignalGuideConfig,
+		GuidanceLevel,
+	)

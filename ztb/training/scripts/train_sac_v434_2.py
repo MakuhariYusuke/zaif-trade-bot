@@ -256,7 +256,7 @@ def main():
         model = create_v434_2_sac_model(env, args.model)
 
         # トレーニング実行
-        trained_model = train_v434_2_model(model, args.timesteps, args.output)
+        train_v434_2_model(model, args.timesteps, args.output)
 
         logger.info("v434.2 training completed successfully!")
 

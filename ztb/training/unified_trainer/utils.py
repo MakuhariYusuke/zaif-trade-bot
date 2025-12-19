@@ -4,19 +4,21 @@ Utility functions for Unified Trainer.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from ztb.types.common import ConfigDict, ConfigValue
+from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-# Optional dependencies
-try:
-    import stable_baselines3
+import importlib.util  # noqa: E402
 
-    STABLE_BASELINES3_AVAILABLE = True
-except ImportError:
+# Optional dependencies: use find_spec to avoid heavy imports at module import time
+try:
+    STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
+except ValueError:
+    # Some test environments may insert a module with a broken spec (None),
+    # causing find_spec to raise ValueError. Treat as not available in that case.
     STABLE_BASELINES3_AVAILABLE = False
 
 

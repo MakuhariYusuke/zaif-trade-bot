@@ -10,7 +10,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any
 import sys
 import os
 
@@ -18,8 +18,6 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
-from ztb.trading.backtest.unified_backtest.signal_performance.signal_tracker import SignalTracker
-from ztb.trading.backtest.unified_backtest.signal_performance.performance_analyzer import BacktestPerformanceAnalyzer
 from ztb.trading.backtest.unified_backtest.signal_performance.backtest_integration import BacktestSignalPerformanceAnalyzer
 
 

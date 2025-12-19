@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\components\optimization_engine.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.0001, 1.0, -999, 'best_config', 'best_scores', 'best_trial_number', 'bounds', 'categorical', 'choices', 'constraints', 'convergence_info', 'float', 'high', 'int', 'low', 'max_score', 'maximize', 'mean_score', 'min_score', 'n_completed_trials', 'n_evaluations', 'n_trials', 'objectives', 'optimization_history', 'optimization_time', 'optuna', 'parameters', 'profit', 'score', 'scores', 'sharpe', 'stage', 'std_score', 'study_best_value', 'timestamp', 'trial_number', 'types', 'win_rate']

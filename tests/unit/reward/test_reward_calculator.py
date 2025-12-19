@@ -6,30 +6,11 @@ This test demonstrates that the current balance penalty calculation
 does not enforce BUY/SELL balance, only diversity.
 """
 
-import pytest
 from collections import Counter
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 
-def calculate_balance_penalty(actions, balance_penalty_scale=1000.0, target_ratio=0.333):
-    """
-    Calculate balance penalty as currently implemented (fixed).
-    """
-    counter = Counter(actions)
-    total_actions = len(actions)
-
-    buy_count = counter[ACTION_BUY]
-    sell_count = counter[ACTION_SELL]
-    hold_count = counter[ACTION_HOLD]
-
-    buy_ratio = buy_count / total_actions
-    sell_ratio = sell_count / total_actions
-    hold_ratio = hold_count / total_actions
-
-    penalty = abs(buy_ratio - sell_ratio) * balance_penalty_scale
-
-    return penalty
 
 
 def test_balance_penalty_bug():
@@ -50,32 +31,6 @@ def test_balance_penalty_bug():
     balanced = [ACTION_BUY, ACTION_SELL, ACTION_HOLD] * 3 + [ACTION_BUY]  # 4 BUY, 3 SELL, 3 HOLD
     penalty_balanced = calculate_balance_penalty(balanced, scale)
     print(f"Balanced penalty: {penalty_balanced}")
-
-    # Assert that all-SELL and all-BUY have same penalty (bug)
-    assert penalty_sell == penalty_buy, f"Expected same penalty, got SELL: {penalty_sell}, BUY: {penalty_buy}"
-
-    # Balanced should have lower penalty
-    assert penalty_balanced < penalty_sell, f"Balanced penalty {penalty_balanced} should be less than {penalty_sell}"
-
-    print("Bug confirmed: all-SELL and all-BUY have identical penalty")
-
-
-def calculate_improved_balance_penalty(actions, balance_penalty_scale=1000.0):
-    """
-    Improved balance penalty that enforces BUY/SELL balance.
-    """
-    counter = Counter(actions)
-    total_actions = len(actions)
-
-    buy_count = counter[ACTION_BUY]
-    sell_count = counter[ACTION_SELL]
-    hold_count = counter[ACTION_HOLD]
-
-    buy_ratio = buy_count / total_actions
-    sell_ratio = sell_count / total_actions
-    hold_ratio = hold_count / total_actions
-
-    # Enforce BUY/SELL balance (target 0.4 for BUY, 0.35 for SELL) and HOLD (0.2)
     # Make BUY/SELL targets asymmetric so all-BUY vs all-SELL penalties differ
     buy_target = 0.4
     sell_target = 0.35

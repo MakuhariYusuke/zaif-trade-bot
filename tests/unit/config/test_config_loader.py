@@ -132,12 +132,6 @@ class TestConfigLoader:
         mock_base_path = MagicMock()
         mock_base_path.exists.return_value = True
 
-        def path_side_effect(path):
-            if path == "config.production.yaml":
-                return mock_env_path
-            elif path == "config.yaml":
-                return mock_base_path
-            return MagicMock()
 
         mock_path.side_effect = path_side_effect
 

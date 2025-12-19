@@ -893,7 +893,7 @@ class LiveTrader:
                         "transaction_cost", 0.001
                     )  # Entry cost
 
-            elif action == 2:  # SELL
+            elif action in (-1, 2):  # SELL (internal=-1, legacy=2)
                 if self.position >= 0:  # Flat or long
                     self.position = -1
                     self.entry_price = current_price

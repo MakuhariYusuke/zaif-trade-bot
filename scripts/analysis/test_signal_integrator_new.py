@@ -77,7 +77,7 @@ def test_new_integrator():
 
     # Test system status
     system_status = guide.get_system_status()
-    print(f"\nActionSignalGuide Status:")
+    print("\nActionSignalGuide Status:")
     print(f"Bollinger recognizers: {len(system_status['recognizers'].get('bollinger', []))}")
     print(f"ADX recognizers: {len(system_status['recognizers'].get('adx', []))}")
 

@@ -32,6 +32,7 @@ ProcessInfo = Dict[str, Any]  # Process information dictionary
 
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
+# ruff: noqa: E402
 from ztb.experiments.base import ExperimentResult
 from ztb.utils.resource.process_priority import ProcessPriorityManager
 

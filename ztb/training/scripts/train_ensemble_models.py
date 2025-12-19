@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
 
@@ -53,32 +52,6 @@ MODEL_SPECS = [
 ]
 
 
-def build_base_config(args: argparse.Namespace) -> Dict[str, Any]:
-    """Return a baseline PPO configuration shared by ensemble members."""
-    return {
-        "algorithm": "ppo",
-        "data_path": str(args.data_path),
-        "total_timesteps": args.total_timesteps,
-        "learning_rate": args.learning_rate,
-        "n_steps": args.n_steps,
-        "batch_size": args.batch_size,
-        "gamma": args.gamma,
-        "gae_lambda": args.gae_lambda,
-        "clip_range": args.clip_range,
-        "vf_coef": args.vf_coef,
-        "max_grad_norm": args.max_grad_norm,
-        "tensorboard_log": str(args.logs_dir),
-        "model_dir": str(args.models_dir),
-        "checkpoint_dir": str(args.checkpoints_dir),
-        "log_dir": str(args.logs_dir),
-        "offline_mode": True,
-        "feature_set": args.feature_set,
-        "timeframe": args.timeframe,
-        "reward_scaling": args.reward_scaling,
-        "transaction_cost": args.transaction_cost,
-        "max_position_size": args.max_position_size,
-        "seed": args.seed,
-    }
 
 
 def train_model(
@@ -107,51 +80,6 @@ def train_model(
         data_path=str(args.data_path),
         config=config,
         checkpoint_dir=str(args.checkpoints_dir),
-        max_features=args.max_features,
-    )
-    model = trainer.train(session_id=spec["session_id"])
-
-    duration = datetime.now() - start_time
-    LOGGER.info("Finished training %s in %s", spec["session_id"], duration)
-
-    target_path = args.models_dir / f"{spec['session_id']}.zip"
-    if model is not None:
-        model.save(str(target_path))
-        LOGGER.info("Saved model to %s", target_path)
-    else:
-        LOGGER.warning(
-            "Trainer returned None for %s; no model saved", spec["session_id"]
-        )
-
-    from typing import cast
-
-    return cast(Path, target_path)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train PPO ensemble models")
-    parser.add_argument(
-        "--data-path",
-        type=Path,
-        default=Path("ml-dataset-enhanced-balanced.csv"),
-        help="Path to the balanced training dataset",
-    )
-    parser.add_argument(
-        "--models-dir",
-        type=Path,
-        default=Path("models"),
-        help="Directory to store trained ensemble models",
-    )
-    parser.add_argument(
-        "--logs-dir",
-        type=Path,
-        default=Path("logs/ensemble"),
-        help="Directory for training logs and tensorboard data",
-    )
-    parser.add_argument(
-        "--checkpoints-dir",
-        type=Path,
-        default=Path("checkpoints/ensemble"),
         help="Directory for intermediate checkpoints",
     )
     parser.add_argument(

@@ -7,8 +7,6 @@ WalkForwardAnalyzerクラスの機能をテストします。
 import pytest
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
 
 from ztb.analysis.walk_forward_analyzer import (
     WalkForwardAnalyzer, ParameterSet, WalkForwardWindow
@@ -19,24 +17,6 @@ class TestWalkForwardAnalyzer:
     """WalkForwardAnalyzerのテスト"""
 
     @pytest.fixture
-    def sample_market_data(self):
-        """サンプル市場データ"""
-        dates = pd.date_range('2023-01-01', periods=200, freq='D')
-        np.random.seed(42)
-
-        # トレンド + ノイズのデータ生成
-        trend = np.linspace(0, 50, 200)
-        noise = np.random.randn(200) * 3
-        prices = 100 + trend + noise
-
-        data = pd.DataFrame({
-            'open': prices,
-            'high': prices + np.abs(np.random.randn(200)),
-            'low': prices - np.abs(np.random.randn(200)),
-            'close': prices + np.random.randn(200) * 0.5
-        }, index=dates)
-
-        return data
 
     @pytest.fixture
     def mock_strategy_func(self):

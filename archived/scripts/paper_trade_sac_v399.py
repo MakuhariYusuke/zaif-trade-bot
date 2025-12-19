@@ -26,13 +26,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
 
-def load_model(model_path: str) -> SAC:
-    """Load the trained SAC model."""
-    logger = get_logger(__name__)
-    logger.info(f"Loading model from {model_path}")
-    model = SAC.load(model_path)
-    logger.info("Model loaded successfully")
-    return model
 
 
 def load_data(data_path: str) -> pd.DataFrame:

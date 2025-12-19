@@ -1149,9 +1149,6 @@ class WalkForwardAnalyzer:
 class CrossValidationAnalyzer:
     """交差検証分析器"""
 
-    def __init__(self, backtest_engine: BacktestEngine):
-        self.backtest_engine = backtest_engine
-        self.logger = get_logger(__name__)
 
     def run_cross_validation(
         self, config: BacktestConfig, n_folds: int = 5

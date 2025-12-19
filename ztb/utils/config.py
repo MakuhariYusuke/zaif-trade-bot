@@ -15,7 +15,7 @@ except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.safety import safe_to_bool, safe_to_int, safe_to_float, validate_range
+from ztb.utils.safety import safe_to_bool, safe_to_int, safe_to_float
 
 logger = get_logger(__name__)
 
@@ -241,24 +241,24 @@ def get_config_value(
         if raw_value is None:
             return default
 
-        if expected_type == str:
+        if expected_type is str:
             return str(raw_value)  # type: ignore
-        elif expected_type == int:
+        elif expected_type is int:
             return int(raw_value) if isinstance(raw_value, (int, str)) else default  # type: ignore
-        elif expected_type == float:
+        elif expected_type is float:
             return (
                 float(raw_value)
                 if isinstance(raw_value, (int, float, str))
                 else default
             )  # type: ignore
-        elif expected_type == bool:
+        elif expected_type is bool:
             if isinstance(raw_value, bool):
                 return raw_value  # type: ignore
             elif isinstance(raw_value, str):
                 return raw_value.lower() in ("true", "1", "yes", "on")  # type: ignore
             else:
                 return default
-        elif expected_type == list:
+        elif expected_type is list:
             if isinstance(raw_value, list):
                 return raw_value  # type: ignore
             elif isinstance(raw_value, str):
@@ -272,7 +272,7 @@ def get_config_value(
                     return default
             else:
                 return default
-        elif expected_type == dict:
+        elif expected_type is dict:
             if isinstance(raw_value, dict):
                 return raw_value  # type: ignore
             elif isinstance(raw_value, str):
@@ -447,9 +447,6 @@ class TypedConfig:
         """Get the base directory for model files."""
         return cast(str, self.__dict__.get("model_dir", "models"))
 
-    def get_model_path(self, model_name: str) -> str:
-        """Get full path for a specific model file."""
-        return f"{self.get_model_dir()}/{model_name}"
 
     def to_dict(self) -> Dict[str, Any]:
         """設定を辞書形式に変換"""

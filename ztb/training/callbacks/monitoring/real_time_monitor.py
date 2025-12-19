@@ -516,7 +516,7 @@ def create_high_memory_alert(threshold: float = 90.0) -> MonitorAlert:
 
 def create_training_stuck_alert(timeout_minutes: int = 30) -> MonitorAlert:
     """Create alert for training appearing stuck."""
-    last_update = [datetime.now()]
+    [datetime.now()]
 
     def condition(metrics):
         # Check if training metrics haven't updated recently

@@ -86,112 +86,118 @@ class TestV4XXUnifiedAnalyzer:
 
     def test_analyze_multi_period_backtest(self, analyzer):
         """Multi-period backtest analysis test"""
-        # Sample backtest results in the format expected by the analyzer
-        backtest_results = {
-            "4h_windows": {
-                "summary": {
-                    "overall": {
-                        "total_periods": 10,
-                        "avg_return": 0.05,
-                        "win_rate": 0.6,
-                        "sharpe_ratio": 1.2
-                    },
-                    "by_trend_type": {
-                        "bull": {"return": 0.08, "win_rate": 0.7},
-                        "bear": {"return": -0.02, "win_rate": 0.4}
-                    }
+        periods = [
+            {
+                "name": "period_1",
+                "start_date": "2023-01-01",
+                "end_date": "2023-01-31"
+            },
+            {
+                "name": "period_2",
+                "start_date": "2023-02-01",
+                "end_date": "2023-02-28"
+            }
+        ]
+
+        # Mock to avoid actual backtest
+        with patch.object(analyzer, '_analyze_single_period', return_value={
+            "period_name": "mock_period",
+            "metrics": {
+                "total_return": 0.05,
+                "win_rate": 0.6,
+                "total_trades": 100
+            },
+            "performance_by_regime": {
+                "bull": {"return": 0.08, "win_rate": 0.7}
+            }
+        }):
+            results = analyzer.analyze_multi_period_backtest(periods)
+
+        assert "period_analysis" in results
+        assert "overall_metrics" in results
+        assert "regime_performance" in results
+        assert "recommendations" in results
+        assert len(results["period_analysis"]) == 2
+
+    def test_calculate_overall_metrics(self, analyzer):
+        """Overall metrics calculation test"""
+        period_results = [
+            {
+                "metrics": {
+                    "total_return": 0.05,
+                    "total_trades": 100
                 }
             },
-            "8h_windows": {
-                "summary": {
-                    "overall": {
-                        "total_periods": 8,
-                        "avg_return": 0.03,
-                        "win_rate": 0.55,
-                        "sharpe_ratio": 0.9
-                    },
-                    "by_trend_type": {
-                        "bull": {"return": 0.06, "win_rate": 0.65},
-                        "bear": {"return": -0.01, "win_rate": 0.45}
-                    }
+            {
+                "metrics": {
+                    "total_return": 0.03,
+                    "total_trades": 80
                 }
             }
-        }
+        ]
 
-        results = analyzer.analyze_multi_period_backtest(backtest_results)
+        metrics = analyzer._calculate_overall_metrics(period_results)
 
-        assert "overall_performance" in results
-        assert "regime_performance" in results
-        assert "timeframe_comparison" in results
-        assert "recommendations" in results
-        assert "4h" in results["overall_performance"]
-        assert "8h" in results["regime_performance"]
+        assert "total_periods" in metrics
+        assert "average_return" in metrics
+        assert "total_trades" in metrics
+        assert metrics["total_periods"] == 2
+        assert abs(metrics["average_return"] - 0.04) < 0.001
+        assert metrics["total_trades"] == 180
 
     def test_analyze_regime_performance(self, analyzer):
         """Regime performance analysis test"""
-        # Sample backtest results
-        backtest_results = {
-            "4h_windows": {
-                "summary": {
-                    "by_trend_type": {
-                        "bull": {"return": 0.08, "win_rate": 0.7},
-                        "bear": {"return": -0.02, "win_rate": 0.4}
-                    }
+        period_results = [
+            {
+                "performance_by_regime": {
+                    "bull": {"return": 0.08, "win_rate": 0.7},
+                    "bear": {"return": -0.02, "win_rate": 0.4}
                 }
             },
-            "8h_windows": {
-                "summary": {
-                    "by_trend_type": {
-                        "bull": {"return": 0.06, "win_rate": 0.65},
-                        "bear": {"return": -0.01, "win_rate": 0.45}
-                    }
+            {
+                "performance_by_regime": {
+                    "bull": {"return": 0.06, "win_rate": 0.65},
+                    "bear": {"return": -0.01, "win_rate": 0.45}
                 }
+            }
+        ]
+
+        regime_perf = analyzer._analyze_regime_performance(period_results)
+
+        assert "bull" in regime_perf
+        assert "bear" in regime_perf
+        assert regime_perf["bull"]["average_return"] == 0.07
+        assert regime_perf["bull"]["average_win_rate"] == 0.675
+
+    def test_generate_multi_period_recommendations(self, analyzer):
+        """Multi-period recommendations generation test"""
+        results = {
+            "overall_metrics": {
+                "average_win_rate": 0.65
+            },
+            "regime_performance": {
+                "bull": {"average_win_rate": 0.7},
+                "bear": {"average_win_rate": 0.3}
             }
         }
 
-        regime_perf = analyzer._analyze_regime_performance(backtest_results)
+        recommendations = analyzer._generate_multi_period_recommendations(results)
 
-        assert "4h" in regime_perf
-        assert "8h" in regime_perf
-        assert "bull" in regime_perf["4h"]
-        assert "bear" in regime_perf["4h"]
-
-    def test_generate_trading_recommendations(self, analyzer):
-        """Trading recommendations generation test"""
-        analysis = {
-            "overall_performance": {
-                "4h": {
-                    "total_periods": 10,
-                    "avg_return": 0.05,
-                    "win_rate": 0.6,
-                    "sharpe_ratio": 1.2
-                }
-            },
-            "timeframe_comparison": {
-                "best_timeframe": {
-                    "return": "4h",
-                    "win_rate": "4h",
-                    "sharpe_ratio": "4h"
-                }
-            }
-        }
-
-        recommendations = analyzer._generate_trading_recommendations(analysis)
-
-        assert "optimal_timeframe" in recommendations
-        assert "regime_strategy" in recommendations
-        assert "risk_management" in recommendations
-        assert "implementation_priority" in recommendations
+        assert isinstance(recommendations, list)
+        assert len(recommendations) > 0
+        # Should contain recommendations for strong performing regime
+        strong_regime_found = any("bull" in rec for rec in recommendations)
+        assert strong_regime_found
 
     def test_error_handling(self, analyzer):
         """Error handling test"""
-        # Invalid backtest results data
-        invalid_results = {}
+        # Invalid period data
+        periods = []
 
-        results = analyzer.analyze_multi_period_backtest(invalid_results)
+        results = analyzer.analyze_multi_period_backtest(periods)
 
-        # Should handle empty results gracefully
-        assert "overall_performance" in results
-        assert "regime_performance" in results
-        assert "timeframe_comparison" in results
-        assert "recommendations" in results
+        assert "error" not in results or results.get("period_analysis", [])
+
+        # Empty period results
+        metrics = analyzer._calculate_overall_metrics([])
+        assert metrics == {}

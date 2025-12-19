@@ -312,7 +312,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         if enable_sell_mitigation:
             self.logger.info("SELL bias mitigation enabled - using enhanced trainer")
             try:
-                from ztb.training.experiments.sell_mitigation_ppo_trainer import (
+                from ztb.training.experiments.sell_mitigation_ppo_trainer import (  # noqa: F401
                     SELLBiasMitigationPPOTrainer,
                 )
             except ImportError as e:

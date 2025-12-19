@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
-from numpy.typing import NDArray
 
 from ztb.utils.logging_utils import get_logger
 
@@ -203,7 +202,7 @@ class TrainingStateManager:
                 self.logger.warning("Non-finite values found in episode rewards")
                 return False
 
-            if any(l <= 0 for l in self.episode_lengths):
+            if any(length <= 0 for length in self.episode_lengths):
                 self.logger.warning("Invalid episode lengths found")
                 return False
 

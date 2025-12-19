@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+import importlib.util
 
 from ztb.metrics.statistics import calculate_autocorrelation, detect_outliers_iqr
 from ztb.training.hyperparameter_optimizer import ParameterSpace
@@ -24,30 +25,18 @@ from .components.optimization_engine import OptimizationEngine
 
 logger = get_logger(__name__)
 
-try:
+OPTUNA_AVAILABLE = importlib.util.find_spec("optuna") is not None
+if not OPTUNA_AVAILABLE:
+    logger.warning("Optuna not available. Reward function optimization will be limited.")
+else:
     import optuna
 
-    OPTUNA_AVAILABLE = True
-except ImportError:
-    OPTUNA_AVAILABLE = False
-    logger.warning(
-        "Optuna not available. Reward function optimization will be limited."
-    )
-
-try:
-    from tqdm import tqdm
-
-    TQDM_AVAILABLE = True
-except ImportError:
-    TQDM_AVAILABLE = False
+TQDM_AVAILABLE = importlib.util.find_spec("tqdm") is not None
+if not TQDM_AVAILABLE:
     logger.warning("tqdm not available. Progress bars will be disabled.")
 
-try:
-    import numpy as np
-
-    NUMPY_AVAILABLE = True
-except ImportError:
-    NUMPY_AVAILABLE = False
+NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
+if not NUMPY_AVAILABLE:
     logger.warning("NumPy not available. Some calculations will be limited.")
 
 
@@ -862,86 +851,6 @@ class RewardFunctionOptimizer:
 
         return {"parameters": parameters, "stage": stage, "file_path": str(config_path)}
 
-    def create_parameter_space_from_config(
-        self, config: Dict[str, Any], exploration_range: float = 0.1
-    ) -> Dict[str, ParameterSpace]:
-        """
-        Create parameter space from existing configuration values.
-
-        Args:
-            config: Configuration dictionary with parameter values
-            exploration_range: Fraction of current value to explore (±range)
-
-        Returns:
-            Parameter space dictionary
-        """
-        parameter_space = {}
-
-        for param_name, param_value in config.items():
-            if isinstance(param_value, (int, float)):
-                # Calculate exploration bounds
-                if param_value == 0:
-                    # For zero values, use small absolute range
-                    low = -0.1
-                    high = 0.1
-                else:
-                    # Calculate percentage-based range
-                    range_value = abs(param_value) * exploration_range
-                    low = param_value - range_value
-                    high = param_value + range_value
-
-                    # Ensure low < high (important for negative values)
-                    if low > high:
-                        low, high = high, low
-
-                    # For very small ranges, ensure minimum spread
-                    if abs(high - low) < 1e-6:
-                        center = (low + high) / 2
-                        spread = max(abs(center) * 0.01, 1e-6)
-                        low = center - spread
-                        high = center + spread
-
-                # Special handling for certain parameters
-                if param_name in ["reward_clip_min", "reward_clip_max"]:
-                    # These can be negative, ensure proper ordering
-                    if param_name == "reward_clip_min":
-                        # reward_clip_min should be <= reward_clip_max
-                        # For min, allow more negative values
-                        low = min(low, param_value * 1.5)  # Allow 50% more negative
-                        high = min(high, config.get("reward_clip_max", param_value))
-                    elif param_name == "reward_clip_max":
-                        # For max, allow more positive values
-                        low = max(low, config.get("reward_clip_min", param_value))
-                        high = max(high, param_value * 1.5)  # Allow 50% more positive
-
-                # Determine parameter type and constraints
-                if isinstance(param_value, int) or param_name in [
-                    "batch_size",
-                    "buffer_size",
-                    "learning_starts",
-                    "target_update_interval",
-                ]:
-                    # Integer parameters
-                    parameter_space[param_name] = ParameterSpace(
-                        param_name,
-                        "int",
-                        max(1, int(low))
-                        if param_name not in ["reward_clip_min", "reward_clip_max"]
-                        else int(low),
-                        int(high),
-                    )
-                else:
-                    # Float parameters
-                    parameter_space[param_name] = ParameterSpace(
-                        param_name,
-                        "float",
-                        low,
-                        high,
-                        log_scale=param_name
-                        in ["learning_rate", "ent_coef"],  # Use log scale for rates
-                    )
-
-        return parameter_space
 
     def optimize_from_config_file(
         self,
@@ -1440,7 +1349,7 @@ class RewardFunctionOptimizer:
             except Exception as e:
                 self._handle_error(e, f"Pareto evaluation (trial {trial.number})")
                 # Return poor scores for all objectives
-                scores = {obj: -999 for obj in objectives}
+                scores = dict.fromkeys(objectives, -999)
 
             # Store trial information
             trial_info = {

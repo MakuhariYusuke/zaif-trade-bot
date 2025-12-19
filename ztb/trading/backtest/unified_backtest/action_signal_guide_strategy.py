@@ -6,7 +6,6 @@ Implements Action Signal Guide based trading strategy for the unified backtest f
 Supports pattern recognition and signal generation with SAC integration capabilities.
 """
 
-import logging
 from typing import Dict, Optional, Union, List
 
 import pandas as pd
@@ -73,7 +72,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
         try:
             # Import Action Signal Guide
             from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
-                ActionSignalGuide, ActionSignalGuideConfig
+                ActionSignalGuide
             )
 
             # Load or create configuration

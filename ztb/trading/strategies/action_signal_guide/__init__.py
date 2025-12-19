@@ -6,14 +6,18 @@ learning system, integrating traditional Japanese candlestick patterns and Weste
 technical indicators to enhance trading decision-making.
 """
 
-from enum import Enum
+from __future__ import annotations
 
-from .action_signal_guide import (
-    ActionSignal,
-    ActionSignalGuide,
-    ActionSignalGuideConfig,
-    RecognizerConfig,
-)
+from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .action_signal_guide import (  # noqa: F401
+        ActionSignal,
+        ActionSignalGuide,
+        ActionSignalGuideConfig,
+        RecognizerConfig,
+    )
 
 
 class GuidanceMode(Enum):
@@ -37,3 +41,31 @@ __all__ = [
     "ActionSignal",
     "RecognizerConfig",
 ]
+
+_LAZY_ATTRS: dict[str, tuple[str, str]] = {
+    "ActionSignal": ("ztb.trading.strategies.action_signal_guide.action_signal_guide", "ActionSignal"),
+    "ActionSignalGuide": (
+        "ztb.trading.strategies.action_signal_guide.action_signal_guide",
+        "ActionSignalGuide",
+    ),
+    "ActionSignalGuideConfig": (
+        "ztb.trading.strategies.action_signal_guide.action_signal_guide",
+        "ActionSignalGuideConfig",
+    ),
+    "RecognizerConfig": (
+        "ztb.trading.strategies.action_signal_guide.action_signal_guide",
+        "RecognizerConfig",
+    ),
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_ATTRS:
+        module_name, attr_name = _LAZY_ATTRS[name]
+        module = __import__(module_name, fromlist=[attr_name])
+        return getattr(module, attr_name)
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+def __dir__():
+    return sorted(list(globals().keys()) + list(_LAZY_ATTRS.keys()))

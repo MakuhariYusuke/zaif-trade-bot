@@ -13,6 +13,6 @@ from .reward_function_optimizer import (
 
 __all__ = [
     "RewardFunctionOptimizer",
-    "RewardFunctionConfig", 
+    "RewardFunctionConfig",
     "RewardOptimizationResult",
 ]

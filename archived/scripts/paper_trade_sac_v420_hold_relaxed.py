@@ -23,13 +23,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
 
-def load_model(model_path: str) -> SAC:
-    """Load the trained SAC model."""
-    logger = get_logger(__name__)
-    logger.info(f"Loading model from {model_path}")
-    model = SAC.load(model_path)
-    logger.info("Model loaded successfully")
-    return model
 
 
 def load_data(data_path: str) -> pd.DataFrame:
@@ -39,15 +32,6 @@ def load_data(data_path: str) -> pd.DataFrame:
     df = pd.read_csv(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
-    logger.info(f"Loaded {len(df)} data points")
-    return df
-
-
-def create_paper_trading_env(
-    config: EnvironmentConfig, df: pd.DataFrame
-) -> HeavyTradingEnv:
-    """Create environment for paper trading."""
-    env = HeavyTradingEnv(df=df, config=config)
     return env
 
 
@@ -59,12 +43,6 @@ def run_paper_trading(
     delay_seconds: float = 0.0,
 ) -> Dict[str, Any]:
     """Run paper trading simulation."""
-    logger = get_logger(__name__)
-
-    # Initialize tracking variables
-    portfolio_value = 200000.0
-    position = 0.0
-    trades_count = 0
     total_pnl = 0.0
 
     # Action counters for analysis
@@ -143,10 +121,6 @@ def save_results(results: Dict[str, Any], output_path: str):
 
 
 def main():
-    # Configuration for SAC v420 Hold Relaxed
-    model_path = "models/sac_v420_hold_relaxed.zip"
-    config_path = "config/sac_v420_hold_relaxed_config.json"
-    data_path = "data/btc_jpy_real_dataset.csv"
     output_path = "results/paper_trade_v420_hold_relaxed.json"
     max_steps = 5000
 

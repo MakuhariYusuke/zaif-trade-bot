@@ -20,15 +20,6 @@ from ztb.trading.real_data_validator import (
 
 
 @pytest.fixture
-def mock_integration_manager():
-    """Mock V433 Integration Manager"""
-    manager = Mock()
-    manager.component_manager = Mock()
-    manager.component_manager.v433_system = Mock()
-    manager.component_manager.v433_system.update_market_data = Mock(return_value=None)
-    manager.component_manager.position_manager = Mock()
-    manager.component_manager.position_manager.submit_signal = Mock(return_value=None)
-    return manager
 
 
 @pytest.fixture

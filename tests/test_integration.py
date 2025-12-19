@@ -9,7 +9,6 @@ components to test their interactions and end-to-end functionality.
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pandas as pd
 import numpy as np

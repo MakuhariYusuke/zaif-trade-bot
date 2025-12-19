@@ -157,7 +157,7 @@ class TrainingProgressCallback(BaseCallback):
                             portfolio_value = info.get("portfolio_value", 0)
                             position = info.get("position", 0)
                             pnl = info.get("pnl", 0)
-                            market_regime = info.get("market_regime", "unknown")
+                            info.get("market_regime", "unknown")
 
                             # Collect reward_components if available for AB analysis
                             if "reward_components" in info:

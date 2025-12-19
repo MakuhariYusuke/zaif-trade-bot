@@ -21,11 +21,6 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def create_signature(secret: str, message: str) -> str:
-    """Create HMAC-SHA256 signature for Coincheck API."""
-    return hmac.new(
-        secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
 
 
 def get_current_price() -> float:

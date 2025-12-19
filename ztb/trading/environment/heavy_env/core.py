@@ -25,8 +25,10 @@ from numpy.typing import NDArray
 # Import v444 regime classifier for advanced market regime adaptation
 from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 from ztb.analysis.market_regime_classifier import RegimeType as GenericRegimeType
-from ztb.analysis.v444_regime_classifier import RegimeType as V444RegimeType
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+
+# Backward compatibility: use the generic regime enum for v444-type references.
+V444RegimeType = GenericRegimeType
 
 # Import components for runtime use
 from ztb.trading.environment.components.action_executor import ActionExecutor
@@ -276,13 +278,13 @@ class HeavyTradingEnv(
     _previous_portfolio_value: Optional[float]
     current_step: int
     n_steps: int
-    position: float
+    _position: float
     entry_price: float
     total_pnl: float
     realized_pnl: float
     trades_count: int
     portfolio_value_history: deque[float]
-    portfolio_value: float
+    _portfolio_value: float
     initial_portfolio_value: float
 
     # Bind helper functions as methods
@@ -312,6 +314,24 @@ class HeavyTradingEnv(
 
     _resolve_price = _resolve_price
     _resolve_atr = _resolve_atr
+
+    @property
+    def portfolio_value(self) -> float:
+        """Current portfolio value."""
+        return self._portfolio_value
+
+    @portfolio_value.setter
+    def portfolio_value(self, value: float) -> None:
+        self._portfolio_value = value
+
+    @property
+    def position(self) -> float:
+        """Current position."""
+        return getattr(self, "_position", 0.0)
+
+    @position.setter
+    def position(self, value: float) -> None:
+        self._position = value
 
     def __init__(
         self,
@@ -477,7 +497,7 @@ class HeavyTradingEnv(
         )
 
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
-        self.portfolio_value = self.initial_portfolio_value
+        self._portfolio_value = self.initial_portfolio_value
 
         self._debug_mode = False
         self._model = None
@@ -499,6 +519,11 @@ class HeavyTradingEnv(
         self._initialize_data_structures()
         self._initialize_components(streaming_pipeline, stream_batch_size, df)
         self._initialize_data(df)
+        # Cache market regime per step to avoid O(n) classifier work on every step
+        # (backtests call _get_current_market_regime multiple times per step).
+        self._market_regime_cache: list[Optional[V444RegimeType]] = [
+            None
+        ] * self.n_steps
         self._initialize_features_and_spaces(max_features)
         self._initialize_data_manager(streaming_pipeline, stream_batch_size, df)
 
@@ -654,6 +679,9 @@ class HeavyTradingEnv(
         self.reward_calculator.reset()
         self.statistics_calculator.reset()
         self.state_manager.reset_state()
+        # Track the market regime that the currently-open position was entered in.
+        # Used for optional regime-specific exit overrides (e.g., hold-until-TP/SL).
+        self._entry_regime = None
 
         # Reset per-step PnL tracking
         self._prev_unrealized_pnl = 0.0
@@ -674,6 +702,15 @@ class HeavyTradingEnv(
         self.trades_count = pos_info["trades_count"]
 
     def get_legal_actions(self) -> Any:
+        market_regime: Any = None
+        try:
+            regime_obj = self._get_current_market_regime()
+            market_regime = (
+                regime_obj.value if hasattr(regime_obj, "value") else str(regime_obj)
+            )
+        except Exception:
+            market_regime = None
+
         return self.action_validator.get_legal_actions(
             self.current_step,
             self.position,
@@ -684,6 +721,8 @@ class HeavyTradingEnv(
             self._close_array,
             self._price_array,
             self.df,
+            market_regime=market_regime,
+            hybrid_filters=getattr(self.config, "hybrid_config", None),
         )
 
     def action_mask(self) -> Any:
@@ -694,6 +733,15 @@ class HeavyTradingEnv(
 
     def _get_current_market_regime(self) -> V444RegimeType:
         """Get current market regime, returning a RegimeType enum member."""
+        step = int(getattr(self, "current_step", 0))
+        cache = getattr(self, "_market_regime_cache", None)
+        if (
+            isinstance(cache, list)
+            and 0 <= step < len(cache)
+            and cache[step] is not None
+        ):
+            return cache[step]  # type: ignore[return-value]
+
         regime_str: str = "unknown"
         if self.regime_classifier is not None:
             try:
@@ -717,7 +765,8 @@ class HeavyTradingEnv(
 
                 # Only attempt detection if we have enough data
                 if end_idx - start_idx >= required_lookback:
-                    price_data = self.df.iloc[start_idx:end_idx].copy()
+                    # Avoid deep copying every step; regime_classifier is expected to be read-only.
+                    price_data = self.df.iloc[start_idx:end_idx]
 
                     # DEBUG: Check columns
                     if self.current_step % 1000 == 0:
@@ -743,7 +792,10 @@ class HeavyTradingEnv(
 
                         regime_result = self.regime_classifier.detect_regime(price_data)
                         # Cast the result to the correct type
-                        return V444RegimeType(regime_result.primary_regime.value)
+                        detected = V444RegimeType(regime_result.primary_regime.value)
+                        if isinstance(cache, list) and 0 <= step < len(cache):
+                            cache[step] = detected
+                        return detected
             except Exception as e:
                 self.logger.warning(
                     f"Failed to classify regime with v444 classifier: {e}"
@@ -766,12 +818,18 @@ class HeavyTradingEnv(
         regime_str = regime_mapping.get(regime_str, regime_str)
 
         try:
-            return V444RegimeType(regime_str)
+            detected = V444RegimeType(regime_str)
+            if isinstance(cache, list) and 0 <= step < len(cache):
+                cache[step] = detected
+            return detected
         except ValueError:
             self.logger.info(
                 f"Unknown regime string '{regime_str}', falling back to CONSOLIDATION."
             )
-            return V444RegimeType.CONSOLIDATION
+            detected = V444RegimeType.CONSOLIDATION
+            if isinstance(cache, list) and 0 <= step < len(cache):
+                cache[step] = detected
+            return detected
 
     def step(
         self,
@@ -779,23 +837,14 @@ class HeavyTradingEnv(
             int, np.ndarray
         ],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
-        # Get current market regime from RewardCalculator if available
-        current_regime = None
-        if hasattr(self, "reward_calculator") and hasattr(
-            self.reward_calculator, "market_regime_detector"
-        ):
-            detector = self.reward_calculator.market_regime_detector
-            # Use the most recently detected regime from history
-            if hasattr(detector, "regime_history") and detector.regime_history:
-                last_info = detector.regime_history[-1]
-                # Handle both dict (new) and object/enum (old) formats if necessary
-                if isinstance(last_info, dict):
-                    current_regime = str(last_info.get("regime", ""))
-                else:
-                    current_regime = str(last_info)
-
-            # If no history yet (start of episode), we might want to detect it now
-            # but that requires passing data. For now, default to None (base threshold).
+        # Get current market regime
+        # Use _get_current_market_regime to ensure consistency with PositionManager
+        # and support V444RegimeClassifier if enabled
+        try:
+            regime_obj = self._get_current_market_regime()
+            current_regime = regime_obj.value if hasattr(regime_obj, "value") else str(regime_obj)
+        except Exception:
+            current_regime = None
 
         # Extract raw action value for dynamic thresholding
         raw_action_val = None
@@ -891,8 +940,122 @@ class HeavyTradingEnv(
         old_position = self.position_manager.position
         old_trades_count = self.position_manager.trades_count
         min_holding_period = getattr(self.config, "min_holding_period", 0)
+
+        # v453: Extract Time and Volatility
+        current_hour = None
+        current_volatility = None
+        try:
+            if hasattr(self.data_manager, "df") and self.data_manager.df is not None:
+                if isinstance(self.data_manager.df.index, pd.DatetimeIndex):
+                    current_hour = self.data_manager.df.index[self.current_step].hour
+                elif getattr(self.data_manager, "_timestamp_column", None):
+                    ts = self.data_manager.df.iloc[self.current_step][self.data_manager._timestamp_column]
+                    current_hour = pd.to_datetime(ts).hour
+
+            if hasattr(self, "_resolve_atr"):
+                current_volatility = self._resolve_atr()
+        except Exception:
+            pass
+
+        # Get current regime (v452)
+        current_regime = self._get_current_market_regime()
+        regime_obj_for_info = current_regime
+        # IMPORTANT: PositionManager/hybrid filters expect the regime key string (Enum.value)
+        regime_str = (
+            current_regime.value
+            if hasattr(current_regime, "value")
+            else str(current_regime)
+        )
+
+        # Optional entry helpers (mean-reversion) for dominant ranging regimes.
+        # Applied only to NEW entries (flat -> position) to avoid blocking exits.
+        if old_position == 0:
+            hybrid_cfg = getattr(self.config, "hybrid_config", None)
+            if isinstance(hybrid_cfg, dict) and hybrid_cfg.get("enabled", False):
+                regime_filter_cfg = hybrid_cfg.get("regime_filter", {})
+                if isinstance(regime_filter_cfg, dict):
+                    constraints = regime_filter_cfg.get("regime_constraints", {})
+                    if isinstance(constraints, dict):
+                        constraint = constraints.get(str(regime_str))
+                        if isinstance(constraint, dict):
+                            z_col = str(constraint.get("entry_zscore_column", "ZScore"))
+                            entry_source = str(
+                                constraint.get("entry_action_source", "model")
+                            ).strip().lower()
+                            z_thr_raw = constraint.get("entry_zscore_threshold")
+                            try:
+                                z_thr = float(z_thr_raw) if z_thr_raw is not None else 0.0
+                            except (TypeError, ValueError):
+                                z_thr = 0.0
+
+                            if z_thr > 0.0 and hasattr(self, "df") and z_col in self.df.columns:
+                                try:
+                                    z_val = float(self.df.iloc[self.current_step][z_col])
+                                except Exception:
+                                    z_val = float("nan")
+
+                                if np.isfinite(z_val):
+                                    if entry_source == "zscore":
+                                        # Mean reversion: above mean -> SELL, below mean -> BUY.
+                                        if z_val >= z_thr:
+                                            actual_action = ACTION_SELL
+                                        elif z_val <= -z_thr:
+                                            actual_action = ACTION_BUY
+                                        else:
+                                            actual_action = ACTION_HOLD
+                                        if isinstance(debug_info, dict):
+                                            debug_info["entry_action_source"] = "zscore"
+                                            debug_info["entry_filter_zscore"] = z_val
+                                            debug_info["entry_filter_threshold"] = z_thr
+                                    elif actual_action in (ACTION_BUY, ACTION_SELL):
+                                        # Sanity check: only allow model entries that align with the z-score extreme.
+                                        allow = True
+                                        if actual_action == ACTION_BUY:
+                                            allow = z_val <= -z_thr
+                                        elif actual_action == ACTION_SELL:
+                                            allow = z_val >= z_thr
+
+                                        if not allow:
+                                            actual_action = ACTION_HOLD
+                                            if isinstance(debug_info, dict):
+                                                debug_info["entry_filter_blocked"] = True
+                                                debug_info["entry_filter_zscore"] = z_val
+                                                debug_info["entry_filter_threshold"] = z_thr
+        else:
+            # Optional exit override for regimes that should rely on TP/SL (or other non-model exits).
+            # This prevents the policy from "micro-exiting" before the risk controls have a chance to work.
+            hybrid_cfg = getattr(self.config, "hybrid_config", None)
+            if isinstance(hybrid_cfg, dict) and hybrid_cfg.get("enabled", False):
+                regime_filter_cfg = hybrid_cfg.get("regime_filter", {})
+                if isinstance(regime_filter_cfg, dict):
+                    constraints = regime_filter_cfg.get("regime_constraints", {})
+                    if isinstance(constraints, dict):
+                        entry_regime = getattr(self, "_entry_regime", None)
+                        # Prefer the entry regime's constraint (strategy should follow the entry's risk plan),
+                        # but fall back to the current regime if entry regime is missing/unconfigured.
+                        lookup_regime = str(entry_regime) if entry_regime else str(regime_str)
+                        constraint = constraints.get(lookup_regime)
+                        if not isinstance(constraint, dict):
+                            constraint = constraints.get(str(regime_str))
+
+                        if isinstance(constraint, dict):
+                            exit_source = str(
+                                constraint.get("exit_action_source", "model")
+                            ).strip().lower()
+                            if exit_source in {"tp_sl", "tp-sl", "tp/sl"}:
+                                actual_action = ACTION_HOLD
+                                if isinstance(debug_info, dict):
+                                    debug_info["exit_action_source"] = "tp_sl"
+                                    debug_info["exit_action_scope_regime"] = lookup_regime
+
         trade_pnl = self.position_manager.execute_action(
-            actual_action, self.current_step, min_holding_period
+            actual_action,
+            self.current_step,
+            min_holding_period,
+            market_regime=regime_str,
+            current_hour=current_hour,
+            current_volatility=current_volatility,
+            hybrid_filters=getattr(self.config, "hybrid_config", None)
         )
 
         # Determine effective action for reward calculation
@@ -904,7 +1067,34 @@ class HeavyTradingEnv(
 
         self._sync_from_position_manager()
 
-        stop_loss_threshold = self.config.stop_loss_threshold
+        # Exit thresholds (optionally overridden per regime via hybrid_config.regime_constraints)
+        exit_stop_loss_threshold = float(self.config.stop_loss_threshold)
+        risk_cfg = getattr(self.config, "risk_management", {}) or {}
+        try:
+            exit_take_profit_threshold = float(risk_cfg.get("take_profit_pct", 0.0))
+        except (TypeError, ValueError):
+            exit_take_profit_threshold = 0.0
+
+        hybrid_cfg = getattr(self.config, "hybrid_config", None)
+        if isinstance(hybrid_cfg, dict) and hybrid_cfg.get("enabled", False) and regime_str:
+            regime_filter_cfg = hybrid_cfg.get("regime_filter", {})
+            if isinstance(regime_filter_cfg, dict):
+                constraints = regime_filter_cfg.get("regime_constraints", {})
+                if isinstance(constraints, dict):
+                    constraint = constraints.get(str(regime_str))
+                    if isinstance(constraint, dict):
+                        if "stop_loss_pct" in constraint:
+                            try:
+                                exit_stop_loss_threshold = float(constraint["stop_loss_pct"])
+                            except (TypeError, ValueError):
+                                pass
+                        if "take_profit_pct" in constraint:
+                            try:
+                                exit_take_profit_threshold = float(constraint["take_profit_pct"])
+                            except (TypeError, ValueError):
+                                pass
+
+        stop_loss_threshold = exit_stop_loss_threshold
         if self.position != 0 and self.entry_price > 0:
             current_price = self._resolve_price()
             if self.position > 0:
@@ -924,6 +1114,37 @@ class HeavyTradingEnv(
                     trade_pnl += forced_close_pnl
                     self._sync_from_position_manager()
 
+        # Optional take-profit: realize gains early to avoid "give-back" in mean reversion.
+        take_profit_threshold = exit_take_profit_threshold
+        if take_profit_threshold > 0.0 and self.position != 0 and self.entry_price > 0:
+            current_price = self._resolve_price()
+            if self.position > 0:
+                profit_ratio = (current_price - self.entry_price) / self.entry_price
+            else:
+                profit_ratio = (self.entry_price - current_price) / self.entry_price
+
+            if profit_ratio > take_profit_threshold:
+                forced_close_pnl = self.position_manager.close_position(self.current_step)
+                trade_pnl += forced_close_pnl
+                self._sync_from_position_manager()
+                if isinstance(debug_info, dict):
+                    debug_info["forced_exit_reason"] = "take_profit"
+                    debug_info["take_profit_ratio"] = float(profit_ratio)
+
+        # Track entry regime for the currently-open position (for optional exit overrides).
+        try:
+            new_position = float(getattr(self, "position", 0.0))
+            old_position_f = float(old_position)
+            if new_position == 0.0:
+                self._entry_regime = None
+            else:
+                if old_position_f == 0.0 or old_position_f * new_position < 0.0:
+                    self._entry_regime = regime_str
+                elif getattr(self, "_entry_regime", None) is None:
+                    self._entry_regime = regime_str
+        except Exception:
+            pass
+
         # Update state using StateManager
         # Use effective_action so that statistics (and Balance Penalty) reflect the actual outcome
         self.state_manager.update_position_state(
@@ -934,7 +1155,7 @@ class HeavyTradingEnv(
         portfolio_value = (
             self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
         )
-        self.portfolio_value = portfolio_value
+        self._portfolio_value = portfolio_value
 
         # Calculate per-step PnL (trade_pnl + unrealized delta)
         step_pnl = trade_pnl + (unrealized_pnl - self._prev_unrealized_pnl)
@@ -977,6 +1198,7 @@ class HeavyTradingEnv(
             observation=self._get_observation(),
             reward_history=list(self.reward_history),
             portfolio_value_history=list(self.portfolio_value_history),
+            trade_pnl=trade_pnl,
         )
 
         # Apply market regime adaptation to reward if enabled
@@ -1033,6 +1255,7 @@ class HeavyTradingEnv(
 
         # Add raw reward components to info for debugging and AB analysis
         info = self._get_info()
+        info["effective_action"] = effective_action  # v453: Expose effective action
         reward_components = self.reward_calculator.get_last_reward_components()
         info.update(reward_components)
         # Add trend signal to info for diagnostics and downstream use
@@ -1135,6 +1358,7 @@ class HeavyTradingEnv(
         info.update(
             {
                 "pnl": pnl,
+                "step_pnl": step_pnl,
                 "position": self.position,
                 "action": action,
                 "step": self.current_step,
@@ -1144,7 +1368,7 @@ class HeavyTradingEnv(
                 "action_masks": self.get_legal_actions().astype(bool),
                 "trade_executed": pnl != 0
                 or actual_action != ACTION_HOLD,  # Add trade execution flag
-                "market_regime": self._get_current_market_regime(),
+                "market_regime": regime_obj_for_info,
             }
         )
 

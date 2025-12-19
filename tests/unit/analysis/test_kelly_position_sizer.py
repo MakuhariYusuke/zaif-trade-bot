@@ -5,11 +5,9 @@ KellyPositionSizerクラスの機能をテストします。
 """
 
 import pytest
-import numpy as np
-from unittest.mock import Mock
 
 from ztb.analysis.kelly_position_sizer import (
-    KellyPositionSizer, KellyParameters
+    KellyPositionSizer
 )
 
 
@@ -17,20 +15,6 @@ class TestKellyPositionSizer:
     """KellyPositionSizerのテスト"""
 
     @pytest.fixture
-    def sample_trades(self):
-        """サンプルトレードデータ"""
-        return [
-            {'pnl': 100, 'confidence': 0.8, 'entry_price': 100},
-            {'pnl': -50, 'confidence': 0.6, 'entry_price': 105},
-            {'pnl': 150, 'confidence': 0.9, 'entry_price': 102},
-            {'pnl': -30, 'confidence': 0.7, 'entry_price': 108},
-            {'pnl': 200, 'confidence': 0.85, 'entry_price': 110},
-            {'pnl': 80, 'confidence': 0.75, 'entry_price': 115},
-            {'pnl': -70, 'confidence': 0.65, 'entry_price': 118},
-            {'pnl': 120, 'confidence': 0.82, 'entry_price': 120},
-            {'pnl': -40, 'confidence': 0.68, 'entry_price': 122},
-            {'pnl': 180, 'confidence': 0.88, 'entry_price': 125},
-        ]
 
     @pytest.fixture
     def kelly_sizer(self):

@@ -54,25 +54,11 @@ def test_sac_trainer_train_creates_and_saves_model(mock_algo_factory, tmp_path):
             dummy_df.__len__.return_value = 10
 
             # Provide a lightweight DummyEnv to avoid HeavyTradingEnv initialization/type checks
-            class DummyObsSpace:
-                def __init__(self):
-                    self.shape = (4,)
 
             class DummyEnv:
                 def __init__(self, df=None, config=None):
                     # Accept any df (we mock load_csv to return a MagicMock)
-                    self.df = df
-                    self.action_space = "Continuous(1)"
-                    self.observation_space = DummyObsSpace()
-
-            # Patch data loader and HeavyTradingEnv at their origin modules to avoid heavy initialization
-            # Also patch DummyVecEnv used in trainer to avoid stable-baselines3 environment validation
             with patch(
-                "ztb.utils.data_utils.load_csv_data_optimized", return_value=dummy_df
-            ), patch(
-                "ztb.training.trainers.sac_trainer.SACAlgorithm.get_default_config",
-                return_value={},
-            ), patch(
                 "ztb.training.trainers.sac_trainer.HeavyTradingEnv", new=DummyEnv
             ), patch(
                 "ztb.training.trainers.sac_trainer.DummyVecEnv",

@@ -30,9 +30,16 @@ try:
     logger = get_logger(__name__)
 
 except ImportError as e:
-    print(f"Import error: {e}")
-    print("Required packages not available. Please install dependencies.")
-    sys.exit(1)
+    # During pytest collection, prefer to skip the entire module cleanly
+    # rather than exiting the process which causes collection errors.
+    try:
+        import pytest
+
+        pytest.skip(f"Required packages not available: {e}", allow_module_level=True)
+    except Exception:
+        print(f"Import error: {e}")
+        print("Required packages not available. Please install dependencies.")
+        sys.exit(1)
 
 
 def create_test_config():
@@ -94,9 +101,6 @@ def create_test_config():
 class TrainingCallback(BaseCallback):
     """Callback for monitoring training progress."""
 
-    def __init__(self, verbose=0):
-        super().__init__(verbose)
-        self.start_time = time.time()
 
     def _on_step(self) -> bool:
         if self.n_calls % 250 == 0:
@@ -232,17 +236,6 @@ def run_test_training():
         return False
 
 
-def main():
-    """Main function."""
-    try:
-        success = run_test_training()
-        return 0 if success else 1
-    except Exception as e:
-        logger.error(f"Test training failed with error: {e}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
 
 
 if __name__ == "__main__":

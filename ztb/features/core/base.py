@@ -37,9 +37,6 @@ class ComputableFeature(Protocol):
     """Enhanced feature protocol with strict typing"""
 
     @property
-    def name(self) -> str:
-        """Feature name"""
-        ...
 
     @property
     def deps(self) -> List[str]:

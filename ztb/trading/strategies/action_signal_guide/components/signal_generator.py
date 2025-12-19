@@ -20,6 +20,8 @@ from .interfaces import ISignalGenerator
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal, ActionSignalGuideConfig
     from ..types import SignalList
+    from ..pattern_recognition.multi_timeframe_analyzer import MultiTimeframeAnalyzer
+    from .signal_quality_filter import SignalQualityFilter, SignalQualityEvaluator
 
 from ..pattern_recognition.base import PatternRecognizer
 from .interfaces import IPatternStatistics, IPerformanceTracker
@@ -339,7 +341,8 @@ class SignalGenerator(ISignalGenerator):
             self._initialize_adaptive_weights()
 
         if enable_regime_adaptation:
-            self.market_regime_adapter = MarketRegimeAdapter()
+            # Use RegimeAdaptiveSignalProcessor for regime-aware adaptation
+            self.market_regime_adapter = RegimeAdaptiveSignalProcessor()
 
         if enable_quality_filtering:
             self.signal_quality_filter = SignalQualityFilter()

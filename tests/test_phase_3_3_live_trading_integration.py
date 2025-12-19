@@ -8,7 +8,7 @@ Phase 3-3 ライブトレーディング統合テスト
 
 import pytest
 import unittest.mock as mock
-from datetime import datetime, timedelta
+from datetime import datetime
 from ztb.live_trading.trading_api import TradingAPI
 from ztb.live_trading.live_trader import LiveTrader, TradingSignal
 

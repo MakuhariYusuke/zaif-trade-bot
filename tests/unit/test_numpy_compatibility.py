@@ -4,7 +4,6 @@ Unit tests for NumPy compatibility
 NumPy互換性の単体テスト
 """
 
-import sys
 import numpy as np
 import pandas as pd
 import scipy.stats

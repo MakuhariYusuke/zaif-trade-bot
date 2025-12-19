@@ -12,11 +12,8 @@ Integration tests for Signal Guidance Improvements
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import Mock
 
 from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem
-from ztb.trading.signal.quality_scorer import SignalQualityScorer
-from ztb.trading.signal.technical_indicators import TechnicalIndicators
 
 
 class TestSignalGuidanceIntegration:

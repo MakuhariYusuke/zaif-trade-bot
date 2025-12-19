@@ -152,6 +152,26 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         # Initialize state
         self.reset()
 
+    @property
+    def position(self) -> float:
+        """Get current position size."""
+        return self._position
+
+    @position.setter
+    def position(self, value: float) -> None:
+        """Set current position size."""
+        self._position = value
+
+    @property
+    def unrealized_pnl(self) -> float:
+        """Get current unrealized P&L."""
+        return self._unrealized_pnl
+
+    @unrealized_pnl.setter
+    def unrealized_pnl(self, value: float) -> None:
+        """Set current unrealized P&L."""
+        self._unrealized_pnl = value
+
     def reset(self, *, seed=None, options=None) -> np.ndarray:
         """Reset environment to initial state."""
         if seed is not None:
@@ -159,9 +179,9 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
 
         self.current_step = 0
         self.balance = self.config.initial_portfolio_value
-        self.position = 0.0  # Current position size
+        self._position = 0.0  # Current position size
         self.entry_price = 0.0
-        self.unrealized_pnl = 0.0
+        self._unrealized_pnl = 0.0
         self.total_pnl = 0.0
         self.trades_count = 0
         self.hold_duration = 0
@@ -405,21 +425,21 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             return 0.0
 
         # Calculate ATR (simplified)
-        logger.debug(
-            f"ATR calculation: current_data keys: {list(current_data.keys()) if hasattr(current_data, 'keys') else 'no keys'}"
-        )
-        logger.debug(f"ATR calculation: current_data type: {type(current_data)}")
+        # logger.debug(
+        #     f"ATR calculation: current_data keys: {list(current_data.keys()) if hasattr(current_data, 'keys') else 'no keys'}"
+        # )
+        # logger.debug(f"ATR calculation: current_data type: {type(current_data)}")
         if "atr_14" in current_data:
             atr = current_data["atr_14"].item()
-            logger.debug(f"Using atr_14: {atr}")
+            # logger.debug(f"Using atr_14: {atr}")
         elif "volatility_10" in current_data:
             atr = current_data["volatility_10"].item()
-            logger.debug(f"Using volatility_10: {atr}")
+            # logger.debug(f"Using volatility_10: {atr}")
         else:
             atr = 0.01
-            logger.debug(f"Using default atr: {atr}")
+            # logger.debug(f"Using default atr: {atr}")
         if np.isnan(atr) or np.isinf(atr) or atr <= 0:
-            logger.debug(f"ATR was invalid ({atr}), setting to 0.01")
+            # logger.debug(f"ATR was invalid ({atr}), setting to 0.01")
             atr = 0.01
 
         # Calculate current P&L

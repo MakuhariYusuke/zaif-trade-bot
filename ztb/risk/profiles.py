@@ -11,8 +11,8 @@ from typing import Any, Dict
 from ztb.utils.config import get_config_value
 
 
-class RiskProfile(Enum):
-    """Risk profile levels."""
+class RiskProfile(str, Enum):
+    """Risk profile presets."""
 
     CONSERVATIVE = "conservative"
     BALANCED = "balanced"

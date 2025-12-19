@@ -125,7 +125,7 @@ class MTFOptimizer:
 
         for c in candidates:
             # Run ab_test_runner for candidate
-            cmd = [
+            [
                 sys.executable,
                 "tools/ab_test_runner.py",
                 "--configs",

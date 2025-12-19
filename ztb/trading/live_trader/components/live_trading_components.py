@@ -9,7 +9,6 @@ from typing import Any, Dict, Optional
 
 from ztb.trading.environment.constants import (
     DEFAULT_MAX_ACTION_HISTORY,
-    EPSILON,
 )
 from ztb.utils.exceptions.custom_exceptions import ModelError
 from ztb.utils.logging_utils import get_logger
@@ -52,7 +51,6 @@ class ModelManager:
             ValueError: If model loading fails
         """
         try:
-            import torch
             from pathlib import Path
 
             model_file = Path(model_path)

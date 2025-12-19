@@ -33,6 +33,7 @@ from .reward.opportunity_cost_penalty_calculator import OpportunityCostPenaltyCa
 from .reward.trend_detector import TrendDetector
 from .reward.unrealized_loss_penalty_calculator import UnrealizedLossPenaltyCalculator
 from .rewards.base import RewardContext
+from .rewards.confidence_penalty import ConfidencePenaltyReward
 from .rewards.forced_balance import ForcedBalanceReward
 from .rewards.pnl_focused import PnlFocusedReward
 from .rewards.profit_optimized import ProfitOptimizedReward
@@ -131,9 +132,20 @@ class RewardCalculator:
         self.consistency_penalty = self.get_setting_float(
             "behavior_optimization.consistency_penalty", 0.05
         )
-        self.balance_penalty = self.get_setting_float(
-            "behavior_optimization.balance_penalty", 1.0
-        )
+        # Prefer explicit setting in config.behavior_optimization if present (dict),
+        # fall back to reward_settings otherwise.
+        behavior_opt = getattr(self.config, "behavior_optimization", {}) or {}
+        if isinstance(behavior_opt, dict) and "balance_penalty" in behavior_opt:
+            try:
+                self.balance_penalty = float(behavior_opt["balance_penalty"])
+            except (TypeError, ValueError):
+                self.balance_penalty = self.get_setting_float(
+                    "behavior_optimization.balance_penalty", 1.0
+                )
+        else:
+            self.balance_penalty = self.get_setting_float(
+                "behavior_optimization.balance_penalty", 1.0
+            )
         self.balance_penalty_tolerance = self.get_setting_float(
             "behavior_optimization.balance_penalty_tolerance", 0.05
         )
@@ -193,6 +205,7 @@ class RewardCalculator:
         self.ultra_profit_reward = UltraProfitReward()
         self.trading_focused_reward = TradingFocusedReward()
         self.profit_optimized_reward = ProfitOptimizedReward()
+        self.confidence_penalty_reward = ConfidencePenaltyReward()
 
         self._setup_mtf_scheduler_integration(config)
 
@@ -459,10 +472,10 @@ class RewardCalculator:
         Record action in behavioral penalty calculator and sync action counts.
 
         Args:
-            action: Action taken (0=HOLD, 1=BUY, 2=SELL)
+            action: Action taken (ACTION_HOLD=0, ACTION_BUY=1, ACTION_SELL=-1; legacy 2=SELL)
 
         Returns:
-            Normalized action index (0=HOLD, 1=BUY, 2=SELL)
+            Normalized action value (one of ACTION_* constants)
         """
         # If the behavior calculator has no recent actions but this RewardCalculator
         # has a non-empty _action_counts (e.g., tests set it directly), populate the
@@ -481,10 +494,11 @@ class RewardCalculator:
                     self.behavioral_penalty_calculator.recent_actions, "maxlen", None
                 )
                 # Build a representative deque from current counts
+                # NOTE: _action_counts is [HOLD, BUY, SELL] counts. Use ACTION_* values.
                 arr = []
-                arr.extend([0] * max(0, self._action_counts[0]))
-                arr.extend([1] * max(0, self._action_counts[1]))
-                arr.extend([2] * max(0, self._action_counts[2]))
+                arr.extend([ACTION_HOLD] * max(0, self._action_counts[0]))
+                arr.extend([ACTION_BUY] * max(0, self._action_counts[1]))
+                arr.extend([ACTION_SELL] * max(0, self._action_counts[2]))
                 if maxlen:
                     arr = arr[-maxlen:]
                 self.behavioral_penalty_calculator.recent_actions = deque(
@@ -496,7 +510,7 @@ class RewardCalculator:
         self.behavioral_penalty_calculator.record_action(action)
         # Sync action counts with behavioral calculator's recent counts
         self._action_counts = self.behavioral_penalty_calculator._get_recent_counts()
-        # Return normalized action index (actions are already 0,1,2)
+        # Return the action as-is (HeavyTradingEnv normalizes actions via ActionExecutor).
         return action
 
     def _map_forced_balance_penalty(self, deviation: float, severity: float) -> float:
@@ -678,6 +692,22 @@ class RewardCalculator:
                     return self.reward_settings.custom_reward_params.get(key)
             except Exception:
                 pass
+
+        # If still not found in reward_settings, try to read from config dicts (e.g., behavior_optimization)
+        if value is None:
+            parts = key.split('.')
+            cfg_val = getattr(self.config, parts[0], None)
+            if isinstance(cfg_val, dict):
+                try:
+                    for p in parts[1:]:
+                        if cfg_val is None:
+                            break
+                        cfg_val = cfg_val.get(p)
+                    if cfg_val is not None:
+                        return cfg_val
+                except Exception:
+                    pass
+
         return value
 
     def calculate_reward(
@@ -696,6 +726,7 @@ class RewardCalculator:
         reward_history: List[float],
         portfolio_value_history: List[float],
         continuous_action_value: Optional[float] = None,
+        trade_pnl: float = 0.0,
     ) -> float:
         """
         Calculate reward with curriculum learning stages.
@@ -714,6 +745,7 @@ class RewardCalculator:
         continuous_action_value: Optional[float] = None,
             reward_history: History of rewards
             portfolio_value_history: History of portfolio values
+            trade_pnl: Realized PnL from executed trades at this step (0.0 if no trade).
 
         Returns:
             Calculated reward value
@@ -725,6 +757,41 @@ class RewardCalculator:
 
         # Record the action for behavioral analysis BEFORE calculating penalties
         self._record_action(action)
+
+        # PnL source selection: step-based (mark-to-market) vs trade-based (realized).
+        # This is primarily for training alignment (the backtest portfolio value is unaffected).
+        pnl_mode = self.get_setting_str("pnl_mode", "step").strip().lower()
+        step_pnl = float(pnl)
+        trade_pnl_value = float(trade_pnl)
+        step_pnl_weight = self.get_setting_float("step_pnl_weight", 1.0)
+        trade_pnl_weight = self.get_setting_float("trade_pnl_weight", 1.0)
+        trade_pnl_apply = self.get_setting_str("trade_pnl_apply", "always").strip().lower()
+
+        eps_for_mode = self.get_setting_float("eps", 1e-8)
+        close_event = (
+            abs(float(old_position)) > eps_for_mode
+            and (
+                abs(float(position)) <= eps_for_mode
+                or (float(old_position) * float(position) < 0.0)
+            )
+        )
+
+        trade_component = trade_pnl_value * trade_pnl_weight
+        if trade_pnl_apply in {"close", "on_close", "close_only"} and not close_event:
+            trade_component = 0.0
+
+        if pnl_mode in {"trade", "trade_only", "realized", "realized_only"}:
+            pnl = trade_component
+        elif pnl_mode in {"hybrid", "hybrid_close"}:
+            pnl = (step_pnl * step_pnl_weight) + trade_component
+        else:
+            pnl = step_pnl
+
+        self._last_reward_components["pnl_mode"] = pnl_mode
+        self._last_reward_components["pnl_step"] = step_pnl
+        self._last_reward_components["pnl_trade"] = trade_pnl_value
+        self._last_reward_components["pnl_effective"] = float(pnl)
+        self._last_reward_components["pnl_close_event"] = float(bool(close_event))
 
         # Update win/loss counts
         if pnl > 0:
@@ -885,6 +952,39 @@ class RewardCalculator:
 
         # Calculate the base reward for the current stage
         base_reward = reward_method(**valid_args)  # type: ignore
+
+        # v454: Confidence Penalty (Inverse Confidence Paradox)
+        # Penalize high confidence actions that result in loss
+        # Use component-based implementation
+        confidence_penalty_context = RewardContext(
+            action=action,
+            atr_normalised=atr_normalised,
+            portfolio_return=portfolio_return,
+            position=position,
+            effective_max_position=effective_max_position,
+            current_price=current_price,
+            atr=atr,
+            pnl=pnl,
+            reward_scaling=reward_scaling,
+            observation=observation,
+            step=step,
+            portfolio_value=portfolio_value,
+            transaction_cost=transaction_cost,
+            old_position=old_position,
+            reward_history=reward_history,
+            portfolio_value_history=portfolio_value_history,
+            config=self.config,
+            reward_settings=self.reward_settings,
+            initial_portfolio_value=self.initial_portfolio_value,
+            continuous_action_value=continuous_action_value,
+        )
+
+        confidence_penalty = self.confidence_penalty_reward.calculate(
+            confidence_penalty_context
+        )
+
+        self._last_reward_components["confidence_penalty"] = confidence_penalty
+        base_reward += confidence_penalty
 
         # Apply action bonus directly to reward
         base_reward += action_bonus
@@ -1174,6 +1274,12 @@ class RewardCalculator:
 
         # Build Context
         context = self._build_reward_context(**kwargs)
+
+        # If global balance penalty is disabled, the forced_balance stage should be neutral.
+        if getattr(self, "balance_penalty", 1.0) == 0.0:
+            self._last_reward_components["stage"] = "forced_balance"
+            self._last_reward_components["base_reward"] = 0.0
+            return 0.0
 
         reward = self.forced_balance_reward.calculate(context)
 

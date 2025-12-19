@@ -4,12 +4,11 @@ Phase 4: Minute-level Trading Integration Manager
 分足対応の統合マネージャー
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any
 import asyncio
-import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
-from ztb.trading.signal.timeframe.adaptive_timeframe_manager import AdaptiveTimeframeManager, MarketCondition
+from ztb.trading.signal.timeframe.adaptive_timeframe_manager import AdaptiveTimeframeManager
 from ztb.trading.signal.timeframe.multi_timeframe_validator import MultiTimeframeSignalValidator
 from ztb.trading.signal.timeframe.minute_data_pipeline import MinuteDataPipeline
 from ztb.trading.signal.quality_scorer import SignalQualityScorer

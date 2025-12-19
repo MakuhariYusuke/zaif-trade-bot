@@ -65,11 +65,6 @@ class SACTemperatureScheduler(MemoryOptimizedCallback):
         """Finalize temperature scheduling."""
         pass
 
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        pass
 
     def on_epoch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
@@ -117,11 +112,6 @@ class SACTemperatureScheduler(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of each batch."""
         pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of each batch."""
         pass
         """Update temperature based on training progress."""
         if logs is None:
@@ -166,7 +156,7 @@ class SACTemperatureScheduler(MemoryOptimizedCallback):
         recent_rewards = self.reward_history[-10:]
         recent_entropies = self.entropy_history[-10:]
 
-        avg_reward = np.mean(recent_rewards)
+        np.mean(recent_rewards)
         avg_entropy = np.mean(recent_entropies)
         reward_std = np.std(recent_rewards)
 
@@ -260,11 +250,6 @@ class SACValueFunctionMonitor(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of each epoch."""
         pass
-
-    def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Monitor value functions at specified frequency."""
         if context.epoch % self.monitor_frequency != 0:
             return
 
@@ -362,22 +347,12 @@ class SACValueFunctionMonitor(MemoryOptimizedCallback):
 
 class SACTargetNetworkUpdater(MemoryOptimizedCallback):
     """
-    SAC-specific target network update manager.
-
-    Manages soft updates of target networks with adaptive update rates
-    based on training stability.
-    """
 
     def __init__(
         self,
         initial_tau: float = 0.005,
         min_tau: float = 0.001,
         max_tau: float = 0.01,
-        adaptive: bool = True,
-        stability_window: int = 50,
-    ):
-        super().__init__()
-        self.initial_tau = initial_tau
         self.min_tau = min_tau
         self.max_tau = max_tau
         self.adaptive = adaptive
@@ -419,11 +394,6 @@ class SACTargetNetworkUpdater(MemoryOptimizedCallback):
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Update target network tau based on training stability."""
-        if not self.adaptive or logs is None:
-            return
-
-        # Track stability metrics
-        q_loss = logs.get("q_loss", logs.get("critic_loss"))
         policy_loss = logs.get("policy_loss", logs.get("actor_loss"))
 
         if q_loss is not None:
@@ -504,11 +474,6 @@ class SACExplorationMonitor(MemoryOptimizedCallback):
         super().__init__()
         self.monitor_frequency = monitor_frequency
 
-        # Exploration metrics
-        self.action_entropy_history: List[float] = []
-        self.state_visit_counts: Dict[str, int] = {}
-        self.action_diversity_history: List[float] = []
-        self.action_std_history: List[float] = []
 
         # Performance correlation
         self.entropy_reward_correlation: List[float] = []
@@ -520,11 +485,6 @@ class SACExplorationMonitor(MemoryOptimizedCallback):
     ) -> None:
         """Initialize exploration monitoring."""
         self.action_entropy_history.clear()
-        self.state_visit_counts.clear()
-        self.action_diversity_history.clear()
-        self.action_std_history.clear()
-        self.entropy_reward_correlation.clear()
-        self.logger.info("SAC exploration monitoring initialized")
 
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
@@ -549,11 +509,6 @@ class SACExplorationMonitor(MemoryOptimizedCallback):
 
         if logs is None:
             return
-
-        # Extract exploration metrics
-        action_entropy = logs.get("action_entropy", logs.get("policy_entropy"))
-        action_std = logs.get("action_std")
-        reward = logs.get("episode_reward", logs.get("reward"))
 
         if action_entropy is not None:
             self.action_entropy_history.append(action_entropy)
@@ -678,11 +633,6 @@ def create_sac_value_monitor(**kwargs) -> SACValueFunctionMonitor:
         "divergence_threshold": 10.0,
     }
     defaults.update(kwargs)
-    return SACValueFunctionMonitor(**defaults)
-
-
-def create_sac_target_updater(**kwargs) -> SACTargetNetworkUpdater:
-    """Create SAC target network updater with default settings."""
     defaults = {
         "initial_tau": 0.005,
         "min_tau": 0.001,

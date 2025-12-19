@@ -27,13 +27,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
 
-def load_model(model_path: str) -> SAC:
-    """Load the trained SAC model."""
-    logger = get_logger(__name__)
-    logger.info(f"Loading model from {model_path}")
-    model = SAC.load(model_path)
-    logger.info("Model loaded successfully")
-    return model
 
 
 def load_data(data_path: str) -> pd.DataFrame:
@@ -43,15 +36,6 @@ def load_data(data_path: str) -> pd.DataFrame:
     df = pd.read_csv(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
-    logger.info(f"Loaded {len(df)} data points")
-    return df
-
-
-def create_backtest_env(config: EnvironmentConfig, df: pd.DataFrame) -> HeavyTradingEnv:
-    """Create environment for backtesting."""
-    env = HeavyTradingEnv(df=df, config=config)
-    return env
-
 
 def run_historical_backtest(
     model: SAC, data: pd.DataFrame, env: HeavyTradingEnv, max_steps: int = 5000
@@ -63,10 +47,6 @@ def run_historical_backtest(
     portfolio_value = 200000.0
     position = 0.0
     trades_count = 0
-    total_pnl = 0.0
-
-    # Action counters for analysis
-    action_counts = {ACTION_HOLD: 0, ACTION_BUY: 0, ACTION_SELL: 0}  # HOLD, BUY, SELL
     continuous_actions = []  # Store continuous action values for analysis
     discrete_actions = []  # Store discrete action sequence for streak analysis
 
@@ -251,10 +231,6 @@ def main():
 
         # Load data
         data = load_data(data_path)
-
-        # Load config and create environment config
-        with open(config_path, "r", encoding="utf-8") as f:
-            config_dict = json.load(f)
 
         env_config_dict = config_dict.get("environment", {})
         reward_settings = config_dict.get("reward_settings", {})

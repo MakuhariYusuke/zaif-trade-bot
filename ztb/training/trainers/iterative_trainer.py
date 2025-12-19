@@ -12,25 +12,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict
 
+from ztb.training.trainers.base_trainer import BaseTrainer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class IterativeAlgorithmTrainer:
+class IterativeAlgorithmTrainer(BaseTrainer):
     """
     Handles iterative algorithm training.
     """
-
-    def __init__(self, config_manager: Any) -> None:
-        """
-        Initialize iterative trainer.
-
-        Args:
-            config_manager: ConfigManager instance
-        """
-        self.config_manager = config_manager
-        self.logger = get_logger(__name__)
 
     def _apply_trading_mode_presets(
         self, unified_config: Dict[str, Any]

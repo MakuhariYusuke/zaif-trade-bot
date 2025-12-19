@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 # Action indices for mask array
 ACTION_HOLD = 0
 ACTION_BUY = 1
-ACTION_SELL = 2
+ACTION_SELL = -1
 
 
 @dataclass

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\dynamic_hyperparameter_adapter.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-10, 1e-06, 1e-05, 0.0001, 0.001, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.5, 2.0, 5.0, 10.0, -1000, -100, 100, 300, 512, 1000, 'batch_size', 'bounded', 'close', 'confidence', 'curriculum_based', 'dropout_rate', 'gradient_based', 'gradient_clip_value', 'gradient_exploding', 'gradient_norm', 'gradient_variance', 'learning_rate', 'market_conditions', 'market_state', 'num_adaptations', 'performance_based', 'strategies', 'timestamp', 'trend_strength', 'value', 'values', 'volatility', 'volatility_based', 'weight_decay', 'weights']

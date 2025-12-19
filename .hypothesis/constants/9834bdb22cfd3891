@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\comprehensive_backtester.py
+# hypothesis_version: 6.140.3
+
+[-0.2, 0.0, 0.1, 0.25, 1.0, 100.0, 100, 'BacktestEngine', 'BacktestResult', 'Good performance', 'High drawdown', 'High value at risk', 'MarketData', 'PerformanceAnalyzer', 'RiskManager', 'RiskMetrics', 'StrategyEvaluator', 'TradeRecord', 'avg_total_return', 'avg_trade_duration', 'best_performing', 'calmar_ratio', 'comparison_metrics', 'confidence_level', 'inf', 'max_drawdown', 'monthly_returns', 'omega_ratio', 'performance_metrics', 'performance_overview', 'pnl', 'profit_factor', 'recommendations', 'risk_adjusted_return', 'risk_analysis', 'risk_metrics', 'risk_score', 'risk_warnings', 'sharpe_ratio', 'sortino_ratio', 'strategy_score', 'success', 'successful_backtests', 'summary', 'total_backtests', 'total_return', 'trades', 'value_at_risk', 'win_rate']

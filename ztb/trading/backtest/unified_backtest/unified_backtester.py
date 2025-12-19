@@ -7,18 +7,15 @@ including SAC models, Action Signal Guide, and hybrid approaches. Designed to
 leverage SAC learning outcomes for enhanced analysis and strategy evaluation.
 """
 
-import logging
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from ..adapters import StrategyAdapter
 from ..metrics import BacktestMetrics, MetricsCalculator
-from ..report import ReportGenerator
 from ....utils.logging_utils import get_logger
 from .signal_performance import BacktestSignalPerformanceAnalyzer
 from .strategy_base import TradingStrategy, validate_trading_strategy
@@ -254,7 +251,6 @@ class UnifiedBacktester:
             BacktestResult in unified format
         """
         # Calculate metrics from equity series and orders
-        from ..metrics import MetricsCalculator
         metrics_calculator = MetricsCalculator()
         metrics = metrics_calculator.calculate_metrics(equity_series, orders_df)
 

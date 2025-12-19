@@ -112,7 +112,7 @@ class TrainingRiskManager:
 
         # Check for performance degradation if validation data available
         if len(self.validation_rewards) >= self.validation_window:
-            recent_train = np.mean(self.reward_history[-self.validation_window//2:])
+            np.mean(self.reward_history[-self.validation_window//2:])
             recent_val = np.mean(self.validation_rewards[-self.validation_window//2:])
             older_val = np.mean(self.validation_rewards[-self.validation_window:-self.validation_window//2])
 

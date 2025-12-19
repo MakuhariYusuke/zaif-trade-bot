@@ -13,20 +13,6 @@ from ztb.risk.rules import RiskRuleEngine
 
 
 @pytest.fixture
-def sample_risk_limits():
-    """Sample risk limits for testing."""
-    return RiskLimits(
-        max_position_notional=100000.0,
-        max_single_trade_pct=0.05,
-        daily_loss_limit_pct=0.05,
-        max_drawdown_pct=0.10,
-        max_trades_per_hour=5,
-        min_trade_interval_sec=600,
-        max_volatility_pct=0.15,
-        required_sharpe_ratio=1.0,
-        stop_loss_pct=0.03,
-        take_profit_pct=0.08,
-    )
 
 
 @pytest.fixture

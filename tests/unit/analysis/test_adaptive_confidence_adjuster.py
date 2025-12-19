@@ -7,7 +7,6 @@ AdaptiveConfidenceAdjusterクラスの機能をテストします。
 import pytest
 import pandas as pd
 import numpy as np
-from unittest.mock import Mock
 
 from ztb.analysis.adaptive_confidence_adjuster import (
     AdaptiveConfidenceAdjuster, ConfidenceThresholds, MarketRegime,

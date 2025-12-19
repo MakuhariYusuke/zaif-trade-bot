@@ -79,10 +79,18 @@ def get_action_count_index(action: int) -> int:
 def normalize_action(action: float | int) -> int:
     """Normalize an action value to one of the discrete ACTION_* constants.
 
-    Accepts either already-discrete (-1, 0, 1) or continuous actions in [-1,1].
+    Accepts either already-discrete (-1, 0, 1), legacy discrete (0, 1, 2),
+    or continuous actions in [-1, 1].
     This helper is used by legacy components that expect a normalized action.
     """
     try:
+        # Fast-path for common discrete encodings.
+        if action in (ACTION_SELL, ACTION_HOLD, ACTION_BUY):
+            return int(action)
+        # Legacy discrete encoding: 2 meant SELL.
+        if action == 2:
+            return ACTION_SELL
+
         val = float(action)
     except Exception:
         return ACTION_HOLD

@@ -7,7 +7,6 @@ This script investigates whether balanced BUY/SELL ratios lead to higher profita
 
 import json
 from pathlib import Path
-from typing import List, Dict, Tuple
 import statistics
 
 
@@ -161,7 +160,7 @@ def analyze_profitability_balance() -> None:
         low_ratio = [dp["buy_sell_ratio"] for dp in low_reward if dp["buy_sell_ratio"] < 10]
         
         if high_ratio and low_ratio:
-            print(f"Average BUY/SELL Ratio:")
+            print("Average BUY/SELL Ratio:")
             print(f"  High Reward:  {statistics.mean(high_ratio):.2f}")
             print(f"  Low Reward:   {statistics.mean(low_ratio):.2f}")
             print()
@@ -169,7 +168,7 @@ def analyze_profitability_balance() -> None:
         high_diff = [dp["buy_sell_diff"] for dp in high_reward]
         low_diff = [dp["buy_sell_diff"] for dp in low_reward]
         
-        print(f"Average BUY-SELL Imbalance:")
+        print("Average BUY-SELL Imbalance:")
         print(f"  High Reward:  {statistics.mean(high_diff):.1%}")
         print(f"  Low Reward:   {statistics.mean(low_diff):.1%}")
         print()
@@ -200,7 +199,7 @@ def analyze_profitability_balance() -> None:
         avg_hold = statistics.mean([dp["hold"] for dp in top_configs])
         avg_diff = statistics.mean([dp["buy_sell_diff"] for dp in top_configs])
         
-        print(f"Based on top 5 high-reward configs:")
+        print("Based on top 5 high-reward configs:")
         print(f"  Average BUY:  {avg_buy:.1%}")
         print(f"  Average SELL: {avg_sell:.1%}")
         print(f"  Average HOLD: {avg_hold:.1%}")
@@ -218,7 +217,7 @@ def analyze_profitability_balance() -> None:
         ideal_sell /= total
         ideal_hold /= total
         
-        print(f"Recommended targets for v448:")
+        print("Recommended targets for v448:")
         print(f"  buy_target:  {ideal_buy:.2f}")
         print(f"  sell_target: {ideal_sell:.2f}")
         print(f"  hold_target: {ideal_hold:.2f}")

@@ -5,7 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - v454 Diagnostics & Environment Fixes - 2025-12-15
+
+### Diagnostics
+- **Action Confidence Diagnostics**: Implemented `scripts/v454/run_action_confidence_diag.py` to analyze the "Inverse Confidence Paradox".
+  - Decomposes trade performance (Realized PnL, MAE, MFE) by action absolute value bins.
+  - Handles position flips (long-to-short / short-to-long) correctly by splitting trade windows.
+  - Uses `step_pnl` for accurate trade-level PnL attribution.
+
+### Bug Fixes
+- **HeavyTradingEnv**: Fixed `AttributeError` related to `portfolio_value` and `position` setters.
+  - Converted `portfolio_value` and `position` to proper properties with backing fields (`_portfolio_value`, `_position`).
+  - Exposed `step_pnl` in the `info` dictionary for precise diagnostics.
+- **Action Consistency**: Unified `ACTION_SELL` to `-1` across the codebase (`constants.py`, `rewards/*.py`, `live_trade.py`) to resolve inconsistencies with `2`.
+- **Risk Management**: Fixed critical bugs in `PositionManager`:
+  - `RiskManager` output was being overwritten by `max_position_size`.
+  - Fixed logic that forced minimum trade size even when funds were insufficient (now aborts trade).
+
+### Features
+- **Confidence Penalty**: Implemented Hinge-based confidence penalty in `ConfidencePenaltyReward`.
+  - Replaced step-function penalty with hinge loss: `Penalty = -1.0 * LossMagnitude * (AbsAction - Threshold) * Factor`.
+  - Lowered default threshold to 0.05.
+  - Refactored inline logic in `RewardCalculator` to component-based architecture.
+- **Data Validation**: Added v454 feature column validation in `UnifiedTrainer`.
+  - Checks for `vol_ema_14`, `trend_dev_100`, `noise_index` when loading training data.
+  - Logs a warning if features are missing to prevent training on stale data.
+- **Data Update**: Merged latest Yahoo Finance data (2025-12-08 to 2025-12-14) with existing dataset.
+  - Updated `data/btc_jpy_1m_dataset.csv` (13728 rows).
+  - Regenerated `data/btc_jpy_1m_v454.csv` with new features.
+
+
 ## [Unreleased] - Phase 3 Execution Realism Verification - 2025-12-07
+
+### Repository Standards
+- **Docstring punctuation standardization**: Replaced common fullwidth/Japanese punctuation in `ztb/` docstrings/comments with ASCII equivalents to avoid import-time issues and improve cross-team consistency. Added `scripts/check_docstring_ascii.py` (checker), `scripts/fix_docstring_punctuation.py` (fixer), a CI test `tests/test_docstring_ascii.py`, and a pre-commit hook to enforce the check.
 
 ### Execution Realism (Phase 3)
 - **Realistic Execution Model**: Implemented `RealisticExecutionModel` simulating:

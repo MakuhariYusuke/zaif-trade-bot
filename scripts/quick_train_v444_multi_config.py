@@ -9,7 +9,6 @@ Supports comparison and analysis of different parameter settings.
 import argparse
 import sys
 from pathlib import Path
-from typing import List
 
 # Add project root to path
 project_root = Path(__file__).parent.parent

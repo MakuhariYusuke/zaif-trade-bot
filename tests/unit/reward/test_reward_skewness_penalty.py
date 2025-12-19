@@ -1,8 +1,7 @@
-import pytest
 
 from ztb.trading.environment.components.behavioral_penalty_calculator import BehavioralPenaltyCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 
 
 def test_skewness_penalty_sell_heavy():

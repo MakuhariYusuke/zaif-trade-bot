@@ -106,7 +106,6 @@ def check_training_report(report_dir: Path):
 
 if __name__ == "__main__":
     import tempfile
-    import shutil
     
     print("Creating minimal test config...")
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:

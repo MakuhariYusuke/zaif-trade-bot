@@ -164,9 +164,6 @@ class Position:
         return self.quantity * self.current_price
 
     @property
-    def total_pnl(self) -> float:
-        """総損益"""
-        return self.unrealized_pnl + self.realized_pnl
 
 
 class TransactionCostCalculator(BaseComponent):

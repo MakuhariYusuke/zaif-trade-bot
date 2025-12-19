@@ -3,12 +3,18 @@ import sys
 sys.path.append(".")
 
 import numpy as np
-from stable_baselines3 import PPO
+try:
+    from stable_baselines3 import PPO
+except Exception:
+    PPO = None
 
 
 def test_v443_2_model():
     """Test the retrained v443.2 model"""
     try:
+        if PPO is None:
+            print("stable_baselines3.PPO not available; skipping v443.2 model validation")
+            return False
         # Load the retrained model
         model_path = "models/ppo_v443_2_backtest_optimization.zip"
         model = PPO.load(model_path)

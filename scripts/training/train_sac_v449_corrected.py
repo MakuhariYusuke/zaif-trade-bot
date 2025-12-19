@@ -106,14 +106,6 @@ def train():
 
         featured_data = featured_data.fillna(0).astype(np.float32)
 
-        def make_env():
-            env = HeavyTradingEnv(
-                data=featured_data,
-                config=env_config,
-                reward_settings=config.get("reward_settings", {}),
-                feature_columns=feature_columns,
-            )
-            return Monitor(env)
 
         env = DummyVecEnv([make_env])
 

@@ -45,8 +45,15 @@ class DataProcessor:
         if df.empty:
             return df.copy()  # Empty DataFrame, safe to copy
 
-        # Memory optimization: Use inplace operations where possible
-        df_processed = df.fillna(0)
+        # Preserve timestamp metadata for downstream components (e.g. multi-timeframe
+        # feature engineering, streaming), even if we drop it from the numeric
+        # feature matrix later.
+        df_processed = df.copy()
+        if "timestamp" not in df_processed.columns:
+            if isinstance(df_processed.index, pd.DatetimeIndex):
+                df_processed["timestamp"] = df_processed.index
+            elif str(getattr(df_processed.index, "name", "")).lower() == "timestamp":
+                df_processed["timestamp"] = df_processed.index
 
         # Reset index only if needed, using inplace operation
         if not df_processed.index.equals(
@@ -55,19 +62,30 @@ class DataProcessor:
             df_processed.reset_index(drop=True, inplace=True)
         # Note: Removed unnecessary copy() when index is already correct
 
+        # Keep `timestamp`/`episode_id` for later phases; exclude other metadata by default
+        preserved_cols = [
+            "timestamp",
+            "episode_id",
+        ]
+        preserved: dict[str, pd.Series] = {
+            col: df_processed[col] for col in preserved_cols if col in df_processed.columns
+        }
+        if preserved:
+            df_processed.drop(columns=list(preserved.keys()), inplace=True, errors="ignore")
+
         exclude_cols = [
             "ts",
-            "timestamp",
             "exchange",
             "pair",
-            "episode_id",
             "side",
             "source",
         ]
-        df_processed = df_processed.drop(
-            columns=[c for c in exclude_cols if c in df_processed.columns],
-            errors="ignore",
-        )
+        drop_cols = [c for c in exclude_cols if c in df_processed.columns]
+        if drop_cols:
+            df_processed.drop(columns=drop_cols, inplace=True, errors="ignore")
+
+        # Fill NaNs only on the numeric/feature part (avoid coercing timestamps)
+        df_processed = df_processed.fillna(0)
 
         optimized, _ = optimize_dtypes(
             df_processed,
@@ -86,6 +104,11 @@ class DataProcessor:
         bool_cols = optimized.select_dtypes(include=["bool"]).columns
         if len(bool_cols) > 0:
             optimized[bool_cols] = optimized[bool_cols].astype(np.int8, copy=False)
+
+        # Reattach preserved metadata columns (keep original dtypes)
+        if preserved:
+            preserved_df = pd.DataFrame({col: series.values for col, series in preserved.items()})
+            optimized = pd.concat([optimized, preserved_df], axis=1)
 
         self._log_memory_usage("preprocess", df_override=optimized)
 

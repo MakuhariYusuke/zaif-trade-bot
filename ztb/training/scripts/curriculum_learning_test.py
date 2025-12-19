@@ -74,7 +74,7 @@ def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
 
         # Progress reporting
         if step % (timesteps // 10) == 0 and step > 0:
-            progress = (step / timesteps) * 100
+            (step / timesteps) * 100
             print(".1f")
 
     elapsed_time = time.time() - start_time
@@ -87,7 +87,7 @@ def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
 
     print("Action Distribution:")
     for action, count in actions_taken.items():
-        percentage = (count / timesteps) * 100
+        (count / timesteps) * 100
         print(".1f")
 
     return {
@@ -145,17 +145,15 @@ def run_curriculum_learning():
 
     print("\nOverall Action Distribution:")
     for action, count in overall_actions.items():
-        percentage = (count / total_timesteps) * 100
+        (count / total_timesteps) * 100
         print(".1f")
 
     # Learning progress
     print("\nLearning Progress:")
     for i, result in enumerate(curriculum_results):
-        improvement = ""
         if i > 0:
-            prev_avg = curriculum_results[i - 1]["avg_reward"]
-            curr_avg = result["avg_reward"]
-            improvement = ".4f" if curr_avg > prev_avg else ".4f"
+            curriculum_results[i - 1]["avg_reward"]
+            result["avg_reward"]
         print(".4f")
 
     print("\n=== Next Steps ===")

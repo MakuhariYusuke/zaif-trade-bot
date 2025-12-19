@@ -47,7 +47,8 @@ class RewardSettings:
     profit_bonuses: Dict[str, float] = dataclasses.field(default_factory=dict)
     penalty_coefficients: Dict[str, float] = dataclasses.field(default_factory=dict)
     entropy_bonus: float = 0.0
-    custom_reward_params: Dict[str, float] = dataclasses.field(default_factory=dict)
+    # v453 Hybrid Strategy
+    hybrid_config: Optional[Dict[str, Any]] = None
     balance_penalty: float = 0.1
     balance_penalty_tolerance: float = 0.05
     profit_weight: float = 1.0
@@ -84,12 +85,21 @@ class RewardSettings:
     unrealized_loss_penalty_max_steps: int = 10
     asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(
         default_factory=lambda: {
-            "long_position_reward_multiplier": 1.3,
-            "short_position_reward_multiplier": 0.7,
-            "long_position_penalty_multiplier": 0.9,
-            "short_position_penalty_multiplier": 0.95,
+            "long_position_reward_multiplier": 1.0,
+            "short_position_reward_multiplier": 1.0,
+            "long_position_penalty_multiplier": 1.0,
+            "short_position_penalty_multiplier": 1.0,
         }
     )
+
+    # Backwards-compatible extension point to hold unknown/experimental reward keys
+    custom_reward_params: Dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    # Defaults for behavioral penalty lookbacks (used by BehavioralPenaltyCalculator)
+    consistency_lookback: int = 50
+    skewness_lookback: int = 10
+    action_entropy_lookback: int = 10
+    consistency_min_actions: int = 2
 
 
 @dataclasses.dataclass
@@ -107,6 +117,7 @@ class EnvironmentConfig:
     execution_model: Optional[
         Union[Dict[str, Any], bool]
     ] = None  # Execution model config (Phase 3)
+    risk_management: Dict[str, Any] = dataclasses.field(default_factory=dict)
     domain_randomization: Optional[
         DomainRandomizationConfig
     ] = None  # Domain randomization config
@@ -131,6 +142,9 @@ class EnvironmentConfig:
     stop_loss_threshold: float = DEFAULT_STOP_LOSS_THRESHOLD
     max_consecutive_trades: int = DEFAULT_MAX_CONSECUTIVE_TRADES
     min_holding_period: int = DEFAULT_MIN_HOLDING_PERIOD
+
+    # v453 Hybrid Strategy
+    hybrid_config: Optional[Dict[str, Any]] = None
 
     # Reward settings
     reward_position_soft_cap: float = DEFAULT_REWARD_POSITION_SOFT_CAP
@@ -556,6 +570,41 @@ class EnvironmentConfig:
             if not instance.action_bonuses:
                 instance.action_bonuses = {}
             instance.action_bonuses.update(root_level_bonuses)
+
+        # Fee/commission override handling:
+        # `EnvironmentConfig.__post_init__` syncs commission->transaction_cost and builds an ExchangeProfile,
+        # but `from_dict()` applies overrides after instantiation, so we must re-apply fee overrides here.
+        try:
+            env_cfg_for_fee = None
+            if "environment" in config_dict and isinstance(config_dict["environment"], dict):
+                env_cfg_for_fee = config_dict["environment"]
+            elif isinstance(config_dict, dict):
+                env_cfg_for_fee = config_dict
+
+            explicit_fee_rate = None
+            if isinstance(env_cfg_for_fee, dict):
+                if "transaction_cost" in env_cfg_for_fee and env_cfg_for_fee.get("transaction_cost") is not None:
+                    explicit_fee_rate = float(env_cfg_for_fee.get("transaction_cost") or 0.0)
+                elif "commission" in env_cfg_for_fee and env_cfg_for_fee.get("commission") is not None:
+                    explicit_fee_rate = float(env_cfg_for_fee.get("commission") or 0.0)
+
+            if explicit_fee_rate is not None and explicit_fee_rate > 0.0:
+                instance.transaction_cost = explicit_fee_rate
+                instance.commission = explicit_fee_rate
+                try:
+                    from ztb.utils.fee_model import FixedFeeModel
+
+                    if getattr(instance, "exchange_profile", None) is not None:
+                        instance.exchange_profile.fee_model = FixedFeeModel(
+                            buy_fee_rate=explicit_fee_rate,
+                            sell_fee_rate=explicit_fee_rate,
+                        )
+                        instance.exchange_profile.maker_fee_rate = explicit_fee_rate
+                        instance.exchange_profile.taker_fee_rate = explicit_fee_rate
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         logger.debug(
             f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}"

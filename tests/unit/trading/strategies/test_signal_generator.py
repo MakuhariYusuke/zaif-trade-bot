@@ -30,31 +30,6 @@ class TestSignalGenerator:
         )
 
     @pytest.fixture
-    def sample_data(self):
-        """Generate sample OHLCV data for testing."""
-        np.random.seed(42)
-        dates = pd.date_range("2023-01-01", periods=100, freq="D")
-        data = pd.DataFrame(
-            {
-                "open": np.random.uniform(100, 110, 100),
-                "high": np.random.uniform(105, 115, 100),
-                "low": np.random.uniform(95, 105, 100),
-                "close": np.random.uniform(100, 110, 100),
-                "volume": np.random.uniform(1000, 10000, 100),
-            },
-            index=dates,
-        )
-
-        # Ensure high >= max(open, close), low <= min(open, close)
-        for i in range(len(data)):
-            data.iloc[i, data.columns.get_loc("high")] = max(
-                data.iloc[i]["open"], data.iloc[i]["close"], data.iloc[i]["high"]
-            )
-            data.iloc[i, data.columns.get_loc("low")] = min(
-                data.iloc[i]["open"], data.iloc[i]["close"], data.iloc[i]["low"]
-            )
-
-        return data
 
     def test_signal_generator_initialization_with_harmonic_enabled(self, sample_config):
         """Test SignalGenerator initializes with harmonic patterns enabled."""

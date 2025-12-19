@@ -12,7 +12,6 @@ This module provides advanced memory management utilities including:
 import logging
 import threading
 import time
-from collections import OrderedDict
 from typing import Any, Dict, Optional, Union
 
 from ztb.trading.environment.constants import BYTES_PER_MB
@@ -51,11 +50,6 @@ except ImportError:
                     raise KeyError(key)
             return super().__getitem__(key)
 
-        def get(self, key, default=None):
-            try:
-                return self[key]
-            except KeyError:
-                return default
 
 logger = logging.getLogger(__name__)
 

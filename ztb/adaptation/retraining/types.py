@@ -64,9 +64,6 @@ class MLPerformanceMetrics:
     max_drawdown: float
     timestamp: datetime
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return asdict(self)
 
 
 @dataclass

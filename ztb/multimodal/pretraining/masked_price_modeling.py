@@ -15,7 +15,11 @@ from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch.nn.functional as F
+except Exception:
+
+    F = _F
 
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
@@ -187,9 +191,22 @@ class MaskedPriceModelingTrainer:
             device: デバイス
             memory_manager: メモリマネージャー（オプション）
         """
-        self.model = model.to(device)
-        self.optimizer = optimizer
+        # Move model to device only when necessary. Avoid calling `.to()` when
+        # device is 'cpu' because on some PyTorch builds calling `.to()` can
+        # trigger CUDA lazy init and raise if CUDA isn't available/compiled.
         self.device = device
+        try:
+            if device != "cpu":
+                # Attempt to move model to requested device
+                self.model = model.to(device)
+            else:
+                # Keep model as-is on CPU (default) to avoid unnecessary CUDA init
+                self.model = model
+        except Exception:
+            # Fallback: keep model as created (likely on CPU)
+            self.model = model
+
+        self.optimizer = optimizer
         self.memory_manager = memory_manager or MemoryManager(
             memory_logging_enabled=False
         )
@@ -206,7 +223,13 @@ class MaskedPriceModelingTrainer:
             メトリクス辞書
         """
         self.model.train()
-        batch = batch.to(self.device)
+        # Avoid moving to CPU explicitly to prevent triggering CUDA lazy init
+        if self.device != "cpu":
+            try:
+                batch = batch.to(self.device)
+            except Exception:
+                # If moving fails, continue with original batch
+                pass
 
         # Forward pass
         predictions, mask_indices = self.model(batch)
@@ -246,7 +269,12 @@ class MaskedPriceModelingTrainer:
 
         with torch.no_grad():
             for i in range(0, len(val_data), batch_size):
-                batch = val_data[i : i + batch_size].to(self.device)
+                batch = val_data[i : i + batch_size]
+                if self.device != "cpu":
+                    try:
+                        batch = batch.to(self.device)
+                    except Exception:
+                        pass
 
                 predictions, mask_indices = self.model(batch)
                 loss = self.model.compute_loss(predictions, batch, mask_indices)

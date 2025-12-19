@@ -24,13 +24,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
 
-def load_model(model_path: str) -> SAC:
-    """Load the trained SAC model."""
-    logger = get_logger(__name__)
-    logger.info(f"Loading model from {model_path}")
-    model = SAC.load(model_path)
-    logger.info("Model loaded successfully")
-    return model
 
 
 def load_data(data_path: str) -> pd.DataFrame:
@@ -40,15 +33,6 @@ def load_data(data_path: str) -> pd.DataFrame:
     df = pd.read_csv(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
-    logger.info(f"Loaded {len(df)} data points")
-    return df
-
-
-def create_paper_trading_env(
-    config: EnvironmentConfig, df: pd.DataFrame
-) -> HeavyTradingEnv:
-    """Create environment for paper trading."""
-    env = HeavyTradingEnv(df=df, config=config)
     return env
 
 
@@ -60,12 +44,6 @@ def run_paper_trading(
 ) -> Dict[str, Any]:
     """Run paper trading simulation."""
     logger = get_logger(__name__)
-
-    all_episode_results = []
-    total_rewards = []
-    total_portfolio_values = []
-    action_counts = {"HOLD": 0, "BUY": 0, "SELL": 0}
-
     logger.info(f"Starting paper trading with {num_episodes} episodes")
 
     for episode in range(num_episodes):

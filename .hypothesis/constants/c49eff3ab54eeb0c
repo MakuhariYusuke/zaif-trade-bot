@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\adx_patterns.py
+# hypothesis_version: 6.140.3
+
+[-1.0, 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.05, 1.1, 1.2, 1.5, 2.0, 5.0, 10.0, 40.0, 50.0, 'adx', 'adx_change', 'adx_error', 'adx_neutral_mtf', 'adx_weak_trend_mtf', 'bearish', 'bullish', 'cross_type', 'di_cross', 'di_cross_threshold', 'di_difference', 'direction', 'down', 'error', 'general', 'low', 'medium', 'minus_di', 'mtf_confidence', 'mtf_weight', 'period', 'plus_di', 'prev_adx', 'prev_minus_di', 'prev_plus_di', 'regime_adjusted', 'regime_aware', 'regime_cluster', 'strengthening', 'strong_trend', 'timeframe_alignment', 'trend_status', 'trend_strength', 'unclear', 'up', 'weak_trend', 'weak_trend_threshold']

@@ -46,7 +46,7 @@ class MarketRegimeDetector:
         )
 
 
-from ztb.optimization.unified_optimizer import OptimizationConfig, UnifiedOptimizer
+from ztb.optimization.unified_optimizer import OptimizationConfig, UnifiedOptimizer  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -128,9 +128,6 @@ class EpisodePerformanceMetrics:
     total_trades: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return asdict(self)
 
 
 class AdaptiveSACPolicy(nn.Module):
@@ -580,11 +577,11 @@ class AdaptiveSACCore:
             batch = [self.online_buffer[i] for i in batch_indices]
 
             # オンライン学習ステップ
-            observations = np.array([exp[0] for exp in batch])
-            actions = np.array([exp[1] for exp in batch])
-            rewards = np.array([exp[2] for exp in batch])
-            next_observations = np.array([exp[3] for exp in batch])
-            dones = np.array([exp[4] for exp in batch])
+            np.array([exp[0] for exp in batch])
+            np.array([exp[1] for exp in batch])
+            np.array([exp[2] for exp in batch])
+            np.array([exp[3] for exp in batch])
+            np.array([exp[4] for exp in batch])
 
             # SACの学習ステップ
             self.sac_model.train(batch_size=len(batch))

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from ztb.trading.environment.constants import BYTES_PER_GB 
+from ztb.trading.environment.constants import BYTES_PER_GB
 
 logger = logging.getLogger(__name__)
 

@@ -225,12 +225,6 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
             (body_size / total_range).item() >= 0.6 if total_range.item() > 0 else False
         )
 
-    def _is_uptrend(self, data: pd.DataFrame, index: int, lookback: int) -> bool:
-        """Check if there's an uptrend over the lookback period."""
-        if index < lookback:
-            return False
-        recent_prices = data.iloc[index - lookback + 1 : index + 1]["close"]
-        return cast(bool, recent_prices.iloc[-1] > recent_prices.iloc[0])
 
     def _is_downtrend(self, data: pd.DataFrame, index: int, lookback: int) -> bool:
         """Check if there's a downtrend over the lookback period."""
@@ -238,12 +232,6 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
             return False
         recent_prices = data.iloc[index - lookback + 1 : index + 1]["close"]
         return cast(bool, recent_prices.iloc[-1] < recent_prices.iloc[0])
-
-
-class MorningStarRecognizer(CandlestickPatternRecognizer):
-    """Recognizes Morning Star pattern.
-    明けの明星
-
     A three-candle bullish reversal pattern: large bearish, small, large bullish.
     """
 
@@ -347,17 +335,6 @@ class MorningStarRecognizer(CandlestickPatternRecognizer):
             self.logger.error(f"Error recognizing Morning Star pattern: {e}")
             return None
 
-    def _get_average_body_size(
-        self, data: pd.DataFrame, index: int, lookback: int
-    ) -> float:
-        """Calculate average body size over lookback period."""
-        if index < lookback:
-            return 0
-        bodies = [
-            self.calculate_body_size(data, i)
-            for i in range(index - lookback + 1, index + 1)
-        ]
-        return cast(float, np.mean(bodies)) if bodies else 0
 
 
 class EveningStarRecognizer(CandlestickPatternRecognizer):
@@ -691,7 +668,7 @@ class HangingManRecognizer(CandlestickPatternRecognizer):
 
 class ThreeBlackCrowsRecognizer(CandlestickPatternRecognizer):
     """Recognizes Three Black Crows pattern.
-    三羽烏（黒三兵）
+    # 三羽烏（黒三兵）
 
     A three-candle bearish reversal pattern with three consecutive bearish candles.
     """

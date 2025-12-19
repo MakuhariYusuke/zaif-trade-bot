@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\quality\indicators\rsi.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1.0, 50.0, 100.0, 'avg_gain', 'avg_loss', 'close', 'ema', 'ignore', 'neutral', 'periods', 'rsi', 'rsi_signal', 'rsi_slope', 'smoothing']

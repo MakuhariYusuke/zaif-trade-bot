@@ -7,8 +7,7 @@ Phase 3: Risk Management & Statistical Validation
 高度なリスク管理システム。
 """
 
-from typing import Any, Dict, Optional, List
-import numpy as np
+from typing import Any, Dict, Optional
 import pandas as pd
 
 from ztb.risk.risk_manager import RiskManager

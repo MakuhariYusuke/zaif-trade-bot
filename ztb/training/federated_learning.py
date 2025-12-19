@@ -13,7 +13,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from opacus import PrivacyEngine
+try:
+    from opacus import PrivacyEngine
+except Exception:
+    # Provide a minimal stub if opacus is not installed or has unmet dependencies
+    class PrivacyEngine:
+        def __init__(self, *a, **k):
+            raise RuntimeError("opacus not available in test environment")
 from torch.utils.data import DataLoader
 
 from ztb.utils.logging_utils import get_logger

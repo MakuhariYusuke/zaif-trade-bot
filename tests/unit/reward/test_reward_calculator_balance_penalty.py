@@ -1,6 +1,5 @@
 """Test for RewardCalculator balance penalty mechanism."""
 
-import pytest
 from unittest.mock import Mock
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL

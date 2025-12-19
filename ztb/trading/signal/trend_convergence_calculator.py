@@ -12,16 +12,14 @@ Features:
 - ダイバージェンス検出
 """
 
-from typing import Dict, List, Optional, Tuple, Union
-from dataclasses import dataclass, field
-from enum import Enum
+from typing import Dict, Union
+from dataclasses import dataclass
 import numpy as np
-import pandas as pd
 from collections import defaultdict
 
 from ztb.utils.logging_utils import get_logger
 from ztb.trading.signal.multi_timeframe_analyzer import (
-    Timeframe, TrendDirection, TrendAnalysis, ConvergenceAnalysis
+    Timeframe, TrendDirection, TrendAnalysis
 )
 
 logger = get_logger(__name__)

@@ -9,7 +9,6 @@ It uses the common utilities in `ztb.trading.signal.common.utilities` when possi
 import argparse
 from pathlib import Path
 import pandas as pd
-from typing import List
 from ztb.trading.signal.common.utilities import resample_data
 
 # Map user frequencies to pandas offsets

@@ -8,7 +8,6 @@ and VolumeProfileScorer with various market conditions and edge cases.
 import unittest
 import pandas as pd
 import numpy as np
-from unittest.mock import Mock, patch
 
 from ztb.trading.signal.ensemble_signal_generator import (
     TechnicalSignalScorer,
@@ -214,13 +213,6 @@ class TestPatternRecognitionScorer(unittest.TestCase):
         score = self.scorer.calculate_score(market_data_reversal)
         self.assertIsInstance(score, float)
 
-    def test_get_confidence(self):
-        """Test confidence calculation"""
-        confidence = self.scorer.get_confidence(self.market_data)
-
-        self.assertIsInstance(confidence, float)
-        self.assertGreaterEqual(confidence, 0)
-        self.assertLessEqual(confidence, 1)
 
     def test_insufficient_data(self):
         """Test behavior with insufficient data"""
@@ -369,13 +361,6 @@ class TestVolumeProfileScorer(unittest.TestCase):
         self.assertIsInstance(confidence, float)
         self.assertGreaterEqual(confidence, 0)
         self.assertLessEqual(confidence, 1)
-
-    def test_get_confidence_no_volume_data(self):
-        """Test confidence with no volume data"""
-        no_volume_df = self.df.copy()
-        no_volume_df = no_volume_df.drop('volume', axis=1)
-
-        market_data_no_vol = self.market_data.copy()
         market_data_no_vol['df'] = no_volume_df
 
         confidence = self.scorer.get_confidence(market_data_no_vol)

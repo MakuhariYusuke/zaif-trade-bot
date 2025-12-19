@@ -37,6 +37,7 @@ class RewardContext:
     initial_portfolio_value: float = 1000000.0
 
     # Optional fields for specific components
+    continuous_action_value: Optional[float] = None
     atr_normalised: float = 0.0
     portfolio_return: float = 0.0
     effective_max_position: float = 1.0
@@ -60,3 +61,60 @@ class RewardComponent(ABC):
     def get_name(self) -> str:
         """Return the name of the component for logging."""
         pass
+
+    def _get_setting(self, context: RewardContext, key: str, default, cast=None):
+        """Utility to retrieve a reward setting with fallbacks.
+
+        - Checks `context.reward_settings` first (supports dict-like or object).
+        - If not found, checks `context.reward_settings.custom_reward_params` if present.
+        - Falls back to `context.config.get(key, default)` when available.
+        - Optionally casts the result with `cast` (e.g., float, int).
+        """
+        if context.reward_settings:
+            val = None
+            # If reward_settings behaves like a dict or has a `get` method, prefer that
+            if isinstance(context.reward_settings, dict):
+                val = context.reward_settings.get(key)
+            else:
+                get_attr = getattr(context.reward_settings, "get", None)
+                if callable(get_attr):
+                    try:
+                        val = get_attr(key, None)
+                    except Exception:
+                        val = None
+                else:
+                    val = getattr(context.reward_settings, key, None)
+
+            if val is None:
+                custom_params = getattr(context.reward_settings, "custom_reward_params", None)
+                if isinstance(custom_params, dict):
+                    val = custom_params.get(key)
+
+            if val is not None:
+                try:
+                    return cast(val) if cast is not None else val
+                except (ValueError, TypeError):
+                    pass
+
+        if hasattr(context.config, "get"):
+            try:
+                val = context.config.get(key, default)
+                return cast(val) if cast is not None else val
+            except (ValueError, TypeError):
+                return default
+
+        return default
+
+    def _get_setting_float(self, context: RewardContext, key: str, default: float) -> float:
+        """Typed float helper that delegates to `_get_setting` with casting."""
+        try:
+            return self._get_setting(context, key, default, cast=float)
+        except (ValueError, TypeError):
+            return default
+
+    def _get_setting_int(self, context: RewardContext, key: str, default: int) -> int:
+        """Typed int helper that delegates to `_get_setting` with casting."""
+        try:
+            return self._get_setting(context, key, default, cast=int)
+        except (ValueError, TypeError):
+            return default

@@ -2,6 +2,8 @@ import dataclasses
 import logging
 from typing import Any, Dict
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+
 from .base import RewardComponent, RewardContext
 
 
@@ -48,32 +50,12 @@ class ForcedBalanceReward(RewardComponent):
         return current
 
     def _get_setting(self, context: RewardContext, key: str, default: Any) -> Any:
-        # Try nested setting from reward_settings
+        # Prefer nested lookup for dot-separated keys; otherwise use base helper
         val = self._get_nested_setting(context, key)
         if val is not None:
             return val
+        return super()._get_setting(context, key, default)
 
-        # Fallback to config.get if available (for dict configs)
-        if hasattr(context.config, "get"):
-            return context.config.get(key, default)  # type: ignore
-
-        return default
-
-    def _get_setting_float(
-        self, context: RewardContext, key: str, default: float
-    ) -> float:
-        val = self._get_setting(context, key, default)
-        try:
-            return float(val)
-        except (ValueError, TypeError):
-            return default
-
-    def _get_setting_int(self, context: RewardContext, key: str, default: int) -> int:
-        val = self._get_setting(context, key, default)
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return default
 
     def _map_forced_balance_penalty(
         self, context: RewardContext, deviation: float, severity: float
@@ -281,7 +263,21 @@ class ForcedBalanceReward(RewardComponent):
         )
         global_pressure = -global_penalty_scale * max_abs_deviation
 
-        current_deviation = signed_deviations[context.action]
+        # Map action values (ACTION_HOLD=0, ACTION_BUY=1, ACTION_SELL=-1; legacy 2=SELL)
+        # to the [HOLD, BUY, SELL] index used by signed_deviations.
+        action_val = context.action
+        if action_val == 2:
+            action_val = ACTION_SELL
+        if action_val == ACTION_HOLD:
+            action_idx = 0
+        elif action_val == ACTION_BUY:
+            action_idx = 1
+        elif action_val == ACTION_SELL:
+            action_idx = 2
+        else:
+            action_idx = 0
+
+        current_deviation = signed_deviations[action_idx]
 
         # Trend-aware penalty adjustment: reduce penalty if action aligns with trend
         trend_signal = 0.0
@@ -319,8 +315,8 @@ class ForcedBalanceReward(RewardComponent):
             )
             # If the trend favors this action (eg. trend_signal >0 for BUY), reduce penalty
             try:
-                favored = (context.action == 1 and trend_signal > 0) or (
-                    context.action == 2 and trend_signal < 0
+                favored = (action_val == ACTION_BUY and trend_signal > 0) or (
+                    action_val == ACTION_SELL and trend_signal < 0
                 )
                 if favored and trend_strength:
                     # reduce penalty proportionally to trend strength
@@ -351,7 +347,7 @@ class ForcedBalanceReward(RewardComponent):
         if should_log_detailed:
             self.logger.debug(
                 "Forced balance decision: action=%s, deviation=%.3f, global_pressure=%.3f, reward=%.3f",
-                self.ACTION_INDEX_NAMES[context.action],
+                self.ACTION_INDEX_NAMES[action_idx],
                 current_deviation,
                 global_pressure,
                 reward,

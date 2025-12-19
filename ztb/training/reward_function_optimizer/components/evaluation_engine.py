@@ -300,7 +300,6 @@ class EvaluationEngine:
             if not best_scores or not second_best_scores:
                 return {"error": "Insufficient score data for statistical testing"}
 
-            import numpy as np
             from scipy import stats
 
             # Perform t-test
@@ -327,9 +326,9 @@ class EvaluationEngine:
 
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
-        from datetime import datetime
+        from ztb.training.utils.common_utils import get_timestamp
 
-        return datetime.now().isoformat()
+        return get_timestamp()
 
     def get_evaluation_history(self) -> List[Dict[str, Any]]:
         """Get evaluation history."""

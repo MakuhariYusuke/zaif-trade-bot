@@ -257,7 +257,7 @@ class TestLiveTraderInitialization:
             )
 
             # Verify trader was created but adapter is None
-                assert trader.exchange_adapter is None
+            assert trader.exchange_adapter is None
             # Verify after the context that trader.exchange_adapter is still None
             assert trader.exchange_adapter is None
             # Restore env

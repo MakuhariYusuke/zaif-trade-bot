@@ -3,13 +3,29 @@ Algorithm-specific training implementations.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 
-from .ppo_trainer import PPOTrainer
-from .sac_trainer import SACTrainer
-from .self_supervised_trainer import SelfSupervisedTrainer
+_LAZY_TRAINERS = {
+    "PPOTrainer": (".ppo_trainer", "PPOTrainer"),
+    "SACTrainer": (".sac_trainer", "SACTrainer"),
+    "SelfSupervisedTrainer": (".self_supervised_trainer", "SelfSupervisedTrainer"),
+}
+
+
+def _load_trainer(name: str):
+    mod_name, attr = _LAZY_TRAINERS[name]
+    module = __import__(f"{__name__}{mod_name}", fromlist=[attr])
+    return getattr(module, attr)
+
+
+def __getattr__(name: str):
+    if name in _LAZY_TRAINERS:
+        cls = _load_trainer(name)
+        globals()[name] = cls
+        return cls
+    raise AttributeError(name)
 
 
 def create_algorithm_trainer(
@@ -24,6 +40,7 @@ def create_algorithm_trainer(
     algorithm = algorithm.lower()
 
     if algorithm == "sac":
+        SACTrainer = _load_trainer("SACTrainer")
         return SACTrainer(
             config,
             None,  # env
@@ -33,6 +50,7 @@ def create_algorithm_trainer(
             optimizer_tracker,
         )
     elif algorithm == "ppo":
+        PPOTrainer = _load_trainer("PPOTrainer")
         return PPOTrainer(
             config,
             logger,
@@ -40,6 +58,7 @@ def create_algorithm_trainer(
             optimizer_tracker=optimizer_tracker,
         )
     elif algorithm == "self_supervised":
+        SelfSupervisedTrainer = _load_trainer("SelfSupervisedTrainer")
         return SelfSupervisedTrainer(
             config,
             logger,
@@ -85,3 +104,10 @@ __all__ = [
     "SelfSupervisedTrainer",
     "create_algorithm_trainer",
 ]
+if TYPE_CHECKING:
+    # Import for forward type references only. Avoid importing heavy modules at runtime
+    # to prevent test collection/import-time errors where these dependencies may be
+    # unavailable.
+    from ztb.features.processors.optimization.features import (
+        OptimizerFeatureTracker,
+    )

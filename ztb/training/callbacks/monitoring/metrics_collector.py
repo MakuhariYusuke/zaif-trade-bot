@@ -228,7 +228,7 @@ class MetricsCollector:
                     self.add_metric_value(
                         f"system.gpu.{i}.temperature", gpu.temperature
                     )
-            except:
+            except Exception:
                 pass  # GPU monitoring not available
 
         except ImportError:
@@ -493,9 +493,7 @@ class MetricsCollector:
 
             return result
 
-    def get_all_metrics(self) -> Dict[str, Any]:
-        """Get all metrics data (alias for backward compatibility)."""
-        return self.get_latest_metrics()
+    # get_all_metrics originally had a second alias implementation here; duplicate removed.
 
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics for memory optimization."""
@@ -536,11 +534,7 @@ def get_global_metrics_collector() -> MetricsCollector:
     if _global_metrics_collector is None:
         _global_metrics_collector = MetricsCollector()
     return _global_metrics_collector
-    """Get the global metrics collector instance."""
-    global _global_collector
-    if _global_collector is None:
-        _global_collector = MetricsCollector()
-    return _global_collector
+    
 
 
 def collect_metric(

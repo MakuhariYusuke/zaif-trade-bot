@@ -119,7 +119,7 @@ def train_specialized_model(specialization, base_config):
 
     print("Action Distribution:")
     for action, count in actions_taken.items():
-        percentage = (count / timesteps) * 100
+        (count / timesteps) * 100
         print(".1f")
 
     return {
@@ -161,7 +161,7 @@ def run_ensemble_training():
 
     # Ensemble performance summary
     total_reward = sum(r["total_reward"] for r in ensemble_results)
-    avg_reward = total_reward / sum(r["timesteps"] for r in ensemble_results)
+    total_reward / sum(r["timesteps"] for r in ensemble_results)
 
     print(f"Total Ensemble Reward: {total_reward:.2f}")
     print(".4f")
@@ -170,10 +170,10 @@ def run_ensemble_training():
     print("\nModel Performance by Specialization:")
     for result in ensemble_results:
         spec = result["specialization"]
-        avg_r = result["avg_reward"]
-        buy_pct = (result["action_distribution"]["BUY"] / result["timesteps"]) * 100
-        sell_pct = (result["action_distribution"]["SELL"] / result["timesteps"]) * 100
-        hold_pct = (result["action_distribution"]["HOLD"] / result["timesteps"]) * 100
+        result["avg_reward"]
+        (result["action_distribution"]["BUY"] / result["timesteps"]) * 100
+        (result["action_distribution"]["SELL"] / result["timesteps"]) * 100
+        (result["action_distribution"]["HOLD"] / result["timesteps"]) * 100
         print(".4f")
 
     # Voting mechanism simulation
@@ -189,7 +189,7 @@ def run_ensemble_training():
         model_predictions = []
         for result in ensemble_results:
             spec = result["specialization"]
-            config = result["config"]
+            result["config"]
 
             # Simulate model prediction based on specialization
             if spec == "bull":
@@ -208,7 +208,7 @@ def run_ensemble_training():
         # Weighted voting (simplified)
         buy_votes = model_predictions.count("BUY")
         sell_votes = model_predictions.count("SELL")
-        hold_votes = model_predictions.count("HOLD")
+        model_predictions.count("HOLD")
 
         # Confidence-based decision
         if buy_votes >= 3:
@@ -222,7 +222,7 @@ def run_ensemble_training():
 
     print("Ensemble Voting Results (1000 scenarios):")
     for action, count in ensemble_decisions.items():
-        percentage = (count / voting_tests) * 100
+        (count / voting_tests) * 100
         print(".1f")
 
     print("\n=== Ensemble Benefits ===")

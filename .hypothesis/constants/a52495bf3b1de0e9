@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\real_data_validator.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.01, 0.05, 0.6745, 0.8, 1.0, 2.0, 3.0, 3.5, 1000, ', ', 'AnomalyDetector', 'DataIntegrityChecker', 'DataQualityMetrics', 'DataSource', 'DataValidationConfig', 'FAILED', 'LiveTradeRecord', 'LiveValidationConfig', 'None', 'PASSED', 'StatisticalValidator', 'ValidationResult', '_check_data_ranges', '_check_data_types', '_check_missing_data', 'adf_statistic', 'anomalies_detected', 'anomaly', 'anomaly_score', 'check_integrity', 'config', 'cross_validate', 'cross_validation', 'detect', 'detect_anomalies', 'errors', 'fiu', 'integrity', 'is_normal', 'is_stationary', 'is_valid', 'issues', 'max_difference', 'mean_difference', 'mean_score', 'metrics', 'np.ndarray', 'p_value', 'passed', 'price', 'recommendations', 'score', 'statistic', 'statistical', 'std_score', 'to_numpy', 'unknown', 'validate', 'warnings']

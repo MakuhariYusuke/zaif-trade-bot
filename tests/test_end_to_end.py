@@ -9,7 +9,6 @@ workflows from market data input to final trading decisions.
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
 import pandas as pd
 import numpy as np

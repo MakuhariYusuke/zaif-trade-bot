@@ -21,7 +21,7 @@ from ztb.utils.project_setup import setup_project_path
 setup_project_path(Path(__file__))
 
 from ztb.training.archive.ppo_trainer_old import PPOTrainer  # noqa: E402
-from ztb.training.config.ppo_config import get_ppo_config
+from ztb.training.config.ppo_config import get_ppo_config  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 

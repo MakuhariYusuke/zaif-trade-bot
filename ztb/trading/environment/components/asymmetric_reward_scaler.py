@@ -35,19 +35,37 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
 
     def _load_settings(self):
         """Load settings from the environment configuration."""
-        if self._config.reward_settings is None:
+        reward_settings = getattr(self._config, "reward_settings", None)
+
+        if reward_settings is None:
             # Default settings when reward_settings is None
-            self.long_pos_reward_multiplier = 1.3
-            self.short_pos_reward_multiplier = 0.7
-            self.long_pos_penalty_multiplier = 0.9
-            self.short_pos_penalty_multiplier = 0.95
+            self.long_pos_reward_multiplier = 1.0
+            self.short_pos_reward_multiplier = 1.0
+            self.long_pos_penalty_multiplier = 1.0
+            self.short_pos_penalty_multiplier = 1.0
         else:
-            settings = self._config.reward_settings.asymmetric_reward_scaling
-            self.long_pos_reward_multiplier = settings.get("long_position_reward_multiplier", 1.3)
-            self.short_pos_reward_multiplier = settings.get("short_position_reward_multiplier", 0.7)
-            self.long_pos_penalty_multiplier = settings.get("long_position_penalty_multiplier", 0.9)
-            self.short_pos_penalty_multiplier = settings.get("short_position_penalty_multiplier", 0.95)
-        
+            settings = None
+            if isinstance(reward_settings, dict):
+                settings = reward_settings.get("asymmetric_reward_scaling")
+            else:
+                settings = getattr(reward_settings, "asymmetric_reward_scaling", None)
+
+            if not isinstance(settings, dict):
+                settings = {}
+
+            self.long_pos_reward_multiplier = settings.get(
+                "long_position_reward_multiplier", 1.0
+            )
+            self.short_pos_reward_multiplier = settings.get(
+                "short_position_reward_multiplier", 1.0
+            )
+            self.long_pos_penalty_multiplier = settings.get(
+                "long_position_penalty_multiplier", 1.0
+            )
+            self.short_pos_penalty_multiplier = settings.get(
+                "short_position_penalty_multiplier", 1.0
+            )
+
         # Thresholds are not part of asymmetric_reward_scaling dict, let's assume they are hardcoded for now
         # or need to be added to the config structure. For now, keep them as they were.
         # This can be a point of future improvement.
@@ -97,25 +115,25 @@ class AsymmetricRewardScaler(IAsymmetricRewardScaler):
         if pnl > 0:  # Profitable trade
             if position_direction == "long":
                 reward *= self.long_pos_reward_multiplier
-                self.logger.debug(
-                    f"Applied long position reward boost: {self.long_pos_reward_multiplier}x"
-                )
+                # self.logger.debug(
+                #     f"Applied long position reward boost: {self.long_pos_reward_multiplier}x"
+                # )
             elif position_direction == "short":
                 reward *= self.short_pos_reward_multiplier
-                self.logger.debug(
-                    f"Applied short position reward reduction: {self.short_pos_reward_multiplier}x"
-                )
+                # self.logger.debug(
+                #     f"Applied short position reward reduction: {self.short_pos_reward_multiplier}x"
+                # )
         else:  # Loss trade
             self._penalty_count += 1
             if position_direction == "long":
                 reward *= self.long_pos_penalty_multiplier
-                self.logger.debug(
-                    f"Applied long position penalty reduction: {self.long_pos_penalty_multiplier}x"
-                ) if self._penalty_count % 20 == 0 else None
+                # self.logger.debug(
+                #     f"Applied long position penalty reduction: {self.long_pos_penalty_multiplier}x"
+                # ) if self._penalty_count % 20 == 0 else None
             elif position_direction == "short":
                 reward *= self.short_pos_penalty_multiplier
-                self.logger.debug(
-                    f"Applied short position penalty boost: {self.short_pos_penalty_multiplier}x"
-                ) if self._penalty_count % 20 == 0 else None
+                # self.logger.debug(
+                #     f"Applied short position penalty boost: {self.short_pos_penalty_multiplier}x"
+                # ) if self._penalty_count % 20 == 0 else None
 
         return reward

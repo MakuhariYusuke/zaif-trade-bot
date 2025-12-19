@@ -121,7 +121,7 @@ class EnsemblePredictor(PredictorProtocol):
                     model: Union[MaskablePPO, PPO] = MaskablePPO.load(model_path)  # type: ignore[arg-type]
                     self.has_maskable_ppo = True
                     logger.info(f"Loaded MaskablePPO model: {model_path}")
-                except:
+                except Exception:
                     model = PPO.load(model_path)  # type: ignore[arg-type]
                     logger.info(f"Loaded PPO model: {model_path}")
 
@@ -520,7 +520,7 @@ class EnsembleTradingSystem(TradingSystemProtocol):
             probabilities = self.ensemble.get_action_probabilities(observation)
             # Return max probability as confidence
             return float(np.max(probabilities))
-        except:
+        except Exception:
             # Fallback to model count based confidence
             return min(
                 1.0, len(self.ensemble.models) / 5.0
@@ -559,7 +559,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
                 # Try MaskablePPO first, then fall back to PPO
                 try:
                     model: Union[MaskablePPO, PPO] = MaskablePPO.load(model_path)  # type: ignore[arg-type]
-                except:
+                except Exception:
                     model = PPO.load(model_path)  # type: ignore[arg-type]
 
                 self.models.append(model)
@@ -711,26 +711,6 @@ class EnsemblePredictorLegacy(PredictorProtocol):
 
         return ensemble_probabilities, weights
 
-    def get_ensemble_info(self) -> EnsembleInfoDict:
-        """
-        Get information about the ensemble.
-
-        アンサンブルに関する情報を取得。
-        """
-        return {
-            "num_models": len(self.models),
-            "model_paths": (
-                [
-                    path
-                    for config in self.model_configs
-                    if (path := config.get("path")) is not None
-                ]
-                if hasattr(self, "model_configs")
-                else []
-            ),
-            "weights": self.weights,
-            "feature_sets": self.feature_sets,
-        }
 
 
 class EnsembleTradingSystemLegacy:
@@ -791,16 +771,6 @@ class EnsembleTradingSystemLegacy:
             current_price: Current market price
 
         Returns:
-            True if trading is allowed, False otherwise
-        """
-        # Check circuit breaker
-        if self._check_circuit_breaker(current_price):
-            logger.warning("Circuit breaker triggered - stopping trading")
-            return False
-
-        # Check daily loss limit
-        if self._check_daily_loss_limit(current_balance):
-            logger.warning("Daily loss limit exceeded - stopping trading")
             return False
 
         # Check consecutive losses
@@ -812,37 +782,6 @@ class EnsembleTradingSystemLegacy:
             )
             return False
 
-        return True
-
-    def _check_circuit_breaker(self, current_price: float) -> bool:
-        """Check if circuit breaker should be triggered."""
-        if len(self.price_history) < 2:
-            self.price_history.append(current_price)
-            return False
-
-        # Calculate price change
-        prev_price = self.price_history[-1]
-        price_change = abs(current_price - prev_price) / prev_price
-
-        self.price_history.append(current_price)
-        if len(self.price_history) > 10:  # Keep last 10 prices
-            self.price_history.pop(0)
-
-        if price_change > self.risk_configs.get("circuit_breaker_threshold", 0.20):
-            self.circuit_breaker_triggered = True
-            return True
-
-        return False
-
-    def _check_daily_loss_limit(self, current_balance: float) -> bool:
-        """Check if daily loss limit is exceeded."""
-        # Reset daily tracking if date changed (simplified - in real system use proper date tracking)
-        if self.daily_start_balance == 0:
-            self.daily_start_balance = current_balance
-            return False
-
-        loss_pct = (
-            self.daily_start_balance - current_balance
         ) / self.daily_start_balance
 
         if loss_pct > self.risk_configs.get("daily_loss_limit", 0.02):
@@ -875,25 +814,6 @@ class EnsembleTradingSystemLegacy:
             observation: Current market observation
             current_balance: Current portfolio balance
             current_price: Current market price
-
-        Returns:
-            Action to take (0=Hold, 1=Buy, 2=Sell)
-        """
-        # Check risk limits first
-        if not self.check_risk_limits(current_balance, current_price):
-            return 0  # Hold if risk limits exceeded
-
-        # Get ensemble prediction
-        action, _ = self.ensemble.predict(observation, deterministic=True)
-        return int(action[0])
-
-    def get_ensemble_confidence(self, observation: NDArray[np.float32]) -> float:
-        """
-        Get confidence score for ensemble prediction.
-
-        Args:
-            observation: Current market observation
-
         Returns:
             Confidence score (0-1)
         """
@@ -901,7 +821,7 @@ class EnsembleTradingSystemLegacy:
             probabilities = self.ensemble.get_action_probabilities(observation)
             # Return max probability as confidence
             return float(np.max(probabilities))
-        except:
+        except Exception:
             # Fallback to model count based confidence
             return min(
                 1.0, len(self.ensemble.models) / 5.0

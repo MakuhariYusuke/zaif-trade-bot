@@ -8,18 +8,6 @@ if HeavyTradingEnv is None:
     pytest.skip("HeavyTradingEnv not available (torch missing or import failed)", allow_module_level=True)
 
 
-def create_synthetic_df(rows=200):
-    rng = np.random.default_rng(42)
-    price_trend = np.linspace(100, 110, rows) + rng.normal(0, 0.5, rows)
-    return pd.DataFrame(
-        {
-            "open": price_trend + rng.normal(0, 0.1, rows),
-            "high": price_trend + rng.normal(0, 0.2, rows),
-            "low": price_trend - rng.normal(0, 0.2, rows),
-            "close": price_trend + rng.normal(0, 0.05, rows),
-            "volume": rng.normal(1000, 50, rows),
-        }
-    )
 
 
 def test_trend_and_curriculum_info_present():

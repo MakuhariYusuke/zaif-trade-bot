@@ -180,6 +180,14 @@ class DistributedCoordinator:
     def register_worker(self, worker_info: WorkerInfo) -> bool:
         """Register a worker with the coordinator."""
         with self.worker_lock:
+            # Allow either a WorkerInfo instance or a plain dict for registration
+            if not hasattr(worker_info, "worker_id") and isinstance(worker_info, dict):
+                worker_info = WorkerInfo(
+                    worker_id=worker_info.get("worker_id"),
+                    host=worker_info.get("host", "localhost"),
+                    port=worker_info.get("port", self.master_port),
+                )
+
             if worker_info.worker_id in self.workers:
                 self.logger.warning(
                     f"Worker {worker_info.worker_id} already registered"
@@ -188,6 +196,9 @@ class DistributedCoordinator:
 
             self.workers[worker_info.worker_id] = worker_info
             self.response_queues[worker_info.worker_id] = mp.Queue()
+            # Ensure worker_info has status attribute for compatibility
+            if not hasattr(self.workers[worker_info.worker_id], "status"):
+                setattr(self.workers[worker_info.worker_id], "status", "idle")
             self.logger.info(f"Registered worker {worker_info.worker_id}")
             return True
 
@@ -354,15 +365,25 @@ class DistributedCoordinator:
         worker_id = message.sender_id
         with self.worker_lock:
             if worker_id in self.workers:
-                self.workers[worker_id].last_heartbeat = message.timestamp
-                self.workers[worker_id].status = "idle"  # Reset status on heartbeat
+                w = self.workers[worker_id]
+                # Support both dataclass and plain-dict worker representations
+                if isinstance(w, dict):
+                    w["last_heartbeat"] = message.timestamp
+                    w["status"] = "idle"
+                else:
+                    w.last_heartbeat = message.timestamp
+                    w.status = "idle"  # Reset status on heartbeat
 
     def _handle_task_result(self, message: Message) -> None:
         """Handle task result from worker."""
         worker_id = message.sender_id
         with self.worker_lock:
             if worker_id in self.workers:
-                self.workers[worker_id].status = "idle"
+                w = self.workers[worker_id]
+                if isinstance(w, dict):
+                    w["status"] = "idle"
+                else:
+                    w.status = "idle"
                 self.stats["tasks_completed"] += 1
 
     def _handle_metrics(self, message: Message) -> None:
@@ -370,7 +391,11 @@ class DistributedCoordinator:
         worker_id = message.sender_id
         with self.worker_lock:
             if worker_id in self.workers:
-                self.workers[worker_id].metrics.update(message.data)
+                w = self.workers[worker_id]
+                if isinstance(w, dict):
+                    w.setdefault("metrics", {}).update(message.data)
+                else:
+                    w.metrics.update(message.data)
 
     def _handle_error(self, message: Message) -> None:
         """Handle error message from worker."""

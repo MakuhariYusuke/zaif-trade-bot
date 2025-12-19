@@ -4,7 +4,13 @@ Paper Trading Evaluation for Trained RL Models.
 
 Supports both PPO and SAC algorithms for trading evaluation.
 Loads and simulates trading on test data to evaluate performance.
+
+Note: this script intentionally adjusts sys.path to locate project modules;
+the following file-level noqa silences E402 warnings from ruff for the
+import placement that occurs after the sys.path modification.
 """
+
+# ruff: noqa: E402
 
 import argparse
 import json
@@ -41,7 +47,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-import numpy as np
 import pandas as pd
 import torch
 from numpy.typing import NDArray
@@ -879,9 +884,6 @@ class PaperTrader:
 
             self.logger.debug(f"Cleanup traceback: {traceback.format_exc()}")
 
-    def __del__(self) -> None:
-        """Destructor to ensure cleanup even if close() wasn't called explicitly."""
-        self.close()
 
 
 def main() -> int:

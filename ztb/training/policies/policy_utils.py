@@ -18,18 +18,9 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class ActionMaskProvider(Protocol):
-    """Protocol for environments that can provide action masks."""
-
-    def get_action_masks(self) -> NDArray[np.bool_]:
-        """Get current action masks."""
-        ...
 
 
 def predict_with_masks(
-    model: Union[PPO, MaskablePPO],
-    observation: NDArray[np.float32],
-    env: Optional[ActionMaskProvider] = None,
     deterministic: bool = False,
 ) -> Tuple[NDArray[np.int64], Any]:
     """

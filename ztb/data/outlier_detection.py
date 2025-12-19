@@ -49,10 +49,12 @@ class OutlierDetector:
 
     def detect_outliers(
         self,
-        data: pd.DataFrame,
-        methods: List[Dict[str, Union[str, float, int]]],
+        data: Union[pd.DataFrame, pd.Series, np.ndarray],
+        methods: Optional[List[Dict[str, Union[str, float, int]]]] = None,
+        method: Optional[str] = None,
         columns: Optional[List[str]] = None,
-    ) -> pd.DataFrame:
+        **kwargs,
+    ) -> Union[pd.DataFrame, dict]:
         """
         指定された手法で異常値を検出。
 
@@ -72,82 +74,85 @@ class OutlierDetector:
             ... ]
             >>> result = detector.detect_outliers(data, methods)
         """
-        result_data = data.copy()
+        # Handle single-method shorthand (tests expect detect_outliers(array, method="z_score", ...))
+        if method is not None:
+            # Array/Series path
+            if isinstance(data, (np.ndarray, pd.Series)):
+                arr = np.asarray(data)
+                if arr.size == 0:
+                    return {"method": method, "outlier_flags": np.array([]), "outlier_indices": np.array([])}
 
-        if columns is None:
-            columns = data.select_dtypes(include=[np.number]).columns.tolist()
-
-        # 各手法で異常値を検出
-        outlier_flags = {}
-        for method_config in methods:
-            method_type = method_config.get("type", "")
-            try:
-                if method_type == "z_score":
-                    flags = self._detect_z_score(
-                        result_data,
-                        columns,
-                        threshold=method_config.get("threshold", 3.0),
-                    )
-                elif method_type == "iqr":
-                    flags = self._detect_iqr(
-                        result_data,
-                        columns,
-                        multiplier=method_config.get("multiplier", 1.5),
-                    )
-                elif method_type == "modified_z_score":
-                    flags = self._detect_modified_z_score(
-                        result_data,
-                        columns,
-                        threshold=method_config.get("threshold", 3.5),
-                    )
-                elif method_type == "isolation_forest":
-                    flags = self._detect_isolation_forest(
-                        result_data,
-                        columns,
-                        contamination=method_config.get("contamination", 0.1),
-                    )
-                elif method_type == "lof":
-                    flags = self._detect_lof(
-                        result_data,
-                        columns,
-                        n_neighbors=method_config.get("n_neighbors", 20),
-                        contamination=method_config.get("contamination", 0.1),
-                    )
-                elif method_type == "stl_decomposition":
-                    flags = self._detect_stl_decomposition(
-                        result_data,
-                        columns,
-                        seasonal=method_config.get("seasonal", 7),
-                        threshold=method_config.get("threshold", 2.0),
-                    )
-                elif method_type == "arima_residual":
-                    flags = self._detect_arima_residual(
-                        result_data,
-                        columns,
-                        order=method_config.get("order", (1, 1, 1)),
-                        threshold=method_config.get("threshold", 2.0),
-                    )
+                if method == "z_score":
+                    flags, indices = self._detect_z_score(arr, threshold=kwargs.get("threshold", 3.0))
+                elif method == "iqr":
+                    flags, indices = self._detect_iqr(arr, multiplier=kwargs.get("multiplier", 1.5))
+                elif method == "modified_z_score":
+                    flags, indices = self._detect_modified_z_score(arr, threshold=kwargs.get("threshold", 3.5))
+                elif method == "isolation_forest":
+                    flags, indices = self._detect_isolation_forest(arr, contamination=kwargs.get("contamination", 0.1))
+                elif method == "lof":
+                    flags, indices = self._detect_lof(arr, n_neighbors=kwargs.get("n_neighbors", 20), contamination=kwargs.get("contamination", 0.1))
+                elif method == "stl_decomposition":
+                    # For STL and ARIMA tests, users may pass Series — convert if needed
+                    series = pd.Series(arr) if not isinstance(data, pd.Series) else data
+                    flags, indices = self._detect_stl_decomposition(series, threshold=kwargs.get("threshold", 2.0), seasonal=kwargs.get("seasonal", 7))
+                elif method == "arima_residual":
+                    series = pd.Series(arr) if not isinstance(data, pd.Series) else data
+                    flags, indices = self._detect_arima_residual(series, order=kwargs.get("order", (1, 1, 1)), threshold=kwargs.get("threshold", 2.0))
                 else:
-                    logger.warning(f"Unknown outlier detection method: {method_type}")
+                    raise ValueError(f"Unknown outlier detection method: {method}")
+
+                return {"method": method, "outlier_flags": flags, "outlier_indices": indices}
+
+            # DataFrame path: methods list or method + columns
+            if columns is None and isinstance(data, pd.DataFrame):
+                columns = data.select_dtypes(include=[np.number]).columns.tolist()
+
+            method_configs = methods or []
+            if method is not None:
+                # convert single method+kwargs to method config
+                method_configs = [dict(type=method, **kwargs)]
+
+            result_data = data.copy()
+            outlier_flags = {}
+
+            for method_config in method_configs:
+                method_type = method_config.get("type", "")
+                try:
+                    if method_type == "z_score":
+                        flags = self._detect_z_score(result_data, columns, threshold=method_config.get("threshold", 3.0))
+                    elif method_type == "iqr":
+                        flags = self._detect_iqr(result_data, columns, multiplier=method_config.get("multiplier", 1.5))
+                    elif method_type == "modified_z_score":
+                        flags = self._detect_modified_z_score(result_data, columns, threshold=method_config.get("threshold", 3.5))
+                    elif method_type == "isolation_forest":
+                        flags = self._detect_isolation_forest(result_data, columns, contamination=method_config.get("contamination", 0.1))
+                    elif method_type == "lof":
+                        flags = self._detect_lof(result_data, columns, n_neighbors=method_config.get("n_neighbors", 20), contamination=method_config.get("contamination", 0.1))
+                    elif method_type == "stl_decomposition":
+                        flags = self._detect_stl_decomposition(result_data, columns, seasonal=method_config.get("seasonal", 7), threshold=method_config.get("threshold", 2.0))
+                    elif method_type == "arima_residual":
+                        flags = self._detect_arima_residual(result_data, columns, order=method_config.get("order", (1, 1, 1)), threshold=method_config.get("threshold", 2.0))
+                    else:
+                        logger.warning(f"Unknown outlier detection method: {method_type}")
+                        continue
+
+                    outlier_flags[method_type] = flags
+
+                except Exception as e:
+                    logger.error(f"Failed to apply outlier detection {method_type}: {e}")
                     continue
 
-                outlier_flags[method_type] = flags
+            combined_flags = self._combine_outlier_flags(outlier_flags)
+            for col in columns:
+                if col in combined_flags:
+                    result_data[f"{col}_is_outlier"] = combined_flags[col]
 
-            except Exception as e:
-                logger.error(f"Failed to apply outlier detection {method_type}: {e}")
-                continue
-
-        # 異常値フラグを統合
-        combined_flags = self._combine_outlier_flags(outlier_flags)
-        for col in columns:
-            if col in combined_flags:
-                result_data[f"{col}_is_outlier"] = combined_flags[col]
-
-        return result_data
+            return result_data
 
     def _detect_z_score(
-        self, data: pd.DataFrame, columns: List[str], threshold: float = 3.0
-    ) -> Dict[str, np.ndarray]:
+        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, threshold: float = 3.0
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         Z-score法による異常値検出。
 
@@ -159,9 +164,27 @@ class OutlierDetector:
         Returns:
             各列の異常値フラグ
         """
-        flags = {}
+        # 1D array/series path
+        if isinstance(data, (np.ndarray, pd.Series)):
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return np.array([], dtype=bool), np.array([], dtype=int)
 
-        for col in columns:
+            # mask NaNs
+            valid_mask = ~pd.isna(arr)
+            values = arr[valid_mask]
+            if values.size == 0:
+                return np.zeros(arr.shape, dtype=bool), np.array([], dtype=int)
+
+            z_scores = np.abs(stats.zscore(values))
+            outlier_mask = np.full(arr.shape, False)
+            outlier_mask[valid_mask] = z_scores > threshold
+            indices = np.where(outlier_mask)[0]
+            return outlier_mask, indices
+
+        # DataFrame path
+        flags = {}
+        for col in (columns or []):
             if col not in data.columns:
                 continue
 
@@ -180,13 +203,13 @@ class OutlierDetector:
             flags[col] = outlier_mask
 
         logger.debug(
-            f"Z-score detection completed for {len(columns)} columns with threshold {threshold}"
+            f"Z-score detection completed for {len(columns or [])} columns with threshold {threshold}"
         )
         return flags
 
     def _detect_iqr(
-        self, data: pd.DataFrame, columns: List[str], multiplier: float = 1.5
-    ) -> Dict[str, np.ndarray]:
+        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, multiplier: float = 1.5
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         IQR法による異常値検出。
 
@@ -198,9 +221,33 @@ class OutlierDetector:
         Returns:
             各列の異常値フラグ
         """
+        # 1D array/series path
+        if isinstance(data, (np.ndarray, pd.Series)):
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return np.array([], dtype=bool), np.array([], dtype=int)
+
+            valid_mask = ~pd.isna(arr)
+            values = arr[valid_mask]
+            if values.size == 0:
+                return np.zeros(arr.shape, dtype=bool), np.array([], dtype=int)
+
+            Q1 = np.percentile(values, 25)
+            Q3 = np.percentile(values, 75)
+            IQR = Q3 - Q1
+
+            lower_bound = Q1 - multiplier * IQR
+            upper_bound = Q3 + multiplier * IQR
+
+            outlier_mask = np.full(arr.shape, False)
+            outlier_mask[valid_mask] = (values < lower_bound) | (values > upper_bound)
+            indices = np.where(outlier_mask)[0]
+            return outlier_mask, indices
+
+        # DataFrame path
         flags = {}
 
-        for col in columns:
+        for col in (columns or []):
             if col not in data.columns:
                 continue
 
@@ -225,13 +272,13 @@ class OutlierDetector:
             flags[col] = outlier_mask
 
         logger.debug(
-            f"IQR detection completed for {len(columns)} columns with multiplier {multiplier}"
+            f"IQR detection completed for {len(columns or [])} columns with multiplier {multiplier}"
         )
         return flags
 
     def _detect_modified_z_score(
-        self, data: pd.DataFrame, columns: List[str], threshold: float = 3.5
-    ) -> Dict[str, np.ndarray]:
+        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, threshold: float = 3.5
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         Modified Z-score法による異常値検出。
 
@@ -243,9 +290,33 @@ class OutlierDetector:
         Returns:
             各列の異常値フラグ
         """
+        # 1D array/series path
+        if isinstance(data, (np.ndarray, pd.Series)):
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return np.array([], dtype=bool), np.array([], dtype=int)
+
+            valid_mask = ~pd.isna(arr)
+            values = arr[valid_mask]
+            if values.size == 0:
+                return np.zeros(arr.shape, dtype=bool), np.array([], dtype=int)
+
+            median = np.median(values)
+            mad = np.median(np.abs(values - median))
+
+            if mad == 0:
+                return np.zeros(arr.shape, dtype=bool), np.array([], dtype=int)
+
+            modified_z_scores = 0.6745 * (values - median) / mad
+            outlier_mask = np.full(arr.shape, False)
+            outlier_mask[valid_mask] = np.abs(modified_z_scores) > threshold
+            indices = np.where(outlier_mask)[0]
+            return outlier_mask, indices
+
+        # DataFrame path
         flags = {}
 
-        for col in columns:
+        for col in (columns or []):
             if col not in data.columns:
                 continue
 
@@ -270,13 +341,13 @@ class OutlierDetector:
             flags[col] = outlier_mask
 
         logger.debug(
-            f"Modified Z-score detection completed for {len(columns)} columns with threshold {threshold}"
+            f"Modified Z-score detection completed for {len(columns or [])} columns with threshold {threshold}"
         )
         return flags
 
     def _detect_isolation_forest(
-        self, data: pd.DataFrame, columns: List[str], contamination: float = 0.1
-    ) -> Dict[str, np.ndarray]:
+        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, contamination: float = 0.1
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         Isolation Forestによる異常値検出。
 
@@ -290,7 +361,43 @@ class OutlierDetector:
         """
         flags = {}
 
-        # 特徴量を準備
+        # Support 1D array/series input
+        if isinstance(data, (np.ndarray, pd.Series)):
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return np.array([], dtype=bool), np.array([], dtype=int)
+
+            # prepare feature matrix and row-valid mask
+            if arr.ndim == 1:
+                X = arr.reshape(-1, 1)
+                valid_mask = ~pd.isna(arr)
+            else:
+                X = arr
+                valid_mask = ~pd.isna(arr).any(axis=1)
+
+            if valid_mask.sum() == 0:
+                return np.zeros(arr.shape[0], dtype=bool), np.array([], dtype=int)
+
+            X_valid = X[valid_mask]
+
+            scaler_key = f"isolation_forest_{hash(('arr', arr.shape))}"
+            if scaler_key not in self.scalers:
+                self.scalers[scaler_key] = StandardScaler()
+
+            scaled = self.scalers[scaler_key].fit_transform(X_valid)
+
+            model_key = f"isolation_forest_{contamination}"
+            if model_key not in self.trained_models:
+                self.trained_models[model_key] = IsolationForest(contamination=contamination, random_state=self.random_seed)
+
+            outlier_predictions = self.trained_models[model_key].fit_predict(scaled)
+            full_mask = np.full(arr.shape[0], False)
+            pos = np.where(valid_mask)[0]
+            full_mask[pos] = outlier_predictions == -1
+            indices = np.where(full_mask)[0]
+            return full_mask, indices
+
+        # DataFrame path
         feature_data = data[columns].dropna()
         if len(feature_data) == 0:
             for col in columns:
@@ -318,8 +425,9 @@ class OutlierDetector:
         # 各列に同じフラグを適用（特徴量全体としての異常値）
         outlier_mask = outlier_predictions == -1
         full_mask = np.full(len(data), False)
-        valid_indices = data[columns].dropna().index
-        full_mask[valid_indices] = outlier_mask
+        valid_mask = ~data[columns].isna().any(axis=1)
+        pos = np.where(valid_mask)[0]
+        full_mask[pos] = outlier_mask
 
         for col in columns:
             flags[col] = full_mask.copy()
@@ -331,11 +439,11 @@ class OutlierDetector:
 
     def _detect_lof(
         self,
-        data: pd.DataFrame,
-        columns: List[str],
+        data: Union[pd.DataFrame, pd.Series, np.ndarray],
+        columns: Optional[List[str]] = None,
         n_neighbors: int = 20,
         contamination: float = 0.1,
-    ) -> Dict[str, np.ndarray]:
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         Local Outlier Factorによる異常値検出。
 
@@ -350,13 +458,47 @@ class OutlierDetector:
         """
         flags = {}
 
+        # 1D array/series path
+        if isinstance(data, (np.ndarray, pd.Series)):
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return np.array([], dtype=bool), np.array([], dtype=int)
+
+            if arr.ndim == 1:
+                X = arr.reshape(-1, 1)
+                valid_mask = ~pd.isna(arr)
+            else:
+                X = arr
+                valid_mask = ~pd.isna(arr).any(axis=1)
+
+            if valid_mask.sum() == 0:
+                return np.zeros(arr.shape[0], dtype=bool), np.array([], dtype=int)
+
+            X_valid = X[valid_mask]
+
+            scaler_key = f"lof_{hash(('arr', arr.shape))}"
+            if scaler_key not in self.scalers:
+                self.scalers[scaler_key] = StandardScaler()
+
+            scaled = self.scalers[scaler_key].fit_transform(X_valid)
+
+            model_key = f"lof_{n_neighbors}_{contamination}"
+            if model_key not in self.trained_models:
+                self.trained_models[model_key] = LocalOutlierFactor(n_neighbors=n_neighbors, contamination=contamination)
+
+            outlier_predictions = self.trained_models[model_key].fit_predict(scaled)
+            full_mask = np.full(arr.shape[0], False)
+            pos = np.where(valid_mask)[0]
+            full_mask[pos] = outlier_predictions == -1
+            indices = np.where(full_mask)[0]
+            return full_mask, indices
+
         # 特徴量を準備
         feature_data = data[columns].dropna()
         if len(feature_data) == 0:
             for col in columns:
                 flags[col] = np.zeros(len(data), dtype=bool)
             return flags
-
         # スケーリング
         scaler_key = f"lof_{hash(tuple(columns))}"
         if scaler_key not in self.scalers:
@@ -378,8 +520,9 @@ class OutlierDetector:
         # 各列に同じフラグを適用
         outlier_mask = outlier_predictions == -1
         full_mask = np.full(len(data), False)
-        valid_indices = data[columns].dropna().index
-        full_mask[valid_indices] = outlier_mask
+        valid_mask = ~data[columns].isna().any(axis=1)
+        pos = np.where(valid_mask)[0]
+        full_mask[pos] = outlier_mask
 
         for col in columns:
             flags[col] = full_mask.copy()
@@ -391,11 +534,11 @@ class OutlierDetector:
 
     def _detect_stl_decomposition(
         self,
-        data: pd.DataFrame,
-        columns: List[str],
+        data: Union[pd.DataFrame, pd.Series, np.ndarray],
+        columns: Optional[List[str]] = None,
         seasonal: int = 7,
         threshold: float = 2.0,
-    ) -> Dict[str, np.ndarray]:
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         STL分解による時系列異常値検出。
 
@@ -408,9 +551,35 @@ class OutlierDetector:
         Returns:
             各列の異常値フラグ
         """
+        # Series / array path
+        if isinstance(data, (pd.Series, np.ndarray)):
+            series = data if isinstance(data, pd.Series) else pd.Series(np.asarray(data))
+            if len(series) < seasonal * 2:
+                return np.zeros(len(series), dtype=bool), np.array([], dtype=int)
+
+            try:
+                stl = STL(series, seasonal=seasonal, robust=True)
+                result = stl.fit()
+
+                resid_arr = np.asarray(result.resid)
+                residual_std = resid_arr.std()
+                outlier_mask = np.abs(resid_arr) > threshold * residual_std
+                full_mask = np.full(len(series), False)
+                # Align resid positions to full series positions
+                if len(resid_arr) == len(series):
+                    full_mask = outlier_mask
+                else:
+                    pos = np.where(~pd.isna(series))[0][: len(outlier_mask)]
+                    full_mask[pos] = outlier_mask
+                indices = np.where(full_mask)[0]
+                return full_mask, indices
+            except Exception as e:
+                logger.warning(f"STL decomposition failed for series: {e}")
+                return np.zeros(len(series), dtype=bool), np.array([], dtype=int)
+
         flags = {}
 
-        for col in columns:
+        for col in (columns or []):
             if col not in data.columns:
                 continue
 
@@ -430,8 +599,8 @@ class OutlierDetector:
 
                 # 元のデータフレームにマッピング
                 full_mask = np.full(len(data), False)
-                valid_indices = values.index
-                full_mask[valid_indices] = outlier_mask
+                pos = np.where(~data[col].isna())[0]
+                full_mask[pos[: len(outlier_mask)]] = outlier_mask
 
                 flags[col] = full_mask
 
@@ -446,11 +615,11 @@ class OutlierDetector:
 
     def _detect_arima_residual(
         self,
-        data: pd.DataFrame,
-        columns: List[str],
+        data: Union[pd.DataFrame, pd.Series, np.ndarray],
+        columns: Optional[List[str]] = None,
         order: Tuple[int, int, int] = (1, 1, 1),
         threshold: float = 2.0,
-    ) -> Dict[str, np.ndarray]:
+    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
         """
         ARIMA残差分析による異常値検出。
 
@@ -463,9 +632,34 @@ class OutlierDetector:
         Returns:
             各列の異常値フラグ
         """
+        # Series/array path
+        if isinstance(data, (pd.Series, np.ndarray)):
+            series = data if isinstance(data, pd.Series) else pd.Series(np.asarray(data))
+            if len(series) < 10:
+                return np.zeros(len(series), dtype=bool), np.array([], dtype=int)
+
+            try:
+                model = ARIMA(series, order=order)
+                fitted_model = model.fit()
+                resid = fitted_model.resid
+                resid_arr = np.asarray(resid)
+                residual_std = resid_arr.std()
+                outlier_mask = np.abs(resid_arr) > threshold * residual_std
+                full_mask = np.full(len(series), False)
+                if len(resid_arr) == len(series):
+                    full_mask = outlier_mask
+                else:
+                    pos = np.where(~pd.isna(series))[0][: len(outlier_mask)]
+                    full_mask[pos] = outlier_mask
+                indices = np.where(full_mask)[0]
+                return full_mask, indices
+            except Exception as e:
+                logger.warning(f"ARIMA residual analysis failed for series: {e}")
+                return np.zeros(len(series), dtype=bool), np.array([], dtype=int)
+
         flags = {}
 
-        for col in columns:
+        for col in (columns or []):
             if col not in data.columns:
                 continue
 
@@ -488,8 +682,8 @@ class OutlierDetector:
 
                 # 元のデータフレームにマッピング
                 full_mask = np.full(len(data), False)
-                valid_indices = values.index
-                full_mask[valid_indices] = outlier_mask
+                pos = np.where(~data[col].isna())[0]
+                full_mask[pos[: len(outlier_mask)]] = outlier_mask
 
                 flags[col] = full_mask
 
@@ -501,8 +695,8 @@ class OutlierDetector:
         return flags
 
     def _combine_outlier_flags(
-        self, outlier_flags: Dict[str, Dict[str, np.ndarray]]
-    ) -> Dict[str, np.ndarray]:
+        self, outlier_flags: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
+    ) -> Union[Dict[str, np.ndarray], np.ndarray]:
         """
         複数の検出手法の結果を統合。
 
@@ -513,25 +707,34 @@ class OutlierDetector:
             統合された異常値フラグ
         """
         if not outlier_flags:
-            return {}
+            return {} if any(isinstance(v, dict) for v in outlier_flags.values()) else np.array([], dtype=bool)
 
-        # 最初の手法の列を取得
-        first_method = next(iter(outlier_flags.values()))
+        # Detect if inputs are per-column dicts or simple arrays
+        sample = next(iter(outlier_flags.values()))
+
+        # Array-like flags (method -> ndarray)
+        if isinstance(sample, np.ndarray):
+            method_arrays = [v for v in outlier_flags.values() if isinstance(v, np.ndarray)]
+            if not method_arrays:
+                return np.array([], dtype=bool)
+
+            stacked = np.stack(method_arrays, axis=0)
+            combined = np.sum(stacked, axis=0) > (len(method_arrays) / 2)
+            return combined
+
+        # Dict per-column path (method -> {col: ndarray})
+        first_method = sample
         combined_flags = {}
 
         for col in first_method.keys():
-            # 各手法のフラグを収集
             method_flags = []
             for method_flags_dict in outlier_flags.values():
-                if col in method_flags_dict:
+                if isinstance(method_flags_dict, dict) and col in method_flags_dict:
                     method_flags.append(method_flags_dict[col])
 
             if method_flags:
-                # 多数決で統合（過半数の手法が異常値と判定）
                 stacked_flags = np.stack(method_flags, axis=0)
-                combined_flags[col] = (
-                    np.sum(stacked_flags, axis=0) > len(method_flags) / 2
-                )
+                combined_flags[col] = np.sum(stacked_flags, axis=0) > (len(method_flags) / 2)
             else:
                 combined_flags[col] = np.zeros(len(first_method[col]), dtype=bool)
 

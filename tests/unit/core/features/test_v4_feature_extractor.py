@@ -7,7 +7,7 @@ V4FeatureExtractorの単体テスト
 import pytest
 import numpy as np
 import pandas as pd
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from ztb.features.unified_feature import V4FeatureExtractor
 

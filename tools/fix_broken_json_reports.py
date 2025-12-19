@@ -63,7 +63,7 @@ def main():
     
     print(f"\n{'='*60}")
     print(f"Fixed {fixed_count} files")
-    print(f"Backup files created with .json.bak extension")
+    print("Backup files created with .json.bak extension")
 
 
 if __name__ == "__main__":

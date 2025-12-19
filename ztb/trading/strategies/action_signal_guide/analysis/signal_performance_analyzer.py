@@ -5,10 +5,9 @@ This component analyzes the performance correlation between Action Signal Guide
 signals and SAC learning outcomes, providing quantitative metrics for signal quality.
 """
 
-import logging
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd

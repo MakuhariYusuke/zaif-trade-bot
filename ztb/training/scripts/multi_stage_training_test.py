@@ -96,7 +96,7 @@ def simulate_training_stage(
         total_reward += reward
 
         if (step + 1) % (timesteps // 10) == 0:
-            progress = (step + 1) / timesteps * 100
+            (step + 1) / timesteps * 100
             print(".1f")
 
     elapsed = time.time() - start_time
@@ -107,7 +107,7 @@ def simulate_training_stage(
     print(".4f")
     print("Action Distribution:")
     for action, count in actions.items():
-        pct = count / timesteps * 100
+        count / timesteps * 100
         print(".1f")
 
     return total_reward, avg_reward, actions, elapsed

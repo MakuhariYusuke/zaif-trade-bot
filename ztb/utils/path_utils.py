@@ -39,18 +39,19 @@ def get_project_root() -> Path:
     return current.parent.parent.parent
 
 
-def ensure_dir(path: Path) -> Path:
+def ensure_dir(path: str | Path) -> Path:
     """
     Ensure a directory exists, creating it if necessary.
 
     Args:
-        path: Directory path to ensure exists
+        path: Directory path to ensure exists (Path or string)
 
     Returns:
         The same path for chaining
     """
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    p = Path(path)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def safe_path_join(*parts: str) -> Path:

@@ -1,8 +1,6 @@
-import pytest
 
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
-from ztb.trading.environment.components.reward.mtf_weight_manager import MTFWeightManager
 from ztb.trading.environment.utils.config import RewardSettings
 from ztb.trading.constants import ACTION_HOLD
 

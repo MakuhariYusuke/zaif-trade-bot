@@ -35,12 +35,10 @@ except ImportError:
     OPTUNA_AVAILABLE = False
     logger.warning("Optuna not available. Bayesian optimization will be disabled.")
 
-try:
-    from tqdm import tqdm
+import importlib.util  # noqa: E402
 
-    TQDM_AVAILABLE = True
-except ImportError:
-    TQDM_AVAILABLE = False
+TQDM_AVAILABLE = importlib.util.find_spec("tqdm") is not None
+if not TQDM_AVAILABLE:
     logger.warning("tqdm not available. Progress bars will be disabled.")
 
 

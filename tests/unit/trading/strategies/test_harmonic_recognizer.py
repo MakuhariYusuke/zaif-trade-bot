@@ -167,9 +167,6 @@ class TestCrabRecognizer(unittest.TestCase):
 class TestHarmonicCache(unittest.TestCase):
     """Test cases for harmonic pattern caching."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.analyzer = HarmonicAnalyzer()
 
     def test_pivot_cache(self):
         """Test that pivot point caching works."""

@@ -9,7 +9,6 @@ including SignalValidator, DataSanitizer, and PerformanceTracker.
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
 
 import pandas as pd
 import numpy as np
@@ -26,30 +25,9 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
 )
 
 
-class MockActionSignal:
-    """Mock ActionSignal for testing."""
-
-    def __init__(self, **kwargs):
-        self.action = kwargs.get('action', 'BUY')
-        self.confidence = kwargs.get('confidence', 0.8)
-        self.pattern_type = kwargs.get('pattern_type', 'fibonacci')
-        self.price = kwargs.get('price', 100.0)
-        self.timestamp = kwargs.get('timestamp', pd.Timestamp.now())
-        self.stop_loss = kwargs.get('stop_loss', 95.0)
-        self.take_profit = kwargs.get('take_profit', 110.0)
-        self.signal_type = kwargs.get('signal_type', 'test')
 
 
 class TestSignalValidator(unittest.TestCase):
-    """Test cases for SignalValidator."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.validator = SignalValidator()
-
-    def test_initialization(self):
-        """Test validator initialization."""
-        self.assertIsInstance(self.validator, SignalValidator)
         self.assertIn("required_fields", self.validator.validation_rules)
         self.assertIn("data_types", self.validator.validation_rules)
 

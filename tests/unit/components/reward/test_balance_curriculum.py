@@ -9,7 +9,6 @@ Tests:
 """
 
 import pytest
-import numpy as np
 from unittest.mock import Mock
 from ztb.trading.environment.components.reward.balance_curriculum import (
     BalanceCurriculumManager,

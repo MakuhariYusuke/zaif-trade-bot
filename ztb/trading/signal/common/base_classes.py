@@ -229,9 +229,6 @@ class BaseRegimeAdapter(ABC):
         self.adaptation_params = self.config.get("adaptation_params", {})
 
     @abstractmethod
-    def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration"""
-        pass
 
     @abstractmethod
     def adapt_parameters(

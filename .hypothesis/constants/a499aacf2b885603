@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward\mtf_weight_manager.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-12, 1e-09, 0.01, 0.05, 0.1, 0.15, 0.3, 0.5, 0.55, 0.8, 1.0, '15min', '1min', '5min', '_candidate_id', 'avg_return', 'mtf_weight_alpha', 'sharpe', 'tf_metrics']

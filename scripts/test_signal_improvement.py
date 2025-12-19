@@ -13,7 +13,6 @@ Signal Guidance Improvement Backtest Validation Script
 """
 
 import sys
-import os
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import numpy as np

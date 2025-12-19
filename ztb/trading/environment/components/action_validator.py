@@ -1,6 +1,7 @@
 # Action validation utilities for trading environment
 # 取引環境のアクション検証ユーティリティ
 
+import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
@@ -39,6 +40,8 @@ class ActionValidator:
         close_array: Optional[NDArray[np.float32]] = None,
         price_array: Optional[NDArray[np.float32]] = None,
         df: Optional[Any] = None,
+        market_regime: Optional[str] = None,
+        hybrid_filters: Optional[dict] = None,
     ) -> NDArray[np.int_]:
         """現在の状態で合法なアクションを返す（1=合法, 0=非法）"""
         legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
@@ -58,6 +61,33 @@ class ActionValidator:
 
         # HOLDは常に合法
         legal[0] = 1
+
+        # --- Hybrid Regime Filter (for action masking observability) ---
+        if hybrid_filters and hybrid_filters.get("enabled", False) and market_regime:
+            regime_filter = hybrid_filters.get("regime_filter", {})
+            if regime_filter.get("enabled", False):
+                mode = str(regime_filter.get("mode", "hard")).lower()
+                permission_raw: Any = None
+
+                if mode == "soft":
+                    constraints = regime_filter.get("regime_constraints", {})
+                    if isinstance(constraints, dict):
+                        constraint = constraints.get(str(market_regime))
+                        if isinstance(constraint, dict):
+                            permission_raw = constraint.get("action_permission")
+
+                if permission_raw is None:
+                    excluded_regimes = regime_filter.get("excluded_regimes", [])
+                    if market_regime in excluded_regimes:
+                        permission_raw = "deny"
+
+                if str(permission_raw or "allow").lower() == "deny":
+                    # Allow HOLD always; allow closing existing position for risk management.
+                    if position > 0:
+                        legal[2] = 1  # SELL to close long
+                    elif position < 0:
+                        legal[1] = 1  # BUY to close short
+                    return legal
 
         # 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）
         exchange = getattr(self.config, "exchange", "coincheck").lower()
@@ -132,27 +162,18 @@ class ActionValidator:
             legal[2] = 1
 
         # HOLDは常に合法なので、全て0になることはない
-        logger.info(
-            # legal_actions: [HOLD, BUY, SELL] の合法性
-            # affordable_size: 現在資金で購入可能なBTC量
-            # ideal_buy_cost: 理想的なBUY時の必要資金
-            # ideal_sell_value: 理想的なSELL時の必要資金
-            # portfolio_value: 現在のポートフォリオ価値
-            # position: 現在のポジションサイズ
-            # current_price: 現在価格
-            f"ActionValidator: legal_actions={[bool(x) for x in legal]}, "  # [HOLD, BUY, SELL] の合法性
-            f"affordable_size={affordable_size:.6f}, "  # 購入可能BTC量
-            f"ideal_buy_cost={ideal_buy_cost:.2f}, "  # BUY時必要資金
-            f"ideal_sell_value={ideal_sell_value:.2f}, "  # SELL時必要資金
-            f"portfolio_value={portfolio_value:.2f}, "  # ポートフォリオ価値
-            f"position={position:.6f}, "  # ポジションサイズ
-            """
-        Resolve current price for action validation.
-
-        Returns:
-            float: The resolved price for the current step. If the price cannot be obtained, returns 0.0.
-        """
-        )
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "ActionValidator: legal_actions=%s, affordable_size=%.6f, "
+                "ideal_buy_cost=%.2f, ideal_sell_value=%.2f, portfolio_value=%.2f, "
+                "position=%.6f",
+                [bool(x) for x in legal],
+                affordable_size,
+                ideal_buy_cost,
+                ideal_sell_value,
+                portfolio_value,
+                position,
+            )
         return legal
 
     def _resolve_price(

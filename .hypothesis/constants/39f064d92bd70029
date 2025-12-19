@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\risk\compat.py
+# hypothesis_version: 6.140.3
+
+[0.05, 0.5, 0.6, 0.98, 1.0, 1.04, 2.0, 'can_open_position', 'get_position_size', 'max_position_size', 'on_trade', 'portfolio_value', 'reset', 'should_exit', 'should_open_position', 'stop_loss', 'take_profit', 'test_mode', 'update_risk_metrics']

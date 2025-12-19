@@ -208,7 +208,7 @@ class V4XXConfigConverter:
             curriculum_stage = curriculum_learning["curriculum_stage"]
             unified_env["curriculum_stage"] = curriculum_stage
             logger.info(f"Mapped curriculum_stage '{curriculum_stage}' to training.environment config")
-        
+
         # Also ensure curriculum_learning is preserved for other components that may need it
         if "curriculum_learning" in training_config:
             unified_config["training"]["curriculum_learning"] = training_config["curriculum_learning"]

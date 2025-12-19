@@ -21,7 +21,6 @@ warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.utils.logging_utils import setup_logging
-from ztb.utils.config_loader import safe_json_load
 
 # ロギング設定
 logging.basicConfig(
@@ -36,10 +35,9 @@ setup_logging(level=logging.DEBUG)
 # 環境をインポート
 sys.path.append(str(Path(__file__).parent))
 
-from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.config.unified_config import UnifiedConfig
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.analysis_formatters import print_formatted_metrics
 from backtest.data_generator import generate_synthetic_data
 
@@ -96,15 +94,18 @@ def run_simple_backtest(model_name, config_path):
         logger.info("✅ Config converted to dict format for compatibility")
 
         # データ読み込み
-        # Load data - use synthetic data for backtesting
-        data_file = "data/btc_jpy_real_dataset.csv"  # Use synthetic data with realistic BTC prices
+        # Load data - use v454 data for backtesting
+        data_file = "data/btc_jpy_1m_v454.csv"
         
-        # Generate synthetic data if file doesn't exist or is corrupted
         if not Path(data_file).exists():
-            logger.info("Generating synthetic BTC price data...")
-            synthetic_df = generate_synthetic_data(n_periods=5000, start_price=50000.0, volatility=500)
-            synthetic_df.to_csv(data_file)
-            logger.info(f"✅ Synthetic data generated and saved to {data_file}")
+            logger.warning(f"Data file {data_file} not found, falling back to synthetic data")
+            data_file = "data/btc_jpy_real_dataset.csv"
+            # Generate synthetic data if file doesn't exist or is corrupted
+            if not Path(data_file).exists():
+                logger.info("Generating synthetic BTC price data...")
+                synthetic_df = generate_synthetic_data(n_periods=5000, start_price=50000.0, volatility=500)
+                synthetic_df.to_csv(data_file)
+                logger.info(f"✅ Synthetic data generated and saved to {data_file}")
         
         df = pd.read_csv(data_file)
         logger.info(f"✅ Data loaded: {len(df)} rows from {data_file}")
@@ -115,14 +116,32 @@ def run_simple_backtest(model_name, config_path):
 
         # 特徴量エンジニアリングを使用せずに基本的な特徴量のみを使用
         # 学習時と同じ観測空間にするため
-        basic_features = ['open', 'high', 'low', 'close', 'volume']
-        if all(col in df.columns for col in basic_features):
-            featured_df = df.copy()
-            available_features = basic_features
-            logger.info(f"✅ Using basic features: {available_features}")
+        # v454 uses 209 columns, we need to ensure we pass the correct columns
+        # For now, we'll use all columns in the dataframe as features if it's the v454 dataset
+        if "v454" in data_file:
+             # Exclude non-feature columns if any (e.g. timestamp)
+             exclude_cols = ['timestamp', 'date', 'time']
+             available_features = [col for col in df.columns if col not in exclude_cols]
+             
+             # IMPORTANT: The model expects 166 features, but the dataset has 209.
+             # We need to truncate or select the first 166 features to match the model's observation space.
+             # This is a temporary fix to allow backtesting to proceed.
+             # Ideally, we should use the exact same feature set used during training.
+             # if len(available_features) > 166:
+             #     logger.warning(f"Truncating features from {len(available_features)} to 166 to match model observation space")
+             #     available_features = available_features[:166]
+             
+             featured_df = df.copy()
+             logger.info(f"✅ Using v454 features: {len(available_features)} columns")
         else:
-            logger.error("❌ Basic OHLCV features not found in data")
-            return None
+            basic_features = ['open', 'high', 'low', 'close', 'volume']
+            if all(col in df.columns for col in basic_features):
+                featured_df = df.copy()
+                available_features = basic_features
+                logger.info(f"✅ Using basic features: {available_features}")
+            else:
+                logger.error("❌ Basic OHLCV features not found in data")
+                return None
 
         # モデルロード
         model_path = f"models/{model_name}.zip"
@@ -157,11 +176,17 @@ def run_simple_backtest(model_name, config_path):
         # 環境作成 (reward_settingsとfeature_columnsを渡す)
         logger.info("Creating HeavyTradingEnv...")
         try:
+            # Ensure reward_settings are in the config object
+            if reward_settings:
+                env_config_obj.reward_settings = reward_settings
+            
+            # Force target feature count to match model observation space (166)
+            # This handles the slight discrepancy between training and backtest feature reduction
+            env_config_obj.target_feature_count = 166
+
             env = HeavyTradingEnv(
-                data=featured_df,  # 特徴量生成済みのデータを使用
+                df=featured_df,  # 特徴量生成済みのデータを使用
                 config=env_config_obj,
-                reward_settings=reward_settings,
-                feature_columns=available_features,
             )
             logger.info("✅ HeavyTradingEnv created successfully")
             logger.debug(f"Environment observation space: {env.observation_space}")

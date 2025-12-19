@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 SAC Suite - Unified Soft Actor-Critic trading system toolkit
 
@@ -86,7 +87,7 @@ class SACSuite:
         try:
             # Load configuration
             config_path = getattr(args, "config", None)
-            global_config = (
+            (
                 self.config_manager.load_config(config_path)
                 if config_path
                 else self.config_manager.load_config()
@@ -167,7 +168,7 @@ class SACSuite:
                 if config_path
                 else self.config_manager.load_config()
             )
-            training_config = (
+            (
                 global_config.training.model_dump() if global_config.training else {}
             )
 
@@ -443,8 +444,8 @@ def create_parser() -> argparse.ArgumentParser:
         "--apply", action="store_true", help="Actually apply changes"
     )
 
-    quality_parser = utils_subparsers.add_parser("quality", help="Check code quality")
-    fix_parser = utils_subparsers.add_parser("fix", help="Fix common issues")
+    utils_subparsers.add_parser("quality", help="Check code quality")
+    utils_subparsers.add_parser("fix", help="Fix common issues")
 
     return parser
 

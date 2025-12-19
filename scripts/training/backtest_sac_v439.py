@@ -17,13 +17,8 @@ sys.path.insert(0, str(project_root))
 
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.environments.environment_config import EnvironmentConfig
-from ztb.analysis.sac_backtester import SACBacktester
 
 
-def load_config_from_file(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 
 def main():

@@ -7,8 +7,7 @@ all signal processing components.
 
 import pytest
 import pandas as pd
-import numpy as np
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from ztb.trading.signal.common.base_classes import (
     BaseSignalProcessor, SignalContext, SignalResult

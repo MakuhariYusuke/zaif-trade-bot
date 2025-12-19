@@ -16,10 +16,6 @@ sys.path.insert(0, str(project_root))
 from ztb.analysis.sac_backtester import SACBacktester
 
 
-def load_config_from_file(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 
 def main():

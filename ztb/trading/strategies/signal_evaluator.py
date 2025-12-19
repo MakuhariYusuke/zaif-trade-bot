@@ -110,6 +110,7 @@ class SignalEvaluator:
         capital = initial_capital
         position = 0.0  # Position size in base currency
         entry_price = 0.0
+        entry_price_time = None
         trades = []
         signal_performances = {}
 
@@ -146,7 +147,7 @@ class SignalEvaluator:
                     capital += pnl
                     trades.append(
                         {
-                            "entry_time": entry_price_time,
+                            "entry_time": entry_price_time if entry_price_time is not None else idx,
                             "exit_time": idx,
                             "entry_price": entry_price,
                             "exit_price": current_price,

@@ -9,10 +9,21 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 import torch
-from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CallbackList, EvalCallback
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
+
+# Guard SB3 imports to avoid import-time errors in minimal test environments.
+try:
+    from stable_baselines3 import SAC
+    from stable_baselines3.common.callbacks import CallbackList, EvalCallback
+    from stable_baselines3.common.monitor import Monitor
+    from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
+except Exception:
+    SAC = None
+    CallbackList = list
+    EvalCallback = type("EvalCallback", (), {})
+    Monitor = None
+    DummyVecEnv = None
+    VecFrameStack = None
+    VecNormalize = None
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -29,6 +40,8 @@ from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
 from ztb.utils.training_utils import create_checkpoint_callback
+from ztb.features.processors.optimization.features import OptimizerFeatureTracker
+from ztb.training.unified_trainer.base.base_trainer import ModelError
 
 
 class SACTrainer(BaseAlgorithmTrainer):
@@ -46,7 +59,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         super().__init__(config, logger)
         self.env = env
         # model will be instantiated later; annotate as optional to satisfy mypy
-        self.model: Optional[SAC] = None
+        self.model: Optional[object] = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
         self.optimizer_tracker = optimizer_tracker
@@ -591,8 +604,6 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
                 raise
 
-            import time
-
             feature_start = time.perf_counter()
             env = HeavyTradingEnv(
                 df=df,
@@ -789,27 +800,69 @@ class SACTrainer(BaseAlgorithmTrainer):
                     f"Using GRUFeatureExtractor with hidden_size={sac_config.get('recurrent_hidden_size', 128)}"
                 )
 
-            # Create SAC model
+                # Create SAC model (import SB3 lazily to avoid import-time failures)
             if self.model is None:
                 self.log_structured_event(
                     "model", "creation", {"algorithm": "SAC", "policy": "MlpPolicy"}
                 )
-                self.model = SAC(
-                    "MlpPolicy",
-                    wrapped_env,
-                    learning_rate=sac_config.get("learning_rate", 0.0003),
-                    buffer_size=sac_config.get("buffer_size", 1000000),
-                    learning_starts=sac_config.get("learning_starts", 100),
-                    batch_size=sac_config.get("batch_size", 256),
-                    tau=sac_config.get("tau", 0.005),
-                    gamma=sac_config.get("gamma", 0.99),
-                    train_freq=sac_config.get("train_freq", 1),
-                    gradient_steps=sac_config.get("gradient_steps", 1),
-                    ent_coef=sac_config.get("ent_coef", "auto"),
-                    target_update_interval=sac_config.get("target_update_interval", 1),
-                    policy_kwargs=policy_kwargs if policy_kwargs else None,
-                    verbose=0,  # We'll handle logging ourselves
+                try:
+                    from stable_baselines3 import SAC as _LocalSAC
+                except Exception:
+                    _LocalSAC = None
+
+                if _LocalSAC is None:
+                    raise ModelError("stable_baselines3.SAC is not available in this environment")
+
+                # Optional warm-start: load weights/hyperparams from a saved SB3 model zip.
+                # Note: SB3 does NOT persist the replay buffer by default, so the buffer starts empty.
+                init_model_path = (
+                    self.config.get("training", {}).get("init_model_path")
+                    or self.config.get("training", {}).get("initial_model_path")
+                    or self.config.get("training", {}).get("pretrained_model_path")
                 )
+                if init_model_path:
+                    try:
+                        if os.path.exists(str(init_model_path)):
+                            self.log_structured_event(
+                                "model", "load_initial", {"path": str(init_model_path)}
+                            )
+                            self.logger.info(
+                                "Loading initial SAC model from %s", init_model_path
+                            )
+                            self.model = _LocalSAC.load(
+                                str(init_model_path), env=wrapped_env
+                            )
+                        else:
+                            self.logger.warning(
+                                "Initial model path not found: %s", init_model_path
+                            )
+                    except Exception as e:
+                        self.logger.warning(
+                            "Failed to load initial SAC model from %s: %s (falling back to new model)",
+                            init_model_path,
+                            e,
+                        )
+                        self.model = None
+
+                if self.model is None:
+                    self.model = _LocalSAC(
+                        "MlpPolicy",
+                        wrapped_env,
+                        learning_rate=sac_config.get("learning_rate", 0.0003),
+                        buffer_size=sac_config.get("buffer_size", 1000000),
+                        learning_starts=sac_config.get("learning_starts", 100),
+                        batch_size=sac_config.get("batch_size", 256),
+                        tau=sac_config.get("tau", 0.005),
+                        gamma=sac_config.get("gamma", 0.99),
+                        train_freq=sac_config.get("train_freq", 1),
+                        gradient_steps=sac_config.get("gradient_steps", 1),
+                        ent_coef=sac_config.get("ent_coef", "auto"),
+                        target_update_interval=sac_config.get(
+                            "target_update_interval", 1
+                        ),
+                        policy_kwargs=policy_kwargs if policy_kwargs else None,
+                        verbose=0,  # We'll handle logging ourselves
+                    )
             else:
                 self.logger.info("Using existing model instance")
                 self.model.set_env(wrapped_env)
@@ -870,11 +923,29 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
 
             # Execute training
+            reset_override = None
+            training_cfg = self.config.get("training", {})
+            if isinstance(training_cfg, dict):
+                reset_override = training_cfg.get("reset_num_timesteps")
+
+            # Default: when resuming, keep the timestep counter; otherwise start fresh.
+            reset_num_timesteps = resumed_state is None
+            if reset_override is not None:
+                reset_num_timesteps = bool(reset_override)
+
             self.log_structured_event(
-                "training", "execution", {"timesteps": total_timesteps}
+                "training",
+                "execution",
+                {
+                    "timesteps": total_timesteps,
+                    "reset_num_timesteps": reset_num_timesteps,
+                },
             )
             model.learn(
-                total_timesteps=total_timesteps, callback=callback, progress_bar=True
+                total_timesteps=total_timesteps,
+                callback=callback,
+                progress_bar=True,
+                reset_num_timesteps=reset_num_timesteps,
             )
 
             # Training completed
@@ -1208,7 +1279,15 @@ class SACTrainer(BaseAlgorithmTrainer):
         """Load a trained SAC model from file."""
         try:
             self.logger.info(f"Loading SAC model from {model_path}")
-            self.model = SAC.load(model_path)
+            try:
+                from stable_baselines3 import SAC as _LocalSAC
+            except Exception:
+                _LocalSAC = None
+
+            if _LocalSAC is None:
+                raise ModelError("stable_baselines3.SAC is not available in this environment")
+
+            self.model = _LocalSAC.load(model_path)
             self.logger.info("✅ Model loaded successfully")
             return True
         except Exception as e:
@@ -1279,7 +1358,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             from ztb.training.hyperparameter_optimizer import HyperparameterOptimizer
 
             # Create optimizer
-            optimizer = HyperparameterOptimizer(
+            HyperparameterOptimizer(
                 config={
                     "algorithm": "sac",
                     "param_space": param_space,
@@ -1571,8 +1650,8 @@ class SACTrainer(BaseAlgorithmTrainer):
 
             # Get regime statistics from environment if available
             regime_stats = {}
-            if hasattr(env, "regime_stats") and env.regime_stats:
-                regime_stats = env.regime_stats.copy()
+            if hasattr(self, "env") and self.env is not None and hasattr(self.env, "regime_stats") and self.env.regime_stats:
+                regime_stats = self.env.regime_stats.copy()
 
             # Calculate training metrics
             training_metrics = {

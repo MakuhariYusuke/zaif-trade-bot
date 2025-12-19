@@ -10,7 +10,7 @@ Comprehensive unit tests for SAC v444 fixes
 import pytest
 import json
 from pathlib import Path
-from collections import deque, Counter
+from collections import deque
 import logging
 
 # Setup logging
@@ -18,9 +18,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
 from ztb.trading.environment.components.reward.base_reward_calculator import BaseRewardCalculator
-from ztb.trading.environment.components.reward.action_penalty import ActionPenaltyCalculator
 
 
 class TestConfigLoading:
@@ -74,7 +72,7 @@ class TestConfigLoading:
         assert config.max_position_size == 1.0, f"max_position_size should be 1.0, got {config.max_position_size}"
         assert config.base_action_penalty == 1.0, f"base_action_penalty should be 1.0, got {config.base_action_penalty}"
         
-        logger.info(f"✅ All environment keys properly loaded")
+        logger.info("✅ All environment keys properly loaded")
 
 
 class TestActionHistoryTracking:
@@ -102,7 +100,7 @@ class TestActionHistoryTracking:
         assert base_calc._recent_actions.maxlen == 100, \
             f"_recent_actions.maxlen should be 100, got {base_calc._recent_actions.maxlen}"
         
-        logger.info(f"✅ _recent_actions properly initialized as deque(maxlen=100)")
+        logger.info("✅ _recent_actions properly initialized as deque(maxlen=100)")
     
     def test_deque_auto_removal_on_maxlen_exceed(self):
         """Verify deque automatically removes old items when maxlen exceeded"""
@@ -136,7 +134,7 @@ class TestActionHistoryTracking:
         assert new_deque.maxlen == 100, f"maxlen should be 100, got {new_deque.maxlen}"
         assert len(new_deque) == 0, f"after reset, should be empty, got {len(new_deque)}"
         
-        logger.info(f"✅ reset() preserves deque type and maxlen")
+        logger.info("✅ reset() preserves deque type and maxlen")
 
 
 class TestBalancePenaltyCalculation:
@@ -237,10 +235,10 @@ class TestActionPenaltyCalculator:
         # - HOLD: base_penalty (1.0) - bonus (2.0)  = -1.0 ✓
         
         # These bonuses create incentive to diversify beyond SELL-lock
-        logger.info(f"✅ Action penalty bonuses configured correctly (see reward_calculator.py)")
-        logger.info(f"   BUY penalty:  -9.0 (highest bonus)")
-        logger.info(f"   SELL penalty: -4.0 (medium bonus)")
-        logger.info(f"   HOLD penalty: -1.0 (lowest bonus)")
+        logger.info("✅ Action penalty bonuses configured correctly (see reward_calculator.py)")
+        logger.info("   BUY penalty:  -9.0 (highest bonus)")
+        logger.info("   SELL penalty: -4.0 (medium bonus)")
+        logger.info("   HOLD penalty: -1.0 (lowest bonus)")
 
 
 if __name__ == "__main__":

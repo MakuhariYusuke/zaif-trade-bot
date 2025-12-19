@@ -6,7 +6,6 @@ This test demonstrates that the current balance penalty calculation
 does not enforce BUY/SELL balance, only diversity.
 """
 
-import pytest
 from collections import Counter
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL

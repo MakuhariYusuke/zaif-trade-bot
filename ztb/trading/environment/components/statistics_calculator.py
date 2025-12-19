@@ -6,11 +6,12 @@ including reward statistics, trading metrics, and performance analysis.
 """
 
 from collections import deque
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.types import EPSILON, StatisticsDict
 from ztb.utils.logging_utils import get_logger
 
@@ -105,9 +106,17 @@ class StatisticsCalculator:
 
             # Trading statistics
             if self.action_history:
-                buy_actions = sum(1 for a in self.action_history if a == 1)  # ACTION_BUY
-                sell_actions = sum(1 for a in self.action_history if a == 2)  # ACTION_SELL
-                hold_actions = sum(1 for a in self.action_history if a == 0)  # ACTION_HOLD
+                buy_actions = sum(
+                    1 for a in self.action_history if a == ACTION_BUY
+                )  # ACTION_BUY=1
+                sell_actions = sum(
+                    1
+                    for a in self.action_history
+                    if a == ACTION_SELL or a == 2  # Legacy support (2=SELL)
+                )  # ACTION_SELL=-1
+                hold_actions = sum(
+                    1 for a in self.action_history if a == ACTION_HOLD
+                )  # ACTION_HOLD=0
 
                 stats.update({
                     "total_actions": len(self.action_history),

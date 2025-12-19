@@ -144,7 +144,7 @@ class RewardFunctionDisplayManager:
         params = list(importance_data.keys())
         importance = list(importance_data.values())
 
-        bars = plt.barh(params, importance)
+        plt.barh(params, importance)
         plt.xlabel("Importance")
         plt.ylabel("Parameters")
         plt.title(f"Parameter Importance - {stage_name}")

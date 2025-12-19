@@ -106,10 +106,6 @@ def test_evaluate_candidate_retries(tmp_path: Path, monkeypatch):
             rpt_file = reports_dir / f"training_report_fake_{i}.json"
             rpt_file.write_text(json.dumps(report), encoding="utf-8")
 
-        class R:
-            returncode = 0
-            stdout = "OK"
-            stderr = ""
 
         return R()
 
@@ -192,10 +188,6 @@ def test_evaluate_candidate_partial_report_cleanup(tmp_path: Path, monkeypatch):
                 returncode = 1
                 stdout = ""
                 stderr = "failed"
-
-            return R()
-        # second run succeeds and writes a proper report
-        report = {
             "configuration": {"training": {"model_name": "mtf_test_candidate"}},
             "training_stats": {"sharpe_ratio": 0.6, "total_return": 0.06},
         }
@@ -206,10 +198,6 @@ def test_evaluate_candidate_partial_report_cleanup(tmp_path: Path, monkeypatch):
             returncode = 0
             stdout = "OK"
             stderr = ""
-
-        return R()
-
-    monkeypatch.setattr("subprocess.run", fake_run)
     metrics = evaluate_candidate(
         str(cfg_path),
         seeds=1,

@@ -49,6 +49,7 @@ from .pattern_recognition.oscillator_patterns import (
     StochasticRecognizer,
     WilliamsRRecognizer,
 )
+from .pattern_recognition.volume_patterns import ChaikinADRecognizer
 from .pattern_recognition.rsi import RSIPatternRecognizer
 from .pattern_recognition.trend_analyzer import HierarchicalTrendAnalyzer
 from .pattern_recognition.wave_counting import (

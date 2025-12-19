@@ -68,6 +68,7 @@ def apply_cpu_tuning() -> None:
 
     os.environ.setdefault("OMP_NUM_THREADS", str(per))
     os.environ.setdefault("MKL_NUM_THREADS", str(per))
+    tmod = None
     try:
         import importlib
 
@@ -78,7 +79,7 @@ def apply_cpu_tuning() -> None:
 
     logging.info(
         f"[CPU] physical={physical} logical={logical} procs={procs} threads_per_proc={per} "
-        f"torch={getattr(torch, 'get_num_threads', lambda: '?')()} "
+        f"torch={getattr(tmod, 'get_num_threads', lambda: '?')()} "
         f"OMP={os.environ['OMP_NUM_THREADS']} MKL={os.environ['MKL_NUM_THREADS']} "
         f"OPENBLAS={os.environ['OPENBLAS_NUM_THREADS']}"
     )

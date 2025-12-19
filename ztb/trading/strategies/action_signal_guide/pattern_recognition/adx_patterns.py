@@ -22,7 +22,7 @@ except ImportError:
 
 from ztb.utils.performance_utils import timed
 
-from .base import PatternRecognizer, SignalResult, MultiTimeframeData
+from .base import PatternRecognizer, SignalResult
 
 
 class ADXRecognizer(PatternRecognizer):

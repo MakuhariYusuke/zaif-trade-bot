@@ -14,10 +14,6 @@ def reward_component():
 
 
 @pytest.fixture
-def mock_config():
-    config = MagicMock()
-    config.get.side_effect = lambda k, d: d  # Default behavior
-    return config
 
 
 def test_calculate_basic_pnl(reward_component, mock_config):

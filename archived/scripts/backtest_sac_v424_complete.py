@@ -28,12 +28,6 @@ logger = get_logger(__name__)
 class SACv424Backtester:
     """Backtester for SAC v424 cost-aware model."""
 
-    def __init__(self, model_path: str, initial_capital: float = 200000.0):
-        self.model_path = model_path
-        self.initial_capital = initial_capital
-        self.model = None
-        self.env = None
-        self.load_model()
 
     def load_model(self) -> None:
         """Load the trained SAC model."""
@@ -41,16 +35,6 @@ class SACv424Backtester:
             self.model = SAC.load(self.model_path)
             logger.info(f"Loaded SAC model from {self.model_path}")
             logger.info(f"Model observation space: {self.model.observation_space}")
-            logger.info(f"Model action space: {self.model.action_space}")
-        except Exception as e:
-            logger.error(f"Failed to load model: {e}")
-            raise
-
-    def create_environment(self, data_path: str) -> HeavyTradingEnv:
-        """Create HeavyTradingEnv with cost-aware config matching v424 training."""
-        # Load data first
-        df = pd.read_csv(data_path)
-        if "timestamp" in df.columns:
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df.set_index("timestamp", inplace=True)
 

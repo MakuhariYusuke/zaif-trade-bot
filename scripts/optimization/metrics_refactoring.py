@@ -4,11 +4,10 @@
 プロジェクト全体で重複しているメトリクス計算関数をztb/metrics/metrics.pyの共通関数に置き換える
 """
 
-import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 # 共通メトリクス関数とそのマッピング
 METRICS_MAPPING = {

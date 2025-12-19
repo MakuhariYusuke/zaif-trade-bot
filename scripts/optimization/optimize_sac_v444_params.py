@@ -5,11 +5,9 @@ SAC v444 Parameter Optimization Script
 """
 
 import json
-import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import numpy as np
 
 
 def load_config(config_path: str) -> Dict:

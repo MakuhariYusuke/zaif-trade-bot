@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from .memory_cache import MemoryManager, default_memory_manager
+from .memory_cache import default_memory_manager
 
 
 class SQLiteCache:

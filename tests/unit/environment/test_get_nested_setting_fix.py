@@ -13,17 +13,6 @@ class TestGetNestedSettingFix:
     """Test the _get_nested_setting syntax error fix."""
 
     @pytest.fixture
-    def reward_calculator(self, mock_config):
-        """Create a RewardCalculator instance for testing."""
-        from ztb.training.environments.environment_config import EnvironmentConfig
-
-        config = EnvironmentConfig(initial_balance=10000.0, commission=0.001)
-        reward_settings = mock_config.get("reward_settings", {})
-        return RewardCalculator(
-            config=config,
-            reward_settings=reward_settings,
-            initial_portfolio_value=10000.0,
-        )
 
     @pytest.fixture
     def mock_config(self):

@@ -21,16 +21,11 @@ import pandas as pd
 import numpy as np
 from stable_baselines3 import SAC
 
-from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def load_config_from_file(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 
 def run_simple_backtest(model_path: str, config_data: dict, n_episodes: int = 3) -> Dict[str, Any]:
@@ -151,7 +146,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
         Backtest results summary
     """
     config_path = f"config/{config_name}.json"
-    model_path = f"models/v435_unified/sac_v435_final.zip"
+    model_path = "models/v435_unified/sac_v435_final.zip"
 
     # Check if files exist
     if not os.path.exists(config_path):
@@ -213,52 +208,6 @@ def compare_results(results: list) -> dict:
     """
     Compare backtest results between configurations.
 
-    Args:
-        results: List of backtest result summaries
-
-    Returns:
-        Comparison analysis
-    """
-    if len(results) != 2:
-        return {"error": "Expected exactly 2 results for comparison"}
-
-    # Separate results
-    multi_timeframe_result = None
-    no_multi_timeframe_result = None
-
-    for result in results:
-        if "no_multi_timeframe" in result["config"]:
-            no_multi_timeframe_result = result
-        else:
-            multi_timeframe_result = result
-
-    if not multi_timeframe_result or not no_multi_timeframe_result:
-        return {"error": "Could not identify multi-timeframe and non-multi-timeframe results"}
-
-    # Calculate differences
-    comparison = {
-        "multi_timeframe_enabled": multi_timeframe_result,
-        "multi_timeframe_disabled": no_multi_timeframe_result,
-        "differences": {
-            "total_return_diff": multi_timeframe_result["total_return"] - no_multi_timeframe_result["total_return"],
-            "sharpe_ratio_diff": multi_timeframe_result["sharpe_ratio"] - no_multi_timeframe_result["sharpe_ratio"],
-            "max_drawdown_diff": multi_timeframe_result["max_drawdown"] - no_multi_timeframe_result["max_drawdown"],
-            "win_rate_diff": multi_timeframe_result["win_rate"] - no_multi_timeframe_result["win_rate"],
-            "total_trades_diff": multi_timeframe_result["total_trades"] - no_multi_timeframe_result["total_trades"],
-        },
-        "analysis": {
-            "multi_timeframe_better_return": multi_timeframe_result["total_return"] > no_multi_timeframe_result["total_return"],
-            "multi_timeframe_better_sharpe": multi_timeframe_result["sharpe_ratio"] > no_multi_timeframe_result["sharpe_ratio"],
-            "multi_timeframe_lower_drawdown": multi_timeframe_result["max_drawdown"] < no_multi_timeframe_result["max_drawdown"],
-            "multi_timeframe_higher_win_rate": multi_timeframe_result["win_rate"] > no_multi_timeframe_result["win_rate"],
-        }
-    }
-
-    return comparison
-
-
-def main():
-    """Main backtest comparison function."""
     parser = argparse.ArgumentParser(description="Compare backtests with/without multi-timeframe features")
     parser.add_argument(
         "--output-dir",

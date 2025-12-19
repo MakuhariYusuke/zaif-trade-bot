@@ -39,20 +39,6 @@ def create_improved_trading_env():
 
     # Create simple observation space (price, trend, position)
     class ImprovedTradingEnv(gym.Env):
-        def __init__(self):
-            self.action_space = gym.spaces.Box(
-                low=-1, high=1, shape=(1,), dtype=np.float32
-            )
-            self.observation_space = gym.spaces.Box(
-                low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32
-            )
-            self.current_step = 0
-            self.balance = 200000.0
-            self.position = 0.0
-            self.prices = prices
-            self.initial_balance = 200000.0
-            self.prev_portfolio_value = self.initial_balance
-            self.reset()
 
         def reset(self, seed=None, options=None):
             self.current_step = 0
@@ -68,12 +54,6 @@ def create_improved_trading_env():
             # Execute trade
             price = self.prices[self.current_step]
             trade_executed = False
-
-            if action_value > 0.05:  # Buy signal (lower threshold)
-                if self.balance > price * 0.1:  # Can afford
-                    self.position += 0.1
-                    self.balance -= price * 0.1
-                    trade_executed = True
             elif action_value < -0.05:  # Sell signal (lower threshold)
                 if self.position > 0.1:
                     self.position -= 0.1
@@ -119,22 +99,6 @@ def create_improved_trading_env():
     return ImprovedTradingEnv()
 
 
-def analyze_improved_action_distribution(model_path, n_episodes=10):
-    """Analyze action distribution from improved trained model"""
-    logger.info(f"Analyzing action distribution from improved model: {model_path}")
-
-    # Load model
-    model = SAC.load(model_path)
-
-    # Create environment
-    env = create_improved_trading_env()
-
-    actions = []
-    rewards = []
-    observations = []
-
-    for episode in range(n_episodes):
-        obs, _ = env.reset()
         done = False
         episode_actions = []
         episode_rewards = []

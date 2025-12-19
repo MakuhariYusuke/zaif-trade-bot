@@ -1,8 +1,7 @@
-"""
-SAC（Soft Actor-Critic）アルゴリズム実装。
+"""SAC (Soft Actor-Critic) algorithm implementation.
 
-Off-policyアルゴリズムで、エントロピー正則化により
-探索と活用のバランスを自動調整する。
+An off-policy algorithm that uses entropy regularization to automatically
+balance exploration and exploitation.
 """
 
 from ztb.training.algorithms.sac.sac_algorithm import SACAlgorithm

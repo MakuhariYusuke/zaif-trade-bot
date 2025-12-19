@@ -124,7 +124,7 @@ class UnifiedResumeManager:
             try:
                 # This would need to be enhanced based on actual config structure
                 algorithm = "SAC"  # Default assumption
-            except:
+            except Exception:
                 pass
 
             if algorithm not in grouped_states:

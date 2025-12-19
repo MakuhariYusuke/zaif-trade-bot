@@ -51,7 +51,6 @@ class IDynamicRewardShaper(ABC):
         pass
 
 
-import numpy as np
 
 
 class ISignalIntegrator(ABC):

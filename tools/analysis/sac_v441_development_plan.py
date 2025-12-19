@@ -9,7 +9,7 @@ v438モデルの深層分析結果を基に、v441開発のための具体的な
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent

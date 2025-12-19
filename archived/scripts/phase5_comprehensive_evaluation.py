@@ -120,11 +120,6 @@ class SACv426Evaluator:
                     torch.nn.Linear(256, 2),  # 平均とログ標準偏差
                 )
 
-            def forward(self, state):
-                out = self.net(state)
-                mean, log_std = out.chunk(2, dim=-1)
-                log_std = torch.clamp(log_std, -20, 2)
-                return mean, log_std
 
         actor = Actor().to(self.device)
         actor.load_state_dict(checkpoint["actor_state"])

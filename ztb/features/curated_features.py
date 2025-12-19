@@ -22,7 +22,7 @@ class FeatureSet(Enum):
     MINIMAL = "minimal"
 
 
-def get_feature_set(feature_set: str = "curated") -> List[str]:
+def get_feature_set(feature_set: str = "curated", config_path=None) -> List[str]:
     """
     指定された特徴量セットを取得
 

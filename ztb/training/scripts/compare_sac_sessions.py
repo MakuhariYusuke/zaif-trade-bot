@@ -16,6 +16,7 @@ python compare_sac_sessions.py --sessions 10 11 12 --log-dir checkpoints/sac_ses
 
 import argparse
 import json
+import os
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -90,6 +91,23 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def p_mean_method(values: List[float], method: str = "arithmetic") -> float:
+    """Compute p-mean (arithmetic or geometric) for a list of p-values.
+
+    This is a small utility used for aggregate p-value reporting in comparisons.
+    """
+    if not values:
+        return 0.0
+    if method == "geometric":
+        import math
+
+        # Guard against zero/negative values in logs
+        clipped = [max(1e-12, float(v)) for v in values]
+        return math.exp(sum(math.log(v) for v in clipped) / len(clipped))
+    # Default arithmetic mean
+    return float(sum(values) / len(values))
+
+
 def perform_statistical_tests(
     session_data: Dict[int, Dict[str, List[float]]],
     metrics: List[str],
@@ -160,7 +178,6 @@ def perform_statistical_tests(
         p_value = float(p_value) if hasattr(p_value, "__float__") else p_value
 
         # 有意性判断 (p < alpha)
-        significant = p_value < alpha
 
         results[metric] = {
             "t_statistic": t_stat,

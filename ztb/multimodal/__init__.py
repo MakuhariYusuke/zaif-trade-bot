@@ -114,3 +114,19 @@ logger = get_logger(__name__)
 # 初期化完了メッセージ
 logger.info("🤖 MultiModal Learning Module v%s initialized", __version__)
 logger.info("📊 Ready for multi-modal trading AI development")
+
+
+def __getattr__(name: str):
+    """Lazily import submodules like `pretraining` when accessed as attributes.
+
+    This avoids importing heavy submodules during top-level package import while
+    allowing attribute-based access (e.g., `ztb.multimodal.pretraining`) used by
+    tests and patchers.
+    """
+    if name == "pretraining":
+        import importlib
+
+        mod = importlib.import_module(f"{__name__}.pretraining")
+        globals()[name] = mod
+        return mod
+    raise AttributeError(name)

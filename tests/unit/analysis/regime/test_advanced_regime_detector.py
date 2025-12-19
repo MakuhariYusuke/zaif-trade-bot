@@ -3,7 +3,6 @@ Unit tests for AdvancedRegimeDetector.
 """
 
 import numpy as np
-import pytest
 
 from ztb.analysis.regime.advanced_regime_detector import (
     AdvancedRegimeDetector,

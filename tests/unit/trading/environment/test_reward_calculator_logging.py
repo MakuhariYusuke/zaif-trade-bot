@@ -7,7 +7,7 @@ Tests dynamic log level control and structured logging functionality.
 
 import logging
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import numpy as np
 
 from ztb.trading.environment.components.reward_calculator import RewardCalculator

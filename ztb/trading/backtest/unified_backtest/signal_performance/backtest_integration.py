@@ -5,7 +5,6 @@ Integrates SignalPerformanceAnalyzer with the UnifiedBacktester framework,
 providing comprehensive signal analysis during backtest execution.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd

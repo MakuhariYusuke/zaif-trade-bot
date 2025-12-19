@@ -103,9 +103,9 @@ def main():
     
     if base_config:
         print(f"✓ Base config found: {base_config[0]}")
-        print(f"  - This is the baseline configuration for v447")
+        print("  - This is the baseline configuration for v447")
         print(f"  - Model: {base_config[1].get('model_name', 'N/A')}")
-        print(f"  - Use this for standard AB testing with CLI overrides")
+        print("  - Use this for standard AB testing with CLI overrides")
     
     print("\n4. Usage Recommendations:")
     print("-"*80)

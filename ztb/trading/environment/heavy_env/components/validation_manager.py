@@ -38,11 +38,11 @@ class ValidationManager:
                 float(action) if isinstance(action, np.ndarray) else action
             )
             if continuous_action > self.env.action_threshold:
-                return 1  # BUY
+                return ACTION_BUY
             elif continuous_action < self.env.negative_action_threshold:
-                return 2  # SELL
+                return ACTION_SELL
             else:
-                return 0  # HOLD
+                return ACTION_HOLD
 
         # Validate discrete action
         if not isinstance(action, int):

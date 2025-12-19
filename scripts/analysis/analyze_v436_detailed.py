@@ -17,10 +17,6 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
-def load_backtest_results(results_path: str) -> Dict[str, Any]:
-    """バックテスト結果を読み込み"""
-    with open(results_path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def analyze_trade_statistics(trades: List[Dict[str, Any]]) -> Dict[str, Any]:

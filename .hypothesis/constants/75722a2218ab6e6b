@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\feature_set_config.py
+# hypothesis_version: 6.140.3
+
+['Default Feature Set', 'Full Feature Set', 'High Quality Only', 'Minimal Feature Set', 'No Harmful Features', 'correlation_*', 'default', 'description', 'dividends', 'ensemble_*', 'excluded_features', 'full', 'high', 'high_quality', 'log_returns', 'low', 'minimal', 'name', 'no_harmful', 'open', 'r', 'regime_*', 'returns', 'risk_*', 'stock splits', 'utf-8', 'v435_risk_managed', 'v451', 'volume', 'w']

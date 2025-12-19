@@ -9,7 +9,7 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD
 from ztb.trading.environment.components.reward_calculator import RewardCalculator
 
 

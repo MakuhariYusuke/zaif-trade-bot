@@ -36,7 +36,7 @@ from ztb.trading.live_trader.main import main
 # Keep some constants for backward compatibility
 ACTION_HOLD = 0
 ACTION_BUY = 1
-ACTION_SELL = 2
+ACTION_SELL = -1
 
 
 # For backward compatibility, keep the old main function

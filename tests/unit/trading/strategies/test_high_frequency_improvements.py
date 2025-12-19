@@ -11,7 +11,12 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import pytest
-import yfinance as yf
+try:
+    import yfinance as yf
+except Exception as e:
+    # If yfinance (or its dependencies like websockets) are not available,
+    # skip the entire module during collection rather than erroring out.
+    pytest.skip(f"yfinance not available: {e}", allow_module_level=True)
 
 # プロジェクトルートをパスに追加
 sys.path.insert(

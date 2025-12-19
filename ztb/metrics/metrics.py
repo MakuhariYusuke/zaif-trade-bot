@@ -208,6 +208,41 @@ def _sortino_ratio_impl(
     return (mean_return / downside_std) * np.sqrt(period_per_year)  # type: ignore
 
 
+def calculate_downside_risk_reward(
+    returns: Union[pd.Series, NDArray[Any]], penalty_multiplier: float = 1.0
+) -> float:
+    """Calculate a simple downside-risk-based reward used by simplified reward tests.
+
+    The function returns a positive penalty proportionate to the average magnitude
+    of negative returns (i.e., larger negative returns increase the penalty).
+    """
+    arr = np.asarray(returns)
+    if arr.size == 0:
+        return 0.0
+    neg = arr[arr < 0]
+    if neg.size == 0:
+        return 0.0
+    return float(-np.mean(neg) * float(penalty_multiplier))
+
+
+def calculate_risk_adjusted_reward(returns: Union[pd.Series, NDArray[Any]], risk_penalty: float = 1.0) -> float:
+    """Simple risk-adjusted reward used by script-level tests.
+
+    This combines average return with a downside penalty.
+    """
+    arr = np.asarray(returns)
+    if arr.size == 0:
+        return 0.0
+    avg = float(np.nanmean(arr))
+    downside = calculate_downside_risk_reward(arr, penalty_multiplier=risk_penalty)
+    return float(avg - downside)
+
+
+def calculate_trading_reward(*args, **kwargs):
+    """Compatibility alias expected by older scripts/tests."""
+    return calculate_risk_adjusted_reward(*args, **kwargs)
+
+
 def max_drawdown(equity_curve: Union[pd.Series, NDArray[Any]]) -> float:
     """
     Calculate maximum drawdown from equity curve.

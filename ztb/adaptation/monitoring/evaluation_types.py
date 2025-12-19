@@ -5,11 +5,11 @@ Type definitions for Continuous Evaluation and Monitoring
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 from ztb.types.common import AlertLevel
-from ztb.types.evaluation_types import AlertType, EvaluationMetrics, EvaluationResult
+from ztb.types.evaluation_types import AlertType, EvaluationResult
+from ztb.types.evaluation_types import EvaluationMetrics
 
 
 @dataclass

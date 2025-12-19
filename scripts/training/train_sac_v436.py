@@ -19,10 +19,6 @@ from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.training.sac_trainer import SACTrainer
 
 
-def load_config_from_file(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 
 def main():

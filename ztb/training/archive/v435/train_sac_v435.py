@@ -18,6 +18,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.risk.risk_manager import RiskManager
+from ztb.training.utils.risk_management_utils import setup_risk_management_config
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.types.common import ConfigDict
@@ -203,30 +204,7 @@ class SACv435Trainer:
         logger.info("Setting up risk management for v435 training")
 
         risk_config = self.config.get("risk_management", {})
-
-        # Configure risk manager
-        risk_manager_config = {
-            "position_sizer": {
-                "enabled": risk_config.get("dynamic_position_sizing", True),
-                "volatility_adjustment": risk_config.get("volatility_adjustment", True),
-                "min_position_size": 0.001,
-                "max_position_size": 0.2,
-                "base_position_size": 0.1,
-            },
-            "drawdown_controller": {
-                "enabled": risk_config.get("drawdown_control", True),
-                "max_drawdown_limit": risk_config.get("max_drawdown_limit", 0.1),
-                "emergency_stop_threshold": 0.15,
-                "recovery_threshold": 0.05,
-            },
-            "market_adaptor": {
-                "enabled": True,
-                "adaptation_window": 50,
-                "volatility_threshold": 0.02,
-                "trend_strength_threshold": 0.01,
-                "regime_change_threshold": 0.7,
-            },
-        }
+        risk_manager_config = setup_risk_management_config(risk_config)
 
         self.risk_manager = ensure_risk_manager_protocol(
             RiskManager(risk_manager_config)
@@ -235,11 +213,12 @@ class SACv435Trainer:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
+        from ztb.training.utils.common_utils import load_config_file
+
         if self.config_path is None:
             # Config already provided as dict
             return self.config
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return load_config_file(self.config_path)
 
     def setup_environment(self) -> DummyVecEnv:
         """Setup training environment"""

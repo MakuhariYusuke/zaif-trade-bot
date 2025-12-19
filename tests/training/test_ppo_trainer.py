@@ -30,10 +30,15 @@ if TYPE_CHECKING:
         TrainingConfig,
     )
 else:
-    TrainerParams = object
-    PPOTrainer = object
-    PPOTrainerAutoHalt = object
-    TrainingConfig = object
+    # At runtime we need the real classes; import them rather than using
+    # the `object` fallback used for type checking. This avoids tests
+    # attempting to construct `object()` which raises TypeError.
+    from ztb.training.config.trainer_params import TrainerParams
+    from ztb.training.core.ppo_trainer import (
+        PPOTrainer,
+        PPOTrainerAutoHalt,
+        PPOTrainingConfig as TrainingConfig,
+    )
 
 
 class TestPPOTrainerAutoHalt:
@@ -490,10 +495,6 @@ class TestPPOTrainerBasicExtended:
     """Test PPOTrainer functionality."""
 
     @pytest.fixture
-    def temp_dir(self):
-        """Create temporary directory for testing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
 
     @pytest.fixture
     def sample_config(self):
@@ -594,10 +595,6 @@ class TestPPOTrainerBasic:
         """Create temporary directory for testing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield tmpdir
-
-    @pytest.fixture
-    def sample_config(self):
-        """Sample configuration for testing."""
         return {
             "ppo": {
                 "learning_rate": 3e-4,
@@ -625,11 +622,6 @@ class TestPPOTrainerBasic:
 
     def test_ppo_trainer_initialization(self, temp_dir, sample_config):
         """Test PPOTrainer initialization."""
-        config = {
-            "ppo": {
-                "learning_rate": 3e-4,
-                "n_steps": 2048,
-                "batch_size": 64,
                 "n_epochs": 10,
                 "gamma": 0.99,
                 "gae_lambda": 0.95,
@@ -823,10 +815,6 @@ class TestPPOAlgorithmTrainer:
     @pytest.fixture
     def sample_config(self):
         """Sample configuration for testing."""
-        return {
-            "learning_rate": 3e-4,
-            "n_steps": 2048,
-            "batch_size": 64,
             "n_epochs": 10,
             "gamma": 0.99,
             "gae_lambda": 0.95,

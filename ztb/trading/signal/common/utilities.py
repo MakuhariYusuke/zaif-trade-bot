@@ -147,7 +147,7 @@ def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
     total = sum(clipped.values())
     if total == 0:
         # If all weights are zero, return zeros with same keys
-        return {k: 0.0 for k in weights.keys()}
+        return dict.fromkeys(weights.keys(), 0.0)
     return {k: v / total for k, v in clipped.items()}
 
 
@@ -516,7 +516,7 @@ def find_optimal_weights(
     """
     if method == "equal":
         n_assets = len(returns.columns)
-        weights = {col: 1.0 / n_assets for col in returns.columns}
+        weights = dict.fromkeys(returns.columns, 1.0 / n_assets)
 
     elif method == "risk_parity":
         # Simplified risk parity
@@ -540,7 +540,7 @@ def find_optimal_weights(
         except np.linalg.LinAlgError:
             # Fallback to equal weights
             n_assets = len(returns.columns)
-            weights = {col: 1.0 / n_assets for col in returns.columns}
+            weights = dict.fromkeys(returns.columns, 1.0 / n_assets)
 
     else:
         raise ValueError(f"Unknown optimization method: {method}")

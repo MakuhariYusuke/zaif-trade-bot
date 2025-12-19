@@ -205,13 +205,6 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         mock_sac_engineer.return_value = mock_sac_instance
 
         # get_feature_setのモック設定
-        def mock_get_feature_set_func(set_name):
-            sets = {
-                "curated": ["rsi", "macd"],
-                "full": ["rsi", "macd", "sma"],
-                "minimal": ["rsi"],
-            }
-            return sets.get(set_name, [])
 
         mock_get_feature_set.side_effect = mock_get_feature_set_func
 

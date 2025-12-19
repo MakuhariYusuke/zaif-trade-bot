@@ -20,10 +20,6 @@ from stable_baselines3.common.monitor import Monitor
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 
-def load_config(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def create_environment(config: dict) -> HeavyTradingEnv:

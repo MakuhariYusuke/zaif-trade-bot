@@ -82,17 +82,6 @@ class TradeAnalyzer:
             f"Initialized trade analyzer with {len(self.eval_data)} data points"
         )
 
-    def _load_data(self) -> pd.DataFrame:
-        """Load evaluation data."""
-        if self.data_path.suffix == ".parquet":
-            df = pd.read_parquet(self.data_path)
-        elif self.data_path.suffix == ".csv":
-            df = pd.read_csv(self.data_path)
-        else:
-            raise ValueError(f"Unsupported data format: {self.data_path.suffix}")
-
-        LOGGER.info(f"Loaded {len(df)} rows from {self.data_path}")
-        return df
 
     def analyze_model_actions(
         self, model_path: Path, model_name: str, n_episodes: int = 5
@@ -171,10 +160,6 @@ class TradeAnalyzer:
         """Analyze action patterns and create result."""
         # Basic action counts
         action_counts = Counter(all_actions)
-        total_actions = len(all_actions)
-        action_percentages = {
-            action: count / total_actions for action, count in action_counts.items()
-        }
 
         # HOLD streak analysis
         hold_streaks = []

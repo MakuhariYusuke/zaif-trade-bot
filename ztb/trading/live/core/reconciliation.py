@@ -319,9 +319,6 @@ class BalanceReconciler(BaseReconciler):
 
         return result
 
-    def get_last_result(self) -> Optional[ReconciliationResult]:
-        """Get last reconciliation result."""
-        return self._last_result
 
 
 class OrderReconciler(BaseReconciler):
@@ -428,9 +425,6 @@ class OrderReconciler(BaseReconciler):
     def get_last_result(self) -> Optional[ReconciliationResult]:
         """Get last reconciliation result."""
         return self._last_result
-
-
-class ComprehensiveReconciler:
     """Comprehensive reconciler that combines multiple reconciliation types."""
 
     def __init__(self) -> None:

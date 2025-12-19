@@ -101,11 +101,6 @@ class MAML(nn.Module):
 class Reptile(nn.Module):
     """Reptileアルゴリズム"""
 
-    def __init__(self, model: nn.Module, config: MetaLearningConfig):
-        super().__init__()
-        self.model = model
-        self.config = config
-        self.meta_optimizer = optim.Adam(self.model.parameters(), lr=config.outer_lr)
 
     def forward(self, x):
         return self.model(x)

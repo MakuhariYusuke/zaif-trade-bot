@@ -1,6 +1,7 @@
 """Type guards and advanced type validation utilities."""
 
-from typing import Any, Dict, List, Optional, Union, get_origin, get_args, Callable
+from typing import Any, Dict, List, Union, get_origin, get_args, Callable
+import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import TypeGuard

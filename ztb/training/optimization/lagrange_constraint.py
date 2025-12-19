@@ -56,8 +56,22 @@ class LagrangeConstraint:
         self.lambda_max = lambda_max
         self.warmup_steps = warmup_steps
 
-        # Action index mapping
-        self.action_idx = {"HOLD": 0, "BUY": 1, "SELL": 2}[target_action]
+        # Action mapping
+        # The project uses ACTION constants (HOLD=0, BUY=1, SELL=-1) for action
+        # values while legal action masks use columns [HOLD, BUY, SELL] -> indices
+        # [0,1,2]. Keep both representations to correctly count chosen+legal
+        # occurrences.
+        from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+
+        self.target_value = {
+            "HOLD": ACTION_HOLD,
+            "BUY": ACTION_BUY,
+            "SELL": ACTION_SELL,
+        }[target_action]
+        # Backwards-compatible alias expected by some tests
+        self.action_idx = self.target_value
+        # column index in legal_masks corresponding to target action
+        self.target_col_index = {"HOLD": 0, "BUY": 1, "SELL": 2}[target_action]
 
         # Dual variable
         self.lambda_dual = 0.0
@@ -89,10 +103,10 @@ class LagrangeConstraint:
 
         # Compute target action rate (legal steps only)
         # Actions: 0=HOLD, 1=BUY, 2=SELL
-        action_mask = actions == self.action_idx
-        legal_action_mask = (
-            legal_masks[:, self.action_idx] == 1
-        )  # Target action is legal
+        # actions may use ACTION_* values (e.g., -1 for SELL) while legal_masks
+        # index columns as [HOLD, BUY, SELL]. Build masks accordingly.
+        action_mask = actions == self.target_value
+        legal_action_mask = legal_masks[:, self.target_col_index] == 1
 
         # Count legal steps where target action was chosen AND legal
         legal_action_count = np.sum(action_mask & legal_action_mask)

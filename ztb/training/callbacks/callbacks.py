@@ -10,14 +10,6 @@ Use imports from ztb.training.callbacks_lib instead.
 
 import warnings
 
-# Issue deprecation warning
-warnings.warn(
-    "Importing from ztb.training.callbacks is deprecated. "
-    "Use imports from ztb.training.callbacks_lib instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
 # Re-export all classes from the legacy module for full backward compatibility
 from ztb.training.callbacks.callbacks_legacy import (  # noqa: F401
     BaseTrainingCallback,
@@ -27,6 +19,14 @@ from ztb.training.callbacks.callbacks_legacy import (  # noqa: F401
     ProgressTrainingCallback,
     SimpleTrainingCallback,
     TradingTrainingCallback,
+)
+
+# Issue deprecation warning
+warnings.warn(
+    "Importing from ztb.training.callbacks is deprecated. "
+    "Use imports from ztb.training.callbacks_lib instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 __all__ = [

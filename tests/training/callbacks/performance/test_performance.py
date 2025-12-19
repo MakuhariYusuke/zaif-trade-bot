@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 import psutil
 
-from ..performance.memory_optimizer import (
+from ztb.training.callbacks.performance.memory_optimizer import (
     LRUCache,
     MemoryMonitor,
     MemoryPool,

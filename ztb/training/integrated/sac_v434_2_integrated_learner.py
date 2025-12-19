@@ -266,7 +266,7 @@ class SACv434IntegratedLearner:
         Returns:
             選択された特徴量リスト
         """
-        feature_names = correlation_results.get("feature_names", [])
+        correlation_results.get("feature_names", [])
         high_corr_pairs = correlation_results.get("high_correlation_pairs", [])
         importance_ranking = importance_results.get("importance_ranking", [])
 

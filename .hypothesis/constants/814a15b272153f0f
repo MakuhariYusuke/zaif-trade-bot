@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\metrics\statistics.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-10, 1.0, 1.5, 2.5, 97.5, 'arithmetic', 'ci95', 'close', 'geometric', 'high', 'low', 'max', 'mean', 'min', 'std']

@@ -142,7 +142,7 @@ class PPOTrainingConfig:
     feature_config_path: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "TrainingConfig":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "PPOTrainingConfig":
         """Create TrainingConfig from dictionary."""
         config = cls()
 
@@ -195,7 +195,12 @@ class PPOTrainingConfig:
 
         # Feature configuration
         features_config = config_dict.get("features", {})
-        feature_set_str = features_config.get("feature_set", "curated")
+        # `features` may be either a list of feature names or a dict describing
+        # feature configuration (including a 'feature_set' key). Handle both.
+        if isinstance(features_config, dict):
+            feature_set_str = features_config.get("feature_set", "curated")
+        else:
+            feature_set_str = config_dict.get("feature_set", "curated")
         try:
             config.feature_set = FeatureSet(feature_set_str)
         except ValueError:
@@ -204,8 +209,13 @@ class PPOTrainingConfig:
                 feature_set_str,
             )
             config.feature_set = FeatureSet.CURATED
-        config.custom_features = features_config.get("custom_features")
-        config.feature_config_path = features_config.get("feature_config_path")
+        # custom_features may be specified inside a features dict or not present
+        if isinstance(features_config, dict):
+            config.custom_features = features_config.get("custom_features")
+            config.feature_config_path = features_config.get("feature_config_path")
+        else:
+            config.custom_features = None
+            config.feature_config_path = None
 
         return config
 
@@ -249,7 +259,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         self.params = params
 
         # Initialize training configuration
-        self.training_config = TrainingConfig.from_dict(self.config)
+        self.training_config = PPOTrainingConfig.from_dict(self.config)
 
         # Initialize evaluation gates
         eval_gates_enabled = self.config.get("eval_gates_enabled", True)
@@ -433,12 +443,25 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         if not hasattr(self.env, "action_space"):
             raise RuntimeError("Environment does not have action_space")
 
-        if self.training_config.use_custom_ppo:
-            model_class = CustomPPO
-            logger.info("Using CustomPPO model")
-        else:
-            model_class = MaskablePPO
-            logger.info("Using standard MaskablePPO model")
+        # Use compatibility shim module names to allow tests to patch
+        # `ztb.training.ppo_trainer.CustomPPO` / `MaskablePPO` at runtime.
+        try:
+            import ztb.training.ppo_trainer as _shim
+
+            if self.training_config.use_custom_ppo:
+                model_class = getattr(_shim, "CustomPPO", CustomPPO)
+                logger.info("Using CustomPPO model")
+            else:
+                model_class = getattr(_shim, "MaskablePPO", MaskablePPO)
+                logger.info("Using standard MaskablePPO model")
+        except Exception:
+            # Fallback to locally imported symbols
+            if self.training_config.use_custom_ppo:
+                model_class = CustomPPO
+                logger.info("Using CustomPPO model")
+            else:
+                model_class = MaskablePPO
+                logger.info("Using standard MaskablePPO model")
 
         model = model_class(
             "MlpPolicy",
@@ -677,8 +700,6 @@ class PPOTrainer(PPOTrainerAutoHalt):
         )
         super().__init__(params)
 
-        super().__init__(params)
-
 
 # Exported symbols
 __all__ = [
@@ -686,23 +707,10 @@ __all__ = [
     "PPOTrainerAutoHalt",
     "PredictorProtocol",
     "TradingSystemProtocol",
-    "TrainingConfig",
     "Algorithm",
     "FeatureSet",
     "Timeframe",
     "PPOConfig",
 ]
 
-# Alias for backward compatibility
-PPOTrainer = PPOTrainerAutoHalt
-
-
-class PPOTrainer(PPOTrainerAutoHalt):
-    """
-    Legacy PPOTrainer class for backward compatibility.
-
-    This is an alias for PPOTrainerAutoHalt to maintain backward compatibility
-    with existing code that imports PPOTrainer.
-    """
-
-    pass
+# Note: Backward compatibility aliases removed to simplify the codebase.

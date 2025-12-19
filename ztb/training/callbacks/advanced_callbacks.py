@@ -8,6 +8,9 @@ Advanced Callbacks for SAC Training.
 """
 
 from collections import deque
+from typing import Optional
+
+from ztb.training.utils.common_utils import get_metric_from_logger
 from pathlib import Path
 from typing import Optional, cast
 
@@ -154,45 +157,7 @@ class EarlyStoppingCallback(BaseCallback):
 
     def _get_metric(self) -> Optional[float]:
         """現在のメトリクス値を取得"""
-        if not hasattr(self.model, "logger") or self.model.logger is None:
-            return None
-
-        try:
-            name_to_value = self.model.logger.name_to_value
-
-            # メトリクス名のバリエーションをチェック
-            possible_names = [
-                self.metric_name,
-                f"train/{self.metric_name}",
-                f"rollout/{self.metric_name}",
-            ]
-
-            for name in possible_names:
-                if name in name_to_value:
-                    return float(name_to_value[name])
-
-            return None
-        except (AttributeError, KeyError, TypeError):
-            return None
-
-    def _calculate_cv(self) -> float:
-        """変動係数 (Coefficient of Variation) を計算"""
-        if len(self.metric_history) == 0:
-            return float("inf")
-
-        values = np.array(list(self.metric_history))
-        mean = cast(float, np.mean(values))
-        std = cast(float, np.std(values))
-
-        if mean == 0:
-            return float("inf")
-
-        return cast(float, std / abs(mean))
-
-
-class BestModelCallback(BaseCallback):
-    """
-    Best Model Selection Callback.
+        return get_metric_from_logger(self.model, self.metric_name)n Callback.
 
     訓練中に最良のモデルを自動的に保存する。
 

@@ -742,9 +742,6 @@ class LiveTradingBridge:
 
         return current_price
 
-    def get_slippage_analysis(self) -> Dict[str, Any]:
-        """Get slippage analysis summary"""
-        return self.slippage_analysis.get_summary()
 
     def reset_slippage_analysis(self) -> None:
         """Reset slippage analysis"""

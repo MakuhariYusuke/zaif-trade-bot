@@ -1,6 +1,4 @@
-import pytest
 import pandas as pd
-from pathlib import Path
 
 from tools.data.convert_timeframe import resample_ohlcv, map_freq
 from tools.data.validate_dataset import main as validate_main

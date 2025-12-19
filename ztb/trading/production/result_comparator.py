@@ -18,31 +18,17 @@ import scipy.stats as stats
 
 
 # Mock classes for testing
-class OrderSide(Enum):
-    BUY = "buy"
-    SELL = "sell"
 
 
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
-
-
-@dataclass
 class Order:
     order_id: str
     symbol: str
     side: OrderSide
     quantity: Decimal
     price: Optional[Decimal] = None
-    order_type: OrderType = OrderType.MARKET
-    timestamp: Optional[datetime] = None
-
-
-@dataclass
-class Position:
-    symbol: str
-    quantity: Decimal
     average_price: Decimal
     current_price: Optional[Decimal] = None
     unrealized_pnl: Decimal = Decimal("0")

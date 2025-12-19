@@ -260,6 +260,20 @@ class DataGenerator:
         dataset_hash = hashlib.md5(dataset.encode()).hexdigest()[:8]
         return self.cache_dir / f"dataset_{dataset_hash}.pkl"
 
+
+def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
+    """Convenience helper used by tests to quickly get a sample dataset.
+
+    Args:
+        n_samples: number of rows to generate (default 100)
+        version: generator version
+
+    Returns:
+        pd.DataFrame with synthetic OHLCV data
+    """
+    dg = DataGenerator()
+    return dg.generate_synthetic_market_data(n_samples=n_samples, version=version)
+
     def clear_cache(self) -> None:
         """
         Clear data cache.

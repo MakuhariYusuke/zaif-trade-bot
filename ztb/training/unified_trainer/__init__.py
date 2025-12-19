@@ -16,3 +16,10 @@ __all__ = [
     "load_config",
     "get_training_config",
 ]
+
+# Backwards-compatible alias expected by some modules/tests
+UnifiedAlgorithm = UnifiedTrainer
+__all__.append("UnifiedAlgorithm")
+# Backwards-compatible name used in some legacy tests/scripts
+UnifiedTrainerConfig = TrainingConfig
+__all__.append("UnifiedTrainerConfig")

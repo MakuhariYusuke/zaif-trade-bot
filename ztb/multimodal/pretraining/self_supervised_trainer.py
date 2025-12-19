@@ -130,6 +130,8 @@ class SelfSupervisedTrainer:
         temperature: float = 0.5,
         learning_rate: float = 1e-4,
         augmentation_params: Optional[Dict] = None,
+        augmentation: Optional[Dict] = None,
+        **kwargs,
     ):
         """
         Initialize Contrastive Learning components
@@ -143,6 +145,11 @@ class SelfSupervisedTrainer:
         )
 
         optimizer = optim.AdamW(self.contrastive_model.parameters(), lr=learning_rate)
+
+        # Accept either `augmentation_params` or `augmentation` keys from
+        # configuration sources for backward compatibility.
+        if augmentation_params is None and augmentation is not None:
+            augmentation_params = augmentation
 
         # Default augmentation parameters
         if augmentation_params is None:
@@ -484,12 +491,35 @@ class SelfSupervisedTrainer:
             logger.warning(f"Method {method} not available or not trained")
             return None
 
-    def save_checkpoint(self, name: str):
-        """Save checkpoint with timestamp"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        path = self.checkpoint_dir / f"{name}_{timestamp}.pt"
+    def save_checkpoint(self, path_or_name: str):
+        """Save checkpoint either by name (old API) or full path.
 
-        checkpoint = {"timestamp": timestamp, "training_history": self.training_history}
+        Backwards-compatible helper: if a file-like path is provided (contains a
+        directory separator or a known extension), use it directly; otherwise
+        treat the value as a short name and build a timestamped path under the
+        trainer's `checkpoint_dir`.
+        """
+        import os
+
+        # Determine whether caller passed a path or a name
+        is_path = (
+            os.path.sep in str(path_or_name)
+            or os.path.splitext(str(path_or_name))[1] in (".pt", ".pth")
+        )
+
+        if is_path:
+            path = Path(path_or_name)
+            # Ensure parent directory exists
+            parent = path.parent
+            if parent and not parent.exists():
+                parent.mkdir(parents=True, exist_ok=True)
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = self.checkpoint_dir / f"{path_or_name}_{timestamp}.pt"
+            if not path.parent.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+
+        checkpoint = {"timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"), "training_history": self.training_history}
 
         if self.masked_price_model is not None:
             checkpoint["mpm_model"] = self.masked_price_model.state_dict()
@@ -503,7 +533,7 @@ class SelfSupervisedTrainer:
             checkpoint["ad_model"] = self.anomaly_model.state_dict()
             checkpoint["ad_optimizer"] = self.ad_trainer.optimizer.state_dict()
 
-        torch.save(checkpoint, path)
+        torch.save(checkpoint, str(path))
         logger.info(f"Checkpoint saved: {path}")
 
     def load_checkpoint(self, path: str):

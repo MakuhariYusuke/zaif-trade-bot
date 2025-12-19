@@ -5,7 +5,6 @@ Unit tests for SignalGuidanceSystem
 
 import sys
 import pytest
-import numpy as np
 import pandas as pd
 from pathlib import Path
 from unittest.mock import Mock
@@ -17,9 +16,6 @@ from ztb.trading.signal.signal_guidance_system import (
     SignalGuidanceSystem,
     MarketTrend,
     SignalType,
-    MarketContext,
-    PositionContext,
-    SignalContext,
     GuidanceConfig
 )
 

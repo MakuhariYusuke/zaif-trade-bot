@@ -1,0 +1,8 @@
+=== Action Analysis for sac_v454_inverse_confidence ===
+Sample size: 1000
+Raw actions - Mean: -0.0020, Std: 0.5942, Min: -0.9953, Max: 0.9924
+Mapped actions - Mean: -0.0020, Std: 0.5942, Min: -0.9953, Max: 0.9924
+Action distribution - BUY: 353, HOLD: 296, SELL: 351
+Thresholds - Buy: 0.3333, Sell: -0.3333
+Unique raw values: 1000
+Unique mapped values: 1000

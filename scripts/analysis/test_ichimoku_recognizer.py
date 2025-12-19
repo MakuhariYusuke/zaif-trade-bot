@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.ichimoku import IchimokuPatternRecognizer
-from ztb.features.trend.ichimoku.ichimoku import compute_ichimoku_diff_norm
 
 def create_test_data():
     """Create test OHLCV data for testing"""

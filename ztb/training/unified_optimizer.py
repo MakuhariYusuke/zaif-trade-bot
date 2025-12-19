@@ -16,8 +16,6 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 from ztb.trading.environment.constants import BYTES_PER_MB
-from ztb.utils.analysis_formatters import create_result_summary
-from ztb.utils.config_manager import validate_config
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.system_utils import check_library_availability
 
@@ -549,6 +547,11 @@ class RewardFunctionOptimizer:
             "improvement": result.best_score
             - evaluation_function(current_reward_config),
         }
+
+    def set_console_output(self, verbose: bool = False, show_progress: bool = False) -> None:
+        """Configure console output verbosity and progress display for optimizer."""
+        self._console_verbose = bool(verbose)
+        self._show_progress = bool(show_progress)
 
 
 class UnifiedOptimizer:
@@ -1936,7 +1939,7 @@ class ParallelOptimizer:
 
             # 追加パラメータ
             method = task.get("method", "bayesian")
-            max_trials = task.get("max_trials", self.config.max_trials)
+            task.get("max_trials", self.config.max_trials)
 
             # 最適化実行
             if hasattr(optimizer, 'optimize_hyperparameters'):
@@ -2157,7 +2160,7 @@ class ParallelOptimizer:
                 try:
                     correlation = np.corrcoef(param_values, scores)[0, 1]
                     importance[param] = abs(correlation)  # 絶対値
-                except:
+                except Exception:
                     importance[param] = 0
 
         return importance

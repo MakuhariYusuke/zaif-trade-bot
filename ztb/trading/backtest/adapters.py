@@ -409,25 +409,6 @@ class SMACrossoverAdapter:
 
         return {"action": "hold", "confidence": 0.5}
 
-    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Generate signals for backtest (returns DataFrame)."""
-        signals = []
-        for i in range(len(data)):
-            current_data = data.iloc[: i + 1]
-            # Assume no position for signal generation
-            signal = self.generate_signal(current_data, 0)
-            signals.append(signal["action"])
-
-        # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {"sell": ACTION_SELL, "hold": ACTION_HOLD, "buy": ACTION_BUY}
-        signal_values = [action_to_signal.get(s, 0) for s in signals]
-
-        return pd.DataFrame(
-            {
-                "timestamp": data["timestamp"] if "timestamp" in data else data.index,
-                "signal": signal_values,
-            }
-        )
 
     def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
         """Update SMA strategy hyperparameters."""
@@ -458,32 +439,12 @@ class SMACrossoverAdapter:
             "cache_entries": total_entries,
             "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
-            "model_loaded": self.model is not None,
-        }
-
-
-class BuyAndHoldAdapter:
     """Buy and hold strategy (benchmark)."""
 
     def __init__(self) -> None:
         """Initialize buy and hold strategy."""
         self.initialized = False
 
-    def generate_signal(
-        self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
-        """Generate buy and hold signal."""
-        if not self.initialized and len(data) > 0:
-            self.initialized = True
-            return {"action": "buy", "confidence": 1.0}
-
-        return {"action": "hold", "confidence": 1.0}
-
-    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Generate signals for backtest (returns DataFrame)."""
-        signals = []
-        for i in range(len(data)):
-            current_data = data.iloc[: i + 1]
             # Assume no position for signal generation
             signal = self.generate_signal(current_data, 0)
             signals.append(signal["action"])
@@ -498,25 +459,6 @@ class BuyAndHoldAdapter:
                 "signal": signal_values,
             }
         )
-
-    def clear_feature_cache(self):
-        """Clear feature cache to prevent memory leaks."""
-        cache_size = len(self.feature_cache)
-        self.feature_cache.clear()
-        print(f"Cleared feature cache ({cache_size} entries)")
-
-    def get_cache_stats(self) -> Dict[str, Any]:
-        """Get feature cache statistics for monitoring."""
-        total_entries = len(self.feature_cache)
-        memory_usage = (
-            sum(df.memory_usage(deep=True).sum() for df in self.feature_cache.values())
-            if self.feature_cache
-            else 0
-        )
-
-        return {
-            "cache_entries": total_entries,
-            "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
             "model_loaded": self.model is not None,
         }
@@ -542,11 +484,6 @@ class ActionSignalGuideAdapter:
         if isinstance(self.config, ActionSignalGuideConfig):
             guide_config = self.config
         elif isinstance(self.config, dict):
-            # Overlay defaults with provided dict but ensure debug fast-mode is enabled for backtests
-            guide_config = ActionSignalGuideConfig(**self.config)
-            # If not explicitly set, enable debug behavior for speed
-            if not getattr(guide_config, "debug_short_mode", False):
-                guide_config.debug_short_mode = True
                 guide_config.short_mode_recognizer_limit = min(
                     guide_config.short_mode_recognizer_limit, 5
                 )
@@ -568,21 +505,6 @@ class ActionSignalGuideAdapter:
                 enable_adx_patterns=False,  # Disable for speed
                 enable_granville_patterns=False,  # Disable for speed
                 enable_heikin_ashi_patterns=False,  # Disable for speed
-                enable_dow_theory_patterns=False,  # Disable for speed
-            )
-        print(
-            f"Created ActionSignalGuideConfig with enable_candlestick_patterns={guide_config.enable_candlestick_patterns}"
-        )
-        print(
-            f"guide_config.candlestick_patterns length: {len(guide_config.candlestick_patterns) if guide_config.candlestick_patterns else 0}"
-        )
-        self.guide = ActionSignalGuide(config=guide_config)
-        print(
-            f"ActionSignalGuide initialized with {len(self.guide.all_recognizers)} recognizers"
-        )
-        print(f"Debug mode: {guide_config.debug_short_mode}")
-        self.hyperparameters = {
-            "confidence_threshold": 0.6,  # Require 60% confidence for signals
             "signal_strength_threshold": 0.3,  # Require 30% signal strength
             "max_signals_per_bar": 5,
             "force_accept_signals": False,  # If True, bypass filters and accept valid signals
