@@ -31,14 +31,14 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from ztb.analysis.common.types import NormalizerProtocol
 
 import numpy as np
 from numpy.typing import NDArray
 
 
 @dataclass
-class NormalizationStats:
+class NormalizationStats(NormalizerProtocol):
     """Normalization statistics with validation capabilities."""
 
     feature_names: List[str]
@@ -422,3 +422,19 @@ def load_scaler(
             return None  # type: ignore
 
     return NormalizationStats.load(scaler_path)
+
+
+# Protocol implementation methods
+def fit(self, data: Any) -> None:
+    """Fit normalizer to data (not implemented for stats-only class)."""
+    raise NotImplementedError("NormalizationStats is read-only; use from_scaler() or from_vec_normalize() to create")
+
+def transform(self, data: Any) -> Any:
+    """Transform data using stored statistics."""
+    scaler = self.to_scaler()
+    return scaler.transform(data)
+
+def inverse_transform(self, data: Any) -> Any:
+    """Inverse transform data using stored statistics."""
+    scaler = self.to_scaler()
+    return scaler.inverse_transform(data)
