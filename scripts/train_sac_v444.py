@@ -61,7 +61,7 @@ def main() -> bool:
             final_metrics = {
                 "config": args.config,
                 "version": args.version,
-                "success": True
+                "success": True,
             }
             display_training_complete(final_metrics, training_time)
             return True

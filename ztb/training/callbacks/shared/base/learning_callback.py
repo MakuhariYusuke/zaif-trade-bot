@@ -717,7 +717,6 @@ class LearningCallback(abc.ABC):
         self.priority = 0  # Callbacks with higher priority are called first
 
     @abc.abstractmethod
-
     @abc.abstractmethod
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
@@ -941,14 +940,22 @@ class CallbackManager:
                     pass
 
     # Convenience event dispatchers used in tests/docs
-    def on_epoch_end(self, context: LearningContext, logs: Optional[Dict[str, Any]] = None) -> None:
+    def on_epoch_end(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.notify("on_epoch_end", context, logs)
 
-    def on_epoch_start(self, context: LearningContext, logs: Optional[Dict[str, Any]] = None) -> None:
+    def on_epoch_start(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.notify("on_epoch_start", context, logs)
 
-    def on_batch_start(self, context: LearningContext, logs: Optional[Dict[str, Any]] = None) -> None:
+    def on_batch_start(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.notify("on_batch_start", context, logs)
 
-    def on_batch_end(self, context: LearningContext, logs: Optional[Dict[str, Any]] = None) -> None:
+    def on_batch_end(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         self.notify("on_batch_end", context, logs)

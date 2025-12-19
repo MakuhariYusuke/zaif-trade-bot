@@ -4,11 +4,11 @@ Quick 5000-step training script for V444 analysis
 課題発見のための5000ステップ学習を実行
 """
 
-import sys
-from pathlib import Path
 import json
 import logging
+import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,6 @@ sys.path.insert(0, str(ztb_path))
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
-
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 logging.basicConfig(level=logging.INFO)
@@ -104,15 +103,13 @@ def main():
         },
         "features": {
             "include_multi_timeframe_features": False,  # Disable multi-timeframe features
-        }
+        },
     }
 
     try:
         env = HeavyTradingEnv(
-            df=df,
-            config=env_config,
-            max_features=50  # Limit features for quick training
-        )
+            df=df, config=env_config, max_features=50
+        )  # Limit features for quick training
         logger.info("Environment created successfully")
     except Exception as e:
         logger.error(f"Failed to create environment: {e}")
@@ -145,9 +142,7 @@ def main():
     training_start_time = time.time()
     try:
         model.learn(
-            total_timesteps=5000,
-            callback=checkpoint_callback,
-            progress_bar=True
+            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
         )
         training_time = time.time() - training_start_time
         logger.info("Training completed successfully")
@@ -155,17 +150,19 @@ def main():
         # Save final model using centralized utility
         model_path = "models/sac_v444_5000step_final.zip"
         from ztb.utils.training_utils import save_model
+
         save_model(model, model_path)
         logger.info(f"Model saved to {model_path}")
 
         # Display completion using centralized utility
         from ztb.utils.training_utils import display_training_complete
+
         final_metrics = {
             "total_timesteps": 5000,
             "model_path": model_path,
             "data_samples": len(df),
             "features_used": 50,
-            "training_completed": True
+            "training_completed": True,
         }
         display_training_complete(final_metrics, training_time)
 
@@ -175,7 +172,7 @@ def main():
             "model_path": model_path,
             "data_samples": len(df),
             "features_used": 50,
-            "training_completed": True
+            "training_completed": True,
         }
 
         # Save training stats

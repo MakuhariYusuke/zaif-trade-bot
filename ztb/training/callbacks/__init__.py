@@ -5,10 +5,7 @@ Advanced Callbacks for Training.
 """
 
 # Legacy callbacks (for backward compatibility)
-from ztb.training.callbacks.advanced_callbacks import (
-    BestModelSaveCallback,
-    EarlyStoppingCallback,
-)
+from ztb.training.callbacks.advanced_callbacks import EarlyStoppingCallback
 from ztb.training.callbacks.core.callback_implementations import (
     CheckpointCallback,
     LoggingCallback,

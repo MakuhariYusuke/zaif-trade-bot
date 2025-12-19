@@ -4,7 +4,10 @@
 Simple reward function training test
 """
 
+import time
 from typing import Dict, List
+
+from ztb.utils.training_utils import display_training_complete
 
 # Type alias for configuration
 ConfigType = Dict[str, str | float]
@@ -18,6 +21,7 @@ from ztb.training.utils.training_utils import (
     print_training_results,
     print_training_start,
     save_model_with_path,
+    display_training_complete,
     setup_project_path,
 )
 
@@ -66,7 +70,9 @@ def train_simple_reward(
     print_training_start(config_name, reward_scaling, entropy_coef, learning_rate)
 
     # Train for 100k steps
+    start_time = time.time()
     model.learn(total_timesteps=100000, callback=callback)
+    training_time = time.time() - start_time
 
     print_training_results(callback.episode_rewards)
 
@@ -127,6 +133,7 @@ if __name__ == "__main__":
     ]
 
     trained_models = []
+    start_time = time.time()
 
     for config in configs:
         print(f"\n{'='*60}")
@@ -147,8 +154,10 @@ if __name__ == "__main__":
             print(f"❌ Failed to train {config['name']}: {e}")
             continue
 
-    print(f"\n{'='*60}")
-    print("Training completed! Models trained:")
-    for name, path in trained_models:
-        print(f"  - {name}: {path}")
-    print(f"{'='*60}")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "models_trained": len(trained_models),
+        "successful_configs": [name for name, _ in trained_models],
+        "failed_configs": [config["name"] for config in configs if config["name"] not in [name for name, _ in trained_models]]
+    }
+    display_training_complete(final_metrics, training_time)

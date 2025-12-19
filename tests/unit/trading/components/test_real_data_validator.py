@@ -1,6 +1,6 @@
 """Tests for Real Data Validation System component."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd

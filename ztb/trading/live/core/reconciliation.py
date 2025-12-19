@@ -320,7 +320,6 @@ class BalanceReconciler(BaseReconciler):
         return result
 
 
-
 class OrderReconciler(BaseReconciler):
     """Reconciler for order states."""
 
@@ -447,12 +446,22 @@ class ComprehensiveReconciler(BaseReconciler):
             Reconciliation result
         """
         # Map positional args to reconcile_all parameters
-        local_positions = kwargs.get('local_positions', args[0] if len(args) > 0 else None)
-        external_positions = kwargs.get('external_positions', args[1] if len(args) > 1 else None)
-        local_balances = kwargs.get('local_balances', args[2] if len(args) > 2 else None)
-        external_balances = kwargs.get('external_balances', args[3] if len(args) > 3 else None)
-        local_orders = kwargs.get('local_orders', args[4] if len(args) > 4 else None)
-        external_orders = kwargs.get('external_orders', args[5] if len(args) > 5 else None)
+        local_positions = kwargs.get(
+            "local_positions", args[0] if len(args) > 0 else None
+        )
+        external_positions = kwargs.get(
+            "external_positions", args[1] if len(args) > 1 else None
+        )
+        local_balances = kwargs.get(
+            "local_balances", args[2] if len(args) > 2 else None
+        )
+        external_balances = kwargs.get(
+            "external_balances", args[3] if len(args) > 3 else None
+        )
+        local_orders = kwargs.get("local_orders", args[4] if len(args) > 4 else None)
+        external_orders = kwargs.get(
+            "external_orders", args[5] if len(args) > 5 else None
+        )
 
         return await self.reconcile_all(
             local_positions=local_positions,

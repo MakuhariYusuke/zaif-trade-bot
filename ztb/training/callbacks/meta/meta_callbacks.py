@@ -428,7 +428,6 @@ class FewShotCallback(MemoryOptimizedCallback):
 
         return stats
 
-
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -458,7 +457,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
         adaptation_steps: int = 10,
         stability_threshold: float = 0.01,
     ):
-
         # Adaptation tracking
         self.adaptation_curves: List[
             List[float]

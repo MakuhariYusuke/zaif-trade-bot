@@ -3,8 +3,10 @@ SAC v395i Complete Fix - 5k timesteps
 完全修正版: 観測値正規化 + 報酬改善
 """
 import json
+import time
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
@@ -27,13 +29,14 @@ def main():
     print("  - Stable gradient updates")
     print("\n")
 
+    start_time = time.time()
     trainer = UnifiedTrainer(config)
     result = trainer.train()
+    training_time = time.time() - start_time
 
     print("\n" + "=" * 60)
     if result:
-        print("✅ Training completed!")
-        print(f"Model saved to: {result.get('model_path', 'N/A')}")
+        display_training_complete(result, training_time)
         print("\nNext steps:")
         print("1. Check TensorBoard for Critic Loss improvement")
         print("2. If successful, extend to 10k-50k timesteps")

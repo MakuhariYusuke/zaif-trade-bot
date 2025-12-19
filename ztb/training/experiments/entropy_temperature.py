@@ -20,7 +20,7 @@ minority actions continue to be sampled.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -88,7 +88,6 @@ class TargetEntropyController:
         self.history: Dict[str, List[float]] = {"alpha": [], "entropy": [], "loss": []}
 
     @property
-
     def compute_entropy(
         self, action_logits: torch.Tensor, actions: Optional[torch.Tensor] = None
     ) -> torch.Tensor:

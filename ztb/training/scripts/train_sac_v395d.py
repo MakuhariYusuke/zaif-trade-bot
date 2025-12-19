@@ -3,13 +3,17 @@ SAC v395d (Optimal) - Best of Both Worlds
 v395aの低いLoss + v395b/cの安定したent_coef
 """
 import json
+import time
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
     print("🎯 SAC v395d - Optimal Parameter Set")
     print("=" * 80)
+
+    start_time = time.time()
 
     config_path = "configs/sac_v395d_optimal.json"
 
@@ -34,11 +38,12 @@ def main():
     trainer = UnifiedTrainer(config)
     result = trainer.train()
 
-    print("\n" + "=" * 80)
-    if result:
-        print("✅ Training completed!")
-        print(f"Model saved to: {result.get('model_path', 'N/A')}")
-        print("\n📊 Next Steps:")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "model_path": result.get('model_path', 'N/A') if result else None,
+        "training_success": bool(result),
+    }
+    display_training_complete(final_metrics, training_time)
         print("  1. Run: python compare_three_sac_versions.py")
         print("  2. If successful, extend to 10k timesteps")
         print("  3. Then 50k → 100k for final evaluation")

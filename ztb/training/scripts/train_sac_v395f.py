@@ -3,13 +3,17 @@ SAC v395f - Revolutionary Simple Reward Function
 複雑な報酬関数を捨て、純粋なPnLベースの報酬へ
 """
 import json
+import time
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
     print("🔥 SAC v395f - Simple Reward Revolution 🔥")
     print("=" * 80)
+
+    start_time = time.time()
 
     config_path = "configs/sac_v395f_simple_reward.json"
 
@@ -48,12 +52,12 @@ def main():
     trainer = UnifiedTrainer(config)
     result = trainer.train()
 
-    print("\n" + "=" * 80)
-    if result:
-        print("✅ Training completed!")
-        print(f"Model saved to: {result.get('model_path', 'N/A')}")
-        print("\n📊 Critical Metrics to Check:")
-        print("  1. Critic Loss should be < 1e6 (not 1e8-1e10)")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "model_path": result.get('model_path', 'N/A') if result else None,
+        "training_success": bool(result),
+    }
+    display_training_complete(final_metrics, training_time)
         print("  2. ent_coef should be 0.5-2.0 (not 3-4)")
         print("  3. Actor Loss should be stable")
         print("  4. Training should be smooth (no explosions)")

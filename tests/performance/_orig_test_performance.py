@@ -4,14 +4,12 @@ Performance tests for SAC v446 components
 SAC v446コンポーネントのパフォーマンステスト
 """
 
-import os
 import sys
 import time
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
-import psutil
 import pytest
 
 # Add src to path for imports

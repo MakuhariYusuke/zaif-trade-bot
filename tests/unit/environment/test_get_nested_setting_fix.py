@@ -6,8 +6,6 @@ Tests for _get_nested_setting syntax error fix in RewardCalculator.
 
 import pytest
 
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
-
 
 class TestGetNestedSettingFix:
     """Test the _get_nested_setting syntax error fix."""

@@ -349,7 +349,6 @@ class TestSACTrainerInternalLogs:
     def test_sac_trainer_uses_checkpoint_callback(self):
         """Test that SAC trainer properly integrates CheckpointCallback."""
         from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
-
         from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 
         config = {

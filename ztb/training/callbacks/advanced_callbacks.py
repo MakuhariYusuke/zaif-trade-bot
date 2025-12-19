@@ -8,16 +8,13 @@ Advanced Callbacks for SAC Training.
 """
 
 from collections import deque
+from pathlib import Path
 from typing import Optional
 
-from ztb.utils.training_utils import get_metric_from_logger
-from pathlib import Path
-from typing import Optional, cast
 
-import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
-
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.training_utils import get_metric_from_logger
 
 logger = get_logger(__name__)
 
@@ -158,6 +155,7 @@ class EarlyStoppingCallback(BaseCallback):
     def _get_metric(self) -> Optional[float]:
         """現在のメトリクス値を取得"""
         return get_metric_from_logger(self.model, self.metric_name)
+
 
 class BestModelSaveCallback(BaseCallback):
     """訓練中に最良のモデルを自動的に保存する。

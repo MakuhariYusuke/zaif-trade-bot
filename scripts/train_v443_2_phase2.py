@@ -5,6 +5,7 @@ Training script for v443.2 Phase 2: Market Regime Adaptation
 
 import logging
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path
@@ -12,12 +13,15 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def train_v443_2_phase2():
     """Run full training of v443.2 Phase 2 with market regime adaptation"""
 
     print("=== Training v443.2 Phase 2: Market Regime Adaptation ===")
+
+    start_time = time.time()
 
     # Set up logging to file and console
     logging.basicConfig(
@@ -53,7 +57,11 @@ def train_v443_2_phase2():
         # Run training
         trainer.train()
 
-        print("✅ Training completed successfully")
+        training_time = time.time() - start_time
+        final_metrics = {
+            "training_success": True,
+        }
+        display_training_complete(final_metrics, training_time)
 
     except Exception as e:
         print(f"❌ Training failed: {e}")

@@ -7,12 +7,16 @@ os.environ["MPLBACKEND"] = "Agg"  # matplotlibバックエンド設定
 
 import json
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 if __name__ == "__main__":
+    start_time = time.time()
+
     config_path = "configs/ppo_profitable_v392_bugfix.json"
 
     print(f"🚀 Starting v392 training with config: {config_path}")
@@ -28,8 +32,10 @@ if __name__ == "__main__":
     trainer = UnifiedTrainer(config)
     result = trainer.train()
 
-    if result:
-        print("\n✅ Training completed!")
-        print(f"   Model saved: {result.get('model_path')}")
-    else:
+    training_time = time.time() - start_time
+    final_metrics = {
+        "model_path": result.get('model_path') if result else None,
+        "training_success": bool(result),
+    }
+    display_training_complete(final_metrics, training_time)
         print("\n❌ Training failed or was cancelled")

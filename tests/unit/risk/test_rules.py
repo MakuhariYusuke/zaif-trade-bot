@@ -8,7 +8,6 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from ztb.risk.profiles import RiskLimits
 from ztb.risk.rules import RiskRuleEngine
 
 

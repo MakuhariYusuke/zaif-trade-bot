@@ -3,13 +3,17 @@ SAC v395g - Micro Reward Scale
 報酬を1/10に縮小してQ値の爆発を防ぐ
 """
 import json
+import time
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
     print("🔬 SAC v395g - Micro Reward Scale (1/10)")
     print("=" * 80)
+
+    start_time = time.time()
 
     config_path = "configs/sac_v395g_micro_reward.json"
 
@@ -50,10 +54,12 @@ def main():
     trainer = UnifiedTrainer(config)
     result = trainer.train()
 
-    print("\n" + "=" * 80)
-    if result:
-        print("✅ Training completed!")
-        print(f"Model saved to: {result.get('model_path', 'N/A')}")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "model_path": result.get('model_path', 'N/A') if result else None,
+        "training_success": bool(result),
+    }
+    display_training_complete(final_metrics, training_time)
         print("\n📊 Critical Checks:")
         print("  1. ✅ Critic Loss < 100? (was 1e6-1e8)")
         print("  2. ✅ Actor Loss > 0 and < 100? (was -4e4)")

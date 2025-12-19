@@ -13,7 +13,7 @@ import pstats
 import threading
 import time
 import weakref
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -63,7 +63,6 @@ class SystemPerformanceMetrics:
     # 効率指標
     memory_efficiency: float = 0.0  # 操作あたりのメモリ使用量
     cpu_efficiency: float = 0.0  # 操作あたりのCPU使用量
-
 
 
 @dataclass

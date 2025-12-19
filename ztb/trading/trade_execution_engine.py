@@ -163,6 +163,7 @@ class Position:
         """時価評価額"""
         return self.quantity * self.current_price
 
+
 class TransactionCostCalculator(BaseComponent):
     """取引コスト計算器"""
 

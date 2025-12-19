@@ -34,11 +34,8 @@ else:
     # the `object` fallback used for type checking. This avoids tests
     # attempting to construct `object()` which raises TypeError.
     from ztb.training.config.trainer_params import TrainerParams
-    from ztb.training.core.ppo_trainer import (
-        PPOTrainer,
-        PPOTrainerAutoHalt,
-        PPOTrainingConfig as TrainingConfig,
-    )
+    from ztb.training.core.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt
+    from ztb.training.core.ppo_trainer import PPOTrainingConfig as TrainingConfig
 
 
 class TestPPOTrainerAutoHalt:

@@ -9,6 +9,7 @@ Supports checkpoint resumption for continued training.
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path
@@ -17,6 +18,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.training_utils import display_training_complete
 
 logger = get_logger(__name__)
 
@@ -88,11 +90,12 @@ def main() -> bool:
 
         # Start training
         print("🎯 Starting training...")
+        start_time = time.time()
         success = trainer.train()
+        training_time = time.time() - start_time
 
         if success:
-            print("✅ Training completed successfully!")
-            print(f"Model saved to: {trainer.config.get('model_save_path', 'models/')}")
+            display_training_complete(trainer.config, training_time)
             print(f"Checkpoints saved with frequency: {args.checkpoint_freq} steps")
             return True
         else:

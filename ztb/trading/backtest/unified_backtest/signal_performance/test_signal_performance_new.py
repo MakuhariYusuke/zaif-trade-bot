@@ -5,26 +5,27 @@ Unit tests for signal_performance package.
 Tests the integration of SignalPerformanceAnalyzer with unified backtest framework.
 """
 
+import os
+import sys
 import unittest
 from datetime import datetime
 from unittest.mock import patch
+
 import pandas as pd
-import sys
-import os
 
 # Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..'))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
+)
 
 from ztb.trading.backtest.unified_backtest.signal_performance import (
+    BacktestPerformanceAnalyzer,
     BacktestSignalPerformanceAnalyzer,
-    SignalTracker,
-    BacktestPerformanceAnalyzer
 )
 
 
 class TestSignalTracker(unittest.TestCase):
     """Test SignalTracker functionality."""
-
 
     def test_track_signal(self):
         """Test signal tracking."""
@@ -34,20 +35,31 @@ class TestSignalTracker(unittest.TestCase):
             "direction": 1.0,
             "strength": 0.8,
             "confidence": 0.9,
-            "source_patterns": ["pattern1", "pattern2"]
+            "source_patterns": ["pattern1", "pattern2"],
         }
-        market_data = pd.Series({
-            "open": 50000, "high": 51000, "low": 49000,
-            "close": 50500, "volume": 100, "returns": 0.01
-        })
+        market_data = pd.Series(
+            {
+                "open": 50000,
+                "high": 51000,
+                "low": 49000,
+                "close": 50500,
+                "volume": 100,
+                "returns": 0.01,
+            }
+        )
         position_before = 0
         position_after = 1
         trade_executed = True
         trade_result = {"pnl": 100.0, "action": "buy"}
 
         self.tracker.track_signal(
-            timestamp, signal_data, market_data, position_before,
-            position_after, trade_executed, trade_result
+            timestamp,
+            signal_data,
+            market_data,
+            position_before,
+            position_after,
+            trade_executed,
+            trade_result,
         )
 
         self.assertEqual(len(self.tracker.signals), 1)
@@ -65,8 +77,11 @@ class TestSignalTracker(unittest.TestCase):
         # Add some test signals
         timestamp = pd.Timestamp(datetime(2023, 1, 1, 12, 0, 0))
         signal_data = {
-            "signal_type": "buy", "direction": 1.0, "strength": 0.8,
-            "confidence": 0.9, "source_patterns": ["pattern1"]
+            "signal_type": "buy",
+            "direction": 1.0,
+            "strength": 0.8,
+            "confidence": 0.9,
+            "source_patterns": ["pattern1"],
         }
         market_data = pd.Series({"close": 50000, "volume": 100})
 
@@ -88,17 +103,8 @@ class TestBacktestPerformanceAnalyzer(unittest.TestCase):
         """Set up test fixtures."""
         self.analyzer = BacktestPerformanceAnalyzer()
         timestamp = pd.Timestamp(datetime(2023, 1, 1, 12, 0, 0))
-        trade_result = {
-            "action": "buy",
-            "price": 50000,
-            "shares": 1.0,
-            "pnl": 1000.0
-        }
-        signal_data = {
-            "signal_type": "buy",
-            "confidence": 0.8,
-            "strength": 0.7
-        }
+        trade_result = {"action": "buy", "price": 50000, "shares": 1.0, "pnl": 1000.0}
+        signal_data = {"signal_type": "buy", "confidence": 0.8, "strength": 0.7}
 
         self.analyzer.record_trade_outcome(timestamp, trade_result, signal_data)
 
@@ -108,13 +114,15 @@ class TestBacktestPerformanceAnalyzer(unittest.TestCase):
         self.assertEqual(outcome["action"], "buy")
         self.assertEqual(outcome["pnl"], 1000.0)
 
-    @patch('ztb.trading.strategies.action_signal_guide.analysis.signal_performance_analyzer.SignalPerformanceAnalyzer.analyze_correlation')
+    @patch(
+        "ztb.trading.strategies.action_signal_guide.analysis.signal_performance_analyzer.SignalPerformanceAnalyzer.analyze_correlation"
+    )
     def test_get_performance_report(self, mock_analyze_correlation):
         """Test generating performance report."""
         mock_analyze_correlation.return_value = {
             "correlation_coefficient": 0.75,
             "p_value": 0.01,
-            "significant": True
+            "significant": True,
         }
 
         # Add some test data
@@ -122,7 +130,7 @@ class TestBacktestPerformanceAnalyzer(unittest.TestCase):
         self.analyzer.record_trade_outcome(
             timestamp,
             {"action": "buy", "price": 50000, "pnl": 1000},
-            {"signal_type": "buy", "confidence": 0.8}
+            {"signal_type": "buy", "confidence": 0.8},
         )
 
         report = self.analyzer.get_performance_report()
@@ -143,9 +151,7 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
     def test_track_signal_integration(self):
         """Test signal tracking through main analyzer."""
         timestamp = pd.Timestamp("2023-01-01")
-        signal_data = {
-            "confidence": 0.9, "source_patterns": ["pattern1"]
-        }
+        signal_data = {"confidence": 0.9, "source_patterns": ["pattern1"]}
         market_data = pd.Series({"close": 50000, "volume": 100})
 
         self.analyzer.track_signal(
@@ -175,9 +181,7 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
 
         self.analyzer.track_signal(timestamp, signal_data, market_data, 0, 1, True)
         self.analyzer.record_trade_outcome(
-            timestamp,
-            {"action": "buy", "price": 50000, "pnl": 1000},
-            signal_data
+            timestamp, {"action": "buy", "price": 50000, "pnl": 1000}, signal_data
         )
 
         report = self.analyzer.get_performance_report()
@@ -188,5 +192,5 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
         self.assertIn("total_trades", report["performance_analysis"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

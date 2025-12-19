@@ -409,7 +409,6 @@ class SMACrossoverAdapter:
 
         return {"action": "hold", "confidence": 0.5}
 
-
     def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
         """Update SMA strategy hyperparameters."""
         if "fast_period" in hyperparameters:
@@ -481,7 +480,6 @@ class ActionSignalGuideAdapter:
     def __init__(self, config: Optional[Any] = None):
         """Initialize Action Signal Guide adapter."""
         from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
-            ActionSignalGuide,
             ActionSignalGuideConfig,
         )
 

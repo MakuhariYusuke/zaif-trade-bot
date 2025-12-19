@@ -12,10 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ztb.training.callbacks.shared.base.learning_callback import (
-    LearningContext,
-    MemoryOptimizedCallback,
-)
+from ztb.training.callbacks.shared.base.learning_callback import LearningContext, MemoryOptimizedCallback
 
 
 class TaskBalancingCallback(MemoryOptimizedCallback):

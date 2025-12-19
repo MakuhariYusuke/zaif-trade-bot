@@ -10,10 +10,10 @@ relative imports resolve properly.
 """
 import importlib
 import sys
-import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+
 
 def _prefer_local_package():
     try:
@@ -35,19 +35,32 @@ def _prefer_local_package():
                 except Exception:
                     pass
                 # Ensure common subpackages are available
-                for sub in ("common.callbacks", "common.vec_env", "common.base_class", "common.policies"):
+                for sub in (
+                    "common.callbacks",
+                    "common.vec_env",
+                    "common.base_class",
+                    "common.policies",
+                ):
                     fullname = f"stable_baselines3.{sub}"
                     try:
                         importlib.import_module(fullname)
                     except Exception:
                         # If submodule missing on disk, ensure a placeholder module exists
                         if fullname not in sys.modules:
-                            m = importlib.util.module_from_spec(importlib.util.spec_from_loader(fullname, loader=None))
+                            m = importlib.util.module_from_spec(
+                                importlib.util.spec_from_loader(fullname, loader=None)
+                            )
                             # Mark a synthetic __file__ so pytest displays a file location
                             try:
                                 # Build a plausible __file__ path for the synthetic module
                                 subpath = Path(*fullname.split(".")[-2:])
-                                m.__file__ = str((Path(PROJECT_ROOT) / "stable_baselines3" / subpath).with_suffix('.py'))
+                                m.__file__ = str(
+                                    (
+                                        Path(PROJECT_ROOT)
+                                        / "stable_baselines3"
+                                        / subpath
+                                    ).with_suffix(".py")
+                                )
                             except Exception:
                                 pass
                             sys.modules[fullname] = m
@@ -56,14 +69,15 @@ def _prefer_local_package():
         pass
     return False
 
+
 # Execute at import time
 _prefer_local_package()
 """Project-level bootstrap to ensure test-time compatibility for optional
 heavy dependencies (stable_baselines3 fallbacks, etc.). Runs early during
 interpreter startup when project root is on sys.path.
 """
-import sys
 import importlib
+import sys
 import types
 
 
@@ -111,21 +125,31 @@ def _ensure_sb3_compat():
             local_init = Path(PROJECT_ROOT) / "stable_baselines3" / "__init__.py"
             if local_init.exists():
                 # Load file-backed package to ensure consistent import semantics
-                spec_fb = importlib.util.spec_from_file_location("stable_baselines3", str(local_init))
+                spec_fb = importlib.util.spec_from_file_location(
+                    "stable_baselines3", str(local_init)
+                )
                 if spec_fb is not None:
                     real_mod = importlib.util.module_from_spec(spec_fb)
                     spec_fb.loader.exec_module(real_mod)  # type: ignore
                     sys.modules["stable_baselines3"] = real_mod
                 else:
-                    mod.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
+                    mod.__spec__ = importlib.util.spec_from_loader(
+                        "stable_baselines3", loader=None
+                    )
                     mod.__file__ = str(local_init)
                     sys.modules["stable_baselines3"] = mod
             else:
-                mod.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
-                mod.__file__ = str(Path(PROJECT_ROOT) / "sitecustomize_stubs" / "stable_baselines3.py")
+                mod.__spec__ = importlib.util.spec_from_loader(
+                    "stable_baselines3", loader=None
+                )
+                mod.__file__ = str(
+                    Path(PROJECT_ROOT) / "sitecustomize_stubs" / "stable_baselines3.py"
+                )
                 sys.modules["stable_baselines3"] = mod
         except Exception:
-            mod.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
+            mod.__spec__ = importlib.util.spec_from_loader(
+                "stable_baselines3", loader=None
+            )
             sys.modules["stable_baselines3"] = mod
     else:
         # If real package exists, ensure it exposes missing top-level attributes
@@ -158,8 +182,15 @@ def _ensure_sb3_compat():
                 cb.CheckpointCallback = cb.BaseCallback
                 # Provide a minimal __spec__ and __file__ for cleaner diagnostics
                 try:
-                    cb.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.callbacks", loader=None)
-                    cb.__file__ = str(Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py")
+                    cb.__spec__ = importlib.util.spec_from_loader(
+                        "stable_baselines3.common.callbacks", loader=None
+                    )
+                    cb.__file__ = str(
+                        Path(PROJECT_ROOT)
+                        / "stable_baselines3"
+                        / "common"
+                        / "callbacks.py"
+                    )
                 except Exception:
                     pass
                 sys.modules["stable_baselines3.common.callbacks"] = cb
@@ -167,7 +198,12 @@ def _ensure_sb3_compat():
                 # If callbacks loaded from filesystem, ensure __file__/__spec__ present
                 try:
                     if not getattr(cb, "__file__", None):
-                        cb.__file__ = str(Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py")
+                        cb.__file__ = str(
+                            Path(PROJECT_ROOT)
+                            / "stable_baselines3"
+                            / "common"
+                            / "callbacks.py"
+                        )
                 except Exception:
                     pass
         except Exception:
@@ -289,7 +325,9 @@ try:
             real_cb = importlib.import_module("stable_baselines3.common.callbacks")
             # Ensure module looks file-backed
             if not getattr(real_cb, "__file__", None):
-                real_cb.__file__ = str(Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py")
+                real_cb.__file__ = str(
+                    Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py"
+                )
             sys.modules["stable_baselines3.common.callbacks"] = real_cb
         except Exception:
             pass
@@ -310,7 +348,9 @@ def _replace_stub_with_filebacked(fullname: str, candidate_path: Path):
             has_spec = bool(getattr(m, "__spec__", None))
             if not (has_file and has_spec) and candidate_path.exists():
                 # Load from file to get proper __file__/__spec__ and package semantics
-                spec_fb = importlib.util.spec_from_file_location(fullname, str(candidate_path))
+                spec_fb = importlib.util.spec_from_file_location(
+                    fullname, str(candidate_path)
+                )
                 if spec_fb is not None:
                     real_mod = importlib.util.module_from_spec(spec_fb)
                     # If it's a package, ensure __path__ includes the package dir
@@ -323,7 +363,9 @@ def _replace_stub_with_filebacked(fullname: str, candidate_path: Path):
                         # If execution fails, at least provide __file__/__spec__ to the stub
                         try:
                             m.__file__ = str(candidate_path)
-                            m.__spec__ = importlib.util.spec_from_loader(fullname, loader=None)
+                            m.__spec__ = importlib.util.spec_from_loader(
+                                fullname, loader=None
+                            )
                         except Exception:
                             pass
 

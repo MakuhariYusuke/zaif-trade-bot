@@ -231,7 +231,9 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
             saved_ok = _save_model(model, model_path)
 
             if not saved_ok:
-                self.logger.error(f"Model save helper reported failure for {model_path}")
+                self.logger.error(
+                    f"Model save helper reported failure for {model_path}"
+                )
 
             # 🔧 Fix: Explicitly save VecNormalize stats if present
             # SB3 does not automatically save VecNormalize stats in the model zip
@@ -258,10 +260,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
                             current_env = current_env.venv
                         elif hasattr(current_env, "env"):
                             current_env = current_env.env
-                        elif (
-                            hasattr(current_env, "envs")
-                            and len(current_env.envs) > 0
-                        ):
+                        elif hasattr(current_env, "envs") and len(current_env.envs) > 0:
                             current_env = current_env.envs[0]
                         else:
                             break
@@ -279,9 +278,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
 
                         if os.path.exists(temp_stats_path):
                             os.remove(temp_stats_path)
-                        self.logger.info(
-                            "✅ VecNormalize stats appended to model zip"
-                        )
+                        self.logger.info("✅ VecNormalize stats appended to model zip")
                 except Exception as e:
                     self.logger.warning(f"Failed to save VecNormalize stats: {e}")
 

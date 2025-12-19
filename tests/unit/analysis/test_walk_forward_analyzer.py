@@ -4,12 +4,14 @@
 WalkForwardAnalyzerクラスの機能をテストします。
 """
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from ztb.analysis.walk_forward_analyzer import (
-    WalkForwardAnalyzer, ParameterSet, WalkForwardWindow
+    ParameterSet,
+    WalkForwardAnalyzer,
+    WalkForwardWindow,
 )
 
 
@@ -19,36 +21,48 @@ class TestWalkForwardAnalyzer:
     @pytest.fixture
     def mock_strategy_func(self):
         """モック戦略評価関数"""
+
         def strategy_evaluator(data: pd.DataFrame, params: ParameterSet) -> dict:
-            returns = data['close'].pct_change().dropna()
+            returns = data["close"].pct_change().dropna()
             if len(returns) == 0:
                 total_return = 0.0
                 volatility = 1.0
                 sharpe_ratio = 0.0
             else:
                 prod_result = returns.prod()
-                total_return = float(prod_result - 1) if isinstance(prod_result, (int, float)) else 0.0
+                total_return = (
+                    float(prod_result - 1)
+                    if isinstance(prod_result, (int, float))
+                    else 0.0
+                )
                 std_result = returns.std()
-                volatility = float(std_result) if isinstance(std_result, (int, float)) else 1.0
-                sharpe_ratio = float(returns.mean() / volatility * np.sqrt(252)) if volatility > 0 else 0.0
+                volatility = (
+                    float(std_result) if isinstance(std_result, (int, float)) else 1.0
+                )
+                sharpe_ratio = (
+                    float(returns.mean() / volatility * np.sqrt(252))
+                    if volatility > 0
+                    else 0.0
+                )
 
             return {
-                'total_return': total_return,
-                'sharpe_ratio': sharpe_ratio,
-                'win_rate': 0.6,
-                'max_drawdown': 0.15,
-                'total_trades': len(returns),
-                'trades': []
+                "total_return": total_return,
+                "sharpe_ratio": sharpe_ratio,
+                "win_rate": 0.6,
+                "max_drawdown": 0.15,
+                "total_trades": len(returns),
+                "trades": [],
             }
+
         return strategy_evaluator
 
     def test_initialization(self):
         """初期化テスト"""
         analyzer = WalkForwardAnalyzer()
         assert analyzer.parameter_space is not None
-        assert hasattr(analyzer, 'create_sliding_windows')
-        assert hasattr(analyzer, 'optimize_parameters')
-        assert hasattr(analyzer, 'walk_forward_optimization')
+        assert hasattr(analyzer, "create_sliding_windows")
+        assert hasattr(analyzer, "optimize_parameters")
+        assert hasattr(analyzer, "walk_forward_optimization")
 
     def test_create_sliding_windows(self, sample_market_data):
         """スライディングウィンドウ作成テスト"""
@@ -59,7 +73,7 @@ class TestWalkForwardAnalyzer:
             train_days=30,
             test_days=10,
             step_days=15,
-            min_samples=10
+            min_samples=10,
         )
 
         assert len(windows) > 0
@@ -72,8 +86,12 @@ class TestWalkForwardAnalyzer:
         assert first_window.window_id == 0
 
         # データ存在チェック
-        train_data = sample_market_data.loc[first_window.train_start:first_window.train_end]
-        test_data = sample_market_data.loc[first_window.test_start:first_window.test_end]
+        train_data = sample_market_data.loc[
+            first_window.train_start : first_window.train_end
+        ]
+        test_data = sample_market_data.loc[
+            first_window.test_start : first_window.test_end
+        ]
         assert len(train_data) >= 10
         assert len(test_data) >= 10
 
@@ -82,18 +100,15 @@ class TestWalkForwardAnalyzer:
         analyzer = WalkForwardAnalyzer()
 
         # 短いデータ
-        short_data = pd.DataFrame({
-            'close': [100, 101, 102, 103, 104]
-        }, index=pd.date_range('2023-01-01', periods=5, freq='D'))
+        short_data = pd.DataFrame(
+            {"close": [100, 101, 102, 103, 104]},
+            index=pd.date_range("2023-01-01", periods=5, freq="D"),
+        )
 
         # データ不足時はValueErrorが投げられる
         with pytest.raises(ValueError, match="データ期間が不足しています"):
             analyzer.create_sliding_windows(
-                short_data,
-                train_days=30,
-                test_days=10,
-                step_days=15,
-                min_samples=10
+                short_data, train_days=30, test_days=10, step_days=15, min_samples=10
             )
 
     def test_optimize_parameters(self, sample_market_data, mock_strategy_func):
@@ -104,14 +119,14 @@ class TestWalkForwardAnalyzer:
         best_params, best_performance = analyzer.optimize_parameters(
             sample_market_data,
             mock_strategy_func,
-            parameter_sets=[analyzer.parameter_space.get_conservative_defaults()]
+            parameter_sets=[analyzer.parameter_space.get_conservative_defaults()],
         )
 
         assert isinstance(best_params, ParameterSet)
         assert isinstance(best_performance, dict)
-        assert 'sharpe_ratio' in best_performance
-        assert 'total_return' in best_performance
-        assert 'win_rate' in best_performance
+        assert "sharpe_ratio" in best_performance
+        assert "total_return" in best_performance
+        assert "win_rate" in best_performance
 
     def test_optimize_parameters_no_valid_results(self, sample_market_data):
         """有効な結果がない場合のパラメータ最適化テスト"""
@@ -124,13 +139,13 @@ class TestWalkForwardAnalyzer:
         best_params, best_performance = analyzer.optimize_parameters(
             sample_market_data,
             failing_strategy,
-            parameter_sets=[analyzer.parameter_space.get_conservative_defaults()]
+            parameter_sets=[analyzer.parameter_space.get_conservative_defaults()],
         )
 
         # デフォルト値が返されることを確認
         assert isinstance(best_params, ParameterSet)
         assert isinstance(best_performance, dict)
-        assert best_performance['sharpe_ratio'] == 0.0
+        assert best_performance["sharpe_ratio"] == 0.0
 
     def test_walk_forward_optimization(self, sample_market_data, mock_strategy_func):
         """ウォークフォワード最適化テスト"""
@@ -143,14 +158,14 @@ class TestWalkForwardAnalyzer:
             test_days=10,
             step_days=15,
             parameter_sets=[analyzer.parameter_space.get_conservative_defaults()],
-            min_samples=10
+            min_samples=10,
         )
 
         assert len(results) > 0
-        assert all(hasattr(r, 'best_parameters') for r in results)
-        assert all(hasattr(r, 'in_sample_performance') for r in results)
-        assert all(hasattr(r, 'out_of_sample_performance') for r in results)
-        assert all(hasattr(r, 'window') for r in results)
+        assert all(hasattr(r, "best_parameters") for r in results)
+        assert all(hasattr(r, "in_sample_performance") for r in results)
+        assert all(hasattr(r, "out_of_sample_performance") for r in results)
+        assert all(hasattr(r, "window") for r in results)
 
     def test_evaluate_out_of_sample(self, sample_market_data, mock_strategy_func):
         """アウトオブサンプル評価テスト"""
@@ -158,14 +173,12 @@ class TestWalkForwardAnalyzer:
 
         params = analyzer.parameter_space.get_conservative_defaults()
         performance = analyzer.evaluate_out_of_sample(
-            sample_market_data,
-            params,
-            mock_strategy_func
+            sample_market_data, params, mock_strategy_func
         )
 
         assert isinstance(performance, dict)
-        assert 'sharpe_ratio' in performance
-        assert 'total_return' in performance
+        assert "sharpe_ratio" in performance
+        assert "total_return" in performance
 
     def test_evaluate_out_of_sample_error_handling(self, sample_market_data):
         """アウトオブサンプル評価のエラーハンドリングテスト"""
@@ -176,11 +189,9 @@ class TestWalkForwardAnalyzer:
 
         params = analyzer.parameter_space.get_conservative_defaults()
         performance = analyzer.evaluate_out_of_sample(
-            sample_market_data,
-            params,
-            failing_strategy
+            sample_market_data, params, failing_strategy
         )
 
         # エラー時はデフォルト値が返される
-        assert performance['sharpe_ratio'] == 0.0
-        assert performance['total_return'] == 0.0
+        assert performance["sharpe_ratio"] == 0.0
+        assert performance["total_return"] == 0.0

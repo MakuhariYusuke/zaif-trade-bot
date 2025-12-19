@@ -146,7 +146,6 @@ class DiscordNotifier:
             logger.error(f"Failed to send Discord notification: {e}")
             return False
 
-
     def notify_job_completion(
         self, job_id: str, success: bool, metrics: Dict[str, Any]
     ) -> None:
@@ -154,6 +153,7 @@ class DiscordNotifier:
         status = "✅ Success" if success else "❌ Failed"
         title = f"🔬 ML Job {status}"
         message = f"Job {job_id} completed"
+
     def notify_trading_signal(
         self, symbol: str, signal: str, confidence: float
     ) -> None:

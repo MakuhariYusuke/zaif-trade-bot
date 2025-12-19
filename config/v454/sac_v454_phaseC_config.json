@@ -100,13 +100,81 @@
             17
           ]
         },
-        "regime_filters": {
-          "high_volatility_ranging": {
-            "enabled": true,
-            "strategy": "mean_reversion",
-            "params": {
+        "regime_filter": {
+          "enabled": true,
+          "mode": "soft",
+          "force_exit": true,
+          "excluded_regimes": [],
+          "regime_constraints": {
+            "weak_bull_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "buy"
+              ],
+              "entry_action_source": "zscore",
               "exit_action_source": "tp_sl",
               "entry_zscore_threshold": 2.0,
+              "stop_loss_pct": 0.01,
+              "take_profit_pct": 0.02
+            },
+            "moderate_bull_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "buy"
+              ],
+              "entry_action_source": "zscore",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 2.5,
+              "stop_loss_pct": 0.01,
+              "take_profit_pct": 0.02
+            },
+            "strong_bull_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "buy"
+              ],
+              "entry_action_source": "zscore",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 3.0,
+              "stop_loss_pct": 0.01,
+              "take_profit_pct": 0.02
+            },
+            "weak_bear_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "sell"
+              ],
+              "entry_action_source": "zscore",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 2.0,
+              "stop_loss_pct": 0.01,
+              "take_profit_pct": 0.02
+            },
+            "moderate_bear_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "sell"
+              ],
+              "entry_action_source": "zscore",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 2.5,
+              "stop_loss_pct": 0.01,
+              "take_profit_pct": 0.02
+            },
+            "strong_bear_trend": {
+              "action_permission": "restricted",
+              "position_multiplier": 0.2,
+              "allowed_entry_actions": [
+                "sell"
+              ],
+              "entry_action_source": "zscore",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 3.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             }

@@ -10,15 +10,12 @@ import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
-from decimal import Decimal
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional
 
-from ztb.trading.live.core.precision_policy import quantize_price, quantize_quantity
 from ztb.trading.live.orders.compat import OrderData
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 
 class OrderState(enum.Enum):
@@ -32,6 +29,7 @@ class OrderState(enum.Enum):
     REJECTED = "rejected"
     EXPIRED = "expired"
     FAILED = "failed"
+
 
 class OrderEvent(enum.Enum):
     """Events that can trigger order state transitions."""
@@ -69,7 +67,9 @@ class OrderRecord:
 
     def _generate_idempotency_key(self) -> str:
         """Generate idempotency key from order data."""
-        key_data = f"{self.data.client_order_id}_{self.data.symbol}_{self.data.timestamp}"
+        key_data = (
+            f"{self.data.client_order_id}_{self.data.symbol}_{self.data.timestamp}"
+        )
         return hashlib.sha256(key_data.encode()).hexdigest()[:16]
 
     def generate_order_id(self) -> str:
@@ -90,7 +90,13 @@ class OrderRecord:
         # Define valid transitions
         valid_transitions = {
             OrderState.CREATED: {OrderState.SUBMITTED, OrderState.CANCELLED},
-            OrderState.SUBMITTED: {OrderState.FILLED, OrderState.PARTIAL, OrderState.CANCELLED, OrderState.REJECTED, OrderState.EXPIRED},
+            OrderState.SUBMITTED: {
+                OrderState.FILLED,
+                OrderState.PARTIAL,
+                OrderState.CANCELLED,
+                OrderState.REJECTED,
+                OrderState.EXPIRED,
+            },
             OrderState.PARTIAL: {OrderState.FILLED, OrderState.CANCELLED},
             OrderState.FILLED: set(),
             OrderState.CANCELLED: set(),

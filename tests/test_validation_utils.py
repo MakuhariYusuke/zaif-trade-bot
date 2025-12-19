@@ -10,21 +10,19 @@ import sys
 import unittest
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.strategies.action_signal_guide.components.validation import (
-    SignalValidator,
     DataSanitizer,
     PerformanceTracker,
+    SignalValidator,
     ValidationResult,
 )
-
-
 
 
 class TestSignalValidator(unittest.TestCase):
@@ -44,7 +42,7 @@ class TestSignalValidator(unittest.TestCase):
             pattern_type="fibonacci",
             price=100.0,
             stop_loss=95.0,
-            take_profit=110.0
+            take_profit=110.0,
         )
 
         result = self.validator.validate_signal(signal)
@@ -57,7 +55,7 @@ class TestSignalValidator(unittest.TestCase):
         """Test validation of signal with missing required fields."""
         # Create signal missing required fields
         signal = MockActionSignal()
-        delattr(signal, 'action')  # Remove required field
+        delattr(signal, "action")  # Remove required field
 
         result = self.validator.validate_signal(signal)
 
@@ -171,7 +169,7 @@ class TestSignalValidator(unittest.TestCase):
             action="BUY",
             price=100.0,
             stop_loss=105.0,  # Stop loss above price (invalid for BUY)
-            take_profit=95.0   # Take profit below price (invalid for BUY)
+            take_profit=95.0,  # Take profit below price (invalid for BUY)
         )
 
         result = self.validator._validate_logical_consistency(signal)
@@ -184,8 +182,8 @@ class TestSignalValidator(unittest.TestCase):
         signal = MockActionSignal(
             action="SELL",
             price=100.0,
-            stop_loss=95.0,   # Stop loss below price (invalid for SELL)
-            take_profit=105.0  # Take profit above price (invalid for SELL)
+            stop_loss=95.0,  # Stop loss below price (invalid for SELL)
+            take_profit=105.0,  # Take profit above price (invalid for SELL)
         )
 
         result = self.validator._validate_logical_consistency(signal)
@@ -208,13 +206,15 @@ class TestDataSanitizer(unittest.TestCase):
 
     def test_sanitize_market_data_normal(self):
         """Test sanitization of normal market data."""
-        data = pd.DataFrame({
-            "open": [100, 101, 102],
-            "high": [105, 106, 107],
-            "low": [95, 96, 97],
-            "close": [103, 104, 105],
-            "volume": [1000, 1100, 1200]
-        })
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 102],
+                "high": [105, 106, 107],
+                "low": [95, 96, 97],
+                "close": [103, 104, 105],
+                "volume": [1000, 1100, 1200],
+            }
+        )
 
         sanitized_data, report = self.sanitizer.sanitize_market_data(data)
 
@@ -222,7 +222,9 @@ class TestDataSanitizer(unittest.TestCase):
         self.assertIsInstance(report, dict)
         self.assertIn("original_rows", report)
         self.assertIn("final_rows", report)
-        self.assertEqual(report["original_rows"], report["final_rows"])  # No changes expected
+        self.assertEqual(
+            report["original_rows"], report["final_rows"]
+        )  # No changes expected
 
     def test_remove_outliers(self):
         """Test outlier removal."""
@@ -242,10 +244,12 @@ class TestDataSanitizer(unittest.TestCase):
     def test_fill_missing_values(self):
         """Test missing value filling."""
         # Create data with missing values
-        data = pd.DataFrame({
-            "close": [100, np.nan, 102, np.nan, 104],
-            "volume": [1000, 1100, np.nan, 1300, 1400]
-        })
+        data = pd.DataFrame(
+            {
+                "close": [100, np.nan, 102, np.nan, 104],
+                "volume": [1000, 1100, np.nan, 1300, 1400],
+            }
+        )
 
         result = self.sanitizer._fill_missing_values(data)
 
@@ -257,10 +261,12 @@ class TestDataSanitizer(unittest.TestCase):
     def test_normalize_data_types(self):
         """Test data type normalization."""
         # Create data with wrong types
-        data = pd.DataFrame({
-            "close": ["100", "101", "102"],  # Strings instead of numbers
-            "volume": [1000, 1100, 1200]
-        })
+        data = pd.DataFrame(
+            {
+                "close": ["100", "101", "102"],
+                "volume": [1000, 1100, 1200],
+            }  # Strings instead of numbers
+        )
 
         sanitized_data, report = self.sanitizer.sanitize_market_data(data)
 
@@ -271,12 +277,14 @@ class TestDataSanitizer(unittest.TestCase):
     def test_validate_ohlc_consistency(self):
         """Test OHLC data consistency validation."""
         # Create inconsistent OHLC data
-        data = pd.DataFrame({
-            "open": [100, 101, 102],
-            "high": [95, 96, 97],  # High < Open (inconsistent)
-            "low": [105, 106, 107],  # Low > Open (inconsistent)
-            "close": [103, 104, 105]
-        })
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 102],
+                "high": [95, 96, 97],  # High < Open (inconsistent)
+                "low": [105, 106, 107],  # Low > Open (inconsistent)
+                "close": [103, 104, 105],
+            }
+        )
 
         result = self.sanitizer._validate_ohlc_consistency(data)
 
@@ -293,28 +301,25 @@ class TestDataSanitizer(unittest.TestCase):
         self.assertEqual(len(sanitized_data), 0)
 
         # Test with single row
-        single_row_data = pd.DataFrame({
-            "close": [100.0],
-            "volume": [1000]
-        })
+        single_row_data = pd.DataFrame({"close": [100.0], "volume": [1000]})
         sanitized_data, report = self.sanitizer.sanitize_market_data(single_row_data)
         self.assertIsInstance(sanitized_data, pd.DataFrame)
         self.assertEqual(len(sanitized_data), 1)
 
         # Test with all NaN values
-        nan_data = pd.DataFrame({
-            "close": [np.nan, np.nan, np.nan],
-            "volume": [np.nan, np.nan, np.nan]
-        })
+        nan_data = pd.DataFrame(
+            {"close": [np.nan, np.nan, np.nan], "volume": [np.nan, np.nan, np.nan]}
+        )
         sanitized_data, report = self.sanitizer.sanitize_market_data(nan_data)
         self.assertIsInstance(sanitized_data, pd.DataFrame)
-        self.assertTrue(sanitized_data.isnull().any().any())  # Should still have NaNs if can't fill
+        self.assertTrue(
+            sanitized_data.isnull().any().any()
+        )  # Should still have NaNs if can't fill
 
         # Test with extreme values
-        extreme_data = pd.DataFrame({
-            "close": [1e-10, 1e10, 0.0, -100.0],
-            "volume": [0, 1e15, -1000, np.nan]
-        })
+        extreme_data = pd.DataFrame(
+            {"close": [1e-10, 1e10, 0.0, -100.0], "volume": [0, 1e15, -1000, np.nan]}
+        )
         sanitized_data, report = self.sanitizer.sanitize_market_data(extreme_data)
         self.assertIsInstance(sanitized_data, pd.DataFrame)
         self.assertIn("issues_found", report)
@@ -337,19 +342,36 @@ class TestPerformanceTracker(unittest.TestCase):
         # Test with zero entry price (should handle gracefully or raise appropriate error)
         with self.assertRaises(ZeroDivisionError):
             self.tracker.record_signal_performance(
-                "test_1", 0.0, 0.0, pd.Timestamp.now(), pd.Timestamp.now() + pd.Timedelta(hours=1), "test"
+                "test_1",
+                0.0,
+                0.0,
+                pd.Timestamp.now(),
+                pd.Timestamp.now() + pd.Timedelta(hours=1),
+                "test",
             )
 
         # Test with negative entry price (should handle gracefully)
         record = self.tracker.record_signal_performance(
-            "test_2", -100.0, -90.0, pd.Timestamp.now(), pd.Timestamp.now() + pd.Timedelta(hours=1), "test"
+            "test_2",
+            -100.0,
+            -90.0,
+            pd.Timestamp.now(),
+            pd.Timestamp.now() + pd.Timedelta(hours=1),
+            "test",
         )
         self.assertIsInstance(record, dict)
-        self.assertGreater(record["price_change_pct"], 0)  # -90 > -100, so positive change
+        self.assertGreater(
+            record["price_change_pct"], 0
+        )  # -90 > -100, so positive change
 
         # Test with very large prices
         record = self.tracker.record_signal_performance(
-            "test_3", 1e10, 1.1e10, pd.Timestamp.now(), pd.Timestamp.now() + pd.Timedelta(hours=1), "test"
+            "test_3",
+            1e10,
+            1.1e10,
+            pd.Timestamp.now(),
+            pd.Timestamp.now() + pd.Timedelta(hours=1),
+            "test",
         )
         self.assertIsInstance(record, dict)
         self.assertAlmostEqual(record["price_change_pct"], 0.1, places=5)
@@ -367,7 +389,9 @@ class TestPerformanceTracker(unittest.TestCase):
             "test_5", 100.0, 105.0, now, now + pd.Timedelta(days=365), "test"
         )
         self.assertIsInstance(record, dict)
-        self.assertGreater(record["holding_time_hours"], 8000)  # Should be around 8760 hours
+        self.assertGreater(
+            record["holding_time_hours"], 8000
+        )  # Should be around 8760 hours
 
     def test_get_performance_metrics_no_data(self):
         """Test performance metrics with no data."""
@@ -423,7 +447,9 @@ class TestPerformanceTracker(unittest.TestCase):
     def test_history_cleanup(self):
         """Test automatic history cleanup."""
         # Record many signals with old timestamps to trigger cleanup
-        base_time = pd.Timestamp.now() - pd.Timedelta(days=60)  # Old data beyond 30-day limit
+        base_time = pd.Timestamp.now() - pd.Timedelta(
+            days=60
+        )  # Old data beyond 30-day limit
 
         for i in range(1200):  # More than the expected limit
             entry_time = base_time + pd.Timedelta(hours=i)
@@ -436,17 +462,28 @@ class TestPerformanceTracker(unittest.TestCase):
             # Override the recorded_at to be old
             record["recorded_at"] = base_time + pd.Timedelta(hours=i)
             # Re-add to history with old timestamp
-            self.tracker.performance_history[-1]["recorded_at"] = base_time + pd.Timedelta(hours=i)
+            self.tracker.performance_history[-1]["recorded_at"] = (
+                base_time + pd.Timedelta(hours=i)
+            )
 
         # Should have cleaned up old records (older than 30 days)
         # Since we added old data, most should be cleaned up
         # But let's check that cleanup actually runs by calling record_signal_performance again
         self.tracker.record_signal_performance(
-            "new_signal", 100.0, 102.0, pd.Timestamp.now(), pd.Timestamp.now() + pd.Timedelta(hours=1), "test"
+            "new_signal",
+            100.0,
+            102.0,
+            pd.Timestamp.now(),
+            pd.Timestamp.now() + pd.Timedelta(hours=1),
+            "test",
         )
 
         # After adding a new record, old records should be cleaned up
-        old_records = sum(1 for p in self.tracker.performance_history if p["recorded_at"] < pd.Timestamp.now() - pd.Timedelta(days=30))
+        old_records = sum(
+            1
+            for p in self.tracker.performance_history
+            if p["recorded_at"] < pd.Timestamp.now() - pd.Timedelta(days=30)
+        )
         self.assertEqual(old_records, 0)
 
 

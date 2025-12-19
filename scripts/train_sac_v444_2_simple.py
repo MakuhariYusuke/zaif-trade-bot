@@ -25,8 +25,7 @@ ztb_path = project_root / "ztb"
 sys.path.insert(0, str(ztb_path))
 
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
-
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.training_utils import display_training_complete, save_model
 
@@ -38,6 +37,7 @@ class ActionAverageCallback(BaseCallback):
     """
     Callback to calculate and log the average of continuous actions during training.
     """
+
     def __init__(self, verbose=0):
         super().__init__(verbose)
         self.actions = []
@@ -60,7 +60,7 @@ class ActionAverageCallback(BaseCallback):
 
 def load_config(config_path: str) -> dict:
     """Load configuration from JSON file."""
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -85,20 +85,28 @@ def create_environment(config: dict):
     open_price = close.shift(1).fillna(close.iloc[0])
     volume = pd.Series(np.random.uniform(1000, 10000, 10000), index=dates)
 
-    df = pd.DataFrame({
-        "timestamp": dates,
-        "open": open_price,
-        "high": high,
-        "low": low,
-        "close": close,
-        "volume": volume
-    })
+    df = pd.DataFrame(
+        {
+            "timestamp": dates,
+            "open": open_price,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+    )
 
     # Create environment with minimal config (disable complex features for testing)
     env_config = {
-        "initial_balance": config.get("environment", {}).get("initial_balance", 200000.0),
-        "transaction_cost": config.get("environment", {}).get("transaction_cost", 0.001),
-        "max_position_size": config.get("environment", {}).get("max_position_size", 1.0),
+        "initial_balance": config.get("environment", {}).get(
+            "initial_balance", 200000.0
+        ),
+        "transaction_cost": config.get("environment", {}).get(
+            "transaction_cost", 0.001
+        ),
+        "max_position_size": config.get("environment", {}).get(
+            "max_position_size", 1.0
+        ),
         "random_start": True,
         "feature_set": "v435_risk_managed_no_multi_timeframe",  # Use feature set without multi-timeframe to avoid dependencies
         "use_continuous_actions": True,  # Match checkpoint model's action space
@@ -107,14 +115,12 @@ def create_environment(config: dict):
         "include_ensemble_features": False,
         "include_risk_features": False,
         "include_multi_timeframe_features": False,
-        "curriculum_stage": config.get("training", {}).get("curriculum_learning", {}).get("curriculum_stage", "stability_optimized")
+        "curriculum_stage": config.get("training", {})
+        .get("curriculum_learning", {})
+        .get("curriculum_stage", "stability_optimized"),
     }
 
-    env = HeavyTradingEnv(
-        df=df,
-        config=env_config,
-        random_start=True
-    )
+    env = HeavyTradingEnv(df=df, config=env_config, random_start=True)
 
     return env
 
@@ -126,25 +132,19 @@ def main():
         "--config",
         type=str,
         default="config/sac_v444_2_integrated_regime_adaptation_config.json",
-        help="Path to configuration file"
+        help="Path to configuration file",
     )
     parser.add_argument(
         "--resume-from",
         type=str,
         default=None,
-        help="Path to checkpoint file to resume from"
+        help="Path to checkpoint file to resume from",
     )
     parser.add_argument(
-        "--total-timesteps",
-        type=int,
-        default=5000,
-        help="Total timesteps to train"
+        "--total-timesteps", type=int, default=5000, help="Total timesteps to train"
     )
     parser.add_argument(
-        "--checkpoint-freq",
-        type=int,
-        default=1000,
-        help="Checkpoint save frequency"
+        "--checkpoint-freq", type=int, default=1000, help="Checkpoint save frequency"
     )
 
     args = parser.parse_args()
@@ -193,7 +193,7 @@ def main():
                 ent_coef=ent_coef,
                 target_entropy=target_entropy,
                 verbose=1,
-                device="auto"
+                device="auto",
             )
             print("✅ New SAC model created")
 
@@ -215,7 +215,7 @@ def main():
         model.learn(
             total_timesteps=args.total_timesteps,
             callback=[checkpoint_callback, action_callback],
-            reset_num_timesteps=False  # Continue from checkpoint if resuming
+            reset_num_timesteps=False,  # Continue from checkpoint if resuming
         )
         training_time = time.time() - training_start_time
 
@@ -227,7 +227,9 @@ def main():
         final_metrics = {
             "total_timesteps": args.total_timesteps,
             "model_path": final_model_path,
-            "action_average": np.mean(action_callback.actions) if action_callback.actions else 0.0
+            "action_average": np.mean(action_callback.actions)
+            if action_callback.actions
+            else 0.0,
         }
         display_training_complete(final_metrics, training_time)
 
@@ -236,6 +238,7 @@ def main():
     except Exception as e:
         logger.error(f"Training failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

@@ -7,34 +7,25 @@ and stress testing scenarios.
 """
 
 import sys
-import unittest
 import time
+import unittest
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.strategies.action_signal_guide.components.sac_integration import (
-    SACSignalValidator,
-    SACDecisionIntegrator,
-    SACPerformanceMonitor,
-)
 from ztb.trading.strategies.action_signal_guide.components.market_regime import (
+    MarketConditionAnalyzer,
     MarketRegimeDetector,
     RegimeAdaptiveSignalProcessor,
-    MarketConditionAnalyzer,
 )
-from ztb.trading.strategies.action_signal_guide.components.validation import (
-    SignalValidator,
-    DataSanitizer,
-    PerformanceTracker,
+from ztb.trading.strategies.action_signal_guide.components.sac_integration import (
+    SACPerformanceMonitor,
 )
-
-
 
 
 class TestPerformanceAndStress(unittest.TestCase):
@@ -55,7 +46,7 @@ class TestPerformanceAndStress(unittest.TestCase):
                 action="BUY" if i % 2 == 0 else "SELL",
                 confidence=0.5 + (i % 500) / 1000,  # Varying confidence
                 price=100 + (i % 100),
-                pattern_type="fibonacci" if i % 3 == 0 else "harmonic"
+                pattern_type="fibonacci" if i % 3 == 0 else "harmonic",
             )
             signals.append(signal)
 
@@ -76,7 +67,9 @@ class TestPerformanceAndStress(unittest.TestCase):
         self.assertLess(validation_time, 5.0)  # Should complete within 5 seconds
         self.assertGreaterEqual(validation_time, 0.1)  # Should take at least some time
 
-        print(f"Validated {validated_count}/{num_signals} signals in {validation_time:.3f}s")
+        print(
+            f"Validated {validated_count}/{num_signals} signals in {validation_time:.3f}s"
+        )
 
     def test_large_market_data_sanitization(self):
         """Test data sanitization performance with large market data."""
@@ -86,18 +79,20 @@ class TestPerformanceAndStress(unittest.TestCase):
 
         # Generate realistic OHLC data with trends and volatility
         np.random.seed(42)
-        trend = np.sin(np.linspace(0, 20*np.pi, num_rows)) * 10 + 100
+        trend = np.sin(np.linspace(0, 20 * np.pi, num_rows)) * 10 + 100
         noise = np.random.normal(0, 2, num_rows)
         close_prices = trend + noise
 
-        large_data = pd.DataFrame({
-            "timestamp": dates,
-            "open": close_prices + np.random.normal(0, 0.5, num_rows),
-            "high": close_prices + abs(np.random.normal(0, 1, num_rows)),
-            "low": close_prices - abs(np.random.normal(0, 1, num_rows)),
-            "close": close_prices,
-            "volume": np.random.normal(10000, 2000, num_rows)
-        })
+        large_data = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "open": close_prices + np.random.normal(0, 0.5, num_rows),
+                "high": close_prices + abs(np.random.normal(0, 1, num_rows)),
+                "low": close_prices - abs(np.random.normal(0, 1, num_rows)),
+                "close": close_prices,
+                "volume": np.random.normal(10000, 2000, num_rows),
+            }
+        )
 
         # Ensure OHLC integrity
         large_data["high"] = np.maximum(large_data["high"], large_data["close"])
@@ -105,7 +100,9 @@ class TestPerformanceAndStress(unittest.TestCase):
         large_data["low"] = np.maximum(large_data["low"], 0)
 
         # Add some NaN values to test robustness
-        nan_indices = np.random.choice(num_rows, size=int(num_rows * 0.05), replace=False)
+        nan_indices = np.random.choice(
+            num_rows, size=int(num_rows * 0.05), replace=False
+        )
         large_data.loc[nan_indices, "close"] = np.nan
 
         # Measure sanitization time
@@ -133,22 +130,24 @@ class TestPerformanceAndStress(unittest.TestCase):
         np.random.seed(42)
 
         # First half: bullish trend
-        trend1 = np.linspace(100, 150, num_rows//2)
+        trend1 = np.linspace(100, 150, num_rows // 2)
         # Second half: bearish trend
-        trend2 = np.linspace(150, 120, num_rows//2)
+        trend2 = np.linspace(150, 120, num_rows // 2)
         trend = np.concatenate([trend1, trend2])
 
         noise = np.random.normal(0, 3, num_rows)
         close_prices = trend + noise
 
-        large_data = pd.DataFrame({
-            "timestamp": dates,
-            "open": close_prices + np.random.normal(0, 1, num_rows),
-            "high": close_prices + abs(np.random.normal(0, 2, num_rows)),
-            "low": close_prices - abs(np.random.normal(0, 2, num_rows)),
-            "close": close_prices,
-            "volume": np.random.normal(10000, 3000, num_rows)
-        })
+        large_data = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "open": close_prices + np.random.normal(0, 1, num_rows),
+                "high": close_prices + abs(np.random.normal(0, 2, num_rows)),
+                "low": close_prices - abs(np.random.normal(0, 2, num_rows)),
+                "close": close_prices,
+                "volume": np.random.normal(10000, 3000, num_rows),
+            }
+        )
 
         # Measure regime detection time
         start_time = time.time()
@@ -173,15 +172,14 @@ class TestPerformanceAndStress(unittest.TestCase):
         start_time = time.time()
 
         for i in range(num_entries):
-            entry_time = base_time + pd.Timedelta(hours=i*2)
+            entry_time = base_time + pd.Timedelta(hours=i * 2)
             exit_time = entry_time + pd.Timedelta(hours=4)
 
             # Alternate profitable/unprofitable trades
             exit_price = 100 * (1.02 if i % 3 != 0 else 0.98)
 
             self.performance_tracker.record_signal_performance(
-                f"signal_{i}", 100.0, exit_price,
-                entry_time, exit_time, "fibonacci"
+                f"signal_{i}", 100.0, exit_price, entry_time, exit_time, "fibonacci"
             )
 
         recording_time = time.time() - start_time
@@ -196,7 +194,7 @@ class TestPerformanceAndStress(unittest.TestCase):
 
         # Performance assertions
         self.assertLess(recording_time, 60.0)  # Should complete within 1 minute
-        self.assertLess(metrics_time, 2.0)    # Metrics should calculate quickly
+        self.assertLess(metrics_time, 2.0)  # Metrics should calculate quickly
         self.assertIsInstance(metrics, dict)
 
         print(f"Recorded {num_entries} performance entries in {recording_time:.3f}s")
@@ -218,7 +216,7 @@ class TestPerformanceAndStress(unittest.TestCase):
                 signal = MockActionSignal(
                     action="BUY" if (iteration + i) % 2 == 0 else "SELL",
                     confidence=0.6 + (i % 40) / 100,
-                    price=100 + (i % 50)
+                    price=100 + (i % 50),
                 )
                 signals.append(signal)
 
@@ -241,7 +239,9 @@ class TestPerformanceAndStress(unittest.TestCase):
         # Performance assertions
         self.assertLess(avg_time_per_batch, 0.5)  # Average batch under 0.5s
         self.assertLess(avg_time_per_signal, 0.005)  # Average signal under 5ms
-        self.assertGreater(total_signals_processed, num_iterations * signals_per_iteration * 0.8)  # 80% success rate
+        self.assertGreater(
+            total_signals_processed, num_iterations * signals_per_iteration * 0.8
+        )  # 80% success rate
 
         print(f"Processed {total_signals_processed} signals in {total_time:.3f}s")
         print(f"Average time per batch: {avg_time_per_batch:.3f}s")
@@ -261,8 +261,7 @@ class TestPerformanceAndStress(unittest.TestCase):
             exit_time = entry_time + pd.Timedelta(hours=2)
 
             self.performance_tracker.record_signal_performance(
-                f"old_signal_{i}", 100.0, 102.0,
-                entry_time, exit_time, "test"
+                f"old_signal_{i}", 100.0, 102.0, entry_time, exit_time, "test"
             )
 
         # Add recent entries
@@ -270,22 +269,25 @@ class TestPerformanceAndStress(unittest.TestCase):
         num_recent_entries = 100
 
         for i in range(num_recent_entries):
-            entry_time = recent_base_time + pd.Timedelta(minutes=i*5)
+            entry_time = recent_base_time + pd.Timedelta(minutes=i * 5)
             exit_time = entry_time + pd.Timedelta(hours=1)
 
             self.performance_tracker.record_signal_performance(
-                f"recent_signal_{i}", 100.0, 102.0,
-                entry_time, exit_time, "test"
+                f"recent_signal_{i}", 100.0, 102.0, entry_time, exit_time, "test"
             )
 
         final_history_size = len(self.performance_tracker.performance_history)
 
         # Verify cleanup worked
         self.assertLess(final_history_size, num_old_entries + num_recent_entries)
-        self.assertGreaterEqual(final_history_size, num_recent_entries * 0.9)  # Keep most recent
+        self.assertGreaterEqual(
+            final_history_size, num_recent_entries * 0.9
+        )  # Keep most recent
 
         print(f"History size: {initial_history_size} -> {final_history_size}")
-        print(f"Cleanup removed {num_old_entries + num_recent_entries - final_history_size} old entries")
+        print(
+            f"Cleanup removed {num_old_entries + num_recent_entries - final_history_size} old entries"
+        )
 
     def test_extreme_market_conditions_stress(self):
         """Test handling of extreme market conditions."""
@@ -306,14 +308,16 @@ class TestPerformanceAndStress(unittest.TestCase):
             new_price = np.clip(new_price, 0.01, 10000)
             prices.append(new_price)
 
-        extreme_data = pd.DataFrame({
-            "timestamp": dates,
-            "open": prices,
-            "high": [p * (1 + abs(np.random.normal(0, 0.05))) for p in prices],
-            "low": [p * (1 - abs(np.random.normal(0, 0.05))) for p in prices],
-            "close": prices,
-            "volume": [np.random.normal(10000, 5000) for _ in range(num_points)]
-        })
+        extreme_data = pd.DataFrame(
+            {
+                "timestamp": dates,
+                "open": prices,
+                "high": [p * (1 + abs(np.random.normal(0, 0.05))) for p in prices],
+                "low": [p * (1 - abs(np.random.normal(0, 0.05))) for p in prices],
+                "close": prices,
+                "volume": [np.random.normal(10000, 5000) for _ in range(num_points)],
+            }
+        )
 
         # Test all components with extreme data
         start_time = time.time()
@@ -325,7 +329,9 @@ class TestPerformanceAndStress(unittest.TestCase):
         regime = self.regime_detector.detect_regime(sanitized_data)
 
         # Market analysis
-        market_conditions = self.market_analyzer.analyze_market_conditions(sanitized_data)
+        market_conditions = self.market_analyzer.analyze_market_conditions(
+            sanitized_data
+        )
 
         # SAC validation with extreme data
         signals = [MockActionSignal(action="BUY", confidence=0.8)]
@@ -347,7 +353,9 @@ class TestPerformanceAndStress(unittest.TestCase):
         self.assertIsInstance(regime, dict)
         self.assertIsInstance(market_conditions, dict)
         self.assertIsInstance(final_decision, dict)
-        self.assertLess(processing_time, 10.0)  # Should handle extreme data reasonably fast
+        self.assertLess(
+            processing_time, 10.0
+        )  # Should handle extreme data reasonably fast
 
         print(f"Processed extreme market data in {processing_time:.3f}s")
 

@@ -4,11 +4,14 @@ Run all three reward configurations with short 5k timesteps for action distribut
 """
 import json
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
+from ztb.utils.training_utils import display_training_complete
 
 CONFIGS = [
     {
@@ -64,10 +67,12 @@ def run_training(config_info):
 
     # Train
     print("Starting training...")
+    start_time = time.time()
     trainer.train(session_id=session_id)
+    training_time = time.time() - start_time
 
     print("\n" + "=" * 80)
-    print(f"✅ Training completed: {config_info['name']}")
+    display_training_complete({"session_id": session_id}, training_time)
     print("=" * 80 + "\n")
 
 

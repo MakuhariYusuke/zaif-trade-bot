@@ -4,9 +4,11 @@ Run all three reward configurations with full 30k timesteps
 """
 import json
 import sys
+import time
 from typing import Any, Dict
 
 from ztb.utils.path_utils import get_file_dir
+from ztb.utils.training_utils import display_training_complete
 
 # Add project root to path
 project_root = get_file_dir(__file__)
@@ -68,6 +70,7 @@ def run_training(config_info: Dict[str, Any]) -> None:
     print("Starting training...")
     trainer.train(session_id=session_id)
 
+    trained_models.append(config_info['name'])
     print("\n" + "=" * 80)
     print(f"✅ Training completed: {config_info['name']}")
     print("=" * 80 + "\n")
@@ -81,6 +84,9 @@ def main() -> None:
     for i, cfg in enumerate(CONFIGS, 1):
         print(f"{i}. {cfg['name']}: {cfg['description']}")
     print("=" * 80 + "\n")
+
+    start_time = time.time()
+    trained_models = []
 
     for i, config_info in enumerate(CONFIGS, 1):
         print(f"\n{'#' * 80}")
@@ -107,11 +113,12 @@ def main() -> None:
                 print("Training sequence cancelled.")
                 sys.exit(1)
 
-    print("\n" + "=" * 80)
-    print("ALL TRAINING COMPLETED!")
-    print("=" * 80)
-    print("\nNext steps:")
-    print("1. Check training reports in outputs/training/")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "models_trained": len(trained_models),
+        "successful_configs": trained_models,
+    }
+    display_training_complete(final_metrics, training_time)
     print("2. Compare HOLD rates: v378 vs v379 vs v380")
     print("3. Analyze reward trajectories and final performance")
     print("4. Select best configuration based on:")

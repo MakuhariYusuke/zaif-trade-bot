@@ -5,7 +5,6 @@ Implements IBroker interface with dry-run simulation for testing.
 Real trading implementation is stubbed for future development.
 """
 
-import asyncio
 import hashlib
 import hmac
 import json
@@ -87,7 +86,6 @@ class CoincheckAdapter(IBroker):
         }
         self._order_counter = 0
         self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}  # Sample price
-
 
     def _create_signature(self, message: str) -> str:
         """Create HMAC-SHA256 signature for Coincheck API.
@@ -186,6 +184,7 @@ class CoincheckAdapter(IBroker):
 
     def _generate_order_id(self) -> str:
         import uuid
+
         return str(uuid.uuid4())
 
     async def place_order(

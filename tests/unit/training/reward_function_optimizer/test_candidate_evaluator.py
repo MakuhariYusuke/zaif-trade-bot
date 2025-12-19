@@ -106,7 +106,6 @@ def test_evaluate_candidate_retries(tmp_path: Path, monkeypatch):
             rpt_file = reports_dir / f"training_report_fake_{i}.json"
             rpt_file.write_text(json.dumps(report), encoding="utf-8")
 
-
         return R()
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -183,10 +182,12 @@ def test_evaluate_candidate_partial_report_cleanup(tmp_path: Path, monkeypatch):
         calls["n"] += 1
         # Make the first run fail, second succeed and write final report
         if calls["n"] == 1:
+
             class R:
                 returncode = 1
                 stdout = ""
                 stderr = "failed"
+
             return R()
         else:
             report = {
@@ -200,7 +201,9 @@ def test_evaluate_candidate_partial_report_cleanup(tmp_path: Path, monkeypatch):
                 returncode = 0
                 stdout = "OK"
                 stderr = ""
+
             return R()
+
     metrics = evaluate_candidate(
         str(cfg_path),
         seeds=1,

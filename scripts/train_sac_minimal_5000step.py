@@ -12,6 +12,7 @@ from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
+
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
@@ -31,7 +32,7 @@ def create_minimal_trading_env():
     n_steps = 1000
 
     # Generate trending price data
-    t = np.linspace(0, 4*np.pi, n_steps)
+    t = np.linspace(0, 4 * np.pi, n_steps)
     trend = 0.1 * np.sin(t * 0.1)  # Long-term trend
     noise = np.random.normal(0, 0.005, n_steps)  # Short-term noise
     price_changes = trend + noise
@@ -42,7 +43,9 @@ def create_minimal_trading_env():
     # Create simple observation space (price, trend, position)
     class MinimalTradingEnv(gym.Env):
         def __init__(self):
-            self.action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+            self.action_space = gym.spaces.Box(
+                low=-1, high=1, shape=(1,), dtype=np.float32
+            )
             self.observation_space = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32
             )
@@ -52,19 +55,21 @@ def create_minimal_trading_env():
             self.prices = prices
             self.reset()
 
-
         def step(self, action):
             # Simple trading logic
             action_value = float(action[0])
 
             # Execute trade
-            return np.array([
-                price / 10000000,  # Normalized price
-                trend,  # Price trend
-                self.position,  # Current position
-                self.balance / 200000.0,  # Balance ratio
-                self.current_step / len(self.prices)  # Time progress
-            ], dtype=np.float32)
+            return np.array(
+                [
+                    price / 10000000,  # Normalized price
+                    trend,  # Price trend
+                    self.position,  # Current position
+                    self.balance / 200000.0,  # Balance ratio
+                    self.current_step / len(self.prices),  # Time progress
+                ],
+                dtype=np.float32,
+            )
 
     return MinimalTradingEnv()
 
@@ -92,8 +97,8 @@ def main():
         verbose=1,
         # Overfitting prevention parameters
         policy_kwargs={
-            'net_arch': [64, 64],  # Smaller network
-        }
+            "net_arch": [64, 64],  # Smaller network
+        },
     )
 
     # Setup checkpoint callback
@@ -111,9 +116,9 @@ def main():
             "learning_rate": 3e-4,
             "buffer_size": 10000,
             "batch_size": 64,
-            "net_arch": [64, 64]
+            "net_arch": [64, 64],
         },
-        "training_events": []
+        "training_events": [],
     }
 
     # Train for 5000 steps
@@ -121,9 +126,7 @@ def main():
     try:
         training_start_time = time.time()
         model.learn(
-            total_timesteps=5000,
-            callback=checkpoint_callback,
-            progress_bar=True
+            total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
         )
         training_time = time.time() - training_start_time
         logger.info("Training completed successfully")
@@ -131,32 +134,34 @@ def main():
         # Save final model using centralized utility
         model_path = "models/sac_minimal_5000step_final.zip"
         from ztb.utils.training_utils import save_model
+
         save_model(model, model_path)
         logger.info(f"Model saved to {model_path}")
 
         # Display completion using centralized utility
         from ztb.utils.training_utils import display_training_complete
+
         final_metrics = {
             "total_timesteps": 5000,
             "model_path": model_path,
-            "final_status": "success"
+            "final_status": "success",
         }
         display_training_complete(final_metrics, training_time)
 
         # Update training stats
-        training_stats.update({
-            "training_completed": True,
-            "model_path": model_path,
-            "final_status": "success"
-        })
+        training_stats.update(
+            {
+                "training_completed": True,
+                "model_path": model_path,
+                "final_status": "success",
+            }
+        )
 
     except Exception as e:
         logger.error(f"Training failed: {e}")
-        training_stats.update({
-            "training_completed": False,
-            "error": str(e),
-            "final_status": "failed"
-        })
+        training_stats.update(
+            {"training_completed": False, "error": str(e), "final_status": "failed"}
+        )
 
     # Save training stats
     stats_path = "analysis/training_stats_5000step_minimal.json"
@@ -165,13 +170,13 @@ def main():
     logger.info(f"Training stats saved to {stats_path}")
 
     # Print summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("MINIMAL 5000-STEP TRAINING SUMMARY")
-    print("="*50)
+    print("=" * 50)
     print(f"Status: {training_stats['final_status']}")
     print(f"Timesteps: {training_stats['total_timesteps']}")
     print(f"Model saved: {training_stats.get('model_path', 'N/A')}")
-    print("="*50)
+    print("=" * 50)
 
 
 if __name__ == "__main__":

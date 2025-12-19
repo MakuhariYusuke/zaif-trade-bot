@@ -1,8 +1,8 @@
+import importlib
 import sys
-from pathlib import Path
 import types
 import warnings
-import importlib
+from pathlib import Path
 
 # Workaround for [WinError 1114] DLL initialization failed
 # Torch must be imported before pandas/scipy/numpy in some environments
@@ -56,6 +56,7 @@ if proj_root_str not in sys.path:
 # Minimal dummy model used as a fallback in a few places during collection.
 # Defined early so later import-time patching can reference it safely.
 if "_DummyModel" not in globals():
+
     class _DummyModel:
         def __init__(self, policy=None, env=None, **kwargs):
             self.policy = policy
@@ -64,14 +65,18 @@ if "_DummyModel" not in globals():
         def learn(self, total_timesteps: int, **kwargs):
             return self
 
+
 # If a file-backed `stable_baselines3` package exists in the repo, load it
 # explicitly from its __init__.py to ensure the repository-provided package
 # is preferred over an installed site-package or earlier injected stubs.
 try:
     import importlib.util
+
     local_sb3_init = project_root / "stable_baselines3" / "__init__.py"
     if local_sb3_init.exists():
-        spec = importlib.util.spec_from_file_location("stable_baselines3", str(local_sb3_init))
+        spec = importlib.util.spec_from_file_location(
+            "stable_baselines3", str(local_sb3_init)
+        )
         if spec is not None:
             mod = importlib.util.module_from_spec(spec)
             # mark as package
@@ -81,7 +86,12 @@ try:
                 sys.modules["stable_baselines3"] = mod
                 # Import common submodules from the file-backed package to
                 # replace any earlier placeholder modules in sys.modules.
-                for sub in ("stable_baselines3.common", "stable_baselines3.common.callbacks", "stable_baselines3.common.vec_env", "stable_baselines3.common.type_aliases"):
+                for sub in (
+                    "stable_baselines3.common",
+                    "stable_baselines3.common.callbacks",
+                    "stable_baselines3.common.vec_env",
+                    "stable_baselines3.common.type_aliases",
+                ):
                     try:
                         importlib.invalidate_caches()
                         m = importlib.import_module(sub)
@@ -130,6 +140,7 @@ except Exception:
 # lightweight stubs.
 try:
     import importlib
+
     cbm = sys.modules.get("stable_baselines3.common.callbacks")
     if cbm is None:
         try:
@@ -139,6 +150,7 @@ try:
             sys.modules["stable_baselines3.common.callbacks"] = cbm
     # Ensure attributes
     if not hasattr(cbm, "CallbackList"):
+
         class CallbackList(list):
             def __init__(self, *a, **k):
                 super().__init__()
@@ -149,9 +161,13 @@ try:
     # Ensure file/spec metadata for nicer diagnostics
     try:
         if not getattr(cbm, "__file__", None):
-            cbm.__file__ = str(project_root / "stable_baselines3" / "common" / "callbacks.py")
+            cbm.__file__ = str(
+                project_root / "stable_baselines3" / "common" / "callbacks.py"
+            )
         if not getattr(cbm, "__spec__", None):
-            cbm.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.callbacks", loader=None)
+            cbm.__spec__ = importlib.util.spec_from_loader(
+                "stable_baselines3.common.callbacks", loader=None
+            )
     except Exception:
         pass
     if sb3_root is not None:
@@ -167,7 +183,9 @@ except Exception:
 # real package that lives in the repo.
 _LOCAL_SB3_AVAILABLE = False
 try:
-    import importlib, os
+    import importlib
+    import os
+
     local_sb3_dir = project_root / "stable_baselines3"
     if local_sb3_dir.exists() and local_sb3_dir.is_dir():
         # Remove any pre-existing sys.modules entries that might be non-package
@@ -202,6 +220,7 @@ for _p in (archived_dir, scripts_dir):
         except ValueError:
             pass
 
+
 # Inject lightweight stubs for optional heavy modules to allow collection on
 # CI/local machines without installing optional deep-learning dependencies.
 def _inject_module(name, attrs=None):
@@ -212,27 +231,35 @@ def _inject_module(name, attrs=None):
     sys.modules[name] = mod
     return mod
 
+
 try:
-    import stable_baselines3  # type: ignore
+    pass  # type: ignore
 except Exception:
     # Before injecting in-memory stubs, check if there is a file-backed
     # `stable_baselines3` package in the repository and prefer that.
     try:
         import importlib.util
+
         spec = importlib.util.find_spec("stable_baselines3")
         if spec is not None and spec.origin and str(project_root) in str(spec.origin):
             # Prefer the repository-local package. Attempt to import it.
             try:
                 import importlib
+
                 importlib.import_module("stable_baselines3")
             except Exception:
                 # Fall back to injecting stubs if local package import fails
-                warnings.warn("stable_baselines3 local package exists but failed to import; injecting minimal test stubs.")
+                warnings.warn(
+                    "stable_baselines3 local package exists but failed to import; injecting minimal test stubs."
+                )
                 raise
         else:
-            warnings.warn("stable_baselines3 not installed; injecting minimal test stubs.")
+            warnings.warn(
+                "stable_baselines3 not installed; injecting minimal test stubs."
+            )
     except Exception:
         warnings.warn("stable_baselines3 not installed; injecting minimal test stubs.")
+
     # Minimal SAC/PPO stub classes used by tests
     class _DummyModel:
         def __init__(self, policy, env, **kwargs):
@@ -248,68 +275,93 @@ except Exception:
     # Provide a minimal __spec__ to avoid importlib.util.find_spec() raising ValueError
     try:
         import importlib
+
         sb3.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
     except Exception:
         sb3.__spec__ = None
     # Create subpackages for common.* modules required in tests
-    sys.modules["stable_baselines3.common"] = types.ModuleType("stable_baselines3.common")
+    sys.modules["stable_baselines3.common"] = types.ModuleType(
+        "stable_baselines3.common"
+    )
     # Minimal callbacks and policies we use in tests
     sb3_cb = types.ModuleType("stable_baselines3.common.callbacks")
+
     class CallbackList(list):
         def __init__(self, *args, **kwargs):
             super().__init__()
+
     class CheckpointCallback:
         def __init__(self, *args, **kwargs):
             pass
+
     sb3_cb.CallbackList = CallbackList
     sb3_cb.CheckpointCallback = CheckpointCallback
     try:
-        sb3_cb.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.callbacks", loader=None)
+        sb3_cb.__spec__ = importlib.util.spec_from_loader(
+            "stable_baselines3.common.callbacks", loader=None
+        )
     except Exception:
         pass
     sys.modules["stable_baselines3.common.callbacks"] = sb3_cb
     sb3_policies = types.ModuleType("stable_baselines3.common.policies")
+
     class ActorCriticPolicy:  # pragma: no cover - minimal stub
         pass
+
     sb3_policies.ActorCriticPolicy = ActorCriticPolicy
     try:
-        sb3_policies.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.policies", loader=None)
+        sb3_policies.__spec__ = importlib.util.spec_from_loader(
+            "stable_baselines3.common.policies", loader=None
+        )
     except Exception:
         pass
     sys.modules["stable_baselines3.common.policies"] = sb3_policies
     # Add base_class, monitor, vec_env modules used by code under test
     sb3_base_class = types.ModuleType("stable_baselines3.common.base_class")
+
     class BaseAlgorithm:  # pragma: no cover - minimal stub
         def __init__(self, *args, **kwargs):
             pass
+
     sb3_base_class.BaseAlgorithm = BaseAlgorithm
     try:
-        sb3_base_class.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.base_class", loader=None)
+        sb3_base_class.__spec__ = importlib.util.spec_from_loader(
+            "stable_baselines3.common.base_class", loader=None
+        )
     except Exception:
         pass
     sys.modules["stable_baselines3.common.base_class"] = sb3_base_class
 
     sb3_monitor = types.ModuleType("stable_baselines3.common.monitor")
+
     class Monitor:  # pragma: no cover - minimal stub
         def __init__(self, env, filename=None):
             self.env = env
             self.filename = filename
+
     sb3_monitor.Monitor = Monitor
     try:
-        sb3_monitor.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.monitor", loader=None)
+        sb3_monitor.__spec__ = importlib.util.spec_from_loader(
+            "stable_baselines3.common.monitor", loader=None
+        )
     except Exception:
         pass
     sys.modules["stable_baselines3.common.monitor"] = sb3_monitor
 
     sb3_vec_env = types.ModuleType("stable_baselines3.common.vec_env")
+
     class DummyVecEnv:  # pragma: no cover - minimal stub
         def __init__(self, env_fns):
             self.envs = env_fns
+
         def reset(self):
             return None
+
         def step(self, action):
             return None, 0, False, {}
+
     sb3_vec_env.DummyVecEnv = DummyVecEnv
+
     # minimal VecFrameStack/VecNormalize fallbacks sometimes used by the project
     class VecFrameStack:  # pragma: no cover - minimal stub
         def __init__(self, env, n_frames=1):
@@ -324,16 +376,20 @@ except Exception:
     sb3_vec_env.VecNormalize = VecNormalize
     sb3_vec_env.VecEnv = DummyVecEnv
     try:
-        sb3_vec_env.__spec__ = importlib.util.spec_from_loader("stable_baselines3.common.vec_env", loader=None)
+        sb3_vec_env.__spec__ = importlib.util.spec_from_loader(
+            "stable_baselines3.common.vec_env", loader=None
+        )
     except Exception:
         pass
     sys.modules["stable_baselines3.common.vec_env"] = sb3_vec_env
 
     sb3_type_aliases = types.ModuleType("stable_baselines3.common.type_aliases")
     sb3_type_aliases.GymEnv = object
+
     # Minimal Schedule type alias stub
     def Schedule(x):
         return x
+
     sb3_type_aliases.Schedule = Schedule
     sys.modules["stable_baselines3.common.type_aliases"] = sb3_type_aliases
 
@@ -394,15 +450,19 @@ if _sb3 is not None:
 
 # Debugging: optionally emit diagnostic info about stable_baselines3 imports
 import os
+
 if os.environ.get("ZTB_DEBUG_SB3_IMPORTS"):
     try:
         import sys
+
         sb3_mod = sys.modules.get("stable_baselines3")
         print("[DEBUG] stable_baselines3 in sys.modules:", sb3_mod is not None)
         if sb3_mod is not None:
             print("[DEBUG] sb3 __file__:", getattr(sb3_mod, "__file__", None))
             print("[DEBUG] sb3 __path__:", getattr(sb3_mod, "__path__", None))
-            print("[DEBUG] has SAC/PPO:", hasattr(sb3_mod, "SAC"), hasattr(sb3_mod, "PPO"))
+            print(
+                "[DEBUG] has SAC/PPO:", hasattr(sb3_mod, "SAC"), hasattr(sb3_mod, "PPO")
+            )
         cbm = sys.modules.get("stable_baselines3.common.callbacks")
         print("[DEBUG] callbacks in sys.modules:", cbm is not None)
         if cbm is not None:
@@ -419,7 +479,13 @@ if os.environ.get("ZTB_DEBUG_SB3_IMPORTS"):
         sys.modules["stable_baselines3.common"] = _sb3_common
 
     # type_aliases
-    if not hasattr(sys.modules.get("stable_baselines3.common.type_aliases", types.ModuleType("stable_baselines3.common.type_aliases")), "TensorDict"):
+    if not hasattr(
+        sys.modules.get(
+            "stable_baselines3.common.type_aliases",
+            types.ModuleType("stable_baselines3.common.type_aliases"),
+        ),
+        "TensorDict",
+    ):
         ta = sys.modules.get("stable_baselines3.common.type_aliases")
         if ta is None:
             ta = types.ModuleType("stable_baselines3.common.type_aliases")
@@ -433,9 +499,11 @@ if os.environ.get("ZTB_DEBUG_SB3_IMPORTS"):
         cbm = types.ModuleType("stable_baselines3.common.callbacks")
         sys.modules["stable_baselines3.common.callbacks"] = cbm
     if not hasattr(cbm, "CallbackList"):
+
         class CallbackList(list):
             def __init__(self, *args, **kwargs):
                 super().__init__()
+
         cbm.CallbackList = CallbackList
     if not hasattr(cbm, "BaseCallback"):
         cbm.BaseCallback = type("BaseCallback", (), {"n_calls": 0})
@@ -466,7 +534,9 @@ if os.environ.get("ZTB_DEBUG_SB3_IMPORTS"):
 # types.ModuleType stubs. This helps when the repository itself ships a small
 # shim to make tests deterministic.
 try:
-    import importlib, os
+    import importlib
+    import os
+
     local_pkg = os.path.join(str(project_root), "stable_baselines3")
     if os.path.isdir(local_pkg):
         importlib.invalidate_caches()
@@ -483,7 +553,11 @@ try:
             real_root = importlib.import_module("stable_baselines3")
             sys.modules["stable_baselines3"] = real_root
             # Also reload common submodules if they are present in package
-            for s in ("stable_baselines3.common.callbacks", "stable_baselines3.common.vec_env", "stable_baselines3.common.base_class"):
+            for s in (
+                "stable_baselines3.common.callbacks",
+                "stable_baselines3.common.vec_env",
+                "stable_baselines3.common.base_class",
+            ):
                 try:
                     real_sub = importlib.import_module(s)
                     # Replace any earlier stub with the real module
@@ -531,13 +605,19 @@ except Exception:
 # that can cause 'unknown location' import errors.
 try:
     import importlib
+
     importlib.invalidate_caches()
     real_sb3 = importlib.import_module("stable_baselines3")
     # Ensure package semantics
     if not hasattr(real_sb3, "__path__"):
         real_sb3.__path__ = [str(project_root / "stable_baselines3")]
     # Import common submodules explicitly and replace sys.modules entries
-    for sub in ("stable_baselines3.common", "stable_baselines3.common.callbacks", "stable_baselines3.common.vec_env", "stable_baselines3.common.type_aliases"):
+    for sub in (
+        "stable_baselines3.common",
+        "stable_baselines3.common.callbacks",
+        "stable_baselines3.common.vec_env",
+        "stable_baselines3.common.type_aliases",
+    ):
         try:
             m = importlib.import_module(sub)
             sys.modules[sub] = m
@@ -560,6 +640,7 @@ except Exception:
 try:
     import importlib
     import types as _types
+
     sb3_mod = sys.modules.get("stable_baselines3")
     if sb3_mod is None or not hasattr(sb3_mod, "__path__"):
         # Create or augment a package-like module pointing to the local package dir
@@ -569,7 +650,9 @@ try:
         if not hasattr(pkg, "__path__"):
             pkg.__path__ = [local_pkg]
         try:
-            pkg.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
+            pkg.__spec__ = importlib.util.spec_from_loader(
+                "stable_baselines3", loader=None
+            )
         except Exception:
             pass
         # Ensure core algorithm names exist
@@ -583,6 +666,7 @@ try:
         cbm = _types.ModuleType("stable_baselines3.common.callbacks")
         sys.modules["stable_baselines3.common.callbacks"] = cbm
     if not hasattr(cbm, "CallbackList"):
+
         class CallbackList(list):
             def __init__(self, *a, **k):
                 super().__init__()
@@ -592,12 +676,14 @@ try:
         cbm.BaseCallback = type("BaseCallback", (), {"n_calls": 0})
     # Ensure EvalCallback and CheckpointCallback exist
     if not hasattr(cbm, "EvalCallback"):
+
         class EvalCallback(cbm.BaseCallback):
             def __init__(self, *a, **k):
                 super().__init__()
 
         cbm.EvalCallback = EvalCallback
     if not hasattr(cbm, "CheckpointCallback"):
+
         class CheckpointCallback(cbm.BaseCallback):
             def __init__(self, *a, **k):
                 super().__init__()
@@ -619,7 +705,8 @@ except Exception:
     # Some SB3 installs expose these, others may not; define minimal fallbacks
     # that satisfy import checks during test collection.
     try:
-        from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback  # type: ignore
+        from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback  # type: ignore
+
         cbm = sys.modules.get("stable_baselines3.common.callbacks")
         if cbm is not None:
             setattr(cbm, "EvalCallback", EvalCallback)
@@ -650,7 +737,10 @@ except Exception:
 # from the repository so submodule imports (e.g., stable_baselines3.common)
 # succeed consistently during test collection.
 try:
-    import importlib, types, os
+    import importlib
+    import os
+    import types
+
     local_sb3_dir = project_root / "stable_baselines3"
     if local_sb3_dir.exists() and local_sb3_dir.is_dir():
         sb3_mod = sys.modules.get("stable_baselines3")
@@ -660,7 +750,9 @@ try:
             # Provide a minimal ModuleSpec so importlib.util.find_spec doesn't
             # raise ValueError when code checks for module specifications.
             try:
-                pkg.__spec__ = importlib.util.spec_from_loader("stable_baselines3", loader=None)
+                pkg.__spec__ = importlib.util.spec_from_loader(
+                    "stable_baselines3", loader=None
+                )
             except Exception:
                 pkg.__spec__ = None
             # expose minimal attributes in case code imports from package root
@@ -668,7 +760,12 @@ try:
             pkg.PPO = getattr(sb3_mod, "PPO", None)
             sys.modules["stable_baselines3"] = pkg
         # Attempt to import common submodules from the repo package
-        for sub in ("common.callbacks", "common.vec_env", "common.base_class", "common.policies"):
+        for sub in (
+            "common.callbacks",
+            "common.vec_env",
+            "common.base_class",
+            "common.policies",
+        ):
             try:
                 importlib.import_module(f"stable_baselines3.{sub}")
             except Exception:
@@ -704,6 +801,7 @@ for _mod in (
         try:
             if spec is not None and spec.origin:
                 from pathlib import Path
+
                 origin = Path(spec.origin)
                 if str(project_root) in str(origin):
                     has_local = True
@@ -761,29 +859,39 @@ except Exception:
 # Ensure torch is a proper module/package in sys.modules for test collection
 # Some environments may have a broken/partial 'torch' import that prevents
 # importing 'torch.nn'. Force a lightweight stub to avoid collection errors.
-if "torch" not in sys.modules or not isinstance(sys.modules.get("torch"), types.ModuleType):
+if "torch" not in sys.modules or not isinstance(
+    sys.modules.get("torch"), types.ModuleType
+):
     _t = _inject_module("torch")
 else:
     _t = sys.modules["torch"]
 
 # Ensure torch.nn exists as a module with minimal APIs used at import-time
-if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), types.ModuleType):
+if "torch.nn" not in sys.modules or not isinstance(
+    sys.modules.get("torch.nn"), types.ModuleType
+):
     _torch_nn = types.ModuleType("torch.nn")
+
     class _Module:
         def __init__(self, *args, **kwargs):
             pass
+
         def __call__(self, *args, **kwargs):
             # Minimal callable behavior: dispatch to forward if present
             if hasattr(self, "forward"):
                 return self.forward(*args, **kwargs)
             raise TypeError(f"{self.__class__.__name__} object is not callable")
+
         def parameters(self):
             # Yield Parameter instances from attributes and nested modules
             for v in vars(self).values():
                 if hasattr(v, "__iter__") and not isinstance(v, (str, bytes)):
                     # skip lists/iterables
                     pass
-                if hasattr(v, "_arr") or getattr(v, "__class__", None).__name__ == "Parameter":
+                if (
+                    hasattr(v, "_arr")
+                    or getattr(v, "__class__", None).__name__ == "Parameter"
+                ):
                     yield v
                 elif hasattr(v, "parameters"):
                     for p in v.parameters():
@@ -792,11 +900,15 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
         def state_dict(self):
             sd = {}
             for k, v in vars(self).items():
-                if hasattr(v, "_arr") or getattr(v, "__class__", None).__name__ == "Parameter":
+                if (
+                    hasattr(v, "_arr")
+                    or getattr(v, "__class__", None).__name__ == "Parameter"
+                ):
                     sd[k] = getattr(v, "_arr", v)
                 elif hasattr(v, "state_dict"):
                     sd[k] = v.state_dict()
             return sd
+
     class Linear(_Module):
         def __init__(self, in_features, out_features):
             super().__init__()
@@ -806,7 +918,9 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
             try:
                 import numpy as _np
 
-                self.weight = Parameter(_np.zeros((out_features, in_features), dtype=_np.float32))
+                self.weight = Parameter(
+                    _np.zeros((out_features, in_features), dtype=_np.float32)
+                )
                 self.bias = Parameter(_np.zeros((out_features,), dtype=_np.float32))
             except Exception:
                 self.weight = Parameter(0)
@@ -837,17 +951,22 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
             return f"Parameter({getattr(self._arr, 'shape', self._arr)})"
 
     _torch_nn.Parameter = Parameter
+
     class Tanh(_Module):
         def __call__(self, x):
             return x
+
     _torch_nn.Module = _Module
     _torch_nn.Linear = Linear
     _torch_nn.Tanh = Tanh
     _functional = types.ModuleType("torch.nn.functional")
+
     def relu(x):
         return x
+
     def mse_loss(a, b):
         return 0
+
     _functional.relu = relu
     _functional.mse_loss = mse_loss
     _torch_nn.functional = _functional
@@ -855,13 +974,17 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
     _t.nn = _torch_nn
     # Provide torch.nn.utils minimal stub
     _nn_utils = types.ModuleType("torch.nn.utils")
+
     def clip_grad_norm_(parameters, max_norm):
         return 0
+
     _nn_utils.clip_grad_norm_ = clip_grad_norm_
     # Minimal pruning utilities (importable as 'torch.nn.utils.prune')
     _prune = types.ModuleType("torch.nn.utils.prune")
+
     def l1_unstructured(module, name, amount):
         return None
+
     _prune.l1_unstructured = l1_unstructured
     _nn_utils.prune = _prune
     sys.modules["torch.nn.utils.prune"] = _prune
@@ -870,18 +993,23 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
     # Provide torch.utils.data minimal stub
     _torch_utils = types.ModuleType("torch.utils")
     _torch_data = types.ModuleType("torch.utils.data")
+
     class DataLoader:
         def __init__(self, dataset, batch_size=1, shuffle=False):
             self.dataset = dataset
             self.batch_size = batch_size
             self.shuffle = shuffle
+
         def __iter__(self):
             return iter([])
+
     class TensorDataset:
         def __init__(self, *tensors):
             self.tensors = tensors
+
         def __len__(self):
             return len(self.tensors[0]) if self.tensors else 0
+
     _torch_data.DataLoader = DataLoader
     _torch_data.TensorDataset = TensorDataset
     sys.modules["torch.utils"] = _torch_utils
@@ -906,6 +1034,7 @@ if "torch.nn" not in sys.modules or not isinstance(sys.modules.get("torch.nn"), 
 if "sb3_contrib" not in sys.modules:
     # Ensure a fallback dummy model exists in case stable_baselines3 provided real classes
     if "_DummyModel" not in globals():
+
         class _DummyModel:
             def __init__(self, policy, env, **kwargs):
                 self.policy = policy
@@ -916,6 +1045,8 @@ if "sb3_contrib" not in sys.modules:
                 return self
 
     sb3_contrib = _inject_module("sb3_contrib", {"MaskablePPO": _DummyModel})
+
+
 # Ensure a lightweight `stable_baselines3` module is available during tests
 class _SB3Dummy:
     def __init__(self, *a, **k):
@@ -923,6 +1054,7 @@ class _SB3Dummy:
 
     def learn(self, total_timesteps, **kwargs):
         return self
+
 
 if "stable_baselines3" not in sys.modules:
     sb3_mod = types.ModuleType("stable_baselines3")
@@ -945,10 +1077,12 @@ if "stable_baselines3" in sys.modules:
     sys.modules["sb3_contrib.common"] = types.ModuleType("sb3_contrib.common")
 if "sb3_contrib.common.wrappers" not in sys.modules:
     sb3_wrappers = types.ModuleType("sb3_contrib.common.wrappers")
+
     class ActionMasker:  # pragma: no cover - minimal stub
         def __init__(self, env, mask_fn):
             self.env = env
             self.mask_fn = mask_fn
+
     sb3_wrappers.ActionMasker = ActionMasker
     sys.modules["sb3_contrib.common.wrappers"] = sb3_wrappers
 if "sb3_contrib.common.maskable" not in sys.modules:
@@ -956,8 +1090,10 @@ if "sb3_contrib.common.maskable" not in sys.modules:
     sys.modules["sb3_contrib.common.maskable"] = sb3_maskable
 if "sb3_contrib.common.maskable.policies" not in sys.modules:
     sb3_maskable_policies = types.ModuleType("sb3_contrib.common.maskable.policies")
+
     class MaskableActorCriticPolicy:
         pass
+
     sb3_maskable_policies.MaskableActorCriticPolicy = MaskableActorCriticPolicy
     sys.modules["sb3_contrib.common.maskable.policies"] = sb3_maskable_policies
 
@@ -965,12 +1101,14 @@ if "torch" in sys.modules:
     _t = sys.modules["torch"]
     # Provide minimal APIs used during initialization
     if not hasattr(_t, "manual_seed"):
+
         def manual_seed(_):
             return None
 
         _t.manual_seed = manual_seed
 
     if not hasattr(_t, "cuda"):
+
         class _Cuda:
             @staticmethod
             def manual_seed_all(_):
@@ -983,16 +1121,20 @@ if "torch" in sys.modules:
         _t.cuda = _Cuda()
 
     if not hasattr(_t, "backends"):
-        _t.backends = types.SimpleNamespace(cudnn=types.SimpleNamespace(deterministic=False, benchmark=False))
+        _t.backends = types.SimpleNamespace(
+            cudnn=types.SimpleNamespace(deterministic=False, benchmark=False)
+        )
 
     if not hasattr(_t, "__version__"):
         _t.__version__ = "0.0.0"
     if not hasattr(_t, "Tensor"):
         _t.Tensor = type("Tensor", (), {})
     if not hasattr(_t, "device"):
+
         class device:
             def __init__(self, d):
                 self.d = d
+
         _t.device = device
     # Provide minimal torch.optim stub with Optimizer base and basic optimizers
     if not hasattr(_t, "optim"):
@@ -1022,7 +1164,7 @@ if "torch" in sys.modules:
         _t.optim = opt_mod
     # Provide a simple randn implementation returning a lightweight tensor-like
     # object with `.numpy()` and `.shape` so tests that call `torch.randn(...)
-    #` and subsequently `.numpy()` work even when a full torch is not present.
+    # ` and subsequently `.numpy()` work even when a full torch is not present.
     if not hasattr(_t, "randn"):
         try:
             import numpy as _np
@@ -1054,8 +1196,6 @@ if "torch" in sys.modules:
 
                 def __truediv__(self, other):
                     try:
-                        import numpy as _np
-
                         if hasattr(other, "_arr"):
                             other = other._arr
                         return _StubTensor(self._arr / other)
@@ -1150,6 +1290,7 @@ if "torch" in sys.modules:
                 _t.float32 = _np.float32
             except Exception:
                 _t.float32 = float
+
             # Minimal tensor constructor used by tested code
             def _tensor(arr, dtype=None, requires_grad=False):
                 return _StubTensor(arr)
@@ -1175,20 +1316,25 @@ if "torch" in sys.modules:
     # Provide torch.nn module with minimal classes to allow imports
     if "torch.nn" not in sys.modules:
         _torch_nn = types.ModuleType("torch.nn")
+
         class _Module:
             def __init__(self, *args, **kwargs):
                 pass
+
         class Linear(_Module):
             def __init__(self, in_features, out_features):
                 super().__init__()
                 self.in_features = in_features
                 self.out_features = out_features
+
         _torch_nn.Module = _Module
         _torch_nn.Linear = Linear
         # functional submodule stub
         _functional = types.ModuleType("torch.nn.functional")
+
         def relu(x):
             return x
+
         def mse_loss(a, b):
             return 0
 
@@ -1212,11 +1358,13 @@ if "torch" in sys.modules:
                 return _StubTensor(lsm)
             except Exception:
                 return x
+
         _functional.relu = relu
         _functional.mse_loss = mse_loss
         _functional.softmax = softmax
         _functional.log_softmax = log_softmax
         _torch_nn.functional = _functional
+
         # Minimal Sequential, LSTM, CrossEntropyLoss for tests
         class Sequential(_Module):
             def __init__(self, *modules):
@@ -1248,6 +1396,7 @@ if "torch" in sys.modules:
         try:
             _nn = _t.nn
             if not hasattr(_nn, "CrossEntropyLoss"):
+
                 class CrossEntropyLoss(_Module):
                     def __call__(self, logits, targets):
                         return 0
@@ -1255,6 +1404,7 @@ if "torch" in sys.modules:
                 _nn.CrossEntropyLoss = CrossEntropyLoss
 
             if not hasattr(_nn, "Sequential"):
+
                 class Sequential(_Module):
                     def __init__(self, *modules):
                         super().__init__()
@@ -1269,6 +1419,7 @@ if "torch" in sys.modules:
                 _nn.Sequential = Sequential
 
             if not hasattr(_nn, "LSTM"):
+
                 class LSTM(_Module):
                     def __init__(self, *a, **k):
                         super().__init__()
@@ -1291,6 +1442,7 @@ if "torch" in sys.modules:
 
 TEST_ENV_STUBS_INJECTED = True
 
+
 def _is_in_archived_or_scripts(path):
     """Ignore tests found in archived/ or scripts/ trees per project policy."""
     try:
@@ -1301,43 +1453,55 @@ def _is_in_archived_or_scripts(path):
         return False
     return False
 
+
 # Ensure a minimal requests stub exists if import fails
 try:
     _requests = _inject_module("requests")
 except Exception:
     _requests = types.ModuleType("requests")
 
+
 # Provide minimal request APIs commonly used in code under test
 def _requests_get(*args, **kwargs):
     class _Resp:
         status_code = 200
+
         def json(self):
             return {}
 
     return _Resp()
 
+
 _requests.get = _requests_get
+
 
 class _Session:
     def get(self, *args, **kwargs):
         return _requests_get(*args, **kwargs)
 
+
 _requests.Session = _Session
 # Provide exceptions submodule used by some parts
-_requests.exceptions = types.SimpleNamespace(RequestException=Exception, Timeout=Exception)
+_requests.exceptions = types.SimpleNamespace(
+    RequestException=Exception, Timeout=Exception
+)
 sys.modules["requests"] = _requests
 
 if "jsonschema" in sys.modules:
     js = sys.modules["jsonschema"]
+
     def _validate(instance, schema):
         return True
+
     js.validate = _validate
 
 if "matplotlib" in sys.modules and "matplotlib.pyplot" not in sys.modules:
     _matplotlib = sys.modules["matplotlib"]
     _plt = types.ModuleType("matplotlib.pyplot")
+
     def _plt_plot(*args, **kwargs):
         return None
+
     _plt.plot = _plt_plot
     _plt.bar = _plt_plot
     _plt.show = lambda *a, **k: None
@@ -1350,6 +1514,7 @@ if "statsmodels" in sys.modules:
     sm_tsa = types.ModuleType("statsmodels.tsa")
     sm_arima = types.ModuleType("statsmodels.tsa.arima")
     sm_model = types.ModuleType("statsmodels.tsa.arima.model")
+
     class ARIMA:  # pragma: no cover - minimal stub
         def __init__(self, *args, **kwargs):
             pass
@@ -1361,39 +1526,52 @@ if "statsmodels" in sys.modules:
     sm.tsa = sm_tsa
     # Additional submodules used throughout the codebase
     sm_seasonal = types.ModuleType("statsmodels.tsa.seasonal")
+
     class STL:  # pragma: no cover - minimal stub
         def __init__(self, *args, **kwargs):
             pass
+
     sm_seasonal.STL = STL
     sys.modules["statsmodels.tsa.seasonal"] = sm_seasonal
     sm_stats_multitest = types.ModuleType("statsmodels.stats.multitest")
+
     def multipletests(*args, **kwargs):
         return None
+
     sm_stats_multitest.multipletests = multipletests
     sys.modules["statsmodels.stats.multitest"] = sm_stats_multitest
 
 if "hypothesis" in sys.modules:
     _hyp = sys.modules["hypothesis"]
+
     # simple no-op decorators/objects
     class HealthCheck:
         pass
+
     def given(*args, **kwargs):
         def deco(f):
             return f
+
         return deco
+
     def settings(*args, **kwargs):
         def deco(f):
             return f
+
         return deco
+
     _hyp.HealthCheck = HealthCheck
     _hyp.given = given
     _hyp.settings = settings
     # Minimal strategies module (common usage: import hypothesis.strategies as st)
     st_mod = types.ModuleType("hypothesis.strategies")
+
     def integers(*args, **kwargs):
         return None
+
     def floats(*args, **kwargs):
         return None
+
     st_mod.integers = integers
     st_mod.floats = floats
     sys.modules["hypothesis.strategies"] = st_mod
@@ -1406,12 +1584,16 @@ if "dotenv" in sys.modules:
     dd.load_dotenv = lambda *args, **kwargs: None
 if "yfinance" in sys.modules:
     yf = sys.modules["yfinance"]
+
     def _download(*args, **kwargs):
         return None
+
     yf.download = _download
+
     class Ticker:
         def __init__(self, *args, **kwargs):
             pass
+
     yf.Ticker = Ticker
 
 if "optuna" in sys.modules:
@@ -1419,6 +1601,7 @@ if "optuna" in sys.modules:
     # Ensure __spec__ is present to avoid importlib.util.find_spec errors
     try:
         import importlib.machinery as _machinery
+
         opt.__spec__ = _machinery.ModuleSpec("optuna", None)
     except Exception:
         pass
@@ -1426,11 +1609,14 @@ if "optuna" in sys.modules:
 # Ensure stable_baselines3.common.torch_layers stub exists with BaseFeaturesExtractor
 if "stable_baselines3.common.torch_layers" not in sys.modules:
     _sb3_torch_layers = types.ModuleType("stable_baselines3.common.torch_layers")
+
     class BaseFeaturesExtractor:
         def __init__(self, observation_space, features_dim):
             self.observation_space = observation_space
             self.features_dim = features_dim
+
     _sb3_torch_layers.BaseFeaturesExtractor = BaseFeaturesExtractor
+
     class FlattenExtractor(BaseFeaturesExtractor):
         def __init__(self, observation_space, features_dim):
             super().__init__(observation_space, features_dim)
@@ -1445,18 +1631,22 @@ if "stable_baselines3.common.torch_layers" not in sys.modules:
     # Ensure stable_baselines3 top-level module exposes common models when absent
     if "stable_baselines3" not in sys.modules:
         _sb3_top = types.ModuleType("stable_baselines3")
+
         class _DummyModelTop:
             def __init__(self, *args, **kwargs):
                 pass
+
         _sb3_top.SAC = _DummyModelTop
         _sb3_top.PPO = _DummyModelTop
         sys.modules["stable_baselines3"] = _sb3_top
     else:
         _sb3_top = sys.modules["stable_baselines3"]
         if not hasattr(_sb3_top, "SAC"):
+
             class _DummyModelTop:
                 def __init__(self, *args, **kwargs):
                     pass
+
             _sb3_top.SAC = _DummyModelTop
         if not hasattr(_sb3_top, "PPO"):
             _sb3_top.PPO = _sb3_top.SAC
@@ -1464,20 +1654,25 @@ if "stable_baselines3.common.torch_layers" not in sys.modules:
 # Ensure torch.optim exists when torch module is present but missing submodules
 if "torch" in sys.modules and "torch.optim" not in sys.modules:
     _torch_optim = types.ModuleType("torch.optim")
+
     class Adam:
         def __init__(self, params, lr=0.001):
             pass
+
     _torch_optim.Adam = Adam
     sys.modules["torch.optim"] = _torch_optim
     # Ensure torch.utils exists and provides DataLoader/TensorDataset
     if "torch.utils" not in sys.modules:
         _torch_utils = types.ModuleType("torch.utils")
+
         class DataLoader:
             def __init__(self, dataset, batch_size=1, shuffle=False):
                 pass
+
         class TensorDataset:
             def __init__(self, *tensors):
                 pass
+
         _torch_utils.DataLoader = DataLoader
         _torch_utils.TensorDataset = TensorDataset
         sys.modules["torch.utils"] = _torch_utils
@@ -1492,9 +1687,11 @@ if "torch" in sys.modules and "torch.optim" not in sys.modules:
 # Ensure torch.utils exists with common DataLoader/TensorDataset even if torch.optim exists
 if "torch" in sys.modules and "torch.utils" not in sys.modules:
     _torch_utils = types.ModuleType("torch.utils")
+
     class DataLoader:
         def __init__(self, dataset, batch_size=1, shuffle=False):
             pass
+
     class TensorDataset:
         def __init__(self, *tensors):
             self.tensors = tuple(tensors)
@@ -1527,14 +1724,20 @@ def pytest_ignore_collect(path, config):
     if "test_learning_callbacks.py" in np:
         return True
 
+
 # Convert sys.exit in test modules to pytest.skip so imports that call sys.exit
 # for missing optional dependencies don't abort the entire test run.
 try:
     import pytest as _pytest
+
     _orig_sys_exit = sys.exit
 
-    def _pytest_safe_exit(code: int = 0) -> None:  # pragma: no cover - test harness helper
-        _pytest.skip(f"Skipped due to sys.exit({code}) during module import (optional dependency missing)")
+    def _pytest_safe_exit(
+        code: int = 0,
+    ) -> None:  # pragma: no cover - test harness helper
+        _pytest.skip(
+            f"Skipped due to sys.exit({code}) during module import (optional dependency missing)"
+        )
 
     sys.exit = _pytest_safe_exit
 except Exception:

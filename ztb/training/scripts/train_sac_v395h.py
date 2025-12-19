@@ -18,13 +18,17 @@ Expected improvements:
 """
 
 import json
+import time
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.training_utils import display_training_complete
 
 
 def main():
     print("🔬 SAC v395h - Normalized + Improved Rewards")
     print("=" * 80)
+
+    start_time = time.time()
 
     config_path = "configs/sac_v395h_normalized.json"
 
@@ -61,7 +65,11 @@ def main():
     trainer = UnifiedTrainer(config)
     result = trainer.train()
 
-    print("\n✅ Training completed!")
+    training_time = time.time() - start_time
+    final_metrics = {
+        "training_success": bool(result),
+    }
+    display_training_complete(final_metrics, training_time)
     return result
 
 
