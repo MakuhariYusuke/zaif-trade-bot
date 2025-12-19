@@ -48,9 +48,15 @@ DEFAULT_GAMMA = 0.99
 # Target network update rate
 DEFAULT_TAU = 0.005
 
+# PPO clip range
+DEFAULT_CLIP_RANGE = 0.2
+
 # Entropy coefficient for SAC
 DEFAULT_ENT_COEF_SAC = 0.1
 DEFAULT_ENT_COEF_AUTO = 'auto_1.0'
+
+# Entropy coefficient for PPO
+DEFAULT_ENT_COEF_PPO = 0.01
 
 # Target update interval
 DEFAULT_TARGET_UPDATE_INTERVAL = 1
