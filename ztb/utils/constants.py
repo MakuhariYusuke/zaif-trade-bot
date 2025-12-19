@@ -19,3 +19,8 @@ DEFAULT_CHECKPOINT_PATH = "checkpoints/"
 
 # Model save path prefix
 DEFAULT_MODEL_PATH = "models/"
+
+# Inference optimization constants
+DEFAULT_MAX_BATCH_SIZE = 32
+DEFAULT_NUM_WORKERS = 4
+DEFAULT_MAX_MEMORY_GB = 8.0

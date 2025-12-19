@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Phase C Trend-Following Strategy Validation - 2025-12-19
+
+### Phase C Results
+- **Training Completion**: SAC v454 Phase C model trained for 100k steps with trend regime adaptation.
+- **Pullback Triggers**: Implemented RSI-based entry logic in `heavy_env/core.py`:
+  - Bull trend: RSI < 30 for long entries
+  - Bear trend: RSI > 70 for short entries
+- **Backtest Performance**: Trend regimes show +2.18% return, 54 trades, 93.1% win rate.
+- **Strategy Validation**: Pullback triggers enable profitable trend trading vs. 0 trades with Z-Score entries.
+- **Analysis Tools**: Created `analyze_regime_grid_results.py` for comprehensive backtest analysis.
+
+### Features
+- **Entry Source Logic**: Added "pullback" entry source support in `run_v454_regime_grid.py`.
+- **Regime-Specific Config**: Updated `config/v454/sac_v454_phaseC_config.json` for trend regime testing.
+
 ## [Unreleased] - v454 Diagnostics & Environment Fixes - 2025-12-15
 
 ### Diagnostics

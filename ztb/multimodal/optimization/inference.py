@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 from ztb.trading.environment.constants import BYTES_PER_GB
+from ztb.utils.constants import DEFAULT_MAX_BATCH_SIZE, DEFAULT_MAX_MEMORY_GB, DEFAULT_NUM_WORKERS
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ class BatchProcessor:
     """
 
     def __init__(
-        self, model: nn.Module, max_batch_size: int = 32, num_workers: int = 4
+        self, model: nn.Module, max_batch_size: int = DEFAULT_MAX_BATCH_SIZE, num_workers: int = DEFAULT_NUM_WORKERS
     ):
         """
         Args:
@@ -277,7 +278,7 @@ class MemoryManager:
     GPUメモリの効率的な管理を行う。
     """
 
-    def __init__(self, max_memory_gb: float = 8.0):
+    def __init__(self, max_memory_gb: float = DEFAULT_MAX_MEMORY_GB):
         """
         Args:
             max_memory_gb: 最大メモリ使用量（GB）
