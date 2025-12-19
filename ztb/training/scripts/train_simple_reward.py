@@ -4,10 +4,15 @@
 Simple reward function training test
 """
 
+import logging
 import time
 from typing import Dict, List
 
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Type alias for configuration
 ConfigType = Dict[str, str | float]
@@ -148,10 +153,10 @@ if __name__ == "__main__":
                 learning_rate=config["learning_rate"],  # type: ignore
             )
             trained_models.append((config["name"], model_path))
-            print(f"✅ Successfully trained: {config['name']}")
+            logger.info(f"✅ Successfully trained: {config['name']}")
 
         except Exception as e:
-            print(f"❌ Failed to train {config['name']}: {e}")
+            logger.error(f"❌ Failed to train {config['name']}: {e}")
             continue
 
     training_time = time.time() - start_time

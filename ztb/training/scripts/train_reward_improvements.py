@@ -2,13 +2,18 @@
 Training script for reward function improvements (v378, v379, v380)
 Run all three reward configurations with full 30k timesteps
 """
+import logging
 import sys
 import time
 from typing import Any, Dict
 
 from ztb.utils.file_utils import safe_json_load
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.path_utils import get_file_dir
 from ztb.utils.training_utils import display_training_complete
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 project_root = get_file_dir(__file__)
@@ -66,30 +71,28 @@ def run_training(config_info: Dict[str, Any]) -> None:
     )
 
     # Train
-    print("Starting training...")
+    logger.info("Starting training...")
     trainer.train(session_id=session_id)
 
     trained_models.append(config_info['name'])
-    print("\n" + "=" * 80)
-    print(f"✅ Training completed: {config_info['name']}")
-    print("=" * 80 + "\n")
+    logger.info(f"✅ Training completed: {config_info['name']}")
 
 
 def main() -> None:
-    print("=" * 80)
-    print("Reward Function Improvements Training")
-    print("=" * 80)
-    print(f"Configs to train: {len(CONFIGS)}")
+    logger.info("=" * 80)
+    logger.info("Reward Function Improvements Training")
+    logger.info("=" * 80)
+    logger.info(f"Configs to train: {len(CONFIGS)}")
     for i, cfg in enumerate(CONFIGS, 1):
-        print(f"{i}. {cfg['name']}: {cfg['description']}")
-    print("=" * 80 + "\n")
+        logger.info(f"{i}. {cfg['name']}: {cfg['description']}")
+    logger.info("=" * 80 + "\n")
 
     start_time = time.time()
     trained_models = []
 
     for i, config_info in enumerate(CONFIGS, 1):
-        print(f"\n{'#' * 80}")
-        print(f"# Training {i}/{len(CONFIGS)}: {config_info['name']}")
+        logger.info(f"\n{'#' * 80}")
+        logger.info(f"# Training {i}/{len(CONFIGS)}: {config_info['name']}")
         print(f"{'#' * 80}\n")
 
         try:
