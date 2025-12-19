@@ -25,9 +25,6 @@ from ztb.trading.end_to_end_validator import (
 
 
 @pytest.fixture
-
-
-@pytest.fixture
 def e2e_validator(mock_integration_manager):
     """End-to-End Validation System instance"""
     return EndToEndValidationSystem(mock_integration_manager)

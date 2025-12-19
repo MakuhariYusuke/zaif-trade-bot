@@ -9,8 +9,14 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-import requests
-from requests.exceptions import RequestException, Timeout
+try:
+    import requests
+    from requests.exceptions import RequestException, Timeout
+except ImportError:
+    # Fallback for test environments
+    requests = None
+    RequestException = Exception
+    Timeout = Exception
 
 logger = logging.getLogger(__name__)
 
@@ -158,12 +164,27 @@ class DiscordNotifier:
             "success" if signal == "buy" else "error" if signal == "sell" else "info"
         )
         fields = {"Symbol": symbol, "Signal": signal, "Confidence": f"{confidence:.2%}"}
+
+    def notify_drift_alert(
+        self, drift_type: str, severity: str, details: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Notify about data or model drift detection"""
         title = f"🔄 Drift Alert: {drift_type.title()}"
         message = f"Drift detected with severity: {severity.upper()}"
 
         # Set color based on severity
         color_map = {
+            "low": "warning",
+            "medium": "warning",
+            "high": "error",
+            "critical": "error",
+        }
+        color = color_map.get(severity.lower(), "warning")
+
+        self.send_notification(title, message, color, details)
+
+    def notify_quality_gate_failure(
+        self, gate_type: str, reason: str, details: Optional[Dict[str, Any]] = None
     ) -> None:
         """Notify about quality gate failures"""
         title = f"🚫 Quality Gate Failed: {gate_type}"
@@ -176,6 +197,21 @@ MockNotifier = DiscordNotifier
 
 # Global notifier instance (initialized from environment)
 _default_notifier: Optional[DiscordNotifier] = None
+
+
+def send_notification(
+    title: str,
+    message: str,
+    priority: str = "normal",
+    fields: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """
+    Send a notification with the given parameters.
+
+    Args:
+        title: Notification title
+        message: Notification message
+        priority: Priority level (low, normal, high)
         fields: Additional fields
 
     Returns:
@@ -184,3 +220,11 @@ _default_notifier: Optional[DiscordNotifier] = None
     color_map = {"low": "info", "normal": "info", "high": "warning"}
     color = color_map.get(priority, "info")
     return get_notifier().send_notification(title, message, color, fields)
+
+
+def get_notifier() -> DiscordNotifier:
+    """Get the global Discord notifier instance."""
+    global _default_notifier
+    if _default_notifier is None:
+        _default_notifier = DiscordNotifier()
+    return _default_notifier

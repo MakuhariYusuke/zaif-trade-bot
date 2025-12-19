@@ -13,8 +13,6 @@ class TestGetNestedSettingFix:
     """Test the _get_nested_setting syntax error fix."""
 
     @pytest.fixture
-
-    @pytest.fixture
     def mock_config(self):
         """Mock configuration with nested settings."""
         return {

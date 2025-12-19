@@ -1,9 +1,8 @@
 """Base trainer class with common functionality."""
 
-import logging
 from typing import Any, Dict
 
-from ztb.training.utils.logging_utils import get_logger
+from ztb.utils.logging_utils import get_logger
 
 
 class BaseTrainer:
@@ -18,3 +17,7 @@ class BaseTrainer:
         """
         self.config = config
         self.logger = get_logger(self.__class__.__name__)
+
+    def run_training(self) -> None:
+        """Run training; to be implemented by subclasses or delegated to run()."""
+        raise NotImplementedError

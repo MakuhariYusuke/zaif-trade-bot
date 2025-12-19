@@ -495,8 +495,6 @@ class TestPPOTrainerBasicExtended:
     """Test PPOTrainer functionality."""
 
     @pytest.fixture
-
-    @pytest.fixture
     def sample_config(self):
         """Sample configuration for testing."""
         return {
@@ -622,6 +620,8 @@ class TestPPOTrainerBasic:
 
     def test_ppo_trainer_initialization(self, temp_dir, sample_config):
         """Test PPOTrainer initialization."""
+        config = {
+            "ppo": {
                 "n_epochs": 10,
                 "gamma": 0.99,
                 "gae_lambda": 0.95,
@@ -815,6 +815,7 @@ class TestPPOAlgorithmTrainer:
     @pytest.fixture
     def sample_config(self):
         """Sample configuration for testing."""
+        return {
             "n_epochs": 10,
             "gamma": 0.99,
             "gae_lambda": 0.95,

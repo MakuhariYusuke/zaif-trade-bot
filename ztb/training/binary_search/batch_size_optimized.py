@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class BatchSizeOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[int, int]:
         """Get the range for batch_size binary search."""
         return (16, 256)  # Reasonable range for batch sizes
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with batch_size value."""
-        self.ppo_params["batch_size"] = int(value)
 
 
 def main() -> None:

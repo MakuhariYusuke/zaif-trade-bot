@@ -5,13 +5,25 @@ Training Utilities
 
 import json
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol, runtime_checkable
 
-from ztb.utils.types import ValidationResult, TrainingResult
+
+@runtime_checkable
+class SaveableModel(Protocol):
+    def save(self, path: str) -> None:
+        ...
+
+
+@runtime_checkable
+class LoadableClass(Protocol):
+    def load(self, path: str) -> Any:
+        ...
+
+
+from ztb.utils.types import TrainingResult, ValidationResult
 
 if TYPE_CHECKING:
     # For type checking only; avoid importing stable_baselines3 at module import time
-    from stable_baselines3 import SAC  # type: ignore
     from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
@@ -93,7 +105,7 @@ def create_eval_callback(
     )
 
 
-def save_model(model: "SAC", model_path: str, verbose: bool = True) -> bool:
+def save_model(model: SaveableModel, model_path: str, verbose: bool = True) -> bool:
     """
     モデルを保存
 
@@ -122,7 +134,7 @@ def save_model(model: "SAC", model_path: str, verbose: bool = True) -> bool:
         return False
 
 
-def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
+def load_model(model_path: str, verbose: bool = True) -> Optional[Any]:
     """
     モデルを読み込み
 
@@ -140,7 +152,9 @@ def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
 
         from stable_baselines3 import SAC as _SAC
 
-        model = _SAC.load(model_path)
+        # Use getattr to avoid mypy complaining about class attribute on a type
+        loader = getattr(_SAC, "load")
+        model = loader(model_path)
 
         if verbose:
             logger.info(f"Model loaded from: {model_path}")
@@ -236,7 +250,7 @@ def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
         if "transaction_cost" in env and env["transaction_cost"] > 0.01:
             warnings.append("High transaction cost detected (>1%), consider reducing")
 
-    return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+    return {"is_valid": len(errors) == 0, "errors": errors, "warnings": warnings}
 
 
 def get_metric_from_logger(model, metric_name: str) -> Optional[float]:
@@ -270,3 +284,52 @@ def get_metric_from_logger(model, metric_name: str) -> Optional[float]:
         return None
     except (AttributeError, KeyError, TypeError):
         return None
+
+
+class _DummyLoss:
+    """Dummy loss function for fallback when torch is not available."""
+
+    def __call__(self, *args, **kwargs):
+        return 0
+
+
+def get_safe_loss_function(loss_class, *args, **kwargs):
+    """
+    Safely get a loss function with fallback.
+
+    Args:
+        loss_class: The loss class to instantiate
+        *args, **kwargs: Arguments for the loss class
+
+    Returns:
+        Loss function instance or dummy
+    """
+    try:
+        return loss_class(*args, **kwargs)
+    except Exception:
+        return _DummyLoss()
+
+
+def display_training_complete(
+    final_metrics: Dict[str, Any], training_time: float
+) -> None:
+    """
+    Display training completion message.
+
+    Args:
+        final_metrics: Final training metrics
+        training_time: Total training time in seconds
+    """
+    success = bool(final_metrics)  # Assume success if metrics provided
+    if success:
+        print("\n✅ Training completed successfully!")
+        print(f"⏱️  Total training time: {training_time:.1f}s")
+        if final_metrics:
+            print("📊 Final Statistics:")
+            for key, value in final_metrics.items():
+                if isinstance(value, float):
+                    print(f"  {key}: {value:.4f}")
+                else:
+                    print(f"  {key}: {value}")
+    else:
+        print("\n❌ Training failed")

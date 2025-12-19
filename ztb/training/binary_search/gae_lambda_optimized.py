@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class GaeLambdaOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for gae_lambda binary search."""
         return (0.8, 1.0)  # Reasonable range for GAE lambda
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with gae_lambda value."""
-        self.ppo_params["gae_lambda"] = float(value)
 
 
 def main() -> None:

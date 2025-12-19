@@ -36,17 +36,19 @@ class TrainingUI:
         print(f"Algorithm: {algorithm}")
 
         # Training parameters
-        total_timesteps = config.get("total_timesteps", config.get("training", {}).get("total_timesteps", "unknown"))
+        total_timesteps = config.get(
+            "total_timesteps",
+            config.get("training", {}).get("total_timesteps", "unknown"),
+        )
         if isinstance(total_timesteps, (int, float)):
             print(f"Total Timesteps: {total_timesteps:,}")
         else:
             print(f"Total Timesteps: {total_timesteps}")
 
         # Data info
-        data_path = (
-            config.get("data_path") or
-            config.get("training", {}).get("data_config", {}).get("data_path", "unknown")
-        )
+        data_path = config.get("data_path") or config.get("training", {}).get(
+            "data_config", {}
+        ).get("data_path", "unknown")
         print(f"Data Path: {data_path}")
 
         # Model info
@@ -92,20 +94,27 @@ class TrainingUI:
     def display_training_complete(
         self, final_metrics: Dict[str, Any], training_time: float
     ) -> None:
-        """Display training completion message."""
-        success = bool(final_metrics)  # Assume success if metrics provided
-        if success:
-            print("\n✅ Training completed successfully!")
-            print(f"⏱️  Total training time: {training_time:.1f}s")
-            if final_metrics:
-                print("📊 Final Statistics:")
-                for key, value in final_metrics.items():
-                    if isinstance(value, float):
-                        print(f"  {key}: {value:.4f}")
-                    else:
-                        print(f"  {key}: {value}")
-        else:
-            print("\n❌ Training failed")
+        """Display training completion message by delegating to shared utility."""
+        # Delegate to central utility to avoid duplication
+        from ztb.utils.training_utils import display_training_complete as _display
+
+        try:
+            _display(final_metrics, training_time)
+        except Exception:
+            # Fallback to local printing if utility fails
+            success = bool(final_metrics)
+            if success:
+                print("\n✅ Training completed successfully!")
+                print(f"⏱️  Total training time: {training_time:.1f}s")
+                if final_metrics:
+                    print("📊 Final Statistics:")
+                    for key, value in final_metrics.items():
+                        if isinstance(value, float):
+                            print(f"  {key}: {value:.4f}")
+                        else:
+                            print(f"  {key}: {value}")
+            else:
+                print("\n❌ Training failed")
 
     def print_warning(self, message: str) -> None:
         """Print warning message."""
@@ -230,7 +239,6 @@ class TrainingUI:
     def print_success(self, message: str) -> None:
         """Print success message."""
         print(f"✅ {message}")
-
 
     def print_info(self, message: str) -> None:
         """Print info message."""

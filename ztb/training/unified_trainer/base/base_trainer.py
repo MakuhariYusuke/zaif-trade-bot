@@ -225,59 +225,65 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
 
         self.logger.info(f"💾 Saving model to {model_path}")
         try:
-            if hasattr(model, "save"):
-                model.save(model_path)
+            # Use central save helper to ensure consistent error handling
+            from ztb.utils.training_utils import save_model as _save_model
 
-                # 🔧 Fix: Explicitly save VecNormalize stats if present
-                # SB3 does not automatically save VecNormalize stats in the model zip
-                if hasattr(model, "get_env"):
-                    try:
-                        import zipfile
+            saved_ok = _save_model(model, model_path)
 
-                        from stable_baselines3.common.vec_env import VecNormalize
+            if not saved_ok:
+                self.logger.error(f"Model save helper reported failure for {model_path}")
 
-                        env = model.get_env()
-                        current_env = env
-                        vec_norm_env = None
+            # 🔧 Fix: Explicitly save VecNormalize stats if present
+            # SB3 does not automatically save VecNormalize stats in the model zip
+            if hasattr(model, "get_env"):
+                try:
+                    import zipfile
 
-                        # Traverse wrappers to find VecNormalize
-                        # Limit depth to prevent infinite loops
-                        for _ in range(10):
-                            if current_env is None:
-                                break
-                            if isinstance(current_env, VecNormalize):
-                                vec_norm_env = current_env
-                                break
+                    from stable_baselines3.common.vec_env import VecNormalize
 
-                            if hasattr(current_env, "venv"):
-                                current_env = current_env.venv
-                            elif hasattr(current_env, "env"):
-                                current_env = current_env.env
-                            elif (
-                                hasattr(current_env, "envs")
-                                and len(current_env.envs) > 0
-                            ):
-                                current_env = current_env.envs[0]
-                            else:
-                                break
+                    env = model.get_env()
+                    current_env = env
+                    vec_norm_env = None
 
-                        if vec_norm_env is not None:
-                            self.logger.info(
-                                "Found VecNormalize, appending stats to zip..."
-                            )
-                            temp_stats_path = f"models/vec_normalize_{model_name}.pkl"
-                            vec_norm_env.save(temp_stats_path)
+                    # Traverse wrappers to find VecNormalize
+                    # Limit depth to prevent infinite loops
+                    for _ in range(10):
+                        if current_env is None:
+                            break
+                        if isinstance(current_env, VecNormalize):
+                            vec_norm_env = current_env
+                            break
 
-                            with zipfile.ZipFile(model_path, "a") as zipf:
-                                zipf.write(temp_stats_path, arcname="vec_normalize.pkl")
+                        if hasattr(current_env, "venv"):
+                            current_env = current_env.venv
+                        elif hasattr(current_env, "env"):
+                            current_env = current_env.env
+                        elif (
+                            hasattr(current_env, "envs")
+                            and len(current_env.envs) > 0
+                        ):
+                            current_env = current_env.envs[0]
+                        else:
+                            break
 
-                            if os.path.exists(temp_stats_path):
-                                os.remove(temp_stats_path)
-                            self.logger.info(
-                                "✅ VecNormalize stats appended to model zip"
-                            )
-                    except Exception as e:
-                        self.logger.warning(f"Failed to save VecNormalize stats: {e}")
+                    # After traversing wrappers, if we found VecNormalize save its stats
+                    if vec_norm_env is not None:
+                        self.logger.info(
+                            "Found VecNormalize, appending stats to zip..."
+                        )
+                        temp_stats_path = f"models/vec_normalize_{model_name}.pkl"
+                        vec_norm_env.save(temp_stats_path)
+
+                        with zipfile.ZipFile(model_path, "a") as zipf:
+                            zipf.write(temp_stats_path, arcname="vec_normalize.pkl")
+
+                        if os.path.exists(temp_stats_path):
+                            os.remove(temp_stats_path)
+                        self.logger.info(
+                            "✅ VecNormalize stats appended to model zip"
+                        )
+                except Exception as e:
+                    self.logger.warning(f"Failed to save VecNormalize stats: {e}")
 
             elif hasattr(model, "save_checkpoint"):
                 model.save_checkpoint(model_path)

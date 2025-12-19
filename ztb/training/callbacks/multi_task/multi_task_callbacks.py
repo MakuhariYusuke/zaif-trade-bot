@@ -426,17 +426,15 @@ class SharedRepresentationCallback(MemoryOptimizedCallback):
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-    ) -> None:
-        """Called at the end of each batch."""
+        """Called at the start of each batch."""
         pass
 
 
 class TaskInterferenceCallback(MemoryOptimizedCallback):
-    """
-    Task interference monitoring callback.
 
-    Monitors interference between tasks in multi-task learning,
-    including negative transfer and task conflict detection.
+    def __init__(
+        self,
+        task_names: List[str],
         compute_frequency: int = 1,
         interference_threshold: float = -0.05,
     ):
@@ -448,6 +446,7 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
         # Task performance tracking
         self.task_performance_history: Dict[str, List[float]] = {
             task: [] for task in task_names
+        }
         self.negative_transfer_detected: bool = False
 
         # Task correlation tracking
@@ -458,7 +457,6 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
     def on_epoch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Monitor task interference."""
 
         try:
             # Track task performances
@@ -513,7 +511,6 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
     def _compute_interference_scores(
         self, current_performances: Dict[str, float]
     ) -> None:
-        """Compute task interference scores."""
         for task in self.task_names:
             # Compute performance change from single-task baseline (if available)
             # For now, use change from initial performance as proxy
@@ -546,7 +543,6 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
                     )
 
     def _detect_negative_transfer(self) -> None:
-        """Detect overall negative transfer across tasks."""
         if not self.task_interference_scores:
             return
 
@@ -571,7 +567,6 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
                 )
 
     def _compute_task_correlations(self) -> None:
-        """Compute correlations between task performances."""
         if not all(len(hist) >= 3 for hist in self.task_performance_history.values()):
             return
 
@@ -595,7 +590,6 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
                         pass
 
     def get_task_interference_stats(self) -> Dict[str, Any]:
-        """Get task interference statistics."""
         stats = {
             "task_names": self.task_names,
             "interference_threshold": self.interference_threshold,
@@ -645,34 +639,30 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
     def on_training_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of training."""
         pass
 
     def on_training_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the end of training."""
-        """Called at the start of each epoch."""
+        pass
+
+    def on_epoch_start(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         pass
 
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the start of each batch."""
         pass
 
     def on_batch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Called at the end of each batch."""
         pass
 
 
-    return TaskBalancingCallback(task_names, **defaults)
-
-
 def create_shared_representation(**kwargs) -> SharedRepresentationCallback:
-    """Create shared representation callback with default settings."""
     defaults = {"compute_frequency": 1, "representation_layers": ["shared_encoder"]}
     defaults.update(kwargs)
     return SharedRepresentationCallback(**defaults)
@@ -681,7 +671,6 @@ def create_shared_representation(**kwargs) -> SharedRepresentationCallback:
 def create_task_interference(
     task_names: List[str], **kwargs
 ) -> TaskInterferenceCallback:
-    """Create task interference callback with default settings."""
     defaults = {"compute_frequency": 1, "interference_threshold": -0.05}
     defaults.update(kwargs)
     return TaskInterferenceCallback(task_names, **defaults)

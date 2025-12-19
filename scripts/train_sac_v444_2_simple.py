@@ -10,6 +10,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -27,6 +28,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.utils.training_utils import display_training_complete, save_model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -209,18 +211,26 @@ def main():
 
         # Train the model
         print(f"🎯 Starting training for {args.total_timesteps} timesteps...")
+        training_start_time = time.time()
         model.learn(
             total_timesteps=args.total_timesteps,
             callback=[checkpoint_callback, action_callback],
             reset_num_timesteps=False  # Continue from checkpoint if resuming
         )
+        training_time = time.time() - training_start_time
 
-        # Save final model
-        final_model_path = "models/sac_v444_2_final_model"
-        model.save(final_model_path)
-        print(f"✅ Final model saved to {final_model_path}")
+        # Save final model using centralized utility
+        final_model_path = "models/sac_v444_2_final_model.zip"
+        save_model(model, final_model_path)
 
-        print("🎉 Training completed successfully!")
+        # Display completion using centralized utility
+        final_metrics = {
+            "total_timesteps": args.total_timesteps,
+            "model_path": final_model_path,
+            "action_average": np.mean(action_callback.actions) if action_callback.actions else 0.0
+        }
+        display_training_complete(final_metrics, training_time)
+
         return True
 
     except Exception as e:

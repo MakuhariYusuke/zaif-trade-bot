@@ -15,8 +15,6 @@ class TestKellyPositionSizer:
     """KellyPositionSizerのテスト"""
 
     @pytest.fixture
-
-    @pytest.fixture
     def kelly_sizer(self):
         """KellyPositionSizerインスタンス"""
         return KellyPositionSizer()

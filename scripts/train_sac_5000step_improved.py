@@ -7,6 +7,7 @@ Improved 5000-step SAC training with exploration fixes
 import json
 import logging
 import sys
+import time
 from pathlib import Path
 
 import gymnasium as gym
@@ -46,16 +47,28 @@ sys.path.insert(0, str(project_root))
 
     # Train for 5000 steps
     logger.info("Starting improved training for 5000 steps...")
+    training_start_time = time.time()
     try:
         model.learn(
             total_timesteps=5000, callback=checkpoint_callback, progress_bar=True
         )
+        training_time = time.time() - training_start_time
         logger.info("Training completed successfully")
 
-        # Save final model
+        # Save final model using centralized utility
         model_path = "models/sac_improved_5000step_final.zip"
-        model.save(model_path)
+        from ztb.utils.training_utils import save_model
+        save_model(model, model_path)
         logger.info(f"Model saved to {model_path}")
+
+        # Display completion using centralized utility
+        from ztb.utils.training_utils import display_training_complete
+        final_metrics = {
+            "total_timesteps": 5000,
+            "model_path": model_path,
+            "final_status": "success",
+        }
+        display_training_complete(final_metrics, training_time)
 
         # Update training stats
         training_stats.update(

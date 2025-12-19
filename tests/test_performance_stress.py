@@ -38,6 +38,7 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
 
 
 class TestPerformanceAndStress(unittest.TestCase):
+    def setUp(self):
         self.performance_monitor = SACPerformanceMonitor()
         self.regime_detector = MarketRegimeDetector()
         self.regime_processor = RegimeAdaptiveSignalProcessor()

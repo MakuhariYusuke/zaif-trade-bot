@@ -65,7 +65,19 @@ def train_sac_v432():
     logger.info("Starting SAC v432 training with ensemble learning")
     try:
         results = trainer.train()
-        logger.info("Training completed successfully")
+        # Try to extract final metrics and training time
+        final_metrics = {}
+        training_time = getattr(trainer, "training_time", 0.0)
+        try:
+            if hasattr(trainer, "training_report") and trainer.training_report:
+                final_metrics = trainer.training_report.get("training_stats", {}) or {}
+                training_time = final_metrics.get("training_time", training_time)
+        except Exception:
+            final_metrics = {}
+
+        from ztb.utils.training_utils import display_training_complete
+
+        display_training_complete(final_metrics, training_time)
 
         # Save results manually
         results_dir = project_root / "ztb" / "reports" / "v432"
@@ -75,7 +87,6 @@ def train_sac_v432():
         with open(results_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
 
-        print("✅ Training completed successfully!")
         print(f"Results saved to: {results_file}")
 
         return results

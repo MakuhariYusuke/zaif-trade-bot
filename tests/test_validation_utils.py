@@ -28,6 +28,10 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
 
 
 class TestSignalValidator(unittest.TestCase):
+    def setUp(self):
+        self.validator = SignalValidator()
+
+    def test_validator_initialization(self):
         self.assertIn("required_fields", self.validator.validation_rules)
         self.assertIn("data_types", self.validator.validation_rules)
 

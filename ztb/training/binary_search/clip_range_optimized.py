@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class ClipRangeOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for clip_range binary search."""
         return (0.1, 0.5)  # Reasonable range for PPO clip range
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with clip_range value."""
-        self.ppo_params["clip_range"] = float(value)
 
 
 def main() -> None:

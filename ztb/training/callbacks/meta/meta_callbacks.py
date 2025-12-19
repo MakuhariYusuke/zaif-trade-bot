@@ -446,12 +446,18 @@ class FewShotCallback(MemoryOptimizedCallback):
 
 class MetaAdaptationCallback(MemoryOptimizedCallback):
     """
+    Meta adaptation monitoring callback.
+
+    Monitors meta-learning adaptation processes including adaptation curves,
+    convergence analysis, and cross-task generalization.
+    """
 
     def __init__(
         self,
         compute_frequency: int = 1,
         adaptation_steps: int = 10,
         stability_threshold: float = 0.01,
+    ):
 
         # Adaptation tracking
         self.adaptation_curves: List[
@@ -650,8 +656,7 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
-    ) -> None:
-        """Called at the end of each batch."""
+        """Called at the start of each batch."""
         pass
 
 
@@ -661,8 +666,6 @@ def create_maml(**kwargs) -> MAMLCallback:
     defaults = {"compute_frequency": 1, "num_inner_steps": 5, "adaptation_lr": 0.01}
     defaults.update(kwargs)
     return MAMLCallback(**defaults)
-    defaults.update(kwargs)
-    return FewShotCallback(n_way, k_shot, **defaults)
 
 
 def create_meta_adaptation(**kwargs) -> MetaAdaptationCallback:

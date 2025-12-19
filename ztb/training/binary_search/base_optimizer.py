@@ -308,6 +308,17 @@ class HyperparameterOptimizer(ABC):
     @abstractmethod
     def update_ppo_params(self, value: Union[int, float]) -> None:
         """Update PPO parameters with the test value."""
+        # Default implementation using parameter_name
+        param_name = self.parameter_name()
+        if hasattr(self, "ppo_params") and param_name in self.ppo_params:
+            if isinstance(self.ppo_params[param_name], int):
+                self.ppo_params[param_name] = int(value)
+            else:
+                self.ppo_params[param_name] = float(value)
+        else:
+            raise NotImplementedError(
+                f"update_ppo_params not implemented for {param_name}"
+            )
 
     def create_environment(self, **overrides: Dict[str, Any]) -> HeavyTradingEnv:
         config_dict = self.env_config.as_dict()

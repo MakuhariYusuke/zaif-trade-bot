@@ -181,6 +181,5 @@ class TargetEntropyController:
     def should_update(self, step: int, update_frequency: int = 1) -> bool:
         """
         Check if temperature should be updated at this step.
-
-if __name__ == "__main__":
-    test_target_entropy_controller()
+        """
+        return step % update_frequency == 0

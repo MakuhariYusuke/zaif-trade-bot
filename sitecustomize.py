@@ -185,99 +185,99 @@ _ensure_sb3_compat()
 # Final safety net for websockets: ensure 'websockets' is package-like and that
 # 'websockets.sync.client' exists with a connect function so third-party
 # imports (like yfinance) succeed during test collection regardless of import order.
-try:
-    ws_mod = sys.modules.get("websockets")
-    if ws_mod is None or not getattr(ws_mod, "__path__", None):
-        # Replace or create a package-like module
-        pkg = types.ModuleType("websockets")
-        pkg.__path__ = [str(Path(PROJECT_ROOT) / "websockets")]
-        try:
-            pkg.__file__ = str(Path(PROJECT_ROOT) / "websockets" / "__init__.py")
-        except Exception:
-            pass
-        sys.modules["websockets"] = pkg
+# try:
+#     ws_mod = sys.modules.get("websockets")
+#     if ws_mod is None or not getattr(ws_mod, "__path__", None):
+#         # Replace or create a package-like module
+#         pkg = types.ModuleType("websockets")
+#         pkg.__path__ = [str(Path(PROJECT_ROOT) / "websockets")]
+#         try:
+#             pkg.__file__ = str(Path(PROJECT_ROOT) / "websockets" / "__init__.py")
+#         except Exception:
+#             pass
+#         sys.modules["websockets"] = pkg
 
-    # Ensure sync.client exists
-    if "websockets.sync.client" not in sys.modules:
-        sync_mod = types.ModuleType("websockets.sync.client")
-        from contextlib import contextmanager
+# Ensure websockets.sync.client exists
+# if "websockets.sync.client" not in sys.modules:
+#     sync_mod = types.ModuleType("websockets.sync.client")
+#     from contextlib import contextmanager
 
-        @contextmanager
-        def _connect(*args, **kwargs):
-            class _C:
-                def send(self, *a, **k):
-                    return None
+#     @contextmanager
+#     def _connect(*args, **kwargs):
+#         class _C:
+#             def send(self, *a, **k):
+#                 return None
 
-                def recv(self, *a, **k):
-                    return None
+#         def recv(self, *a, **k):
+#             return None
 
-            yield _C()
+#     yield _C()
 
-        sync_mod.connect = _connect
-        try:
-            sync_mod.__file__ = str(Path(PROJECT_ROOT) / "websockets" / "sync" / "client.py")
-        except Exception:
-            pass
-        sys.modules["websockets.sync.client"] = sync_mod
-except Exception:
-    pass
+#     sync_mod.connect = _connect
+#     try:
+#         sync_mod.__file__ = str(Path(PROJECT_ROOT) / "websockets" / "sync" / "client.py")
+#     except Exception:
+#         pass
+#     sys.modules["websockets.sync.client"] = sync_mod
+# except Exception:
+#     pass
 
 # Monkey-patch importlib.import_module to ensure that when stable_baselines3
 # (or its submodules) are imported we post-process the module to guarantee
 # the expected attributes (__file__, __spec__, SAC/PPO, and callbacks helpers)
 # are present. This makes imports deterministic during pytest collection
 # even if earlier test helpers temporarily inject lightweight stubs.
-_real_import_module = importlib.import_module
+# _real_import_module = importlib.import_module
 
-def _patched_import_module(name, package=None):
-    m = _real_import_module(name, package=package)
-    try:
-        if name == "stable_baselines3" or name.startswith("stable_baselines3."):
-            # Ensure root module exposes algorithm symbols
-            root = sys.modules.get("stable_baselines3")
-            if root is not None:
-                for algo in ("SAC", "PPO", "A2C", "DQN", "TD3"):
-                    if not hasattr(root, algo):
-                        try:
-                            setattr(root, algo, type(algo, (), {"learn": lambda self, *a, **k: self}))
-                        except Exception:
-                            pass
-            # Ensure callbacks submodule exists and is file-backed if available
-            try:
-                cb = sys.modules.get("stable_baselines3.common.callbacks")
-                if cb is None:
-                    cb = importlib.util.find_spec("stable_baselines3.common.callbacks")
-                    if cb is not None:
-                        importlib.import_module("stable_baselines3.common.callbacks")
-                cb = sys.modules.get("stable_baselines3.common.callbacks")
-                if cb is not None:
-                    if not getattr(cb, "__file__", None):
-                        try:
-                            cb.__file__ = str(Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py")
-                        except Exception:
-                            pass
-                    if not hasattr(cb, "CallbackList"):
-                        class CallbackList(list):
-                            def __init__(self, *a, **k):
-                                super().__init__()
+# def _patched_import_module(name, package=None):
+#     m = _real_import_module(name, package=package)
+#     try:
+#         if name == "stable_baselines3" or name.startswith("stable_baselines3."):
+#             # Ensure root module exposes algorithm symbols
+#             root = sys.modules.get("stable_baselines3")
+#             if root is not None:
+#                 for algo in ("SAC", "PPO", "A2C", "DQN", "TD3"):
+#                     if not hasattr(root, algo):
+#                         try:
+#                             setattr(root, algo, type(algo, (), {"learn": lambda self, *a, **k: self}))
+#                         except Exception:
+#                             pass
+#             # Ensure callbacks submodule exists and is file-backed if available
+#             try:
+#                 cb = sys.modules.get("stable_baselines3.common.callbacks")
+#                 if cb is None:
+#                     cb = importlib.util.find_spec("stable_baselines3.common.callbacks")
+#                     if cb is not None:
+#                         importlib.import_module("stable_baselines3.common.callbacks")
+#                 cb = sys.modules.get("stable_baselines3.common.callbacks")
+#                 if cb is not None:
+#                     if not getattr(cb, "__file__", None):
+#                         try:
+#                             cb.__file__ = str(Path(PROJECT_ROOT) / "stable_baselines3" / "common" / "callbacks.py")
+#                         except Exception:
+#                             pass
+#                     if not hasattr(cb, "CallbackList"):
+#                         class CallbackList(list):
+#                             def __init__(self, *a, **k):
+#                                 super().__init__()
 
-                        cb.CallbackList = CallbackList
-                    if not hasattr(cb, "BaseCallback"):
-                        cb.BaseCallback = type("BaseCallback", (), {"n_calls": 0})
-            except Exception:
-                pass
-        if name == "websockets" or name.startswith("websockets."):
-            ws = sys.modules.get("websockets")
-            if ws is not None and not getattr(ws, "__path__", None):
-                try:
-                    ws.__path__ = [str(Path(PROJECT_ROOT) / "websockets")]
-                except Exception:
-                    pass
-    except Exception:
-        pass
-    return m
+#                         cb.CallbackList = CallbackList
+#                     if not hasattr(cb, "BaseCallback"):
+#                         cb.BaseCallback = type("BaseCallback", (), {"n_calls": 0})
+#             except Exception:
+#                 pass
+#         if name == "websockets" or name.startswith("websockets."):
+#             ws = sys.modules.get("websockets")
+#             if ws is not None and not getattr(ws, "__path__", None):
+#                 try:
+#                     ws.__path__ = [str(Path(PROJECT_ROOT) / "websockets")]
+#                 except Exception:
+#                     pass
+#     except Exception:
+#         pass
+#     return m
 
-importlib.import_module = _patched_import_module
+# importlib.import_module = _patched_import_module
 # Extra safety: if a file-backed stable_baselines3 package exists in the
 # project, make sure its callbacks module is loaded and used to replace any
 # earlier in-memory stub. This helps avoid sporadic 'unknown location'

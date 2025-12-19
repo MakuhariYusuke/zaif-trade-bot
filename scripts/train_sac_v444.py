@@ -8,6 +8,7 @@ Uses 12-regime classification for improved trading performance.
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 # Add project root to path
@@ -16,6 +17,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.training_utils import display_training_complete
 
 logger = get_logger(__name__)
 
@@ -50,9 +52,18 @@ def main() -> bool:
             return False
 
         # Start training
+        training_start_time = time.time()
         success = trainer.train()
+        training_time = time.time() - training_start_time
+
         if success:
-            print("✅ SAC v444 training completed successfully!")
+            # Display completion using centralized utility
+            final_metrics = {
+                "config": args.config,
+                "version": args.version,
+                "success": True
+            }
+            display_training_complete(final_metrics, training_time)
             return True
         else:
             print("❌ SAC v444 training failed!")

@@ -31,8 +31,6 @@ class TestPerformance:
     """Performance tests for SAC v446 components"""
 
     @pytest.fixture
-
-    @pytest.fixture
     def medium_market_data(self):
         """Create medium dataset for performance testing"""
         np.random.seed(42)
@@ -68,9 +66,6 @@ class TestPerformance:
 
         return pd.DataFrame(data)
 
-            extractor.extract_features, large_market_data
-        )
-
         # Performance assertions
         assert execution_time < 5.0, f"Feature extraction too slow: {execution_time}s"
         assert isinstance(features, pd.DataFrame)
@@ -103,11 +98,20 @@ class TestPerformance:
 
         # Measure performance
         result, execution_time = self.measure_execution_time(
+            detector.detect_anomalies, large_market_data
+        )
         assert execution_time < 10.0, f"Anomaly detection too slow: {execution_time}s"
         assert isinstance(result[0], pd.DataFrame)  # clean_data
         assert isinstance(result[1], pd.Series)  # anomaly_mask
 
     def test_synthetic_data_generator_performance(self, medium_market_data):
+        """Test SyntheticDataGenerator performance"""
+        config = {
+            "generate_synthetic": True,
+            "synthetic_periods": 2000,
+        }
+        synthetic_data, execution_time = self.measure_execution_time(
+            SyntheticDataGenerator().generate, medium_market_data, config
         )
 
         # Performance assertions
@@ -116,16 +120,6 @@ class TestPerformance:
         ), f"Synthetic data generation too slow: {execution_time}s"
         assert isinstance(synthetic_data, pd.DataFrame)
         assert len(synthetic_data) == 2000
-            "generate_synthetic": True,
-            "synthetic_periods": 500,
-        }
-        processed_data, execution_time = self.measure_execution_time(
-            preprocess_data, medium_market_data, config
-        )
-
-        # Performance assertions
-        assert execution_time < 15.0, f"Full pipeline too slow: {execution_time}s"
-        assert isinstance(processed_data, pd.DataFrame)
 
     def test_memory_usage_v4_feature_extractor(self, large_market_data):
         """Test memory usage of V4FeatureExtractor"""

@@ -20,9 +20,6 @@ from ztb.trading.real_data_validator import (
 
 
 @pytest.fixture
-
-
-@pytest.fixture
 def validation_system(mock_integration_manager):
     """Real Data Validation System instance"""
     return RealDataValidationSystem(mock_integration_manager)

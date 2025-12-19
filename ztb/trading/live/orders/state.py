@@ -14,12 +14,24 @@ from decimal import Decimal
 from typing import Any, Dict, Optional, Set
 
 from ztb.trading.live.core.precision_policy import quantize_price, quantize_quantity
+from ztb.trading.live.orders.compat import OrderData
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
 
+class OrderState(enum.Enum):
+    """Order states in the lifecycle."""
+
+    CREATED = "created"
+    SUBMITTED = "submitted"
+    PARTIAL = "partial"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    FAILED = "failed"
 
 class OrderEvent(enum.Enum):
     """Events that can trigger order state transitions."""
@@ -33,11 +45,6 @@ class OrderEvent(enum.Enum):
     EXPIRE = "expire"
     FAIL = "fail"
     RESET = "reset"
-    price: Optional[float] = None
-    stop_price: Optional[float] = None
-    time_in_force: str = "GTC"
-    timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -48,7 +55,25 @@ class OrderRecord:
     state: OrderState = OrderState.CREATED
     filled_quantity: float = 0.0
     average_price: float = 0.0
+    fees: float = 0.0
+    last_update: float = field(default_factory=time.time)
+    error_message: Optional[str] = None
+    external_order_id: Optional[str] = None
+    idempotency_key: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Generate idempotency key if not provided."""
+        if not self.idempotency_key:
+            self.idempotency_key = self._generate_idempotency_key()
+
+    def _generate_idempotency_key(self) -> str:
+        """Generate idempotency key from order data."""
+        key_data = f"{self.data.client_order_id}_{self.data.symbol}_{self.data.timestamp}"
         return hashlib.sha256(key_data.encode()).hexdigest()[:16]
+
+    def generate_order_id(self) -> str:
+        return f"ord_{uuid.uuid4().hex[:12]}"
 
     def is_terminal_state(self) -> bool:
         """Check if order is in a terminal state."""
@@ -64,10 +89,23 @@ class OrderRecord:
         """Check if transition to new state is valid."""
         # Define valid transitions
         valid_transitions = {
-            OrderState.CREATED: {
-            f"Created order {record.data.order_id} with state {record.state.value}"
-        )
-        return record
+            OrderState.CREATED: {OrderState.SUBMITTED, OrderState.CANCELLED},
+            OrderState.SUBMITTED: {OrderState.FILLED, OrderState.PARTIAL, OrderState.CANCELLED, OrderState.REJECTED, OrderState.EXPIRED},
+            OrderState.PARTIAL: {OrderState.FILLED, OrderState.CANCELLED},
+            OrderState.FILLED: set(),
+            OrderState.CANCELLED: set(),
+            OrderState.REJECTED: set(),
+            OrderState.EXPIRED: set(),
+            OrderState.FAILED: set(),
+        }
+        return new_state in valid_transitions.get(self.state, set())
+
+
+class OrderStateMachine:
+    """State machine for managing multiple orders."""
+
+    def __init__(self) -> None:
+        self.orders: Dict[str, OrderRecord] = {}
 
     def transition_order(self, order_id: str, event: OrderEvent, **kwargs: Any) -> bool:
         """Transition order to new state based on event.
@@ -78,16 +116,30 @@ class OrderRecord:
             **kwargs: Additional data for transition
 
         Returns:
+            True if transition was successful, False otherwise
+        """
+        if order_id not in self.orders:
+            logger.warning(f"Order {order_id} not found")
             return False
 
         record = self.orders[order_id]
 
         # Determine new state based on event
-            OrderEvent.PARTIAL_FILL: OrderState.PARTIAL_FILL,
+        state_transitions = {
+            OrderEvent.SUBMIT: OrderState.SUBMITTED,
+            OrderEvent.FILL: OrderState.FILLED,
+            OrderEvent.PARTIAL_FILL: OrderState.PARTIAL,
             OrderEvent.CANCEL: OrderState.CANCELLED,
             OrderEvent.REJECT: OrderState.REJECTED,
             OrderEvent.EXPIRE: OrderState.EXPIRED,
             OrderEvent.FAIL: OrderState.FAILED,
+        }
+
+        new_state = state_transitions.get(event)
+        if new_state is None:
+            logger.warning(f"Unknown event {event} for order {order_id}")
+            return False
+
         # Validate transition
         if not record.can_transition_to(new_state):
             logger.warning(
@@ -119,10 +171,6 @@ class OrderRecord:
             f"Order {order_id} transitioned from {old_state.value} to {new_state.value}"
         )
         return True
-
-        f"Coincheck reconciliation hook called for order {order_data.order_id}"
-    )
-    return broker_state
 
 
 # Global order state machine instance

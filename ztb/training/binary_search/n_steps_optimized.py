@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class NStepsOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[int, int]:
         """Get the range for n_steps binary search."""
         return (1024, 4096)  # Reasonable range for number of steps per environment
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with n_steps value."""
-        self.ppo_params["n_steps"] = int(value)
 
 
 def main() -> None:

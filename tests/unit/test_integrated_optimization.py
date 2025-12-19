@@ -234,8 +234,6 @@ class TestIntegrationWithComponents:
     """コンポーネント統合テスト"""
 
     @pytest.fixture
-
-    @pytest.fixture
     def sample_trades(self):
         """サンプルトレードデータ"""
         return [

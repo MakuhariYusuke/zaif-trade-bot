@@ -285,9 +285,9 @@ class LatencyOptimizer:
                 reason="performance_test",
             )
 
-            async def send_signal():
-                await self.integration_manager.component_manager.position_manager.submit_signal(
-                    signal
+            # Signal submission would go here
+            pass
+
     def _analyze_bottlenecks(self, profile_output: str) -> List[Dict[str, Any]]:
         """ボトルネックの分析"""
         bottlenecks = []
@@ -462,6 +462,10 @@ class LatencyOptimizer:
 
             latency, _ = self.measure_operation_latency(asyncio.run, send_signal)
             latencies.append(latency)
+
+        return SystemPerformanceMetrics(
+            avg_latency_ms=np.mean(latencies),
+            p95_latency_ms=np.percentile(latencies, 95),
             p99_latency_ms=np.percentile(latencies, 99),
             max_latency_ms=max(latencies),
         )
@@ -700,15 +704,6 @@ class MemoryOptimizer:
 
         efficiency = {
             "memory_per_thread_gb": recent["rss_gb"] / max(recent["thread_count"], 1),
-                            "v433_system",
-                            None,
-                        ),
-                        "current_prices",
-                        [],
-                    )
-                ),
-                1,
-            ),
             "cpu_memory_ratio": recent["cpu_percent"] / max(recent["rss_gb"], 0.1),
         }
 

@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class TargetKLOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for target_kl binary search."""
         return (0.001, 0.1)  # Reasonable range for target KL divergence
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with target_kl value."""
-        self.ppo_params["target_kl"] = float(value)
 
 
 def main() -> None:

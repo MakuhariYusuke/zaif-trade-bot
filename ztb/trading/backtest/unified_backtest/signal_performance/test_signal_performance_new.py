@@ -142,6 +142,8 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
 
     def test_track_signal_integration(self):
         """Test signal tracking through main analyzer."""
+        timestamp = pd.Timestamp("2023-01-01")
+        signal_data = {
             "confidence": 0.9, "source_patterns": ["pattern1"]
         }
         market_data = pd.Series({"close": 50000, "volume": 100})

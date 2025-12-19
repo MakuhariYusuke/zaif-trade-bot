@@ -15,7 +15,11 @@ try:
     from stable_baselines3 import SAC
     from stable_baselines3.common.callbacks import CallbackList, EvalCallback
     from stable_baselines3.common.monitor import Monitor
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecNormalize
+    from stable_baselines3.common.vec_env import (
+        DummyVecEnv,
+        VecFrameStack,
+        VecNormalize,
+    )
 except Exception:
     SAC = None
     CallbackList = list
@@ -25,6 +29,7 @@ except Exception:
     VecFrameStack = None
     VecNormalize = None
 
+from ztb.features.processors.optimization.features import OptimizerFeatureTracker
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.checkpoint.checkpoint_manager import (
@@ -32,7 +37,10 @@ from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointManager,
 )
 from ztb.training.config.configuration_manager import ConfigurationManager
-from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
+from ztb.training.unified_trainer.base.base_trainer import (
+    BaseAlgorithmTrainer,
+    ModelError,
+)
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
@@ -40,8 +48,6 @@ from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
 from ztb.utils.training_utils import create_checkpoint_callback
-from ztb.features.processors.optimization.features import OptimizerFeatureTracker
-from ztb.training.unified_trainer.base.base_trainer import ModelError
 
 
 class SACTrainer(BaseAlgorithmTrainer):
@@ -811,7 +817,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                     _LocalSAC = None
 
                 if _LocalSAC is None:
-                    raise ModelError("stable_baselines3.SAC is not available in this environment")
+                    raise ModelError(
+                        "stable_baselines3.SAC is not available in this environment"
+                    )
 
                 # Optional warm-start: load weights/hyperparams from a saved SB3 model zip.
                 # Note: SB3 does NOT persist the replay buffer by default, so the buffer starts empty.
@@ -1113,7 +1121,9 @@ class SACTrainer(BaseAlgorithmTrainer):
             if self.model is not None:
                 emergency_path = f"models/emergency_save_{int(time.time())}.zip"
                 os.makedirs("models", exist_ok=True)
-                self.model.save(emergency_path)
+                from ztb.utils.training_utils import save_model as _save_model
+
+                _save_model(self.model, emergency_path)
                 self.logger.info(f"Emergency save completed: {emergency_path}")
         except Exception as e:
             self.logger.error(f"Emergency save failed: {e}")
@@ -1285,7 +1295,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                 _LocalSAC = None
 
             if _LocalSAC is None:
-                raise ModelError("stable_baselines3.SAC is not available in this environment")
+                raise ModelError(
+                    "stable_baselines3.SAC is not available in this environment"
+                )
 
             self.model = _LocalSAC.load(model_path)
             self.logger.info("✅ Model loaded successfully")
@@ -1650,7 +1662,12 @@ class SACTrainer(BaseAlgorithmTrainer):
 
             # Get regime statistics from environment if available
             regime_stats = {}
-            if hasattr(self, "env") and self.env is not None and hasattr(self.env, "regime_stats") and self.env.regime_stats:
+            if (
+                hasattr(self, "env")
+                and self.env is not None
+                and hasattr(self.env, "regime_stats")
+                and self.env.regime_stats
+            ):
                 regime_stats = self.env.regime_stats.copy()
 
             # Calculate training metrics

@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class VfCoefOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for vf_coef binary search."""
         return (0.1, 1.0)  # Reasonable range for value function coefficient
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with vf_coef value."""
-        self.ppo_params["vf_coef"] = float(value)
 
 
 def main() -> None:

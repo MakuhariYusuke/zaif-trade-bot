@@ -183,21 +183,24 @@ def test_evaluate_candidate_partial_report_cleanup(tmp_path: Path, monkeypatch):
         calls["n"] += 1
         # Make the first run fail, second succeed and write final report
         if calls["n"] == 1:
-
             class R:
                 returncode = 1
                 stdout = ""
                 stderr = "failed"
-            "configuration": {"training": {"model_name": "mtf_test_candidate"}},
-            "training_stats": {"sharpe_ratio": 0.6, "total_return": 0.06},
-        }
-        rpt_file = reports_dir / "training_report_final.json"
-        rpt_file.write_text(json.dumps(report), encoding="utf-8")
+            return R()
+        else:
+            report = {
+                "configuration": {"training": {"model_name": "mtf_test_candidate"}},
+                "training_stats": {"sharpe_ratio": 0.6, "total_return": 0.06},
+            }
+            rpt_file = reports_dir / "training_report_final.json"
+            rpt_file.write_text(json.dumps(report), encoding="utf-8")
 
-        class R:
-            returncode = 0
-            stdout = "OK"
-            stderr = ""
+            class R:
+                returncode = 0
+                stdout = "OK"
+                stderr = ""
+            return R()
     metrics = evaluate_candidate(
         str(cfg_path),
         seeds=1,

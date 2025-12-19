@@ -6,7 +6,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -30,43 +29,40 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
         """Get the range for normalize_advantage (both True and False)."""
         return (False, True)  # Test both boolean values
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with normalize_advantage value."""
-        self.ppo_params["normalize_advantage"] = bool(value)
 
-    def binary_search_optimize(
-        self, max_iterations: int = 2, total_timesteps: int = 100000
-    ) -> tuple[bool, float]:
-        """
-        Override binary search to test both True and False values.
-        Returns (best_value, best_score).
-        """
-        print("\n=== Testing normalize_advantage parameter ===")
-        print("Testing both True and False values...")
+def binary_search_optimize(
+    self, max_iterations: int = 2, total_timesteps: int = 100000
+) -> tuple[bool, float]:
+    """
+    Override binary search to test both True and False values.
+    Returns (best_value, best_score).
+    """
+    print("\n=== Testing normalize_advantage parameter ===")
+    print("Testing both True and False values...")
 
+    best_value = False
+    best_score = float("-inf")
+
+    # Test False
+    print("\nTesting normalize_advantage=False")
+    score_false = self.run_single_test(False, total_timesteps)
+
+    # Test True
+    print("\nTesting normalize_advantage=True")
+    score_true = self.run_single_test(True, total_timesteps)
+
+    # Compare results
+    if score_false > score_true:
         best_value = False
-        best_score = float("-inf")
+        best_score = score_false
+        print(f"\nFalse performs better: {score_false:.6f} vs {score_true:.6f}")
+    else:
+        best_value = True
+        best_score = score_true
+        print(f"\nTrue performs better: {score_true:.6f} vs {score_false:.6f}")
 
-        # Test False
-        print("\nTesting normalize_advantage=False")
-        score_false = self.run_single_test(False, total_timesteps)
-
-        # Test True
-        print("\nTesting normalize_advantage=True")
-        score_true = self.run_single_test(True, total_timesteps)
-
-        # Compare results
-        if score_false > score_true:
-            best_value = False
-            best_score = score_false
-            print(f"\nFalse performs better: {score_false:.6f} vs {score_true:.6f}")
-        else:
-            best_value = True
-            best_score = score_true
-            print(f"\nTrue performs better: {score_true:.6f} vs {score_false:.6f}")
-
-        print(f"\nBest normalize_advantage: {best_value} (score: {best_score:.6f})")
-        return best_value, best_score
+    print(f"\nBest normalize_advantage: {best_value} (score: {best_score:.6f})")
+    return best_value, best_score
 
 
 def main() -> None:

@@ -6,6 +6,7 @@ Gartley, Butterfly, Bat, Crab, and other geometric price patterns based
 on Fibonacci ratios and symmetry.
 """
 
+import json
 from typing import Any, Dict, List, NamedTuple, Optional
 
 import numpy as np
@@ -445,7 +446,7 @@ class GartleyRecognizer(CandlestickPatternRecognizer):
                 "confidence": confidence,
                 "pattern_completeness": pattern_completeness,
                 "mtf_confidence": mtf_confidence,
-                "regime_adjustments": regime_adjustments,
+                "regime_adjustments": json.dumps(regime_adjustments),
             },
         )
 
@@ -576,7 +577,7 @@ class ButterflyRecognizer(CandlestickPatternRecognizer):
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
                         "mtf_confidence": mtf_confidence,
-                        "regime_adjustments": regime_adjustments,
+                        "regime_adjustments": json.dumps(regime_adjustments),
                     },
                 )
 
@@ -586,6 +587,11 @@ class ButterflyRecognizer(CandlestickPatternRecognizer):
 class BatRecognizer(CandlestickPatternRecognizer):
     """Recognizes Bat harmonic patterns."""
 
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(config)
+        self.lookback_period = config.get("lookback_period", 60) if config else 60
+        self.tolerance = config.get("tolerance", 0.05) if config else 0.05
+        self.harmonic_analyzer = HarmonicAnalyzer()
 
     def recognize(
         self,
@@ -666,7 +672,7 @@ class BatRecognizer(CandlestickPatternRecognizer):
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
                         "mtf_confidence": mtf_confidence,
-                        "regime_adjustments": regime_adjustments,
+                        "regime_adjustments": json.dumps(regime_adjustments),
                     },
                 )
 
@@ -681,6 +687,11 @@ class CrabRecognizer(CandlestickPatternRecognizer):
         self.lookback_period = config.get("lookback_period", 60) if config else 60
         self.tolerance = config.get("tolerance", 0.05) if config else 0.05
         self.harmonic_analyzer = HarmonicAnalyzer()
+
+    def recognize(
+        self,
+        data: pd.DataFrame,
+        index: int = -1,
         multi_timeframe_data: Optional[Dict[str, Any]] = None,
     ) -> Optional[SignalResult]:
         """Recognize Crab pattern at the given index."""
@@ -756,7 +767,7 @@ class CrabRecognizer(CandlestickPatternRecognizer):
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
                         "mtf_confidence": mtf_confidence,
-                        "regime_adjustments": regime_adjustments,
+                        "regime_adjustments": json.dumps(regime_adjustments),
                     },
                 )
 

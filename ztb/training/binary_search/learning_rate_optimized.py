@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class LearningRateOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for learning_rate binary search."""
         return (1e-5, 1e-2)  # Reasonable range for learning rates
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with learning_rate value."""
-        self.ppo_params["learning_rate"] = float(value)
 
 
 def main() -> None:

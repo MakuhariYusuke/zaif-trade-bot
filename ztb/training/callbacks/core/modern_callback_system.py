@@ -368,17 +368,17 @@ class CallbackManager:
 
     def enable_callback(self, name: str) -> bool:
         """Enable a callback."""
-        callback = self.callbacks.get(name)
-        if callback:
-            callback.config.enabled = True
-            return True
-        return False
+        return self._toggle_callback(name, True)
 
     def disable_callback(self, name: str) -> bool:
         """Disable a callback."""
+        return self._toggle_callback(name, False)
+
+    def _toggle_callback(self, name: str, enabled: bool) -> bool:
+        """Toggle callback enabled state."""
         callback = self.callbacks.get(name)
         if callback:
-            callback.config.enabled = False
+            callback.config.enabled = enabled
             return True
         return False
 

@@ -185,6 +185,9 @@ class CoincheckAdapter(IBroker):
             await self.rate_limiter.wait()
 
     def _generate_order_id(self) -> str:
+        import uuid
+        return str(uuid.uuid4())
+
     async def place_order(
         self,
         symbol: str,

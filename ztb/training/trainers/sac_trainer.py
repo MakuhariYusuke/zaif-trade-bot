@@ -43,7 +43,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed im
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.algorithms import AlgorithmFactory
 from ztb.training.callbacks.advanced_callbacks import (
-    BestModelCallback,
+    BestModelSaveCallback,
     EarlyStoppingCallback,
 )
 from ztb.training.core.config_manager import ConfigManager

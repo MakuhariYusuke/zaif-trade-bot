@@ -8,7 +8,6 @@ used in technical analysis for trading signals.
 import logging
 from typing import Any, Dict, Optional, cast
 
-import numpy as np
 import pandas as pd
 
 from .base import CandlestickPatternRecognizer, SignalResult
@@ -145,7 +144,8 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
                 metadata={
                     "pattern": "sakata_five_methods",
                     "trend": "uptrend",
-                    "candle_characteristics": characteristics,
+                    "avg_body_size": characteristics.get("avg_body_size", 0.0),
+                    "body_sizes": list(characteristics.get("body_sizes", [])),
                     "momentum_increase": True,
                 },
             )
@@ -225,13 +225,16 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
             (body_size / total_range).item() >= 0.6 if total_range.item() > 0 else False
         )
 
-
     def _is_downtrend(self, data: pd.DataFrame, index: int, lookback: int) -> bool:
         """Check if there's a downtrend over the lookback period."""
         if index < lookback:
             return False
         recent_prices = data.iloc[index - lookback + 1 : index + 1]["close"]
         return cast(bool, recent_prices.iloc[-1] < recent_prices.iloc[0])
+
+
+class MorningStarRecognizer(CandlestickPatternRecognizer):
+    """Recognizes Morning Star pattern.
     A three-candle bullish reversal pattern: large bearish, small, large bullish.
     """
 
@@ -334,7 +337,6 @@ class SakataFiveMethodsRecognizer(CandlestickPatternRecognizer):
         except Exception as e:
             self.logger.error(f"Error recognizing Morning Star pattern: {e}")
             return None
-
 
 
 class EveningStarRecognizer(CandlestickPatternRecognizer):

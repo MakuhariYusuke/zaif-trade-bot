@@ -439,29 +439,35 @@ class SMACrossoverAdapter:
             "cache_entries": total_entries,
             "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
+        }
+
+
+class BuyAndHoldAdapter:
     """Buy and hold strategy (benchmark)."""
 
     def __init__(self) -> None:
         """Initialize buy and hold strategy."""
         self.initialized = False
 
-            # Assume no position for signal generation
-            signal = self.generate_signal(current_data, 0)
-            signals.append(signal["action"])
-
-        # Convert actions to signals (-1, 0, 1)
-        action_to_signal = {"sell": ACTION_SELL, "hold": ACTION_HOLD, "buy": ACTION_BUY}
-        signal_values = [action_to_signal.get(s, 0) for s in signals]
+    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Generate buy and hold signals."""
+        # Buy and hold: always buy at the beginning, hold forever
+        signals = []
+        for i, current_data in data.iterrows():
+            if not self.initialized:
+                # Buy on first data point
+                signals.append(ACTION_BUY)
+                self.initialized = True
+            else:
+                # Hold
+                signals.append(ACTION_HOLD)
 
         return pd.DataFrame(
             {
                 "timestamp": data["timestamp"] if "timestamp" in data else data.index,
-                "signal": signal_values,
+                "signal": signals,
             }
         )
-            "features_enabled": self.enable_150d_features,
-            "model_loaded": self.model is not None,
-        }
 
     def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
         """Update buy and hold strategy hyperparameters."""
@@ -484,9 +490,15 @@ class ActionSignalGuideAdapter:
         if isinstance(self.config, ActionSignalGuideConfig):
             guide_config = self.config
         elif isinstance(self.config, dict):
-                guide_config.short_mode_recognizer_limit = min(
-                    guide_config.short_mode_recognizer_limit, 5
-                )
+            # Build a config object from the provided dict while preserving defaults
+            base = ActionSignalGuideConfig()
+            for k, v in self.config.items():
+                if hasattr(base, k):
+                    setattr(base, k, v)
+            guide_config = base
+            guide_config.short_mode_recognizer_limit = min(
+                guide_config.short_mode_recognizer_limit, 5
+            )
         else:
             # Create config object with debug mode - force minimal setup
             guide_config = ActionSignalGuideConfig(
@@ -505,10 +517,10 @@ class ActionSignalGuideAdapter:
                 enable_adx_patterns=False,  # Disable for speed
                 enable_granville_patterns=False,  # Disable for speed
                 enable_heikin_ashi_patterns=False,  # Disable for speed
-            "signal_strength_threshold": 0.3,  # Require 30% signal strength
-            "max_signals_per_bar": 5,
-            "force_accept_signals": False,  # If True, bypass filters and accept valid signals
-        }
+                signal_strength_threshold=0.3,  # Require 30% signal strength
+                max_signals_per_bar=5,
+                force_accept_signals=False,  # If True, bypass filters and accept valid signals
+            )
 
         # Signal statistics tracking
         self.signal_stats = {

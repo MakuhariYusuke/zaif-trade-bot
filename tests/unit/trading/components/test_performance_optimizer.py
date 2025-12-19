@@ -17,9 +17,6 @@ from ztb.trading.performance_optimizer import (
 
 
 @pytest.fixture
-
-
-@pytest.fixture
 def performance_optimizer(mock_integration_manager):
     """Performance Optimization System instance"""
     return PerformanceOptimizationSystem(mock_integration_manager)

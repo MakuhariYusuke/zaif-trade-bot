@@ -123,18 +123,26 @@ def main() -> bool:
 
         # Start training
         success = trainer.train()
-        if success:
-            print("✅ SAC v454 training completed successfully!")
-            return True
-        else:
-            print("❌ SAC v454 training failed!")
-            return False
+        # Gather final metrics safely
+        final_metrics = {}
+        training_time = getattr(trainer, "training_time", 0.0)
+        try:
+            if hasattr(trainer, "training_report") and trainer.training_report:
+                final_metrics = trainer.training_report.get("training_stats", {}) or {}
+                training_time = final_metrics.get("training_time", training_time)
+        except Exception:
+            final_metrics = {}
+        from ztb.utils.training_utils import display_training_complete
+
+        display_training_complete(final_metrics if success else {}, training_time)
+        return bool(success)
 
     except Exception as e:
         logger.error(f"Training failed with error: {e}")
         print(f"❌ Training failed: {e}")
         # Print stack trace for debugging
         import traceback
+
         traceback.print_exc()
         return False
 

@@ -425,15 +425,43 @@ class OrderReconciler(BaseReconciler):
     def get_last_result(self) -> Optional[ReconciliationResult]:
         """Get last reconciliation result."""
         return self._last_result
+
+
+class ComprehensiveReconciler(BaseReconciler):
     """Comprehensive reconciler that combines multiple reconciliation types."""
 
     def __init__(self) -> None:
         """Initialize comprehensive reconciler."""
-        super().__init__()
+        super().__init__("comprehensive")
         self.position_reconciler = PositionReconciler()
         self.balance_reconciler = BalanceReconciler()
         self.order_reconciler = OrderReconciler()
         self._last_result: Optional[ReconciliationResult] = None
+
+    async def reconcile(self, *args: Any, **kwargs: Any) -> ReconciliationResult:
+        """Perform comprehensive reconciliation.
+
+        Delegates to reconcile_all method.
+
+        Returns:
+            Reconciliation result
+        """
+        # Map positional args to reconcile_all parameters
+        local_positions = kwargs.get('local_positions', args[0] if len(args) > 0 else None)
+        external_positions = kwargs.get('external_positions', args[1] if len(args) > 1 else None)
+        local_balances = kwargs.get('local_balances', args[2] if len(args) > 2 else None)
+        external_balances = kwargs.get('external_balances', args[3] if len(args) > 3 else None)
+        local_orders = kwargs.get('local_orders', args[4] if len(args) > 4 else None)
+        external_orders = kwargs.get('external_orders', args[5] if len(args) > 5 else None)
+
+        return await self.reconcile_all(
+            local_positions=local_positions,
+            external_positions=external_positions,
+            local_balances=local_balances,
+            external_balances=external_balances,
+            local_orders=local_orders,
+            external_orders=external_orders,
+        )
 
     async def reconcile_all(
         self,

@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class MaxGradNormOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for max_grad_norm binary search."""
         return (0.1, 10.0)  # Reasonable range for gradient clipping
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with max_grad_norm value."""
-        self.ppo_params["max_grad_norm"] = float(value)
 
 
 def main() -> None:

@@ -16,6 +16,7 @@ import torch.nn as nn
 try:
     import torch.nn.functional as F
 except Exception:
+
     class _F:
         @staticmethod
         def relu(x):
@@ -24,6 +25,7 @@ except Exception:
         @staticmethod
         def mse_loss(a, b):
             return 0
+
         @staticmethod
         def softmax(x, dim=1):
             try:
@@ -71,23 +73,14 @@ class DistillationLoss(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.alpha = alpha
-        try:
-            self.ce_loss = nn.CrossEntropyLoss()
-        except Exception:
-            class _CE:
-                def __call__(self, *a, **k):
-                    return 0
+        # Use centralized safe instantiation to fall back to a dummy loss if needed
+        from ztb.utils.training_utils import get_safe_loss_function
 
-            self.ce_loss = _CE()
+        self.ce_loss = get_safe_loss_function(nn.CrossEntropyLoss)
 
-        try:
-            self.kl_div = nn.KLDivLoss(reduction="batchmean")
-        except Exception:
-            class _KL:
-                def __call__(self, *a, **k):
-                    return 0
-
-            self.kl_div = _KL()
+        self.kl_div = get_safe_loss_function(
+            lambda: nn.KLDivLoss(reduction="batchmean")
+        )
 
     def forward(
         self,
@@ -122,6 +115,7 @@ class DistillationLoss(nn.Module):
                 return total_loss
             return torch.tensor(total_loss)
         except Exception:
+
             class _Scalar:
                 def __init__(self, v):
                     self._v = v
@@ -148,14 +142,7 @@ class IntermediateDistillationLoss(nn.Module):
         super().__init__()
         self.feature_weight = feature_weight
         self.attention_weight = attention_weight
-        try:
-            self.mse_loss = nn.MSELoss()
-        except Exception:
-            class _MSE:
-                def __call__(self, *a, **k):
-                    return 0
-
-            self.mse_loss = _MSE()
+        self.mse_loss = get_safe_loss_function(nn.MSELoss)
 
     def forward(
         self,

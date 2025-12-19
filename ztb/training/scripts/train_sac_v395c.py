@@ -2,44 +2,27 @@
 SAC v395c (Conservative) - 5k timesteps
 保守的なパラメータ調整
 """
-import json
 
-from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.training.unified_trainer.trainer import UnifiedTrainer
+from ztb.training.utils.training_main_template import create_simple_main_template
 
+extra_info = """📊 Key Changes from v395a:
+  • ent_coef: 1.0 -> 0.5 (more conservative exploration)
+  • learning_rate: 3e-4 -> 1e-4 (slower learning)
+  • buffer_size: 1e6 -> 5e5 (smaller replay buffer)
+  • batch_size: 256 -> 128 (smaller batches)
 
-def main():
-    print("🧪 SAC v395c Test - Conservative Adjustments")
-    print("=" * 80)
+🎯 Expected Improvements:
+  • Critic Loss < 1e7 (was 4.34e7)
+  • ent_coef stable in 0.5-2.0 range (was 4.03)
+  • Gradual, stable learning"""
 
-    config_path = "configs/sac_v395c_conservative.json"
-
-    # 設定ファイル読み込み
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
-
-    print("📊 Key Changes from v395a:")
-    for change in config.get("changes_from_v395a", []):
-        print(f"  • {change}")
-    print()
-
-    print("🎯 Expected Improvements:")
-    print("  • Critic Loss < 1e7 (was 4.34e7)")
-    print("  • ent_coef stable in 0.5-2.0 range (was 4.03)")
-    print("  • Gradual, stable learning")
-    print()
-
-    print("🚀 Starting 5k timesteps training...")
-    trainer = UnifiedTrainer(config)
-    result = trainer.train()
-
-    print("\n" + "=" * 80)
-    if result:
-        print("✅ Training completed!")
-        print(f"Model saved to: {result.get('model_path', 'N/A')}")
-        print("\n📊 Next: Run analyze_sac_logs.py to compare results")
-    else:
-        print("❌ Training failed")
-    print("=" * 80)
+main = create_simple_main_template(
+    UnifiedTrainer,
+    "configs/sac_v395c_conservative.json",
+    "SAC v395c Test - Conservative Adjustments",
+    extra_info,
+)
 
 
 if __name__ == "__main__":

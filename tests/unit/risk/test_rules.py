@@ -13,9 +13,6 @@ from ztb.risk.rules import RiskRuleEngine
 
 
 @pytest.fixture
-
-
-@pytest.fixture
 def risk_engine(sample_risk_limits):
     """RiskRuleEngine instance for testing."""
     return RiskRuleEngine(sample_risk_limits)

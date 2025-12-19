@@ -23,6 +23,22 @@ import scipy.stats as stats
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
+
+
+class OrderSide(Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+class Position:
+    symbol: str
+    quantity: Decimal
+    average_price: Decimal
+    current_price: Optional[Decimal] = None
+    unrealized_pnl: Decimal = Decimal("0")
+    realized_pnl: Decimal = Decimal("0")
+
+
 class Order:
     order_id: str
     symbol: str

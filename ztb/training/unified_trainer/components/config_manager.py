@@ -134,6 +134,10 @@ class TrainingConfigManager:
         if not isinstance(config, dict):
             raise TypeError(f"Config must be dict, got {type(config)}")
 
+        # Backwards compatibility: accept flat config dicts by wrapping them under 'training'
+        if "training" not in config and "algorithm" in config:
+            config = {"training": config}
+
         required_keys = ["training"]
         for key in required_keys:
             if key not in config:

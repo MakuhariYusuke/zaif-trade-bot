@@ -7,13 +7,16 @@ Provides high-level API for generating features across multiple timeframes.
 
 from __future__ import annotations
 
+import gc
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
 from ztb.features.feature_set_config import get_feature_config
 from ztb.features.generators.multi_timeframe.config import MultiTimeframeConfig
-from ztb.features.generators.multi_timeframe.data_pipeline import MultiTimeframeDataPipeline
+from ztb.features.generators.multi_timeframe.data_pipeline import (
+    MultiTimeframeDataPipeline,
+)
 from ztb.features.generators.multi_timeframe.engine import MultiTimeframeFeatureEngineer
 from ztb.features.timeframe import Timeframe
 from ztb.utils.logging_utils import get_logger

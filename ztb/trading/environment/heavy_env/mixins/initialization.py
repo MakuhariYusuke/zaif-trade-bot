@@ -280,7 +280,13 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
             try:
                 mtf_system = MultiTimeframeFeatureSystem()
-                mtf_data = mtf_system.process_multi_timeframe_data(self.df)
+                # The multi-timeframe feature system expects OHLCV + timestamp and is not
+                # robust to pre-featured datasets (duplicate column names can occur when
+                # generating features on top of existing engineered columns). Feed only
+                # the base OHLCV frame to keep generation stable and deterministic.
+                base_cols = ["timestamp", "open", "high", "low", "close", "volume"]
+                base_df = self.df[[c for c in base_cols if c in self.df.columns]].copy()
+                mtf_data = mtf_system.process_multi_timeframe_data(base_df)
                 if not mtf_data.empty:
                     # Merge the derived multi-timeframe features into the base dataframe
                     # Align by index and avoid duplicate columns. This ensures that the
@@ -302,8 +308,10 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                         self.n_steps = len(self.df)
                         self._base_columns = list(self.df.columns)
 
+                    # Only extend the feature list with columns we actually merged into
+                    # `self.df` (avoid re-introducing excluded base columns like OHLCV).
                     mtf_features = [
-                        col for col in mtf_data.columns if col not in all_features
+                        col for col in mtf_to_add if col not in all_features
                     ]
                     if mtf_features:
                         all_features.extend(mtf_features)

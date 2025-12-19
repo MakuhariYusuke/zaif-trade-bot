@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 import json
 import logging
+import time
 
 import numpy as np
 import pandas as pd
@@ -141,18 +142,32 @@ def main():
 
     # Train for 5000 steps
     logger.info("Starting training for 5000 steps...")
+    training_start_time = time.time()
     try:
         model.learn(
             total_timesteps=5000,
             callback=checkpoint_callback,
             progress_bar=True
         )
+        training_time = time.time() - training_start_time
         logger.info("Training completed successfully")
 
-        # Save final model
+        # Save final model using centralized utility
         model_path = "models/sac_v444_5000step_final.zip"
-        model.save(model_path)
+        from ztb.utils.training_utils import save_model
+        save_model(model, model_path)
         logger.info(f"Model saved to {model_path}")
+
+        # Display completion using centralized utility
+        from ztb.utils.training_utils import display_training_complete
+        final_metrics = {
+            "total_timesteps": 5000,
+            "model_path": model_path,
+            "data_samples": len(df),
+            "features_used": 50,
+            "training_completed": True
+        }
+        display_training_complete(final_metrics, training_time)
 
         # Collect basic training statistics
         training_stats = {

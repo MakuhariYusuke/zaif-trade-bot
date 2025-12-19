@@ -19,7 +19,13 @@ try:
 except Exception:
     torch = None
 
+# Try to detect optional dependencies without importing heavy packages at
+# module import time. Use importlib.util.find_spec to check availability which
+# avoids side-effects or expensive imports during test collection.
+import importlib.util
+
 from ztb.training.constants import DEFAULT_LEARNING_RATE
+from ztb.training.trainers.base_trainer import BaseTrainer
 from ztb.types.common import (
     AnomalyDetectorProtocol,
     ConfigDict,
@@ -31,11 +37,6 @@ from ztb.types.common import (
 from ztb.utils.exceptions.custom_exceptions import TrainingError
 from ztb.utils.memory_utils import cleanup_training_memory
 from ztb.utils.performance_profiler import MemoryProfiler
-
-# Try to detect optional dependencies without importing heavy packages at
-# module import time. Use importlib.util.find_spec to check availability which
-# avoids side-effects or expensive imports during test collection.
-import importlib.util
 
 OPACUS_AVAILABLE = importlib.util.find_spec("opacus") is not None
 
@@ -101,6 +102,7 @@ if TYPE_CHECKING:
         OnlineLearningEngine,
     )
     from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
+
     # Type-only import to avoid name collision with runtime EnsemblePredictor
 
 
@@ -165,6 +167,13 @@ class UnifiedTrainer(BaseTrainer):
             self.logger.error(f"Configuration processing failed: {e}")
             raise
 
+        # Expose convenient top-level attributes for tests/legacy code
+        self.algorithm = (
+            self.config.get("training", {}).get("algorithm")
+            if isinstance(self.config, dict)
+            else None
+        )
+
         # Initialize legacy UI for backward compatibility
         self.ui = TrainingUI(self.logger)
         self.ui_manager.initialize_ui(self.ui)
@@ -172,6 +181,8 @@ class UnifiedTrainer(BaseTrainer):
         # self.reporter = TrainingReporter(self.logger)
         # Algorithm trainer (created during run)
         self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
+        # Exposed model handle (if algorithm produces one during training)
+        self.model: Optional[Any] = None
 
         # Anomaly Detection components
         self.anomaly_detector: Optional[AnomalyDetectorProtocol] = None
@@ -2214,8 +2225,8 @@ class UnifiedTrainer(BaseTrainer):
             from pathlib import Path
 
             import pandas as pd
-            from stable_baselines3 import PPO
 
+            from stable_baselines3 import PPO
             from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
             from ztb.trading.environment.utils.config import EnvironmentConfig
         except ImportError as e:
@@ -2493,6 +2504,7 @@ class UnifiedTrainer(BaseTrainer):
                 }
 
         return analysis
+
     def _calculate_sharpe_ratio(self, returns: List[float]) -> float:
         """Calculate Sharpe ratio from returns list."""
         if not returns or len(returns) < 2:

@@ -32,6 +32,7 @@ from ztb.training.distributed.distributed_training import (
 
 
 class TestDistributedTrainingConfig:
+    def test_config_creation(self):
         config = DistributedTrainingConfig(
             world_size=4,
             rank=1,

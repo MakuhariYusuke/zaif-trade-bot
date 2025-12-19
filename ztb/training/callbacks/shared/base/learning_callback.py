@@ -731,6 +731,11 @@ class LearningCallback(abc.ABC):
     def on_epoch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
+        """Called at the end of each epoch."""
+        pass
+
+    @abc.abstractmethod
+    def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
@@ -745,13 +750,24 @@ class LearningCallback(abc.ABC):
 
     def on_validation_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Called at the start of validation (optional)."""
+        pass
+
+    def on_validation_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of validation (optional)."""
         pass
+        pass
 
     def on_test_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Called at the start of testing (optional)."""
+        pass
+
+    def on_test_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the end of testing (optional)."""

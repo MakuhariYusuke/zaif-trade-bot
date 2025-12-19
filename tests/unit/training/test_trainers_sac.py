@@ -58,6 +58,8 @@ def test_sac_trainer_train_creates_and_saves_model(mock_algo_factory, tmp_path):
             class DummyEnv:
                 def __init__(self, df=None, config=None):
                     # Accept any df (we mock load_csv to return a MagicMock)
+                    pass
+
             with patch(
                 "ztb.training.trainers.sac_trainer.HeavyTradingEnv", new=DummyEnv
             ), patch(

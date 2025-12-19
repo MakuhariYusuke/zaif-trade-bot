@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -28,10 +27,6 @@ class GammaOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for gamma binary search."""
         return (0.8, 0.99)  # Reasonable range for discount factor
-
-    def update_ppo_params(self, value: Union[int, float]) -> None:
-        """Update PPO parameters with gamma value."""
-        self.ppo_params["gamma"] = float(value)
 
 
 def main() -> None:

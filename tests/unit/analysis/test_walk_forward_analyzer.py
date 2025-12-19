@@ -17,8 +17,6 @@ class TestWalkForwardAnalyzer:
     """WalkForwardAnalyzerのテスト"""
 
     @pytest.fixture
-
-    @pytest.fixture
     def mock_strategy_func(self):
         """モック戦略評価関数"""
         def strategy_evaluator(data: pd.DataFrame, params: ParameterSet) -> dict:
