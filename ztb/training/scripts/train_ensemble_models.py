@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
 
@@ -186,10 +187,7 @@ def train_model(
 
 def main() -> int:
     args = parse_args()
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    )
+    setup_logging(level=logging.DEBUG if args.verbose else logging.INFO)
 
     base_config = build_base_config(args)
 

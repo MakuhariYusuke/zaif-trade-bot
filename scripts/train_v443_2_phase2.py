@@ -13,6 +13,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete
 
 
@@ -24,14 +25,7 @@ def train_v443_2_phase2():
     start_time = time.time()
 
     # Set up logging to file and console
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler("training_log_v443_2_phase2.txt", mode="w"),
-            logging.StreamHandler(),
-        ],
-    )
+    setup_logging(log_file="training_log_v443_2_phase2.txt")
 
     # Ensure all loggers inherit the root logger configuration
     logging.getLogger().setLevel(logging.INFO)

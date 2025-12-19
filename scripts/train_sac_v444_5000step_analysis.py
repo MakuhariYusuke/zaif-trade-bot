@@ -14,8 +14,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.logging_utils import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

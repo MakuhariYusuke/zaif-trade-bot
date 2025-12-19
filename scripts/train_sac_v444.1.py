@@ -13,8 +13,9 @@ import json
 import logging
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.logging_utils import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

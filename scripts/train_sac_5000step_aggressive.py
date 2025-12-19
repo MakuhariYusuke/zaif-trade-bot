@@ -14,8 +14,10 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 
+from ztb.utils.logging_utils import setup_logging
+
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Add project root to path

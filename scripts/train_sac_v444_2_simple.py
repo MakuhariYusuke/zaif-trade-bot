@@ -27,9 +27,10 @@ sys.path.insert(0, str(ztb_path))
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete, save_model
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 

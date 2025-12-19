@@ -9,10 +9,11 @@ import json
 import logging
 import time
 
-logging.basicConfig(level=logging.INFO)
-
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete
+
+setup_logging()
 
 if __name__ == "__main__":
     start_time = time.time()
