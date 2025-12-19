@@ -45,9 +45,9 @@ class SACv435Evaluator:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
-        from ztb.training.utils.common_utils import load_config_file
+        from ztb.utils.file_utils import safe_json_load
 
-        return load_config_file(self.config_path)
+        return safe_json_load(self.config_path)
 
     def _setup_risk_management(self):
         """Setup risk management for evaluation"""

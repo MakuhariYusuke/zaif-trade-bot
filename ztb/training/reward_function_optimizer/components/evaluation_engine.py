@@ -326,9 +326,9 @@ class EvaluationEngine:
 
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
-        from ztb.training.utils.common_utils import get_timestamp
+        from datetime import datetime
 
-        return get_timestamp()
+        return datetime.now().isoformat()
 
     def get_evaluation_history(self) -> List[Dict[str, Any]]:
         """Get evaluation history."""

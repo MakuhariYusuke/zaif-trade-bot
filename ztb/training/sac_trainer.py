@@ -51,11 +51,11 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration file."""
-        from ztb.training.utils.common_utils import load_config_file
-        from ztb.training.utils.logging_utils import get_logger
+        from ztb.utils.file_utils import safe_json_load
+        from ztb.utils.logging_utils import get_logger
 
         logger = get_logger(__name__)
-        config = load_config_file(self.config_path)
+        config = safe_json_load(self.config_path)
         logger.info(f"Config loaded from {self.config_path}")
         return config
 

@@ -237,3 +237,36 @@ def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
             warnings.append("High transaction cost detected (>1%), consider reducing")
 
     return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+
+
+def get_metric_from_logger(model, metric_name: str) -> Optional[float]:
+    """
+    Get metric value from model logger.
+
+    Args:
+        model: The model with logger
+        metric_name: Name of the metric to retrieve
+
+    Returns:
+        Metric value or None if not found
+    """
+    if not hasattr(model, "logger") or model.logger is None:
+        return None
+
+    try:
+        name_to_value = model.logger.name_to_value
+
+        # Check possible metric name variations
+        possible_names = [
+            metric_name,
+            f"train/{metric_name}",
+            f"rollout/{metric_name}",
+        ]
+
+        for name in possible_names:
+            if name in name_to_value:
+                return float(name_to_value[name])
+
+        return None
+    except (AttributeError, KeyError, TypeError):
+        return None

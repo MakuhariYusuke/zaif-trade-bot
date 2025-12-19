@@ -213,12 +213,12 @@ class SACv435Trainer:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
-        from ztb.training.utils.common_utils import load_config_file
+        from ztb.utils.file_utils import safe_json_load
 
         if self.config_path is None:
             # Config already provided as dict
             return self.config
-        return load_config_file(self.config_path)
+        return safe_json_load(self.config_path)
 
     def setup_environment(self) -> DummyVecEnv:
         """Setup training environment"""

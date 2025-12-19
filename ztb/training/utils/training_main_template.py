@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Type
 
 from ztb.training.trainers.base_trainer import BaseTrainer
-from ztb.training.utils.common_utils import load_config_file
-from ztb.training.utils.logging_utils import get_logger
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -40,7 +40,7 @@ def create_simple_main_template(
             print()
 
         # Load configuration
-        config = load_config_file(Path(config_path))
+        config = safe_json_load(Path(config_path))
         logger.info(f"Loaded config from {config_path}")
 
         # Create and run trainer

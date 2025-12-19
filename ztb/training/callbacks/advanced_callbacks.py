@@ -10,7 +10,7 @@ Advanced Callbacks for SAC Training.
 from collections import deque
 from typing import Optional
 
-from ztb.training.utils.common_utils import get_metric_from_logger
+from ztb.training.utils.training_utils import get_metric_from_logger
 from pathlib import Path
 from typing import Optional, cast
 
