@@ -7,6 +7,7 @@ Simple reward function training test
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.callbacks.callbacks import SimpleTrainingCallback
 from ztb.training.config.ppo_config import DEFAULT_INITIAL_PORTFOLIO_VALUE
+from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_TOTAL_TIMESTEPS_PPO
 from ztb.training.utils.training_utils import (
     create_ppo_model,
     load_training_data,
@@ -21,7 +22,7 @@ def train_simple_reward(
     config_name: str = "default",
     reward_scaling: float = 1.0,
     entropy_coef: float = 0.01,
-    learning_rate: float = 3e-4,
+    learning_rate: float = DEFAULT_LEARNING_RATE_PPO,
 ) -> str:
     """Train with simple portfolio reward for 100k steps with configurable parameters"""
 
@@ -67,7 +68,7 @@ def train_simple_reward(
     print_training_start(config_name, reward_scaling, entropy_coef, learning_rate)
 
     # Train for 100k steps
-    model.learn(total_timesteps=100000, callback=callback)
+    model.learn(total_timesteps=DEFAULT_TOTAL_TIMESTEPS_PPO, callback=callback)
 
     print_training_results(callback.episode_rewards)
 

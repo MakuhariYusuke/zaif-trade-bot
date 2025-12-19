@@ -20,6 +20,7 @@ from typing import Any, Deque, Dict, List, Optional, Protocol
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
+from ztb.training.constants import DEFAULT_TOTAL_TIMESTEPS_SAC
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -91,7 +92,7 @@ class GradProbeGuard(BaseCallback):
             ),
             checkpoint_dir="checkpoints"
         )
-        model.learn(total_timesteps=100000, callback=guard)
+        model.learn(total_timesteps=DEFAULT_TOTAL_TIMESTEPS_SAC, callback=guard)
     """
 
     def __init__(

@@ -14,6 +14,7 @@ import pandas as pd
 _SB3_PPO = None
 
 from ztb.training.config.configuration_manager import ConfigurationManager
+from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO
 from ztb.training.environments.environment_config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
@@ -180,7 +181,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         self.model = _LocalPPO(
             "MlpPolicy",
             wrapped_env,
-            learning_rate=ppo_config.get("learning_rate", 0.0003),
+            learning_rate=ppo_config.get("learning_rate", DEFAULT_LEARNING_RATE_PPO),
             n_steps=ppo_config.get("n_steps", 2048),
             batch_size=ppo_config.get("batch_size", 64),
             n_epochs=ppo_config.get("n_epochs", 10),
