@@ -45,7 +45,7 @@ class ZTBConfig:
         "additionalProperties": True,
     }
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: T = None) -> str | T:
         """Get configuration value from environment variables"""
         return os.getenv(key, default)
 

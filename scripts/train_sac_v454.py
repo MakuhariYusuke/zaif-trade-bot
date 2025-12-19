@@ -9,8 +9,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from ztb.utils.file_utils import get_project_root
+
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer

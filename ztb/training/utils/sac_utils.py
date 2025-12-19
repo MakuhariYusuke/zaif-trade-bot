@@ -19,15 +19,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.utils.file_utils import get_project_root
+
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from ztb.trading.environment.constants import BYTES_PER_MB
-from ztb.utils.path_utils import get_project_root
-
-# Get project root using utility
 project_root = get_project_root()
+sys.path.insert(0, str(project_root))
 
 # ruff: noqa: E402
 from ztb.utils.logging_utils import get_logger

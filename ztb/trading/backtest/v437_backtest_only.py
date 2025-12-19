@@ -8,8 +8,10 @@ import os
 import sys
 from pathlib import Path
 
+from ztb.utils.file_utils import get_project_root
+
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 # Direct imports to avoid complex dependencies

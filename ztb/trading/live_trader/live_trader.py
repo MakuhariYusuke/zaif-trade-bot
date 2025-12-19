@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 from ztb.utils.exceptions.custom_exceptions import TradingError
 
 # Add project root to path
-from ztb.utils.path_utils import get_project_root
+from ztb.utils.file_utils import get_project_root
 
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
@@ -122,7 +122,7 @@ except Exception:
     pass
 
 # Cross-platform path handling - add project root to path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = get_project_root()
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_NAMES, ACTION_SELL

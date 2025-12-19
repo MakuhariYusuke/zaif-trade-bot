@@ -15,12 +15,14 @@ from pathlib import Path
 from statistics import fmean
 from typing import Any, Iterable
 
+from ztb.utils.file_utils import get_project_root
+
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
 # Add project root to path (but avoid local shims shadowing installed SB3)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = get_project_root()
 
 # `stable_baselines3` is required for backtests; ensure we import the real
 # site-packages version even if a local shim package exists in the repo.

@@ -21,8 +21,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
+from ztb.utils.file_utils import get_project_root
+
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3.common.monitor import Monitor  # noqa: E402

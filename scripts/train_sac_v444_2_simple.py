@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 # Add ztb package to path
@@ -28,6 +28,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.constants import DEFAULT_SEED
+from ztb.utils.file_utils import get_project_root
 from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete, save_model
 

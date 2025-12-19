@@ -10,8 +10,10 @@ from pathlib import Path
 
 import numpy as np
 
+from ztb.utils.file_utils import get_project_root
+
 # Add project root to path
-project_root = Path(__file__).resolve().parent.parent.parent.parent
+project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 
