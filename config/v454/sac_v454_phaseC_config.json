@@ -112,9 +112,9 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 2.0,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             },
@@ -124,9 +124,9 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 2.5,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             },
@@ -136,9 +136,9 @@
               "allowed_entry_actions": [
                 "buy"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 3.0,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             },
@@ -148,9 +148,9 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 2.0,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             },
@@ -160,9 +160,9 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 2.5,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             },
@@ -172,9 +172,9 @@
               "allowed_entry_actions": [
                 "sell"
               ],
-              "entry_action_source": "zscore",
+              "entry_action_source": "model",
               "exit_action_source": "tp_sl",
-              "entry_zscore_threshold": 3.0,
+              "entry_zscore_threshold": 0.0,
               "stop_loss_pct": 0.01,
               "take_profit_pct": 0.02
             }

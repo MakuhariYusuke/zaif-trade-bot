@@ -2,9 +2,10 @@
 v394a (HOLD罰則強化版) を訓練
 """
 
-import json
+from pathlib import Path
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.utils.file_utils import safe_json_load
 
 
 def main():
@@ -14,8 +15,7 @@ def main():
     print(f"Config: {config_path}\n")
 
     # 設定ファイル読み込み
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = safe_json_load(Path(config_path))
 
     trainer = UnifiedTrainer(config)
     result = trainer.train()
