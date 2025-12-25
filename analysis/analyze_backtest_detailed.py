@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.common.types import EpisodeAnalysisResult, PortfolioAnalysisResult
+
 
 def load_backtest_results(results_path: str) -> Dict[str, Any]:
     """バックテスト結果を読み込み"""
@@ -28,7 +30,7 @@ def load_trades_history(trades_path: str) -> pd.DataFrame:
     return pd.read_csv(trades_path)
 
 
-def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> Dict[str, Any]:
+def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> PortfolioAnalysisResult:
     """ポートフォリオパフォーマンスの詳細分析"""
     values = portfolio_df["value"].values
 
@@ -74,7 +76,7 @@ def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def analyze_episode_performance(trades_df: pd.DataFrame) -> Dict[str, Any]:
+def analyze_episode_performance(trades_df: pd.DataFrame) -> EpisodeAnalysisResult:
     """エピソードごとのパフォーマンス分析"""
     rewards = trades_df["reward"].values
     final_portfolios = trades_df["final_portfolio"].values

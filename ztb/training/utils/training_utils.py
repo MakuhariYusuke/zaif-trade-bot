@@ -16,7 +16,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
-from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM
+from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM, DEFAULT_VERBOSE
 from ztb.training.utils.parallel_utils import DataLoaderParallelizer, default_processor
 from ztb.cache.memory_cache import default_memory_manager
 
@@ -67,7 +67,7 @@ def create_ppo_model(
         ent_coef=ppo_config.get("ent_coef", DEFAULT_ENT_COEF_PPO),
         vf_coef=ppo_config.get("vf_coef", DEFAULT_VF_COEF),
         max_grad_norm=ppo_config.get("max_grad_norm", DEFAULT_MAX_GRAD_NORM),
-        verbose=int(ppo_config.get("verbose", 1) or 1),
+        verbose=int(ppo_config.get("verbose", DEFAULT_VERBOSE) or DEFAULT_VERBOSE),
         tensorboard_log=tensorboard_log,
     )
 

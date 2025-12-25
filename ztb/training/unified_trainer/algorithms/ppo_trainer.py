@@ -17,6 +17,8 @@ from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM
 from ztb.training.environments.environment_config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
+from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
+from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
@@ -182,7 +184,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
             "MlpPolicy",
             wrapped_env,
             learning_rate=ppo_config.get("learning_rate", DEFAULT_LEARNING_RATE_PPO),
-            n_steps=ppo_config.get("n_steps", 2048),
+            n_steps=ppo_config.get("n_steps", PPO_DEFAULT_N_STEPS),
             batch_size=ppo_config.get("batch_size", DEFAULT_BATCH_SIZE_PPO),
             n_epochs=ppo_config.get("n_epochs", DEFAULT_N_EPOCHS_PPO),
             gamma=ppo_config.get("gamma", DEFAULT_GAMMA),

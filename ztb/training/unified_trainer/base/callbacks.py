@@ -20,7 +20,7 @@ from ztb.trading.constants import (
     get_action_count_index,
 )
 from ztb.trading.environment.constants import continuous_to_discrete_action
-from ztb.training.constants import ENV_EVAL_FREQUENCY
+from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
 from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
 
@@ -30,7 +30,7 @@ class TrainingProgressCallback(BaseCallback):
 
     def __init__(
         self,
-        check_freq: int = 1000,
+        check_freq: int = DEFAULT_CHECK_FREQ,
         verbose: int = 1,
         system_optimizer: Optional[SystemOptimizer] = None,
         metrics_csv_writer: Optional[Any] = None,

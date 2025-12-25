@@ -9,6 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional
 
+from ztb.training.constants import DEFAULT_CHECK_FREQ
 from ztb.training.gradient_accumulation import GradientAccumulator
 from ztb.training.optimization.early_stopping import EarlyStopping
 from ztb.training.optimization.memory_efficient_loader import MemoryEfficientLoader
@@ -174,7 +175,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
             )
 
     def create_training_callback(
-        self, check_freq: int = 1000
+        self, check_freq: int = DEFAULT_CHECK_FREQ
     ) -> TrainingProgressCallback:
         """Create a standardized training progress callback.
 

@@ -74,6 +74,9 @@ DEFAULT_TARGET_UPDATE_INTERVAL = 1
 # Verbosity level
 DEFAULT_VERBOSE = 1
 
+# Checkpoint/check frequency
+DEFAULT_CHECK_FREQ = 1000
+
 # Maximum training steps for configurable training
 DEFAULT_MAX_TRAIN_STEPS = 2000
 
