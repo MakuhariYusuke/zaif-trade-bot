@@ -58,6 +58,16 @@ DEFAULT_ENT_COEF_AUTO = 'auto_1.0'
 # Entropy coefficient for PPO
 DEFAULT_ENT_COEF_PPO = 0.01
 
+# PPO training parameters
+DEFAULT_N_EPOCHS_PPO = 10
+DEFAULT_GAE_LAMBDA = 0.95
+DEFAULT_VF_COEF = 0.5
+DEFAULT_MAX_GRAD_NORM = 0.5
+
+# SAC training parameters
+DEFAULT_TRAIN_FREQ = 1
+DEFAULT_GRADIENT_STEPS = 1
+
 # Target update interval
 DEFAULT_TARGET_UPDATE_INTERVAL = 1
 

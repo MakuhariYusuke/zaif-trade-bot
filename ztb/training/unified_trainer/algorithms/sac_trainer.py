@@ -37,7 +37,7 @@ from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointManager,
 )
 from ztb.training.config.configuration_manager import ConfigurationManager
-from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_GAMMA, DEFAULT_TAU
+from ztb.training.constants import DEFAULT_LEARNING_RATE_SAC, DEFAULT_BATCH_SIZE_SAC, DEFAULT_GAMMA, DEFAULT_TAU, DEFAULT_BUFFER_SIZE_SAC, DEFAULT_LEARNING_STARTS_SAC, DEFAULT_TRAIN_FREQ, DEFAULT_GRADIENT_STEPS, DEFAULT_TARGET_UPDATE_INTERVAL
 from ztb.training.unified_trainer.base.base_trainer import (
     BaseAlgorithmTrainer,
     ModelError,
@@ -858,16 +858,16 @@ class SACTrainer(BaseAlgorithmTrainer):
                         "MlpPolicy",
                         wrapped_env,
                         learning_rate=sac_config.get("learning_rate", DEFAULT_LEARNING_RATE_SAC),
-                        buffer_size=sac_config.get("buffer_size", 1000000),
-                        learning_starts=sac_config.get("learning_starts", 100),
+                        buffer_size=sac_config.get("buffer_size", DEFAULT_BUFFER_SIZE_SAC),
+                        learning_starts=sac_config.get("learning_starts", DEFAULT_LEARNING_STARTS_SAC),
                         batch_size=sac_config.get("batch_size", DEFAULT_BATCH_SIZE_SAC),
                         tau=sac_config.get("tau", DEFAULT_TAU),
                         gamma=sac_config.get("gamma", DEFAULT_GAMMA),
-                        train_freq=sac_config.get("train_freq", 1),
-                        gradient_steps=sac_config.get("gradient_steps", 1),
+                        train_freq=sac_config.get("train_freq", DEFAULT_TRAIN_FREQ),
+                        gradient_steps=sac_config.get("gradient_steps", DEFAULT_GRADIENT_STEPS),
                         ent_coef=sac_config.get("ent_coef", "auto"),
                         target_update_interval=sac_config.get(
-                            "target_update_interval", 1
+                            "target_update_interval", DEFAULT_TARGET_UPDATE_INTERVAL
                         ),
                         policy_kwargs=policy_kwargs if policy_kwargs else None,
                         verbose=0,  # We'll handle logging ourselves

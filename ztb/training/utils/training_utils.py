@@ -16,7 +16,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
-from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO
+from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM
 from ztb.training.utils.parallel_utils import DataLoaderParallelizer, default_processor
 from ztb.cache.memory_cache import default_memory_manager
 
@@ -60,13 +60,13 @@ def create_ppo_model(
         learning_rate=ppo_config.get("learning_rate", 3e-4),
         n_steps=ppo_config.get("n_steps", PPO_DEFAULT_N_STEPS),
         batch_size=ppo_config.get("batch_size", DEFAULT_BATCH_SIZE_PPO),
-        n_epochs=ppo_config.get("n_epochs", 10),
+        n_epochs=ppo_config.get("n_epochs", DEFAULT_N_EPOCHS_PPO),
         gamma=ppo_config.get("gamma", DEFAULT_GAMMA),
-        gae_lambda=ppo_config.get("gae_lambda", 0.95),
+        gae_lambda=ppo_config.get("gae_lambda", DEFAULT_GAE_LAMBDA),
         clip_range=ppo_config.get("clip_range", DEFAULT_CLIP_RANGE),
         ent_coef=ppo_config.get("ent_coef", DEFAULT_ENT_COEF_PPO),
-        vf_coef=ppo_config.get("vf_coef", 0.5),
-        max_grad_norm=ppo_config.get("max_grad_norm", 0.5),
+        vf_coef=ppo_config.get("vf_coef", DEFAULT_VF_COEF),
+        max_grad_norm=ppo_config.get("max_grad_norm", DEFAULT_MAX_GRAD_NORM),
         verbose=int(ppo_config.get("verbose", 1) or 1),
         tensorboard_log=tensorboard_log,
     )
