@@ -12,7 +12,9 @@ organized by functional area for better maintainability.
 # Default learning rates for different algorithms
 DEFAULT_LEARNING_RATE_PPO = 3e-4
 DEFAULT_LEARNING_RATE_SAC = 3e-4
-DEFAULT_LEARNING_RATE_AGGRESSIVE = 5e-4  # Higher learning rate for aggressive exploration
+DEFAULT_LEARNING_RATE_AGGRESSIVE = (
+    5e-4  # Higher learning rate for aggressive exploration
+)
 DEFAULT_LEARNING_RATE_DQN = 1e-3
 DEFAULT_LEARNING_RATE = 0.001  # General default for environments
 
@@ -53,7 +55,7 @@ DEFAULT_CLIP_RANGE = 0.2
 
 # Entropy coefficient for SAC
 DEFAULT_ENT_COEF_SAC = 0.1
-DEFAULT_ENT_COEF_AUTO = 'auto_1.0'
+DEFAULT_ENT_COEF_AUTO = "auto_1.0"
 
 # Entropy coefficient for PPO
 DEFAULT_ENT_COEF_PPO = 0.01
@@ -95,7 +97,7 @@ DEFAULT_CHUNK_SIZE = 1000
 
 # Environment update frequencies
 ENV_RESET_FREQUENCY = 1000  # Reset environment every N steps
-ENV_EVAL_FREQUENCY = 5000   # Evaluate during training every N steps
+ENV_EVAL_FREQUENCY = 5000  # Evaluate during training every N steps
 
 # Reward scaling
 DEFAULT_REWARD_SCALING = 1.0

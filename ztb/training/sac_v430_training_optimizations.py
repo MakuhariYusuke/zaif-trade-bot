@@ -171,7 +171,10 @@ class MemoryEfficientLoader:
     """Memory-efficient data loader with streaming and chunking."""
 
     def __init__(
-        self, batch_size: int = 64, chunk_size: int = DEFAULT_CHUNK_SIZE, max_memory_gb: float = DEFAULT_MAX_MEMORY_GB
+        self,
+        batch_size: int = 64,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        max_memory_gb: float = DEFAULT_MAX_MEMORY_GB,
     ):
         self.batch_size = batch_size
         self.chunk_size = chunk_size

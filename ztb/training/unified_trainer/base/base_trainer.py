@@ -166,7 +166,9 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         # Initialize memory efficient loader
         if optimization_config.get("use_memory_efficient_loading", False):
             batch_size = optimization_config.get("memory_batch_size", 64)
-            max_memory_gb = optimization_config.get("max_memory_gb", DEFAULT_MAX_MEMORY_GB)
+            max_memory_gb = optimization_config.get(
+                "max_memory_gb", DEFAULT_MAX_MEMORY_GB
+            )
             self.memory_loader = MemoryEfficientLoader(
                 batch_size=batch_size, max_memory_gb=max_memory_gb
             )

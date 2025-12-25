@@ -13,13 +13,7 @@ Example:
 
 from typing import Any, Dict, List, Optional
 
-from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
-from ztb.trading.environment.utils.config import (
-    EnvironmentConfig as TradingEnvironmentConfig,
-)
-from ztb.training.config.ppo_config import PPOConfig
-from ztb.training.core.config_manager import ConfigManager
-from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import safe_config_get, safe_config_get_bool, safe_config_get_float, safe_config_get_int
 
 logger = get_logger(__name__)
 
@@ -87,14 +81,14 @@ class ConfigBuilder:
         """
         # トップレベルを最初にチェック
         if key in self.config:
-            return self.config[key]
+            return safe_config_get(self.config, key, default)
 
         # 指定されたセクションを順番にチェック
         if sections:
             for section in sections:
-                section_data = self.config.get(section, {})
-                if key in section_data:
-                    return section_data[key]
+                section_data = safe_config_get(self.config, section, {})
+                if safe_config_get(section_data, key) is not None:
+                    return safe_config_get(section_data, key, default)
 
         return default
 

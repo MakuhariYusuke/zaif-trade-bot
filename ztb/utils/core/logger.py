@@ -495,3 +495,53 @@ class LoggerManager(LoggerProtocol):
             content += f"\n\n**Error Details:**\n```\n{error_details[:1000]}\n```"
 
         self._send_discord(content, {"color": 0xFF0000})  # Red
+
+
+def log_config_summary(logger: logging.Logger, config: Dict[str, Any], prefix: str = "Config") -> None:
+    """
+    設定のサマリーをログ出力する共通関数。
+
+    Args:
+        logger: ロガーインスタンス
+        config: 設定辞書
+        prefix: ログプレフィックス
+    """
+    logger.info(f"{prefix} Summary:")
+    for key, value in config.items():
+        if isinstance(value, dict):
+            logger.info(f"  {key}:")
+            for sub_key, sub_value in value.items():
+                logger.info(f"    {sub_key}: {sub_value}")
+        else:
+            logger.info(f"  {key}: {value}")
+
+
+def log_metrics(logger: logging.Logger, metrics: Dict[str, Any], prefix: str = "Metrics") -> None:
+    """
+    メトリクスをログ出力する共通関数。
+
+    Args:
+        logger: ロガーインスタンス
+        metrics: メトリクス辞書
+        prefix: ログプレフィックス
+    """
+    logger.info(f"{prefix}:")
+    for key, value in metrics.items():
+        if isinstance(value, float):
+            logger.info(f"  {key}: {value:.4f}")
+        else:
+            logger.info(f"  {key}: {value}")
+
+
+def log_training_progress(logger: logging.Logger, step: int, total_steps: int, metrics: Dict[str, Any]) -> None:
+    """
+    訓練進捗をログ出力する共通関数。
+
+    Args:
+        logger: ロガーインスタンス
+        step: 現在のステップ
+        total_steps: 総ステップ数
+        metrics: メトリクス辞書
+    """
+    progress = (step / total_steps) * 100 if total_steps > 0 else 0
+    logger.info(f"Step {step}/{total_steps} ({progress:.1f}%): {', '.join(f'{k}={v:.4f}' if isinstance(v, float) else f'{k}={v}' for k, v in metrics.items())}")

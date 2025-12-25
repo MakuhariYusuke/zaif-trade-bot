@@ -7,7 +7,7 @@ V433 Adaptive SAC Core
 import threading
 import time
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+
 from stable_baselines3 import SAC
 from ztb.training.constants import DEFAULT_CHECK_FREQ
-
 from ztb.utils.logging_utils import get_logger
 
 
@@ -127,7 +127,6 @@ class EpisodePerformanceMetrics:
     volatility: float = 0.0
     total_trades: int = 0
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 
 class AdaptiveSACPolicy(nn.Module):
@@ -698,7 +697,10 @@ class AdaptiveSACCallback(BaseCallback):
     """適応型SACトレーニングコールバック"""
 
     def __init__(
-        self, regime_detector, adaptation_core: AdaptiveSACCore, check_freq: int = DEFAULT_CHECK_FREQ
+        self,
+        regime_detector,
+        adaptation_core: AdaptiveSACCore,
+        check_freq: int = DEFAULT_CHECK_FREQ,
     ):
         super().__init__(check_freq)
         self.regime_detector = regime_detector

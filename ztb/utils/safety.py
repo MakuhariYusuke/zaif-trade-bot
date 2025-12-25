@@ -139,30 +139,47 @@ def validate_range(value: float, min_val: float, max_val: float) -> bool:
     return min_val <= value <= max_val
 
 
-def safe_file_operation(file_path: str, operation: str, *args, **kwargs) -> Any:
+def safe_config_get(config: Dict[str, Any], key: str, default: Any = None, required: bool = False) -> Any:
     """
-    ファイル操作を安全に行う。
+    設定から安全に値を取得する。ネストされたキーにも対応。
 
     Args:
-        file_path: ファイルパス
-        operation: 操作 ('read', 'write', 'append')
-        *args: 操作に渡す追加引数
-        **kwargs: 操作に渡す追加キーワード引数
+        config: 設定辞書
+        key: キー (ドット区切りでネスト指定可能、例: 'training.learning_rate')
+        default: デフォルト値
+        required: Trueの場合、値が存在しないと例外を発生
 
     Returns:
-        操作結果またはNone
+        取得した値またはデフォルト値
+
+    Raises:
+        ValueError: required=Trueで値が存在しない場合
     """
-    try:
-        if operation == 'read':
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        elif operation == 'write':
-            with open(file_path, 'w', encoding='utf-8') as f:
-                return f.write(*args, **kwargs)
-        elif operation == 'append':
-            with open(file_path, 'a', encoding='utf-8') as f:
-                return f.write(*args, **kwargs)
-        else:
-            return None
-    except Exception:
-        return None
+    if '.' in key:
+        keys = key.split('.')
+        value = safe_get_nested_value(config, keys, default)
+    else:
+        value = config.get(key, default)
+
+    if required and value is None:
+        raise ValueError(f"Required config key '{key}' not found")
+
+    return value
+
+
+def safe_config_get_float(config: Dict[str, Any], key: str, default: float = 0.0) -> float:
+    """設定からfloat値を安全に取得"""
+    value = safe_config_get(config, key, default)
+    return safe_to_float(value, default)
+
+
+def safe_config_get_int(config: Dict[str, Any], key: str, default: int = 0) -> int:
+    """設定からint値を安全に取得"""
+    value = safe_config_get(config, key, default)
+    return safe_to_int(value, default)
+
+
+def safe_config_get_bool(config: Dict[str, Any], key: str, default: bool = False) -> bool:
+    """設定からbool値を安全に取得"""
+    value = safe_config_get(config, key, default)
+    return safe_to_bool(value, default)

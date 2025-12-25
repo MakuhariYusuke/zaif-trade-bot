@@ -18,6 +18,8 @@ from ztb.analysis.features.feature_correlation_analyzer import (
 from ztb.multimodal.features.news_feature_processor import NewsFeatureProcessor
 from ztb.trading.cost.venue_transaction_cost_manager import VenueTransactionCostManager
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
+from ztb.utils.core.logger import log_config_summary, log_metrics
+from ztb.utils.safety import safe_config_get, safe_config_get_float
 
 logger = logging.getLogger(__name__)
 
@@ -53,45 +55,45 @@ class SACv434IntegratedLearner:
         Args:
             config_path: 統合設定ファイルパス
         """
-        print("SACv434IntegratedLearner初期化開始...")
+        logger.info("SACv434IntegratedLearner初期化開始...")
         self.config_path = Path(config_path)
         self.config = self._load_config()
-        print("設定ファイル読み込み完了")
+        logger.info("設定ファイル読み込み完了")
 
         # 各マネージャーの初期化
-        print("マネージャー初期化開始...")
+        logger.info("マネージャー初期化開始...")
         try:
             self.correlation_analyzer = FeatureCorrelationAnalyzer()
-            print("FeatureCorrelationAnalyzer初期化成功")
+            logger.info("FeatureCorrelationAnalyzer初期化成功")
         except Exception as e:
             logger.warning(f"FeatureCorrelationAnalyzer初期化に失敗: {e}")
-            print(f"FeatureCorrelationAnalyzer初期化失敗: {e}")
+            logger.info(f"FeatureCorrelationAnalyzer初期化失敗: {e}")
             self.correlation_analyzer = None
 
         try:
             self.news_processor = NewsFeatureProcessor()
-            print("NewsFeatureProcessor初期化成功")
+            logger.info("NewsFeatureProcessor初期化成功")
         except Exception as e:
             logger.warning(f"NewsFeatureProcessor初期化に失敗: {e}")
-            print(f"NewsFeatureProcessor初期化失敗: {e}")
+            logger.info(f"NewsFeatureProcessor初期化失敗: {e}")
             self.news_processor = None
 
         try:
             self.cost_manager = VenueTransactionCostManager()
-            print("VenueTransactionCostManager初期化成功")
+            logger.info("VenueTransactionCostManager初期化成功")
         except Exception as e:
             logger.warning(f"VenueTransactionCostManager初期化に失敗: {e}")
-            print(f"VenueTransactionCostManager初期化失敗: {e}")
+            logger.info(f"VenueTransactionCostManager初期化失敗: {e}")
             self.cost_manager = None
 
         try:
             self.feature_manager = FeatureSchemaManager(
                 model_name="sac_v434_2_integrated"
             )
-            print("FeatureSchemaManager初期化成功")
+            logger.info("FeatureSchemaManager初期化成功")
         except Exception as e:
             logger.warning(f"FeatureSchemaManager初期化に失敗: {e}")
-            print(f"FeatureSchemaManager初期化失敗: {e}")
+            logger.info(f"FeatureSchemaManager初期化失敗: {e}")
             self.feature_manager = None
 
         # カリキュラム学習設定
@@ -100,7 +102,7 @@ class SACv434IntegratedLearner:
         # 学習状態
         self.current_stage = 0
         self.learning_history = []
-        print("SACv434IntegratedLearner初期化完了")
+        logger.info("SACv434IntegratedLearner初期化完了")
 
     def _load_config(self) -> Dict[str, Any]:
         """統合設定を読み込み"""
@@ -596,14 +598,16 @@ if __name__ == "__main__":
     # 統合学習マネージャーのテスト
     learner = create_v434_2_integrated_learner()
 
-    print("SAC v434.2統合学習マネージャー初期化完了")
-    print(f"設定ファイル: {learner.config_path}")
-    print(f"カリキュラム段階数: {len(learner.curriculum_stages)}")
+    logger.info("SAC v434.2統合学習マネージャー初期化完了")
+    logger.info(f"設定ファイル: {learner.config_path}")
+    logger.info(f"カリキュラム段階数: {len(learner.curriculum_stages)}")
 
     # 統合設定作成
     config = learner.create_integrated_training_config()
-    print(f"統合設定作成完了: {config['model_config']['model_name']}")
+    logger.info(f"統合設定作成完了: {config['model_config']['model_name']}")
+    log_config_summary(logger, config, "Integrated Training Config")
 
     # 統合学習実行（シミュレーション）
     results = learner.run_integrated_training()
-    print(f"統合学習完了: {results.get('training_completed', False)}")
+    logger.info(f"統合学習完了: {results.get('training_completed', False)}")
+    log_metrics(logger, results, "Training Results")
