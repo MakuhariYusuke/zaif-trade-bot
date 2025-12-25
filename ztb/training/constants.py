@@ -83,6 +83,12 @@ DEFAULT_MAX_TRAIN_STEPS = 2000
 # Buffer steps to leave in data
 DEFAULT_BUFFER_STEPS = 10
 
+# Memory limits
+DEFAULT_MAX_MEMORY_GB = 4.0
+
+# Data processing
+DEFAULT_CHUNK_SIZE = 1000
+
 # ============================================================================
 # Training Environment Constants
 # ============================================================================

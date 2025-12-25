@@ -235,11 +235,12 @@ class CalibrationGate:
         
         # Fail-closed check for missing data
         # Added check for close <= EPSILON as Fee depends on it
-        if (high <= EPSILON or 
-            low <= EPSILON or 
-            atr <= EPSILON or 
-            volume <= EPSILON or 
-            close <= EPSILON):
+        # Also check for NaN/Inf
+        if (not math.isfinite(high) or high <= EPSILON or 
+            not math.isfinite(low) or low <= EPSILON or 
+            not math.isfinite(atr) or atr <= EPSILON or 
+            not math.isfinite(volume) or volume <= EPSILON or 
+            not math.isfinite(close) or close <= EPSILON):
             # Return infinite cost to prevent entry
             return float('inf')
 
@@ -248,14 +249,14 @@ class CalibrationGate:
         fee_roundtrip = close * 2 * self.fee_rate
         
         # 2. Slippage (One-way)
-        # Spread Proxy
-        spread_proxy = self.c_spread * (high - low)
+        # Spread Proxy (Clamp to 0.0)
+        spread_proxy = self.c_spread * max(high - low, 0.0)
         
         # Volatility Risk (Latency assumed 1 sec for now, or config)
         vol_risk = self.c_vol * atr * math.sqrt(self.latency_sec / 60.0)
         
-        # Market Impact
-        impact = self.c_imp * atr * ((order_size / max(volume, self.min_volume)) ** self.gamma)
+        # Market Impact (Use abs(order_size))
+        impact = self.c_imp * atr * ((abs(order_size) / max(volume, self.min_volume)) ** self.gamma)
         
         slippage_one_way = spread_proxy + vol_risk + impact
         slippage_roundtrip = slippage_one_way * 2

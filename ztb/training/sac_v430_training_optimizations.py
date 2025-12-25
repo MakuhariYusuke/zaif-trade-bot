@@ -20,6 +20,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from ztb.trading.environment.constants import PYTORCH_CUDA_ALLOC_MB
+from ztb.training.constants import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_MEMORY_GB
 from ztb.types.common import ConfigDict
 
 
@@ -170,7 +171,7 @@ class MemoryEfficientLoader:
     """Memory-efficient data loader with streaming and chunking."""
 
     def __init__(
-        self, batch_size: int = 64, chunk_size: int = 1000, max_memory_gb: float = 4.0
+        self, batch_size: int = 64, chunk_size: int = DEFAULT_CHUNK_SIZE, max_memory_gb: float = DEFAULT_MAX_MEMORY_GB
     ):
         self.batch_size = batch_size
         self.chunk_size = chunk_size

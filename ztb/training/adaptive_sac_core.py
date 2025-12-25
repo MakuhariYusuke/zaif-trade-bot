@@ -16,7 +16,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import BaseCallback
+from ztb.training.constants import DEFAULT_CHECK_FREQ
 
 from ztb.utils.logging_utils import get_logger
 
@@ -698,7 +698,7 @@ class AdaptiveSACCallback(BaseCallback):
     """適応型SACトレーニングコールバック"""
 
     def __init__(
-        self, regime_detector, adaptation_core: AdaptiveSACCore, check_freq: int = 1000
+        self, regime_detector, adaptation_core: AdaptiveSACCore, check_freq: int = DEFAULT_CHECK_FREQ
     ):
         super().__init__(check_freq)
         self.regime_detector = regime_detector

@@ -115,3 +115,58 @@ class TestPseudoHFTExecutionModel:
         actual_slippage = res.executed_price - 100.0
         
         assert abs(actual_slippage - expected_slippage) < 1e-6
+
+    def test_data_glitch_high_low(self, model):
+        """Test that high < low (data glitch) is handled by clamping spread to 0."""
+        market_data: MarketState = {
+            'high': 90.0, # Glitch: high < low
+            'low': 100.0,
+            'atr': 5.0,
+            'volume': 10000.0,
+            'close': 95.0,
+            'timestamp': None
+        }
+        
+        # Spread proxy should be 0, not negative
+        slippage = model.calculate_slippage_one_way(market_data, 0.1)
+        
+        # Expected: Spread(0) + Vol + Impact
+        expected_slippage = 0.0 + (0.2 * 5.0 * (1.0/60.0)**0.5) + (0.5 * 5.0 * (0.1/10000.0)**0.5)
+        
+        assert abs(slippage - expected_slippage) < 1e-6
+
+    def test_negative_order_size(self, model):
+        """Test that negative order size (sell) uses abs() for impact calculation."""
+        market_data: MarketState = {
+            'high': 100.0, 'low': 90.0, 'atr': 5.0, 'volume': 10000.0, 'close': 95.0, 'timestamp': None
+        }
+        
+        # Impact should be same for +0.1 and -0.1
+        slip_pos = model.calculate_slippage_one_way(market_data, 0.1)
+        slip_neg = model.calculate_slippage_one_way(market_data, -0.1)
+        
+        assert slip_pos == slip_neg
+
+    def test_missing_market_data_zero_atr(self, model):
+        """Test fallback when market_data is missing AND atr is 0."""
+        # Should use fallback ATR (e.g. 0.05% of price)
+        price = 10000.0
+        res = model.simulate_execution(
+            action_type='buy',
+            requested_price=price,
+            requested_size=0.1,
+            current_atr=0.0, # Missing ATR
+            current_volume=1000.0
+        )
+        
+        # Fallback ATR = 10000 * 0.0005 = 5.0
+        # Spread proxy = 0.5 * 5.0 = 2.5
+        # Vol risk = 0.2 * 5.0 * sqrt(1/60) = 1.0 * 0.129 = 0.129
+        # Impact = 0.5 * 5.0 * (0.1/1000)^0.5 = 2.5 * 0.01 = 0.025
+        
+        expected_slippage = 2.5 + 0.129 + 0.025
+        actual_slippage = res.executed_price - price
+        
+        # Allow some tolerance as fallback logic might change slightly
+        assert actual_slippage > 0.0
+        assert abs(actual_slippage - expected_slippage) < 0.1

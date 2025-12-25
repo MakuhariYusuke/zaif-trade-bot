@@ -125,6 +125,24 @@ class TestCalibrationGate:
         res_no_close = gate.evaluate(fused, market_no_close)
         assert res_no_close['cost'] == float('inf')
 
+    def test_fail_closed_nan_inf(self, gate):
+        """Test that NaN or Inf values trigger fail-closed."""
+        fused: FusedSignal = {'rl_action': 0.8, 'regime': 'trending', 'pattern_score': 0.0}
+        
+        # NaN in ATR
+        market_nan: MarketState = {
+            'high': 100.0, 'low': 90.0, 'close': 95.0,
+            'atr': float('nan'), 'volume': 1000.0, 'timestamp': None
+        }
+        assert gate.evaluate(fused, market_nan)['cost'] == float('inf')
+        
+        # Inf in High
+        market_inf: MarketState = {
+            'high': float('inf'), 'low': 90.0, 'close': 95.0,
+            'atr': 10.0, 'volume': 1000.0, 'timestamp': None
+        }
+        assert gate.evaluate(fused, market_inf)['cost'] == float('inf')
+
     def test_n_min_zero_guard(self, gate):
         """Test that n_min=0 does not cause division by zero."""
         gate.calibration_map.n_min = 0.0

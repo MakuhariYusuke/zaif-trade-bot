@@ -9,7 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional
 
-from ztb.training.constants import DEFAULT_CHECK_FREQ
+from ztb.training.constants import DEFAULT_CHECK_FREQ, DEFAULT_MAX_MEMORY_GB
 from ztb.training.gradient_accumulation import GradientAccumulator
 from ztb.training.optimization.early_stopping import EarlyStopping
 from ztb.training.optimization.memory_efficient_loader import MemoryEfficientLoader
@@ -166,7 +166,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         # Initialize memory efficient loader
         if optimization_config.get("use_memory_efficient_loading", False):
             batch_size = optimization_config.get("memory_batch_size", 64)
-            max_memory_gb = optimization_config.get("max_memory_gb", 4.0)
+            max_memory_gb = optimization_config.get("max_memory_gb", DEFAULT_MAX_MEMORY_GB)
             self.memory_loader = MemoryEfficientLoader(
                 batch_size=batch_size, max_memory_gb=max_memory_gb
             )

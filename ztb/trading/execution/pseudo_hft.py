@@ -31,13 +31,15 @@ class PseudoHFTExecutionModel(ExecutionModel):
         volume = market_data.get('volume', 0.0)
         
         # 1. Spread Proxy
-        spread_proxy = self.c_spread * (high - low)
+        # Clamp to 0.0 to avoid negative spread if high < low (data glitch)
+        spread_proxy = self.c_spread * max(high - low, 0.0)
         
         # 2. Volatility Risk
         vol_risk = self.c_vol * atr * math.sqrt(self.latency_sec / 60.0)
         
         # 3. Market Impact
-        impact = self.c_imp * atr * ((order_size / max(volume, self.min_volume)) ** self.gamma)
+        # Use abs(order_size) to handle negative sizes (sells) correctly
+        impact = self.c_imp * atr * ((abs(order_size) / max(volume, self.min_volume)) ** self.gamma)
         
         return spread_proxy + vol_risk + impact
 
@@ -65,10 +67,14 @@ class PseudoHFTExecutionModel(ExecutionModel):
             # Construct from individual args (approximate if high/low missing)
             # If high/low are missing, spread proxy will be 0 unless we estimate it.
             # Use ATR to estimate High/Low range if available.
-            estimated_half_range = 0.5 * current_atr if current_atr > 0 else 0.0
+            
+            # If current_atr is 0 (missing), use a small fallback to avoid optimistic 0-cost fills
+            effective_atr = current_atr if current_atr > EPSILON else (requested_price * 0.0005 if requested_price > 0 else 0.0)
+            
+            estimated_half_range = 0.5 * effective_atr
             
             m_state = {
-                'atr': current_atr,
+                'atr': effective_atr,
                 'volume': current_volume,
                 'high': requested_price + estimated_half_range,
                 'low': requested_price - estimated_half_range,
