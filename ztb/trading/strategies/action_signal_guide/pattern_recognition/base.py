@@ -8,15 +8,32 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from functools import wraps
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
 
+
+def timed(func: Any) -> Any:
+    """Simple timing decorator for performance monitoring."""
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} took {end_time - start_time:.4f} seconds")
+        return result
+    return wrapper
+
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.exceptions.custom_exceptions import ValidationError
-from ztb.utils.memory_utils import temporary_array
-from ztb.utils.performance_utils import timed
+from ztb.utils.safety import (
+    safe_config_get,
+    safe_config_get_bool,
+    safe_config_get_float,
+    safe_config_get_str,
+)
 from ztb.utils.type_validation import TypeValidator
 
 try:
@@ -236,7 +253,7 @@ def calculate_technical_features(data: pd.DataFrame, window: int = 20) -> pd.Dat
     df["trend_strength"] = (df["sma_short"] - df["sma_long"]) / df["sma_long"]
 
     # Fill NaN values
-    df = df.fillna(method="bfill").fillna(method="ffill").fillna(0)
+    df = df.bfill().ffill().fillna(value=0)
 
     return df
 
@@ -412,19 +429,19 @@ class PatternRecognizer(ABC):
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get configuration value with optional default."""
-        return self.config.get(key, default)
+        return safe_config_get(self.config, key, default)
 
     def is_enabled(self) -> bool:
         """Check if this recognizer is enabled."""
-        return cast(bool, self.get_config_value("enabled", True))
+        return safe_config_get_bool(self.config, "enabled", True)
 
     def get_min_confidence(self) -> float:
         """Get minimum confidence threshold."""
-        return cast(float, self.get_config_value("min_confidence", 0.0))
+        return safe_config_get_float(self.config, "min_confidence", 0.0)
 
     def get_risk_level(self) -> str:
         """Get risk level for this recognizer."""
-        return cast(str, self.get_config_value("risk_level", "medium"))
+        return safe_config_get_str(self.config, "risk_level", "medium")
 
     def _validate_input_data(self, data: pd.DataFrame, index: int) -> None:
         """Validate input data and index for pattern recognition."""
@@ -890,31 +907,31 @@ class PatternRecognizer(ABC):
             return 0.0
 
         # Convert to numpy array for type safety and memory efficiency
-        with temporary_array(prices, dtype=np.float64) as prices_array:
-            # Calculate linear trend using least squares
-            x = np.arange(len(prices_array))
-            slope, _ = np.polyfit(x, prices_array, 1)
+        prices_array = np.array(prices, dtype=np.float64)
+        # Calculate linear trend using least squares
+        x = np.arange(len(prices_array))
+        slope, _ = np.polyfit(x, prices_array, 1)
 
-            # Calculate R-squared to measure trend strength
-            y_mean = np.mean(prices_array)
-            ss_tot = np.sum((prices_array - y_mean) ** 2)
-            ss_res = np.sum((prices_array - (slope * x + prices_array[0])) ** 2)
+        # Calculate R-squared to measure trend strength
+        y_mean = np.mean(prices_array)
+        ss_tot = np.sum((prices_array - y_mean) ** 2)
+        ss_res = np.sum((prices_array - (slope * x + prices_array[0])) ** 2)
 
-            if ss_tot == 0:
-                return 0.0
+        if ss_tot == 0:
+            return 0.0
 
-            r_squared = 1 - (ss_res / ss_tot)
+        r_squared = 1 - (ss_res / ss_tot)
 
-            # Convert slope to strength (absolute value, normalized)
-            avg_price = np.mean(prices_array)
-            slope_strength = min(
-                1.0, abs(slope) / (avg_price * 0.01)
-            )  # 1% of average price as strong slope
+        # Convert slope to strength (absolute value, normalized)
+        avg_price = np.mean(prices_array)
+        slope_strength = min(
+            1.0, abs(slope) / (avg_price * 0.01)
+        )  # 1% of average price as strong slope
 
-            # Combine R-squared and slope strength
-            trend_strength = r_squared * 0.7 + slope_strength * 0.3
+        # Combine R-squared and slope strength
+        trend_strength = r_squared * 0.7 + slope_strength * 0.3
 
-            return cast(float, min(1.0, max(0.0, trend_strength)))
+        return cast(float, min(1.0, max(0.0, trend_strength)))
 
     def _calculate_candle_size_confidence(
         self,

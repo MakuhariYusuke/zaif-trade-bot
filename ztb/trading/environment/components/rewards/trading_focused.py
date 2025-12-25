@@ -1,5 +1,4 @@
-import logging
-
+from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 
 from .base import RewardComponent, RewardContext
 
@@ -10,10 +9,11 @@ class TradingFocusedReward(RewardComponent):
     Ported from RewardCalculator._calculate_trading_focused_reward.
     """
 
+    ACTION_BUY = ACTION_BUY
+    ACTION_SELL = ACTION_SELL
 
     def get_name(self) -> str:
         return "trading_focused"
-
 
     def calculate(self, context: RewardContext) -> float:
         # 1. PnL Reward (Primary Driver)

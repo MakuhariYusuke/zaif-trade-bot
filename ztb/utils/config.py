@@ -15,7 +15,12 @@ except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.safety import safe_to_bool, safe_to_int, safe_to_float
+from ztb.utils.safety import (
+    safe_config_get,
+    safe_to_bool,
+    safe_to_float,
+    safe_to_int,
+)
 
 logger = get_logger(__name__)
 
@@ -46,13 +51,16 @@ class ZTBConfig:
     }
 
     @overload
-    def get(self, key: str) -> str | None: ...
+    def get(self, key: str) -> str | None:
+        ...
 
     @overload
-    def get(self, key: str, default: str) -> str: ...
+    def get(self, key: str, default: str) -> str:
+        ...
 
     @overload
-    def get(self, key: str, default: T) -> T: ...
+    def get(self, key: str, default: T) -> T:
+        ...
 
     def get(self, key: str, default: str | T | None = None) -> str | T:
         """Get configuration value from environment variables"""
@@ -247,7 +255,7 @@ def get_config_value(
     Returns:
         Converted value or default
     """
-    raw_value = config_dict.get(key)
+    raw_value = safe_config_get(config_dict, key, None)
     try:
         if raw_value is None:
             return default
@@ -255,9 +263,17 @@ def get_config_value(
         if expected_type is str:
             return cast(T, str(raw_value))
         elif expected_type is int:
-            return cast(T, int(raw_value)) if isinstance(raw_value, (int, str)) else default
+            return (
+                cast(T, int(raw_value))
+                if isinstance(raw_value, (int, str))
+                else default
+            )
         elif expected_type is float:
-            return cast(T, float(raw_value)) if isinstance(raw_value, (int, float, str)) else default
+            return (
+                cast(T, float(raw_value))
+                if isinstance(raw_value, (int, float, str))
+                else default
+            )
         elif expected_type is bool:
             if isinstance(raw_value, bool):
                 return raw_value  # type: ignore
@@ -453,7 +469,6 @@ class TypedConfig:
     def get_model_dir(self) -> str:
         """Get the base directory for model files."""
         return cast(str, self.__dict__.get("model_dir", "models"))
-
 
     def to_dict(self) -> Dict[str, Any]:
         """設定を辞書形式に変換"""

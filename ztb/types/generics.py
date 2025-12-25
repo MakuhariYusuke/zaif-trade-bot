@@ -12,6 +12,8 @@ from typing import Any, Dict, Generic, List, Optional, TypeVar, Union, cast
 import numpy as np
 import pandas as pd
 
+from ztb.utils.safety import safe_config_get
+
 # Generic type variables
 TConfig = TypeVar("TConfig")
 TState = TypeVar("TState")
@@ -49,7 +51,7 @@ class ConfigurableMixin(Generic[TConfig]):
     ) -> Optional[TValue]:
         """Get configuration value with optional default."""
         if isinstance(self._config, dict):
-            return self._config.get(key, default)
+            return safe_config_get(self._config, key, default)
         return default
 
 

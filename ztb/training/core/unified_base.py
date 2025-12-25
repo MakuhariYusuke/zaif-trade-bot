@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ztb.utils.logging_utils import get_logger, setup_logging
-from ztb.utils.safety import safe_file_operation
+from ztb.utils.safety import safe_config_get, safe_file_operation
 
 
 class UnifiedBase(ABC):
@@ -38,7 +38,7 @@ class UnifiedBase(ABC):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     temp_config = json.load(f)
-                log_level = temp_config.get("logging_level", "INFO")
+                log_level = safe_config_get(temp_config, "logging_level", "INFO")
                 # Convert string level to int if needed
                 if isinstance(log_level, str):
                     log_level = getattr(logging, log_level.upper(), logging.INFO)
@@ -91,7 +91,7 @@ class ConfigMixin:
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get configuration value with default."""
-        return self.config.get(key, default)
+        return safe_config_get(self.config, key, default)
 
     def update_config(self, updates: Dict[str, Any]):
         """Update configuration with new values."""

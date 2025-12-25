@@ -126,6 +126,15 @@ class CalibrationMap:
 
         return {"l1": stats_l1, "fallback": stats_fallback, "n_min": self.n_min}
 
+    def get_state(self) -> Dict[str, Any]:
+        """Return serializable state."""
+        return {"stats": self.stats}
+
+    def load_state(self, state: Dict[str, Any]) -> None:
+        """Load state from dictionary."""
+        if "stats" in state:
+            self.stats = state["stats"]
+
     def _compute_metrics(self, key: str) -> CalibrationStats:
         if key not in self.stats:
             # Return default/prior values

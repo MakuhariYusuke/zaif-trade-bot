@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 
 def safe_open_json(path: Optional[Path]) -> Optional[Dict[str, Any]]:
@@ -54,17 +54,21 @@ def safe_to_int(value: Any, default: int = 0) -> int:
 
 def safe_to_bool(value: Any, default: bool = False) -> bool:
     """値を安全に bool に変換する。失敗したら default を返す。"""
+    if value is None:
+        return default
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        return value.lower() in ('true', '1', 'yes', 'on')
+        return value.lower() in ("true", "1", "yes", "on")
     try:
         return bool(value)
     except Exception:
         return default
 
 
-def safe_get_nested_value(data: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
+def safe_get_nested_value(
+    data: Dict[str, Any], keys: List[str], default: Any = None
+) -> Any:
     """
     ネストされた辞書から安全に値を取得する。
 
@@ -139,7 +143,9 @@ def validate_range(value: float, min_val: float, max_val: float) -> bool:
     return min_val <= value <= max_val
 
 
-def safe_config_get(config: Dict[str, Any], key: str, default: Any = None, required: bool = False) -> Any:
+def safe_config_get(
+    config: Dict[str, Any], key: str, default: Any = None, required: bool = False
+) -> Any:
     """
     設定から安全に値を取得する。ネストされたキーにも対応。
 
@@ -155,8 +161,8 @@ def safe_config_get(config: Dict[str, Any], key: str, default: Any = None, requi
     Raises:
         ValueError: required=Trueで値が存在しない場合
     """
-    if '.' in key:
-        keys = key.split('.')
+    if "." in key:
+        keys = key.split(".")
         value = safe_get_nested_value(config, keys, default)
     else:
         value = config.get(key, default)
@@ -167,7 +173,9 @@ def safe_config_get(config: Dict[str, Any], key: str, default: Any = None, requi
     return value
 
 
-def safe_config_get_float(config: Dict[str, Any], key: str, default: float = 0.0) -> float:
+def safe_config_get_float(
+    config: Dict[str, Any], key: str, default: float = 0.0
+) -> float:
     """設定からfloat値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_float(value, default)
@@ -179,7 +187,15 @@ def safe_config_get_int(config: Dict[str, Any], key: str, default: int = 0) -> i
     return safe_to_int(value, default)
 
 
-def safe_config_get_bool(config: Dict[str, Any], key: str, default: bool = False) -> bool:
+def safe_config_get_bool(
+    config: Dict[str, Any], key: str, default: bool = False
+) -> bool:
     """設定からbool値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_bool(value, default)
+
+
+def safe_config_get_str(config: Dict[str, Any], key: str, default: str = "") -> str:
+    """設定からstr値を安全に取得"""
+    value = safe_config_get(config, key, default)
+    return str(value) if value is not None else default
