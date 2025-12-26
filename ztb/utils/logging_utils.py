@@ -205,3 +205,56 @@ def create_structured_logger(name: str, json_format: bool = False) -> Structured
         StructuredLogger instance
     """
     return StructuredLogger(name, json_format)
+
+
+# Standardized logging functions for common operations
+def log_data_loading(logger: logging.Logger, file_path: str, rows: int) -> None:
+    """Standardized logging for data loading operations."""
+    logger.info(f"✅ Data loaded: {rows:,} rows from {file_path}")
+
+
+def log_model_loading(logger: logging.Logger, model_path: str) -> None:
+    """Standardized logging for model loading operations."""
+    logger.info(f"✅ Model loaded from {model_path}")
+
+
+def log_training_start(logger: logging.Logger, model_name: str, config_summary: str = "") -> None:
+    """Standardized logging for training start."""
+    message = f"🚀 Starting training for {model_name}"
+    if config_summary:
+        message += f" with config: {config_summary}"
+    logger.info(message)
+
+
+def log_backtest_start(logger: logging.Logger, model_name: str, data_info: str = "") -> None:
+    """Standardized logging for backtest start."""
+    message = f"🚀 Starting backtest for {model_name}"
+    if data_info:
+        message += f" using {data_info}"
+    logger.info(message)
+
+
+def log_analysis_start(logger: logging.Logger, analysis_type: str, target: str = "") -> None:
+    """Standardized logging for analysis start."""
+    message = f"📊 Starting {analysis_type} analysis"
+    if target:
+        message += f" for {target}"
+    logger.info(message)
+
+
+def log_success(logger: logging.Logger, operation: str, details: str = "") -> None:
+    """Standardized logging for successful operations."""
+    message = f"✅ {operation} completed successfully"
+    if details:
+        message += f": {details}"
+    logger.info(message)
+
+
+def log_error(logger: logging.Logger, operation: str, error: str) -> None:
+    """Standardized logging for errors."""
+    logger.error(f"❌ {operation} failed: {error}")
+
+
+def log_warning(logger: logging.Logger, message: str) -> None:
+    """Standardized logging for warnings."""
+    logger.warning(f"⚠️ {message}")

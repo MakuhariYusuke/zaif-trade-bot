@@ -6,7 +6,7 @@ This module defines the configuration models for various components of the tradi
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Self, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -131,12 +131,14 @@ class TrainingConfig(BaseModel):
     data_config: DataConfig = Field(default_factory=DataConfig)
     environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
-    curriculum_learning: Optional[CurriculumLearningConfig] = Field(default=None, description="Curriculum learning configuration")
+    curriculum_learning: Optional[CurriculumLearningConfig] = Field(
+        default=None, description="Curriculum learning configuration"
+    )
     sac_hyperparameters: Optional[SACHyperparameters] = None
     ppo_hyperparameters: Optional[PPOHyperparameters] = None
 
     @model_validator(mode="after")
-    def validate_algorithm_params(self):
+    def validate_algorithm_params(self) -> Self:
         algorithm = self.algorithm
         if algorithm == "sac" and not self.sac_hyperparameters:
             self.sac_hyperparameters = SACHyperparameters()
@@ -190,7 +192,7 @@ class DeploymentConfig(BaseModel):
 
     @field_validator("model_path", "feature_scaler_path")
     @classmethod
-    def validate_paths(cls, v):
+    def validate_paths(cls, v: Optional[str]) -> Optional[str]:
         """Validate and resolve paths relative to project root."""
         if v and not Path(v).is_absolute():
             return str(get_project_root() / v)
@@ -295,70 +297,6 @@ class RiskProfileConfig(BaseModel):
     )
 
 
-class GlobalConfig(BaseModel):
-    """Global configuration container."""
-
-    model_config = ConfigDict(extra="allow")
-
-    training: TrainingConfig = Field(default_factory=TrainingConfig)
-    checkpoint: CheckpointConfig = Field(default_factory=CheckpointConfig)
-    streaming: StreamingConfig = Field(default_factory=StreamingConfig)
-    evaluation: EvalConfig = Field(default_factory=EvalConfig)
-
-    # Additional global settings
-    experiment_name: Optional[str] = Field(default=None, description="Experiment name")
-    log_level: str = Field(default="INFO", description="Logging level")
-    output_dir: str = Field(
-        default_factory=lambda: str(get_project_root() / "results"),
-        description="Output directory",
-    )
-
-    # Venue precision policies
-    venue_precision: Dict[str, Dict[str, VenuePrecisionConfig]] = Field(
-        default_factory=dict, description="Venue-specific precision policies"
-    )
-
-    # Risk profile presets
-    risk_profiles: Dict[str, RiskProfileConfig] = Field(
-        default_factory=lambda: {
-            "conservative": RiskProfileConfig(
-                name="conservative",
-                max_position_size=0.05,
-                max_daily_loss=0.02,
-                stop_loss_pct=0.01,
-                take_profit_pct=0.02,
-                max_open_positions=3,
-                risk_per_trade=0.005,
-                max_leverage=1.0,
-                cooldown_period=120,
-            ),
-            "moderate": RiskProfileConfig(
-                name="moderate",
-                max_position_size=0.1,
-                max_daily_loss=0.05,
-                stop_loss_pct=0.02,
-                take_profit_pct=0.04,
-                max_open_positions=5,
-                risk_per_trade=0.01,
-                max_leverage=1.0,
-                cooldown_period=60,
-            ),
-            "aggressive": RiskProfileConfig(
-                name="aggressive",
-                max_position_size=0.2,
-                max_daily_loss=0.1,
-                stop_loss_pct=0.05,
-                take_profit_pct=0.1,
-                max_open_positions=10,
-                risk_per_trade=0.02,
-                max_leverage=2.0,
-                cooldown_period=30,
-            ),
-        },
-        description="Risk profile presets for different trading strategies",
-    )
-
-
 class ZaifTradeBotConfig(BaseModel):
     """
     Unified configuration schema for Zaif Trade Bot.
@@ -376,7 +314,7 @@ class ZaifTradeBotConfig(BaseModel):
 
     @field_validator("version")
     @classmethod
-    def validate_version(cls, v):
+    def validate_version(cls, v: str) -> str:
         """Validate configuration version."""
         if not v.startswith("1."):
             raise ValueError(f"Unsupported configuration version: {v}")
@@ -389,7 +327,10 @@ class ZaifTradeBotConfig(BaseModel):
     )
 
 
-class ConfigLoader:
+from ztb.utils.config_loader import BaseConfigLoader
+
+
+class UnifiedConfigLoader(BaseConfigLoader):
     """
     Configuration loader with environment variable support.
 
@@ -441,7 +382,7 @@ class ConfigLoader:
         Returns:
             Dictionary of configuration overrides
         """
-        overrides = {}
+        overrides: Dict[str, Any] = {}
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 # Remove prefix and convert to nested dict

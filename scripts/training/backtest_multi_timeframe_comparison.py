@@ -19,14 +19,9 @@ sys.path.insert(0, str(project_root))
 from ztb.analysis.sac_backtester import SACBacktester
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.utils.logging_utils import get_logger
+from utils.config_utils import load_config_from_json
 
 logger = get_logger(__name__)
-
-
-def load_config_from_file(config_path: str) -> dict:
-    """Load configuration from JSON file."""
-    with open(config_path, "r") as f:
-        return json.load(f)
 
 
 def run_backtest_for_config(config_name: str, output_dir: str = "results/backtest_multi_timeframe") -> dict:
@@ -56,7 +51,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
 
     try:
         # Load configuration
-        config_data = load_config_from_file(config_path)
+        config_data = load_config_from_json(config_path)
         logger.info("✅ Configuration loaded successfully")
 
         # Extract configurations

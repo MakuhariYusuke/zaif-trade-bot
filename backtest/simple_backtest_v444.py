@@ -18,8 +18,11 @@ from stable_baselines3 import SAC
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
-from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.config.unified_config import UnifiedConfig
+from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.logging_utils import setup_logging
 
 # ロギング設定
@@ -35,11 +38,34 @@ setup_logging(level=logging.DEBUG)
 # 環境をインポート
 sys.path.append(str(Path(__file__).parent))
 
-from ztb.config.unified_config import UnifiedConfig
-from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.utils.analysis_formatters import print_formatted_metrics
-from backtest.data_generator import generate_synthetic_data
+from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
+from utils.results_utils import save_backtest_results
+from ztb.utils.training_utils import load_model
+
+
+def print_formatted_metrics(result, title):
+    """Print formatted backtest metrics"""
+    print(f"\n{'='*60}")
+    print(f"📊 {title}")
+    print(f"{'='*60}")
+    
+    # Basic metrics
+    print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
+    print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
+    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
+    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
+    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
+    
+    # Trade metrics
+    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
+    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
+    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
+    
+    # Risk metrics
+    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
+    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
+    
+    print(f"{'='*60}\n")
 
 
 def run_simple_backtest(model_name, config_path):
@@ -146,7 +172,7 @@ def run_simple_backtest(model_name, config_path):
         # モデルロード
         model_path = f"models/{model_name}.zip"
         logger.info(f"Loading model from {model_path}")
-        model = SAC.load(model_path)
+        model = load_model(model_path, algorithm="SAC")
         logger.info(f"✅ Model loaded: {model_name}")
         logger.debug(f"   Observation space: {model.observation_space}")
         logger.debug(f"   Action space: {model.action_space}")
@@ -180,9 +206,9 @@ def run_simple_backtest(model_name, config_path):
             if reward_settings:
                 env_config_obj.reward_settings = reward_settings
             
-            # Force target feature count to match model observation space (166)
+            # Force target feature count to match model observation space (5)
             # This handles the slight discrepancy between training and backtest feature reduction
-            env_config_obj.target_feature_count = 166
+            env_config_obj.target_feature_count = 5
 
             env = HeavyTradingEnv(
                 df=featured_df,  # 特徴量生成済みのデータを使用
@@ -437,7 +463,7 @@ def main():
 
     # モデル名と設定ファイル - v444.2を使用
     model_name = "sac_v444_2_final_model"
-    config_path = "config/sac_v444_2_integrated_regime_adaptation_config.json"
+    config_path = "config/v444/sac_v444_2_integrated_regime_adaptation_config.json"
 
     # バックテスト実行
     result = run_simple_backtest(model_name, config_path)
@@ -445,11 +471,20 @@ def main():
     if result:
         print_formatted_metrics(result, "SAC v444.2 Backtest Results")
 
-        # 結果をJSONファイルに保存
-        with open("backtest_results_sac_v444_2.json", "w") as f:
-            json.dump(result, f, indent=2, default=str)
+        # 結果保存
+        portfolio_values = []  # simple backtest doesn't track portfolio values over time
+        trade_history = result.get("trades", [])
+        metrics = {k: v for k, v in result.items() if k != "trades"}
 
-        logger.info("✅ Results saved to backtest_results_sac_v444_2.json")
+        saved_files = save_backtest_results(
+            portfolio_values=portfolio_values,
+            trade_history=trade_history,
+            metrics=metrics,
+            output_dir="backtest_results",
+            filename_prefix="simple_backtest_v444"
+        )
+
+        logger.info(f"✅ Results saved: {saved_files}")
 
         # 目標チェック: 25% リターン改善
         if result["total_return_pct"] > 25:

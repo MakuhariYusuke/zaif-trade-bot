@@ -19,14 +19,9 @@ from ztb.training.callbacks.core.callback_implementations import (
     create_metrics_callback,
     create_progress_callback,
 )
-from ztb.training.callbacks.core.modern_callback_system import (
-    CallbackContext,
-    CallbackEvent,
-    CallbackManager,
-)
+from ztb.training.callbacks.core.modern_callback_system import CallbackContext, CallbackEvent, CallbackManager
+from ztb.utils.logging_utils import setup_logging
 
-
-def setup_logging():
     """Set up logging for examples."""
     logging.basicConfig(
         level=logging.INFO,

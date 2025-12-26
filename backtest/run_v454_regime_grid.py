@@ -46,6 +46,7 @@ sys.path.append(str(PROJECT_ROOT))
 from ztb.analysis.market_regime_classifier import RegimeType
 from ztb.utils.logging_utils import setup_logging
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.utils.data_utils import load_csv_data
 
 # Setup logging
 setup_logging(level=logging.INFO)
@@ -228,7 +229,7 @@ def run_grid_search(
         _restrict_to_regime(regime_filter, regime_name)
 
     # Load data
-    df = pd.read_csv(data_path)
+    df = load_csv_data(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df.set_index("timestamp", inplace=True, drop=False)
     df = _slice_df(df, start=start, end=end)

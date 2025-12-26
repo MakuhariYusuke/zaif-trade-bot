@@ -6,7 +6,7 @@ import dataclasses
 import gc
 import logging
 from collections import deque
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, TypeAlias
 
 import gymnasium as gym
 import numpy as np
@@ -25,16 +25,21 @@ from numpy.typing import NDArray
 # Import v444 regime classifier for advanced market regime adaptation
 from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 from ztb.analysis.market_regime_classifier import RegimeType as GenericRegimeType
+from ztb.analysis.market_regime_types import MarketRegime
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 # Backward compatibility: use the generic regime enum for v444-type references.
-V444RegimeType = GenericRegimeType
+V444RegimeType: TypeAlias = MarketRegime
 
 # Import components for runtime use
 from ztb.trading.environment.components.action_executor import ActionExecutor
 from ztb.trading.environment.components.data_manager import DataManager
 from ztb.trading.environment.components.statistics_calculator import (
     StatisticsCalculator,
+)
+from ztb.trading.environment.heavy_env.components.state_manager import StateManager
+from ztb.trading.environment.heavy_env.components.validation_manager import (
+    ValidationManager,
 )
 from ztb.trading.environment.constants import (
     ACTION_COUNTS_INITIAL,
@@ -249,6 +254,8 @@ class HeavyTradingEnv(
     data_manager: DataManager
     statistics_calculator: StatisticsCalculator
     adaptive_feature_selector: Optional["AdaptiveFeatureSelector"]
+    state_manager: StateManager
+    validation_manager: ValidationManager
 
     # Data attributes
     df: pd.DataFrame
@@ -272,6 +279,7 @@ class HeavyTradingEnv(
     _stream_last_timestamp: Optional[pd.Timestamp]
     _stream_rows_appended: int
     _last_trade_step: Optional[int]
+    _obs_step_count: int
     _consecutive_trade_steps: int
     _max_history_length: int
     _max_action_history: int
@@ -286,6 +294,8 @@ class HeavyTradingEnv(
     portfolio_value_history: deque[float]
     _portfolio_value: float
     initial_portfolio_value: float
+    regime_str: Optional[str]
+    _entry_regime: Optional[str]
 
     # Bind helper functions as methods
     _initialize_data_manager = _initialize_data_manager
@@ -397,7 +407,7 @@ class HeavyTradingEnv(
                     details={"max_features": max_features},
                 )
 
-        if df is None and streaming_pipeline is None:
+        if df is None and streaming_pipeline is None:  # type: ignore[unreachable]
             raise ConfigurationError(
                 "Either df or streaming_pipeline must be provided",
                 details={"df_provided": False, "pipeline_provided": False},
@@ -430,49 +440,23 @@ class HeavyTradingEnv(
         self._process = psutil.Process()
         self.stream_to_bars_converter = stream_to_bars_converter
 
-        self.reward_settings: Dict[str, Any] = {
-            "position_soft_cap": self.config.reward_position_soft_cap,
-            "position_penalty_scale": self.config.reward_position_penalty_scale,
-            "position_penalty_exponent": self.config.reward_position_penalty_exponent,
-            "inventory_window": self.config.reward_inventory_window,
-            "inventory_penalty_scale": self.config.reward_inventory_penalty_scale,
-            "trade_frequency_penalty": self.config.reward_trade_frequency_penalty,
-            "trade_frequency_halflife": self.config.reward_trade_frequency_halflife,
-            "trade_cooldown_steps": self.config.reward_trade_cooldown_steps,
-            "trade_cooldown_penalty": self.config.reward_trade_cooldown_penalty,
-            "max_consecutive_trades": self.config.reward_max_consecutive_trades,
-            "consecutive_trade_penalty": self.config.reward_consecutive_trade_penalty,
-            "volatility_window": self.config.reward_volatility_window,
-            "volatility_penalty_scale": self.config.reward_volatility_penalty_scale,
-            "sharpe_bonus_scale": self.config.reward_sharpe_bonus_scale,
-            "sortino_bonus_scale": getattr(
-                self.config, "reward_sortino_bonus_scale", 0.01
-            ),
-            "calmar_bonus_scale": getattr(
-                self.config, "reward_calmar_bonus_scale", 0.005
-            ),
-            "reward_clip_value": getattr(self.config, "reward_clip_value", 20.0),
-            "profit_bonus_multipliers": self.config.reward_profit_bonus_multipliers,
+        self.reward_settings: RewardSettings = RewardSettings.from_dict({
             "enable_forced_diversity": self.config.enable_forced_diversity,
             "curriculum_stage": getattr(self.config, "curriculum_stage", "simple"),
-        }
+        })
 
         if getattr(self.config, "reward_settings", None):
-            reward_settings_dict = self.config.reward_settings
-            if dataclasses.is_dataclass(reward_settings_dict):
-                reward_settings_dict = dataclasses.asdict(reward_settings_dict)
-
-            if reward_settings_dict:
+            reward_settings_dict: Optional[RewardSettings] = self.config.reward_settings
+            if reward_settings_dict is not None:
+                reward_settings_dict_as_dict = dataclasses.asdict(reward_settings_dict)
                 merged = deep_merge_dict(
-                    self.reward_settings,
-                    reward_settings_dict,
+                    dataclasses.asdict(self.reward_settings),
+                    reward_settings_dict_as_dict,
                 )
-                self.reward_settings = merged
+                self.reward_settings = RewardSettings.from_dict(merged)
 
         # Create RewardSettings object for RewardCalculator
-        self.reward_settings_obj: RewardSettings = RewardSettings(
-            **self.reward_settings
-        )
+        self.reward_settings_obj: RewardSettings = self.reward_settings
 
         # Fee model is now handled via EnvironmentConfig.exchange_profile
         if hasattr(self.config, "exchange_profile") and self.config.exchange_profile:
@@ -530,8 +514,9 @@ class HeavyTradingEnv(
         # データリークを防ぐため、訓練/検証の分割インデックスを取得
         train_end_index = self.config.train_end_index
 
-        # スケーラーを計算
-        self._setup_scaler()
+        # スケーラーを初期化
+        self.scaler_mean: Optional[NDArray[np.float64]] = None
+        self.scaler_std: Optional[NDArray[np.float64]] = None
         if self.scaler_mean is None:
             self._compute_scaler_from_data(train_end_index=train_end_index)
 
@@ -545,7 +530,7 @@ class HeavyTradingEnv(
 
         # Determine whether adaptation is enabled and extract classifier config
         enabled = False
-        classifier_config = {}
+        classifier_config: Dict[str, Any] = {}
         try:
             if isinstance(advanced_regime_config, dict):
                 enabled = bool(advanced_regime_config.get("enabled", False))
@@ -639,7 +624,7 @@ class HeavyTradingEnv(
             # Note: PositionManager reads self.config.exchange_profile dynamically, so no need to re-init it.
             # However, we should log the change if debug is enabled.
             if self._debug_mode:
-                logger.debug(
+                self.logger.debug(
                     f"Reset with randomized profile: {randomized_profile.name} (intensity={dr_intensity})"
                 )
 
@@ -740,7 +725,7 @@ class HeavyTradingEnv(
             and 0 <= step < len(cache)
             and cache[step] is not None
         ):
-            return cache[step]  # type: ignore[return-value]
+            return cache[step]  # type: ignore[no-any-return]
 
         regime_str: str = "unknown"
         if self.regime_classifier is not None:
@@ -804,7 +789,8 @@ class HeavyTradingEnv(
 
         # Fallback to legacy regime detector
         try:
-            regime_str = self.reward_calculator.market_regime_detector.current_regime
+            current_regime = self.reward_calculator.market_regime_detector.current_regime
+            regime_str = current_regime.value if current_regime else "unknown"
         except Exception:
             regime_str = "unknown"
 
@@ -958,14 +944,10 @@ class HeavyTradingEnv(
             pass
 
         # Get current regime (v452)
-        current_regime = self._get_current_market_regime()
+        current_regime: V444RegimeType = self._get_current_market_regime()  # type: ignore[no-redef]
         regime_obj_for_info = current_regime
         # IMPORTANT: PositionManager/hybrid filters expect the regime key string (Enum.value)
-        regime_str = (
-            current_regime.value
-            if hasattr(current_regime, "value")
-            else str(current_regime)
-        )
+        regime_str = current_regime.value  # type: ignore[union-attr]
 
         # Optional entry helpers (mean-reversion) for dominant ranging regimes.
         # Applied only to NEW entries (flat -> position) to avoid blocking exits.
@@ -1238,11 +1220,11 @@ class HeavyTradingEnv(
             self, "regime_adaptation_config"
         ):
             try:
-                current_regime = self._get_current_market_regime()
-                if current_regime != "unknown":
+                current_regime: V444RegimeType = self._get_current_market_regime()  # type: ignore[no-redef]
+                if current_regime.value != "unknown":  # type: ignore[union-attr]
                     # Get regime-specific multiplier
                     # Cast V444RegimeType to the generic RegimeType expected by the classifier
-                    generic_regime = GenericRegimeType(current_regime.value)
+                    generic_regime = GenericRegimeType(current_regime.value)  # type: ignore[union-attr]
                     reward_multiplier = self.regime_classifier.get_regime_multiplier(
                         generic_regime, "reward"
                     )
@@ -1436,6 +1418,26 @@ class HeavyTradingEnv(
             self.df,
         )
 
+        # v455: Apply Online Scaler if available
+        # This ensures we scale features using only past data to prevent leakage
+        if hasattr(self, "online_scaler"):
+            try:
+                # Update scaler with current observation
+                # If obs is a window (N, features), only update with the latest step to avoid over-counting
+                obs_to_update = obs
+                if obs.ndim > 1 and obs.shape[0] > 1:
+                    obs_to_update = obs[-1]
+                
+                self.online_scaler.update(obs_to_update)
+                
+                # Transform observation (handles both single vector and window)
+                obs = self.online_scaler.transform(obs)
+            except Exception as e:
+                # Log error but continue with unscaled observation if scaling fails
+                # This prevents environment crash on scaler issues
+                if self.current_step % 100 == 0:
+                    logger.error(f"OnlineScaler failed: {e}")
+
         # Diagnostic: log environment observation_space and returned observation shape (every 100 steps)
         try:
             if hasattr(self, "_obs_step_count"):
@@ -1546,7 +1548,7 @@ class HeavyTradingEnv(
             logger.info("Market regime adaptation config updated")
 
         # Initialize regime statistics tracking
-        self.regime_stats = {
+        self.regime_stats: Dict[str, Any] = {
             "regime_counts": {},
             "regime_rewards": {},
             "regime_actions": {},
@@ -1674,3 +1676,11 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
         except Exception as e:
             logger.debug(f"Exception in enable_market_regime_adaptation: {e}")
             raise
+
+    def _initialize_remaining_components(self) -> None:
+        """Initialize remaining components after data setup."""
+        # Initialize StateManager
+        self.state_manager = StateManager(self)
+
+        # Initialize ValidationManager
+        self.validation_manager = ValidationManager(self)

@@ -30,7 +30,7 @@ def _get_by_path(config: ConfigDict, path: str) -> Optional[ConfigValue]:
             current = current[k]
         else:
             return None
-    return cast(Optional[ConfigValue], current)
+    return current
 
 
 def get_numeric(

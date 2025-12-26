@@ -81,7 +81,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Lazy import heavy submodules when accessed on the package.
 
     Implemented per PEP 562 to avoid importing heavy ML modules at package import time.
@@ -93,7 +93,7 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-def __dir__():
+def __dir__() -> list[str]:
     return sorted(list(globals().keys()) + list(__LAZY_MODULE_ATTRIBUTES__.keys()))
 
 

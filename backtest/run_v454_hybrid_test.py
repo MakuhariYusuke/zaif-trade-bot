@@ -48,6 +48,7 @@ sys.path.append(str(PROJECT_ROOT))
 from ztb.config.unified_config import UnifiedConfig
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.analysis_formatters import print_formatted_metrics
+from ztb.utils.data_utils import load_csv_data
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
@@ -240,7 +241,7 @@ def run_backtest(
         logger.error(f"❌ Data file not found: {data_path}")
         return 1
     
-    df = pd.read_csv(data_path, index_col=0, parse_dates=True)
+    df = load_csv_data(data_path, index_col=0, parse_dates=True)
     df = _slice_df(df, start=start, end=end)
     logger.info(f"✅ Data loaded: {len(df)} rows")
 

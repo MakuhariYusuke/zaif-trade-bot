@@ -3,25 +3,23 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 
+from ztb.utils.data_utils import load_csv_data
+from ztb.metrics.metrics import sharpe_ratio
+
 def compare_strategies(v454_path: str, v455_path: str):
     print(f"Comparing v454 ({v454_path}) vs v455 ({v455_path})")
-    
+
     if not os.path.exists(v454_path):
         print(f"v454 results not found at {v454_path}")
         return
     if not os.path.exists(v455_path):
         print(f"v455 results not found at {v455_path}")
         return
-        
-    df_454 = pd.read_csv(v454_path)
-    df_455 = pd.read_csv(v455_path)
-    
-    # Calculate Metrics
-    def calc_metrics(df, name):
-        pv = df['portfolio_value']
-        ret = pv.pct_change().dropna()
+
+    df_454 = load_csv_data(v454_path)
+    df_455 = load_csv_data(v455_path)
         total_ret = (pv.iloc[-1] / pv.iloc[0]) - 1.0
-        sharpe = ret.mean() / ret.std() * (252**0.5) * 1440 # Approx for 1m data? No, 1m data -> 525600 mins/yr
+        sharpe = sharpe_ratio(ret, period_per_year=525600)  # 1m data: 525600 periods per year
         # Actually Sharpe on 1m data is noisy.
         # Let's just use Total Return and Max Drawdown
         cum_max = pv.cummax()

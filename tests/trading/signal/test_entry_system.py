@@ -1,6 +1,5 @@
 import unittest
 
-
 from ztb.trading.signal.entry_system import IntegratedEntrySystem
 from ztb.trading.types import MarketState
 
@@ -74,6 +73,30 @@ class TestIntegratedEntrySystem(unittest.TestCase):
 
         finally:
             os.remove(path)
+
+    def test_short_entry_cover_flow(self):
+        """Test Short Entry -> Cover flow logic (PnL calculation)."""
+        # 1. Short Entry
+        # Assume we entered at 100.0 (Market Price)
+        entry_price = 100.0
+
+        # 2. Cover (Buy)
+        # Assume we cover at 90.0 (Market Price) -> Profit of 10.0
+        exit_price = 90.0
+
+        # Calculate Gross PnL per unit for Short
+        # Gross PnL = Entry - Exit
+        gross_pnl = entry_price - exit_price
+        self.assertEqual(gross_pnl, 10.0)
+
+        # Update Outcome
+        self.system.update_outcome("bear", -0.8, gross_pnl, 200)
+
+        # Verify Stats
+        stats = self.system.calibration_map.get_stats("bear", -0.8)
+        self.assertGreater(stats["l1"]["avg_win"], 0.0)
+        # Check n_eff instead of internal counter
+        self.assertGreater(stats["l1"]["n_eff"], 0.0)
 
 
 if __name__ == "__main__":

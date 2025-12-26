@@ -3,6 +3,7 @@
 Data loading utilities for consistent data handling across the codebase.
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Iterator, Literal, Optional, Union, cast
 
@@ -253,3 +254,6 @@ def load_csv_data_optimized(
         return df
     except Exception as e:
         raise ValueError(f"Failed to load optimized data from {file_path}: {e}") from e
+
+
+logger = logging.getLogger(__name__)

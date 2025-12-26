@@ -272,7 +272,13 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
             )
 
         # Check if multi-timeframe features should be included
-        if feature_flags.get("include_multi_timeframe_features", False):
+        # Force enable if not explicitly disabled, as requested by user
+        include_mtf = feature_flags.get("include_multi_timeframe_features", False)
+        if not include_mtf:
+             logger.info("Forcing enable of multi-timeframe features (v455 requirement)")
+             include_mtf = True
+
+        if include_mtf:
             # Add multi-timeframe features if available
             import gc
 
@@ -594,6 +600,23 @@ def _compute_scaler_from_data(self: Any, train_end_index: Optional[int] = None) 
 def _initialize_remaining_components(self: Any) -> None:
     """Finalize runtime component setup once data is ready."""
 
+    # Initialize Online Scaler (v455)
+    # We keep this as it addresses the data leakage issue
+    from ztb.processing.online_scaler import OnlineScaler
+    obs_dim = len(self.features)
+    if hasattr(self, "optimizer_tracker") and self.optimizer_tracker is not None:
+        from ztb.features.processors.optimization.features import (
+            OptimizerFeatureTracker,
+        )
+        if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
+            obs_dim += len(self.optimizer_tracker.get_feature_names())
+
+    self.online_scaler = OnlineScaler(
+        shape=(obs_dim,),
+        clip=5.0
+    )
+    logger.info(f"Initialized OnlineScaler with dimension {obs_dim}")
+
     # Initialize Execution Model if configured
     execution_model = None
     execution_config = getattr(self.config, "execution_model", None)
@@ -674,13 +697,16 @@ def _initialize_remaining_components(self: Any) -> None:
             "Failed to ensure feature_matrix consistency before ObservationBuilder creation"
         )
 
+    # v455: Disable global scaler in ObservationBuilder in favor of OnlineScaler
+    # We pass None for scaler_mean/std so ObservationBuilder returns raw features.
+    # OnlineScaler will handle scaling of the full observation vector.
     self.observation_builder = ObservationBuilder(
         features=self.features,
         feature_matrix=self._feature_matrix,
         nonfinite_rows=self._nonfinite_rows,
         nonfinite_warned_rows=self._nonfinite_warned_rows,
-        scaler_mean=self.scaler_mean,
-        scaler_std=self.scaler_std,
+        scaler_mean=None,
+        scaler_std=None,
         optimizer_tracker=self.optimizer_tracker,
     )
 

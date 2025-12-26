@@ -6,6 +6,7 @@ configuration files in YAML, JSON, and TOML formats.
 """
 
 import asyncio
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO, Union, cast
 
@@ -171,7 +172,15 @@ def find_config_file(
     return None
 
 
-class ConfigLoader:
+class BaseConfigLoader(ABC):
+    """Abstract base class for configuration loaders."""
+
+    @abstractmethod
+    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
+        pass
+
+
+class ConfigLoader(BaseConfigLoader):
     """
     Abstract configuration loader supporting multiple formats.
 

@@ -11,12 +11,13 @@ from typing import Any, Dict, List, Optional, cast
 import yaml
 from pydantic import ValidationError
 
+from ztb.utils.config_loader import BaseConfigLoader
 from ztb.utils.path_utils import get_project_root
 
 from .schema import GlobalConfig
 
 
-class ConfigLoader:
+class PriorityConfigLoader(BaseConfigLoader):
     """Configuration loader with source priority management."""
 
     def __init__(self) -> None:
@@ -31,6 +32,13 @@ class ConfigLoader:
         self._file_mtimes: Dict[str, float] = {}
         # Environment support
         self.environment = os.getenv("ZTB_ENV", "development")
+
+    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
+        """Load configuration from file with auto-detected format."""
+        if args:
+            file_path = args[0]
+            return self.load_yaml(file_path)
+        return {}
 
     def load_yaml(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file with caching."""

@@ -53,9 +53,36 @@ from ztb.config.unified_config import UnifiedConfig
 from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
-from ztb.utils.analysis_formatters import print_formatted_metrics
+from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
+from utils.results_utils import save_backtest_results
+from ztb.utils.training_utils import load_model
 
 importlib.reload(ztb.features.models.sac.sac_v427_feature_engineering)
+
+
+def print_formatted_metrics(result, title):
+    """Print formatted backtest metrics"""
+    print(f"\n{'='*60}")
+    print(f"📊 {title}")
+    print(f"{'='*60}")
+    
+    # Basic metrics
+    print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
+    print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
+    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
+    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
+    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
+    
+    # Trade metrics
+    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
+    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
+    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
+    
+    # Risk metrics
+    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
+    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
+    
+    print(f"{'='*60}\n")
 
 
 def run_simple_backtest(
@@ -286,6 +313,14 @@ def run_simple_backtest(
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
+        # モデルロード
+        model_path = f"models/{model_name}.zip"
+        logger.info(f"Loading model from {model_path}")
+        model = load_model(model_path, algorithm="SAC")
+        logger.info(f"✅ Model loaded: {model_name}")
+        logger.debug(f"   Observation space: {model.observation_space}")
+        logger.debug(f"   Action space: {model.action_space}")
+
         # バックテスト実行
         logger.info("🔄 Starting backtest execution...")
 
@@ -467,12 +502,20 @@ def main():
     if result:
         print_formatted_metrics(result, "SAC v446 Backtest Results")
 
-        # 結果をJSONファイルに保存
-        output_file = "backtest_results_sac_v446.json"
-        with open(output_file, "w") as f:
-            json.dump(result, f, indent=2)
+        # 結果保存
+        portfolio_values = result.get("portfolio_history", [])
+        trade_history = []  # simple backtest doesn't track individual trades
+        metrics = {k: v for k, v in result.items() if k not in ["portfolio_history"]}
 
-        logger.info(f"✅ Results saved to {output_file}")
+        saved_files = save_backtest_results(
+            portfolio_values=portfolio_values,
+            trade_history=trade_history,
+            metrics=metrics,
+            output_dir="backtest_results",
+            filename_prefix="simple_backtest_v446"
+        )
+
+        logger.info(f"✅ Results saved: {saved_files}")
 
         # 目標チェック: 短期収益性改善
         if result["total_return_pct"] > 10:  # 10%以上のリターンを目標

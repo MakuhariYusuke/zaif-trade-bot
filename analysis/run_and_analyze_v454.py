@@ -23,8 +23,10 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.utils.data_utils import load_csv_data
+from ztb.metrics.metrics import sharpe_ratio
 from ztb.trading.environment.constants import continuous_to_discrete_action
-from ztb.utils.logging_utils import setup_logging
+from ztb.utils.logging_utils import setup_logging, log_data_loading, log_model_loading, log_analysis_start, log_success, log_error
 from ztb.config.unified_config import UnifiedConfig
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
@@ -59,10 +61,10 @@ def run_detailed_backtest(model_name, config_path, output_dir):
              synthetic_df = generate_synthetic_data(n_periods=5000)
              synthetic_df.to_csv(data_file)
     
-    df = pd.read_csv(data_file)
+    df = load_csv_data(data_file)
     if 'timestamp' in df.columns:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
-    logger.info(f"✅ Data loaded: {len(df)} rows")
+    log_data_loading(logger, data_file, len(df))
 
     # Prepare Features
     if "v454" in data_file:
@@ -79,9 +81,9 @@ def run_detailed_backtest(model_name, config_path, output_dir):
     logger.info(f"Loading model from {model_path}")
     try:
         model = SAC.load(model_path)
-        logger.info(f"✅ Model loaded")
+        log_model_loading(logger, model_path)
     except Exception as e:
-        logger.error(f"❌ Failed to load model: {e}")
+        log_error(logger, "model loading", str(e))
         return None
 
     # Setup Environment
@@ -152,7 +154,7 @@ def run_detailed_backtest(model_name, config_path, output_dir):
 
 def analyze_results(df, output_dir):
     """Analyzes the backtest results and generates plots."""
-    logger.info("📊 Analyzing results...")
+    log_analysis_start(logger, "backtest results")
     output_dir = Path(output_dir)
     
     # 1. PnL Curve
@@ -198,7 +200,7 @@ def analyze_results(df, output_dir):
     
     # Sharpe Ratio (assuming 1m data)
     returns = df['portfolio_value'].pct_change().dropna()
-    sharpe = returns.mean() / returns.std() * np.sqrt(252 * 24 * 60) if returns.std() != 0 else 0
+    sharpe = sharpe_ratio(returns, period_per_year=525600)  # 1m data: 525600 periods per year
     
     report = f"""
 # Backtest Analysis Report - SAC v454
@@ -225,7 +227,7 @@ def analyze_results(df, output_dir):
     with open(output_dir / "analysis_report.md", "w") as f:
         f.write(report)
     
-    logger.info(f"✅ Analysis complete. Report saved to {output_dir / 'analysis_report.md'}")
+    log_success(logger, "Analysis", f"Report saved to {output_dir / 'analysis_report.md'}")
     print(report)
 
 def main():

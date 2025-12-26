@@ -9,10 +9,10 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from ztb.utils.logging_utils import get_logger, setup_logging
-from ztb.utils.safety import safe_config_get, safe_file_operation
+from ztb.utils.safety import safe_config_get
 
 
 class UnifiedBase(ABC):
@@ -52,15 +52,15 @@ class UnifiedBase(ABC):
             with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
             self.logger.info(f"Configuration loaded from: {config_path}")
-            return config
+            return cast(Dict[str, Any], config)
         except Exception as e:
             self.logger.error(f"Failed to load configuration: {e}")
             raise
 
-    def save_config(self, config: Dict[str, Any], output_path: str):
+    def save_config(self, config: Dict[str, Any], output_path: str) -> None:
         """Save configuration to file."""
         try:
-            with safe_file_operation(output_path, "w", encoding="utf-8") as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             self.logger.info(f"Configuration saved to: {output_path}")
         except Exception as e:
@@ -76,7 +76,7 @@ class UnifiedBase(ABC):
         return True
 
     @abstractmethod
-    def run(self):
+    def run(self) -> None:
         """Execute the main functionality."""
         pass
 
@@ -84,7 +84,7 @@ class UnifiedBase(ABC):
 class ConfigMixin:
     """Mixin for configuration management."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.config: Dict[str, Any] = {}
         self.logger = get_logger(self.__class__.__name__)
@@ -93,7 +93,7 @@ class ConfigMixin:
         """Get configuration value with default."""
         return safe_config_get(self.config, key, default)
 
-    def update_config(self, updates: Dict[str, Any]):
+    def update_config(self, updates: Dict[str, Any]) -> None:
         """Update configuration with new values."""
         self.config.update(updates)
         self.logger.debug(f"Configuration updated: {list(updates.keys())}")
@@ -102,20 +102,22 @@ class ConfigMixin:
 class LoggingMixin:
     """Mixin for enhanced logging."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.logger = get_logger(self.__class__.__name__)
 
-    def log_operation_start(self, operation: str, **kwargs):
+    def log_operation_start(self, operation: str, **kwargs: Any) -> None:
         """Log operation start with context."""
         self.logger.info(f"Starting {operation}", extra=kwargs)
 
-    def log_operation_end(self, operation: str, success: bool = True, **kwargs):
+    def log_operation_end(
+        self, operation: str, success: bool = True, **kwargs: Any
+    ) -> None:
         """Log operation end with result."""
         status = "completed successfully" if success else "failed"
         self.logger.info(f"{operation.capitalize()} {status}", extra=kwargs)
 
-    def log_metrics(self, metrics: Dict[str, Any], prefix: str = ""):
+    def log_metrics(self, metrics: Dict[str, Any], prefix: str = "") -> None:
         """Log metrics in structured format."""
         for key, value in metrics.items():
             self.logger.info(f"{prefix}{key}: {value}")

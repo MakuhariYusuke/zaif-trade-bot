@@ -18,11 +18,10 @@ from dataclasses import dataclass, field
 
 # from enum import Enum  # duplicate import removed
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, TypeVar, Union
+from typing import Dict, List, Optional, Protocol, TypeVar, Union, cast
 
 import jsonschema
-
-from ztb.config.schema import EnvironmentConfig, TrainingConfig
+from ztb.config.schema import DataConfig, EnvironmentConfig, TrainingConfig
 from ztb.types.common import ConfigDict, ConfigValue
 
 ConfigProfile = Dict[str, ConfigValue]
@@ -42,16 +41,8 @@ class ValidatorFunc(Protocol):
 
 from enum import Enum
 
-
 # Configuration classes for type safety
-@dataclass
-class DataConfig:
-    """Data configuration."""
-
-    data_path: str = ""
-    use_real_data: bool = True
-    data_rows_limit: Optional[int] = None
-    max_features: Optional[int] = None
+# DataConfig moved to ztb.config.schema
 
 
 class ConfigFormat(Enum):
@@ -117,11 +108,11 @@ class ConfigSchema:
 
         for key in keys:
             if isinstance(current, dict) and key in current:
-                current = current[key]
+                current = current[key]  # type: ignore
             else:
                 return None
 
-        return current
+        return cast(Optional[ConfigValue], current)
 
 
 class ConfigurationManager:
@@ -146,7 +137,7 @@ class ConfigurationManager:
         self._register_default_profiles()
         self._register_default_schemas()
 
-    def _register_default_schemas(self):
+    def _register_default_schemas(self) -> None:
         """Register default configuration schemas."""
 
         # Training configuration schema
@@ -215,7 +206,7 @@ class ConfigurationManager:
 
         self.schemas["training"] = training_schema
 
-    def _register_default_profiles(self):
+    def _register_default_profiles(self) -> None:
         """Register default configuration profiles."""
         # SAC algorithm profile
         self.profiles["sac_default"] = {
@@ -321,11 +312,11 @@ class ConfigurationManager:
         # Navigate to the parent of the target key
         for key in keys[:-1]:
             if key not in current:
-                current[key] = {}
-            current = current[key]
+                current[key] = {}  # type: ignore
+            current = current[key]  # type: ignore
 
         # Set the value
-        current[keys[-1]] = value
+        current[keys[-1]] = value  # type: ignore
         self.logger.debug(f"Updated config value: {path} = {value}")
         return config
 
@@ -347,7 +338,6 @@ class ConfigurationManager:
             from ztb.utils.config_helpers import (
                 get_bool,
                 get_dict,
-                get_int,
                 get_numeric,
                 get_string,
             )
@@ -361,8 +351,6 @@ class ConfigurationManager:
             data_config = DataConfig(
                 data_path=get_string(data_config_dict, "data_path"),
                 use_real_data=get_bool(data_config_dict, "use_real_data", True),
-                data_rows_limit=get_int(data_config_dict, "data_rows_limit"),
-                max_features=get_int(data_config_dict, "max_features"),
             )
 
             # Filter env_config_dict to only include fields that EnvironmentConfig accepts
@@ -375,19 +363,22 @@ class ConfigurationManager:
             }
             env_config = EnvironmentConfig(
                 initial_balance=get_numeric(
-                    filtered_env_config_dict, "initial_balance", 10000.0
+                    cast(ConfigDict, filtered_env_config_dict),
+                    "initial_balance",
+                    10000.0,
                 ),
                 transaction_cost=get_numeric(
-                    filtered_env_config_dict, "transaction_cost", 0.0015
+                    cast(ConfigDict, filtered_env_config_dict),
+                    "transaction_cost",
+                    0.0015,
                 ),
                 max_position_size=get_numeric(
-                    filtered_env_config_dict, "max_position_size", 1.0
+                    cast(ConfigDict, filtered_env_config_dict), "max_position_size", 1.0
                 ),
             )
 
             # Create training config
             training_config = TrainingConfig(
-                version=get_string(config_dict, "version", "1.0"),
                 model_name=get_string(training_dict, "model_name", "default_model"),
                 algorithm=get_string(training_dict, "algorithm", "sac"),
                 total_timesteps=int(
@@ -402,7 +393,7 @@ class ConfigurationManager:
         except Exception as e:
             self.logger.error(f"Failed to create typed config: {e}")
             # Return default config on error
-            return TrainingConfig()
+            return TrainingConfig(model_name="default", algorithm="sac")
 
     def load_config(
         self,
@@ -469,7 +460,7 @@ class ConfigurationManager:
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 if config_path.suffix.lower() in [".json"]:
-                    return json.load(f)
+                    return cast(ConfigDict, json.load(f))
                 else:
                     raise ConfigLoadError(
                         f"Unsupported file format: {config_path.suffix}"
@@ -517,9 +508,15 @@ class ConfigurationManager:
                 if config_type == "training":
                     if "training" not in result:
                         result["training"] = {}
-                    result["training"] = self._deep_merge(result["training"], profile)
+                    result["training"] = cast(
+                        ConfigDict,
+                        self._deep_merge(
+                            cast(ConfigDict, result["training"]),
+                            cast(ConfigDict, profile),
+                        ),
+                    )  # type: ignore
                 else:
-                    result = self._deep_merge(result, profile)
+                    result = self._deep_merge(result, cast(ConfigDict, profile))
                 self.logger.debug(f"Applied profile: {profile_name}")
             else:
                 self.logger.warning(f"Profile not found: {profile_name}")
@@ -538,7 +535,7 @@ class ConfigurationManager:
 
         # Try integer
         try:
-            return int(value)
+            return cast(ConfigValue, int(value))
         except ValueError:
             pass
 
@@ -553,16 +550,16 @@ class ConfigurationManager:
             import json
 
             parsed = json.loads(value)
-            return parsed
+            return cast(ConfigValue, parsed)
         except (json.JSONDecodeError, TypeError):
             pass
 
         # Try list parsing (comma-separated)
         if "," in value:
-            return [item.strip() for item in value.split(",")]
+            return cast(ConfigValue, [item.strip() for item in value.split(",")])
 
         # Default to string
-        return value
+        return cast(ConfigValue, value)
 
     def _set_nested_value(
         self, config: ConfigDict, path: List[str], value: ConfigValue
@@ -585,9 +582,9 @@ class ConfigurationManager:
                 and isinstance(result[key], dict)
                 and isinstance(value, dict)
             ):
-                result[key] = self._deep_merge(result[key], value)
+                result[key] = self._deep_merge(result[key], value)  # type: ignore
             else:
-                result[key] = value
+                result[key] = value  # type: ignore
 
         return result
 
@@ -614,7 +611,7 @@ class ConfigurationManager:
             else:
                 return default
 
-        return current
+        return cast(Optional[ConfigValue], current)
 
     def validate_config_file(
         self, config_path: Union[str, Path], config_type: str = "training"
@@ -683,7 +680,7 @@ class ConfigurationManager:
                 json.dump(template, f, indent=2, ensure_ascii=False)
             self.logger.info(f"Configuration template saved: {output_path}")
 
-        return template
+        return cast(ConfigDict, template)
 
     def add_profile(self, name: str, profile: ConfigProfile) -> None:
         """Add a custom configuration profile."""
@@ -710,7 +707,7 @@ class ConfigurationManager:
         """List available configuration schema types."""
         return list(self.schemas.keys())
 
-    def add_custom_schema(self, name: str, schema: ConfigSchema):
+    def add_custom_schema(self, name: str, schema: ConfigSchema) -> None:
         """Add custom configuration schema."""
         self.schemas[name] = schema
         self.logger.info(f"Custom schema added: {name}")

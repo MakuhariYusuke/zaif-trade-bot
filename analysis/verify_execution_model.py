@@ -11,9 +11,10 @@ sys.path.append(str(project_root))
 
 from ztb.trading.execution.pseudo_hft import PseudoHFTExecutionModel
 from ztb.trading.environment.constants import EPSILON
+from ztb.utils.data_utils import load_csv_data
 
 def load_data(csv_path: Path) -> pd.DataFrame:
-    df = pd.read_csv(csv_path)
+    df = load_csv_data(csv_path)
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df.set_index('timestamp', inplace=True)
     

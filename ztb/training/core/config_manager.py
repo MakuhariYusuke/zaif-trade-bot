@@ -12,14 +12,15 @@ Handles all configuration-related operations including:
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-from ztb.utils.logging_utils import get_logger
 from ztb.training.algorithms.sac.sac_algorithm import DEFAULT_SAC_CONFIG
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
+from ztb.utils.config_manager import BaseConfigManager
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class ConfigManager:
+class TrainingConfigManager(BaseConfigManager):
     """
     Manages configuration extraction and building for unified training.
     """
@@ -283,7 +284,9 @@ class ConfigManager:
                 "learning_rate", sections, DEFAULT_SAC_CONFIG.get("learning_rate", 3e-4)
             ),
             "buffer_size": self._get_config_value(
-                "buffer_size", sections, DEFAULT_SAC_CONFIG.get("buffer_size", 1_000_000)
+                "buffer_size",
+                sections,
+                DEFAULT_SAC_CONFIG.get("buffer_size", 1_000_000),
             ),
             "learning_starts": self._get_config_value(
                 "learning_starts",
@@ -300,7 +303,9 @@ class ConfigManager:
                 "gamma", sections, DEFAULT_SAC_CONFIG.get("gamma", 0.99)
             ),
             "train_freq": self._get_config_value(
-                "train_freq", sections, DEFAULT_SAC_CONFIG.get("train_freq", (1, "step"))
+                "train_freq",
+                sections,
+                DEFAULT_SAC_CONFIG.get("train_freq", (1, "step")),
             ),
             "gradient_steps": self._get_config_value(
                 "gradient_steps",
@@ -340,9 +345,7 @@ class ConfigManager:
     def get_curriculum_config(self) -> Dict[str, Any]:
         sections = ["curriculum_learning", "curriculum"]
         return {
-            "curriculum_stage": self._get_config_value(
-                "curriculum_stage", sections, 0
-            ),
+            "curriculum_stage": self._get_config_value("curriculum_stage", sections, 0),
             "curriculum_threshold": self._get_config_value(
                 "curriculum_threshold", sections, 0.0
             ),
@@ -355,9 +358,7 @@ class ConfigManager:
             "curriculum_max_level": self._get_config_value(
                 "curriculum_max_level", sections, 100
             ),
-            "curriculum_level": self._get_config_value(
-                "curriculum_level", sections, 0
-            ),
+            "curriculum_level": self._get_config_value("curriculum_level", sections, 0),
         }
 
     def get_feature_config(self) -> Dict[str, Any]:

@@ -26,6 +26,9 @@ from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.logging_utils import get_logger
+from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
+from utils.results_utils import save_backtest_results
+from ztb.utils.training_utils import load_model
 
 logger = get_logger(__name__)
 
@@ -50,8 +53,12 @@ class SACV444Backtester:
     def _initialize_components(self):
         """Initialize model, environment, and regime classifier."""
         # Load the trained model
-        self.model = SAC.load(self.model_path)
+        self.model = load_model(self.model_path)
         logger.info(f"Loaded model from {self.model_path}")
+
+        # Get expected feature count from model
+        expected_features = self.model.observation_space.shape[0]
+        logger.info(f"Model expects {expected_features} features")
 
         # Initialize regime classifier
         self.regime_classifier = V444RegimeClassifier()
@@ -69,6 +76,7 @@ class SACV444Backtester:
         # Initialize environment with data and regime classifier
         env_config = self.config.get("environment", {})
         env_config["advanced_market_regime"] = True
+        env_config["target_feature_count"] = expected_features
         # If the trained model expects a specific, fixed feature ordering/size,
         # allow overriding feature selection here to ensure the backtest env
         # produces observations that match the model's policy observation space.
@@ -150,7 +158,7 @@ class SACV444Backtester:
                     if isinstance(action, np.ndarray)
                     else float(action)
                 )
-                episode_regimes.append(info.get("market_regime", "unknown"))
+                episode_regimes.append(str(info.get("market_regime", "unknown")))
 
             portfolio_values.extend(episode_portfolio_values)
             actions_history.extend(episode_actions)
@@ -243,9 +251,39 @@ class SACV444Backtester:
 
     def save_results(self, results: Dict[str, Any], output_path: str):
         """Save backtest results to JSON file."""
-        with open(output_path, "w") as f:
-            json.dump(results, f, indent=2, default=str)
-        logger.info(f"Saved backtest results to {output_path}")
+        output_dir = Path(output_path).parent
+        save_backtest_results(
+            results["portfolio_values"],
+            results["actions_history"],
+            results["metrics"],
+            output_dir
+        )
+        logger.info(f"Saved backtest results to {output_dir}")
+
+
+def print_formatted_metrics(result, title):
+    """Print formatted backtest metrics"""
+    print(f"\n{'='*60}")
+    print(f"📊 {title}")
+    print(f"{'='*60}")
+    
+    # Basic metrics
+    print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
+    print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
+    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
+    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
+    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
+    
+    # Trade metrics
+    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
+    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
+    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
+    
+    # Risk metrics
+    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
+    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
+    
+    print(f"{'='*60}\n")
 
 
 def main():
@@ -256,7 +294,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="config/sac_v444_advanced_regime_adaptation_config.json",
+        default="config/v444/sac_v444_advanced_regime_adaptation_config.json",
         help="Path to configuration file",
     )
     parser.add_argument(
@@ -300,6 +338,9 @@ def main():
         logger.info("Max Drawdown: %.2f%%", metrics["max_drawdown_pct"])
         logger.info("Regime Distribution: %s", metrics["regime_distribution"])
         logger.info("Action Distribution: %s", metrics["action_distribution"])
+
+        # Print formatted metrics
+        print_formatted_metrics(metrics, "SAC v444 Backtest Results")
 
         # Save results
         backtester.save_results(results, args.output)

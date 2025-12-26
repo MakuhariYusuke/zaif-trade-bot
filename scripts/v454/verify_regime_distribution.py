@@ -12,6 +12,7 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+from ztb.utils.data_utils import load_csv_data
 
 
 def verify_regime_distribution():
@@ -35,7 +36,7 @@ def verify_regime_distribution():
     # Load data
     data_path = project_root / "data" / "btc_jpy_1m_v454.csv"
     print(f"Loading data from {data_path}...")
-    df = pd.read_csv(data_path)
+    df = load_csv_data(data_path)
 
     # Ensure datetime index if needed, though classifier uses integer index
     if "timestamp" in df.columns:

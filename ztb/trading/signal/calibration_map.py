@@ -138,10 +138,15 @@ class CalibrationMap:
     def _compute_metrics(self, key: str) -> CalibrationStats:
         if key not in self.stats:
             # Return default/prior values
+            prior_avg_win = float(self.config.get("prior_avg_win", 0.0))
+            prior_avg_loss = float(self.config.get("prior_avg_loss", 0.0))
+
             return {
                 "p_win_lcb": 0.0,
-                "avg_win": 0.0,
-                "avg_loss": 0.0,
+                "p_win_mean": 0.5,  # Default prior mean (2/4)
+                "p_win_ucb": 1.0,  # Optimistic prior
+                "avg_win": prior_avg_win,
+                "avg_loss": prior_avg_loss,
                 "n_eff": 0.0,
             }  # Conservative
 
@@ -155,6 +160,8 @@ class CalibrationMap:
         beta_post = 2.0 + s["w_sum_losses"]
 
         p_win_lcb = beta.ppf(0.05, alpha_post, beta_post)
+        p_win_mean = alpha_post / (alpha_post + beta_post)
+        p_win_ucb = beta.ppf(0.95, alpha_post, beta_post)
 
         # AvgWin / AvgLoss
         avg_win = s["w_sum_win_amt"] / (s["w_sum_wins"] + EPSILON)
@@ -162,6 +169,8 @@ class CalibrationMap:
 
         return {
             "p_win_lcb": float(p_win_lcb),
+            "p_win_mean": float(p_win_mean),
+            "p_win_ucb": float(p_win_ucb),
             "avg_win": avg_win,
             "avg_loss": avg_loss,
             "n_eff": n_eff,
@@ -242,7 +251,19 @@ class CalibrationGate:
         }
 
     def _calculate_ev(self, stats: CalibrationStats, cost: float) -> float:
-        p_win = stats["p_win_lcb"]
+        prob_mode = self.config.get("probability_mode", "lcb")
+
+        # Backward compatibility
+        if self.config.get("use_mean_probability", False):
+            prob_mode = "mean"
+
+        if prob_mode == "ucb":
+            p_win = stats.get("p_win_ucb", stats.get("p_win_mean", 0.5))
+        elif prob_mode == "mean":
+            p_win = stats.get("p_win_mean", 0.5)
+        else:
+            p_win = stats.get("p_win_lcb", 0.0)
+
         avg_win = stats["avg_win"]
         avg_loss = stats["avg_loss"]
 

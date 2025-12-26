@@ -9,6 +9,7 @@ project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
 
 from ztb.features.models.sac.sac_v454_feature_engineering import SACv454FeatureEngineer
+from ztb.utils.data_utils import load_csv_data
 
 
 def main():
@@ -29,7 +30,7 @@ def main():
         return
 
     print(f"Loading data from {input_path}")
-    df = pd.read_csv(input_path)
+    df = load_csv_data(input_path)
 
     if "timestamp" in df.columns:
         df["timestamp"] = pd.to_datetime(df["timestamp"])

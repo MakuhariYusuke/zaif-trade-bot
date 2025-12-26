@@ -4,33 +4,33 @@ Centralized configuration management.
 
 from typing import Any, Optional
 
+from ztb.utils.config_manager import BaseConfigManager
 from ztb.utils.path_utils import get_project_root
 
-from .loader import ConfigLoader
-from .schema import ConfigLoader as UnifiedConfigLoader
-from .schema import GlobalConfig
+from .loader import PriorityConfigLoader
+from .schema import UnifiedConfigLoader, ZaifTradeBotConfig
 
 
-class ConfigManager:
+class ZaifTradeBotConfigManager(BaseConfigManager):
     """Configuration manager singleton."""
 
     _instance: Optional["ConfigManager"] = None
-    _config: Optional[GlobalConfig] = None
+    _config: Optional[ZaifTradeBotConfig] = None
 
     def __init__(self) -> None:
-        if ConfigManager._instance is not None:
-            raise RuntimeError("ConfigManager is a singleton")
-        ConfigManager._instance = self
-        self.loader = ConfigLoader()
+        if ZaifTradeBotConfigManager._instance is not None:
+            raise RuntimeError("ZaifTradeBotConfigManager is a singleton")
+        ZaifTradeBotConfigManager._instance = self
+        self.loader = PriorityConfigLoader()
 
     @classmethod
-    def get_instance(cls) -> "ConfigManager":
+    def get_instance(cls) -> "ZaifTradeBotConfigManager":
         """Get singleton instance."""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
-    def load_config(self, config_path: Optional[str] = None) -> GlobalConfig:
+    def load_config(self, config_path: Optional[str] = None) -> ZaifTradeBotConfig:
         """Load and merge configuration from all sources."""
         if config_path is None:
             # Try to find config files in standard locations
@@ -43,7 +43,7 @@ class ConfigManager:
         # CLI args would be loaded here if available
 
         merged = self.loader.merge_configs()
-        self._config = GlobalConfig(**merged)
+        self._config = ZaifTradeBotConfig(**merged)
         return self._config
 
     def _find_default_config_path(self) -> Optional[str]:
@@ -71,10 +71,10 @@ class ConfigManager:
 
     def create_default_config(
         self, config_path: str = "config/default.yaml"
-    ) -> GlobalConfig:
+    ) -> ZaifTradeBotConfig:
         """Create and save a default configuration file."""
         # Create default config with all default values
-        config = GlobalConfig()
+        config = ZaifTradeBotConfig()
         UnifiedConfigLoader.save_config(config, config_path, "yaml")
         return config
 
@@ -133,7 +133,7 @@ class ConfigManager:
             print(f"Configuration validation failed: {e}")
             return False
 
-    def get_config(self) -> GlobalConfig:
+    def get_config(self) -> ZaifTradeBotConfig:
         """Get current configuration."""
         if self._config is None:
             self.load_config()
@@ -161,8 +161,8 @@ class ConfigManager:
         for k in keys[:-1]:
             d = d.setdefault(k, {})
         d[keys[-1]] = value
-        self._config = GlobalConfig(**config_dict)
+        self._config = ZaifTradeBotConfig(**config_dict)
 
 
 # Global instance
-config_manager = ConfigManager.get_instance()
+config_manager = ZaifTradeBotConfigManager.get_instance()

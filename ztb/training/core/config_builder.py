@@ -13,7 +13,14 @@ Example:
 
 from typing import Any, Dict, List, Optional
 
-from ztb.utils.safety import safe_config_get, safe_config_get_bool, safe_config_get_float, safe_config_get_int
+from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
+from ztb.trading.environment.utils.config import (
+    EnvironmentConfig as TradingEnvironmentConfig,
+)
+from ztb.training.config.ppo_config import PPOConfig
+from ztb.training.core.config_manager import ConfigManager
+from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import safe_config_get
 
 logger = get_logger(__name__)
 
@@ -109,7 +116,7 @@ class ConfigBuilder:
             "max_features": self.get_config_value("max_features"),
         }
 
-    def get_environment_config(self) -> EnvironmentConfig:
+    def get_environment_config(self) -> Dict[str, Any]:
         """
         環境設定を抽出。
 

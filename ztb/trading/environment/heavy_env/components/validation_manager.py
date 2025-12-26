@@ -123,7 +123,11 @@ class ValidationManager:
             return 0.0
 
         # Apply reward clipping if configured
-        reward_clip = self.env.reward_settings.get("reward_clip_value")
+        if hasattr(self.env.reward_settings, "get"):
+            reward_clip = self.env.reward_settings.get("reward_clip_value")
+        else:
+            reward_clip = getattr(self.env.reward_settings, "reward_clip_value", None)
+
         if reward_clip and abs(reward) > reward_clip:
             clipped_reward = np.clip(reward, -reward_clip, reward_clip)
             self.logger.debug(f"Reward clipped from {reward} to {clipped_reward}")

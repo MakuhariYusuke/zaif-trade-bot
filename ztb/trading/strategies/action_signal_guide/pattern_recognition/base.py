@@ -17,6 +17,7 @@ import pandas as pd
 
 def timed(func: Any) -> Any:
     """Simple timing decorator for performance monitoring."""
+
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
@@ -24,7 +25,9 @@ def timed(func: Any) -> Any:
         end_time = time.time()
         print(f"{func.__name__} took {end_time - start_time:.4f} seconds")
         return result
+
     return wrapper
+
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.exceptions.custom_exceptions import ValidationError

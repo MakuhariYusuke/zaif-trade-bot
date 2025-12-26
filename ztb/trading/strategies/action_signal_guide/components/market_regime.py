@@ -6,7 +6,7 @@ to enhance signal generation and validation.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -51,6 +51,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             int(reference_window) if reference_window is not None else 1000
         )
         self.percentile_threshold = float(percentile_threshold)
+        self.current_regime: Optional[MarketRegime] = None
 
     def detect_regime(self, market_data: pd.DataFrame) -> MarketRegime:
         """
@@ -107,6 +108,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         if len(self.regime_history) > 100:
             self.regime_history = self.regime_history[-50:]
 
+        self.current_regime = regime
         return regime
 
     def _calculate_volatility_percentile(

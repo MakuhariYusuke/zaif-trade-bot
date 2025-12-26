@@ -26,7 +26,24 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
 - **Phase 3 Ensemble Methods**: Multi-source signal integration with dynamic weight adjustment and confidence-based scoring
 
-## 🆕 Recent Updates (2025-11-12)
+## 🆕 Recent Updates (2025-12-26)
+
+### 追加コード重複削減完了 ✅
+- **Configuration Utilities作成**: `utils/config_utils.py`に`load_config_from_json()`と`merge_training_configs()`を追加し、20以上のスクリプトで重複していた設定読み込みコードを統一
+- **Analysis Utilities作成**: `utils/analysis_utils.py`に`load_analysis_data()`と`print_basic_stats()`を追加し、データ分析パターンを標準化
+- **Training Scripts統合**: `train_sac_v435_*.py`スクリプト群を統一ユーティリティを使用するよう更新
+- **Backtest Scripts拡張**: 既存のバックテスト統合を強化し、モデル読み込み・結果保存・初期化の統一ユーティリティを活用
+- **コード削減**: 約500行の重複コードを削減しつつ、後方互換性を維持
+- **エラーハンドリング強化**: 統一ユーティリティによる適切なエラーメッセージとログ出力
+
+### コード重複削減完了 ✅
+- **UnifiedBacktester拡張**: run_standard_backtestメソッド追加によるバックテスト実行統一
+- **結果保存統合**: utils/results_utils.py作成による一貫した結果保存フォーマット
+- **設定読み込み統一**: load_config_unified活用によるJSON設定読み込み標準化
+- **モデル読み込み自動化**: load_model拡張によるアルゴリズム自動検出機能
+- **メタデータ保存強化**: save_model_with_metadata追加による包括的モデル情報保存
+- **既存実装活用**: 新規作成を避け、既存の堅牢な実装を再利用
+- **テスト検証**: 統合テスト成功、既存機能の完全維持
 
 ### ThresholdManager統合完了 ✅
 - **コード重複解消**: DynamicThresholdManagerクラスを削除し、既存のThresholdManagerに統合

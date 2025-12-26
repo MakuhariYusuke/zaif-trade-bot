@@ -5,7 +5,17 @@ Training Utilities
 
 import json
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Optional,
+    Protocol,
+    Union,
+    runtime_checkable,
+)
+
+from ztb.utils.types import TrainingResult, ValidationResult
 
 
 @runtime_checkable
@@ -20,12 +30,11 @@ class LoadableClass(Protocol):
         ...
 
 
-from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO
-
 if TYPE_CHECKING:
     # For type checking only; avoid importing stable_baselines3 at module import time
     from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback  # type: ignore
-    from stable_baselines3 import SAC  # type: ignore
+    from stable_baselines3 import SAC, PPO  # type: ignore
+    from sb3_contrib import MaskablePPO  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
 
@@ -135,12 +144,47 @@ def save_model(model: SaveableModel, model_path: str, verbose: bool = True) -> b
         return False
 
 
-def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
+def save_model_with_metadata(
+    model: SaveableModel,
+    model_path: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    verbose: bool = True,
+) -> bool:
     """
-    モデルを読み込み
+    モデルをメタデータ付きで保存
+
+    Args:
+        model: 保存するモデル
+        model_path: 保存パス
+        metadata: メタデータ辞書
+        verbose: 詳細出力
+
+    Returns:
+        保存成功かどうか
+    """
+    success = save_model(model, model_path, verbose)
+    if success and metadata:
+        try:
+            metadata_path = f"{model_path}.metadata.json"
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, default=str)
+            if verbose:
+                logger.info(f"Metadata saved to: {metadata_path}")
+        except Exception as e:
+            logger.error(f"Failed to save metadata: {e}")
+            return False
+    return success
+
+
+def load_model(
+    model_path: str, algorithm: Optional[str] = None, verbose: bool = True
+) -> Optional[Union["SAC", "PPO", "MaskablePPO"]]:
+    """
+    モデルを読み込み（統一版）
 
     Args:
         model_path: モデルパス
+        algorithm: アルゴリズム指定（"sac", "ppo", "ppo_maskable"）またはNoneで自動検出
         verbose: 詳細出力
 
     Returns:
@@ -151,11 +195,42 @@ def load_model(model_path: str, verbose: bool = True) -> Optional["SAC"]:
             logger.error(f"Model file not found: {model_path}.zip")
             return None
 
-        from stable_baselines3 import SAC as _SAC
+        if algorithm is None:
+            # Auto-detect algorithm
+            try:
+                from sb3_contrib import MaskablePPO
 
-        # Use getattr to avoid mypy complaining about class attribute on a type
-        loader = getattr(_SAC, "load")
-        model = loader(model_path)
+                model = MaskablePPO.load(model_path)
+                detected_alg = "ppo_maskable"
+            except:
+                try:
+                    from stable_baselines3 import PPO
+
+                    model = PPO.load(model_path)
+                    detected_alg = "ppo"
+                except:
+                    from stable_baselines3 import SAC
+
+                    model = SAC.load(model_path)
+                    detected_alg = "sac"
+            if verbose:
+                logger.info(f"Auto-detected algorithm: {detected_alg}")
+        else:
+            # Use specified algorithm
+            if algorithm == "sac":
+                from stable_baselines3 import SAC
+
+                model = SAC.load(model_path)
+            elif algorithm == "ppo":
+                from stable_baselines3 import PPO
+
+                model = PPO.load(model_path)
+            elif algorithm == "ppo_maskable":
+                from sb3_contrib import MaskablePPO
+
+                model = MaskablePPO.load(model_path)
+            else:
+                raise ValueError(f"Unsupported algorithm: {algorithm}")
 
         if verbose:
             logger.info(f"Model loaded from: {model_path}")
@@ -334,3 +409,30 @@ def display_training_complete(
                     print(f"  {key}: {value}")
     else:
         print("\n❌ Training failed")
+
+
+def load_model(model_path: str, algorithm: str = "SAC"):
+    """
+    Load model based on algorithm.
+
+    Args:
+        model_path: Path to model file
+        algorithm: Algorithm name (SAC, PPO, etc.)
+
+    Returns:
+        Loaded model
+
+    Raises:
+        ValueError: If algorithm is unsupported
+    """
+    if algorithm == "SAC":
+        from stable_baselines3 import SAC
+        return SAC.load(model_path)
+    elif algorithm == "PPO":
+        from stable_baselines3 import PPO
+        return PPO.load(model_path)
+    elif algorithm == "MaskablePPO":
+        from sb3_contrib import MaskablePPO
+        return MaskablePPO.load(model_path)
+    else:
+        raise ValueError(f"Unsupported algorithm: {algorithm}")

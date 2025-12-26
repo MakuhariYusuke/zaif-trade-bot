@@ -118,7 +118,8 @@ def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
 
     # Load dataset to extract metadata
     if dataset_path.suffix == ".csv":
-        df = pd.read_csv(dataset_path)
+        from ztb.utils.data_utils import load_csv_data
+        df = load_csv_data(dataset_path)
     elif dataset_path.suffix in [".pkl", ".pickle"]:
         df = pd.read_pickle(dataset_path)
     else:

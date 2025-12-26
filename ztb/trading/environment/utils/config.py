@@ -101,6 +101,21 @@ class RewardSettings:
     action_entropy_lookback: int = 10
     consistency_min_actions: int = 2
 
+    # Additional attributes for backward compatibility
+    action_balance_target: float = 0.5
+    entropy_regularization: float = 0.0
+    action_smoothing: float = 0.0
+    consistency_penalty: float = 0.0
+    redundant_trade_penalty: float = 0.0
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "RewardSettings":
+        """Create RewardSettings from dictionary."""
+        # Filter out keys that are not in the dataclass
+        valid_keys = {field.name for field in dataclasses.fields(cls)}
+        filtered_dict = {k: v for k, v in config_dict.items() if k in valid_keys}
+        return cls(**filtered_dict)
+
 
 @dataclasses.dataclass
 class EnvironmentConfig:
@@ -185,9 +200,7 @@ class EnvironmentConfig:
     reward_profit_bonus_multipliers: List[float] = dataclasses.field(
         default_factory=lambda: [1.0, 1.0, 0.8]
     )
-    reward_settings: Optional[
-        Dict[str, Union[int, float, bool, str, List[Union[int, float, bool, str]]]]
-    ] = None
+    reward_settings: Optional[RewardSettings] = None
 
     # Memory and performance settings
     memory_logging_enabled: bool = False
@@ -248,7 +261,7 @@ class EnvironmentConfig:
         False  # If True, episodes start at random positions in the data
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize derived fields and backward compatibility."""
         # Sync commission alias
         if self.commission != 0.0 and self.transaction_cost == 0.0:
@@ -257,9 +270,9 @@ class EnvironmentConfig:
         # Initialize exchange profile if not provided
         if self.exchange_profile is None:
             # Check if we should use ExchangeFeeModel (if exchange is specific and cost is 0)
-            from ztb.utils.fee_model import ExchangeFeeModel, FixedFeeModel
+            from ztb.utils.fee_model import ExchangeFeeModel, FeeModel, FixedFeeModel
 
-            fee_model = None
+            fee_model: Optional[FeeModel] = None
             fee_rate = self.transaction_cost
 
             # If transaction cost is 0 (default) and we have a specific exchange, try to use its defaults
@@ -351,32 +364,32 @@ class EnvironmentConfig:
         if behavior_opt is not None:
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
-
             # Map behavior_optimization keys to reward_settings
-            if "action_balance_target" in behavior_opt:
-                instance.reward_settings.action_balance_target = float(
-                    behavior_opt["action_balance_target"]
-                )
-            if "balance_penalty" in behavior_opt:
-                instance.reward_settings.balance_penalty = float(
-                    behavior_opt["balance_penalty"]
-                )
-            if "entropy_regularization" in behavior_opt:
-                instance.reward_settings.entropy_regularization = float(
-                    behavior_opt["entropy_regularization"]
-                )
-            if "action_smoothing" in behavior_opt:
-                instance.reward_settings.action_smoothing = float(
-                    behavior_opt["action_smoothing"]
-                )
-            if "consistency_penalty" in behavior_opt:
-                instance.reward_settings.consistency_penalty = float(
-                    behavior_opt["consistency_penalty"]
-                )
-            if "redundant_trade_penalty" in behavior_opt:
-                instance.reward_settings.redundant_trade_penalty = float(
-                    behavior_opt["redundant_trade_penalty"]
-                )
+            if isinstance(instance.reward_settings, RewardSettings):
+                if "action_balance_target" in behavior_opt:
+                    instance.reward_settings.action_balance_target = float(
+                        behavior_opt["action_balance_target"]
+                    )
+                if "balance_penalty" in behavior_opt:
+                    instance.reward_settings.balance_penalty = float(
+                        behavior_opt["balance_penalty"]
+                    )
+                if "entropy_regularization" in behavior_opt:
+                    instance.reward_settings.entropy_regularization = float(
+                        behavior_opt["entropy_regularization"]
+                    )
+                if "action_smoothing" in behavior_opt:
+                    instance.reward_settings.action_smoothing = float(
+                        behavior_opt["action_smoothing"]
+                    )
+                if "consistency_penalty" in behavior_opt:
+                    instance.reward_settings.consistency_penalty = float(
+                        behavior_opt["consistency_penalty"]
+                    )
+                if "redundant_trade_penalty" in behavior_opt:
+                    instance.reward_settings.redundant_trade_penalty = float(
+                        behavior_opt["redundant_trade_penalty"]
+                    )
 
         # Update fields from config_dict
         for key, value in config_dict.items():
@@ -387,12 +400,8 @@ class EnvironmentConfig:
                 raise TypeError(
                     f"unhashable type: 'dict' - found dict as key in 2nd from_dict: {key}"
                 )
-            logger.debug(
-                f"Processing config_dict key: {key}, type: {type(key)}, value type: {type(value)}"
-            )
+            # Key is valid, continue processing
             if key == "environment" and isinstance(value, dict):
-                # Special handling for nested environment config
-                logger.debug("Processing nested environment config")
                 logger.info(f"Environment keys: {list(value.keys())}")
                 for env_key, env_value in value.items():
                     if isinstance(env_key, dict):
@@ -433,6 +442,7 @@ class EnvironmentConfig:
                         # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
                         if not instance.reward_settings:
                             instance.reward_settings = RewardSettings()
+                        # Update reward_settings with behavioral_penalty values
                         for bp_k, bp_v in env_value.items():
                             if hasattr(instance.reward_settings, bp_k):
                                 try:
@@ -446,22 +456,6 @@ class EnvironmentConfig:
                                 instance.reward_settings.custom_reward_params[
                                     bp_k
                                 ] = bp_v
-                            # Map behavioral_penalty keys into instance.reward_settings dataclass if possible
-                            if not instance.reward_settings:
-                                instance.reward_settings = RewardSettings()
-                            for bp_k, bp_v in env_value.items():
-                                if hasattr(instance.reward_settings, bp_k):
-                                    try:
-                                        setattr(instance.reward_settings, bp_k, bp_v)
-                                    except Exception:
-                                        # fallback to custom params
-                                        instance.reward_settings.custom_reward_params[
-                                            bp_k
-                                        ] = bp_v
-                                else:
-                                    instance.reward_settings.custom_reward_params[
-                                        bp_k
-                                    ] = bp_v
                     elif hasattr(instance, env_key):
                         # Map other environment keys to instance
                         try:
@@ -515,32 +509,7 @@ class EnvironmentConfig:
                         setattr(instance, key, converted_bonuses)
                     elif key == "reward_settings" and isinstance(value, dict):
                         # Handle reward_settings dict
-                        if not instance.reward_settings:
-                            instance.reward_settings = RewardSettings()
-                        for rs_key, rs_value in value.items():
-                            if isinstance(rs_key, dict):
-                                logger.error(
-                                    f"Found dict as rs_key: rs_key={rs_key}, rs_value={rs_value}"
-                                )
-                                raise TypeError(
-                                    f"unhashable type: 'dict' - found dict as rs_key: {rs_key}"
-                                )
-                            logger.debug(
-                                f"Processing rs_key: {rs_key}, type: {type(rs_key)}, rs_value type: {type(rs_value)}"
-                            )
-                            if rs_key == "action_bonuses" and isinstance(
-                                rs_value, dict
-                            ):
-                                # Special handling: copy action_bonuses to instance.action_bonuses
-                                converted_bonuses = {}
-                                for bonus_key, bonus_value in rs_value.items():
-                                    converted_bonuses[bonus_key] = float(bonus_value)
-                                instance.action_bonuses = converted_bonuses
-                                logger.debug(
-                                    f"Set action_bonuses from reward_settings: {converted_bonuses}"
-                                )
-                            elif hasattr(instance.reward_settings, rs_key):
-                                setattr(instance.reward_settings, rs_key, rs_value)
+                        instance.reward_settings = RewardSettings.from_dict(value)
                     elif key in ["base_action_penalty", "commission", "slippage"]:
                         # Handle float fields
                         setattr(instance, key, float(value))
@@ -576,16 +545,26 @@ class EnvironmentConfig:
         # but `from_dict()` applies overrides after instantiation, so we must re-apply fee overrides here.
         try:
             env_cfg_for_fee = None
-            if "environment" in config_dict and isinstance(config_dict["environment"], dict):
+            if "environment" in config_dict and isinstance(
+                config_dict["environment"], dict
+            ):
                 env_cfg_for_fee = config_dict["environment"]
             elif isinstance(config_dict, dict):
                 env_cfg_for_fee = config_dict
 
             explicit_fee_rate = None
             if isinstance(env_cfg_for_fee, dict):
-                if "transaction_cost" in env_cfg_for_fee and env_cfg_for_fee.get("transaction_cost") is not None:
-                    explicit_fee_rate = float(env_cfg_for_fee.get("transaction_cost") or 0.0)
-                elif "commission" in env_cfg_for_fee and env_cfg_for_fee.get("commission") is not None:
+                if (
+                    "transaction_cost" in env_cfg_for_fee
+                    and env_cfg_for_fee.get("transaction_cost") is not None
+                ):
+                    explicit_fee_rate = float(
+                        env_cfg_for_fee.get("transaction_cost") or 0.0
+                    )
+                elif (
+                    "commission" in env_cfg_for_fee
+                    and env_cfg_for_fee.get("commission") is not None
+                ):
                     explicit_fee_rate = float(env_cfg_for_fee.get("commission") or 0.0)
 
             if explicit_fee_rate is not None and explicit_fee_rate > 0.0:
@@ -594,7 +573,7 @@ class EnvironmentConfig:
                 try:
                     from ztb.utils.fee_model import FixedFeeModel
 
-                    if getattr(instance, "exchange_profile", None) is not None:
+                    if instance.exchange_profile is not None:
                         instance.exchange_profile.fee_model = FixedFeeModel(
                             buy_fee_rate=explicit_fee_rate,
                             sell_fee_rate=explicit_fee_rate,

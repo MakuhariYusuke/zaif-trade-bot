@@ -12,6 +12,7 @@ import pandas as pd
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
 
 
 def calculate_trading_metrics(
@@ -50,25 +51,10 @@ def calculate_trading_metrics(
     max_drawdown = drawdown.min()
 
     # Sharpe ratio
-    if strategy_returns.std() > 0:
-        sharpe_ratio = (
-            strategy_returns.mean()
-            / strategy_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
-    else:
-        sharpe_ratio = 0.0
+    sharpe_ratio = sharpe_ratio(strategy_returns, period_per_year=TRADING_DAYS_PER_YEAR)
 
     # Sortino ratio
-    downside_returns = strategy_returns[strategy_returns < 0]
-    if len(downside_returns) > 0 and downside_returns.std() > 0:
-        sortino_ratio = (
-            strategy_returns.mean()
-            / downside_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
-    else:
-        sortino_ratio = 0.0
+    sortino_ratio = sortino_ratio(strategy_returns, period_per_year=TRADING_DAYS_PER_YEAR)
 
     # Calmar ratio
     if abs(max_drawdown) > 0:

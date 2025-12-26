@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.training_utils import display_training_complete
+from utils.config_utils import load_config_from_json, merge_training_configs
 
 
 def main():
@@ -24,24 +25,14 @@ def main():
     reward_config_path = config_dir / "sac_v435_reward_config.json"
 
     # メイン設定ファイル読み込み
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = load_config_from_json(config_path)
 
-    # 環境設定を統合
-    if env_config_path.exists():
-        with open(env_config_path, "r", encoding="utf-8") as f:
-            env_config = json.load(f)
-        if "environment" not in config:
-            config["environment"] = {}
-        config["environment"].update(env_config)
-
-    # 報酬設定を統合
-    if reward_config_path.exists():
-        with open(reward_config_path, "r", encoding="utf-8") as f:
-            reward_config = json.load(f)
-        if "reward_function" not in config:
-            config["reward_function"] = {}
-        config["reward_function"].update(reward_config)
+    # 環境設定と報酬設定を統合
+    config = merge_training_configs(
+        config,
+        env_config_path=env_config_path,
+        reward_config_path=reward_config_path
+    )
 
     print("📋 Configuration loaded:")
     print(f"  - Model: {config['model_name']}")

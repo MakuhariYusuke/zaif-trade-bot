@@ -12,9 +12,8 @@ sys.path.insert(0, str(project_root))
 
 import numpy as np
 import pandas as pd
-from stable_baselines3 import SAC
 
-from ztb.utils.normalization import load_scaler
+from ztb.utils.training_utils import load_model
 
 # ロギング設定
 logging.basicConfig(
@@ -134,7 +133,7 @@ def run_backtest():
 
         # モデル読み込み
         model_path = "models/sac_v444_3_balanced_penalty_scale_200.zip"
-        model = SAC.load(model_path)
+        model = load_model(model_path)
         print(f"✅ Model loaded: {model_path}")
         print(f"   Observation space: {model.observation_space}")
         print(f"   Action space: {model.action_space}")

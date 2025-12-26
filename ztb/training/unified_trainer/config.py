@@ -3,7 +3,7 @@
 Configuration classes for Unified Trainer.
 """
 
-from ztb.config.manager import ConfigManager
+from ztb.config.manager import ZaifTradeBotConfigManager as ConfigManager
 from ztb.config.schema import TrainingConfig, ZaifTradeBotConfig
 
 

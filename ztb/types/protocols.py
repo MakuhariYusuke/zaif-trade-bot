@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 # Forward declarations for optional dependencies
 try:
     import pandas as pd
+
     DataFrame = pd.DataFrame
 except ImportError:
     DataFrame = Any  # type: ignore[misc,assignment]
@@ -30,7 +31,7 @@ class TradingEnvironment(Protocol):
 
     # Core environment properties
     observation_space: spaces.Space
-    action_space: spaces.Discrete
+    action_space: spaces.Space
 
     # Configuration
     config: Any  # EnvironmentConfig or similar
@@ -40,10 +41,7 @@ class TradingEnvironment(Protocol):
     max_steps: Optional[int]
 
     def reset(
-        self,
-        *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
+        self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
     ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
         """
         Reset the environment to initial state.
@@ -58,8 +56,7 @@ class TradingEnvironment(Protocol):
         ...
 
     def step(
-        self,
-        action: int
+        self, action: int
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         """
         Execute one step in the environment.
@@ -99,7 +96,7 @@ class TradingEnvironment(Protocol):
         action: int,
         prev_position: float,
         current_position: float,
-        step_pnl: float
+        step_pnl: float,
     ) -> float:
         """
         Calculate reward for the given action and state transition.
@@ -143,9 +140,7 @@ class FeatureRegistryProtocol(Protocol):
         ...
 
     def compute_features(
-        self,
-        data: Union[pd.DataFrame, Dict[str, Any]],
-        feature_set: str = "full"
+        self, data: Union[pd.DataFrame, Dict[str, Any]], feature_set: str = "full"
     ) -> NDArray[np.float32]:
         """
         Compute features for given data.
@@ -170,4 +165,3 @@ class FeatureRegistryProtocol(Protocol):
             Feature metadata dictionary
         """
         ...
-

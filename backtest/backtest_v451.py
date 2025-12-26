@@ -18,6 +18,10 @@ sys.path.insert(0, str(project_root))
 from stable_baselines3 import SAC
 
 from ztb.trading.environment.heavy_env import HeavyTradingEnv
+from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
+from utils.results_utils import save_backtest_results
+from ztb.utils.data_utils import load_csv_data
+from ztb.utils.training_utils import load_model
 
 
 def run_backtest_v451():
@@ -30,7 +34,7 @@ def run_backtest_v451():
         return
 
     print(f"Loading data from {data_path}...")
-    df = pd.read_csv(data_path)
+    df = load_csv_data(data_path)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df.set_index("timestamp", inplace=True)
 
@@ -112,7 +116,7 @@ def run_backtest_v451():
         return
 
     print(f"Loading model from {model_path}...")
-    model = SAC.load(model_path)
+    model = load_model(model_path)
 
     # 4. Run Backtest Loop
     print("Running backtest loop...")
@@ -221,6 +225,34 @@ def run_backtest_v451():
     print(
         f"Final Balance: {summary['final_balance']:.2f} (Return: {summary['return_pct']:.2f}%)"
     )
+
+    # Print formatted metrics
+    print_formatted_metrics(summary, "SAC v451 Backtest Results")
+
+
+def print_formatted_metrics(result, title):
+    """Print formatted backtest metrics"""
+    print(f"\n{'='*60}")
+    print(f"📊 {title}")
+    print(f"{'='*60}")
+    
+    # Basic metrics
+    print(f"💰 Final Portfolio Value: ${result.get('final_balance', 0):.2f}")
+    print(f"📈 Total Return: {result.get('return_pct', 0):.2f}%")
+    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
+    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
+    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
+    
+    # Trade metrics
+    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
+    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
+    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
+    
+    # Risk metrics
+    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
+    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
+    
+    print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":

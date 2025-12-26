@@ -6,7 +6,7 @@ Configurable feature sets for easy swapping and customization.
 
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, cast
 
 
 class FeatureSetConfig:
@@ -139,7 +139,7 @@ class FeatureSetConfig:
         },
     }
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         self.config_path = Path(config_path) if config_path else None
         self.current_config = self.FEATURE_SETS[
             "no_harmful"
@@ -151,9 +151,10 @@ class FeatureSetConfig:
     def load_config(self) -> None:
         """Load configuration from JSON file."""
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                loaded_config = json.load(f)
-                self.current_config.update(loaded_config)
+            if self.config_path and self.config_path.exists():
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    loaded_config = json.load(f)
+                    self.current_config.update(loaded_config)
         except Exception as e:
             print(f"Warning: Could not load config from {self.config_path}: {e}")
 
@@ -176,39 +177,41 @@ class FeatureSetConfig:
 
     def get_excluded_features(self) -> List[str]:
         """Get list of features to exclude."""
-        return self.current_config.get("excluded_features", [])
+        return cast(List[str], self.current_config.get("excluded_features", []))
 
     def add_excluded_feature(self, feature: str) -> None:
         """Add a feature to the exclusion list."""
-        if "excluded_features" not in self.current_config:
-            self.current_config["excluded_features"] = []
-        if feature not in self.current_config["excluded_features"]:
-            self.current_config["excluded_features"].append(feature)
+        excluded = cast(
+            List[str], self.current_config.setdefault("excluded_features", [])
+        )
+        if feature not in excluded:
+            excluded.append(feature)
 
     def remove_excluded_feature(self, feature: str) -> None:
         """Remove a feature from the exclusion list."""
         if "excluded_features" in self.current_config:
+            excluded = cast(List[str], self.current_config["excluded_features"])
             self.current_config["excluded_features"] = [
-                f for f in self.current_config["excluded_features"] if f != feature
+                f for f in excluded if f != feature
             ]
 
     def get_feature_flags(self) -> Dict[str, bool]:
         """Get feature category flags."""
         return {
-            "include_regime_features": self.current_config.get(
-                "include_regime_features", True
+            "include_regime_features": cast(
+                bool, self.current_config.get("include_regime_features", True)
             ),
-            "include_correlation_features": self.current_config.get(
-                "include_correlation_features", True
+            "include_correlation_features": cast(
+                bool, self.current_config.get("include_correlation_features", True)
             ),
-            "include_ensemble_features": self.current_config.get(
-                "include_ensemble_features", True
+            "include_ensemble_features": cast(
+                bool, self.current_config.get("include_ensemble_features", True)
             ),
-            "include_risk_features": self.current_config.get(
-                "include_risk_features", True
+            "include_risk_features": cast(
+                bool, self.current_config.get("include_risk_features", True)
             ),
-            "include_multi_timeframe_features": self.current_config.get(
-                "include_multi_timeframe_features", True
+            "include_multi_timeframe_features": cast(
+                bool, self.current_config.get("include_multi_timeframe_features", True)
             ),
         }
 
@@ -225,7 +228,7 @@ class FeatureSetConfig:
 _feature_config = None
 
 
-def get_feature_config(config_path: str = None) -> FeatureSetConfig:
+def get_feature_config(config_path: Optional[str] = None) -> FeatureSetConfig:
     """Get global feature configuration instance."""
     global _feature_config
     if _feature_config is None:

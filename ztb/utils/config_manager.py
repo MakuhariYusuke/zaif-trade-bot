@@ -7,6 +7,7 @@ to ensure consistency and reduce duplication.
 """
 
 import json
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
@@ -18,7 +19,19 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class ConfigManager:
+class BaseConfigManager(ABC):
+    """Abstract base class for configuration managers."""
+
+    @abstractmethod
+    def load_config(self, *args, **kwargs) -> Any:
+        pass
+
+    @abstractmethod
+    def save_config(self, *args, **kwargs) -> None:
+        pass
+
+
+class ConfigManager(BaseConfigManager):
     """
     Centralized configuration manager for ZTB system.
 
@@ -26,7 +39,7 @@ class ConfigManager:
     with support for YAML, JSON, and TOML formats.
     """
 
-    SUPPORTED_FORMATS = {'.yaml', '.yml', '.json', '.toml'}
+    SUPPORTED_FORMATS = {".yaml", ".yml", ".json", ".toml"}
 
     def __init__(self, config_dir: Optional[Union[str, Path]] = None):
         """
@@ -35,15 +48,12 @@ class ConfigManager:
         Args:
             config_dir: Base directory for configuration files
         """
-        self.config_dir = Path(config_dir) if config_dir else Path.cwd() / 'config'
+        self.config_dir = Path(config_dir) if config_dir else Path.cwd() / "config"
         self.config_dir.mkdir(exist_ok=True)
         self._cache: Dict[str, Dict[str, Any]] = {}
 
     def load_config(
-        self,
-        config_name: str,
-        config_type: str = 'general',
-        validate: bool = True
+        self, config_name: str, config_type: str = "general", validate: bool = True
     ) -> Dict[str, Any]:
         """
         Load configuration from file with caching and validation.
@@ -76,14 +86,16 @@ class ConfigManager:
             logger.info(f"Loaded configuration: {config_name}")
             return config.copy()
         except Exception as e:
-            raise ConfigurationError(f"Failed to load configuration '{config_name}': {e}") from e
+            raise ConfigurationError(
+                f"Failed to load configuration '{config_name}': {e}"
+            ) from e
 
     def save_config(
         self,
         config: Dict[str, Any],
         config_name: str,
-        config_type: str = 'general',
-        format: str = 'yaml'
+        config_type: str = "general",
+        format: str = "yaml",
     ) -> None:
         """
         Save configuration to file.
@@ -106,7 +118,9 @@ class ConfigManager:
             self._cache[cache_key] = config.copy()
             logger.info(f"Saved configuration: {config_name}")
         except Exception as e:
-            raise ConfigurationError(f"Failed to save configuration '{config_name}': {e}") from e
+            raise ConfigurationError(
+                f"Failed to save configuration '{config_name}': {e}"
+            ) from e
 
     def _find_config_file(self, config_name: str) -> Optional[Path]:
         """Find configuration file with supported extensions."""
@@ -120,22 +134,24 @@ class ConfigManager:
         """Load configuration from file based on extension."""
         suffix = config_path.suffix.lower()
 
-        if suffix in {'.yaml', '.yml'}:
+        if suffix in {".yaml", ".yml"}:
             return self._load_yaml(config_path)
-        elif suffix == '.json':
+        elif suffix == ".json":
             return self._load_json(config_path)
-        elif suffix == '.toml':
+        elif suffix == ".toml":
             return self._load_toml(config_path)
         else:
             raise ConfigurationError(f"Unsupported configuration format: {suffix}")
 
-    def _save_config_file(self, config: Dict[str, Any], config_path: Path, format: str) -> None:
+    def _save_config_file(
+        self, config: Dict[str, Any], config_path: Path, format: str
+    ) -> None:
         """Save configuration to file based on format."""
-        if format == 'yaml':
+        if format == "yaml":
             self._save_yaml(config, config_path)
-        elif format == 'json':
+        elif format == "json":
             self._save_json(config, config_path)
-        elif format == 'toml':
+        elif format == "toml":
             self._save_toml(config, config_path)
         else:
             raise ConfigurationError(f"Unsupported save format: {format}")
@@ -143,7 +159,7 @@ class ConfigManager:
     def _load_yaml(self, path: Path) -> Dict[str, Any]:
         """Load YAML configuration."""
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 return cast(Dict[str, Any], yaml.safe_load(f) or {})
         except Exception as e:
             raise ConfigurationError(f"Failed to load YAML config: {e}") from e
@@ -151,7 +167,7 @@ class ConfigManager:
     def _load_json(self, path: Path) -> Dict[str, Any]:
         """Load JSON configuration."""
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             raise ConfigurationError(f"Failed to load JSON config: {e}") from e
@@ -163,12 +179,15 @@ class ConfigManager:
         except ImportError:
             try:
                 import tomli as tomli_fallback
+
                 tomllib = tomli_fallback
             except ImportError:
-                raise ConfigurationError("TOML support not available. Install tomli or tomllib")
+                raise ConfigurationError(
+                    "TOML support not available. Install tomli or tomllib"
+                )
 
         try:
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 return tomllib.load(f)
         except Exception as e:
             raise ConfigurationError(f"Failed to load TOML config: {e}") from e
@@ -176,7 +195,7 @@ class ConfigManager:
     def _save_yaml(self, config: Dict[str, Any], path: Path) -> None:
         """Save YAML configuration."""
         try:
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
         except Exception as e:
             raise ConfigurationError(f"Failed to save YAML config: {e}") from e
@@ -184,7 +203,7 @@ class ConfigManager:
     def _save_json(self, config: Dict[str, Any], path: Path) -> None:
         """Save JSON configuration."""
         try:
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
         except Exception as e:
             raise ConfigurationError(f"Failed to save JSON config: {e}") from e
@@ -194,10 +213,12 @@ class ConfigManager:
         try:
             import tomli_w
         except ImportError:
-            raise ConfigurationError("TOML write support not available. Install tomli-w")
+            raise ConfigurationError(
+                "TOML write support not available. Install tomli-w"
+            )
 
         try:
-            with open(path, 'wb') as f:
+            with open(path, "wb") as f:
                 tomli_w.dump(config, f)
         except Exception as e:
             raise ConfigurationError(f"Failed to save TOML config: {e}") from e
@@ -217,54 +238,54 @@ class ConfigManager:
             raise ValidationError("Configuration must be a dictionary")
 
         # Type-specific validation
-        if config_type == 'training':
+        if config_type == "training":
             self._validate_training_config(config)
-        elif config_type == 'trading':
+        elif config_type == "trading":
             self._validate_trading_config(config)
-        elif config_type == 'model':
+        elif config_type == "model":
             self._validate_model_config(config)
         # Add more validation types as needed
 
     def _validate_training_config(self, config: Dict[str, Any]) -> None:
         """Validate training configuration."""
-        required_keys = ['learning_rate', 'batch_size', 'total_timesteps']
+        required_keys = ["learning_rate", "batch_size", "total_timesteps"]
         for key in required_keys:
             if key not in config:
                 raise ValidationError(f"Missing required training config key: {key}")
 
-        if not (0 < config.get('learning_rate', 0) < 1):
+        if not (0 < config.get("learning_rate", 0) < 1):
             raise ValidationError("learning_rate must be between 0 and 1")
 
-        if config.get('batch_size', 0) <= 0:
+        if config.get("batch_size", 0) <= 0:
             raise ValidationError("batch_size must be positive")
 
-        if config.get('total_timesteps', 0) <= 0:
+        if config.get("total_timesteps", 0) <= 0:
             raise ValidationError("total_timesteps must be positive")
 
     def _validate_trading_config(self, config: Dict[str, Any]) -> None:
         """Validate trading configuration."""
-        required_keys = ['initial_balance', 'max_position_size']
+        required_keys = ["initial_balance", "max_position_size"]
         for key in required_keys:
             if key not in config:
                 raise ValidationError(f"Missing required trading config key: {key}")
 
-        if config.get('initial_balance', 0) <= 0:
+        if config.get("initial_balance", 0) <= 0:
             raise ValidationError("initial_balance must be positive")
 
-        if config.get('max_position_size', 0) <= 0:
+        if config.get("max_position_size", 0) <= 0:
             raise ValidationError("max_position_size must be positive")
 
     def _validate_model_config(self, config: Dict[str, Any]) -> None:
         """Validate model configuration."""
-        required_keys = ['learning_rate', 'batch_size']
+        required_keys = ["learning_rate", "batch_size"]
         for key in required_keys:
             if key not in config:
                 raise ValidationError(f"Missing required model config key: {key}")
 
-        if not (0 < config.get('learning_rate', 0) < 1):
+        if not (0 < config.get("learning_rate", 0) < 1):
             raise ValidationError("learning_rate must be between 0 and 1")
 
-        if config.get('batch_size', 0) <= 0:
+        if config.get("batch_size", 0) <= 0:
             raise ValidationError("batch_size must be positive")
 
     def clear_cache(self) -> None:

@@ -15,12 +15,7 @@ except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.safety import (
-    safe_config_get,
-    safe_to_bool,
-    safe_to_float,
-    safe_to_int,
-)
+from ztb.utils.safety import safe_config_get, safe_to_bool, safe_to_float, safe_to_int
 
 logger = get_logger(__name__)
 
