@@ -6,6 +6,11 @@ __LAZY_MODULE_ATTRS__ = {
         "ztb.utils.notify.notification_manager",
         "NotificationManager",
     ),
+    "format_time": ("ztb.utils.format_utils", "format_time"),
+    "format_number": ("ztb.utils.format_utils", "format_number"),
+    "format_percentage": ("ztb.utils.format_utils", "format_percentage"),
+    "format_currency": ("ztb.utils.format_utils", "format_currency"),
+    "format_metric_summary": ("ztb.utils.format_utils", "format_metric_summary"),
 }
 
 # CI trigger: no-op change to force GitHub Actions run

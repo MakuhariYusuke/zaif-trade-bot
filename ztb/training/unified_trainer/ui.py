@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from ztb.types.common import ConfigDict
+from ztb.utils.format_utils import format_time
 from ztb.utils.logging_utils import get_logger
 
 
@@ -276,48 +277,3 @@ class TrainingUI:
                 )
 
         print("-" * 40)
-
-
-def format_time(seconds: float) -> str:
-    """Format time in seconds to human readable string."""
-    if seconds < 60:
-        return f"{seconds:.1f}s"
-    elif seconds < 3600:
-        minutes = int(seconds // 60)
-        secs = seconds % 60
-        return f"{minutes}m {secs:.1f}s"
-    else:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = seconds % 60
-        return f"{hours}h {minutes}m {secs:.1f}s"
-
-    def display_training_complete(
-        self, final_metrics: Dict[str, Any], training_time: float
-    ) -> None:
-        """Display training completion message."""
-        success = bool(final_metrics)  # Assume success if metrics provided
-        if success:
-            print("\n✅ Training completed successfully!")
-            print(f"⏱️  Total training time: {self._format_time(training_time)}")
-            if final_metrics:
-                print("📊 Final Statistics:")
-                for key, value in final_metrics.items():
-                    if isinstance(value, float):
-                        print(f"  {key}: {value:.4f}")
-                    else:
-                        print(f"  {key}: {value}")
-        else:
-            print("\n❌ Training failed")
-
-
-def format_number(num: float, precision: int = 2) -> str:
-    """Format number with appropriate suffix."""
-    if abs(num) >= 1e9:
-        return f"{num/1e9:.{precision}f}B"
-    elif abs(num) >= 1e6:
-        return f"{num/1e6:.{precision}f}M"
-    elif abs(num) >= 1e3:
-        return f"{num/1e3:.{precision}f}K"
-    else:
-        return f"{num:.{precision}f}"
