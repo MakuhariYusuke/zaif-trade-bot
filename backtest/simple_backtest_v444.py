@@ -12,17 +12,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yaml
-from stable_baselines3 import SAC
+
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
 from ztb.config.unified_config import UnifiedConfig
-from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.constants import continuous_to_discrete_action
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import setup_logging
 
 # ロギング設定
@@ -38,7 +38,6 @@ setup_logging(level=logging.DEBUG)
 # 環境をインポート
 sys.path.append(str(Path(__file__).parent))
 
-from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
 from utils.results_utils import save_backtest_results
 from ztb.utils.training_utils import load_model
 
@@ -48,23 +47,23 @@ def print_formatted_metrics(result, title):
     print(f"\n{'='*60}")
     print(f"📊 {title}")
     print(f"{'='*60}")
-    
+
     # Basic metrics
     print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
     print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
     print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
     print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
     print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
-    
+
     # Trade metrics
     print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
     print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
     print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
-    
+
     # Risk metrics
     print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
     print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
-    
+
     print(f"{'='*60}\n")
 
 
@@ -99,6 +98,7 @@ def run_simple_backtest(model_name, config_path):
             logger.error(f"❌ Failed to load config: {e}")
             logger.error(f"Exception type: {type(e)}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
@@ -122,17 +122,21 @@ def run_simple_backtest(model_name, config_path):
         # データ読み込み
         # Load data - use v454 data for backtesting
         data_file = "data/btc_jpy_1m_v454.csv"
-        
+
         if not Path(data_file).exists():
-            logger.warning(f"Data file {data_file} not found, falling back to synthetic data")
+            logger.warning(
+                f"Data file {data_file} not found, falling back to synthetic data"
+            )
             data_file = "data/btc_jpy_real_dataset.csv"
             # Generate synthetic data if file doesn't exist or is corrupted
             if not Path(data_file).exists():
                 logger.info("Generating synthetic BTC price data...")
-                synthetic_df = generate_synthetic_data(n_periods=5000, start_price=50000.0, volatility=500)
+                synthetic_df = generate_synthetic_data(
+                    n_periods=5000, start_price=50000.0, volatility=500
+                )
                 synthetic_df.to_csv(data_file)
                 logger.info(f"✅ Synthetic data generated and saved to {data_file}")
-        
+
         df = pd.read_csv(data_file)
         logger.info(f"✅ Data loaded: {len(df)} rows from {data_file}")
 
@@ -145,22 +149,22 @@ def run_simple_backtest(model_name, config_path):
         # v454 uses 209 columns, we need to ensure we pass the correct columns
         # For now, we'll use all columns in the dataframe as features if it's the v454 dataset
         if "v454" in data_file:
-             # Exclude non-feature columns if any (e.g. timestamp)
-             exclude_cols = ['timestamp', 'date', 'time']
-             available_features = [col for col in df.columns if col not in exclude_cols]
-             
-             # IMPORTANT: The model expects 166 features, but the dataset has 209.
-             # We need to truncate or select the first 166 features to match the model's observation space.
-             # This is a temporary fix to allow backtesting to proceed.
-             # Ideally, we should use the exact same feature set used during training.
-             # if len(available_features) > 166:
-             #     logger.warning(f"Truncating features from {len(available_features)} to 166 to match model observation space")
-             #     available_features = available_features[:166]
-             
-             featured_df = df.copy()
-             logger.info(f"✅ Using v454 features: {len(available_features)} columns")
+            # Exclude non-feature columns if any (e.g. timestamp)
+            exclude_cols = ["timestamp", "date", "time"]
+            available_features = [col for col in df.columns if col not in exclude_cols]
+
+            # IMPORTANT: The model expects 166 features, but the dataset has 209.
+            # We need to truncate or select the first 166 features to match the model's observation space.
+            # This is a temporary fix to allow backtesting to proceed.
+            # Ideally, we should use the exact same feature set used during training.
+            # if len(available_features) > 166:
+            #     logger.warning(f"Truncating features from {len(available_features)} to 166 to match model observation space")
+            #     available_features = available_features[:166]
+
+            featured_df = df.copy()
+            logger.info(f"✅ Using v454 features: {len(available_features)} columns")
         else:
-            basic_features = ['open', 'high', 'low', 'close', 'volume']
+            basic_features = ["open", "high", "low", "close", "volume"]
             if all(col in df.columns for col in basic_features):
                 featured_df = df.copy()
                 available_features = basic_features
@@ -181,21 +185,32 @@ def run_simple_backtest(model_name, config_path):
         env_config = config.get("environment", {})
         logger.info("Environment config extracted from main config")
         logger.debug(f"env_config keys: {list(env_config.keys())}")
-        logger.debug(f"env_config action_bonuses: {env_config.get('action_bonuses', 'NOT_FOUND')}")
-        logger.debug(f"env_config base_action_penalty: {env_config.get('base_action_penalty', 'NOT_FOUND')}")
-        logger.debug(f"env_config curriculum_stage: {env_config.get('curriculum_stage', 'NOT_FOUND')}")
+        logger.debug(
+            f"env_config action_bonuses: {env_config.get('action_bonuses', 'NOT_FOUND')}"
+        )
+        logger.debug(
+            f"env_config base_action_penalty: {env_config.get('base_action_penalty', 'NOT_FOUND')}"
+        )
+        logger.debug(
+            f"env_config curriculum_stage: {env_config.get('curriculum_stage', 'NOT_FOUND')}"
+        )
 
         # EnvironmentConfigオブジェクト作成
         logger.info("Creating EnvironmentConfig object...")
         try:
             env_config_obj = EnvironmentConfig.from_dict(env_config)
             logger.info("✅ EnvironmentConfig created successfully")
-            logger.debug(f"env_config_obj.base_action_penalty: {env_config_obj.base_action_penalty}")
-            logger.debug(f"env_config_obj.action_bonuses: {env_config_obj.action_bonuses}")
+            logger.debug(
+                f"env_config_obj.base_action_penalty: {env_config_obj.base_action_penalty}"
+            )
+            logger.debug(
+                f"env_config_obj.action_bonuses: {env_config_obj.action_bonuses}"
+            )
         except Exception as e:
             logger.error(f"❌ Failed to create EnvironmentConfig: {e}")
             logger.error(f"Exception type: {type(e)}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
@@ -205,7 +220,7 @@ def run_simple_backtest(model_name, config_path):
             # Ensure reward_settings are in the config object
             if reward_settings:
                 env_config_obj.reward_settings = reward_settings
-            
+
             # Force target feature count to match model observation space (5)
             # This handles the slight discrepancy between training and backtest feature reduction
             env_config_obj.target_feature_count = 5
@@ -221,6 +236,7 @@ def run_simple_backtest(model_name, config_path):
             logger.error(f"❌ Failed to create HeavyTradingEnv: {e}")
             logger.error(f"Exception type: {type(e)}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
@@ -481,7 +497,7 @@ def main():
             trade_history=trade_history,
             metrics=metrics,
             output_dir="backtest_results",
-            filename_prefix="simple_backtest_v444"
+            filename_prefix="simple_backtest_v444",
         )
 
         logger.info(f"✅ Results saved: {saved_files}")

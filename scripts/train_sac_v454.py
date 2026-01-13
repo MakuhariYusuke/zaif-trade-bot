@@ -129,8 +129,8 @@ def main() -> bool:
         final_metrics = {}
         training_time = getattr(trainer, "training_time", 0.0)
         try:
-            if hasattr(trainer, "training_report") and trainer.training_report:
-                final_metrics = trainer.training_report.get("training_stats", {}) or {}
+            if hasattr(trainer, "training_report") and trainer.training_report:  # type: ignore[attr-defined]
+                final_metrics = trainer.training_report.get("training_stats", {}) or {}  # type: ignore[attr-defined]
                 training_time = final_metrics.get("training_time", training_time)
         except Exception:
             final_metrics = {}

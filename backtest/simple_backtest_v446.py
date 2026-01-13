@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yaml
+
 from stable_baselines3 import SAC
 
 # Suppress warnings
@@ -49,12 +50,11 @@ import importlib
 
 import ztb.features.models.sac.sac_v427_feature_engineering
 from backtest.data_generator import generate_synthetic_data
+from utils.results_utils import save_backtest_results
 from ztb.config.unified_config import UnifiedConfig
 from ztb.features.models.sac.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
-from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
-from utils.results_utils import save_backtest_results
 from ztb.utils.training_utils import load_model
 
 importlib.reload(ztb.features.models.sac.sac_v427_feature_engineering)
@@ -65,23 +65,23 @@ def print_formatted_metrics(result, title):
     print(f"\n{'='*60}")
     print(f"📊 {title}")
     print(f"{'='*60}")
-    
+
     # Basic metrics
     print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
     print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
     print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
     print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
     print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
-    
+
     # Trade metrics
     print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
     print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
     print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
-    
+
     # Risk metrics
     print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
     print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
-    
+
     print(f"{'='*60}\n")
 
 
@@ -512,7 +512,7 @@ def main():
             trade_history=trade_history,
             metrics=metrics,
             output_dir="backtest_results",
-            filename_prefix="simple_backtest_v446"
+            filename_prefix="simple_backtest_v446",
         )
 
         logger.info(f"✅ Results saved: {saved_files}")

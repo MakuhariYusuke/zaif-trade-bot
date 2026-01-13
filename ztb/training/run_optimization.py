@@ -142,6 +142,7 @@ class OptimizationOrchestrator:
 
             # Load market data to align timestamps
             from ztb.utils.data_utils import load_csv_data
+
             market_data = load_csv_data(dataset_path)
             if "timestamp" in market_data.columns:
                 # Use actual market data timestamps for alignment
@@ -250,6 +251,7 @@ class OptimizationOrchestrator:
         # Load dataset for regime classification
         dataset_path = self.config["data_path"]
         from ztb.utils.data_utils import load_csv_data
+
         data = load_csv_data(dataset_path)
 
         # Filter data by date range if specified

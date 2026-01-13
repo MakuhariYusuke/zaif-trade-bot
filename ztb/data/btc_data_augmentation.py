@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import kurtosis, skewness
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import CodePerformanceMonitor
 
@@ -448,7 +449,7 @@ class BTCDataAugmentor:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         if output_path.suffix == ".csv":
-            augmented_data.to_csv(output_path, index=False)
+            save_csv_data(augmented_data, str(output_path), index=False)
         elif output_path.suffix == ".pkl":
             augmented_data.to_pickle(output_path)
         else:

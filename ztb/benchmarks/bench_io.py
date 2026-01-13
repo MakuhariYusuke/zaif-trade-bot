@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import psutil
 
+from ztb.analysis.common.plot_utils import save_plot
 from ztb.trading.environment.constants import BYTES_PER_MB
 
 # Add parent directory to path
@@ -269,7 +270,7 @@ def generate_plots(results_df: pd.DataFrame, output_dir: Path) -> None:
     axes[1, 1].legend()
 
     plt.tight_layout()
-    plt.savefig(output_dir / "io_bench_top3.png", dpi=150, bbox_inches="tight")
+    save_plot(output_dir / "io_bench_top3.png", dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"Top 3 configurations saved to {output_dir / 'io_bench_top3.png'}")

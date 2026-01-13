@@ -24,6 +24,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 # Add project root to path (but avoid local shims shadowing installed SB3)
 PROJECT_ROOT = get_project_root()
 
+
 # `stable_baselines3` is required for backtests; ensure we import the real
 # site-packages version even if a local shim package exists in the repo.
 def _is_project_root_path(entry: str) -> bool:
@@ -37,23 +38,28 @@ def _is_project_root_path(entry: str) -> bool:
     except Exception:
         return False
 
+
 sys.path[:] = [p for p in sys.path if not _is_project_root_path(p)]
 
-import torch  # noqa: F401
-from stable_baselines3 import SAC
 import pandas as pd
+import torch  # noqa: F401
+
+from stable_baselines3 import SAC
 
 sys.path.append(str(PROJECT_ROOT))
 
+from ztb.trading.environment.heavy_env import HeavyTradingEnv
+
 from ztb.config.unified_config import UnifiedConfig
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.utils.analysis_formatters import print_formatted_metrics
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
 setup_logging(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def _parse_float_list(value: str) -> list[float]:
     items = []
@@ -84,9 +90,19 @@ def _apply_high_vol_ranging_params(
 ) -> None:
     env_cfg = config.get("environment", {})
     hybrid_cfg = env_cfg.get("hybrid_config", {})
-    regime_filter = hybrid_cfg.get("regime_filter", {}) if isinstance(hybrid_cfg, dict) else {}
-    constraints = regime_filter.get("regime_constraints", {}) if isinstance(regime_filter, dict) else {}
-    hvr = constraints.get("high_volatility_ranging") if isinstance(constraints, dict) else None
+    regime_filter = (
+        hybrid_cfg.get("regime_filter", {}) if isinstance(hybrid_cfg, dict) else {}
+    )
+    constraints = (
+        regime_filter.get("regime_constraints", {})
+        if isinstance(regime_filter, dict)
+        else {}
+    )
+    hvr = (
+        constraints.get("high_volatility_ranging")
+        if isinstance(constraints, dict)
+        else None
+    )
 
     if not isinstance(hvr, dict):
         raise KeyError(
@@ -128,7 +144,7 @@ def _run_episode(
         if collect_regime_diagnostics:
             regime_val = info.get("market_regime")
             if hasattr(regime_val, "value"):
-                regime_key = str(regime_val.value)
+                regime_key = str(regime_val.value)  # type: ignore[attr-defined]
             elif regime_val is None:
                 regime_key = "unknown"
             else:
@@ -167,6 +183,7 @@ def _run_episode(
         results.update(stats or {})
 
     if collect_regime_diagnostics and hasattr(env, "get_statistics"):
+
         def _mean(values: list[float]) -> float:
             return float(fmean(values)) if values else 0.0
 
@@ -175,7 +192,9 @@ def _run_episode(
         results["regime_sell_actions"] = dict(sell_actions_by_regime)
         results["regime_step_counts"] = dict(step_counts_by_regime)
         results["regime_entry_counts"] = dict(entry_count_by_regime)
-        results["regime_entry_size_mean"] = {k: _mean(v) for k, v in entry_sizes_by_regime.items()}
+        results["regime_entry_size_mean"] = {
+            k: _mean(v) for k, v in entry_sizes_by_regime.items()
+        }
 
     return results
 
@@ -197,8 +216,7 @@ def run_backtest(
     deterministic: bool = True,
     report_path: str = "backtest_results/v454_hybrid_test_results.json",
 ) -> int:
-
-    logger.info(f"🚀 Starting v454 Hybrid Strategy Backtest")
+    logger.info("🚀 Starting v454 Hybrid Strategy Backtest")
     logger.info(f"Model: {model_path}")
     logger.info(f"Config: {config_path}")
 
@@ -208,29 +226,44 @@ def run_backtest(
         config = unified_config.to_dict()
         logger.info("✅ Config loaded successfully")
 
-        if any(v is not None for v in (entry_zscore_threshold, stop_loss_pct, take_profit_pct)):
+        if any(
+            v is not None
+            for v in (entry_zscore_threshold, stop_loss_pct, take_profit_pct)
+        ):
             _apply_high_vol_ranging_params(
                 config,
                 entry_zscore_threshold=entry_zscore_threshold,
                 stop_loss_pct=stop_loss_pct,
                 take_profit_pct=take_profit_pct,
             )
-        
+
         # Verify Hybrid Config is present
         env_config = config.get("environment", {})
         hybrid_config = env_config.get("hybrid_config", {})
         adaptive_mode = env_config.get("adaptive_threshold_mode", False)
-        regime_filter = hybrid_config.get("regime_filter", {}) if isinstance(hybrid_config, dict) else {}
-        
+        regime_filter = (
+            hybrid_config.get("regime_filter", {})
+            if isinstance(hybrid_config, dict)
+            else {}
+        )
+
         logger.info(f"Adaptive Threshold Mode: {adaptive_mode}")
         logger.info(f"Hybrid Config Enabled: {hybrid_config.get('enabled', False)}")
-        if hybrid_config.get('enabled'):
-             logger.info(f"Regime Filter: {hybrid_config.get('regime_filter', {}).get('enabled')}")
-             logger.info(f"Regime Filter Mode: {regime_filter.get('mode', 'hard')}")
-             logger.info(f"Excluded Regimes: {hybrid_config.get('regime_filter', {}).get('excluded_regimes')}")
-             constraints = regime_filter.get("regime_constraints", {}) if isinstance(regime_filter, dict) else {}
-             if isinstance(constraints, dict) and constraints:
-                 logger.info(f"Regime Constraints: {list(constraints.keys())}")
+        if hybrid_config.get("enabled"):
+            logger.info(
+                f"Regime Filter: {hybrid_config.get('regime_filter', {}).get('enabled')}"
+            )
+            logger.info(f"Regime Filter Mode: {regime_filter.get('mode', 'hard')}")
+            logger.info(
+                f"Excluded Regimes: {hybrid_config.get('regime_filter', {}).get('excluded_regimes')}"
+            )
+            constraints = (
+                regime_filter.get("regime_constraints", {})
+                if isinstance(regime_filter, dict)
+                else {}
+            )
+            if isinstance(constraints, dict) and constraints:
+                logger.info(f"Regime Constraints: {list(constraints.keys())}")
 
     except Exception as e:
         logger.error(f"❌ Failed to load config: {e}")
@@ -240,17 +273,17 @@ def run_backtest(
     if not Path(data_path).exists():
         logger.error(f"❌ Data file not found: {data_path}")
         return 1
-    
+
     df = load_csv_data(data_path, index_col=0, parse_dates=True)
     df = _slice_df(df, start=start, end=end)
     logger.info(f"✅ Data loaded: {len(df)} rows")
 
     # Create Environment
     env = HeavyTradingEnv(df, config)
-    
+
     # Load Model
     try:
-        model = SAC.load(model_path, env=env)
+        model = SAC.load(model_path, env=env)  # type: ignore[attr-defined]
         logger.info("✅ Model loaded successfully")
     except Exception as e:
         logger.error(f"❌ Failed to load model: {e}")
@@ -278,7 +311,9 @@ def run_backtest(
             )
             # Update env config in-place (avoids full re-init)
             if isinstance(getattr(env.config, "hybrid_config", None), dict):
-                env.config.hybrid_config = config.get("environment", {}).get("hybrid_config")
+                env.config.hybrid_config = config.get("environment", {}).get(
+                    "hybrid_config"
+                )
 
             metrics = _run_episode(env=env, model=model, deterministic=deterministic)
             row = {
@@ -294,7 +329,11 @@ def run_backtest(
                 f"[{idx:>3}/{len(combos)}] z={z:.3f} sl={sl:.4f} tp={tp:.4f} -> return={row['total_return_pct']:.2f}% trades={row.get('total_trades')}"
             )
 
-        results_sorted = sorted(results, key=lambda r: float(r.get("total_return_pct") or -1e18), reverse=True)
+        results_sorted = sorted(
+            results,
+            key=lambda r: float(r.get("total_return_pct") or -1e18),
+            reverse=True,
+        )
         top = results_sorted[: min(10, len(results_sorted))]
         logger.info("Top results:")
         for r in top:
@@ -302,15 +341,16 @@ def run_backtest(
                 f"  return={r['total_return_pct']:.2f}% z={r['entry_zscore_threshold']:.3f} sl={r['stop_loss_pct']:.4f} tp={r['take_profit_pct']:.4f} trades={r.get('total_trades')}"
             )
 
-        grid_report_path = str(Path(report_path).with_name("v454_hybrid_grid_search_results.json"))
-        with open(grid_report_path, "w", encoding="utf-8") as f:
-            json.dump(results_sorted, f, indent=2)
+        grid_report_path = str(
+            Path(report_path).with_name("v454_hybrid_grid_search_results.json")
+        )
+        safe_json_dump(results_sorted, grid_report_path, indent=2)
         logger.info(f"Grid results saved to {grid_report_path}")
         return 0
 
     # Single run (with full diagnostics)
     logger.info("Running backtest...")
-    results = _run_episode(
+    results = _run_episode(  # type: ignore[assignment]
         env=env,
         model=model,
         deterministic=deterministic,
@@ -318,21 +358,24 @@ def run_backtest(
     )
 
     logger.info("Backtest completed.")
-    logger.info(f"Initial Balance: {results['initial_balance']:,.2f}")
-    logger.info(f"Final Balance: {results['final_balance']:,.2f}")
-    logger.info(f"Total Return: {results['total_return_pct']:.2f}%")
+    logger.info(f"Initial Balance: {results['initial_balance']:,.2f}")  # type: ignore[index]
+    logger.info(f"Final Balance: {results['final_balance']:,.2f}")  # type: ignore[index]
+    logger.info(f"Total Return: {results['total_return_pct']:.2f}%")  # type: ignore[index]
 
     # Keep previous behavior: write a detailed JSON report
     if report_path:
         Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(report_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=4, default=str)
+        safe_json_dump(results, report_path, indent=4, default=str)
         logger.info(f"Results saved to {report_path}")
 
     if results:
         logger.info("Statistics:")
-        for k, v in results.items():
-            if k in {"regime_step_counts", "regime_trade_actions", "regime_entry_counts"}:
+        for k, v in results.items():  # type: ignore[attr-defined]
+            if k in {
+                "regime_step_counts",
+                "regime_trade_actions",
+                "regime_entry_counts",
+            }:
                 logger.info(f"  {k}: {v}")
             elif k in {"initial_balance", "final_balance", "total_return_pct"}:
                 continue
@@ -343,21 +386,58 @@ def run_backtest(
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run SAC v454 hybrid backtest (single or grid search).")
-    parser.add_argument("--model-path", default="models/sac_v454_inverse_confidence.zip")
+    parser = argparse.ArgumentParser(
+        description="Run SAC v454 hybrid backtest (single or grid search)."
+    )
+    parser.add_argument(
+        "--model-path", default="models/sac_v454_inverse_confidence.zip"
+    )
     parser.add_argument("--config-path", default="config/v454/sac_v454_config.json")
     parser.add_argument("--data-path", default="data/btc_jpy_1m_v454.csv")
-    parser.add_argument("--start", type=int, default=0, help="Row start index (0-based)")
-    parser.add_argument("--end", type=int, default=None, help="Row end index (0-based, exclusive)")
-    parser.add_argument("--z", type=float, default=None, help="Override entry_zscore_threshold")
-    parser.add_argument("--sl", type=float, default=None, help="Override stop_loss_pct (e.g., 0.015)")
-    parser.add_argument("--tp", type=float, default=None, help="Override take_profit_pct (e.g., 0.01)")
-    parser.add_argument("--grid", action="store_true", help="Run grid search over z/sl/tp")
-    parser.add_argument("--z-grid", type=_parse_float_list, default=None, help="Comma-separated z thresholds")
-    parser.add_argument("--sl-grid", type=_parse_float_list, default=None, help="Comma-separated stop-loss pcts")
-    parser.add_argument("--tp-grid", type=_parse_float_list, default=None, help="Comma-separated take-profit pcts")
-    parser.add_argument("--stochastic", action="store_true", help="Use stochastic (non-deterministic) policy")
-    parser.add_argument("--report-path", default="backtest_results/v454_hybrid_test_results.json")
+    parser.add_argument(
+        "--start", type=int, default=0, help="Row start index (0-based)"
+    )
+    parser.add_argument(
+        "--end", type=int, default=None, help="Row end index (0-based, exclusive)"
+    )
+    parser.add_argument(
+        "--z", type=float, default=None, help="Override entry_zscore_threshold"
+    )
+    parser.add_argument(
+        "--sl", type=float, default=None, help="Override stop_loss_pct (e.g., 0.015)"
+    )
+    parser.add_argument(
+        "--tp", type=float, default=None, help="Override take_profit_pct (e.g., 0.01)"
+    )
+    parser.add_argument(
+        "--grid", action="store_true", help="Run grid search over z/sl/tp"
+    )
+    parser.add_argument(
+        "--z-grid",
+        type=_parse_float_list,
+        default=None,
+        help="Comma-separated z thresholds",
+    )
+    parser.add_argument(
+        "--sl-grid",
+        type=_parse_float_list,
+        default=None,
+        help="Comma-separated stop-loss pcts",
+    )
+    parser.add_argument(
+        "--tp-grid",
+        type=_parse_float_list,
+        default=None,
+        help="Comma-separated take-profit pcts",
+    )
+    parser.add_argument(
+        "--stochastic",
+        action="store_true",
+        help="Use stochastic (non-deterministic) policy",
+    )
+    parser.add_argument(
+        "--report-path", default="backtest_results/v454_hybrid_test_results.json"
+    )
     return parser
 
 

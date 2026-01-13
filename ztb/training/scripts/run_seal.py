@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ztb.utils.file_utils import safe_json_load
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 
 @dataclass
@@ -184,11 +184,8 @@ class RunSealManager:
 
     def _save_seal(self, seal: RunSeal) -> None:
         """Save run seal to file."""
-        import json
-
         seal_path = self.seal_dir / f"{seal.run_id}.json"
-        with open(seal_path, "w") as f:
-            json.dump(seal.to_dict(), f, indent=2, ensure_ascii=False)
+        safe_json_dump(seal.to_dict(), str(seal_path), indent=2, ensure_ascii=False)
 
 
 # Global instance

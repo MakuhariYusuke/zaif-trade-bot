@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import pandas as pd
 
 from utils.analysis_utils import load_analysis_data, print_basic_stats
 

@@ -67,7 +67,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnviro
 from ztb.training.config.ppo_config import get_ppo_config
 from ztb.utils import DiscordNotifier
 from ztb.utils.data_utils import load_csv_data_optimized
-from ztb.utils.file_utils import safe_json_load
+from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 
 def detect_algorithm(model_path: Path) -> str:
@@ -823,13 +823,11 @@ class PaperTrader:
 
         # Save statistics
         stats_file = results_dir / "trading_stats.json"
-        with open(stats_file, "w") as f:
-            json.dump(stats, f, indent=2, default=str)
+        safe_json_dump(stats, str(stats_file), indent=2, default=str)
 
         # Save trade log
         trades_file = results_dir / "trade_log.json"
-        with open(trades_file, "w") as f:
-            json.dump(self.trades, f, indent=2, default=str)
+        safe_json_dump(self.trades, str(trades_file), indent=2, default=str)
 
         self.logger.info(f"Results saved to {results_dir}")
         self.logger.info(f"Statistics: {stats}")

@@ -10,10 +10,9 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from ztb.utils.types import LoggerProtocol
-
 from ztb.types.common import ConfigDict
 from ztb.utils.config_helpers import get_dict, get_int, get_string
+from ztb.utils.types import LoggerProtocol
 
 BYTES_PER_MB = 1024 * 1024
 
@@ -218,7 +217,9 @@ def log_model_loading(logger: logging.Logger, model_path: str) -> None:
     logger.info(f"✅ Model loaded from {model_path}")
 
 
-def log_training_start(logger: logging.Logger, model_name: str, config_summary: str = "") -> None:
+def log_training_start(
+    logger: logging.Logger, model_name: str, config_summary: str = ""
+) -> None:
     """Standardized logging for training start."""
     message = f"🚀 Starting training for {model_name}"
     if config_summary:
@@ -226,7 +227,9 @@ def log_training_start(logger: logging.Logger, model_name: str, config_summary: 
     logger.info(message)
 
 
-def log_backtest_start(logger: logging.Logger, model_name: str, data_info: str = "") -> None:
+def log_backtest_start(
+    logger: logging.Logger, model_name: str, data_info: str = ""
+) -> None:
     """Standardized logging for backtest start."""
     message = f"🚀 Starting backtest for {model_name}"
     if data_info:
@@ -234,7 +237,9 @@ def log_backtest_start(logger: logging.Logger, model_name: str, data_info: str =
     logger.info(message)
 
 
-def log_analysis_start(logger: logging.Logger, analysis_type: str, target: str = "") -> None:
+def log_analysis_start(
+    logger: logging.Logger, analysis_type: str, target: str = ""
+) -> None:
     """Standardized logging for analysis start."""
     message = f"📊 Starting {analysis_type} analysis"
     if target:

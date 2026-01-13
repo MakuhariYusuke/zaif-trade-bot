@@ -5,6 +5,19 @@ Configuration classes for Unified Trainer.
 
 from ztb.config.manager import ZaifTradeBotConfigManager as ConfigManager
 from ztb.config.schema import TrainingConfig, ZaifTradeBotConfig
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+
+@dataclass
+class UnifiedTrainerConfig:
+    """Configuration for Unified Trainer."""
+    algorithm: str = "SAC"
+    total_timesteps: int = 100000
+    config_path: Optional[str] = None
+    model_save_path: Optional[str] = None
+    log_dir: Optional[str] = None
+    additional_params: Optional[Dict[str, Any]] = None
 
 
 def load_config(config_path: str) -> ZaifTradeBotConfig:

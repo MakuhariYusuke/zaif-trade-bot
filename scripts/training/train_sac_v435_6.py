@@ -3,11 +3,10 @@
 SAC v435.6 Training - Ensemble majority voting system
 多数決システムによる判断モデル
 """
-import json
 from pathlib import Path
 
-from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from utils.config_utils import load_config_from_json, merge_training_configs
+from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 
 
 def main():
@@ -25,9 +24,7 @@ def main():
 
     # 環境設定と報酬設定を統合
     config = merge_training_configs(
-        config,
-        env_config_path=env_config_path,
-        reward_config_path=reward_config_path
+        config, env_config_path=env_config_path, reward_config_path=reward_config_path
     )
 
     print("📋 Configuration loaded:")

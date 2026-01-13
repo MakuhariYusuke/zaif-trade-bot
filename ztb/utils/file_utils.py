@@ -9,7 +9,10 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
+import pandas as pd
+
 from ztb.types.common import ConfigDict
+from ztb.utils.path_utils import get_project_root
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +43,6 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
         if callable(default):
             return default()
         return default
-
-
-def get_project_root() -> Path:
-    """
-    Get the project root directory.
-
-    Returns:
-        Path to the project root directory
-    """
-    return Path(__file__).resolve().parent.parent.parent
 
 
 def safe_json_dump(
@@ -240,3 +233,33 @@ def backup_file(file_path: Path, suffix: str = ".backup") -> Optional[Path]:
     except Exception as e:
         logger.error(f"Failed to backup file {file_path}: {e}")
         return None
+
+
+def save_csv_data(
+    df: pd.DataFrame, file_path: Union[str, Path], index: bool = False, **kwargs: Any
+) -> bool:
+    """
+    Safely save DataFrame to CSV file with error handling.
+
+    Args:
+        df: DataFrame to save
+        file_path: Path to save the CSV file
+        index: Whether to include DataFrame index in CSV
+        **kwargs: Additional arguments passed to to_csv
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Convert to Path if it's a string
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+
+        # Ensure parent directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        df.to_csv(file_path, index=index, **kwargs)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save CSV to {file_path}: {e}")
+        return False

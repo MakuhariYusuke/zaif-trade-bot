@@ -19,6 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.utils.data_utils import load_csv_data
 from ztb.utils.file_utils import get_project_root
 
 # Add project root to path
@@ -63,9 +64,7 @@ class SACUtilities:
             validation_results["total_files"] += 1
 
             try:
-                import pandas as pd
-
-                df = pd.read_csv(data_file)
+                df = load_csv_data(data_file)
 
                 file_info = {
                     "filename": data_file.name,

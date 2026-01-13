@@ -74,29 +74,25 @@ class SACTrainingExecutor:
         logger.info("=== Phase 1: Foundation Training開始 ===")
         logger.info(f"学習ステップ数: {total_timesteps}")
 
-                config = self.config.copy()
-                config["sac_hyperparameters"].update(params)
+        config = self.config.copy()
+        config["sac_hyperparameters"].update(params)
 
-                # 短い学習で評価
-                config["total_timesteps"] = 25000
-                config["eval_freq"] = 5000
-                config["n_eval_episodes"] = 5
+        # 短い学習で評価
+        config["total_timesteps"] = 25000
+        config["eval_freq"] = 5000
+        config["n_eval_episodes"] = 5
 
-                # 学習実行
-                trainer = UnifiedTrainer(config)
-                results = trainer.run()
+        # 学習実行
+        trainer = UnifiedTrainer(config)
+        results = trainer.run()
 
-                # 評価指標として平均報酬を使用
-                mean_reward = (
-                    results.get("best_mean_reward", -1000)
-                    if isinstance(results, dict)
-                    else -1000
-                )
-                return -mean_reward  # 最小化問題に変換
-
-            except Exception as e:
-                logger.warning(f"最適化試行失敗: {e}")
-                return 1000  # ペナルティ
+        # 評価指標として平均報酬を使用
+        mean_reward = (
+            results.get("best_mean_reward", -1000)
+            if isinstance(results, dict)
+            else -1000
+        )
+        return -mean_reward  # 最小化問題に変換
 
         # 探索空間定義
         search_space = {
@@ -119,23 +115,25 @@ class SACTrainingExecutor:
                 max_evals=20,  # 短縮版
             )
             optimization_results["ray_tune"] = ray_results
+            best_value = ray_results.get("best_value", "N/A")
             logger.info(
-                f"Ray Tune完了 - ベスト値: {ray_results.get('best_value', 'N/A')}"
-                    "sell_ratio": {"max": 0.4},
-                    "buy_ratio": {"min": 0.15, "max": 0.4},
-                },
-                "objectives": {
-                    "primary": "sharpe_ratio",
-                    "secondary": ["total_return", "sell_ratio_penalty"],
-                },
-            }
+                f"Ray Tune完了 - ベスト値: {best_value}"
+            )
 
             # 最適化実行
+        except Exception as e:
+            logger.warning(f"Ray Tune最適化失敗: {e}")
 
-        Returns:
-            評価スコア (Sharpe ratioなど)
-        """
-        try:
+        def training_objective(params: Dict[str, Any]) -> float:
+            """
+            Ray Tune最適化のための目的関数
+
+            Args:
+                params: 最適化パラメータ
+
+            Returns:
+                評価スコア (Sharpe ratioなど)
+            """
             # パラメータを適用した設定で短いバックテストを実行
             config = self.config.copy()
             if "reward_function" not in config:
@@ -150,10 +148,6 @@ class SACTrainingExecutor:
             # SELLバイアスを減らすパラメータほど高スコア
             score = 1.0 - abs(sell_penalty) * 0.1 + action_balance_weight * 0.5
             return max(0.1, score)  # 最低スコアを保証
-
-        except Exception as e:
-            logger.warning(f"報酬評価失敗: {e}")
-            return 0.1
 
     def phase_3_fine_tuning(
         self, best_params: Dict[str, Any], total_timesteps: int = 500000
@@ -186,6 +180,14 @@ class SACTrainingExecutor:
             self.trainer = UnifiedTrainer(config)
             results = self.trainer.run()
 
+        except Exception as e:
+            logger.error(f"Phase 3学習失敗: {e}")
+            return {"error": str(e)}
+
+    def phase_4_final_validation(self, model_path: str) -> Dict[str, Any]:
+        """
+        Phase 4: 最終検証フェーズ
+
         Args:
             model_path: 検証するモデルパス
 
@@ -211,6 +213,10 @@ class SACTrainingExecutor:
 
             phase4_result = self.phase_4_final_validation(model_path)
             pipeline_results["phase_4"] = phase4_result
+
+        except Exception as e:
+            logger.error(f"Phase 4検証失敗: {e}")
+            pipeline_results["phase_4"] = {"error": str(e)}
 
         logger.info("=== SAC v427 学習パイプライン完了 ===")
         return pipeline_results

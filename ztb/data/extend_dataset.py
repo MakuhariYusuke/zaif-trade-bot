@@ -7,6 +7,8 @@ Data augmentation script to add missing features for v434.2 backtest
 import numpy as np
 import pandas as pd
 
+from ztb.utils.file_utils import save_csv_data
+
 
 def add_missing_features(df):
     """Add missing features required by v434.1 schema"""
@@ -205,7 +207,7 @@ def main():
     print(f"Extended shape: {df_extended.shape}")
 
     # Save extended dataset
-    df_extended.to_csv(output_file, index=False)
+    save_csv_data(df_extended, output_file, index=False)
     print(f"Saved extended dataset to {output_file}")
 
 

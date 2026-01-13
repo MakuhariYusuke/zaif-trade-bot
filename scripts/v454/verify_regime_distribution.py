@@ -13,6 +13,8 @@ sys.path.insert(0, str(project_root))
 
 from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.error_utils import safe_execute
+from ztb.utils.file_utils import safe_json_dump
 
 
 def verify_regime_distribution():
@@ -62,14 +64,12 @@ def verify_regime_distribution():
     print(f"Analyzing {len(indices)} steps...")
 
     for i in tqdm(indices):
-        try:
-            # detect_regime expects the dataframe and the current integer index
+        def detect_regime_safe():
             result = classifier.detect_regime(df, i)
             if result:
                 regime_counts[result.primary_regime.value] += 1
-        except Exception:
-            # print(f"Error at index {i}: {e}")
-            pass
+        
+        safe_execute(detect_regime_safe, operation_name=f"Error detecting regime at index {i}")
 
     total_steps = sum(regime_counts.values())
     print(f"\nTotal classified steps: {total_steps}")
@@ -99,7 +99,7 @@ def verify_regime_distribution():
     }
 
     with open(output_path, "w") as f:
-        json.dump(results, f, indent=2)
+        safe_json_dump(results, output_path, indent=2)
     print(f"\nResults saved to {output_path}")
 
 

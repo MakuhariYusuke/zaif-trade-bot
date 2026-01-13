@@ -19,6 +19,7 @@ warnings.filterwarnings("ignore")
 from ztb.adaptation.monitoring.types import TradingPerformanceMetrics
 from ztb.metrics.metrics import coefficient_of_variation
 from ztb.trading.v433_integration_manager import V433IntegrationManager
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -331,7 +332,7 @@ class DataManager:
         """バックテストデータの保存"""
         try:
             file_path = self.data_directory / f"{symbol}_backtest_data.csv"
-            data.to_csv(file_path)
+            save_csv_data(data, str(file_path))
             self.logger.info(f"Backtest data saved to {file_path}")
         except Exception as e:
             self.logger.error(f"Failed to save backtest data: {e}")

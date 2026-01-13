@@ -132,6 +132,9 @@ class EarlyStoppingCallback(MemoryOptimizedCallback):
         """Check if training should be stopped."""
         return self.stopped_epoch > 0
 
+    def get_early_stopping_stats(self) -> Dict[str, Any]:
+        """Get early stopping statistics."""
+        return {
             "best_epoch": self.best_epoch,
             "wait_count": self.wait_count,
             "stopped_epoch": self.stopped_epoch,
@@ -270,6 +273,11 @@ class ModelCheckpointCallback(MemoryOptimizedCallback):
     Saves model checkpoints based on performance metrics,
     with options for best model saving and periodic checkpoints.
     """
+
+    def __init__(
+        self,
+        filepath: str,
+        monitor: str = "val_loss",
         save_best_only: bool = True,
         save_weights_only: bool = False,
         mode: str = "auto",
@@ -381,6 +389,10 @@ class ClassificationMetricsCallback(MemoryOptimizedCallback):
 
     Computes and tracks classification metrics including accuracy,
     precision, recall, and F1-score during training.
+    """
+
+    def __init__(self, compute_frequency: int = 1):
+        super().__init__(cache_size=1000)
         self.compute_frequency = compute_frequency
 
         # Metrics history
@@ -397,6 +409,11 @@ class ClassificationMetricsCallback(MemoryOptimizedCallback):
         """Compute classification metrics."""
         if context.epoch % self.compute_frequency != 0:
             return
+
+        if logs is None or "predictions" not in logs or "targets" not in logs:
+            return
+
+        predictions = logs["predictions"]
         targets = logs["targets"]
 
         # Convert predictions to class labels if needed
@@ -413,6 +430,10 @@ class ClassificationMetricsCallback(MemoryOptimizedCallback):
             # Store in history
             self.accuracy_history.append(accuracy)
             self.precision_history.append(precision)
+            self.recall_history.append(recall)
+            self.f1_history.append(f1)
+
+            metrics_key = f"classification_epoch_{context.epoch}"
             self.cache_metrics(
                 metrics_key,
                 {
@@ -471,12 +492,17 @@ class ClassificationMetricsCallback(MemoryOptimizedCallback):
 
     def on_batch_end(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Called at the end of each batch."""
+        pass
+
+
 class RegressionMetricsCallback(MemoryOptimizedCallback):
     """
     Regression metrics callback.
 
     Computes and tracks regression metrics including MSE, RMSE,
-    MAE, and R² score during training.
+    MAE, and R^2 score during training.
     """
 
     def __init__(self, compute_frequency: int = 1):
@@ -492,6 +518,11 @@ class RegressionMetricsCallback(MemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Compute regression metrics."""
+        if context.epoch % self.compute_frequency != 0:
+            return
 
         if logs is None or "predictions" not in logs or "targets" not in logs:
             return
@@ -513,6 +544,11 @@ class RegressionMetricsCallback(MemoryOptimizedCallback):
             self.r2_history.append(r2)
 
             # Cache metrics
+            metrics_key = f"regression_epoch_{context.epoch}"
+            self.cache_metrics(
+                metrics_key,
+                {
+                    "mse": mse,
                     "rmse": rmse,
                     "mae": mae,
                     "r2": r2,
@@ -534,6 +570,9 @@ class RegressionMetricsCallback(MemoryOptimizedCallback):
 
         if self.mse_history:
             stats.update(
+                {
+                    "mse_mean": float(np.mean(self.mse_history)),
+                    "rmse_mean": float(np.mean(self.rmse_history)),
                     "mae_mean": float(np.mean(self.mae_history)),
                     "r2_mean": float(np.mean(self.r2_history)),
                     "r2_latest": self.r2_history[-1],
@@ -573,7 +612,7 @@ def create_early_stopping(**kwargs) -> EarlyStoppingCallback:
     """Create early stopping callback with default settings."""
     defaults = {"monitor": "val_loss", "patience": 10, "restore_best_weights": True}
     defaults.update(kwargs)
-) -> LearningRateSchedulerCallback:
+def create_learning_rate_scheduler(schedule_type: str = "step", **kwargs) -> LearningRateSchedulerCallback:
     """Create learning rate scheduler with default settings."""
     defaults = {"initial_lr": 0.001}
     if schedule_type == "step":
@@ -599,6 +638,11 @@ def create_model_checkpoint(**kwargs) -> ModelCheckpointCallback:
 def create_classification_metrics(**kwargs) -> ClassificationMetricsCallback:
     """Create classification metrics callback with default settings."""
     defaults = {"compute_frequency": 1}
+    defaults.update(kwargs)
+    return ClassificationMetricsCallback(**defaults)
+
+
+def create_regression_metrics(**kwargs) -> RegressionMetricsCallback:
     """Create regression metrics callback with default settings."""
     defaults = {"compute_frequency": 1}
     defaults.update(kwargs)

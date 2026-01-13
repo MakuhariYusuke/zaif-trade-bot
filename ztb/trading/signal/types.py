@@ -6,6 +6,7 @@ class CalibrationStats(TypedDict):
 
     p_win_lcb: float
     p_win_mean: float
+    p_win_ucb: float
     avg_win: float
     avg_loss: float
     n_eff: float

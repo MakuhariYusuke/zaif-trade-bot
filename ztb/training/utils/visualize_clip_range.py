@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.common.plot_utils import setup_plot_style, save_plot, create_figure
 from ztb.utils.config import ZTBConfig
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
 
@@ -107,6 +109,7 @@ def simulate_policy_updates(
 def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
     """Create visualization comparing different clip_range values."""
     ensure_dir(output_dir)
+    setup_plot_style()
 
     all_metrics = {}
     for clip_range in clip_ranges:
@@ -154,8 +157,7 @@ def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
         axes[1, 1].legend()
 
     plt.tight_layout()
-    plt.savefig(output_dir / "clip_range_comparison.png", dpi=300, bbox_inches="tight")
-    plt.close()
+    save_plot(output_dir / "clip_range_comparison.png", dpi=300, bbox_inches="tight")
 
     # Create summary table
     summary_data = []
@@ -182,7 +184,7 @@ def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
 
     if summary_data:
         df = pd.DataFrame(summary_data)
-        df.to_csv(output_dir / "clip_range_summary.csv", index=False)
+        save_csv_data(df, output_dir / "clip_range_summary.csv", index=False)
 
         # Display summary
         LOGGER.info("Clip Range Comparison Summary:")

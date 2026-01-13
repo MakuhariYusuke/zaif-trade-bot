@@ -12,6 +12,9 @@ class UltraProfitReward(RewardComponent):
     Ported from RewardCalculator._calculate_ultra_profit_reward.
     """
 
+    ACTION_BUY = 1
+    ACTION_SELL = -1
+
 
     def get_name(self) -> str:
         return "ultra_profit"

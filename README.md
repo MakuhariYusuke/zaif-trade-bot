@@ -28,6 +28,20 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 
 ## 🆕 Recent Updates (2025-12-26)
 
+### Benchmark Comparison Refactoring完了 ✅
+- **TypedDict中央化**: BenchmarkComparison, RollingComparison等の型定義を`ztb/types/evaluation_types.py`に移動
+- **共通パフォーマンス指標関数**: `ztb/metrics/metrics.py`に`calculate_performance_metrics()`を追加し、重複コード削減
+- **コード整理**: クラス定義の移動とimport更新により保守性向上
+- **型安全強化**: 集中型定義による一貫した型チェック
+
+### Type Safety and Error Fixes完了 ✅
+- **TypedDictフィールド追加**: `CalibrationStats`に`p_win_ucb`フィールドを追加
+- **コード構造修正**: `compare_strategies.py`のインデントと関数定義を修正
+- **クラス定数追加**: `UltraProfitReward`に`ACTION_BUY`, `ACTION_SELL`定数を追加
+- **メソッドシグネチャ修正**: `ConfidencePenaltyReward._get_setting`のcastパラメータを修正
+- **テスト修正**: `test_confidence_penalty.py`の型アノテーションと設定を修正
+- **型安全向上**: mypyエラーの削減とコードの堅牢性強化
+
 ### 追加コード重複削減完了 ✅
 - **Configuration Utilities作成**: `utils/config_utils.py`に`load_config_from_json()`と`merge_training_configs()`を追加し、20以上のスクリプトで重複していた設定読み込みコードを統一
 - **Analysis Utilities作成**: `utils/analysis_utils.py`に`load_analysis_data()`と`print_basic_stats()`を追加し、データ分析パターンを標準化

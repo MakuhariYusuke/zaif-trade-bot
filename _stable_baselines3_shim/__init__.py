@@ -22,8 +22,8 @@ _real = None
 # errors when lightweight test stubs are present earlier in sys.modules).
 try:
     import importlib
-    importlib.import_module("stable_baselines3.common.callbacks")
-        cb.CheckpointCallback = BaseCallback
+    cb = importlib.import_module("stable_baselines3.common.callbacks")
+    cb.CheckpointCallback = BaseCallback
     try:
         real_cb = importlib.import_module("stable_baselines3.common.callbacks")
         if getattr(real_cb, "__file__", None):

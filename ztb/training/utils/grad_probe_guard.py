@@ -21,6 +21,7 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
 from ztb.training.constants import DEFAULT_TOTAL_TIMESTEPS_SAC
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -293,8 +294,7 @@ class GradProbeGuard(BaseCallback):
         # Save manifest
         manifest = self._create_manifest(stats, timestamp)
         manifest_path = archive_dir / "manifest.json"
-        with open(manifest_path, "w") as f:
-            json.dump(manifest, f, indent=2)
+        safe_json_dump(manifest, str(manifest_path), indent=2)
         logger.info(f"✅ Manifest saved: {manifest_path}")
 
         # Save diagnostics

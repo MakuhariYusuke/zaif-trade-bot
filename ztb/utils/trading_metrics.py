@@ -12,9 +12,8 @@ from numpy.typing import NDArray
 from ztb.metrics.metrics import action_distribution as calculate_action_distribution
 from ztb.metrics.metrics import win_rate as calculate_win_rate
 from ztb.metrics.statistics import calculate_distribution_stats
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR
 from ztb.utils.types import FeatureMetrics, StatsResult
-
-TRADING_DAYS_PER_YEAR = 252
 
 
 def win_rate(returns: Union[List[float], NDArray[np.floating]]) -> float:

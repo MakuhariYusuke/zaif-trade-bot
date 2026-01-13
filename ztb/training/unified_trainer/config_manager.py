@@ -8,6 +8,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from ztb.types.common import ConfigDict
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 
@@ -282,10 +283,7 @@ class ConfigurationFileManager:
     def save_config(self, config: Dict[str, Any], file_path: str) -> bool:
         """Save configuration to file."""
         try:
-            import json
-
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            safe_json_dump(config, file_path, indent=2, ensure_ascii=False)
 
             self.logger.info(f"Configuration saved to {file_path}")
             return True

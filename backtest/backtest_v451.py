@@ -15,12 +15,10 @@ import pandas as pd
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
 
-from stable_baselines3 import SAC
-
 from ztb.trading.environment.heavy_env import HeavyTradingEnv
-from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
-from utils.results_utils import save_backtest_results
+from ztb.utils.analysis_formatters import print_formatted_metrics
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.training_utils import load_model
 
 
@@ -71,13 +69,13 @@ def run_backtest_v451():
     env = HeavyTradingEnv(df=backtest_df, config=env_config)
 
     # DEBUG: Check features
-    print(f"Environment feature count: {len(env.feature_names)}")
+    print(f"Environment feature count: {len(env.feature_names or [])}")
     # print(f"Environment feature names: {env.feature_names}")
 
     # Fix feature mismatch (143 vs 138)
     # The model expects 138 features, but the environment produces 143.
     # We suspect the extra features are the duplicate regime features and vol_rank.
-    if len(env.feature_names) == 143:
+    if len(env.feature_names or []) == 143:
         print("Detected 143 features. Attempting to align with model (138 features)...")
 
         # Suspected extra features
@@ -90,7 +88,10 @@ def run_backtest_v451():
         ]
 
         # Create corrected feature list
-        corrected_features = [f for f in env.feature_names if f not in extra_features]
+        if env.feature_names:
+            corrected_features = [f for f in env.feature_names if f not in extra_features]
+        else:
+            corrected_features = []
 
         if len(corrected_features) == 138:
             print("Aligned feature count to 138. Re-initializing environment...")
@@ -100,7 +101,7 @@ def run_backtest_v451():
 
             # Re-create environment
             env = HeavyTradingEnv(df=backtest_df, config=env_config)
-            print(f"New environment feature count: {len(env.feature_names)}")
+            print(f"New environment feature count: {len(env.feature_names or [])}")
         else:
             print(
                 f"Warning: Could not align features. Count after removal: {len(corrected_features)}"
@@ -183,7 +184,7 @@ def run_backtest_v451():
     results_csv_path = os.path.join(output_dir, "backtest_results.csv")
 
     # Save detailed CSV
-    results_df.to_csv(results_csv_path)
+    results_df.to_csv(results_csv_path, index=False)
 
     # Save Summary JSON
     regime_counts = {}
@@ -217,8 +218,7 @@ def run_backtest_v451():
         "regime_counts": regime_counts,
     }
 
-    with open(results_json_path, "w") as f:
-        json.dump(summary, f, indent=4)
+    safe_json_dump(summary, results_json_path, indent=4)
 
     print("Backtest complete.")
     print(f"Results saved to {output_dir}")
@@ -228,31 +228,6 @@ def run_backtest_v451():
 
     # Print formatted metrics
     print_formatted_metrics(summary, "SAC v451 Backtest Results")
-
-
-def print_formatted_metrics(result, title):
-    """Print formatted backtest metrics"""
-    print(f"\n{'='*60}")
-    print(f"📊 {title}")
-    print(f"{'='*60}")
-    
-    # Basic metrics
-    print(f"💰 Final Portfolio Value: ${result.get('final_balance', 0):.2f}")
-    print(f"📈 Total Return: {result.get('return_pct', 0):.2f}%")
-    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
-    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
-    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
-    
-    # Trade metrics
-    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
-    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
-    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
-    
-    # Risk metrics
-    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
-    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
-    
-    print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":

@@ -14,10 +14,12 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
-from ztb.sac_v427_market_adaptive_system import SACv427MarketAdaptiveSystem
+# from ztb.sac_v427_market_adaptive_system import SACv427MarketAdaptiveSystem  # Module not found
 from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.types.common import ConfigDict
+from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -181,11 +183,11 @@ class SACv427AdvancedTrainer(BaseTrainer):
                 )
                 # Ensure data directory exists
                 Path(data_path).parent.mkdir(parents=True, exist_ok=True)
-                mock_data.to_csv(data_path, index=False)
+                save_csv_data(mock_data, data_path, index=False)
                 logger.info(f"Created mock data at {data_path}")
 
             # Load and validate data
-            df = pd.read_csv(data_path)
+            df = load_csv_data(data_path)
             logger.info(f"Loaded data with shape: {df.shape}")
 
             # Set timestamp as index if it exists
@@ -212,7 +214,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
             # Save features
             features_path = "data/btc_jpy_v427_features.csv"
             Path(features_path).parent.mkdir(parents=True, exist_ok=True)
-            features_df.to_csv(features_path)
+            save_csv_data(features_df, features_path)
 
             return {
                 "features_generated": len(features_df.columns),
@@ -582,8 +584,7 @@ def main():
     output_path = Path(args.output_dir) / "sac_v427_training_results.json"
     output_path.parent.mkdir(exist_ok=True)
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    safe_json_dump(results, str(output_path), indent=2, ensure_ascii=False, default=str)
 
     print(f"SAC v427 training completed. Results saved to: {output_path}")
     print(f"Final model: {results.get('final_model', 'N/A')}")

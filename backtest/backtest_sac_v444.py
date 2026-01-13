@@ -19,15 +19,12 @@ import pandas as pd
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from stable_baselines3 import SAC
-
+from utils.results_utils import save_backtest_results
 from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.logging_utils import get_logger
-from utils.backtest_init_utils import initialize_backtest_components, validate_backtest_setup
-from utils.results_utils import save_backtest_results
 from ztb.utils.training_utils import load_model
 
 logger = get_logger(__name__)
@@ -227,7 +224,9 @@ class SACV444Backtester:
         }
 
         # Action distribution
-        discrete_actions = [continuous_to_discrete_action(action) for action in actions_history]
+        discrete_actions = [
+            continuous_to_discrete_action(action) for action in actions_history
+        ]
         buy_count = discrete_actions.count(ACTION_BUY)
         sell_count = discrete_actions.count(ACTION_SELL)
         hold_count = discrete_actions.count(ACTION_HOLD)
@@ -256,7 +255,7 @@ class SACV444Backtester:
             results["portfolio_values"],
             results["actions_history"],
             results["metrics"],
-            output_dir
+            output_dir,
         )
         logger.info(f"Saved backtest results to {output_dir}")
 
@@ -266,23 +265,23 @@ def print_formatted_metrics(result, title):
     print(f"\n{'='*60}")
     print(f"📊 {title}")
     print(f"{'='*60}")
-    
+
     # Basic metrics
     print(f"💰 Final Portfolio Value: ${result.get('final_portfolio_value', 0):.2f}")
     print(f"📈 Total Return: {result.get('total_return_pct', 0):.2f}%")
     print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
     print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
     print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
-    
+
     # Trade metrics
     print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
     print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
     print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
-    
+
     # Risk metrics
     print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
     print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
-    
+
     print(f"{'='*60}\n")
 
 

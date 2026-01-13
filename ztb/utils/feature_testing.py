@@ -7,12 +7,12 @@ against various strategies and calculating performance metrics.
 
 from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
+
+from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
 
 
 def calculate_trading_metrics(
@@ -54,7 +54,9 @@ def calculate_trading_metrics(
     sharpe_ratio = sharpe_ratio(strategy_returns, period_per_year=TRADING_DAYS_PER_YEAR)
 
     # Sortino ratio
-    sortino_ratio = sortino_ratio(strategy_returns, period_per_year=TRADING_DAYS_PER_YEAR)
+    sortino_ratio = sortino_ratio(
+        strategy_returns, period_per_year=TRADING_DAYS_PER_YEAR
+    )
 
     # Calmar ratio
     if abs(max_drawdown) > 0:

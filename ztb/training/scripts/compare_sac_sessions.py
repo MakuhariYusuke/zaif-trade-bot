@@ -23,6 +23,8 @@ import numpy as np
 from scipy import stats
 from tensorboard.backend.event_processing import event_accumulator
 
+from ztb.utils.file_utils import safe_json_dump
+
 # 定数定義
 DEFAULT_METRICS = ["train/ent_coef", "train/critic_loss", "train/actor_loss"]
 DEFAULT_OUTPUT_FILE = "sac_comparison.json"
@@ -363,8 +365,7 @@ def compare_sac_sessions(
             "geometric": p_mean_geometric,
         },
     }
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=2)
+    safe_json_dump(output_data, output_file, indent=2)
 
     print(f"\n💾 Comparison saved to: {output_file}")
     print("=" * 80)

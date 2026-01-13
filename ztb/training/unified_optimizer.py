@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.system_utils import check_library_availability
 
@@ -805,8 +806,7 @@ class UnifiedOptimizer:
         }
 
         # 従来のJSON保存
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+        safe_json_dump(results, filepath, indent=2, ensure_ascii=False, default=str)
 
         # バージョン管理システムにも保存
         try:
@@ -2224,7 +2224,7 @@ class OptimizationResultPersistence:
         }
 
         with open(self.version_file, 'w', encoding='utf-8') as f:
-            json.dump(version_data, f, indent=2, ensure_ascii=False)
+            safe_json_dump(version_data, self.version_file, indent=2, ensure_ascii=False)
 
     def save_optimization_result(
         self,
@@ -2265,7 +2265,7 @@ class OptimizationResultPersistence:
         filepath = self.base_dir / filename
 
         with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(result_data, f, indent=2, ensure_ascii=False, default=str)
+            safe_json_dump(result_data, filepath, indent=2, ensure_ascii=False, default=str)
 
         # バージョン情報を更新
         self._save_current_version()
@@ -2323,8 +2323,7 @@ class OptimizationResultPersistence:
         }
 
         # インデックス保存
-        with open(index_file, 'w', encoding='utf-8') as f:
-            json.dump(index, f, indent=2, ensure_ascii=False)
+        safe_json_dump(index, index_file, indent=2, ensure_ascii=False)
 
     def load_optimization_result(self, version_id: str) -> Optional[Dict[str, Any]]:
         """最適化結果を読み込み"""
@@ -2521,8 +2520,7 @@ class OptimizationResultPersistence:
                 # インデックスから削除
                 del index[version_id]
                 index_file = self.base_dir / "index.json"
-                with open(index_file, 'w', encoding='utf-8') as f:
-                    json.dump(index, f, indent=2, ensure_ascii=False)
+                safe_json_dump(index, index_file, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Cleaned up {len(to_delete)} old versions")
 

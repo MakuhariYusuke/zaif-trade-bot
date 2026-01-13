@@ -35,25 +35,33 @@ from ztb.types.common import (
     MetaLearnerProtocol,
     TrainingStats,
 )
+from ztb.utils.data_utils import load_csv_data
+from ztb.utils.error_utils import safe_execute
 from ztb.utils.exceptions.custom_exceptions import TrainingError
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.memory_utils import cleanup_training_memory
 from ztb.utils.performance_profiler import MemoryProfiler
+from ztb.metrics.metrics import sharpe_ratio
 
 OPACUS_AVAILABLE = importlib.util.find_spec("opacus") is not None
 
 AMP_AVAILABLE = False
 if torch is not None:
-    try:
-        from torch.amp import GradScaler
-
-        AMP_AVAILABLE = True
-    except Exception:
+    def _try_amp_import():
+        try:
+            from torch.amp import GradScaler
+            return True
+        except Exception:
+            return False
+    
+    def _try_cuda_amp_import():
         try:
             from torch.cuda.amp import GradScaler
-
-            AMP_AVAILABLE = True
+            return True
         except Exception:
-            AMP_AVAILABLE = False
+            return False
+    
+    AMP_AVAILABLE = _try_amp_import() or _try_cuda_amp_import()
 
 from ztb.adaptation.continual_learning import (
     ContinualLearner,
@@ -648,7 +656,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Read data file to get actual feature count
             try:
                 # Read only header to get column count efficiently
-                df_header = pd.read_csv(data_file, nrows=0)
+                df_header = load_csv_data(data_file, nrows=0)
                 actual_feature_count = (
                     len(df_header.columns) - 1
                 )  # Exclude timestamp/index column
@@ -689,7 +697,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
                 # Read full data to get feature names
                 try:
-                    df_sample = pd.read_csv(
+                    df_sample = load_csv_data(
                         data_file, nrows=5
                     )  # Read sample for feature names
                     actual_features = df_sample.columns[
@@ -2129,7 +2137,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 return None
 
             try:
-                data = pd.read_csv(data_path)
+                data = load_csv_data(data_path)
                 self.logger.info(f"Loaded data from {data_path}, shape: {data.shape}")
                 # Validate v454 columns
                 self._validate_v454_columns(data, str(data_path))
@@ -2250,7 +2258,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Load data
             if data_path and Path(data_path).exists():
-                custom_df = pd.read_csv(data_path)
+                custom_df = load_csv_data(data_path)
                 custom_df["timestamp"] = pd.to_datetime(custom_df["timestamp"])
                 self.logger.info(
                     f"Loaded custom data from {data_path}, shape: {custom_df.shape}"
@@ -2263,7 +2271,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     raise FileNotFoundError(
                         f"Default data file not found: {default_path}"
                     )
-                df = pd.read_csv(default_path)
+                df = load_csv_data(default_path)
                 df["timestamp"] = pd.to_datetime(df["timestamp"])
                 self.logger.info(f"Loaded default data, shape: {df.shape}")
 
@@ -2324,8 +2332,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 output_dir = Path(output_path).parent
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                with open(output_path, "w", encoding="utf-8") as f:
-                    json.dump(results, f, indent=2, default=str)
+                safe_json_dump(results, output_path, indent=2, default=str)
                 self.logger.info(f"Results saved to {output_path}")
 
             self.logger.info("Multi-period backtest analysis completed")
@@ -2487,7 +2494,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 "win_rate": sum(1 for r in results if r["total_return_pct"] > 0)
                 / len(results)
                 * 100,
-                "sharpe_ratio": self._calculate_sharpe_ratio(returns),
+                "sharpe_ratio": sharpe_ratio(returns, period_per_year=1),
             }
 
         for trend_type, trend_results in trend_groups.items():
@@ -2501,19 +2508,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     )
                     / len(trend_results)
                     * 100,
-                    "sharpe_ratio": self._calculate_sharpe_ratio(returns),
+                    "sharpe_ratio": sharpe_ratio(returns, period_per_year=1),
                 }
 
         return analysis
-
-    def _calculate_sharpe_ratio(self, returns: List[float]) -> float:
-        """Calculate Sharpe ratio from returns list."""
-        if not returns or len(returns) < 2:
-            return 0.0
-
-        from ztb.metrics.metrics import sharpe_ratio
-
-        return sharpe_ratio(returns, period_per_year=1)
 
     def run_multi_period_backtest(
         self,
@@ -2620,7 +2618,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             import pandas as pd
 
-            df = pd.read_csv(csv_path)
+            df = load_csv_data(csv_path)
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             return df
         except Exception as e:

@@ -18,6 +18,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.metrics import sharpe_ratio as calculate_sharpe_ratio
 from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.training_utils import create_checkpoint_callback, create_eval_callback
 
@@ -601,14 +602,18 @@ def run_trading_backtest(
         trades_path = os.path.join(output_dir, "trades_history.csv")
         if trades:
             trades_df = pd.DataFrame(trades)
-            trades_df.to_csv(trades_path, index=False)
+            save_csv_data(trades_df, trades_path, index=False)
 
         # ポートフォリオ推移保存
         portfolio_path = os.path.join(output_dir, "portfolio_values.csv")
         if portfolio_values:
-            pd.DataFrame(
-                {"step": range(len(portfolio_values)), "value": portfolio_values}
-            ).to_csv(portfolio_path, index=False)
+            save_csv_data(
+                pd.DataFrame(
+                    {"step": range(len(portfolio_values)), "value": portfolio_values}
+                ),
+                portfolio_path,
+                index=False
+            )
 
         logger.info(f"バックテスト完了。結果保存: {results_path}")
         logger.info(

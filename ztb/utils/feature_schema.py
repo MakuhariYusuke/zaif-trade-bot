@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -296,8 +297,7 @@ class FeaturesSchema:
             "schema_hash": self.compute_hash(),
         }
 
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(schema_dict, f, indent=2, ensure_ascii=False)
+        safe_json_dump(schema_dict, path, indent=2, ensure_ascii=False)
 
         logger.info(
             "Feature schema saved to %s (hash: %s...)", path, self.compute_hash()[:16]

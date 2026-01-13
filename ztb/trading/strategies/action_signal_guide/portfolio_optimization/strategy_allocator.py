@@ -34,6 +34,7 @@ from ..interfaces.portfolio_interfaces import (
     RiskMetrics,
     StrategyPerformance,
 )
+from ztb.metrics.metrics import max_drawdown
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,8 @@ class BaseStrategyAllocator(IStrategyAllocator):
                     expected_volatility=0.0,
                     sharpe_ratio=0.0,
                     diversification_ratio=0.0,
-                    rebalance_frequency=self.config.rebalance_frequency,
-                    last_rebalance_time=time.time(),
-                    metadata={"reason": "no_rebalance_needed"},
+                    timestamp=time.time(),
+                    metadata={"reason": "no_rebalance_needed", "rebalance_frequency": self.config.rebalance_frequency, "last_rebalance_time": time.time()},
                 )
 
         # Perform full reallocation
@@ -582,7 +582,16 @@ class BaseStrategyAllocator(IStrategyAllocator):
         self, strategy_performance: Dict[str, StrategyPerformance]
     ) -> float:
         """Estimate maximum drawdown from strategy performance."""
-        # Simplified estimation based on volatilities
+        # Try to use actual portfolio values if available
+        all_values = []
+        for perf in strategy_performance.values():
+            if hasattr(perf, 'portfolio_values') and perf.portfolio_values:
+                all_values.extend(perf.portfolio_values)
+
+        if all_values:
+            return abs(max_drawdown(all_values))
+
+        # Fallback: Simplified estimation based on volatilities
         max_vol = max(
             (perf.volatility for perf in strategy_performance.values()), default=0
         )

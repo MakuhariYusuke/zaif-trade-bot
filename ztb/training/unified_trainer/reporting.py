@@ -11,7 +11,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
 from ztb.types.common import ConfigDict
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 # Magic number constants for reporting
@@ -66,8 +68,7 @@ class TrainingReporter:
         filepath = os.path.join(output_dir, filename)
 
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2, ensure_ascii=False, default=str)
+            safe_json_dump(report, filepath, indent=2, ensure_ascii=False, default=str)
 
             self.logger.info(f"Training report saved to {filepath}")
             return filepath
@@ -82,43 +83,43 @@ class TrainingReporter:
         stats = report["training_stats"]
         perf = report["performance_metrics"]
 
-        print("\n" + "=" * 60)
-        print("TRAINING REPORT SUMMARY")
-        print("=" * 60)
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("TRAINING REPORT SUMMARY")
+        self.logger.info("=" * 60)
 
-        print(f"Algorithm: {meta['algorithm'].upper()}")
-        print(f"Model: {meta['model_name']}")
-        print(f"Status: {'✅ SUCCESS' if meta['success'] else '❌ FAILED'}")
-        print(f"Timestamp: {meta['timestamp']}")
+        self.logger.info(f"Algorithm: {meta['algorithm'].upper()}")
+        self.logger.info(f"Model: {meta['model_name']}")
+        self.logger.info(f"Status: {'✅ SUCCESS' if meta['success'] else '❌ FAILED'}")
+        self.logger.info(f"Timestamp: {meta['timestamp']}")
 
         if stats:
-            print("\n📊 TRAINING STATISTICS:")
-            print("-" * 30)
+            self.logger.info("\n📊 TRAINING STATISTICS:")
+            self.logger.info("-" * 30)
 
             for key, value in stats.items():
                 if isinstance(value, float):
                     if "time" in key.lower():
-                        print(f"{key}: {value:.2f}s")
+                        self.logger.info(f"{key}: {value:.2f}s")
                     elif "rate" in key.lower() or "ratio" in key.lower():
-                        print(f"{key}: {value:.4f}")
+                        self.logger.info(f"{key}: {value:.4f}")
                     else:
-                        print(f"{key}: {value:.2f}")
+                        self.logger.info(f"{key}: {value:.2f}")
                 elif isinstance(value, int):
-                    print(f"{key}: {value:,}")
+                    self.logger.info(f"{key}: {value:,}")
                 else:
-                    print(f"{key}: {value}")
+                    self.logger.info(f"{key}: {value}")
 
         if perf:
-            print("\n📈 PERFORMANCE METRICS:")
-            print("-" * 30)
+            self.logger.info("\n📈 PERFORMANCE METRICS:")
+            self.logger.info("-" * 30)
 
             for key, value in perf.items():
                 if isinstance(value, float):
-                    print(f"{key}: {value:.4f}")
+                    self.logger.info(f"{key}: {value:.4f}")
                 else:
-                    print(f"{key}: {value}")
+                    self.logger.info(f"{key}: {value}")
 
-        print("=" * 60)
+        self.logger.info("=" * 60)
 
     def _calculate_performance_metrics(self, stats: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate additional performance metrics from training stats."""
@@ -238,8 +239,7 @@ class TrainingEventLogger:
     def save_events(self, filepath: str) -> None:
         """Save events to file."""
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(self.events, f, indent=2, ensure_ascii=False, default=str)
+            safe_json_dump(self.events, filepath, indent=2, ensure_ascii=False, default=str)
             self.logger.info(f"Training events saved to {filepath}")
         except Exception as e:
             self.logger.error(f"Failed to save training events: {e}")
@@ -611,6 +611,7 @@ class TrainingEventLogger:
         # リスク指標の計算
         drawdown_analysis: List[float] = []
         volatility_analysis: List[float] = []
+        portfolio_values: List[float] = []
 
         current_drawdown: float = 0.0
         peak_value: float = 0.0
@@ -630,6 +631,7 @@ class TrainingEventLogger:
                 change = -confidence * 0.01  # 1%の下落期待
 
             portfolio_value *= 1 + change
+            portfolio_values.append(portfolio_value)
 
             # ドローダウン計算
             if portfolio_value > peak_value:
@@ -654,18 +656,21 @@ class TrainingEventLogger:
             float(np.mean(volatility_analysis)) if volatility_analysis else 0.0
         )
 
-        sharpe_ratio = total_return / avg_volatility if avg_volatility > 0 else 0
-        neg_drawdowns = [d for d in drawdown_analysis if d < 0]
-        downside_std = float(np.std(neg_drawdowns)) if neg_drawdowns else 0.0
-        # prevent division by zero
-        sortino_ratio = total_return / (downside_std if downside_std > 0 else 0.001)
+        # Calculate returns for Sharpe and Sortino ratios
+        if len(portfolio_values) > 1:
+            returns = np.diff(portfolio_values) / portfolio_values[:-1]
+            sharpe_ratio_val = sharpe_ratio(returns)
+            sortino_ratio_val = sortino_ratio(returns)
+        else:
+            sharpe_ratio_val = 0.0
+            sortino_ratio_val = 0.0
 
         return {
             "total_return": total_return,
             "max_drawdown": max_drawdown,
             "avg_volatility": avg_volatility,
-            "sharpe_ratio": sharpe_ratio,
-            "sortino_ratio": sortino_ratio,
+            "sharpe_ratio": sharpe_ratio_val,
+            "sortino_ratio": sortino_ratio_val,
             "risk_score": self._calculate_risk_score(max_drawdown, avg_volatility),
             "drawdown_analysis": drawdown_analysis[-50:],  # 最新50件
             "volatility_trend": volatility_analysis[-50:]
@@ -887,8 +892,7 @@ class TrainingEventLogger:
         filepath = os.path.join(output_dir, filename)
 
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2, ensure_ascii=False, default=str)
+            safe_json_dump(report, filepath, indent=2, ensure_ascii=False, default=str)
 
             self.logger.info(f"Ensemble report saved to {filepath}")
             return filepath

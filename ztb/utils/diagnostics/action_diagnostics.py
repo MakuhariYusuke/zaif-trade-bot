@@ -16,9 +16,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+
+from ztb.analysis.common.plot_utils import save_plot
+from ztb.utils.file_utils import safe_json_dump
 
 if TYPE_CHECKING:
-    import torch
+    pass
 
 
 class ActionDiagnostics:
@@ -168,14 +172,12 @@ class ActionDiagnostics:
                     for i in range(min(5, len(actions_np)))
                 ],
             }
-            with open(sample_file, "w") as f:
-                json.dump(sample_data, f, indent=2)
+            safe_json_dump(sample_data, sample_file, indent=2)
 
     def save_logs(self, filename: str = "diagnostics_log.json") -> None:
         """Save all logged diagnostics to file."""
         log_file = self.save_dir / filename
-        with open(log_file, "w") as f:
-            json.dump(self.batch_logs, f, indent=2)
+        safe_json_dump(self.batch_logs, str(log_file), indent=2)
         print(f"Diagnostics saved to {log_file}")
 
     def plot_diagnostics(self) -> None:
@@ -250,7 +252,7 @@ class ActionDiagnostics:
 
         plt.tight_layout()
         plot_file = self.save_dir / "diagnostics_plots.png"
-        plt.savefig(plot_file, dpi=150)
+        save_plot(plot_file, dpi=150)
         plt.close()
         print(f"Diagnostic plots saved to {plot_file}")
 

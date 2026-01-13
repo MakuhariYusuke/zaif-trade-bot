@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -460,10 +461,7 @@ class EnsemblePredictor:
             "performance_history": self.performance_history[-1000:],
         }
 
-        import json
-
-        with open(path, "w") as f:
-            json.dump(state, f, indent=2)
+        safe_json_dump(state, path, indent=2)
 
         self.logger.info(f"Ensemble state saved to {path}")
 

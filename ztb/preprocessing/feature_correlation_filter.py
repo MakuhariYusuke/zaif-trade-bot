@@ -14,7 +14,9 @@ import pandas as pd
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 
+from ztb.analysis.common.plot_utils import setup_plot_style, save_plot
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
@@ -206,8 +208,7 @@ class FeatureCorrelationProcessor:
                     plt.axvline(x=idx, color="red", alpha=0.3, linewidth=2)  # type: ignore[arg-type]
 
         plt.tight_layout()
-        plt.savefig(output_path, dpi=300, bbox_inches="tight")
-        plt.close()
+        save_plot(output_path, dpi=300, bbox_inches="tight")
 
     def get_correlation_report(self) -> Dict[str, Any]:
         """
@@ -302,7 +303,7 @@ def process_dataset(
 
     # Save processed dataset
     ensure_dir(output_path.parent)
-    filtered_df.to_csv(output_path, index=False)
+    save_csv_data(filtered_df, str(output_path), index=False)
 
     # Create visualizations
     viz_dir = output_path.parent / "visualizations"

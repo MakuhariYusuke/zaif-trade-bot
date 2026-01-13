@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from ztb.types.common import ConfigDict
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -268,8 +269,7 @@ class ConfigFingerprint:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(path, "w") as f:
-            json.dump(asdict(self), f, indent=2, sort_keys=True)
+        safe_json_dump(asdict(self), str(path), indent=2, sort_keys=True)
 
     @classmethod
     def load(cls, path: Path | str) -> "ConfigFingerprint":

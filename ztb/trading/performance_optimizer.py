@@ -22,6 +22,7 @@ import psutil
 
 from ztb.trading.v433_integration_manager import V433IntegrationManager
 from ztb.types.common import BaseComponent
+from ztb.utils.error_utils import safe_execute
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -296,7 +297,7 @@ class LatencyOptimizer:
             if line.strip() and not line.startswith(" "):
                 parts = line.split()
                 if len(parts) >= 6:
-                    try:
+                    def parse_line():
                         cum_time = float(parts[3])
                         if cum_time > 0.01:  # 10ms以上の関数
                             bottlenecks.append(
@@ -308,8 +309,8 @@ class LatencyOptimizer:
                                     "calls": parts[0] if parts[0].isdigit() else 0,
                                 }
                             )
-                    except (ValueError, IndexError):
-                        continue
+                    
+                    safe_execute(parse_line, error_msg="Error parsing profile line")
 
         return sorted(bottlenecks, key=lambda x: x["cumulative_time"], reverse=True)[
             :10
@@ -317,105 +318,94 @@ class LatencyOptimizer:
 
     def _optimize_async_processing(self) -> bool:
         """非同期処理の最適化"""
-        try:
+        def optimize_async():
             # asyncioの設定最適化
             # 実際の実装ではイベントループの設定を調整
             return True
-        except Exception as e:
-            self.logger.error(f"Async processing optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_async, error_msg="Async processing optimization failed", default_return=False)
 
     def _optimize_data_structures(self) -> bool:
         """データ構造の最適化"""
-        try:
+        def optimize_data_struct():
             # numpy arrayの使用、リストからdequeへの変更など
             # 実際の実装ではデータ構造を効率的なものに置き換え
             return True
-        except Exception as e:
-            self.logger.error(f"Data structure optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_data_struct, error_msg="Data structure optimization failed", default_return=False)
 
     def _optimize_memory_pool(self) -> bool:
         """メモリプールの最適化"""
-        try:
+        def optimize_memory():
             # メモリプールの事前割り当て
             return True
-        except Exception as e:
-            self.logger.error(f"Memory pool optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_memory, error_msg="Memory pool optimization failed", default_return=False)
 
     def _optimize_caching(self) -> bool:
         """キャッシュの最適化"""
-        try:
+        def optimize_cache():
             # LRUキャッシュのサイズ調整、キャッシュ戦略の改善
             return True
-        except Exception as e:
-            self.logger.error(f"Caching optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_cache, error_msg="Caching optimization failed", default_return=False)
 
     def _optimize_parallel_processing(self) -> bool:
         """並列処理の最適化"""
-        try:
+        def optimize_parallel():
             # スレッドプールサイズの調整、プロセスプールの使用
             return True
-        except Exception as e:
-            self.logger.error(f"Parallel processing optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_parallel, error_msg="Parallel processing optimization failed", default_return=False)
 
     def _optimize_algorithms(self) -> bool:
         """アルゴリズムの最適化"""
-        try:
+        def optimize_algo():
             # 計算量の多いアルゴリズムの最適化
             return True
-        except Exception as e:
-            self.logger.error(f"Algorithm optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_algo, error_msg="Algorithm optimization failed", default_return=False)
 
     def _optimize_io_operations(self) -> bool:
         """I/O操作の最適化"""
-        try:
+        def optimize_io():
             # 非同期I/O、バッチ処理など
             return True
-        except Exception as e:
-            self.logger.error(f"I/O optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_io, error_msg="I/O optimization failed", default_return=False)
 
     def _optimize_garbage_collection(self) -> bool:
         """ガベージコレクションの最適化"""
-        try:
+        def optimize_gc():
             gc.collect()  # 強制ガベージコレクション
             gc.set_threshold(700, 10, 10)  # GC閾値の調整
             return True
-        except Exception as e:
-            self.logger.error(f"Garbage collection optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_gc, error_msg="Garbage collection optimization failed", default_return=False)
 
     def _fix_memory_leaks(self) -> bool:
         """メモリリークの修正"""
-        try:
+        def fix_leaks():
             # 循環参照の解除、weakrefの使用など
             return True
-        except Exception as e:
-            self.logger.error(f"Memory leak fix failed: {e}")
-            return False
+        
+        return safe_execute(fix_leaks, error_msg="Memory leak fix failed", default_return=False)
 
     def _optimize_memory_structures(self) -> bool:
         """メモリ構造の最適化"""
-        try:
+        def optimize_mem_struct():
             # __slots__の使用、__dict__の最適化など
             return True
-        except Exception as e:
-            self.logger.error(f"Memory structure optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_mem_struct, error_msg="Memory structure optimization failed", default_return=False)
 
     def _optimize_cache_sizes(self) -> bool:
         """キャッシュサイズの最適化"""
-        try:
+        def optimize_cache_size():
             # キャッシュサイズの動的調整
             return True
-        except Exception as e:
-            self.logger.error(f"Cache size optimization failed: {e}")
-            return False
+        
+        return safe_execute(optimize_cache_size, error_msg="Cache size optimization failed", default_return=False)
 
     def _measure_data_processing_performance(self) -> SystemPerformanceMetrics:
         """データ処理パフォーマンスの測定"""

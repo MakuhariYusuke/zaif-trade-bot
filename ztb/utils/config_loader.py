@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, TextIO, Union, cast
 import yaml
 
 from ztb.types.common import ConfigDict
+from ztb.utils.config_manager import save_toml_to_file_obj
 from ztb.utils.file_utils import safe_json_load
 
 try:
@@ -269,11 +270,7 @@ class ConfigLoader(BaseConfigLoader):
         Raises:
             ImportError: If TOML library is not available
         """
-        if TOML_WRITE_AVAILABLE and tomli_w is not None:
-            tomli_w.dump(config, file_obj)
-        else:
-            # Fallback: convert to basic TOML format
-            ConfigLoader._write_basic_toml(config, file_obj)
+        save_toml_to_file_obj(config, file_obj)
 
     @staticmethod
     def _write_basic_toml(

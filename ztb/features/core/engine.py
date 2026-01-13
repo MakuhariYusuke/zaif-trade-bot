@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.data.data_generation import generate_synthetic_market_data
+from ztb.utils.file_utils import save_csv_data
 from ztb.analysis.common.types import FeatureCalculator
 
 # Optimize GC for better memory management - more aggressive
@@ -136,5 +137,5 @@ if __name__ == "__main__":
 
     # Save sample of results
     sample_output = features_df.head(100)
-    sample_output.to_csv("reports/feature_computation_sample.csv")
+    save_csv_data(sample_output, "reports/feature_computation_sample.csv")
     print("Sample results saved to reports/feature_computation_sample.csv")

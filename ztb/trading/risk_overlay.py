@@ -16,6 +16,7 @@ from scipy import stats
 
 from ztb.trading.position_manager import PortfolioState, PositionManager
 from ztb.utils.logging_utils import get_logger
+from ztb.metrics.metrics import max_drawdown
 
 logger = get_logger(__name__)
 
@@ -677,10 +678,14 @@ class RiskOverlay:
 
     def _calculate_max_drawdown(self) -> float:
         """最大ドローダウンを計算"""
-        # 簡易版：過去30日の価格データから計算
-        # 実際の実装ではより詳細な履歴が必要
-        # TODO: Use ztb.metrics.metrics.max_drawdown when historical data is available
-        return 0.05  # 仮定値
+        # ポートフォリオ価値の履歴があれば計算
+        if hasattr(self.position_manager, 'portfolio_history') and self.position_manager.portfolio_history:
+            portfolio_values = [state.portfolio_value for state in self.position_manager.portfolio_history[-100:]]  # 直近100件
+            if len(portfolio_values) > 1:
+                return abs(max_drawdown(portfolio_values))
+
+        # データが不十分な場合は保守的な推定値
+        return 0.05
 
     def _calculate_correlation_metrics(self) -> Tuple[float, float]:
         """相関指標を計算"""

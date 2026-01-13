@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
+from ztb.analysis.common.plot_utils import save_plot
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -155,7 +156,7 @@ class RewardFunctionDisplayManager:
                 self.output_dir
                 / f"parameter_importance_{stage_name.lower().replace(' ', '_')}.png"
             )
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
+            save_plot(filename)
             self.logger.info(f"Saved parameter importance plot to {filename}")
 
         if show_plots:
@@ -194,7 +195,7 @@ class RewardFunctionDisplayManager:
                 self.output_dir
                 / f"optimization_history_{stage_name.lower().replace(' ', '_')}.png"
             )
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
+            save_plot(filename)
             self.logger.info(f"Saved optimization history plot to {filename}")
 
         if show_plots:
@@ -249,7 +250,7 @@ class RewardFunctionDisplayManager:
                 self.output_dir
                 / f"parameter_correlations_{stage_name.lower().replace(' ', '_')}.png"
             )
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
+            save_plot(filename)
             self.logger.info(f"Saved parameter correlations plot to {filename}")
 
         if show_plots:
@@ -337,7 +338,7 @@ class RewardFunctionDisplayManager:
 
         if save_plots:
             filename = self.output_dir / "configuration_comparison.png"
-            plt.savefig(filename, dpi=300, bbox_inches="tight")
+            save_plot(filename)
             self.logger.info(f"Saved comparison plot to {filename}")
 
         if show_plots:

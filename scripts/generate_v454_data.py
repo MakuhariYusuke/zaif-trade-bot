@@ -1,5 +1,5 @@
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -10,10 +10,13 @@ sys.path.insert(0, str(project_root))
 
 from ztb.features.models.sac.sac_v454_feature_engineering import SACv454FeatureEngineer
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import save_csv_data
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate v454 features from market data.")
+    parser = argparse.ArgumentParser(
+        description="Generate v454 features from market data."
+    )
     parser.add_argument("--input", type=str, help="Path to input CSV file")
     parser.add_argument("--output", type=str, help="Path to output CSV file")
     args = parser.parse_args()
@@ -54,7 +57,7 @@ def main():
             print(f"Missing {col}: FAIL")
 
     print(f"Saving to {output_path}")
-    features_df.to_csv(output_path)
+    save_csv_data(features_df, output_path)
     print("Done.")
 
 

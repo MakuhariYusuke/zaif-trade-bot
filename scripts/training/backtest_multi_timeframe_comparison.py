@@ -9,22 +9,24 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from utils.config_utils import load_config_from_json
 from ztb.analysis.sac_backtester import SACBacktester
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.utils.logging_utils import get_logger
-from utils.config_utils import load_config_from_json
 
 logger = get_logger(__name__)
 
 
-def run_backtest_for_config(config_name: str, output_dir: str = "results/backtest_multi_timeframe") -> dict:
+def run_backtest_for_config(
+    config_name: str, output_dir: str = "results/backtest_multi_timeframe"
+) -> dict:
     """
     Run backtest for a specific configuration.
 
@@ -68,6 +70,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
                 raise FileNotFoundError(f"Data file not found: {data_path}")
 
         import pandas as pd
+
         df = pd.read_csv(data_path)
         logger.info("✅ Data loaded successfully")
 
@@ -94,7 +97,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = f"{output_dir}/backtest_{config_name}_{timestamp}.json"
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(results, f, indent=2, default=str)
 
         logger.info(f"💾 Results saved to: {output_file}")
@@ -111,7 +114,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
             "total_trades": results.get("total_trades", 0),
             "avg_trade_return": results.get("avg_trade_return", 0),
             "success": True,
-            "output_file": output_file
+            "output_file": output_file,
         }
 
         logger.info(f"✅ Backtest completed for {config_name}")
@@ -128,7 +131,7 @@ def run_backtest_for_config(config_name: str, output_dir: str = "results/backtes
             "config": config_name,
             "success": False,
             "error": str(e),
-            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S")
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         }
 
 
@@ -156,25 +159,36 @@ def compare_results(results: list) -> dict:
             multi_timeframe_result = result
 
     if not multi_timeframe_result or not no_multi_timeframe_result:
-        return {"error": "Could not identify multi-timeframe and non-multi-timeframe results"}
+        return {
+            "error": "Could not identify multi-timeframe and non-multi-timeframe results"
+        }
 
     # Calculate differences
     comparison = {
         "multi_timeframe_enabled": multi_timeframe_result,
         "multi_timeframe_disabled": no_multi_timeframe_result,
         "differences": {
-            "total_return_diff": multi_timeframe_result["total_return"] - no_multi_timeframe_result["total_return"],
-            "sharpe_ratio_diff": multi_timeframe_result["sharpe_ratio"] - no_multi_timeframe_result["sharpe_ratio"],
-            "max_drawdown_diff": multi_timeframe_result["max_drawdown"] - no_multi_timeframe_result["max_drawdown"],
-            "win_rate_diff": multi_timeframe_result["win_rate"] - no_multi_timeframe_result["win_rate"],
-            "total_trades_diff": multi_timeframe_result["total_trades"] - no_multi_timeframe_result["total_trades"],
+            "total_return_diff": multi_timeframe_result["total_return"]
+            - no_multi_timeframe_result["total_return"],
+            "sharpe_ratio_diff": multi_timeframe_result["sharpe_ratio"]
+            - no_multi_timeframe_result["sharpe_ratio"],
+            "max_drawdown_diff": multi_timeframe_result["max_drawdown"]
+            - no_multi_timeframe_result["max_drawdown"],
+            "win_rate_diff": multi_timeframe_result["win_rate"]
+            - no_multi_timeframe_result["win_rate"],
+            "total_trades_diff": multi_timeframe_result["total_trades"]
+            - no_multi_timeframe_result["total_trades"],
         },
         "analysis": {
-            "multi_timeframe_better_return": multi_timeframe_result["total_return"] > no_multi_timeframe_result["total_return"],
-            "multi_timeframe_better_sharpe": multi_timeframe_result["sharpe_ratio"] > no_multi_timeframe_result["sharpe_ratio"],
-            "multi_timeframe_lower_drawdown": multi_timeframe_result["max_drawdown"] < no_multi_timeframe_result["max_drawdown"],
-            "multi_timeframe_higher_win_rate": multi_timeframe_result["win_rate"] > no_multi_timeframe_result["win_rate"],
-        }
+            "multi_timeframe_better_return": multi_timeframe_result["total_return"]
+            > no_multi_timeframe_result["total_return"],
+            "multi_timeframe_better_sharpe": multi_timeframe_result["sharpe_ratio"]
+            > no_multi_timeframe_result["sharpe_ratio"],
+            "multi_timeframe_lower_drawdown": multi_timeframe_result["max_drawdown"]
+            < no_multi_timeframe_result["max_drawdown"],
+            "multi_timeframe_higher_win_rate": multi_timeframe_result["win_rate"]
+            > no_multi_timeframe_result["win_rate"],
+        },
     }
 
     return comparison
@@ -182,19 +196,24 @@ def compare_results(results: list) -> dict:
 
 def main():
     """Main backtest comparison function."""
-    parser = argparse.ArgumentParser(description="Compare backtests with/without multi-timeframe features")
+    parser = argparse.ArgumentParser(
+        description="Compare backtests with/without multi-timeframe features"
+    )
     parser.add_argument(
         "--output-dir",
         type=str,
         default="results/backtest_multi_timeframe",
-        help="Output directory for results"
+        help="Output directory for results",
     )
     parser.add_argument(
         "--configs",
         type=str,
         nargs="+",
-        default=["sac_v435_unified_config", "sac_v435_unified_config_no_multi_timeframe"],
-        help="Configuration files to test"
+        default=[
+            "sac_v435_unified_config",
+            "sac_v435_unified_config_no_multi_timeframe",
+        ],
+        help="Configuration files to test",
     )
 
     args = parser.parse_args()
@@ -232,14 +251,26 @@ def main():
 
     print("\n📊 BACKTEST COMPARISON RESULTS")
     print("=" * 80)
-    print(f"{'Metric':<20} {'Multi-Timeframe':<20} {'No Multi-Timeframe':<20} {'Difference':<20}")
+    print(
+        f"{'Metric':<20} {'Multi-Timeframe':<20} {'No Multi-Timeframe':<20} {'Difference':<20}"
+    )
     print(f"{'':<20} {'Enabled':<20} {'Disabled':<20} {'':<20}")
     print("-" * 80)
-    print(f"{'Total Return':<20} {mt_enabled['total_return']:<20.2%} {mt_disabled['total_return']:<20.2%} {diff['total_return_diff']:<20.2%}")
-    print(f"{'Sharpe Ratio':<20} {mt_enabled['sharpe_ratio']:<20.2f} {mt_disabled['sharpe_ratio']:<20.2f} {diff['sharpe_ratio_diff']:<20.2f}")
-    print(f"{'Max Drawdown':<20} {mt_enabled['max_drawdown']:<20.2%} {mt_disabled['max_drawdown']:<20.2%} {diff['max_drawdown_diff']:<20.2%}")
-    print(f"{'Win Rate':<20} {mt_enabled['win_rate']:<20.1%} {mt_disabled['win_rate']:<20.1%} {diff['win_rate_diff']:<20.1%}")
-    print(f"{'Total Trades':<20} {mt_enabled['total_trades']:<20} {mt_disabled['total_trades']:<20} {diff['total_trades_diff']:<20}")
+    print(
+        f"{'Total Return':<20} {mt_enabled['total_return']:<20.2%} {mt_disabled['total_return']:<20.2%} {diff['total_return_diff']:<20.2%}"
+    )
+    print(
+        f"{'Sharpe Ratio':<20} {mt_enabled['sharpe_ratio']:<20.2f} {mt_disabled['sharpe_ratio']:<20.2f} {diff['sharpe_ratio_diff']:<20.2f}"
+    )
+    print(
+        f"{'Max Drawdown':<20} {mt_enabled['max_drawdown']:<20.2%} {mt_disabled['max_drawdown']:<20.2%} {diff['max_drawdown_diff']:<20.2%}"
+    )
+    print(
+        f"{'Win Rate':<20} {mt_enabled['win_rate']:<20.1%} {mt_disabled['win_rate']:<20.1%} {diff['win_rate_diff']:<20.1%}"
+    )
+    print(
+        f"{'Total Trades':<20} {mt_enabled['total_trades']:<20} {mt_disabled['total_trades']:<20} {diff['total_trades_diff']:<20}"
+    )
     print("-" * 80)
     print("<20")
     print("<20")
@@ -248,21 +279,30 @@ def main():
     print("<20")
 
     print("\n🎯 ANALYSIS:")
-    print(f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_better_return'] else 'WORSENS'} total return")
-    print(f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_better_sharpe'] else 'WORSENS'} risk-adjusted returns")
-    print(f"  • Multi-timeframe {'REDUCES' if analysis['multi_timeframe_lower_drawdown'] else 'INCREASES'} maximum drawdown")
-    print(f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_higher_win_rate'] else 'WORSENS'} win rate")
+    print(
+        f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_better_return'] else 'WORSENS'} total return"
+    )
+    print(
+        f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_better_sharpe'] else 'WORSENS'} risk-adjusted returns"
+    )
+    print(
+        f"  • Multi-timeframe {'REDUCES' if analysis['multi_timeframe_lower_drawdown'] else 'INCREASES'} maximum drawdown"
+    )
+    print(
+        f"  • Multi-timeframe {'IMPROVES' if analysis['multi_timeframe_higher_win_rate'] else 'WORSENS'} win rate"
+    )
 
     # Save comparison
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     comparison_file = f"{args.output_dir}/multi_timeframe_comparison_{timestamp}.json"
 
-    with open(comparison_file, 'w') as f:
-        json.dump({
-            "results": results,
-            "comparison": comparison,
-            "timestamp": timestamp
-        }, f, indent=2, default=str)
+    with open(comparison_file, "w") as f:
+        json.dump(
+            {"results": results, "comparison": comparison, "timestamp": timestamp},
+            f,
+            indent=2,
+            default=str,
+        )
 
     logger.info(f"💾 Comparison saved to: {comparison_file}")
     logger.info("✅ Multi-timeframe backtest comparison completed!")

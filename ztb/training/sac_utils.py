@@ -9,9 +9,37 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, Dict
+from enum import Enum
 
-from ztb.optimization.base import ParameterSpace, ParameterType, TrialResult
 from ztb.types.common import ConfigDict
+from ztb.utils.file_utils import safe_json_dump
+
+
+class ParameterType(Enum):
+    CONTINUOUS = "continuous"
+    LOG_UNIFORM = "log_uniform"
+    CATEGORICAL = "categorical"
+
+
+class ParameterSpace:
+    def __init__(self, name: str, param_type: ParameterType, low: float = None, high: float = None, choices: list = None, default: float = None):
+        self.name = name
+        self.param_type = param_type
+        self.low = low
+        self.high = high
+        self.choices = choices
+        self.default = default
+
+
+class TrialResult:
+    def __init__(self, trial_id: int, parameters: dict, metrics: dict, objective_value: float, duration_seconds: float, success: bool, error_message: str = None):
+        self.trial_id = trial_id
+        self.parameters = parameters
+        self.metrics = metrics
+        self.objective_value = objective_value
+        self.duration_seconds = duration_seconds
+        self.success = success
+        self.error_message = error_message
 
 
 def get_sac_parameter_spaces(preset: str = "full") -> Dict[str, ParameterSpace]:
@@ -186,7 +214,7 @@ def create_sac_objective_function(
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False, encoding="utf-8"
         ) as f:
-            json.dump(config, f, indent=2)
+            safe_json_dump(config, f.name, indent=2)
             temp_config_path = f.name
 
         try:

@@ -19,6 +19,7 @@ from ....utils.config_utils import load_config_unified
 from ....utils.logging_utils import get_logger
 from ....utils.results_utils import save_backtest_results
 from ....utils.training_utils import load_model
+from ....metrics.metrics import sharpe_ratio
 from ..adapters import StrategyAdapter
 from ..metrics import BacktestMetrics, MetricsCalculator
 from .signal_performance import BacktestSignalPerformanceAnalyzer
@@ -590,7 +591,7 @@ class UnifiedBacktester:
             # Basic metrics calculation
             total_return = (portfolio_series.iloc[-1] / portfolio_series.iloc[0]) - 1
             volatility = returns.std() * np.sqrt(252)  # Annualized
-            sharpe_ratio = total_return / volatility if volatility > 0 else 0
+            sharpe_ratio_val = sharpe_ratio(returns)
 
             # Create trade history from environment if available
             trade_history = []
@@ -602,7 +603,7 @@ class UnifiedBacktester:
                 total_return=float(total_return),
                 annualized_return=float(total_return),  # Simplified
                 volatility=float(volatility),
-                sharpe_ratio=float(sharpe_ratio),
+                sharpe_ratio=float(sharpe_ratio_val),
                 max_drawdown=float(
                     (portfolio_series / portfolio_series.expanding().max() - 1).min()
                 ),

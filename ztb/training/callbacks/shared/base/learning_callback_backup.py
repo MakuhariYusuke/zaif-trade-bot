@@ -98,9 +98,6 @@ class LearningContext:
     custom_data: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
-
-
 class ErrorHandlingMixin:
     """
     Mixin class providing comprehensive error handling capabilities.
@@ -111,12 +108,8 @@ class ErrorHandlingMixin:
     - Enhanced logging with context
     - Graceful degradation
     - Error recovery patterns
-            "retry_delay": 1.0,
-            "default_strategy": ErrorHandlingStrategy.CONTINUE,
-            "log_stack_traces": True,
-            "enable_error_recovery": True,
-            "error_threshold_before_disable": 5,
-        }
+    """
+    """
 
     def safe_execute(self, func: Callable, *args, **kwargs) -> Any:
         """
@@ -418,11 +411,11 @@ class ErrorHandlingMixin:
                 "timestamp": error_context.timestamp.isoformat(),
                 "retry_count": error_context.retry_count,
                 "max_retries": error_context.max_retries,
+                "context": {
                     "step": getattr(ctx, "step", None),
                     "learning_type": getattr(ctx, "learning_type", None),
                     "algorithm_name": getattr(ctx, "algorithm_name", None),
                     "loss": getattr(ctx, "loss", None),
-                },
                 },
             }
 
@@ -610,7 +603,7 @@ class AdaptiveCallback(LearningCallback):
                     self._log_callback_error(callback, method_name, e, context)
 
                     # Auto-disable failing callbacks if enabled
-                    if (
+                    if self._error_config.get("enable_auto_disable", False):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             self.logger.warning(error_msg)

@@ -37,7 +37,7 @@ from .base import PatternRecognizer, SignalResult, MultiTimeframeData
 try:
     from ..types import RegimeAdjustment
 except ImportError:
-    RegimeAdjustment = Dict[str, Any]  # type: ignore, RegimeAdjustment
+    RegimeAdjustment = Dict[str, Any]  # type: ignore
 
 
 class CCIRecognizer(PatternRecognizer):

@@ -1,5 +1,11 @@
 import json
 import os
+from pathlib import Path
+
+from ztb.utils.file_utils import safe_json_load
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 def analyze_regime_grid_results():
     """Analyze the regime grid backtest results"""
@@ -7,15 +13,14 @@ def analyze_regime_grid_results():
     results_file = "backtest_results/regime_grid_results.json"
 
     if not os.path.exists(results_file):
-        print(f"Error: {results_file} not found")
+        logger.error(f"Error: {results_file} not found")
         return
 
-    with open(results_file, "r") as f:
-        data = json.load(f)
+    data = safe_json_load(Path(results_file))
 
-    print("=== トレンドレジーム バックテスト結果分析 ===")
-    print(f"総結果数: {len(data)}")
-    print()
+    logger.info("=== トレンドレジーム バックテスト結果分析 ===")
+    logger.info(f"総結果数: {len(data)}")
+    logger.info("")
 
     # 各レジームの結果を表示
     for result in data:

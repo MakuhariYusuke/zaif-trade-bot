@@ -24,6 +24,7 @@ from ztb.live_trading.live_trader import LiveTrader
 from ztb.training.scripts.paper_trade import detect_algorithm
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.trading.signal.signal_guidance_system import SignalGuidanceSystem
+from ztb.metrics.metrics import max_drawdown
 
 
 class PaperTradingExperiment:
@@ -316,7 +317,7 @@ class PaperTradingExperiment:
 
         # Risk metrics
         portfolio_values = [p['portfolio_value'] for p in performance_history]
-        max_drawdown = self._calculate_max_drawdown(portfolio_values)
+        max_drawdown = max_drawdown(portfolio_values)
 
         # Signal guidance statistics
         signal_stats = self.signal_guidance._calculate_signal_statistics(trades)
@@ -343,22 +344,6 @@ class PaperTradingExperiment:
             # Signal guidance metrics
             'signal_stats': signal_stats
         }
-
-    def _calculate_max_drawdown(self, portfolio_values: list) -> float:
-        """Calculate maximum drawdown percentage"""
-        if not portfolio_values:
-            return 0.0
-
-        peak = portfolio_values[0]
-        max_drawdown = 0.0
-
-        for value in portfolio_values:
-            if value > peak:
-                peak = value
-            drawdown = (peak - value) / peak * 100
-            max_drawdown = max(max_drawdown, drawdown)
-
-        return max_drawdown
 
     def _calculate_sharpe_ratio(self, performance_history: list) -> float:
         """Calculate Sharpe ratio"""

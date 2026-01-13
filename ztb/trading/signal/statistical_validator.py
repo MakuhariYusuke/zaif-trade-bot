@@ -12,6 +12,7 @@ import pandas as pd
 from scipy import stats
 
 from ztb.utils.logging_utils import get_logger
+from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 
 logger = get_logger(__name__)
 
@@ -62,7 +63,7 @@ class StatisticalValidator:
         t_stat, p_value = stats.ttest_1samp(signal_returns, 0)
 
         # シャープレシオ計算
-        sharpe_ratio = self._calculate_sharpe_ratio(signal_returns)
+        sharpe_ratio = sharpe_ratio(signal_returns)
 
         # 最大ドローダウン計算
         max_drawdown = self._calculate_max_drawdown(signal_returns)
@@ -106,20 +107,10 @@ class StatisticalValidator:
 
         return np.array(signal_returns)
 
-    def _calculate_sharpe_ratio(
-        self, returns: np.ndarray, risk_free_rate: float = 0.03
-    ) -> float:
-        """シャープレシオ計算"""
-        from ztb.metrics.metrics import sharpe_ratio
-
-        return sharpe_ratio(returns, rf=risk_free_rate)
-
     def _calculate_max_drawdown(self, returns: np.ndarray) -> float:
         """最大ドローダウン計算"""
         if len(returns) == 0:
             return 0.0
-
-        from ztb.metrics.metrics import max_drawdown
 
         cumulative = np.cumprod(1 + returns)
         # ztb.metrics.max_drawdown returns negative value, convert to positive

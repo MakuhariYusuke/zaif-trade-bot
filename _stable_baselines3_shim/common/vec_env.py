@@ -12,6 +12,7 @@ class DummyVecEnv:
 
 
 class VecFrameStack:
+    pass
 
 
 class VecNormalize:

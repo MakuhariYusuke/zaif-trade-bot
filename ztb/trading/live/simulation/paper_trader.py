@@ -26,6 +26,7 @@ from ztb.utils.cli_common import (
 )
 from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import save_csv_data
 from ztb.utils.path_utils import ensure_dir
 
 from .sim_broker import SimBroker
@@ -397,17 +398,16 @@ def save_results(results: Dict[str, Any], output_dir: Path) -> None:
     # Save P&L series as CSV
     if results["pnl_series"]:
         pnl_df = pd.DataFrame(results["pnl_series"])
-        pnl_df.to_csv(output_dir / "pnl.csv", index=False)
+        save_csv_data(pnl_df, str(output_dir / "pnl.csv"), index=False)
 
     # Save trade log as JSON
-    with open(output_dir / "trade_log.json", "w") as f:
-        json.dump(results["trade_log"], f, indent=2)
+    safe_json_dump(results["trade_log"], str(output_dir / "trade_log.json"), indent=2)
 
     # Save orders as CSV
     orders_df = (
         pd.DataFrame(results["trade_log"]) if results["trade_log"] else pd.DataFrame()
     )
-    orders_df.to_csv(output_dir / "orders.csv", index=False)
+    save_csv_data(orders_df, str(output_dir / "orders.csv"), index=False)
 
     # Save summary
     summary = {

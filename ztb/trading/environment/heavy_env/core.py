@@ -6,7 +6,7 @@ import dataclasses
 import gc
 import logging
 from collections import deque
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, TypeAlias
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeAlias, Union
 
 import gymnasium as gym
 import numpy as np
@@ -37,16 +37,16 @@ from ztb.trading.environment.components.data_manager import DataManager
 from ztb.trading.environment.components.statistics_calculator import (
     StatisticsCalculator,
 )
-from ztb.trading.environment.heavy_env.components.state_manager import StateManager
-from ztb.trading.environment.heavy_env.components.validation_manager import (
-    ValidationManager,
-)
 from ztb.trading.environment.constants import (
     ACTION_COUNTS_INITIAL,
     POSITION_EPSILON,
     RANDOM_START_BUFFER_RATIO,
     RANDOM_START_MAX_BUFFER,
     RANDOM_START_MIN_BUFFER,
+)
+from ztb.trading.environment.heavy_env.components.state_manager import StateManager
+from ztb.trading.environment.heavy_env.components.validation_manager import (
+    ValidationManager,
 )
 from ztb.trading.environment.heavy_env.mixins.initialization import (
     _build_fast_access_buffers,
@@ -119,7 +119,6 @@ def deep_merge_dict(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, A
 
 class HeavyTradingEnv(
     gym.Env[NDArray[np.float32], int],
-    TradingEnvironment,
 ):
     """Heavy Feature-Based Trading Environment for Reinforcement Learning."""
 
@@ -440,10 +439,12 @@ class HeavyTradingEnv(
         self._process = psutil.Process()
         self.stream_to_bars_converter = stream_to_bars_converter
 
-        self.reward_settings: RewardSettings = RewardSettings.from_dict({
-            "enable_forced_diversity": self.config.enable_forced_diversity,
-            "curriculum_stage": getattr(self.config, "curriculum_stage", "simple"),
-        })
+        self.reward_settings: RewardSettings = RewardSettings.from_dict(
+            {
+                "enable_forced_diversity": self.config.enable_forced_diversity,
+                "curriculum_stage": getattr(self.config, "curriculum_stage", "simple"),
+            }
+        )
 
         if getattr(self.config, "reward_settings", None):
             reward_settings_dict: Optional[RewardSettings] = self.config.reward_settings
@@ -789,7 +790,9 @@ class HeavyTradingEnv(
 
         # Fallback to legacy regime detector
         try:
-            current_regime = self.reward_calculator.market_regime_detector.current_regime
+            current_regime = (
+                self.reward_calculator.market_regime_detector.current_regime
+            )
             regime_str = current_regime.value if current_regime else "unknown"
         except Exception:
             regime_str = "unknown"
@@ -828,7 +831,9 @@ class HeavyTradingEnv(
         # and support V444RegimeClassifier if enabled
         try:
             regime_obj = self._get_current_market_regime()
-            current_regime = regime_obj.value if hasattr(regime_obj, "value") else str(regime_obj)
+            current_regime = (
+                regime_obj.value if hasattr(regime_obj, "value") else str(regime_obj)
+            )
         except Exception:
             current_regime = None
 
@@ -935,7 +940,9 @@ class HeavyTradingEnv(
                 if isinstance(self.data_manager.df.index, pd.DatetimeIndex):
                     current_hour = self.data_manager.df.index[self.current_step].hour
                 elif getattr(self.data_manager, "_timestamp_column", None):
-                    ts = self.data_manager.df.iloc[self.current_step][self.data_manager._timestamp_column]
+                    ts = self.data_manager.df.iloc[self.current_step][
+                        self.data_manager._timestamp_column
+                    ]
                     current_hour = pd.to_datetime(ts).hour
 
             if hasattr(self, "_resolve_atr"):
@@ -961,18 +968,28 @@ class HeavyTradingEnv(
                         constraint = constraints.get(str(regime_str))
                         if isinstance(constraint, dict):
                             z_col = str(constraint.get("entry_zscore_column", "ZScore"))
-                            entry_source = str(
-                                constraint.get("entry_action_source", "model")
-                            ).strip().lower()
+                            entry_source = (
+                                str(constraint.get("entry_action_source", "model"))
+                                .strip()
+                                .lower()
+                            )
                             z_thr_raw = constraint.get("entry_zscore_threshold")
                             try:
-                                z_thr = float(z_thr_raw) if z_thr_raw is not None else 0.0
+                                z_thr = (
+                                    float(z_thr_raw) if z_thr_raw is not None else 0.0
+                                )
                             except (TypeError, ValueError):
                                 z_thr = 0.0
 
-                            if z_thr > 0.0 and hasattr(self, "df") and z_col in self.df.columns:
+                            if (
+                                z_thr > 0.0
+                                and hasattr(self, "df")
+                                and z_col in self.df.columns
+                            ):
                                 try:
-                                    z_val = float(self.df.iloc[self.current_step][z_col])
+                                    z_val = float(
+                                        self.df.iloc[self.current_step][z_col]
+                                    )
                                 except Exception:
                                     z_val = float("nan")
 
@@ -994,31 +1011,54 @@ class HeavyTradingEnv(
                                         rsi_col = "rsi_risk_adjusted_14"
                                         atr_col = "ATR_simplified"
                                         ma_col = "RollingMean14"
-                                        
+
                                         try:
-                                            rsi_val = float(self.df.iloc[self.current_step][rsi_col])
-                                            atr_val = float(self.df.iloc[self.current_step][atr_col])
-                                            ma_val = float(self.df.iloc[self.current_step][ma_col])
-                                            close_val = float(self.df.iloc[self.current_step]["close"])
+                                            rsi_val = float(
+                                                self.df.iloc[self.current_step][rsi_col]
+                                            )
+                                            atr_val = float(
+                                                self.df.iloc[self.current_step][atr_col]
+                                            )
+                                            ma_val = float(
+                                                self.df.iloc[self.current_step][ma_col]
+                                            )
+                                            close_val = float(
+                                                self.df.iloc[self.current_step]["close"]
+                                            )
                                         except Exception:
-                                            rsi_val = atr_val = ma_val = close_val = float("nan")
-                                        
-                                        if np.isfinite(rsi_val) and np.isfinite(atr_val) and np.isfinite(ma_val) and np.isfinite(close_val):
+                                            rsi_val = (
+                                                atr_val
+                                            ) = ma_val = close_val = float("nan")
+
+                                        if (
+                                            np.isfinite(rsi_val)
+                                            and np.isfinite(atr_val)
+                                            and np.isfinite(ma_val)
+                                            and np.isfinite(close_val)
+                                        ):
                                             # Determine trend direction from regime
                                             is_bull = "bull" in regime_str.lower()
                                             is_bear = "bear" in regime_str.lower()
-                                            
-                                            if is_bull and rsi_val < 30.0:  # Oversold in bull trend -> BUY
+
+                                            if (
+                                                is_bull and rsi_val < 30.0
+                                            ):  # Oversold in bull trend -> BUY
                                                 actual_action = ACTION_BUY
-                                            elif is_bear and rsi_val > 70.0:  # Overbought in bear trend -> SELL
+                                            elif (
+                                                is_bear and rsi_val > 70.0
+                                            ):  # Overbought in bear trend -> SELL
                                                 actual_action = ACTION_SELL
                                             else:
                                                 actual_action = ACTION_HOLD
-                                            
+
                                             if isinstance(debug_info, dict):
-                                                debug_info["entry_action_source"] = "pullback"
+                                                debug_info[
+                                                    "entry_action_source"
+                                                ] = "pullback"
                                                 debug_info["entry_filter_rsi"] = rsi_val
-                                                debug_info["entry_filter_regime"] = regime_str
+                                                debug_info[
+                                                    "entry_filter_regime"
+                                                ] = regime_str
                                         else:
                                             actual_action = ACTION_HOLD
                                     elif actual_action in (ACTION_BUY, ACTION_SELL):
@@ -1032,9 +1072,15 @@ class HeavyTradingEnv(
                                         if not allow:
                                             actual_action = ACTION_HOLD
                                             if isinstance(debug_info, dict):
-                                                debug_info["entry_filter_blocked"] = True
-                                                debug_info["entry_filter_zscore"] = z_val
-                                                debug_info["entry_filter_threshold"] = z_thr
+                                                debug_info[
+                                                    "entry_filter_blocked"
+                                                ] = True
+                                                debug_info[
+                                                    "entry_filter_zscore"
+                                                ] = z_val
+                                                debug_info[
+                                                    "entry_filter_threshold"
+                                                ] = z_thr
         else:
             # Optional exit override for regimes that should rely on TP/SL (or other non-model exits).
             # This prevents the policy from "micro-exiting" before the risk controls have a chance to work.
@@ -1047,20 +1093,26 @@ class HeavyTradingEnv(
                         entry_regime = getattr(self, "_entry_regime", None)
                         # Prefer the entry regime's constraint (strategy should follow the entry's risk plan),
                         # but fall back to the current regime if entry regime is missing/unconfigured.
-                        lookup_regime = str(entry_regime) if entry_regime else str(regime_str)
+                        lookup_regime = (
+                            str(entry_regime) if entry_regime else str(regime_str)
+                        )
                         constraint = constraints.get(lookup_regime)
                         if not isinstance(constraint, dict):
                             constraint = constraints.get(str(regime_str))
 
                         if isinstance(constraint, dict):
-                            exit_source = str(
-                                constraint.get("exit_action_source", "model")
-                            ).strip().lower()
+                            exit_source = (
+                                str(constraint.get("exit_action_source", "model"))
+                                .strip()
+                                .lower()
+                            )
                             if exit_source in {"tp_sl", "tp-sl", "tp/sl"}:
                                 actual_action = ACTION_HOLD
                                 if isinstance(debug_info, dict):
                                     debug_info["exit_action_source"] = "tp_sl"
-                                    debug_info["exit_action_scope_regime"] = lookup_regime
+                                    debug_info[
+                                        "exit_action_scope_regime"
+                                    ] = lookup_regime
 
         trade_pnl = self.position_manager.execute_action(
             actual_action,
@@ -1069,7 +1121,7 @@ class HeavyTradingEnv(
             market_regime=regime_str,
             current_hour=current_hour,
             current_volatility=current_volatility,
-            hybrid_filters=getattr(self.config, "hybrid_config", None)
+            hybrid_filters=getattr(self.config, "hybrid_config", None),
         )
 
         # Determine effective action for reward calculation
@@ -1090,7 +1142,11 @@ class HeavyTradingEnv(
             exit_take_profit_threshold = 0.0
 
         hybrid_cfg = getattr(self.config, "hybrid_config", None)
-        if isinstance(hybrid_cfg, dict) and hybrid_cfg.get("enabled", False) and regime_str:
+        if (
+            isinstance(hybrid_cfg, dict)
+            and hybrid_cfg.get("enabled", False)
+            and regime_str
+        ):
             regime_filter_cfg = hybrid_cfg.get("regime_filter", {})
             if isinstance(regime_filter_cfg, dict):
                 constraints = regime_filter_cfg.get("regime_constraints", {})
@@ -1099,12 +1155,16 @@ class HeavyTradingEnv(
                     if isinstance(constraint, dict):
                         if "stop_loss_pct" in constraint:
                             try:
-                                exit_stop_loss_threshold = float(constraint["stop_loss_pct"])
+                                exit_stop_loss_threshold = float(
+                                    constraint["stop_loss_pct"]
+                                )
                             except (TypeError, ValueError):
                                 pass
                         if "take_profit_pct" in constraint:
                             try:
-                                exit_take_profit_threshold = float(constraint["take_profit_pct"])
+                                exit_take_profit_threshold = float(
+                                    constraint["take_profit_pct"]
+                                )
                             except (TypeError, ValueError):
                                 pass
 
@@ -1138,7 +1198,9 @@ class HeavyTradingEnv(
                 profit_ratio = (self.entry_price - current_price) / self.entry_price
 
             if profit_ratio > take_profit_threshold:
-                forced_close_pnl = self.position_manager.close_position(self.current_step)
+                forced_close_pnl = self.position_manager.close_position(
+                    self.current_step
+                )
                 trade_pnl += forced_close_pnl
                 self._sync_from_position_manager()
                 if isinstance(debug_info, dict):
@@ -1427,9 +1489,9 @@ class HeavyTradingEnv(
                 obs_to_update = obs
                 if obs.ndim > 1 and obs.shape[0] > 1:
                     obs_to_update = obs[-1]
-                
+
                 self.online_scaler.update(obs_to_update)
-                
+
                 # Transform observation (handles both single vector and window)
                 obs = self.online_scaler.transform(obs)
             except Exception as e:

@@ -139,7 +139,6 @@ class Phase3ComparisonAnalyzer:
     def run_enhanced_backtest(
         self, data_path: str, config: Dict[str, Any]
     ) -> Dict[str, Any]:
-    ) -> Dict[str, Any]:
         """
         Phase 3強化バックテストを実行（改善版）
 
@@ -674,76 +673,6 @@ class Phase3ComparisonAnalyzer:
             logger.warning(f"Statistical significance assessment failed: {e}")
 
         return significance
-
-                improvement = values.get("improvement", 0)
-                improvement_pct = values.get("improvement_pct")
-
-                report += f"  {metric.replace('_', ' ').title()}:\n"
-                report += f"    Baseline: {baseline_val}\n"
-                report += f"    Phase 3:  {enhanced_val}\n"
-                if improvement_pct is not None:
-                    report += f"    Change:  {improvement_pct:+.1f}%\n"
-                report += "\n"
-
-            report += "🎯 RISK METRICS:\n"
-            for metric, values in comparison.get("risk_metrics", {}).items():
-                baseline_val = values.get("baseline", 0)
-                enhanced_val = values.get("enhanced", 0)
-                reduction = values.get("reduction")
-
-                report += f"  {metric.replace('_', ' ').title()}:\n"
-                report += f"    Baseline: {baseline_val}\n"
-                report += f"    Phase 3:  {enhanced_val}\n"
-                if reduction is not None and metric in ["max_drawdown", "volatility"]:
-                    report += f"    Reduction: {reduction:.3f}\n"
-                report += "\n"
-
-            # 統計的有意性
-            significance = comparison.get("statistical_significance", {})
-            if significance:
-                report += "📊 STATISTICAL SIGNIFICANCE:\n"
-                for test_name, results in significance.items():
-                    if results.get("significant", False):
-                        report += f"  ✅ {test_name.replace('_', ' ').title()}: Significant improvement (p={results.get('p_value', 1):.3f})\n"
-                    else:
-                        report += f"  ⚠️  {test_name.replace('_', ' ').title()}: Not statistically significant\n"
-                report += "\n"
-
-        # 推奨事項
-        recommendations = comparison.get("recommendations", [])
-        if recommendations:
-            report += "💡 RECOMMENDATIONS:\n"
-            for i, rec in enumerate(recommendations, 1):
-                report += f"  {i}. {rec}\n"
-            report += "\n"
-
-        report += "=" * 80 + "\n"
-
-        # レポートをファイルに保存
-        report_file = self.results_dir / f"phase3_comparison_report_{timestamp}.txt"
-        with open(report_file, "w", encoding="utf-8") as f:
-            f.write(report)
-
-        logger.info(f"📁 Detailed report saved to: {report_file}")
-
-        # JSON結果も保存
-        json_file = self.results_dir / f"phase3_comparison_results_{timestamp}.json"
-        with open(json_file, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "baseline_results": baseline_results,
-                    "enhanced_results": enhanced_results,
-                    "comparison": comparison,
-                    "timestamp": timestamp,
-                },
-                f,
-                indent=2,
-                default=str,
-            )
-
-        logger.info(f"📁 JSON results saved to: {json_file}")
-
-        return report
 
     def generate_improved_report(
         self,

@@ -15,6 +15,8 @@ import pandas as pd
 from scipy import stats
 
 from ztb.metrics.metrics import kurtosis, skewness, test_normality
+from ztb.utils.error_utils import safe_execute
+from ztb.utils.file_utils import safe_json_dump
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
@@ -141,7 +143,7 @@ class DataQualityAssurance:
         close_prices = df["close"].dropna()
 
         # 価格分布のチェック
-        try:
+        def check_price_distribution():
             # 正規性の検定 (Shapiro-Wilk)
             if len(close_prices) <= 5000:  # Shapiro-Wilkの制限
                 normality_results = test_normality(close_prices.values)
@@ -167,12 +169,10 @@ class DataQualityAssurance:
                 reasonable_skew and reasonable_kurt
             )
 
-        except Exception as e:
-            logger.warning(f"Error in distribution analysis: {e}")
-            stats_check["price_distribution"]["error"] = str(e)
+        safe_execute(check_price_distribution, error_msg="Error in distribution analysis")
 
         # ボラティリティ分析
-        try:
+        def check_volatility():
             returns = close_prices.pct_change().dropna()
             from ztb.metrics.technical import calculate_volatility_from_returns
 
@@ -185,11 +185,10 @@ class DataQualityAssurance:
                 0.1 <= volatility <= 2.0
             )  # 10%-200%の範囲
 
-        except Exception as e:
-            logger.warning(f"Error in volatility analysis: {e}")
+        safe_execute(check_volatility, error_msg="Error in volatility analysis")
 
         # 自己相関
-        try:
+        def check_autocorrelation():
             if len(returns) > 10:
                 autocorr_1 = returns.autocorr(lag=1)
                 autocorr_5 = returns.autocorr(lag=5)
@@ -199,8 +198,7 @@ class DataQualityAssurance:
                     abs(autocorr_1) < 0.3
                 )  # 弱い自己相関
 
-        except Exception as e:
-            logger.warning(f"Error in autocorrelation analysis: {e}")
+        safe_execute(check_autocorrelation, error_msg="Error in autocorrelation analysis")
 
         # スコア計算
         score_components = []
@@ -586,8 +584,7 @@ class DataQualityAssurance:
         serializable_results = make_serializable(results)
 
         report_path = self.data_dir / f"{filename}_quality_report.json"
-        with open(report_path, "w", encoding="utf-8") as f:
-            json.dump(serializable_results, f, indent=2, ensure_ascii=False)
+        safe_json_dump(serializable_results, str(report_path), indent=2, ensure_ascii=False)
 
         logger.info(f"Quality report saved to {report_path}")
         return str(report_path)

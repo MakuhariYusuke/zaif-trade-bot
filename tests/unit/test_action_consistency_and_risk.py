@@ -39,11 +39,11 @@ class TestPositionManagerRisk(unittest.TestCase):
         self.pm = PositionManager(self.config, self.get_price)
         
         # Mock RiskManager
-        self.pm.risk_manager = MagicMock()
+        self.pm.risk_manager = MagicMock()  # type: ignore[assignment]
         
     def test_open_position_respects_risk_manager(self):
         # Setup RiskManager to return a small size (0.5)
-        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {
+        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {  # type: ignore[attr-defined]
             "adjusted_position": 0.5,
             "control_active": True,
             "reasons": ["Test constraint"]
@@ -68,7 +68,7 @@ class TestPositionManagerRisk(unittest.TestCase):
     def test_open_position_aborts_if_too_small(self):
         # Setup RiskManager to return very small size (0.0001)
         # Min trade size is 0.001
-        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {
+        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {  # type: ignore[attr-defined]
             "adjusted_position": 0.0001,
             "control_active": True,
             "reasons": ["Test constraint"]
@@ -81,7 +81,7 @@ class TestPositionManagerRisk(unittest.TestCase):
         
     def test_open_position_aborts_if_funds_low(self):
         # Setup RiskManager to allow 1.0
-        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {
+        self.pm.risk_manager.calculate_risk_adjusted_position.return_value = {  # type: ignore[attr-defined]
             "adjusted_position": 1.0,
             "control_active": False,
             "reasons": []

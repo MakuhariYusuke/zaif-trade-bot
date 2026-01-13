@@ -16,6 +16,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler, StandardScaler
 
 from ztb.metrics.metrics import kurtosis, skewness
+from ztb.utils.file_utils import safe_json_dump
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
@@ -679,7 +680,7 @@ def main():
     with open(
         f"data/{latest_file.stem}_feature_stats.json", "w", encoding="utf-8"
     ) as f:
-        json.dump(feature_stats, f, indent=2, ensure_ascii=False)
+        safe_json_dump(feature_stats, f"data/{latest_file.stem}_feature_stats.json", indent=2, ensure_ascii=False)
 
     logger.info("Feature engineering completed successfully!")
     logger.info(

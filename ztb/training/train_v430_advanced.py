@@ -25,17 +25,17 @@ from typing import Any, Dict, List
 import torch
 import copy
 
-from ztb.utils.file_utils import get_project_root
+from ztb.utils.file_utils import get_project_root, safe_json_dump
 
 # Add project root to path
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-from ztb.evaluation.evaluator import Evaluator
+from ztb.analysis.evaluator.evaluator import TradingEvaluator as Evaluator
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.training.unified_trainer.parallel_trainer import ParallelTrainer
 from ztb.utils.logging_utils import get_logger
-from ztb.training.constants import DEFAULT_LEARNING_RATE, DEFAULT_TOTAL_TIMESTEPS
+from ztb.training.constants import DEFAULT_LEARNING_RATE, DEFAULT_TOTAL_TIMESTEPS_SAC as DEFAULT_TOTAL_TIMESTEPS
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 logger = get_logger(__name__)
@@ -472,8 +472,7 @@ class SACv430AdvancedTrainer:
         }
 
         ensemble_config_path = self.output_dir / "ensemble_config.json"
-        with open(ensemble_config_path, "w", encoding="utf-8") as f:
-            json.dump(ensemble_config, f, indent=2, ensure_ascii=False)
+        safe_json_dump(ensemble_config, str(ensemble_config_path), indent=2, ensure_ascii=False)
 
         logger.info(f"Ensemble configuration saved to {ensemble_config_path}")
 
@@ -497,8 +496,7 @@ class SACv430AdvancedTrainer:
         }
 
         summary_path = self.output_dir / "training_summary.json"
-        with open(summary_path, "w", encoding="utf-8") as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False, default=str)
+        safe_json_dump(summary, str(summary_path), indent=2, ensure_ascii=False, default=str)
 
     def train(self) -> bool:
         """Main training method based on selected mode."""

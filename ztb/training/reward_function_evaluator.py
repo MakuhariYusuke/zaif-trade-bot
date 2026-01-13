@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from ztb.metrics.metrics import max_drawdown as calc_max_drawdown
+from ztb.metrics.metrics import max_drawdown as calc_max_drawdown, win_rate, profit_factor
 from ztb.metrics.metrics import sharpe_ratio as calc_sharpe_ratio
 from ztb.metrics.metrics import sortino_ratio as calc_sortino_ratio
 from ztb.trading.environment.utils.config import RewardSettings
@@ -439,8 +439,7 @@ class RewardFunctionEvaluator:
         sharpe_ratio = calc_sharpe_ratio(returns, rf=risk_free_rate)
 
         # Win rate
-        winning_trades = [t for t in trade_history if t.get("reward", 0) > 0]
-        win_rate = len(winning_trades) / len(trade_history) if trade_history else 0.0
+        win_rate_val = win_rate(pd.Series(returns))
 
         # Maximum drawdown
         max_drawdown = abs(calc_max_drawdown(pd.Series(portfolio_values)))
@@ -484,7 +483,7 @@ class RewardFunctionEvaluator:
         return EvaluationMetrics(
             total_return=total_return,
             sharpe_ratio=sharpe_ratio,
-            win_rate=win_rate,
+            win_rate=win_rate_val,
             max_drawdown=max_drawdown,
             volatility=volatility,
             consistency_score=consistency_score,

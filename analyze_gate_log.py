@@ -1,5 +1,3 @@
-import pandas as pd
-
 from ztb.utils.data_utils import load_csv_data
 
 

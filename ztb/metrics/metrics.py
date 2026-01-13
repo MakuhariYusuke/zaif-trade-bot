@@ -1829,3 +1829,51 @@ def _action_distribution_impl(
         "BUY": float(action_counts[ACTION_BUY + 1] / total_actions),
         "SELL": float(action_counts[ACTION_SELL + 1] / total_actions),
     }
+
+
+@safe_operation
+def calculate_performance_metrics(
+    returns: pd.Series,
+    risk_free_rate: float = 0.02,
+    annualize: bool = True,
+    periods_per_year: int = TRADING_DAYS_PER_YEAR,
+) -> Dict[str, float]:
+    """
+    Calculate comprehensive performance metrics for a return series.
+
+    Args:
+        returns: Series of returns
+        risk_free_rate: Risk-free rate for Sharpe ratio
+        annualize: Whether to annualize metrics
+        periods_per_year: Number of periods per year for annualization
+
+    Returns:
+        Dictionary of performance metrics
+    """
+    if len(returns) == 0:
+        return {}
+
+    # Basic metrics
+    cumprod_result = (1 + returns).prod()
+    total_return = float(cumprod_result - 1)
+    volatility = float(returns.std())
+
+    if annualize and len(returns) > 0:
+        # Annualize
+        volatility = volatility * np.sqrt(periods_per_year)
+        annual_return = (1 + total_return) ** (periods_per_year / len(returns)) - 1
+    else:
+        annual_return = total_return
+
+    sharpe_ratio_val = sharpe_ratio(returns, rf=risk_free_rate, period_per_year=periods_per_year if annualize else len(returns))
+    max_drawdown = float((returns.cumsum() - returns.cumsum().cummax()).min())
+    win_rate = float((returns > 0).mean())
+
+    return {
+        "total_return": total_return,
+        "annual_return": annual_return,
+        "volatility": volatility,
+        "sharpe_ratio": sharpe_ratio_val,
+        "max_drawdown": max_drawdown,
+        "win_rate": win_rate,
+    }

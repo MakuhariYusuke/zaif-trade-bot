@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.common.plot_utils import save_plot
+
 
 
 
@@ -135,7 +137,7 @@ def create_visualizations(
     plt.xlabel("Step")
     plt.ylabel("Portfolio Value (JPY)")
     plt.grid(True)
-    plt.savefig(f"{output_dir}/portfolio_value.png", dpi=300, bbox_inches="tight")
+    save_plot(f"{output_dir}/portfolio_value.png")
     plt.close()
 
     # エピソード別報酬分布
@@ -145,7 +147,7 @@ def create_visualizations(
     plt.xlabel("Episode")
     plt.ylabel("Reward")
     plt.grid(True)
-    plt.savefig(f"{output_dir}/episode_rewards.png", dpi=300, bbox_inches="tight")
+    save_plot(f"{output_dir}/episode_rewards.png")
     plt.close()
 
     # エピソード別ポートフォリオ変化
@@ -166,8 +168,8 @@ def create_visualizations(
     plt.xlabel("Episode")
     plt.ylabel("Portfolio Change (%)")
     plt.grid(True)
-    plt.savefig(
-        f"{output_dir}/episode_portfolio_changes.png", dpi=300, bbox_inches="tight"
+    save_plot(
+        f"{output_dir}/episode_portfolio_changes.png"
     )
     plt.close()
 

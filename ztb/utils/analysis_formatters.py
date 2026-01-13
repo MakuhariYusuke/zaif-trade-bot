@@ -187,3 +187,34 @@ def create_result_summary(results: Dict[str, Any]) -> str:
             summary_parts.append(f"{key}: {value}")
 
     return " | ".join(summary_parts)
+
+
+def print_formatted_metrics(result: Dict[str, Any], title: str = "") -> None:
+    """
+    Print formatted backtest metrics with consistent formatting.
+
+    Args:
+        result: Dictionary containing backtest results
+        title: Title for the metrics display
+    """
+    print(f"\n{'='*60}")
+    print(f"📊 {title}")
+    print(f"{'='*60}")
+
+    # Basic metrics
+    print(f"💰 Final Portfolio Value: ${result.get('final_balance', 0):.2f}")
+    print(f"📈 Total Return: {result.get('return_pct', 0):.2f}%")
+    print(f"📊 Sharpe Ratio: {result.get('sharpe_ratio', 0):.4f}")
+    print(f"📉 Max Drawdown: {result.get('max_drawdown_pct', 0):.2f}%")
+    print(f"🎯 Win Rate: {result.get('win_rate', 0):.2f}%")
+
+    # Trade metrics
+    print(f"🔄 Total Trades: {result.get('total_trades', 0)}")
+    print(f"✅ Winning Trades: {result.get('winning_trades', 0)}")
+    print(f"❌ Losing Trades: {result.get('losing_trades', 0)}")
+
+    # Risk metrics
+    print(f"⚠️  Risk/Reward Ratio: {result.get('risk_reward_ratio', 0):.2f}")
+    print(f"📊 Profit Factor: {result.get('profit_factor', 0):.2f}")
+
+    print(f"{'='*60}")

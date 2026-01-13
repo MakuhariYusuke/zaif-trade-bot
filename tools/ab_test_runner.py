@@ -143,9 +143,9 @@ class ABTrainingExperiment:
         cmd = build_child_command(cfg_path, seed, timesteps, fast_mode)
         launch_child_training(cmd, seed, cfg_path)
 
-        tempt to collect reports and return simple ExperimentResult
-            from ztb.utils.config_utils import read_model_name_from_config
-            model_name = read_model_name_from_config(cfg_path)
+        # Attempt to collect reports and return simple ExperimentResult
+        from ztb.utils.config_utils import read_model_name_from_config
+        model_name = read_model_name_from_config(cfg_path)
         reports = find_reports_for_model(model_name)
         metrics: Dict[str, object] = {}
         if reports:

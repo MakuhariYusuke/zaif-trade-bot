@@ -23,6 +23,7 @@ import pandas as pd
 
 from ztb.trading.environment.constants import EPSILON
 from ztb.types.common import BaseComponent
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -863,8 +864,7 @@ class HyperparameterOptimizer(BaseComponent):
                 "timestamp": timestamp,
             }
 
-            with open(results_dir / filename, "w") as f:
-                json.dump(result_dict, f, indent=2, default=str)
+            safe_json_dump(result_dict, str(results_dir / filename), indent=2, default=str)
 
             self.logger.info(f"Optimization results saved to {results_dir / filename}")
 

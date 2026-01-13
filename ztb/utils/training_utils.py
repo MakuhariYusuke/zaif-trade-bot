@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 from ztb.utils.logging_utils import get_logger
 
+from ztb.utils.file_utils import safe_json_dump
+
 logger = get_logger(__name__)
 
 
@@ -166,8 +168,7 @@ def save_model_with_metadata(
     if success and metadata:
         try:
             metadata_path = f"{model_path}.metadata.json"
-            with open(metadata_path, "w", encoding="utf-8") as f:
-                json.dump(metadata, f, indent=2, default=str)
+            safe_json_dump(metadata, metadata_path, indent=2, default=str)
             if verbose:
                 logger.info(f"Metadata saved to: {metadata_path}")
         except Exception as e:
@@ -261,8 +262,7 @@ def save_training_results(
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # JSON保存
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+        safe_json_dump(results, output_path, indent=2, ensure_ascii=False, default=str)
 
         if verbose:
             logger.info(f"Training results saved to: {output_path}")
@@ -427,12 +427,15 @@ def load_model(model_path: str, algorithm: str = "SAC"):
     """
     if algorithm == "SAC":
         from stable_baselines3 import SAC
+
         return SAC.load(model_path)
     elif algorithm == "PPO":
         from stable_baselines3 import PPO
+
         return PPO.load(model_path)
     elif algorithm == "MaskablePPO":
         from sb3_contrib import MaskablePPO
+
         return MaskablePPO.load(model_path)
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}")

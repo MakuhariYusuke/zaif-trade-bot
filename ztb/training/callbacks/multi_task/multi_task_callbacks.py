@@ -223,18 +223,21 @@ class TaskBalancingCallback(MemoryOptimizedCallback):
     ) -> None:
         """Called at the end of training."""
         pass
-        pass
 
     def on_batch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
     ) -> None:
         """Called at the start of each batch."""
+        pass
+
+    def on_batch_end(
+        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Called at the end of each batch."""
         pass
 
 
 class SharedRepresentationCallback(MemoryOptimizedCallback):
-    """
 
     def __init__(
         self,
@@ -412,7 +415,6 @@ class SharedRepresentationCallback(MemoryOptimizedCallback):
     ) -> None:
         """Called at the start of training."""
         pass
-        pass
 
     def on_epoch_start(
         self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
@@ -435,6 +437,7 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
         compute_frequency: int = 1,
         interference_threshold: float = -0.05,
     ):
+        """Initialize the task interference callback."""
         super().__init__(cache_size=1000)
         self.task_names = task_names
         self.compute_frequency = compute_frequency
@@ -660,6 +663,7 @@ class TaskInterferenceCallback(MemoryOptimizedCallback):
 
 
 def create_shared_representation(**kwargs) -> SharedRepresentationCallback:
+    """Create a shared representation callback with default settings."""
     defaults = {"compute_frequency": 1, "representation_layers": ["shared_encoder"]}
     defaults.update(kwargs)
     return SharedRepresentationCallback(**defaults)
@@ -668,6 +672,7 @@ def create_shared_representation(**kwargs) -> SharedRepresentationCallback:
 def create_task_interference(
     task_names: List[str], **kwargs
 ) -> TaskInterferenceCallback:
+    """Create a task interference callback with default settings."""
     defaults = {"compute_frequency": 1, "interference_threshold": -0.05}
     defaults.update(kwargs)
     return TaskInterferenceCallback(task_names, **defaults)

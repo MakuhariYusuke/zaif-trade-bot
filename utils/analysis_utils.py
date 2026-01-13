@@ -6,9 +6,10 @@ Common utilities for data analysis and reporting.
 Provides consistent analysis patterns across the project.
 """
 
-import pandas as pd
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
+
+import pandas as pd
 
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.logging_utils import get_logger
@@ -17,9 +18,7 @@ logger = get_logger(__name__)
 
 
 def load_analysis_data(
-    data_path: Union[str, Path],
-    date_columns: Optional[list] = None,
-    **kwargs
+    data_path: Union[str, Path], date_columns: Optional[list] = None, **kwargs
 ) -> pd.DataFrame:
     """
     Load data for analysis with consistent handling.
@@ -38,7 +37,7 @@ def load_analysis_data(
         raise FileNotFoundError(f"Data file not found: {data_path}")
 
     try:
-        if data_path.suffix.lower() == '.csv':
+        if data_path.suffix.lower() == ".csv":
             df = load_csv_data(data_path, **kwargs)
         else:
             raise ValueError(f"Unsupported file format: {data_path.suffix}")
@@ -71,7 +70,7 @@ def print_basic_stats(df: pd.DataFrame, title: str = "Data Statistics") -> None:
     print(f"Total Columns: {len(df.columns)}")
 
     # Numeric columns stats
-    numeric_cols = df.select_dtypes(include=['number']).columns
+    numeric_cols = df.select_dtypes(include=["number"]).columns
     if len(numeric_cols) > 0:
         print(f"Numeric Columns: {len(numeric_cols)}")
         print(f"Data Types:\n{df.dtypes}")

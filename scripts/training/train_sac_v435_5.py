@@ -7,9 +7,9 @@ import json
 import time
 from pathlib import Path
 
+from utils.config_utils import load_config_from_json, merge_training_configs
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.training_utils import display_training_complete
-from utils.config_utils import load_config_from_json, merge_training_configs
 
 
 def main():

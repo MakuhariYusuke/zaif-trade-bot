@@ -3,13 +3,12 @@
 SAC v435.3 Training - Scalping-focused with zero frequency penalty
 1万ステップ学習
 """
-import json
 import time
 from pathlib import Path
 
+from utils.config_utils import load_config_from_json, merge_training_configs
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.training_utils import display_training_complete
-from utils.config_utils import load_config_from_json, merge_training_configs
 
 
 def main():
@@ -29,9 +28,7 @@ def main():
 
     # 環境設定と報酬設定を統合
     config = merge_training_configs(
-        config,
-        env_config_path=env_config_path,
-        reward_config_path=reward_config_path
+        config, env_config_path=env_config_path, reward_config_path=reward_config_path
     )
 
     print("📋 Configuration loaded:")
@@ -51,8 +48,8 @@ def main():
     if result:
         stats = trainer.get_training_stats()
         final_metrics = {
-            "model_path": stats.get('model_path', 'N/A'),
-            "final_reward": stats.get('final_reward', 'N/A'),
+            "model_path": stats.get("model_path", "N/A"),
+            "final_reward": stats.get("final_reward", "N/A"),
             "training_success": True,
         }
     else:

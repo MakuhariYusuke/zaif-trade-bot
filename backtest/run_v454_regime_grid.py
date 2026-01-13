@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ztb.utils.file_utils import get_project_root
+from ztb.metrics.metrics import max_drawdown
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
@@ -21,6 +22,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="gymnasium")
 
 # Add project root to path (but avoid local shims shadowing installed SB3)
 PROJECT_ROOT = get_project_root()
+
 
 # `stable_baselines3` is required for backtests; ensure we import the real
 # site-packages version even if a local shim package exists in the repo.
@@ -35,18 +37,22 @@ def _is_project_root_path(entry: str) -> bool:
     except Exception:
         return False
 
+
 sys.path[:] = [p for p in sys.path if not _is_project_root_path(p)]
 
-import torch  # noqa: F401
-from stable_baselines3 import SAC
 import pandas as pd
+import torch  # noqa: F401
+
+from stable_baselines3 import SAC
 
 sys.path.append(str(PROJECT_ROOT))
 
+from ztb.trading.environment.heavy_env import HeavyTradingEnv
 from ztb.analysis.market_regime_classifier import RegimeType
-from ztb.utils.logging_utils import setup_logging
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import safe_json_dump
+from ztb.utils.logging_utils import setup_logging
 
 # Setup logging
 setup_logging(level=logging.INFO)
@@ -152,22 +158,6 @@ def _apply_regime_params(
         target_regime["entry_action_source"] = str(entry_action_source)
 
 
-def _compute_max_drawdown_pct(values: Sequence[float]) -> float:
-    if not values:
-        return 0.0
-    peak = values[0]
-    max_drawdown = 0.0
-    for value in values[1:]:
-        if value > peak:
-            peak = value
-            continue
-        if peak > 0:
-            drawdown = (peak - value) / peak
-            if drawdown > max_drawdown:
-                max_drawdown = drawdown
-    return max_drawdown * 100.0
-
-
 def _run_episode(
     *,
     env: HeavyTradingEnv,
@@ -177,7 +167,7 @@ def _run_episode(
     obs, _ = env.reset()
     done = False
     truncated = False
-    
+
     while not (done or truncated):
         action, _ = model.predict(obs, deterministic=deterministic)
         obs, _reward, done, truncated, _info = env.step(action)
@@ -198,9 +188,10 @@ def _run_episode(
             results.update(stats)
 
     portfolio_values = list(getattr(env, "portfolio_value_history", []) or [])
-    results["max_drawdown_pct"] = _compute_max_drawdown_pct(portfolio_values)
+    results["max_drawdown_pct"] = abs(max_drawdown(pd.Series(portfolio_values))) * 100
 
     return results
+
 
 def run_grid_search(
     model_path: str,
@@ -236,9 +227,9 @@ def run_grid_search(
 
     # Initialize environment
     env = HeavyTradingEnv(df=df, config=config)
-    
+
     # Load model
-    model = SAC.load(model_path, env=env)
+    model = SAC.load(model_path, env=env)  # type: ignore[attr-defined]
 
     report_file = Path(report_path)
     report_file.parent.mkdir(parents=True, exist_ok=True)
@@ -255,25 +246,22 @@ def run_grid_search(
                     results.append(row)
                     try:
                         key = (
-                            round(float(row.get("entry_zscore_threshold")), 6),
-                            round(float(row.get("stop_loss_pct")), 6),
-                            round(float(row.get("take_profit_pct")), 6),
+                            round(float(row.get("entry_zscore_threshold") or 0.0), 6),
+                            round(float(row.get("stop_loss_pct") or 0.0), 6),
+                            round(float(row.get("take_profit_pct") or 0.0), 6),
                         )
                         completed.add(key)
                     except Exception:
                         continue
                 if results:
-                    logger.info(f"Resuming from {report_path} ({len(results)} completed)")
+                    logger.info(
+                        f"Resuming from {report_path} ({len(results)} completed)"
+                    )
         except Exception as e:
             logger.warning(f"Failed to load existing report from {report_path}: {e}")
 
-    combos = [
-        (z, sl, tp)
-        for z in z_grid
-        for sl in sl_grid
-        for tp in tp_grid
-    ]
-    
+    combos = [(z, sl, tp) for z in z_grid for sl in sl_grid for tp in tp_grid]
+
     logger.info(f"Starting Grid Search for regime: {regime_name}")
     logger.info(f"Total combinations: {len(combos)}")
     logger.info(f"Z: {z_grid}")
@@ -297,15 +285,15 @@ def run_grid_search(
             take_profit_pct=tp,
             entry_action_source=entry_source,
         )
-        
+
         # Update env config in-place
         if isinstance(getattr(env.config, "hybrid_config", None), dict):
-            env.config.hybrid_config = config.get("environment", {}).get(
+            env.config.hybrid_config = config.get("environment", {}).get(  # type: ignore[attr-defined]
                 "hybrid_config"
             )
 
         metrics = _run_episode(env=env, model=model, deterministic=deterministic)
-        
+
         row = {
             "regime": regime_name,
             "entry_zscore_threshold": z,
@@ -328,18 +316,18 @@ def run_grid_search(
         # Save intermediate results (allows resume if interrupted)
         results_sorted = sorted(
             results,
-            key=lambda r: float(r.get("total_return_pct") or -1e18),
+            key=lambda r: float(r.get("total_return_pct") or -1e18),  # type: ignore[arg-type]
             reverse=True,
         )
-        report_file.write_text(json.dumps(results_sorted, indent=2), encoding="utf-8")
+        safe_json_dump(results_sorted, report_file, indent=2)
 
     # Final sort + save
     results_sorted = sorted(
-        results, key=lambda r: float(r.get("total_return_pct") or -1e18), reverse=True
+        results, key=lambda r: float(r.get("total_return_pct") or -1e18), reverse=True  # type: ignore[arg-type]
     )
-    report_file.write_text(json.dumps(results_sorted, indent=2), encoding="utf-8")
+    safe_json_dump(results_sorted, str(report_file), indent=2)
     logger.info(f"Grid results saved to {report_path}")
-    
+
     # Print Top 3
     logger.info("Top 3 Results:")
     for i, r in enumerate(results_sorted[:3]):
@@ -354,6 +342,7 @@ def run_grid_search(
 
     return 0
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run SAC v454 Regime Grid Search")
     parser.add_argument(
@@ -361,11 +350,30 @@ def main() -> int:
         required=True,
         help="Target regime name (e.g., strong_bull, strong_bear, strong_bull_trend, strong_bear_trend)",
     )
-    parser.add_argument("--z-grid", type=_parse_float_list, required=True, help="Comma-separated z thresholds")
-    parser.add_argument("--sl-grid", type=_parse_float_list, required=True, help="Comma-separated stop-loss pcts")
-    parser.add_argument("--tp-grid", type=_parse_float_list, required=True, help="Comma-separated take-profit pcts")
-    parser.add_argument("--report-path", default="backtest_results/regime_grid_results.json")
-    parser.add_argument("--model-path", default="models/sac_v454_inverse_confidence.zip")
+    parser.add_argument(
+        "--z-grid",
+        type=_parse_float_list,
+        required=True,
+        help="Comma-separated z thresholds",
+    )
+    parser.add_argument(
+        "--sl-grid",
+        type=_parse_float_list,
+        required=True,
+        help="Comma-separated stop-loss pcts",
+    )
+    parser.add_argument(
+        "--tp-grid",
+        type=_parse_float_list,
+        required=True,
+        help="Comma-separated take-profit pcts",
+    )
+    parser.add_argument(
+        "--report-path", default="backtest_results/regime_grid_results.json"
+    )
+    parser.add_argument(
+        "--model-path", default="models/sac_v454_inverse_confidence.zip"
+    )
     parser.add_argument("--config-path", default="config/v454/sac_v454_config.json")
     parser.add_argument("--data-path", default="data/btc_jpy_1m_v454.csv")
     parser.add_argument(
@@ -374,16 +382,20 @@ def main() -> int:
         default="zscore",
         help="Entry source override for the target regime",
     )
-    parser.add_argument("--start", type=int, default=0, help="Row start index (0-based)")
-    parser.add_argument("--end", type=int, default=None, help="Row end index (0-based, exclusive)")
+    parser.add_argument(
+        "--start", type=int, default=0, help="Row start index (0-based)"
+    )
+    parser.add_argument(
+        "--end", type=int, default=None, help="Row end index (0-based, exclusive)"
+    )
     parser.add_argument(
         "--restrict-to-regime",
         action="store_true",
         help="Exclude all non-target regimes during the grid run",
     )
-    
+
     args = parser.parse_args()
-    
+
     return run_grid_search(
         model_path=args.model_path,
         config_path=args.config_path,
@@ -398,6 +410,7 @@ def main() -> int:
         restrict_to_regime=args.restrict_to_regime,
         entry_source=args.entry_source,
     )
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

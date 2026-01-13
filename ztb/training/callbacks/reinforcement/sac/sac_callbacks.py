@@ -347,12 +347,22 @@ class SACValueFunctionMonitor(MemoryOptimizedCallback):
 
 class SACTargetNetworkUpdater(MemoryOptimizedCallback):
     """
+    SAC-specific target network updater with adaptive tau.
+
+    Dynamically adjusts the target network update rate (tau) based on
+    training stability to optimize learning convergence.
+    """
 
     def __init__(
         self,
         initial_tau: float = 0.005,
         min_tau: float = 0.001,
         max_tau: float = 0.01,
+        adaptive: bool = True,
+        stability_window: int = 50,
+    ):
+        super().__init__()
+        self.initial_tau = initial_tau
         self.min_tau = min_tau
         self.max_tau = max_tau
         self.adaptive = adaptive
@@ -633,15 +643,7 @@ def create_sac_value_monitor(**kwargs) -> SACValueFunctionMonitor:
         "divergence_threshold": 10.0,
     }
     defaults.update(kwargs)
-    defaults = {
-        "initial_tau": 0.005,
-        "min_tau": 0.001,
-        "max_tau": 0.01,
-        "adaptive": True,
-        "stability_window": 50,
-    }
-    defaults.update(kwargs)
-    return SACTargetNetworkUpdater(**defaults)
+    return SACValueFunctionMonitor(**defaults)
 
 
 def create_sac_exploration_monitor(**kwargs) -> SACExplorationMonitor:

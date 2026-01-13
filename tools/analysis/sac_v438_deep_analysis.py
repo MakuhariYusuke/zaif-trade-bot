@@ -18,6 +18,7 @@ import numpy as np
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.metrics.metrics import sortino_ratio
 from ztb.metrics.statistics import p_mean_method
 from ztb.utils.logging_utils import get_logger
 

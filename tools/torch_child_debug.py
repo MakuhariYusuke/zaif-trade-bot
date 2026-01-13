@@ -15,7 +15,7 @@ print("  PYTHONPATH=", os.environ.get("PYTHONPATH"))
 print("  PYTHONHOME=", os.environ.get("PYTHONHOME"))
 print("  VIRTUAL_ENV=", os.environ.get("VIRTUAL_ENV"))
 
-    successful = True
+successful = True
 try:
     import importlib
 

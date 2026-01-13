@@ -13,6 +13,8 @@ import torch
 import torch.nn as nn
 from scipy.signal import savgol_filter
 
+from ztb.utils.file_utils import save_csv_data
+
 logger = logging.getLogger(__name__)
 
 
@@ -494,13 +496,13 @@ class MultiModalSyntheticDataset:
         os.makedirs(base_path, exist_ok=True)
 
         # 経済指標保存
-        dataset["economic_indicators"].to_csv(f"{base_path}/economic_indicators.csv")
+        save_csv_data(dataset["economic_indicators"], f"{base_path}/economic_indicators.csv")
 
         # ニュースデータ保存
-        dataset["news_data"].to_csv(f"{base_path}/news_data.csv", index=False)
+        save_csv_data(dataset["news_data"], f"{base_path}/news_data.csv", index=False)
 
         # 日次感情データ保存
-        dataset["daily_sentiment"].to_csv(f"{base_path}/daily_sentiment.csv")
+        save_csv_data(dataset["daily_sentiment"], f"{base_path}/daily_sentiment.csv")
 
         # メタデータ保存
         with open(f"{base_path}/metadata.json", "w") as f:

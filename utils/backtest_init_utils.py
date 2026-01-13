@@ -6,16 +6,15 @@ Unified utilities for initializing backtest components.
 Provides consistent setup for config, model, data, and environment.
 """
 
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.config_utils import load_config_unified
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.training_utils import load_model
-from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 
 def initialize_backtest_components(
@@ -24,7 +23,7 @@ def initialize_backtest_components(
     data_path: Union[str, Path],
     algorithm: str = "SAC",
     required_config_keys: Optional[list] = None,
-    env_config_overrides: Optional[Dict[str, Any]] = None
+    env_config_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Initialize all backtest components with unified utilities.
@@ -52,8 +51,7 @@ def initialize_backtest_components(
 
     # Load configuration
     config = load_config_unified(
-        config_path,
-        required_keys=required_config_keys or ["training", "environment"]
+        config_path, required_keys=required_config_keys or ["training", "environment"]
     )
     components["config"] = config
 
@@ -87,7 +85,7 @@ def initialize_backtest_components(
 def setup_backtest_environment(
     config: Dict[str, Any],
     data: pd.DataFrame,
-    env_config_overrides: Optional[Dict[str, Any]] = None
+    env_config_overrides: Optional[Dict[str, Any]] = None,
 ) -> HeavyTradingEnv:
     """
     Setup backtest environment from config and data.
@@ -110,10 +108,7 @@ def setup_backtest_environment(
 
 
 def validate_backtest_setup(
-    config: Dict[str, Any],
-    model,
-    data: pd.DataFrame,
-    env
+    config: Dict[str, Any], model, data: pd.DataFrame, env
 ) -> list:
     """
     Validate backtest setup components.

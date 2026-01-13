@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, Union
 import pandas as pd
 
 from ztb.utils.data_utils import load_csv_data
+from ztb.utils.file_utils import safe_json_dump, save_csv_data
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -55,8 +56,7 @@ def save_training_results(
     }
 
     # Save to JSON
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(results_data, f, indent=2, default=str, ensure_ascii=False)
+    safe_json_dump(results_data, filepath, default=str)
 
     logger.info(f"Training results saved to {filepath}")
     return str(filepath)
@@ -135,14 +135,14 @@ def save_backtest_results(
     # Save portfolio values
     portfolio_df = pd.DataFrame({"portfolio_value": portfolio_values})
     portfolio_path = output_dir / f"{filename_prefix}_portfolio.csv"
-    portfolio_df.to_csv(portfolio_path, index=False)
+    save_csv_data(portfolio_df, portfolio_path, index=False)
     saved_files["portfolio"] = str(portfolio_path)
 
     # Save trade history if available
     if trade_history:
         trade_df = pd.DataFrame(trade_history)
         trade_path = output_dir / f"{filename_prefix}_trades.csv"
-        trade_df.to_csv(trade_path, index=False)
+        save_csv_data(trade_df, trade_path, index=False)
         saved_files["trades"] = str(trade_path)
 
     # Save metrics
@@ -155,8 +155,7 @@ def save_backtest_results(
     }
 
     metrics_path = output_dir / f"{filename_prefix}_metrics.json"
-    with open(metrics_path, "w", encoding="utf-8") as f:
-        json.dump(metrics_data, f, indent=2, default=str, ensure_ascii=False)
+    safe_json_dump(metrics_data, metrics_path, default=str)
     saved_files["metrics"] = str(metrics_path)
 
     logger.info(f"Backtest results saved to {output_dir}")
@@ -189,7 +188,7 @@ def load_backtest_results(
     # Load trade history
     trade_path = results_dir / f"{filename_prefix}_trades.csv"
     if trade_path.exists():
-        trade_df = pd.read_csv(trade_path)
+        trade_df = load_csv_data(trade_path)
         results["trade_history"] = trade_df.to_dict("records")
 
     # Load metrics

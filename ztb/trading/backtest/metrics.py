@@ -90,11 +90,6 @@ class MetricsCalculator:
         )
 
     @staticmethod
-    def calculate_max_drawdown(equity_curve: pd.Series) -> float:
-        """Calculate maximum drawdown."""
-        return max_drawdown(equity_curve)
-
-    @staticmethod
     def calculate_calmar_ratio(returns: pd.Series, max_dd: float) -> float:
         """Calculate Calmar ratio (annualized return / max drawdown)."""
         if max_dd >= 0:  # No drawdown
@@ -199,7 +194,7 @@ class MetricsCalculator:
 
         sharpe = cls.calculate_sharpe_ratio(returns, risk_free_rate)
         sortino = cls.calculate_sortino_ratio(returns, risk_free_rate)
-        max_dd = cls.calculate_max_drawdown(equity_curve)
+        max_dd = max_drawdown(equity_curve)
         calmar = cls.calculate_calmar_ratio(returns, max_dd)
         cagr = cls.calculate_cagr(equity_curve)
 

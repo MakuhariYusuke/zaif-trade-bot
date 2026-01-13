@@ -17,6 +17,8 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+from ztb.utils.file_utils import safe_json_dump
+
 # ロギング設定
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -450,8 +452,7 @@ def main():
             # 品質レポートを保存 (numpy型をPython型に変換)
             quality_report_serializable = self._make_serializable(quality_report)
             report_path = pipeline.data_dir / f"{filename}_quality_report.json"
-            with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(quality_report_serializable, f, indent=2, ensure_ascii=False)
+            safe_json_dump(quality_report_serializable, str(report_path), indent=2, ensure_ascii=False)
 
         else:
             logger.error("No data was collected")

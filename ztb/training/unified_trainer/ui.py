@@ -6,17 +6,15 @@ UI and display utilities for Unified Trainer.
 import time
 from typing import Any, Dict, List, Optional
 
-from ztb.types.common import ConfigDict
-from ztb.utils.format_utils import format_time
 from ztb.utils.logging_utils import get_logger
 
 
 class TrainingUI:
     """Enhanced UI for training progress and statistics display."""
 
-    def __init__(self, logger=None) -> None:
+    def __init__(self, logger: Optional[Any] = None) -> None:
         self.logger = logger or get_logger(__name__)
-        self.start_time = None
+        self.start_time: Optional[float] = None
 
     def print_header(self, algorithm: str, config_name: str) -> None:
         """Print training header."""
@@ -27,7 +25,7 @@ class TrainingUI:
         print(f"Config: {config_name}")
         print("=" * 80)
 
-    def print_config_summary(self, config: ConfigDict) -> None:
+    def print_config_summary(self, config: Dict[str, Any]) -> None:
         """Print configuration summary."""
         print("\n📋 CONFIGURATION SUMMARY:")
         print("-" * 40)
@@ -57,15 +55,16 @@ class TrainingUI:
         print(f"Model Name: {model_name}")
 
         # SAC specific config
-        if algorithm.lower() == "sac":
+        if isinstance(algorithm, str) and algorithm.lower() == "sac":
             sac_config = config.get("sac_hyperparameters", {})
-            print(f"Learning Rate: {sac_config.get('learning_rate', 'default')}")
-            buffer_size = sac_config.get("buffer_size", "default")
-            if isinstance(buffer_size, (int, float)):
-                print(f"Buffer Size: {buffer_size:,}")
-            else:
-                print(f"Buffer Size: {buffer_size}")
-            print(f"Batch Size: {sac_config.get('batch_size', 'default')}")
+            if isinstance(sac_config, dict):
+                print(f"Learning Rate: {sac_config.get('learning_rate', 'default')}")
+                buffer_size = sac_config.get("buffer_size", "default")
+                if isinstance(buffer_size, (int, float)):
+                    print(f"Buffer Size: {buffer_size:,}")
+                else:
+                    print(f"Buffer Size: {buffer_size}")
+                print(f"Batch Size: {sac_config.get('batch_size', 'default')}")
 
         print("-" * 40)
 
@@ -131,11 +130,12 @@ class TrainingUI:
         total_steps: int,
         episode_reward: float,
         ensemble_stats: Dict[str, Any],
-    ):
+    ) -> None:
         """Print training progress with ensemble information."""
         if self.start_time is None:
             self.start_time = time.time()
 
+        assert self.start_time is not None
         elapsed = time.time() - self.start_time
         progress = (step / total_steps) * 100
 

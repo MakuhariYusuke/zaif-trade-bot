@@ -275,8 +275,8 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         # Force enable if not explicitly disabled, as requested by user
         include_mtf = feature_flags.get("include_multi_timeframe_features", False)
         if not include_mtf:
-             logger.info("Forcing enable of multi-timeframe features (v455 requirement)")
-             include_mtf = True
+            logger.info("Forcing enable of multi-timeframe features (v455 requirement)")
+            include_mtf = True
 
         if include_mtf:
             # Add multi-timeframe features if available
@@ -603,18 +603,17 @@ def _initialize_remaining_components(self: Any) -> None:
     # Initialize Online Scaler (v455)
     # We keep this as it addresses the data leakage issue
     from ztb.processing.online_scaler import OnlineScaler
+
     obs_dim = len(self.features)
     if hasattr(self, "optimizer_tracker") and self.optimizer_tracker is not None:
         from ztb.features.processors.optimization.features import (
             OptimizerFeatureTracker,
         )
+
         if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
             obs_dim += len(self.optimizer_tracker.get_feature_names())
 
-    self.online_scaler = OnlineScaler(
-        shape=(obs_dim,),
-        clip=5.0
-    )
+    self.online_scaler = OnlineScaler(shape=(obs_dim,), clip=5.0)
     logger.info(f"Initialized OnlineScaler with dimension {obs_dim}")
 
     # Initialize Execution Model if configured

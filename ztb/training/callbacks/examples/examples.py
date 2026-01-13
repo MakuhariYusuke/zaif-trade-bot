@@ -22,6 +22,7 @@ from ztb.training.callbacks.core.callback_implementations import (
 from ztb.training.callbacks.core.modern_callback_system import CallbackContext, CallbackEvent, CallbackManager
 from ztb.utils.logging_utils import setup_logging
 
+def setup_logging_for_examples():
     """Set up logging for examples."""
     logging.basicConfig(
         level=logging.INFO,

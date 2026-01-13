@@ -38,7 +38,7 @@ class LongTermMetrics:
         sharpe = metrics.sharpe_ratio(episode_returns, risk_free_rate=0.0)
 
         # Calculate max drawdown
-        max_dd = metrics.max_drawdown(portfolio_values)
+        max_dd = max_drawdown(portfolio_values)
 
         # Assess action balance stability
         stability = metrics.action_balance_stability(action_history, window=100)
@@ -89,28 +89,6 @@ class LongTermMetrics:
         return sharpe_ratio(
             returns, rf=risk_free_rate, period_per_year=int(annualization_factor)
         )
-
-    @staticmethod
-    def max_drawdown(portfolio_values: np.ndarray) -> float:
-        """
-        Calculate maximum drawdown (largest peak-to-trough decline).
-
-        Max Drawdown = max((Peak - Trough) / Peak) over all peaks
-
-        Lower (more negative) is worse:
-            > -10%: Excellent
-            > -20%: Good
-            > -30%: Acceptable
-            < -50%: Poor (high risk)
-
-        Args:
-            portfolio_values: Array of portfolio values over time
-
-        Returns:
-            Maximum drawdown as negative decimal (e.g., -0.25 for 25% drawdown).
-            Returns 0.0 if no drawdown or insufficient data.
-        """
-        return max_drawdown(portfolio_values)
 
     @staticmethod
     def action_balance_stability(action_history: List[int], window: int = 100) -> float:

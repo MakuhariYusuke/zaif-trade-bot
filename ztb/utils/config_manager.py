@@ -13,10 +13,83 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
 
+from ztb.types.common import ConfigDict
 from ztb.utils.exceptions.custom_exceptions import ConfigurationError, ValidationError
+from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+
+def save_toml_to_file(config: ConfigDict, file_path: Union[str, Path]) -> None:
+    """
+    Save configuration as TOML to a file.
+
+    Args:
+        config: Configuration dictionary
+        file_path: Path to save the TOML file
+
+    Raises:
+        ConfigurationError: If TOML writing fails
+    """
+    try:
+        import tomli_w
+    except ImportError:
+        raise ConfigurationError(
+            "TOML write support not available. Install tomli-w"
+        )
+
+    try:
+        path = Path(file_path)
+        with open(path, "wb") as f:
+            tomli_w.dump(config, f)
+    except Exception as e:
+        raise ConfigurationError(f"Failed to save TOML config: {e}") from e
+
+
+def save_toml_to_file_obj(config: ConfigDict, file_obj) -> None:
+    """
+    Save configuration as TOML to a file object.
+
+    Args:
+        config: Configuration dictionary
+        file_obj: File object to write to
+
+    Raises:
+        ConfigurationError: If TOML writing fails
+    """
+    try:
+        import tomli_w
+        tomli_w.dump(config, file_obj)
+    except ImportError:
+        # Fallback: convert to basic TOML format
+        _write_basic_toml(config, file_obj)
+    except Exception as e:
+        raise ConfigurationError(f"Failed to save TOML config: {e}") from e
+
+
+def _write_basic_toml(config: ConfigDict, file_obj, prefix: str = "") -> None:
+    """
+    Write basic TOML format (fallback when tomli_w is not available).
+
+    Args:
+        config: Configuration dictionary
+        file_obj: File object to write to
+        prefix: Current key prefix for nested structures
+    """
+    for key, value in config.items():
+        if isinstance(value, dict):
+            file_obj.write(f"[{prefix}{key}]\n".encode('utf-8'))
+            _write_basic_toml(value, file_obj, f"{prefix}{key}.")
+        else:
+            # Basic type conversion
+            if isinstance(value, str):
+                formatted_value = f'"{value}"'
+            elif isinstance(value, bool):
+                formatted_value = str(value).lower()
+            else:
+                formatted_value = str(value)
+            file_obj.write(f"{key} = {formatted_value}\n".encode('utf-8'))
 
 
 class BaseConfigManager(ABC):
@@ -50,11 +123,11 @@ class ConfigManager(BaseConfigManager):
         """
         self.config_dir = Path(config_dir) if config_dir else Path.cwd() / "config"
         self.config_dir.mkdir(exist_ok=True)
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: Dict[str, ConfigDict] = {}
 
     def load_config(
         self, config_name: str, config_type: str = "general", validate: bool = True
-    ) -> Dict[str, Any]:
+    ) -> ConfigDict:
         """
         Load configuration from file with caching and validation.
 
@@ -130,7 +203,7 @@ class ConfigManager(BaseConfigManager):
                 return config_path
         return None
 
-    def _load_config_file(self, config_path: Path) -> Dict[str, Any]:
+    def _load_config_file(self, config_path: Path) -> ConfigDict:
         """Load configuration from file based on extension."""
         suffix = config_path.suffix.lower()
 
@@ -156,7 +229,7 @@ class ConfigManager(BaseConfigManager):
         else:
             raise ConfigurationError(f"Unsupported save format: {format}")
 
-    def _load_yaml(self, path: Path) -> Dict[str, Any]:
+    def _load_yaml(self, path: Path) -> ConfigDict:
         """Load YAML configuration."""
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -164,7 +237,7 @@ class ConfigManager(BaseConfigManager):
         except Exception as e:
             raise ConfigurationError(f"Failed to load YAML config: {e}") from e
 
-    def _load_json(self, path: Path) -> Dict[str, Any]:
+    def _load_json(self, path: Path) -> ConfigDict:
         """Load JSON configuration."""
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -172,7 +245,7 @@ class ConfigManager(BaseConfigManager):
         except Exception as e:
             raise ConfigurationError(f"Failed to load JSON config: {e}") from e
 
-    def _load_toml(self, path: Path) -> Dict[str, Any]:
+    def _load_toml(self, path: Path) -> ConfigDict:
         """Load TOML configuration."""
         try:
             import tomllib
@@ -192,7 +265,7 @@ class ConfigManager(BaseConfigManager):
         except Exception as e:
             raise ConfigurationError(f"Failed to load TOML config: {e}") from e
 
-    def _save_yaml(self, config: Dict[str, Any], path: Path) -> None:
+    def _save_yaml(self, config: ConfigDict, path: Path) -> None:
         """Save YAML configuration."""
         try:
             with open(path, "w", encoding="utf-8") as f:
@@ -200,30 +273,18 @@ class ConfigManager(BaseConfigManager):
         except Exception as e:
             raise ConfigurationError(f"Failed to save YAML config: {e}") from e
 
-    def _save_json(self, config: Dict[str, Any], path: Path) -> None:
+    def _save_json(self, config: ConfigDict, path: Path) -> None:
         """Save JSON configuration."""
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            safe_json_dump(config, str(path), indent=2, ensure_ascii=False)
         except Exception as e:
             raise ConfigurationError(f"Failed to save JSON config: {e}") from e
 
-    def _save_toml(self, config: Dict[str, Any], path: Path) -> None:
+    def _save_toml(self, config: ConfigDict, path: Path) -> None:
         """Save TOML configuration."""
-        try:
-            import tomli_w
-        except ImportError:
-            raise ConfigurationError(
-                "TOML write support not available. Install tomli-w"
-            )
+        save_toml_to_file(config, path)
 
-        try:
-            with open(path, "wb") as f:
-                tomli_w.dump(config, f)
-        except Exception as e:
-            raise ConfigurationError(f"Failed to save TOML config: {e}") from e
-
-    def _validate_config(self, config: Dict[str, Any], config_type: str) -> None:
+    def _validate_config(self, config: ConfigDict, config_type: str) -> None:
         """
         Validate configuration based on type.
 
@@ -246,7 +307,7 @@ class ConfigManager(BaseConfigManager):
             self._validate_model_config(config)
         # Add more validation types as needed
 
-    def _validate_training_config(self, config: Dict[str, Any]) -> None:
+    def _validate_training_config(self, config: ConfigDict) -> None:
         """Validate training configuration."""
         required_keys = ["learning_rate", "batch_size", "total_timesteps"]
         for key in required_keys:
@@ -262,7 +323,7 @@ class ConfigManager(BaseConfigManager):
         if config.get("total_timesteps", 0) <= 0:
             raise ValidationError("total_timesteps must be positive")
 
-    def _validate_trading_config(self, config: Dict[str, Any]) -> None:
+    def _validate_trading_config(self, config: ConfigDict) -> None:
         """Validate trading configuration."""
         required_keys = ["initial_balance", "max_position_size"]
         for key in required_keys:
@@ -275,7 +336,7 @@ class ConfigManager(BaseConfigManager):
         if config.get("max_position_size", 0) <= 0:
             raise ValidationError("max_position_size must be positive")
 
-    def _validate_model_config(self, config: Dict[str, Any]) -> None:
+    def _validate_model_config(self, config: ConfigDict) -> None:
         """Validate model configuration."""
         required_keys = ["learning_rate", "batch_size"]
         for key in required_keys:
@@ -293,7 +354,7 @@ class ConfigManager(BaseConfigManager):
         self._cache.clear()
         logger.info("Configuration cache cleared")
 
-    def get_cached_configs(self) -> Dict[str, Dict[str, Any]]:
+    def get_cached_configs(self) -> Dict[str, ConfigDict]:
         """Get all cached configurations."""
         return {key: value.copy() for key, value in self._cache.items()}
 
@@ -321,7 +382,7 @@ def validate_config(config: Any, required_fields: list) -> bool:
     return True
 
 
-def validate_dict_config(config: Dict[str, Any], required_keys: List[str]) -> bool:
+def validate_dict_config(config: ConfigDict, required_keys: List[str]) -> bool:
     """
     辞書型設定の必須キーを検証
 

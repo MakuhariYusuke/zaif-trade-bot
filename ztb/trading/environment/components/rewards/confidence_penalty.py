@@ -25,7 +25,7 @@ class ConfidencePenaltyReward(RewardComponent):
     def get_name(self) -> str:
         return "confidence_penalty"
 
-    def _get_setting(self, context: RewardContext, key: str, default: float) -> float:
+    def _get_setting(self, context: RewardContext, key: str, default: float, cast: Any = None) -> float:
         """Local behavior: only check reward_settings (dict or object) and custom_reward_params.
         Do NOT fall back to context.config to avoid MagicMock config surprises in tests.
         """
