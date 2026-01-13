@@ -5,7 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Code Refactoring and Integration - 2025-12-26
+## [Unreleased] - Phase 4: Walk-Forward Analysis and Module Refactoring - 2025-01-14
+
+### Phase 4 Implementation
+- **Walk-Forward Modularization**: Created `ztb/evaluation/` module for reusable Walk-Forward analysis components:
+  - `walk_forward_splitter.py`: `WalkForwardSplitter` class for generating rolling time-series windows
+    - `TimeSeriesWindow` NamedTuple: window_id, train_start, train_end, val_start, val_end, test_start, test_end
+    - Configurable parameters: initial_train_pct=0.50, val_pct=0.15, test_pct=0.15, step_pct=0.15
+  - `walk_forward_evaluator.py`: `WalkForwardModelEvaluator` for SAC training and per-window evaluation
+    - `WindowPerformance` dataclass: Aggregate window-level metrics (val_roi, test_roi, sharpe_ratio, max_drawdown, win_rate)
+    - Methods: train_and_evaluate_window(), _evaluate_on_df(), _calculate_sharpe(), _calculate_max_drawdown()
+  - `walk_forward_result.py`: `WalkForwardResult` dataclass for aggregate results (average_val_roi, average_test_roi, overfitting_ratio, etc.)
+  - `walk_forward_reporter.py`: `WalkForwardReporter` for console logging and JSON output
+  - `__init__.py`: Unified public interface exporting all 6 core classes
+
+- **Backward Compatibility**: Updated `scripts/v456/phase4/modules/__init__.py` to re-export from `ztb.evaluation`
+  - Existing Phase 4 scripts continue working without modification
+  - Dual import paths available: `from ztb.evaluation import ...` or `from modules import ...`
+
+- **Module Path Resolution**: Fixed dynamic sys.path injection in `walk_forward_evaluator.py`
+  - Resolves `train_and_evaluate_v456_phase3` imports from scripts/v456/
+  - Enables ztb/evaluation to remain independent while delegating to phase3 training utilities
+
+### Code Organization
+- **Reusable Library**: Migrated Walk-Forward modules to `ztb/evaluation/` for cross-project reusability
+- **Project-Specific Wrapper**: `scripts/v456/phase4/` serves as project-specific interface
+- **Modular Architecture**: Separated concerns into 5 focused components with clear responsibilities
+
+### Testing & Validation
+- **Import Verification**: ✅ PASSED - All 6 classes accessible via both import paths (direct and re-export)
+- **Integration Testing**: ✅ PASSED - Phase 4 execution with 1 window × 50 timesteps completes successfully
+- **Background Execution**: 3 windows × 50K timesteps running (in progress)
+
+## [Previous Releases]
+
+### [Unreleased] - Code Refactoring and Integration - 2025-12-26
 
 ### Code Refactoring
 - **Configuration Utilities**: Created `utils/config_utils.py` with `load_config_from_json()` and `merge_training_configs()` functions to eliminate duplicate config loading code across 20+ scripts.

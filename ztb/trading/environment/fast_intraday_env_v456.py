@@ -111,6 +111,23 @@ class FastIntradayEnvV456(gym.Env):
         })
         self.fee_model.set_exchange("zaif")
         
+        # ★ Phase 1.1: Check for missing features before accessing
+        missing_base = [col for col in base_feature_columns if col not in self.df.columns]
+        missing_mtf = [col for col in mtf_feature_columns if col not in self.df.columns]
+        missing_regime = [col for col in regime_feature_columns if col not in self.df.columns]
+        
+        if missing_base or missing_mtf or missing_regime:
+            error_msg = "❌ Missing feature columns detected:\n"
+            if missing_base:
+                error_msg += f"  Base: {missing_base}\n"
+            if missing_mtf:
+                error_msg += f"  MTF: {missing_mtf}\n"
+            if missing_regime:
+                error_msg += f"  Regime: {missing_regime}\n"
+            error_msg += f"\nAvailable columns ({len(self.df.columns)}): {self.df.columns.tolist()}\n"
+            error_msg += "→ Implement feature calculation or provide pre-computed features."
+            raise ValueError(error_msg)
+        
         # Pre-convert data to numpy
         self.base_features = self.df[base_feature_columns].values.astype(np.float32)
         self.mtf_features = self.df[mtf_feature_columns].values.astype(np.float32)
@@ -169,6 +186,7 @@ class FastIntradayEnvV456(gym.Env):
         self.max_balance = initial_balance
         self.last_step_cost = 0.0
         self.steps_in_episode = 0
+        self.last_realized_fee = 0.0  # ★ Phase 1.3: fee tracking
         
     def reset(
         self,
@@ -270,10 +288,14 @@ class FastIntradayEnvV456(gym.Env):
             fee_rate = self.fee_model.get_fee_rate(trade_type)
             fee_paid = abs(delta) * execution_price * fee_rate
 
-            # PnL更新
+            # PnL更新（確定損益のみ balance に反映）
             pnl = self.position * (price_now - self.last_step_cost) if self.position != 0 else 0.0
+            realized_pnl = pnl - fee_paid - slippage_paid
+            
             self.total_pnl += pnl
-            self.balance -= fee_paid
+            # ★ Phase 1.3修正: 手数料/スリッページは balance から直接引かない
+            # → 代わりに報酬計算で反映される
+            self.last_realized_fee = fee_paid + slippage_paid
 
             # ポジション更新
             self.position = new_position
@@ -303,9 +325,16 @@ class FastIntradayEnvV456(gym.Env):
             max_position=self.max_position,
         )
         
+        # ★ Phase 1.3修正: 報酬を学習用にスケーリング
+        # reward を [-0.1, 0.1] 範囲に正規化
+        learning_reward = np.clip(reward / 100.0, -0.1, 0.1)
+        
         # ステップ更新
         self.current_step += 1
         self.steps_in_episode += 1
+        
+        # ★ Phase 1.3修正: balance は日次確定基準でのみ更新
+        # （毎ステップの手数料反映ではなく）
         self.max_balance = max(self.max_balance, self.balance)
         
         # 終了条件
@@ -336,7 +365,7 @@ class FastIntradayEnvV456(gym.Env):
         # 次の観測
         next_obs = self._get_observation()
         
-        return next_obs, reward, done, truncated, info
+        return next_obs, learning_reward, done, truncated, info
     
     def _build_observation(self, idx: int, update_scaler: bool = True) -> np.ndarray:
         """88次元観測を構築"""

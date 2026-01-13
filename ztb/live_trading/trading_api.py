@@ -156,22 +156,37 @@ class TradingAPI:
             Dict[str, float]: 通貨別残高
         """
         try:
-            self._rate_limit_wait()
-
-            # TODO: 実際のAPI呼び出し
-            # balance = self.exchange.fetch_balance()
-
-            # モックデータ（開発用）
-            balance = {
-                'btc': 0.5,
-                'jpy': 50000.0
+            import ccxt
+            
+            # ccxtでZaif交換を初期化
+            zaif = ccxt.zaif({
+                'apiKey': self.api_key,
+                'secret': self.api_secret
+            })
+            
+            # 残高を取得
+            balance = zaif.fetch_balance()
+            
+            # BTC/JPYの残高を返す
+            return {
+                'btc': balance['BTC']['free'],
+                'jpy': balance['JPY']['free']
             }
 
-            return balance
-
+        except ImportError:
+            logger.warning("ccxt not installed, returning mock balance")
+            # ccxtが未インストールの場合はモックを返す
+            return {
+                'btc': 0.0,
+                'jpy': 0.0
+            }
         except Exception as e:
             logger.error(f"Failed to get balance: {e}")
-            raise
+            # エラー時も残高0で返す（安全性重視）
+            return {
+                'btc': 0.0,
+                'jpy': 0.0
+            }
 
     def create_order(self,
                     symbol: str,

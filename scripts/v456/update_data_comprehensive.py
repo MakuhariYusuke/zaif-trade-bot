@@ -54,11 +54,13 @@ class DataSourceManager:
             df = pd.read_csv(self.data_file, index_col=0, parse_dates=True)
             
             # タイムゾーン統一
-            if df.index.tz is None:
-                df.index = df.index.tz_localize("UTC")
-            else:
-                df.index = df.index.tz_convert("UTC")
+            if hasattr(df.index, 'tz'):
+                if df.index.tz is None:
+                    df.index = df.index.tz_localize("UTC")
+                else:
+                    df.index = df.index.tz_convert("UTC")
             
+            df.index.name = 'timestamp'
             return df
         except Exception as e:
             print(f"Error loading existing data: {e}")

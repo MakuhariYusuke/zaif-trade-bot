@@ -26,7 +26,38 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 - **Market Regime Adaptation**: SAC v444 with 12-regime classification and adaptive strategies
 - **Phase 3 Ensemble Methods**: Multi-source signal integration with dynamic weight adjustment and confidence-based scoring
 
-## 🆕 Recent Updates (2025-12-26)
+## 🆕 Recent Updates (2025-01-14)
+
+### Phase 4: Walk-Forward Analysis Implementation 🆕
+- **Walk-Forward Modularization**: Created reusable `ztb/evaluation/` module for robust model evaluation
+  - `WalkForwardSplitter`: Generates rolling time-series windows for out-of-sample testing
+    - 5 components (train/val/test) with configurable percentages
+    - Prevents look-ahead bias in time-series validation
+  - `WalkForwardModelEvaluator`: Per-window SAC training and evaluation
+    - Window-level performance metrics (ROI, Sharpe, max drawdown, win rate)
+    - Separate in-sample (validation) and out-of-sample (test) evaluation
+  - `WalkForwardResult` & `WalkForwardReporter`: Aggregate results and JSON reporting
+    - Overfitting ratio calculation for robustness assessment
+    - Per-window and aggregate statistics
+  
+- **Code Reusability**: Migrated from `scripts/v456/phase4/modules/` to `ztb/evaluation/`
+  - Backward compatibility via re-export mechanism in phase4/modules/
+  - Both import paths supported: `from ztb.evaluation import ...`
+  - Enables cross-project reusability for future models
+
+- **Implementation Highlights**:
+  - Dynamic sys.path injection for proper module resolution
+  - Comprehensive error handling and logging throughout
+  - JSON output for result persistence and analysis
+  - Type-safe dataclasses and NamedTuples for clarity
+
+- **Current Status**: 
+  - ✅ Module architecture complete and tested
+  - ✅ Import verification passed (all 6 classes accessible)
+  - ✅ Single window (50 timestep) execution successful
+  - ⏳ 3-window (50K timestep) background execution in progress
+
+## 📋 Recent Updates (2025-12-26)
 
 ### Benchmark Comparison Refactoring完了 ✅
 - **TypedDict中央化**: BenchmarkComparison, RollingComparison等の型定義を`ztb/types/evaluation_types.py`に移動
