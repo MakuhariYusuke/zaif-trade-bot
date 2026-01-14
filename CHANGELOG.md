@@ -5,9 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Phase 4: Walk-Forward Analysis Enhancement - 2025-01-14
+## [Unreleased] - Phase 4: Walk-Forward Analysis Enhancement - 2025-01-14 (Updated 2026-01-14)
 
-### Walk-Forward Analysis Framework Enhancement
+### Walk-Forward Analysis Framework Enhancement - Session 1
+
 - **Metrics Calculation Unification** (Commit a663c48):
   - Consolidated metrics computation to `ztb.metrics.metrics`
   - Eliminated duplicate implementations (Sharpe ratio, Max Drawdown, Win Rate)
@@ -47,6 +48,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Trade count non-negativity
     * Account balance deficit warnings
   - Early detection of invalid parameters, improved debugging experience
+
+### Walk-Forward Analysis Framework Enhancement - Session 2 (New)
+
+- **Dependency Injection Pattern Implementation** (Commit 218d4d7):
+  - Added `env_factory` parameter to `WalkForwardModelEvaluator.__init__()`
+  - Added `algorithm_factory` parameter for flexible SAC model creation
+  - Provided default factory implementations for backward compatibility
+  - `_default_env_factory()`: Default environment creation logic
+  - `_default_algorithm_factory()`: Default SAC model creation logic
+  - Benefits: Testability improvement (mock injection), reusability (custom environments), loose coupling
+
+- **Exception Handling and Error Isolation** (Commit 218d4d7):
+  - Custom `WindowEvaluationError` exception class for window-specific failures
+  - Added `continue_on_error` parameter to `train_and_evaluate_window()` method
+  - Error tracking via `self.errors` dictionary (window_id → Exception mapping)
+  - Per-window error isolation prevents single failures cascading to entire pipeline
+  - Comprehensive try-catch blocks at environment creation, training, and evaluation phases
+  - Phase-specific error messages for root cause analysis
+
+- **Multiple Windows Evaluation Method** (Commit 218d4d7):
+  - New `evaluate_multiple_windows()` method for batch processing
+  - Returns tuple: `(List[WindowPerformance], Dict[int, Exception])`
+  - Executes `train_and_evaluate_window()` for each window with error isolation
+  - Logging of aggregate statistics (total/successful/failed window counts)
+  - Enables long-running evaluations without single-window failures affecting others
+
+- **Results Aggregation Method** (Commit 218d4d7):
+  - New `get_results_summary()` method for post-evaluation analysis
+  - Computes aggregate statistics: avg/std ROI, Sharpe, Max Drawdown across windows
+  - Handles edge cases (zero completed windows)
+  - Structured output dictionary for easy reporting and visualization
+
+- **Comprehensive Test Suite** (Commit b996a46):
+  - New file: `tests/unit/evaluation/test_walk_forward_evaluator.py` (245 lines)
+  - 7 test classes covering:
+    * `TestWalkForwardModelEvaluatorDependencyInjection`: Factory injection and initialization
+    * `TestWalkForwardModelEvaluatorExceptionHandling`: Error handling with continue_on_error flag
+    * `TestWalkForwardModelEvaluatorMultipleWindows`: Batch processing and result aggregation
+    * `TestWindowEvaluationError`: Custom exception validation
+    * `TestWalkForwardModelEvaluatorIntegration`: End-to-end scenario testing
+  - Covers positive cases (successful evaluation) and negative cases (error propagation)
+  - Enables confident refactoring and feature additions
 
 - **Documentation and Summary** (Commits d98cb02, 8bdb094):
   - Created comprehensive implementation summary (42_PHASE4_IMPLEMENTATION_SUMMARY_20250114.md)
