@@ -91,6 +91,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Covers positive cases (successful evaluation) and negative cases (error propagation)
   - Enables confident refactoring and feature additions
 
+- **Checkpoint/Resume Functionality** (Commit 8833d50):
+  - New file: `ztb/evaluation/walk_forward/checkpoint.py` (~370 lines)
+  - New class: `CheckpointManager` with methods:
+    * `save(evaluator, run_id)`: Save evaluation state to checkpoints/{run_id}/window_{id}/
+    * `restore(evaluator, run_id)`: Restore models, results, errors from checkpoint
+    * `get_run_status(run_id)`: Progress tracking (completed/failed/total windows)
+    * `get_completed_windows(run_id)`: List of finished window IDs
+    * `get_results_summary(run_id)`: Aggregated statistics from checkpoint
+    * `list_runs()`: All available run IDs
+    * `delete_run(run_id)`: Clean up checkpoint directory
+  - Checkpoint format:
+    * `checkpoints/{run_id}/window_{id}/checkpoint_metadata.json`: Window metadata
+    * `checkpoints/{run_id}/window_{id}/model.pkl`: Trained SAC model (optional)
+    * `checkpoints/{run_id}/window_{id}/window_results.json`: WindowPerformance data
+    * `checkpoints/{run_id}/run_metadata.json`: Overall progress tracking
+    * `checkpoints/{run_id}/runtime_data.pkl`: Serialized evaluator state
+  - Integrated with WalkForwardModelEvaluator:
+    * `__init__(checkpoint_dir)`: Optional checkpoint directory parameter
+    * `evaluate_multiple_windows(..., run_id, resume_from_checkpoint)`: Support for resuming
+    * Periodic checkpoint saving (every 5 windows)
+    * Automatic skip of already-completed windows on resume
+  - Enables long-running evaluations to survive interruptions
+  - Production-ready error handling and logging
+
+- **Checkpoint Testing** (Commit 8833d50):
+  - New file: `tests/unit/evaluation/test_walk_forward_checkpoint.py` (~500 lines)
+  - 18 test cases covering:
+    * `TestCheckpointManagerBasics`: Initialization, list runs, directory structure
+    * `TestCheckpointManagerSaveRestore`: Save with/without errors, restore with data validation
+    * `TestCheckpointManagerStatus`: Status tracking, results summary, completed windows
+    * `TestWalkForwardModelEvaluatorCheckpoint`: Evaluator integration with checkpoint_dir
+    * `TestCheckpointIntegration`: Full checkpoint lifecycle (create, save, restore, delete)
+  - All 18 tests passing ✅
+  - Validates data integrity across save/restore cycles
+  - Tests both successful and error scenarios
+
 - **Documentation and Summary** (Commits d98cb02, 8bdb094):
   - Created comprehensive implementation summary (42_PHASE4_IMPLEMENTATION_SUMMARY_20250114.md)
   - Updated README with Phase 4 enhancements and benefits
