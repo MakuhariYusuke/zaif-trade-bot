@@ -5,37 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - Phase 4: Walk-Forward Analysis and Module Refactoring - 2025-01-14
+## [Unreleased] - Phase 4: Walk-Forward Analysis and Unified Evaluation - 2025-01-15
 
-### Phase 4 Implementation
-- **Walk-Forward Modularization**: Created `ztb/evaluation/` module for reusable Walk-Forward analysis components:
-  - `walk_forward_splitter.py`: `WalkForwardSplitter` class for generating rolling time-series windows
-    - `TimeSeriesWindow` NamedTuple: window_id, train_start, train_end, val_start, val_end, test_start, test_end
-    - Configurable parameters: initial_train_pct=0.50, val_pct=0.15, test_pct=0.15, step_pct=0.15
-  - `walk_forward_evaluator.py`: `WalkForwardModelEvaluator` for SAC training and per-window evaluation
-    - `WindowPerformance` dataclass: Aggregate window-level metrics (val_roi, test_roi, sharpe_ratio, max_drawdown, win_rate)
-    - Methods: train_and_evaluate_window(), _evaluate_on_df(), _calculate_sharpe(), _calculate_max_drawdown()
-  - `walk_forward_result.py`: `WalkForwardResult` dataclass for aggregate results (average_val_roi, average_test_roi, overfitting_ratio, etc.)
-  - `walk_forward_reporter.py`: `WalkForwardReporter` for console logging and JSON output
-  - `__init__.py`: Unified public interface exporting all 6 core classes
+### Walk-Forward Unified Evaluation Framework
+- **統合評価フレームワーク設計** (Commit 11edfab99):
+  - `WalkForwardUnifiedEvaluator`: WindowPerformanceをComprehensiveEvaluationに統合
+  - `WalkForwardAggregationStats`: ウィンドウ横断的統計分析（15+ 統計指標）
+  - 過学習検出: 数値化可能 + 重大度分類（none/mild/moderate/severe）
+  - スコア計算:
+    * `consistency_score`: ウィンドウ間ROIのばらつきを0-1で定量化
+    * `robustness_score`: テストセット性能の質を評価
+    * `stability_index`: Sharpe比の一貫性を測定
+  - メトリクス集約: 全9個（ROI 2、リスク 3、過学習 2、堅牢性 2）
 
-- **Backward Compatibility**: Updated `scripts/v456/phase4/modules/__init__.py` to re-export from `ztb.evaluation`
-  - Existing Phase 4 scripts continue working without modification
-  - Dual import paths available: `from ztb.evaluation import ...` or `from modules import ...`
+- **型安全性の完全統一** (Commits 71dd3cc25, c10866007):
+  - ComprehensiveEvaluationClass: Any型で柔軟に（Enum/datetime または str 両対応）
+  - メトリク保存: 全て string キー（JSON 互換）
+  - ztb/evaluation/unified_evaluation.py: 完全な stub 同期
+  - Validation: mypy --strict パス（4ファイル全て）
 
-- **Module Path Resolution**: Fixed dynamic sys.path injection in `walk_forward_evaluator.py`
-  - Resolves `train_and_evaluate_v456_phase3` imports from scripts/v456/
-  - Enables ztb/evaluation to remain independent while delegating to phase3 training utilities
+- **統合テスト完全パス**:
+  - 13/13 tests PASSED
+  - 正常系テスト: 10個（集約、過学習、スコア計算等）
+  - エッジケーステスト: 3個（ゼロROI、負ROI、単一ウィンドウ）
 
-### Code Organization
-- **Reusable Library**: Migrated Walk-Forward modules to `ztb/evaluation/` for cross-project reusability
-- **Project-Specific Wrapper**: `scripts/v456/phase4/` serves as project-specific interface
-- **Modular Architecture**: Separated concerns into 5 focused components with clear responsibilities
+### 統合評価フレームワーク戦略書
+- 文書: `docs/EVALUATION_INTEGRATION_STRATEGY.md`
+- レベル 1: データ型統一（完了 ✅）
+- レベル 2: walk_forward統合（進行中 🔄）
+- レベル 3: 統合分析レポート（計画中）
+- 高収益性への寄与: 過学習可視化、安定性評価、リスク調整、動的調整
 
-### Testing & Validation
-- **Import Verification**: ✅ PASSED - All 6 classes accessible via both import paths (direct and re-export)
-- **Integration Testing**: ✅ PASSED - Phase 4 execution with 1 window × 50 timesteps completes successfully
-- **Background Execution**: 3 windows × 50K timesteps running (in progress)
+### ファイル追加/変更
+- NEW: `ztb/analysis/evaluation/walk_forward_adapter.py` (407 行)
+- NEW: `ztb/analysis/evaluation/__init__.py` (24 行)
+- NEW: `tests/unit/evaluation/test_walk_forward_adapter.py` (318 行)
+- NEW: `docs/EVALUATION_INTEGRATION_STRATEGY.md` (156 行)
+
+## [Previous Releases]
+
+### [Unreleased] - Evaluation Framework Type Unification - 2025-01-15
+
+### Unified Evaluation Integration (Commits 71dd3cc25)
+- Flexible Type System: ComprehensiveEvaluationClass with Any types accepting both Enum and str
+- String-based Metric Storage: Replaced EvaluationMetric enum keys with string literals for JSON serialization
+- Stub Synchronization: ztb/evaluation/unified_evaluation.py now mirrors real implementation perfectly
+- Type Validation: All 3 core files pass mypy --strict
+- Backward Compatibility: TypedDict definitions preserved for type checking
+
+### Error Handling Standardization (Commit c10866007)
+- Replaced 8 bare except clauses with safe_to_float() from ztb.utils.safety
+- Added 150+ type hints across evaluation modules
+- Exception handling: Comprehensive and type-safe
+
+### Walk-Forward Modularization (Commit 2401dcf5b)
+- Created ztb/evaluation/walk_forward subpackage (6 modules)
+- Full type hints, 100% backward compatibility
+- Deleted 4 old monolithic files
+- Unified public interface in __init__.py
+
+
 
 ## [Previous Releases]
 
