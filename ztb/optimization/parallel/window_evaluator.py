@@ -32,10 +32,11 @@ from multiprocessing import Pool
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 from stable_baselines3 import SAC
 
 from ztb.evaluation.walk_forward.evaluator import WalkForwardModelEvaluator
-from ztb.evaluation.walk_forward.types import WindowPerformance
+from ztb.evaluation.walk_forward.types import TimeSeriesWindow, WindowPerformance
 from ztb.utils.error_utils import safe_operation
 from ztb.utils.cache_coordination import CacheCoordinator, FeatureCacheKey
 
@@ -73,18 +74,36 @@ def eval_window_worker(
     def evaluate_single_window():
         """Evaluate a single window"""
         try:
-            evaluator = WalkForwardModelEvaluator()
-            
-            # Single window evaluation
-            performance = evaluator.evaluate_single_window(
-                train_data=worker_args["train_data"],
-                val_data=worker_args["val_data"],
-                test_data=worker_args["test_data"],
-                timesteps=worker_args["timesteps"],
+            # Create evaluator with factory functions
+            evaluator = WalkForwardModelEvaluator(
                 env_factory=worker_args["env_factory"],
                 algorithm_factory=worker_args["algorithm_factory"],
-                policy=worker_args.get("policy", "MlpPolicy"),
-                algorithm_params=worker_args.get("algorithm_params", {}),
+            )
+            
+            # Create TimeSeriesWindow object
+            window = TimeSeriesWindow(
+                window_id=window_id,
+                train_start=0,
+                train_end=len(worker_args["train_data"]),
+                val_start=len(worker_args["train_data"]),
+                val_end=len(worker_args["train_data"]) + len(worker_args["val_data"]),
+                test_start=len(worker_args["train_data"]) + len(worker_args["val_data"]),
+                test_end=len(worker_args["train_data"]) + len(worker_args["val_data"]) + len(worker_args["test_data"]),
+            )
+            
+            # Combine data
+            combined_data = pd.concat([
+                worker_args["train_data"],
+                worker_args["val_data"],
+                worker_args["test_data"],
+            ], ignore_index=True)
+            
+            # Train and evaluate
+            performance = evaluator.train_and_evaluate_window(
+                df=combined_data,
+                window=window,
+                timesteps=worker_args["timesteps"],
+                continue_on_error=True,
             )
             
             return performance
@@ -362,20 +381,23 @@ class ParallelWindowEvaluator:
         if self.cache_coordinator:
             return self.cache_coordinator.get_stats()
         return {}
+
+    def _restore_from_checkpoint(self, run_id: str) -> None:
         """Restore previously completed windows from checkpoint.
 
         Args:
             run_id: Run identifier
         """
         try:
-            completed_window_ids = self.checkpoint_mgr.get_completed_windows(run_id)
-            if completed_window_ids:
-                logger.info(
-                    f"Restoring {len(completed_window_ids)} completed windows "
-                    f"from checkpoint {run_id}"
-                )
-                # Restore would be delegated to checkpoint_mgr
-                # For now, just log the intent
+            if self.checkpoint_mgr:
+                completed_window_ids = self.checkpoint_mgr.get_completed_windows(run_id)
+                if completed_window_ids:
+                    logger.info(
+                        f"Restoring {len(completed_window_ids)} completed windows "
+                        f"from checkpoint {run_id}"
+                    )
+                    # Restore would be delegated to checkpoint_mgr
+                    # For now, just log the intent
         except Exception as e:
             logger.warning(f"Failed to restore from checkpoint: {e}")
 
