@@ -28,6 +28,55 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
 
 ## 🆕 Recent Updates (2025-01-14)
 
+### Phase 4: Walk-Forward Analysis Enhancement 🆕
+Comprehensive improvements to Walk-Forward evaluation framework for robust model assessment:
+
+#### Implementation Completed ✅
+1. **Metrics Calculation Unification**
+   - Consolidated metrics computation to `ztb.metrics.metrics`
+   - Eliminated duplicate implementations (Sharpe ratio, Max Drawdown, Win Rate)
+   - Improved calculation reliability and maintainability
+
+2. **Over-fitting Indicator Standardization**
+   - Over-fitting ratio = `|test_roi - val_roi| / |val_roi|` (normalized to 1.0 baseline)
+   - Threshold alignment with research recommendations:
+     - `none`: < 1.05 (no over-fitting)
+     - `mild`: 1.05-1.15 (acceptable)
+     - `moderate`: 1.15-1.30 (monitor required)
+     - `severe`: > 1.30 (requires revision)
+   - Enhanced robustness of Walk-Forward analysis
+
+3. **Window Splitting Validation Enhancement**
+   - Embargo mechanism implementation (5% time gap between train/test)
+   - Prevents look-ahead bias in time-series validation
+   - Window integrity validation with comprehensive checks
+   - Data leakage detection across windows
+   - Automatic embargo period calculation based on data characteristics
+
+4. **Time-Series Window Validation Strengthening**
+   - Enhanced `TimeSeriesWindow` validation logic:
+     - Index range and overlap verification
+     - Monotonic increasing property enforcement
+     - Minimum segment size validation
+   - Implemented `WindowPerformance.validate()` method:
+     - ROI range checking (>= -1.0)
+     - Sharpe ratio, Max Drawdown, Win Rate validation
+     - Account balance sanity checks
+   - Early detection of invalid parameters
+
+**Key Benefits**:
+- ✅ Time-series leakage prevention through embargo gaps
+- ✅ Improved statistical robustness of model evaluation
+- ✅ Reduced calculation errors via unified metrics
+- ✅ Better debugging experience with comprehensive validation
+
+**Document References**:
+- [PHASE 4 Implementation Summary](docs/v456/42_PHASE4_IMPLEMENTATION_SUMMARY_20250114.md)
+- [PHASE 4 Improvement Analysis](docs/v456/40_PHASE4_IMPROVEMENT_ANALYSIS_20250114.md)
+- [Metrics Integration Memo](docs/v456/41_METRICS_INTEGRATION_MEMO.md)
+
+## Previous Updates (2025-12-26)
+
 ### Phase 4: Walk-Forward Analysis Implementation 🆕
 - **Walk-Forward Modularization**: Created reusable `ztb/evaluation/` module for robust model evaluation
   - `WalkForwardSplitter`: Generates rolling time-series windows for out-of-sample testing
@@ -57,7 +106,7 @@ A production-ready reinforcement learning-based trading bot for cryptocurrency m
   - ✅ Single window (50 timestep) execution successful
   - ⏳ 3-window (50K timestep) background execution in progress
 
-## 📋 Recent Updates (2025-12-26)
+## 📋 Recent Updates (2025-12-26 Archive)
 
 ### Benchmark Comparison Refactoring完了 ✅
 - **TypedDict中央化**: BenchmarkComparison, RollingComparison等の型定義を`ztb/types/evaluation_types.py`に移動
