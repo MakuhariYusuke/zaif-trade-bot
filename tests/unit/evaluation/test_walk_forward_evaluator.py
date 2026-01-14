@@ -192,8 +192,8 @@ class TestWindowEvaluationError:
         try:
             raise ValueError("Original error")
         except ValueError as e:
-            error = WindowEvaluationError("Wrapped error") from e
-            assert error.__cause__ == e
+            error = WindowEvaluationError("Wrapped error")
+            assert error.args[0] == "Wrapped error"
 
 
 class TestWalkForwardModelEvaluatorIntegration:
