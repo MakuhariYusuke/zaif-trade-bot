@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Phase 4: Walk-Forward Analysis Enhancement - 2025-01-14
+
+### Walk-Forward Analysis Framework Enhancement
+- **Metrics Calculation Unification** (Commit a663c48):
+  - Consolidated metrics computation to `ztb.metrics.metrics`
+  - Eliminated duplicate implementations (Sharpe ratio, Max Drawdown, Win Rate)
+  - Improved calculation reliability and maintainability
+  - Benefits: Single source of truth, consistency across codebase
+
+- **Over-fitting Indicator Standardization** (Commit 7c0b0f3):
+  - Over-fitting ratio formula: `|test_roi - val_roi| / |val_roi|`
+  - 1.0 baseline normalization for direct interpretation
+  - Threshold alignment with research recommendations:
+    * `none`: < 1.05 (no over-fitting)
+    * `mild`: 1.05-1.15 (acceptable - typical for time-series)
+    * `moderate`: 1.15-1.30 (monitor required - degradation evident)
+    * `severe`: > 1.30 (requires model revision)
+  - Enhanced robustness of Walk-Forward evaluation
+
+- **Window Splitting Validation Enhancement** (Commit 76b4d13):
+  - Embargo mechanism: 5% time gap between train and test periods
+  - Prevents look-ahead bias in time-series validation
+  - Comprehensive window validation:
+    * Index range and overlap verification
+    * Monotonic increasing property enforcement
+    * Minimum segment size validation
+  - Data leakage detection across windows with detailed error messages
+  - Automatic embargo period calculation based on data characteristics
+
+- **Time-Series Window Validation Strengthening** (Commit 05e27e4):
+  - Enhanced `TimeSeriesWindow` validation in `__post_init__()`:
+    * Strict index ordering: train_end <= val_start <= val_end <= test_start <= test_end
+    * Period overlap detection with actionable error messages
+    * Training period must be larger than val/test periods (warning if violated)
+  - New `WindowPerformance.validate()` method:
+    * ROI range checking (>= -1.0 to prevent impossible values)
+    * Sharpe ratio sanity checks (> 10 = warning for insufficient data)
+    * Max Drawdown validation (-1.0 <= value <= 0.0 range)
+    * Win Rate validation (0.0 <= value <= 1.0)
+    * Trade count non-negativity
+    * Account balance deficit warnings
+  - Early detection of invalid parameters, improved debugging experience
+
+- **Documentation and Summary** (Commits d98cb02, 8bdb094):
+  - Created comprehensive implementation summary (42_PHASE4_IMPLEMENTATION_SUMMARY_20250114.md)
+  - Updated README with Phase 4 enhancements and benefits
+  - Documented commit history and test verification
+
+### Key Improvements and Benefits
+- ✅ Time-series leakage prevention through embargo gaps
+- ✅ Improved statistical robustness of model evaluation
+- ✅ Reduced calculation errors via unified metrics
+- ✅ Better debugging experience with comprehensive validation
+- ✅ Research-aligned over-fitting thresholds
+- ✅ Comprehensive documentation for maintenance and reuse
+
+### Test Coverage
+- Validated all 4 major components:
+  - WalkForwardModelEvaluator metrics unification
+  - WalkForwardUnifiedEvaluator with updated thresholds
+  - WalkForwardSplitter embargo and validation
+  - TimeSeriesWindow and WindowPerformance validation
+
+### File Changes
+- MODIFIED: `ztb/evaluation/walk_forward/evaluator.py` (metrics unification)
+- MODIFIED: `ztb/analysis/evaluation/walk_forward_adapter.py` (over-fitting standardization)
+- MODIFIED: `ztb/evaluation/walk_forward/splitter.py` (embargo + validation)
+- MODIFIED: `ztb/evaluation/walk_forward/types.py` (enhanced validation)
+- NEW: `docs/v456/42_PHASE4_IMPLEMENTATION_SUMMARY_20250114.md`
+- MODIFIED: `README.md` (Phase 4 update)
+- MODIFIED: `CHANGELOG.md` (this file)
+
 ## [Unreleased] - Phase 4: Walk-Forward Analysis and Unified Evaluation - 2025-01-15
 
 ### Walk-Forward Unified Evaluation Framework
