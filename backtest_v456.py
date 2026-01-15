@@ -167,7 +167,23 @@ def run_backtest_v456(
     
     # 1. データ読み込み
     if data_path is None:
-        data_path = os.path.join(project_root, "data", "btc_jpy_1m_v451.csv")
+        # 優先順位: btc_jpy_training_data.csv > btc_jpy_backtest_data.csv > btc_jpy_1m_merged.csv
+        data_candidates = [
+            "data/btc_jpy_training_data.csv",
+            "data/btc_jpy_backtest_data.csv",
+            "data/btc_jpy_1m_merged.csv",
+            "data/btc_jpy_1m_v451.csv",
+        ]
+        
+        for candidate in data_candidates:
+            candidate_path = os.path.join(project_root, candidate)
+            if os.path.exists(candidate_path):
+                data_path = candidate_path
+                logger.info(f"✓ データファイル自動検出: {os.path.basename(candidate_path)}")
+                break
+        
+        if data_path is None:
+            data_path = os.path.join(project_root, "data", "btc_jpy_1m_v451.csv")
     
     if not os.path.exists(data_path):
         logger.error(f"データが見つかりません: {data_path}")
