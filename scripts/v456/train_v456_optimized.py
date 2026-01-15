@@ -296,7 +296,7 @@ class V456TrainingPipelineOptimized:
             model.learn(
                 total_timesteps=self.timesteps,
                 callback=callback,
-                progress_bar=True,
+                progress_bar=False,  # tqdm/rich が無い環境では無効化
                 log_interval=self.timesteps // 10,  # 進捗表示削減
             )
             
@@ -417,7 +417,7 @@ def main() -> int:
         
         # リソースクリーンアップ
         try:
-            if pipeline.cache_coord:
+            if pipeline.cache_coord and hasattr(pipeline.cache_coord, 'shutdown'):
                 logger.info("Shutting down cache coordinator...")
                 pipeline.cache_coord.shutdown()
         except Exception as e:
