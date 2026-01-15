@@ -273,7 +273,7 @@ def run_backtest_v456(
         
         # 環境ステップ
         obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
+        done = (terminated or truncated) and step_count >= steps  # ステップ数に達したら終了
         
         # 現在価格を取得
         current_price = info.get('current_price', 0.0)
