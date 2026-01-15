@@ -189,7 +189,8 @@ class V456TrainingPipelineOptimized:
             )
             logger.info("✓ CheckpointManager initialized")
         
-        if self.use_cache:
+        # キャッシュは Windows 環境で multiprocessing エラーが発生するため無効化
+        if self.use_cache and False:  # DISABLED on Windows
             self.cache_coord = CacheCoordinator(
                 max_items=500,  # CPU 最適化: 削減
                 ttl_seconds=1800,  # 30 分
@@ -235,9 +236,26 @@ class V456TrainingPipelineOptimized:
         def create_env() -> FastIntradayEnvV456:
             factory = EnvironmentFactory(df)
             env = factory.create_training_env()
-            # Reward parameters を適用
-            if self.reward_params and hasattr(env, 'reward_params'):
-                env.reward_params.update(self.reward_params)
+            
+            # Reward parameters を適用（簡素化版ご褒美関数用）
+            if not hasattr(env, 'reward_params'):
+                env.reward_params = {}
+            
+            # デフォルトご褒美パラメータ（すべて0で簡素化）
+            default_reward_params = {
+                'alpha': 0.0,      # churn penalty disabled
+                'beta': 0.0,       # hold penalty disabled
+                'gamma': 0.0,      # inventory risk disabled
+                'edge_penalty_rate': 0.0,
+                'vol_floor_penalty': 0.0,
+                'hold_ramp': 0.0,
+            }
+            
+            # Config または デフォルトをマージ
+            if self.reward_params:
+                default_reward_params.update(self.reward_params)
+            
+            env.reward_params.update(default_reward_params)
             return env
         
         env = safe_operation(

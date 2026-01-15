@@ -188,6 +188,20 @@ def run_final_backtest(
         if env is None:
             logger.error("環境作成失敗")
             return None
+        
+        # ご褒美パラメータを設定（簡素化版）
+        if not hasattr(env, 'reward_params'):
+            env.reward_params = {}
+        
+        env.reward_params.update({
+            'alpha': 0.0,
+            'beta': 0.0,
+            'gamma': 0.0,
+            'edge_penalty_rate': 0.0,
+            'vol_floor_penalty': 0.0,
+            'hold_ramp': 0.0,
+        })
+        
     except Exception as e:
         logger.error(f"環境エラー: {e}")
         return None
@@ -195,7 +209,11 @@ def run_final_backtest(
     # モデル読み込み
     if model_path is None:
         import glob
-        patterns = ["models/v456/final/v456_trained_*.zip", "best_model/*.zip"]
+        patterns = [
+            "models/v456/final/v456_simplified_*.zip",  # 最新の簡素化モデルを優先
+            "models/v456/final/v456_trained_*.zip",
+            "best_model/*.zip"
+        ]
         found = []
         for p in patterns:
             found.extend(glob.glob(os.path.join(project_root, p)))
