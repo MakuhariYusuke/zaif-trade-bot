@@ -62,15 +62,16 @@ class BacktestReporter:
         self.portfolio_history.append(portfolio_value)
 
         # Action Distribution
+        # action は [target_position, ttl] の2次元
         act_key = "hold"
         if isinstance(action, np.ndarray):
-            action_val = float(action[0])
+            action_val = float(action[0]) if len(action) > 0 else 0.0
         else:
             action_val = float(action)
             
-        if action_val > 0.1:
+        if action_val > 0.3:
             act_key = "buy"
-        elif action_val < -0.1:
+        elif action_val < -0.3:
             act_key = "sell"
             
         self.stats["action_distribution"][act_key] = (
@@ -271,8 +272,15 @@ def run_backtest_v456(
         else:
             action_val = float(action)
         
-        # 環境ステップ
-        obs, reward, terminated, truncated, info = env.step(action)
+        # 環境ステップ（エラーハンドリング付き）
+        try:
+            obs, reward, terminated, truncated, info = env.step(action)
+        except (IndexError, Exception) as e:
+            # データ不足またはその他エラー → バックテスト終了
+            logger.debug(f"Step {step_count}: 環境エラー: {e} → バックテスト終了")
+            done = True
+            continue
+        
         done = (terminated or truncated) and step_count >= steps  # ステップ数に達したら終了
         
         # 現在価格を取得
@@ -290,32 +298,34 @@ def run_backtest_v456(
         # アクション評価
         reporter.update_step(step_count, total_value, action)
         
-        # エントリー/エグジット ロジック
+        # エントリー/エグジット ロジック（修正版）
         if step_count > warmup_steps:
-            if current_position == 0 and action_val > 0.3:
-                # ロング エントリー
+            # action は [target_position, ttl] の2次元
+            # action[0] が position control
+            action_position = float(action[0]) if isinstance(action, np.ndarray) and len(action) > 0 else float(action)
+            
+            if current_position == 0 and action_position > 0.3:
+                # ロング エントリー（買い）
                 current_position = order_size_btc
                 position_entry_price = current_price
-                position_entry_action = action_val
-            elif current_position > 0 and action_val < -0.3:
-                # エグジット
+                position_entry_action = action_position
+                logger.debug(f"Step {step_count}: ENTRY LONG {current_position:.4f}BTC @ ¥{current_price:,.0f}")
+                
+            elif current_position > 0 and action_position < -0.3:
+                # エグジット（売り）
                 exit_price = current_price
                 pnl = (exit_price - position_entry_price) * current_position
                 reporter.record_trade("long", pnl, position_entry_price, exit_price, current_position)
                 
-                if step_count % 1000 == 0:
-                    logger.debug(f"Exit at {exit_price}: PnL = ¥{pnl:,.0f}")
+                logger.debug(f"Step {step_count}: EXIT LONG at ¥{exit_price:,.0f}, PnL=¥{pnl:,.0f}")
                 
                 current_position = 0.0
+                position_entry_price = 0.0
         
         if step_count % 1000 == 0:
             pnl_str = f"¥{(total_value - 1000000.0):,.0f}" if current_position == 0 else f"未実現: ¥{(current_position * (current_price - position_entry_price)):,.0f}"
             logger.info(f"Step {step_count}: Position = {current_position:.4f}BTC, Total = ¥{total_value:,.0f} ({pnl_str})")
     
-    logger.info(f"\n✅ バックテスト完了 (ステップ数: {step_count})")
-    
-    # 5. 結果保存
-    reporter.finalize_stats()
     reporter.print_summary()
     
     results_dir = os.path.join(project_root, "backtest_results", "v456")
