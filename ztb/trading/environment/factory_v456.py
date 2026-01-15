@@ -147,11 +147,16 @@ class FeaturePipeline:
     
     @staticmethod
     def _calculate_bb_width(close: np.ndarray, period: int = 20) -> np.ndarray:
-        """Bollinger Bands 幅計算"""
+        """Bollinger Bands 幅計算 (causal)"""
         if len(close) < period:
             return np.zeros(len(close))
         
-        sma = np.convolve(close, np.ones(period) / period, mode='same')
+        # Causal rolling mean (no look-ahead)
+        sma = np.full_like(close, fill_value=np.nan)
+        for i in range(period - 1, len(close)):
+            sma[i] = np.mean(close[max(0, i - period + 1):i + 1])
+        sma[0:period-1] = sma[period-1]  # Forward fill initial
+        
         std = np.zeros(len(close))
         
         for i in range(period - 1, len(close)):
@@ -176,11 +181,16 @@ class FeaturePipeline:
     
     @staticmethod
     def _calculate_bb_pct(close: np.ndarray, period: int = 20) -> np.ndarray:
-        """Bollinger Bands %B 計算"""
+        """Bollinger Bands %B 計算 (causal)"""
         if len(close) < period:
             return np.ones(len(close)) * 0.5
         
-        sma = np.convolve(close, np.ones(period) / period, mode='same')
+        # Causal rolling mean (no look-ahead)
+        sma = np.full_like(close, fill_value=np.nan)
+        for i in range(period - 1, len(close)):
+            sma[i] = np.mean(close[max(0, i - period + 1):i + 1])
+        sma[0:period-1] = sma[period-1]  # Forward fill initial
+        
         std = np.zeros(len(close))
         
         for i in range(period - 1, len(close)):
@@ -386,7 +396,9 @@ class EnvironmentFactory:
             nonlocal df
             cols = self.pipeline.validate_base_features(df)
             if len(cols) < 30:
-                # 足りない分はダミー特徴量を追加
+                # 足りない分は警告ログして、deterministic ダミー特徴量を追加
+                logger.warning(f"Missing {30 - len(cols)} base features. Adding deterministic fillers.")
+                np.random.seed(42)  # Deterministic seed for reproducibility
                 for i in range(len(cols), 30):
                     col_name = f"base_dummy_{i}"
                     df[col_name] = np.random.randn(len(df))

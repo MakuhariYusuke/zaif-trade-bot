@@ -313,17 +313,23 @@ class FastIntradayEnvV456(gym.Env):
             self.position_ttl -= 1
 
         # 報酬計算（compute_hft_rewardの署名に合わせて）
-        reward, reward_info = compute_hft_reward(
-            price_prev=price_prev,
-            price_now=price_now,
-            position_prev=self.position - delta if delta != 0 else self.position,
-            position_now=self.position,
-            atr=atr,
-            fee_paid=fee_paid,
-            slippage_paid=slippage_paid,
-            holding_steps=self.steps_held,
-            max_position=self.max_position,
-        )
+        # Config から reward_params をワイアリング
+        reward_kwargs = {
+            'price_prev': price_prev,
+            'price_now': price_now,
+            'position_prev': self.position - delta if delta != 0 else self.position,
+            'position_now': self.position,
+            'atr': atr,
+            'fee_paid': fee_paid,
+            'slippage_paid': slippage_paid,
+            'holding_steps': self.steps_held,
+            'max_position': self.max_position,
+        }
+        # reward_params があれば追加
+        if self.reward_params:
+            reward_kwargs.update(self.reward_params)
+        
+        reward, reward_info = compute_hft_reward(**reward_kwargs)
         
         # ★ Phase 1.3修正: 報酬を学習用にスケーリング
         # reward を [-0.1, 0.1] 範囲に正規化

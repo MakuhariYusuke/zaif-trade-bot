@@ -88,9 +88,9 @@ class CacheCoordinator:
         self.ttl_seconds = ttl_seconds
 
         # Create shared memory for cache (multiprocessing-safe)
-        manager = Manager()
-        self.shared_cache: Dict[str, Tuple[Any, float]] = manager.dict()
-        self.lock = manager.RLock()
+        self.manager = Manager()
+        self.shared_cache: Dict[str, Tuple[Any, float]] = self.manager.dict()
+        self.lock = self.manager.RLock()
 
         # Statistics
         self.hits = 0
@@ -300,3 +300,19 @@ class FeatureCacheKey:
             return hashlib.sha256(data_bytes).hexdigest()[:16]
         except Exception:
             return "unknown"
+    
+    def shutdown(self) -> None:
+        """
+        Shutdown the multiprocessing manager and clean up resources.
+        Call this when training is complete to avoid orphaned processes.
+        """
+        try:
+            if self.manager:
+                self.manager.shutdown()
+                logger.info("CacheCoordinator: manager shutdown complete")
+        except Exception as e:
+            logger.warning(f"CacheCoordinator: error during shutdown: {e}")
+    
+    def __del__(self) -> None:
+        """Destructor to ensure cleanup on object deletion"""
+        self.shutdown()
