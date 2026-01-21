@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from ztb.trading.environment.factory_v456 import EnvironmentFactory
+from ztb.features.base_features_v456 import calculate_base_features
+from ztb.trading.environment.utils.fast_intraday_env_v456_utils import (
+    create_fast_intraday_env_v456,
+)
 
 
 class FinalBacktestReporter:
@@ -174,34 +177,31 @@ def run_final_backtest(
     logger.info(f"データ読み込み: {data_path}")
     df = pd.read_csv(data_path, index_col=0, parse_dates=True)
     logger.info(f"  行数: {len(df)}")
+    df = calculate_base_features(df, copy=False)
     
     # 環境作成
     logger.info("環境初期化中...")
     try:
-        factory = EnvironmentFactory(
+        env = create_fast_intraday_env_v456(
             df=df,
-            initial_balance=1_000_000.0,
-            max_position=0.1,
-            commission_rate=0.001,
+            env_config={
+                "initial_balance": 1_000_000.0,
+                "max_position_size": 0.1,
+                "transaction_cost": 0.001,
+                "reward_settings": {
+                    "alpha": 0.0,
+                    "beta": 0.0,
+                    "gamma": 0.0,
+                    "edge_penalty_rate": 0.0,
+                    "vol_floor_penalty": 0.0,
+                    "hold_ramp": 0.0,
+                },
+            },
         )
-        env = factory.create_training_env()
         if env is None:
             logger.error("環境作成失敗")
             return None
-        
-        # ご褒美パラメータを設定（簡素化版）
-        if not hasattr(env, 'reward_params'):
-            env.reward_params = {}
-        
-        env.reward_params.update({
-            'alpha': 0.0,
-            'beta': 0.0,
-            'gamma': 0.0,
-            'edge_penalty_rate': 0.0,
-            'vol_floor_penalty': 0.0,
-            'hold_ramp': 0.0,
-        })
-        
+
     except Exception as e:
         logger.error(f"環境エラー: {e}")
         return None

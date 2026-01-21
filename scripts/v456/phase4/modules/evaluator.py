@@ -29,10 +29,9 @@ class WalkForwardModelEvaluator:
         # 遅延インポート（循環依存回避）
         import sys
         from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-        from train_and_evaluate_v456_phase3 import (
-            create_environment_wrapper,
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+        from ztb.trading.environment.utils.fast_intraday_env_v456_utils import create_fast_intraday_env_v456
+        from ztb.training.utils.v457_config_utils import load_config_dict, extract_env_config, extract_sac_params, extract_seed
         
         logger.info(f"\n{'='*70}")
         logger.info(f"Window {window.window_id}: Training & Evaluation")
@@ -47,19 +46,29 @@ class WalkForwardModelEvaluator:
         logger.info(f"Val:   {len(val_df)} bars")
         logger.info(f"Test:  {len(test_df)} bars")
         
-        # 訓練環境作成
-        train_env = create_environment_wrapper(train_df, None)
+        # v458 config ロード
+        config_path = Path(__file__).parent.parent.parent.parent / "config" / "v458" / "base" / "config.yaml"
+        full_config = load_config_dict(config_path)
+        env_config_dict = extract_env_config(full_config)
+        sac_params = extract_sac_params(full_config)
+        seed = extract_seed(full_config)
         
-        # SAC訓練
+        # 訓練環境作成 (v458)
+        train_env = create_fast_intraday_env_v456(df=train_df, env_config=env_config_dict)
+        
+        # SAC訓練 (v458 config使用)
         logger.info(f"\n[Training]")
         model = SAC(
             "MlpPolicy",
             train_env,
-            learning_rate=TrainingConfig.LEARNING_RATE,
-            batch_size=256,
-            buffer_size=TrainingConfig.BUFFER_SIZE,
-            tau=0.005,
-            gamma=0.99,
+            learning_rate=sac_params.get("learning_rate", 3e-4),
+            batch_size=sac_params.get("batch_size", 256),
+            buffer_size=sac_params.get("buffer_size", 100000),
+            tau=sac_params.get("tau", 0.005),
+            gamma=sac_params.get("gamma", 0.99),
+            ent_coef=sac_params.get("ent_coef", "auto"),
+            train_freq=sac_params.get("train_freq", 1),
+            gradient_steps=sac_params.get("gradient_steps", 1),
             verbose=0,
         )
         
@@ -98,70 +107,69 @@ class WalkForwardModelEvaluator:
         return performance
 
     def _evaluate_on_df(self, model: SAC, df) -> Dict:
-        """データフレーム上で評価"""
+        """データフレーム上で評価 (v458)"""
         import sys
         from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-        from train_and_evaluate_v456_phase3 import (
-            create_environment_wrapper,
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+        from ztb.trading.environment.utils.fast_intraday_env_v456_utils import create_fast_intraday_env_v456
+        from ztb.training.utils.v457_config_utils import load_config_dict, extract_env_config
         
-        eval_env = create_environment_wrapper(df, None)
+        # v458 config
+        config_path = Path(__file__).parent.parent.parent.parent / "config" / "v458" / "base" / "config.yaml"
+        full_config = load_config_dict(config_path)
+        env_config_dict = extract_env_config(full_config)
+        
+        eval_env = create_fast_intraday_env_v456(df=df, env_config=env_config_dict)
+        
+        # BacktestStatsRecorderアタッチ (v457方式)
+        from scripts.v457.backtest_v457 import BacktestStatsRecorder
+        recorder = BacktestStatsRecorder()
+        eval_env.recorder = recorder  # 環境にアタッチ
         
         obs, _ = eval_env.reset()
         done = False
-        episode_reward = 0.0
-        actions = []
-        trades = 0
         
         while not done:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = eval_env.step(action)
             done = terminated or truncated
             
-            episode_reward += float(reward)
-            actions.append(float(action[0]))
+            # Recorder更新
+            recorder.update_step(
+                step=eval_env.lifetime_steps,
+                portfolio_value=eval_env.balance,
+                action=action,
+                env_info=info
+            )
             
             if info.get("trade_executed"):
-                trades += 1
+                # Trade記録 (簡略化)
+                trade_type = "long" if action[0] > 0 else "short"
+                pnl = info.get("pnl", 0.0)
+                entry_price = info.get("entry_price", 0.0)
+                exit_price = info.get("exit_price", 0.0)
+                size = info.get("size", 0.0)
+                fee = info.get("fee", 0.0)
+                slippage = info.get("slippage", 0.0)
+                recorder.record_trade(trade_type, pnl, entry_price, exit_price, size, fee, slippage)
+        
+        # 統計最終化
+        recorder.finalize_stats()
         
         final_balance = eval_env.balance
         total_pnl = final_balance - eval_env.initial_balance
         roi = total_pnl / eval_env.initial_balance
         
         return {
-            "episode_reward": episode_reward,
+            "episode_reward": 0.0,  # recorder使用
             "final_balance": final_balance,
             "total_pnl": total_pnl,
             "roi": roi,
-            "trades": trades,
-            "sharpe": self._calculate_sharpe(actions),
-            "max_drawdown": self._calculate_max_drawdown([final_balance]),
-            "win_rate": 0.5,  # 簡略化
+            "trades": recorder.stats.get("total_trades", 0),
+            "sharpe": recorder.stats.get("sharpe_ratio", 0.0),
+            "max_drawdown": recorder.stats.get("max_drawdown_percent", 0.0),
+            "win_rate": (recorder.stats.get("winning_trades", 0) / max(1, recorder.stats.get("total_trades", 1))),
+            "profit_factor": recorder.stats.get("profit_factor", 0.0),
+            "expectancy": recorder.stats.get("expectancy", 0.0),
+            "trades_per_day": recorder.stats.get("trades_per_day", 0.0),
         }
-
-    @staticmethod
-    def _calculate_sharpe(returns: List[float], rf_rate: float = 0.0) -> float:
-        """Sharpe比計算"""
-        if len(returns) < 2:
-            return 0.0
-        
-        returns = np.array(returns)
-        excess_returns = np.mean(returns) - rf_rate
-        volatility = np.std(returns)
-        
-        if volatility == 0:
-            return 0.0
-        
-        return excess_returns / volatility
-
-    @staticmethod
-    def _calculate_max_drawdown(balances: List[float]) -> float:
-        """最大ドローダウン計算"""
-        if not balances:
-            return 0.0
-        
-        balances = np.array(balances)
-        cummax = np.maximum.accumulate(balances)
-        drawdown = (balances - cummax) / cummax
-        return float(np.min(drawdown))

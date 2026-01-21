@@ -6,10 +6,10 @@
 
 | スクリプト | ソース | 特徴 | 適用範囲 |
 |-----------|--------|------|---------|
-| `update_data_comprehensive.py` | 複数（優先度順） | **推奨**。複数ソースを自動試行 | 本番用 |
-| `update_data_coincheck.py` | CoinCheck | 日本の取引所、JPY ペア対応 | 推奨第1選択肢 |
-| `update_data_bitflyer.py` | BitFlyer | 日本の大手取引所 | 予備選択肢（制限あり） |
-| `update_data_yahoo.py`（既存） | YahooFinance | グローバル、最後の手段 | 直近7日のみ |
+| `update_data_comprehensive.py` | 複数（優先度順: Yahoo → BitFlyer → CoinCheck） | **推奨**。Yahoo優先で自動試行 | 本番用 |
+| `update_data_simple.py` | YahooFinance (yfinance) | **優先1**。直近7日のみ | 通常運用 |
+| `update_data_bitflyer.py` | BitFlyer | **補完**。Yahooで不足時 | 予備（制限あり） |
+| `update_data_coincheck.py` | CoinCheck | **最終手段**。安定性注意 | 予備 |
 
 ---
 
@@ -18,7 +18,7 @@
 ### 1. 推奨: マルチソース自動更新
 
 ```bash
-# 自動的に CoinCheck > BitFlyer > YahooFinance の順で試行
+# 自動的に YahooFinance > BitFlyer > CoinCheck の順で試行
 python scripts/v456/update_data_comprehensive.py
 
 # 特定のソースのみ試行
@@ -28,22 +28,21 @@ python scripts/v456/update_data_comprehensive.py --source coincheck
 python scripts/v456/update_data_comprehensive.py --days 30
 ```
 
-### 2. CoinCheck（推奨）
+### 2. YahooFinance（優先）
 
 ```bash
-python scripts/v456/update_data_coincheck.py [--days 30] [--output-file data/btc_jpy_1m_v456.csv]
+python scripts/v456/update_data_simple.py
 ```
 
 **メリット:**
-- 日本の取引所で JPY ペアに特化
-- 約定履歴から正確な OHLC を再構成可能
-- API 制限が比較的緩い
+- セットアップが簡単
+- すぐに取得できる
 
 **デメリット:**
-- 完全に無料ではない場合がある
-- メンテナンス時間がある
+- 直近 7日分のみ
+- 精度がやや劣る
 
-### 3. BitFlyer（予備）
+### 3. BitFlyer（補完）
 
 ```bash
 python scripts/v456/update_data_bitflyer.py [--days 30]
@@ -57,19 +56,19 @@ python scripts/v456/update_data_bitflyer.py [--days 30]
 - REST API に直接 OHLC エンドポイントがない
 - WebSocket API の使用が推奨される
 
-### 4. YahooFinance（最終手段）
+### 4. CoinCheck（最終手段）
 
 ```bash
-python scripts/v456/update_data_yahoo.py
+python scripts/v456/update_data_coincheck.py [--days 30] [--output-file data/btc_jpy_real_dataset.csv]
 ```
 
 **メリット:**
-- セットアップが簡単
-- グローバルデータ
+- 日本の取引所で JPY ペアに特化
+- 約定履歴から正確な OHLC を再構成可能
 
 **デメリット:**
-- 直近 7日分のみ
-- 精度がやや劣る
+- 完全に無料ではない場合がある
+- メンテナンス時間がある
 
 ---
 
@@ -77,9 +76,10 @@ python scripts/v456/update_data_yahoo.py
 
 スクリプトは自動的に以下のファイルを検出・更新します（優先順）:
 
-1. `data/btc_jpy_1m_v456.csv` (最新)
-2. `data/btc_jpy_1m_v455.csv`
-3. `data/btc_jpy_1m_v454.csv`
+1. `data/btc_jpy_real_dataset.csv` (推奨)
+2. `data/btc_jpy_1m_v456.csv`
+3. `data/btc_jpy_1m_v455.csv`
+4. `data/btc_jpy_1m_v454.csv`
 
 ### ファイル形式
 
@@ -107,7 +107,7 @@ timestamp,open,high,low,close,volume
 
 **対策:**
 - 数分待ってから再試行
-- BitFlyer に自動フォールバック（comprehensive モード）
+- Yahoo/BitFlyer 取得を優先（comprehensive モード）
 - ネットワーク接続を確認
 
 ### BitFlyer から OHLC が取得できない
@@ -121,7 +121,7 @@ timestamp,open,high,low,close,volume
 - ティッカーのみ利用可能（最新価格）
 
 **推奨:**
-- CoinCheck を使用（より完全な約定データ）
+- YahooFinance で不足する場合のみ CoinCheck を試す
 - WebSocket API への移行を検討
 
 ### YahooFinance が直近 7日のみを返す
@@ -136,7 +136,7 @@ timestamp,open,high,low,close,volume
 
 **推奨:**
 - 定期的に実行（毎日など）
-- CoinCheck を主要ソースとして使用
+- Yahoo → BitFlyer → CoinCheck の順でフォールバック
 
 ---
 

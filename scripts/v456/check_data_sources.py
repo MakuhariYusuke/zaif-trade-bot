@@ -111,6 +111,7 @@ def check_existing_data():
         import pandas as pd
         
         candidates = [
+            project_root / "data" / "btc_jpy_real_dataset.csv",
             project_root / "data" / "btc_jpy_1m_v456.csv",
             project_root / "data" / "btc_jpy_1m_v455.csv",
             project_root / "data" / "btc_jpy_1m_v454.csv",
@@ -153,7 +154,7 @@ def check_script_availability():
         "update_data_comprehensive.py",
         "update_data_coincheck.py",
         "update_data_bitflyer.py",
-        "update_data_yahoo.py",
+        "update_data_simple.py",
     ]
     
     scripts_dir = Path(__file__).parent
@@ -192,7 +193,7 @@ def main():
     
     if not results['既存データ']:
         print("\n⚠ 既存データファイルが見つかりません")
-        print("  推奨: scripts/v455/update_data_yahoo.py で初期データを作成\n")
+        print("  推奨: data/btc_jpy_real_dataset.csv を用意してから更新\n")
     
     if available_sources:
         print(f"\n✓ 利用可能なデータソース: {', '.join(available_sources)}")

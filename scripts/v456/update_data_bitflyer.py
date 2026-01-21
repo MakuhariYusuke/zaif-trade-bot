@@ -24,6 +24,16 @@ except ImportError:
     project_root = Path(__file__).resolve().parent.parent.parent
     sys.path.insert(0, str(project_root))
 
+from scripts.v456.data_update_utils import (
+    resolve_data_file,
+    load_ohlcv_csv,
+    save_ohlcv_csv,
+    prepare_new_ohlcv,
+    validate_ohlcv,
+    filter_new_rows,
+    merge_ohlcv,
+)
+
 
 class BitFlyerDataFetcher:
     """BitFlyer REST API でOHLC1分足データを取得"""
@@ -200,24 +210,9 @@ class OHLCMerger:
         """
         if new_df.empty:
             return existing_df
-        
         if existing_df.empty:
             return new_df
-        
-        # インデックスを統一
-        existing_df.index.name = 'timestamp'
-        new_df.index.name = 'timestamp'
-        
-        # マージ（新規データが優先）
-        merged = pd.concat([existing_df, new_df], axis=0)
-        
-        if remove_duplicates:
-            merged = merged[~merged.index.duplicated(keep='last')]
-        
-        # タイムスタンプでソート
-        merged = merged.sort_index()
-        
-        return merged
+        return merge_ohlcv(existing_df, new_df)
     
     @staticmethod
     def validate_ohlc_data(df: pd.DataFrame) -> bool:
@@ -256,20 +251,9 @@ def update_with_bitflyer(
     Returns:
         成功時 True
     """
-    # ファイル自動判定
-    if data_file is None:
-        candidates = [
-            project_root / "data" / "btc_jpy_1m_v456.csv",
-            project_root / "data" / "btc_jpy_1m_v455.csv",
-            project_root / "data" / "btc_jpy_1m_v454.csv",
-        ]
-        for candidate in candidates:
-            if candidate.exists():
-                data_file = candidate
-                break
-    
+    data_file = resolve_data_file(project_root, data_file)
     if data_file is None or not data_file.exists():
-        print(f"Error: Data file not found. Checked: {candidates if not data_file else [data_file]}")
+        print("Error: Data file not found. Checked default candidates.")
         return False
     
     print(f"Target file: {data_file}")
@@ -277,17 +261,11 @@ def update_with_bitflyer(
     # 既存データを読み込む
     print("Loading existing data...")
     try:
-        df_existing = pd.read_csv(data_file, index_col=0, parse_dates=True)
+        df_existing = load_ohlcv_csv(data_file)
     except Exception as e:
         print(f"Error loading existing data: {e}")
         return False
-    
-    # タイムゾーン統一
-    if df_existing.index.tz is None:
-        df_existing.index = df_existing.index.tz_localize("UTC")
-    else:
-        df_existing.index = df_existing.index.tz_convert("UTC")
-    
+
     last_timestamp = df_existing.index.max()
     print(f"Existing data range: {df_existing.index.min()} to {last_timestamp}")
     print(f"Existing rows: {len(df_existing)}")
@@ -306,32 +284,40 @@ def update_with_bitflyer(
         print("  3. Binance API (supplemental global data)")
         return False
     
-    # 新しいデータをフィルタ（既存データの最後より後）
-    df_new_filtered = df_new[df_new.index > last_timestamp]
-    
+    try:
+        df_new = prepare_new_ohlcv(df_new)
+    except Exception as e:
+        print(f"Invalid new data format: {e}")
+        return False
+
+    df_new_filtered = filter_new_rows(df_existing, df_new)
     if df_new_filtered.empty:
         print("No new data after the last timestamp")
         return False
-    
+
+    ok, reason = validate_ohlcv(
+        df_new_filtered,
+        min_rows=2,
+        expected_interval_seconds=60,
+        require_minute_alignment=True,
+        require_volume=True,
+    )
+    if not ok:
+        print(f"New data rejected: {reason}")
+        return False
+
     print(f"New data from BitFlyer: {len(df_new_filtered)} records")
     print(f"New data range: {df_new_filtered.index.min()} to {df_new_filtered.index.max()}")
-    
-    # OHLC データを検証
-    merger = OHLCMerger()
-    if not merger.validate_ohlc_data(df_new_filtered):
-        print("Warning: New data validation failed")
-    
-    # マージ
+
     print("\nMerging data...")
-    df_merged = merger.merge_dataframes(df_existing, df_new_filtered, remove_duplicates=True)
-    
+    df_merged = merge_ohlcv(df_existing, df_new_filtered)
+
     print(f"Merged data: {len(df_merged)} total records")
     print(f"Merged range: {df_merged.index.min()} to {df_merged.index.max()}")
-    
-    # ファイルに保存
+
     print(f"\nSaving to {data_file}...")
     try:
-        df_merged.to_csv(data_file)
+        save_ohlcv_csv(data_file, df_merged)
         print(f"✓ Successfully updated {data_file}")
         print(f"  Added {len(df_new_filtered)} new records")
         return True

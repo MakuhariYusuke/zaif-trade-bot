@@ -652,11 +652,33 @@ def _initialize_remaining_components(self: Any) -> None:
         execution_model=execution_model,
     )
 
-    self.reward_calculator = RewardCalculator(
-        config=self.config,
-        reward_settings=self.reward_settings_obj,
-        initial_portfolio_value=self.initial_portfolio_value,
-    )
+    # Check for v457 "PnL Centered" bypass
+    reward_type = None
+    if self.reward_settings_obj and hasattr(
+        self.reward_settings_obj, "custom_reward_params"
+    ):
+        reward_type = self.reward_settings_obj.custom_reward_params.get("type")
+
+    if reward_type == "pnl_centered":
+        from ztb.trading.environment.components.calculators.v457_reward_calculator import (
+            V457RewardCalculator,
+        )
+
+        logger.info(
+            "Using V457 PnL-Centered Reward Calculator PnL (Bypassing v456 logic)"
+        )
+        self.reward_calculator = V457RewardCalculator(
+            config=self.config,
+            reward_settings=self.reward_settings_obj,
+            initial_portfolio_value=self.initial_portfolio_value,
+        )
+    else:
+        self.reward_calculator = RewardCalculator(
+            config=self.config,
+            reward_settings=self.reward_settings_obj,
+            initial_portfolio_value=self.initial_portfolio_value,
+        )
+
     # Diagnostic: log features and feature_matrix shape to debug unexpected obs dims
     try:
         fm_shape = (

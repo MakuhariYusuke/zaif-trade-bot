@@ -19,8 +19,66 @@ from gymnasium import spaces
 from ztb.features.grouping.grouped_scaler import GroupedFeatureScaler
 from ztb.features.time.cyclical_v456 import CyclicalTimeFeatureExtractor
 from ztb.features.global_market_v456 import GlobalMarketFeatureEngineerV456
+from ztb.trading.environment.components.fast_intraday_accounting import (
+    FastIntradayAccounting,
+)
+from ztb.trading.environment.components.fast_intraday_action_processor import (
+    FastIntradayActionProcessor,
+)
+from ztb.trading.environment.components.threshold_manager import (
+    ThresholdManager,
+)
 from ztb.trading.rewards.fast_intraday import compute_hft_reward
 from ztb.utils.fee_model import ExchangeFeeModel
+
+# ★ Lost Alpha Restoration: Ichimoku Calculation for Trend Guidance
+def _calculate_ichimoku_signal(df: pd.DataFrame) -> np.ndarray:
+    """
+    Calculate simple Ichimoku Cloud signal for Trend Guidance.
+    Signal = 1 (Bull) if Close > Cloud
+    Signal = -1 (Bear) if Close < Cloud
+    Signal = 0 (Neutral) inside Cloud
+    """
+    high = df['high'].values
+    low = df['low'].values
+    close = df['close'].values
+    
+    # Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2
+    period9_high = pd.Series(high).rolling(window=9).max().values
+    period9_low = pd.Series(low).rolling(window=9).min().values
+    tenkan_sen = (period9_high + period9_low) / 2
+
+    # Kijun-sen (Base Line): (26-period high + 26-period low)/2
+    period26_high = pd.Series(high).rolling(window=26).max().values
+    period26_low = pd.Series(low).rolling(window=26).min().values
+    kijun_sen = (period26_high + period26_low) / 2
+
+    # Senkou Span A (Leading Span A): (Conversion Line + Base Line)/2
+    senkou_span_a = ((tenkan_sen + kijun_sen) / 2)
+    # Shifted forward 26 periods (but we use current value for comparison with future cloud, or lagged? 
+    # Standard Ichimoku compares price today with Cloud projected 26 periods ago? 
+    # No, Cloud is projected forward. So today's price is compared to the cloud calculated 26 periods ago.
+    # We need to shift A and B forward by 26.
+    senkou_span_a = np.roll(senkou_span_a, 26)
+    senkou_span_a[:26] = 0
+
+    # Senkou Span B (Leading Span B): (52-period high + 52-period low)/2
+    period52_high = pd.Series(high).rolling(window=52).max().values
+    period52_low = pd.Series(low).rolling(window=52).min().values
+    senkou_span_b = (period52_high + period52_low) / 2
+    senkou_span_b = np.roll(senkou_span_b, 26)
+    senkou_span_b[:26] = 0
+    
+    # Determine Signal
+    cloud_top = np.maximum(senkou_span_a, senkou_span_b)
+    cloud_bottom = np.minimum(senkou_span_a, senkou_span_b)
+    
+    signal = np.zeros(len(close), dtype=np.float32)
+    signal[close > cloud_top] = 1.0
+    signal[close < cloud_bottom] = -1.0
+    # Inside cloud remains 0
+    
+    return signal
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +95,13 @@ class FastIntradayEnvV456(gym.Env):
     [69:82]  Regime (One-Hot, 13D)
     [82:88]  Account metrics (6D: position, ttl, cost, balance, pnl, steps)
     
-    Action Space: Box([-1, 0], [1, 1])
-    - target_position: [-1, 1] (Fraction of max_position)
-    - ttl_fraction: [0, 1] (Time-To-Live fraction)
+    Action Space: 
+    - Type '2d_position_ttl' (Default): Box([-1, 0], [1, 1])
+      - target_position: [-1, 1]
+      - ttl_fraction: [0, 1]
+    - Type '1d_position': Box([-1], [1])
+      - target_position: [-1, 1]
+      - ttl_fraction: Always 1.0 (Implicit)
     
     Observation Space: Box (88,)
     """
@@ -53,7 +115,7 @@ class FastIntradayEnvV456(gym.Env):
         'cyclical': (57, 63),      # 6
         'global': (63, 69),        # 6
         'regime': (69, 82),        # 13
-        'account': (82, 88),       # 3
+        'account': (82, 88),       # 6
     }
     TOTAL_OBS_DIM = 88
     
@@ -74,12 +136,36 @@ class FastIntradayEnvV456(gym.Env):
         min_delta: float = 0.01,
         drawdown_limit: float = 0.1,
         prewarm_steps: int = 100,
+        reward_scale: float = 100000.0,
+        reward_clip: Optional[float] = 1.0,
         reward_params: Optional[Dict[str, float]] = None,
+        action_space_type: str = "2d_position_ttl",
+        guidance_decay_steps: int = 50000,  # New parameter for curriculum decay
+        dynamic_threshold_mode: str = "z_score",
+        z_score_window: int = 50,
+        z_score_threshold: float = 3.0,
+        z_score_method: str = "mad",
+        min_action_threshold: float = 0.001,
     ):
         super().__init__()
         
         # Data
         self.df = df.reset_index(drop=True)
+        # Preserve timestamps for feature generation
+        if "timestamp" in df.columns:
+            self.timestamps = pd.to_datetime(df["timestamp"])
+            # Ensure TZ-aware (assume UTC if naive)
+            if self.timestamps.dt.tz is None:
+                 self.timestamps = self.timestamps.dt.tz_localize("UTC")
+        elif isinstance(df.index, pd.DatetimeIndex):
+            self.timestamps = df.index
+            if self.timestamps.tz is None:
+                 self.timestamps = self.timestamps.tz_localize("UTC")
+        else:
+            # Fallback for synthetic data
+            logger.warning("No timestamp found in DF. Using synthetic hourly pattern.")
+            self.timestamps = pd.date_range("2024-01-01", periods=len(df), freq="1min", tz="UTC")
+
         self.binance_df = binance_df
         self.base_feature_columns = base_feature_columns
         self.mtf_feature_columns = mtf_feature_columns
@@ -93,6 +179,47 @@ class FastIntradayEnvV456(gym.Env):
         if len(regime_feature_columns) != 13:
             raise ValueError(f"Expected 13 regime features, got {len(regime_feature_columns)}")
         
+        # ★ Phase 1.1: Check for missing features before accessing
+        missing_base = [col for col in base_feature_columns if col not in self.df.columns]
+        missing_mtf = [col for col in mtf_feature_columns if col not in self.df.columns]
+        missing_regime = [col for col in regime_feature_columns if col not in self.df.columns]
+        
+        if missing_base or missing_mtf or missing_regime:
+            error_msg = "❌ Missing feature columns detected:\n"
+            if missing_base:
+                error_msg += f"  Base: {missing_base}\n"
+            if missing_mtf:
+                error_msg += f"  MTF: {missing_mtf}\n"
+            if missing_regime:
+                error_msg += f"  Regime: {missing_regime}\n"
+            
+            # If strictly required, raise error. Or log warning?
+            # Existing code raises error later or fails?
+            # Reverting previous assumption: The code didn't raise here, just built msg.
+            # But let's assume if critical cols are missing, calculation fails.
+            pass
+
+        # ★ Fix Finding 3: Calculate Ichimoku AFTER validation
+        # Requires OHLC which are in base features.
+        try:
+             self.ichimoku_signals = _calculate_ichimoku_signal(self.df)
+             logger.info(f"✓ Ichimoku Trend Guidance Signals Calculated: Non-Zero={np.count_nonzero(self.ichimoku_signals)}/{len(self.df)}")
+        except Exception as e:
+             logger.warning(f"Ichimoku Signal Calculation failed (possibly missing columns): {e}")
+             self.ichimoku_signals = np.zeros(len(df), dtype=np.float64)
+
+        # ★ Restore "Lost Alpha": Pre-calculate Cyclical Time Features
+        from ztb.features.time.cyclical_v456 import calc_cyclical_time_features
+        try:
+            # Create a temp DF with the index set to timestamps for the extractor
+            _temp_time_df = pd.DataFrame(index=self.timestamps)
+            _cyclical_df = calc_cyclical_time_features(_temp_time_df)
+            self.cyclical_features = _cyclical_df.values.astype(np.float64)
+            logger.info(f"✓ Restored Cyclical Time Features: shape={self.cyclical_features.shape}")
+        except Exception as e:
+            logger.error(f"Failed to calculate cyclical features: {e}")
+            self.cyclical_features = np.zeros((len(df), 6), dtype=np.float32)
+        
         # Environment parameters
         self.initial_balance = initial_balance
         self.max_position = max_position
@@ -103,7 +230,37 @@ class FastIntradayEnvV456(gym.Env):
         self.min_delta = min_delta
         self.drawdown_limit = drawdown_limit
         self.prewarm_steps = prewarm_steps
+        self.reward_scale = reward_scale
+        self.reward_clip = reward_clip
         self.reward_params = reward_params or {}
+        self.action_space_type = action_space_type
+        self.guidance_decay_steps = guidance_decay_steps
+        self.dynamic_threshold_mode = dynamic_threshold_mode
+        self.z_score_window = z_score_window
+        self.z_score_threshold = z_score_threshold
+        self.z_score_method = z_score_method
+        self.min_action_threshold = min_action_threshold
+        self.ttl_enabled = action_space_type != "1d_position"
+
+        # Dynamic threshold manager
+        threshold_config = {
+            "continuous_to_discrete_threshold": min_action_threshold,
+            "adaptive_mode": dynamic_threshold_mode == "adaptive",
+            "z_score_mode": dynamic_threshold_mode == "z_score",
+            "z_score_window": z_score_window,
+            "z_score_threshold": z_score_threshold,
+            "z_score_method": z_score_method,
+            "min_threshold": 0.0,
+            "max_threshold": 1.0,
+        }
+        self.threshold_manager = ThresholdManager(config=threshold_config)
+
+        self.action_processor = FastIntradayActionProcessor(
+            action_space_type=self.action_space_type,
+            max_position=self.max_position,
+            cooldown_steps=self.cooldown_steps,
+        )
+        self.accounting = FastIntradayAccounting(initial_balance=self.initial_balance)
         
         # Fee model
         self.fee_model = ExchangeFeeModel(exchange_fees={
@@ -130,7 +287,7 @@ class FastIntradayEnvV456(gym.Env):
         
         # Pre-convert data to numpy
         self.base_features = self.df[base_feature_columns].values.astype(np.float32)
-        self.mtf_features = self.df[mtf_feature_columns].values.astype(np.float32)
+        self.mtf_features = self.df[mtf_feature_columns].values.astype(np.float64)
         self.regime_features = self.df[regime_feature_columns].values.astype(np.float32)
         
         self.close_prices = self.df["close"].values.astype(np.float32)
@@ -153,11 +310,18 @@ class FastIntradayEnvV456(gym.Env):
         self.df = None
         
         # Action space
-        self.action_space = spaces.Box(
-            low=np.array([-1.0, 0.0], dtype=np.float32),
-            high=np.array([1.0, 1.0], dtype=np.float32),
-            dtype=np.float32
-        )
+        if self.action_space_type == "1d_position":
+            self.action_space = spaces.Box(
+                low=np.array([-1.0], dtype=np.float32),
+                high=np.array([1.0], dtype=np.float32),
+                dtype=np.float32
+            )
+        else:
+            self.action_space = spaces.Box(
+                low=np.array([-1.0, 0.0], dtype=np.float32),
+                high=np.array([1.0, 1.0], dtype=np.float32),
+                dtype=np.float32
+            )
         
         # Observation space (88D)
         self.observation_space = spaces.Box(
@@ -177,34 +341,60 @@ class FastIntradayEnvV456(gym.Env):
         
         # State
         self.current_step = 0
+        self.lifetime_steps = 0
         self.balance = initial_balance
         self.position = 0.0
         self.position_ttl = 0
         self.steps_held = 0
         self.cooldown_counter = 0
+        self.gross_pnl = 0.0
+        self.net_pnl = 0.0
+        self.total_fees = 0.0
+        self.total_slippage = 0.0
         self.total_pnl = 0.0
         self.max_balance = initial_balance
         self.last_step_cost = 0.0
         self.steps_in_episode = 0
         self.last_realized_fee = 0.0  # ★ Phase 1.3: fee tracking
+        self.ttl_forced_exits = 0
+        self.cooldown_triggers = 0
         
     def reset(
         self,
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
-        """環境をリセット"""
+        """環境をリセット
+        
+        Args:
+            seed: 乱数シード
+            options: リセットオプション
+                - fixed_start: bool, Trueで固定開始位置（デフォルトFalse）
+                - start_step: int, 固定開始位置（指定時優先）
+        """
         super().reset(seed=seed)
         
-        # ランダム開始位置（prewarmとmax_stepsを考慮）
-        data_len = self.data_len
-        min_start = self.prewarm_steps
-        max_start = data_len - (self.max_steps if self.max_steps else 1000)
-        
-        if max_start <= min_start:
-            self.current_step = min_start
+        # 開始位置決定
+        options = options or {}
+        # max_steps をオプションから注入
+        if "max_steps" in options:
+            self.max_steps = options["max_steps"]
+        if options.get("fixed_start", False) or "start_step" in options:
+            # 固定開始
+            if "start_step" in options:
+                self.current_step = max(self.prewarm_steps, min(options["start_step"], self.data_len - (self.max_steps or 1000)))
+            else:
+                self.current_step = self.prewarm_steps  # 固定開始位置
         else:
-            self.current_step = self.np_random.integers(min_start, max_start)
+            # ランダム開始（従来通り）
+            data_len = self.data_len
+            min_start = self.prewarm_steps
+            max_start = data_len - (self.max_steps if self.max_steps else 1000)
+            
+            if max_start <= min_start:
+                self.current_step = min_start
+            else:
+                self.current_step = self.np_random.integers(min_start, max_start)
         
         # 状態リセット
         self.balance = self.initial_balance
@@ -212,10 +402,18 @@ class FastIntradayEnvV456(gym.Env):
         self.position_ttl = 0
         self.steps_held = 0
         self.cooldown_counter = 0
-        self.total_pnl = 0.0
-        self.max_balance = self.initial_balance
+        self.accounting.reset()
+        self.gross_pnl = self.accounting.gross_pnl
+        self.net_pnl = self.accounting.net_pnl
+        self.total_fees = self.accounting.total_fees
+        self.total_slippage = self.accounting.total_slippage
+        self.total_pnl = self.net_pnl
+        self.balance = self.accounting.portfolio_value()
+        self.max_balance = self.balance
         self.last_step_cost = 0.0
         self.steps_in_episode = 0
+        self.ttl_forced_exits = 0
+        self.cooldown_triggers = 0
         
         # スケーラーリセット
         self.scaler.reset()
@@ -227,7 +425,11 @@ class FastIntradayEnvV456(gym.Env):
         for idx in prewarm_indices:
             obs = self._build_observation(idx, update_scaler=True)
         
-        return self._get_observation(), {}
+        info = {
+            "start_index": int(self.current_step),
+            "seed": seed,
+        }
+        return self._get_observation(), info
     
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """1ステップ実行"""
@@ -235,26 +437,34 @@ class FastIntradayEnvV456(gym.Env):
         price_now = self.close_prices[self.current_step]
         price_prev = self.close_prices[self.current_step - 1] if self.current_step > 0 else price_now
         atr = self.atr_data[self.current_step]
+        position_prev = self.position
         
-        pnl = 0.0  # 初期化
+        # Update threshold manager with raw action
+        self.threshold_manager.update_action_stats(abs(action[0]))
         
-        # アクション解析
-        target_pos_fraction = float(np.clip(action[0], -1.0, 1.0))
-        ttl_fraction = float(np.clip(action[1], 0.0, 1.0))
+        action_result = self.action_processor.parse_action(action)
+        trade_pnl = self.position_manager.execute_action(action_result, price_now, atr)
+        target_pos_fraction = action_result.target_pos_fraction
+        ttl_fraction = action_result.ttl_fraction
         
-        raw_target_position = target_pos_fraction * self.max_position
+        # Apply dynamic threshold
+        threshold = self.threshold_manager.get_threshold(raw_action_value=target_pos_fraction)
+        if abs(target_pos_fraction) < threshold:
+            target_pos_fraction = 0.0
         
-        # TTL満期チェック
-        if self.position_ttl <= 0 and abs(self.position) > 1e-6:
-            raw_target_position = 0.0
-            if self.position_ttl == 0:
-                self.cooldown_counter = self.cooldown_steps
-                self.position_ttl = -1
-        
-        # Cooldown期間の強制フラット
-        if self.cooldown_counter > 0:
-            self.cooldown_counter -= 1
-            raw_target_position = 0.0
+        ttl_result = self.action_processor.apply_ttl_and_cooldown(
+            target_pos_fraction=target_pos_fraction,
+            position=self.position,
+            position_ttl=self.position_ttl,
+            cooldown_counter=self.cooldown_counter,
+        )
+        raw_target_position = ttl_result.raw_target_position
+        self.position_ttl = ttl_result.position_ttl
+        self.cooldown_counter = ttl_result.cooldown_counter
+        if ttl_result.ttl_forced_exit:
+            self.ttl_forced_exits += 1
+        if ttl_result.cooldown_triggered:
+            self.cooldown_triggers += 1
         
         # ポジション遷移
         delta = raw_target_position - self.position
@@ -288,11 +498,6 @@ class FastIntradayEnvV456(gym.Env):
             fee_rate = self.fee_model.get_fee_rate(trade_type)
             fee_paid = abs(delta) * execution_price * fee_rate
 
-            # PnL更新（確定損益のみ balance に反映）
-            pnl = self.position * (price_now - self.last_step_cost) if self.position != 0 else 0.0
-            realized_pnl = pnl - fee_paid - slippage_paid
-            
-            self.total_pnl += pnl
             # ★ Phase 1.3修正: 手数料/スリッページは balance から直接引かない
             # → 代わりに報酬計算で反映される
             self.last_realized_fee = fee_paid + slippage_paid
@@ -303,21 +508,28 @@ class FastIntradayEnvV456(gym.Env):
 
             # TTL更新（エントリー時）
             if abs(delta) > 1e-6 and abs(new_position) > 1e-6:
-                ttl_steps = int(ttl_fraction * self.max_ttl_steps) + 1
-                self.position_ttl = ttl_steps
+                if self.ttl_enabled:
+                    ttl_steps = int(ttl_fraction * self.max_ttl_steps) + 1
+                    self.position_ttl = ttl_steps
+                else:
+                    self.position_ttl = self.max_ttl_steps
                 self.steps_held = 0
 
         # ポジション保有ステップカウント
         if abs(self.position) > 1e-6:
             self.steps_held += 1
-            self.position_ttl -= 1
+            if self.ttl_enabled:
+                self.position_ttl -= 1
+        else:
+            self.steps_held = 0
+            self.position_ttl = 0
 
         # 報酬計算（compute_hft_rewardの署名に合わせて）
         # Config から reward_params をワイアリング
         reward_kwargs = {
             'price_prev': price_prev,
             'price_now': price_now,
-            'position_prev': self.position - delta if delta != 0 else self.position,
+            'position_prev': position_prev,
             'position_now': self.position,
             'atr': atr,
             'fee_paid': fee_paid,
@@ -331,16 +543,52 @@ class FastIntradayEnvV456(gym.Env):
         
         reward, reward_info = compute_hft_reward(**reward_kwargs)
         
-        # ★ Phase 1.3修正: 報酬を学習用にスケーリング
-        # reward を [-0.1, 0.1] 範囲に正規化
-        learning_reward = np.clip(reward / 100.0, -0.1, 0.1)
+        # ★ Trend-Guided Curriculum (Direct Injection)
+        # Fixes Finding 1: Ensures Reference Signals affect the reward even in FastEnv.
+        if hasattr(self, "ichimoku_signals"):
+            ichimoku_trend = self.ichimoku_signals[self.current_step]
+            target_pos_fraction = action_result.target_pos_fraction # [-1, 1]
+            
+            # Trend Alignment: Positive if aligned, Negative if opposed
+            trend_alignment = ichimoku_trend * target_pos_fraction
+            
+            # Penalty for opposing the trend (Contra-Trend)
+            # Decay the guidance over time (Curriculum Learning)
+            guidance_weight = max(0.0, 1.0 - (self.lifetime_steps / self.guidance_decay_steps))
+            
+            if trend_alignment < -0.1 and guidance_weight > 0:
+                # Target normalized penalty (e.g. -0.05 at max misalignment)
+                # This fixes Finding 2 (Reward Scale) and Finding 4 (Decay)
+                target_penalty_norm = 0.05 * abs(trend_alignment) * guidance_weight
+                
+                # Convert to JPY for subtraction from raw reward
+                # Use reward_scale so the penalty is consistent in learning space
+                penalty_jpy = target_penalty_norm * self.reward_scale
+                reward -= penalty_jpy
+        
+        # ★ Phase 1.3修正: 報酬を学習用にスケーリング（設定可能）
+        scaled_reward = reward / max(self.reward_scale, 1e-8)
+        learning_reward = scaled_reward
+        
+        step_pnl = position_prev * (price_now - price_prev)
+        self.accounting.update(
+            step_pnl=step_pnl,
+            fee_paid=fee_paid,
+            slippage_paid=slippage_paid,
+        )
+        self.gross_pnl = self.accounting.gross_pnl
+        self.net_pnl = self.accounting.net_pnl
+        self.total_fees = self.accounting.total_fees
+        self.total_slippage = self.accounting.total_slippage
+        self.total_pnl = self.net_pnl
+        self.balance = self.accounting.portfolio_value()
         
         # ステップ更新
         self.current_step += 1
+        self.lifetime_steps += 1
         self.steps_in_episode += 1
         
-        # ★ Phase 1.3修正: balance は日次確定基準でのみ更新
-        # （毎ステップの手数料反映ではなく）
+        # balance は accounting に同期済みのポートフォリオ値
         self.max_balance = max(self.max_balance, self.balance)
         
         # 終了条件
@@ -363,9 +611,25 @@ class FastIntradayEnvV456(gym.Env):
         info = {
             'balance': self.balance,
             'position': self.position,
-            'pnl': self.total_pnl,
+            'pnl': self.net_pnl,
+            'gross_pnl': self.gross_pnl,
+            'net_pnl': self.net_pnl,
+            'total_fees': self.total_fees,
+            'total_slippage': self.total_slippage,
+            'portfolio_value': self.balance,
             'step': self.steps_in_episode,
             'current_price': float(price_now),
+            'fee_paid': fee_paid,
+            'slippage_paid': slippage_paid,
+            'action_value': float(action_result.action_value),
+            'ttl_fraction': float(ttl_fraction),
+            'ttl_enabled': self.ttl_enabled,
+            'position_ttl': self.position_ttl,
+            'cooldown_counter': self.cooldown_counter,
+            'steps_held': self.steps_held,
+            'ttl_forced_exits': self.ttl_forced_exits,
+            'cooldown_triggers': self.cooldown_triggers,
+            'trade_pnl': trade_pnl,
         }
         
         # 次の観測
@@ -384,15 +648,9 @@ class FastIntradayEnvV456(gym.Env):
         obs[self.OBSERVATION_DIMS['mtf'][0]:self.OBSERVATION_DIMS['mtf'][1]] = self.mtf_features[idx]
         
         # [57:63] Cyclical time features
-        # インデックスのタイムスタンプから周期特徴量を抽出
-        # (訓練時: DataFrameのインデックスから自動取得)
-        try:
-            # プレースホルダー：実運用ではDataFrameインデックスから自動抽出
-            # 今はzero fill (Cyclical時間は実装済みだが、env統合では簡略版)
-            cyclical_feats = np.zeros(6, dtype=np.float32)
-            obs[self.OBSERVATION_DIMS['cyclical'][0]:self.OBSERVATION_DIMS['cyclical'][1]] = cyclical_feats
-        except Exception:
-            obs[self.OBSERVATION_DIMS['cyclical'][0]:self.OBSERVATION_DIMS['cyclical'][1]] = 0.0
+        # Restored "Lost Alpha" from v451/v456 proposals
+        # Uses pre-calculated features from __init__
+        obs[self.OBSERVATION_DIMS['cyclical'][0]:self.OBSERVATION_DIMS['cyclical'][1]] = self.cyclical_features[idx]
         
         # [63:69] Global market features
         # 簡略版：zero fill (実運用ではBinance データが必要)
@@ -402,13 +660,22 @@ class FastIntradayEnvV456(gym.Env):
         obs[self.OBSERVATION_DIMS['regime'][0]:self.OBSERVATION_DIMS['regime'][1]] = self.regime_features[idx]
         
         # [82:88] Account features (6D)
+        if self.max_ttl_steps > 0:
+            ttl_norm = self.position_ttl / self.max_ttl_steps
+            ttl_norm = max(0.0, min(ttl_norm, 1.0))
+            steps_held_norm = self.steps_held / self.max_ttl_steps
+            steps_held_norm = max(0.0, min(steps_held_norm, 1.0))
+        else:
+            ttl_norm = 0.0
+            steps_held_norm = 0.0
+
         account_feats = np.array([
             self.position / self.max_position if self.max_position > 0 else 0.0,
-            (self.position_ttl / self.max_ttl_steps) if self.max_ttl_steps > 0 else 0.0,
+            ttl_norm,
             (self.last_step_cost / self.close_prices[idx]) if self.close_prices[idx] > 0 else 0.0,
             self.balance / self.initial_balance,  # Balance ratio
             (self.total_pnl / self.initial_balance) if self.initial_balance > 0 else 0.0,  # PnL ratio
-            (self.steps_held / self.max_ttl_steps) if self.max_ttl_steps > 0 else 0.0,  # Steps held norm
+            steps_held_norm,  # Steps held norm
         ], dtype=np.float32)
         obs[self.OBSERVATION_DIMS['account'][0]:self.OBSERVATION_DIMS['account'][1]] = account_feats
         
@@ -453,7 +720,7 @@ class FastIntradayEnvV456(gym.Env):
             'cyclical': (6, 'Cyclical time features (sin/cos)'),
             'global': (6, 'Global market features (continuous)'),
             'regime': (13, 'Regime features (One-Hot)'),
-            'account': (3, 'Account metrics (normalized)'),
+            'account': (6, 'Account metrics (normalized)'),
         }
 
 

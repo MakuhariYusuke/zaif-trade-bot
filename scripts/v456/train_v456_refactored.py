@@ -10,15 +10,16 @@ from pathlib import Path
 from typing import Dict, Optional
 import argparse
 import time
-import json
-
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.trading.environment.factory_v456 import EnvironmentFactory
+from ztb.features.base_features_v456 import calculate_base_features
 from ztb.trading.environment.fast_intraday_env_v456 import FastIntradayEnvV456
+from ztb.trading.environment.utils.fast_intraday_env_v456_utils import (
+    create_fast_intraday_env_v456,
+)
 from ztb.utils.error_utils import safe_operation
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.cache_coordination import CacheCoordinator
@@ -180,17 +181,19 @@ class V456TrainingPipeline:
     def create_environment(self, df: pd.DataFrame) -> Optional[FastIntradayEnvV456]:
         """環境を作成（型安全ファクトリー使用）"""
         logger.info("Creating training environment...")
+        df = calculate_base_features(df, copy=False)
         
         def factory_create() -> Optional[FastIntradayEnvV456]:
-            factory = EnvironmentFactory(df)
-            return factory.create_training_env()
+            env = create_fast_intraday_env_v456(df=df, env_config={})
+            return env
         
         env = safe_operation(
             factory_create,
             default_result=None,
             operation_name="environment_creation"
         )
-        
+        del df
+
         return env
     
     def train(self, env: FastIntradayEnvV456) -> Optional[SAC]:

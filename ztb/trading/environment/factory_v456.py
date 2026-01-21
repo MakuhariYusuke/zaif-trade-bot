@@ -59,15 +59,23 @@ class FeaturePipeline:
         return available_cols
     
     def calculate_mtf_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
-        """MTF 特徴量（27次元）を計算"""
+        """MTF 特徴量（27次元）を計算 (Resampling + Forward Fill)"""
         df_copy = df.copy()
         mtf_cols: List[str] = []
         
         if "close" not in df_copy.columns:
             logger.warning("'close' column not found, skipping MTF features")
             return df_copy, mtf_cols
-        
-        # 3 時間足 × 9 特徴量 = 27次元
+            
+        # Ensure DatetimeIndex for resampling
+        temp_df = df_copy.copy()
+        if "timestamp" in temp_df.columns:
+            temp_df["timestamp"] = pd.to_datetime(temp_df["timestamp"])
+            temp_df.set_index("timestamp", inplace=True)
+        elif not isinstance(temp_df.index, pd.DatetimeIndex):
+            # Fallback: Create dummy index
+            temp_df.index = pd.date_range("2024-01-01", periods=len(temp_df), freq="1min")
+            
         features_per_timeframe = [
             ("rsi", lambda c: self._calculate_rsi(c, period=14)),
             ("rsi_long", lambda c: self._calculate_rsi(c, period=21)),
@@ -80,16 +88,56 @@ class FeaturePipeline:
             ("momentum", lambda c: self._calculate_momentum(c)),
         ]
         
-        for timeframe in ["5m", "15m", "1h"]:
-            for feat_name, feat_func in features_per_timeframe:
-                col_name = f"mtf_{feat_name}_{timeframe}"
-                try:
-                    df_copy[col_name] = feat_func(df_copy["close"].values)
-                    mtf_cols.append(col_name)
-                except Exception as e:
-                    logger.warning(f"Failed to calculate {col_name}: {e}")
+        # Mapping timeframe strings to pandas offsets
+        tf_map = {"5m": "5min", "15m": "15min", "1h": "1h"}
         
-        logger.info(f"✓ Calculated {len(mtf_cols)} MTF features")
+        for timeframe, offset in tf_map.items():
+            try:
+                # Resample: OHLC logic
+                # Fix Finding 1: Prevent Lookahead Leakage
+                # default resample (label='left', closed='left') for minutes means 12:00 row contains 12:00-12:05 data.
+                # This data is only available at 12:05.
+                # We shift the logic to ensure causal availability.
+                resampled = temp_df.resample(offset, label='left', closed='left').agg({
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                    "volume": "sum"
+                }).dropna()
+                
+                # Calculate features on resampled data
+                resampled_feats = pd.DataFrame(index=resampled.index)
+                for feat_name, feat_func in features_per_timeframe:
+                    col_name = f"mtf_{feat_name}_{timeframe}"
+                    # Calculate on resampled series
+                    resampled_vals = feat_func(resampled["close"].values)
+                    resampled_feats[col_name] = resampled_vals
+                    mtf_cols.append(col_name)
+                
+                # Shift the index forward by one offset to enforce causality
+                # e.g. Data computed from 12:00-12:05 (labeled 12:00) becomes available at 12:05.
+                # So we move 12:00 -> 12:05.
+                # When reindexing at 12:01, ffill will find 11:55 (shifted to 12:00), which is correct.
+                # 12:01 should NOT see 12:00-12:05 data (which is at 12:05 now).
+                resampled_feats.index = resampled_feats.index + pd.to_timedelta(offset)
+
+                # Project back to original timeframe (Forward Fill)
+                projected_feats = resampled_feats.reindex(temp_df.index, method='ffill').fillna(0)
+                
+                # Assign to df_copy
+                for col in projected_feats.columns:
+                    df_copy[col] = projected_feats[col].values
+                    
+            except Exception as e:
+                logger.warning(f"Failed to calculate MTF {timeframe}: {e}")
+                # Fallback: fill with zeros if resampling fails
+                for feat_name, _ in features_per_timeframe:
+                    col_name = f"mtf_{feat_name}_{timeframe}"
+                    df_copy[col_name] = 0.0
+                    mtf_cols.append(col_name)
+        
+        logger.info(f"✓ Calculated {len(mtf_cols)} MTF features (Resampled)")
         return df_copy, mtf_cols
     
     @staticmethod
@@ -398,7 +446,7 @@ class EnvironmentFactory:
             if len(cols) < 30:
                 # 足りない分は警告ログして、deterministic ダミー特徴量を追加
                 logger.warning(f"Missing {30 - len(cols)} base features. Adding deterministic fillers.")
-                np.random.seed(42)  # Deterministic seed for reproducibility
+                # np.random.seed(42)  # Deterministic seed for reproducibility - removed for config-driven seed
                 for i in range(len(cols), 30):
                     col_name = f"base_dummy_{i}"
                     df[col_name] = np.random.randn(len(df))
@@ -442,7 +490,7 @@ class EnvironmentFactory:
         
         return df, feature_cols
     
-    def create_training_env(self) -> Optional[FastIntradayEnvV456]:
+    def create_training_env(self, env_kwargs: Optional[Dict[str, Any]] = None) -> Optional[FastIntradayEnvV456]:
         """訓練環境を作成（型安全）"""
         try:
             # 特徴量準備
@@ -456,16 +504,31 @@ class EnvironmentFactory:
                 f"  Total: {len(feature_cols['base']) + len(feature_cols['mtf']) + len(feature_cols['regime'])} columns"
             )
             
+            # 環境パラメータの準備
+            env_params = {
+                "df": df_prepared,
+                "base_feature_columns": feature_cols["base"],
+                "mtf_feature_columns": feature_cols["mtf"],
+                "regime_feature_columns": feature_cols["regime"],
+                "initial_balance": self.initial_balance,
+                "max_position": self.max_position,
+                "commission_rate": self.commission_rate,
+            }
+            
+            # env_kwargs マージ
+            if env_kwargs:
+                # 既存のキーと重複する場合は env_kwargs を優先か、警告を出すか
+                # ここでは安全に update する
+                for k, v in env_kwargs.items():
+                    if k in env_params and k not in ["df", "base_feature_columns", "mtf_feature_columns", "regime_feature_columns"]:
+                        # 重要なキーは上書き許可
+                        env_params[k] = v
+                    elif k not in env_params:
+                        # 新規キーは更に追加 (min_delta など)
+                        env_params[k] = v
+                        
             # 環境作成
-            env = FastIntradayEnvV456(
-                df=df_prepared,
-                base_feature_columns=feature_cols["base"],
-                mtf_feature_columns=feature_cols["mtf"],
-                regime_feature_columns=feature_cols["regime"],
-                initial_balance=self.initial_balance,
-                max_position=self.max_position,
-                commission_rate=self.commission_rate,
-            )
+            env = FastIntradayEnvV456(**env_params)
             
             logger.info(f"✓ Environment created: obs_shape={env.observation_space.shape}")
             return env

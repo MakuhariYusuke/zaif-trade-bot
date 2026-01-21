@@ -210,7 +210,7 @@ def main():
     """メイン訓練パイプライン"""
     parser = argparse.ArgumentParser(description="v456 訓練実行")
     parser.add_argument("--timesteps", type=int, default=50000, help="訓練ステップ数")
-    parser.add_argument("--data", type=str, default="data/datasets/btc_jpy_real_dataset.csv", help="データファイル")
+    parser.add_argument("--data", type=str, default="data/btc_jpy_real_dataset.csv", help="データファイル")
     parser.add_argument("--config", type=str, default="config/v456/base/config.yaml", help="Config ファイル")
     parser.add_argument("--learning-rate", type=float, default=0.0003, help="学習率")
     parser.add_argument("--batch-size", type=int, default=256, help="バッチサイズ")

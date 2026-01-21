@@ -113,8 +113,29 @@ class RewardSettings:
         """Create RewardSettings from dictionary."""
         # Filter out keys that are not in the dataclass
         valid_keys = {field.name for field in dataclasses.fields(cls)}
-        filtered_dict = {k: v for k, v in config_dict.items() if k in valid_keys}
-        return cls(**filtered_dict)
+        
+        # Split into known and unknown parameters
+        filtered_dict = {}
+        custom_params = {}
+        
+        for k, v in config_dict.items():
+            if k in valid_keys:
+                filtered_dict[k] = v
+            elif k != "custom_reward_params":
+                custom_params[k] = v
+                
+        # If the input dict already had custom_reward_params, merge it
+        if "custom_reward_params" in config_dict:
+            custom_params.update(config_dict["custom_reward_params"])
+            
+        # Create instance with known parameters
+        instance = cls(**filtered_dict)
+        
+        # Set custom parameters
+        if custom_params:
+            instance.custom_reward_params = custom_params
+            
+        return instance
 
 
 @dataclasses.dataclass

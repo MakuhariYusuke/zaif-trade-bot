@@ -1,20 +1,17 @@
 """
 複数のデータソースから BTC/JPY 1分足データを更新
-優先順位: CoinCheck > BitFlyer > YahooFinance
+優先順位: YahooFinance > BitFlyer > CoinCheck
 
 Usage:
     python scripts/v456/update_data_comprehensive.py [--source coincheck|bitflyer|yahoo|all] [--days 30]
 """
 
 import sys
-import os
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 import pandas as pd
-import numpy as np
-import traceback
 
 try:
     from ztb.utils.path_utils import get_project_root
@@ -23,45 +20,55 @@ except ImportError:
     project_root = Path(__file__).resolve().parent.parent.parent
     sys.path.insert(0, str(project_root))
 
+from scripts.v456.data_update_utils import (
+    resolve_data_file,
+    load_ohlcv_csv,
+    save_ohlcv_csv,
+    prepare_new_ohlcv,
+    validate_ohlcv,
+    filter_new_rows,
+    merge_ohlcv,
+    fetch_yahoo_ohlcv,
+)
+
+
+QUALITY_RULES = {
+    "yahoo": {
+        "min_rows": 1,
+        "expected_interval_seconds": 60,
+        "require_minute_alignment": True,
+        "require_volume": False,
+    },
+    "bitflyer": {
+        "min_rows": 2,
+        "expected_interval_seconds": 60,
+        "require_minute_alignment": True,
+        "require_volume": True,
+    },
+    "coincheck": {
+        "min_rows": 2,
+        "expected_interval_seconds": 60,
+        "require_minute_alignment": True,
+        "require_volume": True,
+    },
+}
+
 
 class DataSourceManager:
     """複数のデータソースを管理"""
-    
-    SOURCES = ['coincheck', 'bitflyer', 'yahoo']
-    DEFAULT_PRIORITY = ['coincheck', 'bitflyer', 'yahoo']
-    
-    def __init__(self):
-        self.data_file = self._find_data_file()
-        if not self.data_file:
+
+    SOURCES = ['yahoo', 'bitflyer', 'coincheck']
+    DEFAULT_PRIORITY = ['yahoo', 'bitflyer', 'coincheck']
+
+    def __init__(self, data_file: Optional[Path] = None):
+        self.data_file = resolve_data_file(project_root, data_file)
+        if not self.data_file or not self.data_file.exists():
             raise FileNotFoundError("No BTC/JPY data file found in data/")
-    
-    @staticmethod
-    def _find_data_file() -> Optional[Path]:
-        """データファイルを自動検出"""
-        candidates = [
-            project_root / "data" / "btc_jpy_1m_v456.csv",
-            project_root / "data" / "btc_jpy_1m_v455.csv",
-            project_root / "data" / "btc_jpy_1m_v454.csv",
-        ]
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
-        return None
     
     def get_existing_data(self) -> pd.DataFrame:
         """既存データを読み込む"""
         try:
-            df = pd.read_csv(self.data_file, index_col=0, parse_dates=True)
-            
-            # タイムゾーン統一
-            if hasattr(df.index, 'tz'):
-                if df.index.tz is None:
-                    df.index = df.index.tz_localize("UTC")
-                else:
-                    df.index = df.index.tz_convert("UTC")
-            
-            df.index.name = 'timestamp'
-            return df
+            return load_ohlcv_csv(self.data_file)
         except Exception as e:
             print(f"Error loading existing data: {e}")
             raise
@@ -69,7 +76,7 @@ class DataSourceManager:
     def save_data(self, df: pd.DataFrame, num_added: int) -> bool:
         """データを保存"""
         try:
-            df.to_csv(self.data_file)
+            save_ohlcv_csv(self.data_file, df)
             print(f"✓ Successfully updated {self.data_file}")
             print(f"  Added {num_added} new records")
             return True
@@ -89,9 +96,8 @@ class CoinCheckUpdater:
         """CoinCheck モジュールをインポート"""
         try:
             sys.path.insert(0, str(Path(__file__).parent))
-            from update_data_coincheck import CoinCheckDataFetcher, OHLCMerger
+            from update_data_coincheck import CoinCheckDataFetcher
             self.fetcher_class = CoinCheckDataFetcher
-            self.merger_class = OHLCMerger
         except ImportError:
             print("  Note: CoinCheck module not available")
             self.fetcher_class = None
@@ -110,22 +116,25 @@ class CoinCheckUpdater:
             if df_new.empty:
                 print("[CoinCheck] No data fetched")
                 return None
-            
-            # フィルタ
-            last_timestamp = existing_df.index.max()
-            df_new_filtered = df_new[df_new.index > last_timestamp]
-            
+
+            try:
+                df_new = prepare_new_ohlcv(df_new)
+            except Exception as e:
+                print(f"[CoinCheck] Invalid data format: {e}")
+                return None
+
+            df_new_filtered = filter_new_rows(existing_df, df_new)
             if df_new_filtered.empty:
                 print("[CoinCheck] No new data after last timestamp")
                 return None
-            
+
+            ok, reason = validate_ohlcv(df_new_filtered, **QUALITY_RULES["coincheck"])
+            if not ok:
+                print(f"[CoinCheck] Data rejected: {reason}")
+                return None
+
             print(f"[CoinCheck] ✓ Fetched {len(df_new_filtered)} new records")
-            
-            # マージ
-            merger = self.merger_class()
-            merged = merger.merge_dataframes(existing_df, df_new_filtered)
-            
-            return merged
+            return merge_ohlcv(existing_df, df_new_filtered)
             
         except Exception as e:
             print(f"[CoinCheck] ✗ Error: {e}")
@@ -143,9 +152,8 @@ class BitFlyerUpdater:
         """BitFlyer モジュールをインポート"""
         try:
             sys.path.insert(0, str(Path(__file__).parent))
-            from update_data_bitflyer import BitFlyerDataFetcher, OHLCMerger
+            from update_data_bitflyer import BitFlyerDataFetcher
             self.fetcher_class = BitFlyerDataFetcher
-            self.merger_class = OHLCMerger
         except ImportError:
             print("  Note: BitFlyer module not available")
             self.fetcher_class = None
@@ -165,22 +173,25 @@ class BitFlyerUpdater:
             if df_new.empty:
                 print("[BitFlyer] No data fetched")
                 return None
-            
-            # フィルタ
-            last_timestamp = existing_df.index.max()
-            df_new_filtered = df_new[df_new.index > last_timestamp]
-            
+
+            try:
+                df_new = prepare_new_ohlcv(df_new)
+            except Exception as e:
+                print(f"[BitFlyer] Invalid data format: {e}")
+                return None
+
+            df_new_filtered = filter_new_rows(existing_df, df_new)
             if df_new_filtered.empty:
                 print("[BitFlyer] No new data after last timestamp")
                 return None
-            
+
+            ok, reason = validate_ohlcv(df_new_filtered, **QUALITY_RULES["bitflyer"])
+            if not ok:
+                print(f"[BitFlyer] Data rejected: {reason}")
+                return None
+
             print(f"[BitFlyer] ✓ Fetched {len(df_new_filtered)} new records")
-            
-            # マージ
-            merger = self.merger_class()
-            merged = merger.merge_dataframes(existing_df, df_new_filtered)
-            
-            return merged
+            return merge_ohlcv(existing_df, df_new_filtered)
             
         except Exception as e:
             print(f"[BitFlyer] ✗ Error: {e}")
@@ -214,42 +225,32 @@ class YahooUpdater:
             ticker = "BTC-JPY"
             interval = "1m"
             period = "7d"  # YahooFinance は通常 7日までしか遡れない
-            
+
             print(f"  Downloading {ticker} ({period}, {interval})...")
-            df_new = self.yf.download(ticker, interval=interval, period=period, progress=False)
+            df_new = fetch_yahoo_ohlcv(ticker=ticker, interval=interval, period=period)
             
             if df_new.empty:
                 print("[YahooFinance] No data fetched")
                 return None
-            
-            # 列名を小文字に統一
-            df_new.columns = [c.lower() for c in df_new.columns]
-            
-            # タイムゾーン統一
-            if df_new.index.tz is None:
-                df_new.index = df_new.index.tz_localize("UTC")
-            else:
-                df_new.index = df_new.index.tz_convert("UTC")
-            
-            # フィルタ
-            last_timestamp = existing_df.index.max()
-            df_new_filtered = df_new[df_new.index > last_timestamp]
-            
+
+            try:
+                df_new = prepare_new_ohlcv(df_new)
+            except Exception as e:
+                print(f"[YahooFinance] Invalid data format: {e}")
+                return None
+
+            df_new_filtered = filter_new_rows(existing_df, df_new)
             if df_new_filtered.empty:
                 print("[YahooFinance] No new data after last timestamp")
                 return None
-            
+
+            ok, reason = validate_ohlcv(df_new_filtered, **QUALITY_RULES["yahoo"])
+            if not ok:
+                print(f"[YahooFinance] Data rejected: {reason}")
+                return None
+
             print(f"[YahooFinance] ✓ Fetched {len(df_new_filtered)} new records")
-            
-            # マージ
-            existing_df.index.name = 'timestamp'
-            df_new_filtered.index.name = 'timestamp'
-            
-            merged = pd.concat([existing_df, df_new_filtered])
-            merged = merged[~merged.index.duplicated(keep='last')]
-            merged = merged.sort_index()
-            
-            return merged
+            return merge_ohlcv(existing_df, df_new_filtered)
             
         except Exception as e:
             print(f"[YahooFinance] ✗ Error: {e}")
@@ -277,9 +278,8 @@ def update_from_sources(
     
     # データマネージャー初期化
     try:
-        manager = DataSourceManager()
-        if data_file is None:
-            data_file = manager.data_file
+        manager = DataSourceManager(data_file=data_file)
+        data_file = manager.data_file
     except FileNotFoundError as e:
         print(f"Error: {e}")
         return False

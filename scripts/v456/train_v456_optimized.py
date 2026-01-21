@@ -13,19 +13,22 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.logger import configure
 
 # プロジェクト PATH 設定
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from ztb.features.base_features_v456 import calculate_base_features
 from ztb.trading.environment.fast_intraday_env_v456 import FastIntradayEnvV456
-from ztb.trading.environment.factory_v456 import EnvironmentFactory
+from ztb.trading.environment.utils.fast_intraday_env_v456_utils import (
+    create_fast_intraday_env_v456,
+)
+from ztb.training.utils.v457_config_utils import extract_env_config, load_config_dict
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.cache_coordination import CacheCoordinator
 from ztb.utils.error_utils import safe_operation
@@ -152,7 +155,10 @@ class V456TrainingPipelineOptimized:
         self.use_checkpoint = use_checkpoint
         self.config_path = config_path
         self.config = self._load_config()
-        self.reward_params = self.config.get('reward_settings', {}) if self.config else {}
+        self.env_config = extract_env_config(self.config) if self.config else {}
+        self.reward_params = (
+            self.env_config.get("reward_settings", {}) if self.env_config else {}
+        )
         self.use_cache = use_cache
         
         self.checkpoint_mgr: Optional[CheckpointManager] = None
@@ -161,16 +167,14 @@ class V456TrainingPipelineOptimized:
     def _load_config(self) -> dict:
         """Config ファイルを読込"""
         try:
-            import yaml
             config_file = Path(self.config_path)
-            if config_file.exists():
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config = yaml.safe_load(f) or {}
-                logger.info(f"✓ Loaded config from {self.config_path}")
-                return config
-            else:
+            if not config_file.exists():
                 logger.warning(f"Config file not found: {self.config_path}")
                 return {}
+
+            config = load_config_dict(config_file)
+            logger.info(f"✓ Loaded config from {self.config_path}")
+            return config
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
             return {}
@@ -232,15 +236,10 @@ class V456TrainingPipelineOptimized:
         logger.info("Creating training environment...")
         if self.reward_params:
             logger.info(f"  Reward parameters from config: {list(self.reward_params.keys())}")
+
+        df = calculate_base_features(df, copy=False)
         
         def create_env() -> FastIntradayEnvV456:
-            factory = EnvironmentFactory(df)
-            env = factory.create_training_env()
-            
-            # Reward parameters を適用（簡素化版ご褒美関数用）
-            if not hasattr(env, 'reward_params'):
-                env.reward_params = {}
-            
             # デフォルトご褒美パラメータ（すべて0で簡素化）
             default_reward_params = {
                 'alpha': 0.0,      # churn penalty disabled
@@ -254,8 +253,13 @@ class V456TrainingPipelineOptimized:
             # Config または デフォルトをマージ
             if self.reward_params:
                 default_reward_params.update(self.reward_params)
-            
-            env.reward_params.update(default_reward_params)
+
+            env_config = dict(self.env_config) if self.env_config else {}
+            env_config["reward_settings"] = default_reward_params
+
+            env = create_fast_intraday_env_v456(df=df, env_config=env_config)
+            if env is None:
+                raise RuntimeError("Failed to create training environment")
             return env
         
         env = safe_operation(
@@ -421,6 +425,7 @@ def main() -> int:
         
         # 環境作成
         env = pipeline.create_environment(df)
+        del df
         
         # 訓練実行
         model = pipeline.train(env)

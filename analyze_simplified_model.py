@@ -11,25 +11,33 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 
-from ztb.trading.environment.factory_v456 import EnvironmentFactory
+from ztb.features.base_features_v456 import calculate_base_features
+from ztb.trading.environment.utils.fast_intraday_env_v456_utils import (
+    create_fast_intraday_env_v456,
+)
 
 # データ読み込み
 df = pd.read_csv('data/btc_jpy_1m_v451.csv')
 print(f"Loaded {len(df):,} bars")
 
+# 特徴量の前計算
+df = calculate_base_features(df, copy=False)
+
 # 環境作成
-factory = EnvironmentFactory(df)
-env = factory.create_training_env()
-
-# ご褒美パラメータを設定
-if not hasattr(env, 'reward_params'):
-    env.reward_params = {}
-
-env.reward_params.update({
-    'alpha': 0.0,
-    'beta': 0.0,
-    'gamma': 0.0,
-})
+env = create_fast_intraday_env_v456(
+    df=df,
+    env_config={
+        "reward_settings": {
+            "alpha": 0.0,
+            "beta": 0.0,
+            "gamma": 0.0,
+        }
+    },
+)
+if env is None:
+    print("❌ Failed to create environment")
+    sys.exit(1)
+del df
 
 print(f"Env observation space: {env.observation_space.shape}")
 print(f"Env action space: {env.action_space}")

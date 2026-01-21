@@ -54,7 +54,7 @@ def run_walk_forward_analysis(
         initial_train_pct=0.50,
         val_pct=0.15,
         test_pct=0.15,
-        step_pct=0.10,
+        step_pct=0.20,
     )
     windows = splitter.split(df)
     
