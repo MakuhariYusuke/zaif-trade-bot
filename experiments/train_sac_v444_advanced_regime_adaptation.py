@@ -29,7 +29,7 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
 try:
-    from ztb.analysis.v444_regime_classifier import RegimeType, V444RegimeClassifier
+    from ztb.analysis.regime.v444_regime_classifier import RegimeType, V444RegimeClassifier
     from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 
     print("✓ Successfully imported V4XXUnifiedTrainer and V444RegimeClassifier")

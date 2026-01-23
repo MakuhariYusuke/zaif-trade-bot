@@ -4,7 +4,7 @@ description: "v458 Lost Alpha Integration & Stabilization"
 training:
   model_name: 'v458_lost_alpha_stabilization'
   algorithm: 'sac'
-  total_timesteps: 10000  # Very short for quick validation
+  total_timesteps: 10000  # Short for quick validation
   seed: 123  # For stability testing
 
   sac_hyperparameters:
@@ -12,7 +12,7 @@ training:
 
   environment:
     initial_balance: 10000000.0  # 10M JPY for v458
-    transaction_cost: 0.001  # 0.1%
+    transaction_cost: 0.00001  # 0.001%
     max_position_size: 1.0
     timeframe: "1m"
     min_delta: 0.01
@@ -25,33 +25,49 @@ training:
     feature_config_path: "config/features/features.yaml"
 
     # Reward Settings (PnL + Trend Guidance with Decay)
-    reward_scale: 100000.0  # Scale down rewards for learning
+    reward_scale: 1.0  # Normalized for positive rewards
 
     reward_settings:
       # Basic PnL reward (inherited)
       hold_grace: 20
       hold_ramp: 50.0
-      edge_penalty_rate: 1.0
-      min_edge_mult: 1.5  # Increased for edge filtering
+      edge_penalty_rate: 0.0  # Disabled for more trades
+      min_edge_mult: 1.0  # Reduced for more trades
       vol_floor: 0.001  # Increased to reduce noise trades
-      vol_floor_penalty: 20000000.0
+      vol_floor_penalty: 0.0  # Disabled for positive rewards
 
       # Frequency control
       cooldown_steps: 30  # Minimum steps between trades
 
     # Execution Model (inherited from v457)
     execution_model:
-      base_slippage: 0.0001
-      atr_slippage_factor: 0.1
+      base_slippage: 0.0
+      atr_slippage_factor: 0.0
       base_latency_ms: 10.0
       latency_jitter_ms: 5.0
+
+    # Entry Gate Configuration (moved under environment)
+    entry_gate:
+      enabled: false
+      calibration_map_path: "models/entry_gate_calibration.json"
+      volume_check: false  # Disable volume check for synthetic data
+      risk_limits:
+        max_daily_trades: 100
+        max_position_size: 1.0
+      filters:
+        time_filter:
+          enabled: false
+        volatility_filter:
+          enabled: false
+        regime_filter:
+          enabled: false
 
     # Dynamic Thresholds (inherited)
     dynamic_threshold_mode: "z_score"
     z_score_window: 50
     z_score_threshold: 3.0
     z_score_method: "mad"
-    min_action_threshold: 0.001
+    min_action_threshold: 0.0
 
   # SAC Hyperparameters (Conservative for Stability)
   sac_hyperparameters:
@@ -75,7 +91,7 @@ logging:
 
 # Data paths with OOS split (70/15/15)
 data:
-  source_data: "data/btc_jpy_1m_v451.csv"
+  source_data: "test_synthetic_dataset.csv"
   training_start: 0
   training_end: 98800  # ~70% of 141k
   validation_start: 98800

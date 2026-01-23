@@ -137,7 +137,23 @@ class FeaturePipeline:
                     df_copy[col_name] = 0.0
                     mtf_cols.append(col_name)
         
-        logger.info(f"✓ Calculated {len(mtf_cols)} MTF features (Resampled)")
+        # Scale and clip MTF features to prevent overflow
+        for col in mtf_cols:
+            if col in df_copy.columns:
+                # Robust scaling: clip to reasonable range and normalize
+                values = df_copy[col].values
+                # Clip extreme values
+                values = np.clip(values, -1e6, 1e6)
+                # Normalize by median absolute deviation for robustness
+                if len(values) > 0:
+                    median = np.median(np.abs(values))
+                    if median > 0:
+                        values = values / median
+                    # Final clip to [-10, 10] range
+                    values = np.clip(values, -10.0, 10.0)
+                df_copy[col] = values
+        
+        logger.info(f"✓ Calculated {len(mtf_cols)} MTF features (Resampled & Scaled)")
         return df_copy, mtf_cols
     
     @staticmethod
@@ -420,6 +436,7 @@ class EnvironmentFactory:
         initial_balance: float = 1_000_000.0,
         max_position: float = 1.0,
         commission_rate: float = 0.001,
+        config: Optional[Dict[str, Any]] = None,
     ):
         """
         Args:
@@ -427,11 +444,13 @@ class EnvironmentFactory:
             initial_balance: 初期残高
             max_position: 最大ポジション
             commission_rate: 手数料
+            config: 環境設定辞書
         """
         self.df = df.copy()
         self.initial_balance = initial_balance
         self.max_position = max_position
         self.commission_rate = commission_rate
+        self.config = config or {}
         self.pipeline = FeaturePipeline()
     
     def prepare_features(self) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
@@ -513,6 +532,7 @@ class EnvironmentFactory:
                 "initial_balance": self.initial_balance,
                 "max_position": self.max_position,
                 "commission_rate": self.commission_rate,
+                "env_config": self.config,  # env_configを追加
             }
             
             # env_kwargs マージ

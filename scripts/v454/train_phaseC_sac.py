@@ -11,7 +11,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.analysis.market_regime_classifier import RegimeType
+from ztb.analysis.regime.market_regime_classifier import RegimeType
 from ztb.training.v4xx_unified_trainer import V4XXUnifiedTrainer
 from ztb.utils.logging_utils import get_logger
 

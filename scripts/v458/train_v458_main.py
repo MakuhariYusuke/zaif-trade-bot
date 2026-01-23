@@ -204,8 +204,14 @@ def main():
             sac_params = extract_sac_params(full_config)
             seed = extract_seed(full_config)
 
+            # Get total_timesteps from config
+            training_config = full_config.get("training", {})
+            total_timesteps = training_config.get("total_timesteps", args.steps)
+            args.steps = total_timesteps
+
             logger.info(f"Loaded config from {config_file}")
             logger.info(f"SAC Hyperparameters: {sac_params}")
+            logger.info(f"Total timesteps: {args.steps}")
             if seed is not None:
                 set_global_seed(seed)
                 sac_params["seed"] = seed

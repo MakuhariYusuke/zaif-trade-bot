@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 try:
-    from ztb.training.eval_gates import EvalGates
+    from ztb.training.evaluation.eval_gates import EvalGates
     from ztb.training.ppo_trainer import PPOTrainer
 except ImportError:
     import pytest

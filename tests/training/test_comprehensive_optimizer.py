@@ -5,7 +5,7 @@ Comprehensive test of enhanced RewardFunctionOptimizer console output
 
 import json
 
-from ztb.optimization.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.reward_function_optimizer.reward_function_optimizer import RewardFunctionOptimizer
 
 
 def test_optimization_with_enhanced_output():

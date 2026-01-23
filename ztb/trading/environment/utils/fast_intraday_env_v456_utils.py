@@ -31,6 +31,7 @@ def create_fast_intraday_env_v456(
         initial_balance=initial_balance,
         max_position=max_position,
         commission_rate=commission,
+        config=env_config,
     )
     
     # Build env_kwargs from config
@@ -42,7 +43,8 @@ def create_fast_intraday_env_v456(
         "drawdown_limit",
         "prewarm_steps",
         "action_space_type",
-        "guidance_decay_steps"
+        "guidance_decay_steps",
+        "max_steps"  # Walk-Forward評価用
     ]
     env_kwargs = {k: env_config[k] for k in known_utils_keys if k in env_config}
     

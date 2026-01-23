@@ -4,7 +4,7 @@ SAC v428 Phase 2 Analysis Test Script
 """
 import json
 
-from ztb.analysis.analyze_backtest import BacktestAnalyzer
+from ztb.analysis.backtest.analyze_backtest import BacktestAnalyzer
 
 
 def main():

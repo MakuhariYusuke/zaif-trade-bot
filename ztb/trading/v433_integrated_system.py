@@ -34,10 +34,6 @@ except ImportError:
         def update(self, state, action, reward):
             pass
 
-    class UnifiedOptimizer:
-        def optimize(self, params):
-            return params
-
 
 logger = get_logger(__name__)
 

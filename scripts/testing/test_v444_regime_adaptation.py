@@ -13,7 +13,7 @@ import pandas as pd
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+from ztb.analysis.regime.v444_regime_classifier import V444RegimeClassifier
 
 
 def create_sample_data():

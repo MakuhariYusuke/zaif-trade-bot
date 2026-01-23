@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import numpy as np
 import pandas as pd
 
-from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 

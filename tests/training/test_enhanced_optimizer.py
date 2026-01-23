@@ -4,7 +4,7 @@ Test script for enhanced RewardFunctionOptimizer console output
 """
 
 
-from ztb.optimization.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.reward_function_optimizer.reward_function_optimizer import RewardFunctionOptimizer
 
 
 def test_basic_functionality():

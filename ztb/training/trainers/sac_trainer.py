@@ -49,7 +49,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed im
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.algorithms import AlgorithmFactory
 from ztb.training.callbacks.advanced_callbacks import EarlyStoppingCallback
-from ztb.training.core.config_manager import ConfigManager
+from ztb.utils.config_manager import ConfigManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
 from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI

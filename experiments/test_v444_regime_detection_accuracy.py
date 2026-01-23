@@ -28,7 +28,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from ztb.analysis.v444_regime_classifier import (
+    from ztb.analysis.regime.v444_regime_classifier import (
         RegimeDetectionResult,
         RegimeType,
         V444RegimeClassifier,

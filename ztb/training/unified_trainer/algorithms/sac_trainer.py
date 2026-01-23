@@ -212,7 +212,7 @@ class SACTrainer(BaseAlgorithmTrainer):
     def _initialize_market_regime_adaptation(self):
         """Initialize market regime adaptation system."""
         try:
-            from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+            from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier
 
             self.regime_classifier = MarketRegimeClassifier(
                 config=self.market_regime_adaptation

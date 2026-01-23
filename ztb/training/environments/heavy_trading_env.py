@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from gymnasium import spaces
 
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
 from ztb.trading.environment.components.threshold_manager import ThresholdManager
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.types.protocols import TradingEnvironment

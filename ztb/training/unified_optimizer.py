@@ -16,6 +16,8 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.training.reward_function_optimizer.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.system_optimizer import SystemOptimizer
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.system_utils import check_library_availability
@@ -374,129 +376,6 @@ class GridOptimizer(BaseOptimizer):
             "library": "itertools",
             "parallel_support": True,
         }
-
-
-class SystemOptimizer:
-    """システムレベル最適化器"""
-
-    def __init__(self, config: OptimizationConfig):
-        self.config = config
-        self.logger = get_logger(__name__)
-
-        # メモリトラッカー
-        self.memory_usage = []
-        self.gc_counter = 0
-
-        # パフォーマンスモニター
-        self.performance_metrics = []
-
-        # I/Oキャッシュ
-        self.cache = {}
-        self.cache_timestamps = {}
-
-    def optimize_memory_usage(self) -> Dict[str, Any]:
-        """メモリ使用量の最適化"""
-        if not PSUTIL_AVAILABLE:
-            return {"status": "skipped", "reason": "psutil not available"}
-
-        try:
-            process = psutil.Process()
-            memory_info = process.memory_info()
-
-            current_memory_mb = memory_info.rss / BYTES_PER_MB
-            self.memory_usage.append(current_memory_mb)
-
-            # メモリ閾値チェック
-            if current_memory_mb > self.config.memory_threshold_mb:
-                self._trigger_gc()
-                return {
-                    "status": "optimized",
-                    "action": "garbage_collection",
-                    "memory_before": current_memory_mb,
-                    "memory_after": process.memory_info().rss / BYTES_PER_MB,
-                }
-
-            return {"status": "normal", "current_memory_mb": current_memory_mb}
-
-        except Exception as e:
-            self.logger.warning(f"Memory optimization failed: {e}")
-            return {"status": "error", "error": str(e)}
-
-    def _trigger_gc(self) -> None:
-        """ガベージコレクションを実行"""
-        import gc
-
-        collected = gc.collect()
-        self.gc_counter += 1
-
-        if self.gc_counter % 10 == 0:  # 10回ごとにログ
-            self.logger.info(
-                f"Garbage collection triggered (collected: {collected} objects)"
-            )
-
-    def optimize_io_operations(self, key: str, data_generator: Callable) -> Callable:
-        """I/O操作の最適化（キャッシュ使用）"""
-        if not self.config.enable_io_caching:
-            return data_generator()
-
-        current_time = time.time()
-
-        # キャッシュチェック
-        if key in self.cache:
-            cache_time = self.cache_timestamps.get(key, 0)
-            if current_time - cache_time < self.config.cache_ttl_seconds:
-                return self.cache[key]
-
-        # データ生成
-        data = data_generator()
-
-        # キャッシュ保存
-        self.cache[key] = data
-        self.cache_timestamps[key] = current_time
-
-        return data
-
-    def monitor_performance(self, step: int, metrics: Dict[str, Any]) -> None:
-        """パフォーマンス監視"""
-        if not self.config.enable_performance_monitoring:
-            return
-
-        if step % self.config.performance_log_interval == 0:
-            metrics_with_timestamp = {
-                "step": step,
-                "timestamp": datetime.now().isoformat(),
-                **metrics,
-            }
-            self.performance_metrics.append(metrics_with_timestamp)
-
-            # 定期的なログ出力
-            self.logger.info(f"Performance at step {step}: {metrics}")
-
-    def get_system_status(self) -> Dict[str, Any]:
-        """システム状態を取得"""
-        status = {
-            "memory_usage_history": self.memory_usage[-10:]
-            if self.memory_usage
-            else [],
-            "gc_count": self.gc_counter,
-            "cache_size": len(self.cache),
-            "performance_metrics_count": len(self.performance_metrics),
-        }
-
-        if PSUTIL_AVAILABLE:
-            try:
-                process = psutil.Process()
-                memory_info = process.memory_info()
-                status.update(
-                    {
-                        "current_memory_mb": memory_info.rss / BYTES_PER_MB,
-                        "cpu_percent": process.cpu_percent(interval=0.1),
-                    }
-                )
-            except Exception as e:
-                status["system_monitoring_error"] = str(e)
-
-        return status
 
 
 class RewardFunctionOptimizer:

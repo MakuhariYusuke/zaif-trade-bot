@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from ztb.training.core.config_manager import ConfigManager
+from ztb.training.core.config_manager import TrainingConfigManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
 
 
@@ -214,7 +214,7 @@ class TestEnsembleIntegration:
         """Test ensemble integration with SAC trainer."""
         from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
 
-        config_manager = Mock(spec=ConfigManager)
+        config_manager = Mock(spec=TrainingConfigManager)
         trainer = SACAlgorithmTrainer(config_manager)
 
         # Verify it inherits from EnsembleMixin
@@ -231,7 +231,7 @@ class TestEnsembleIntegration:
         """Test ensemble integration with PPO trainer."""
         from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
 
-        config_manager = Mock(spec=ConfigManager)
+        config_manager = Mock(spec=TrainingConfigManager)
         trainer = PPOAlgorithmTrainer(config_manager)
 
         # Verify it inherits from EnsembleMixin

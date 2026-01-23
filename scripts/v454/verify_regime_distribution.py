@@ -11,7 +11,7 @@ from tqdm import tqdm
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.error_utils import safe_execute
 from ztb.utils.file_utils import safe_json_dump

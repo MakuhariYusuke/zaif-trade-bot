@@ -138,22 +138,23 @@ class BacktestReporter:
                 self.stats["ttl_enabled"] = bool(env_info.get("ttl_enabled"))
 
     def record_trade(self, trade_type, pnl, entry_price, exit_price, size, fee, slippage):
+        if trade_type == "close":
+            return  # Close is not a new trade, skip counting
         self.stats["total_trades"] += 1
         if trade_type == "long":
             self.stats["long_trades"] += 1
         else:
             self.stats["short_trades"] += 1
         
-        # Note: PnL here is usually Gross PnL from price diff.
-        # We need to subtract costs for Net PnL.
-        net_pnl = pnl - fee - slippage
+        # Note: PnL here is already Net PnL (includes costs).
+        net_pnl = pnl
 
         if net_pnl > 0:
             self.stats["winning_trades"] += 1
         else:
             self.stats["losing_trades"] += 1
 
-        self.stats["gross_pnl"] += pnl
+        self.stats["gross_pnl"] += pnl  # Actually net, but keep for compatibility
         self.stats["net_pnl"] += net_pnl
         self.stats["total_fees"] += fee
         self.stats["total_slippage"] += slippage

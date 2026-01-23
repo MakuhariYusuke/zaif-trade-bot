@@ -209,7 +209,7 @@ class PositionManager:
         )
 
         # Determine if reversal is allowed
-        allow_reverse = self.config.allow_reverse
+        allow_reverse = self.config.get("allow_reverse", True)
         if filter_active:
             allow_reverse = False
         if force_no_reverse:
@@ -326,7 +326,7 @@ class PositionManager:
         # Regime-based scaling (tests expect scaling depending on regime)
         if regime_data is not None:
             try:
-                from ztb.analysis.v444_regime_classifier import RegimeType
+                from ztb.analysis.regime.v444_regime_classifier import RegimeType
 
                 primary = getattr(regime_data, "primary_regime", None)
                 confidence = float(getattr(regime_data, "confidence", 0.0))

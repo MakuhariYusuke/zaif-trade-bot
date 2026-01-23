@@ -19,7 +19,7 @@ sys.path.append(str(project_root))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+from ztb.analysis.regime.v444_regime_classifier import V444RegimeClassifier
 from ztb.metrics.metrics import calculate_all_metrics
 
 # Configure logging to reduce spam

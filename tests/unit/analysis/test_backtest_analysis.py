@@ -14,7 +14,7 @@ import pytest
 project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.analysis.comparative.analyze_backtest import BacktestAnalyzer
+from ztb.analysis.backtest.analyze_backtest import BacktestAnalyzer
 
 
 class TestBacktestAnalyzer:

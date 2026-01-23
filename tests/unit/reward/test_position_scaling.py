@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import MagicMock
 from types import SimpleNamespace
 from ztb.trading.environment.components.position_manager import PositionManager
-from ztb.analysis.v444_regime_classifier import RegimeType
+from ztb.analysis.regime.v444_regime_classifier import RegimeType
 
 class TestPositionScaling(unittest.TestCase):
     def setUp(self):

@@ -27,6 +27,9 @@ class TrainingReporter:
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         self.logger: logging.Logger = logger or get_logger(__name__)
+        self._event_logger = TrainingEventLogger(self.logger)
+        # Keep a direct reference for generate_report's event capture.
+        self.events = self._event_logger.events
 
     def generate_report(
         self, config: ConfigDict, stats: Dict[str, Any], success: bool
@@ -86,6 +89,44 @@ class TrainingReporter:
         self.logger.info("\n" + "=" * 60)
         self.logger.info("TRAINING REPORT SUMMARY")
         self.logger.info("=" * 60)
+
+    def log_training_start(self, algorithm: str, config: ConfigDict) -> None:
+        """Log training start (delegated to TrainingEventLogger)."""
+        self._event_logger.log_training_start(algorithm, config)
+
+    def log_training_progress(
+        self, step: int, total_steps: int, stats: Dict[str, Any]
+    ) -> None:
+        """Log training progress (delegated to TrainingEventLogger)."""
+        self._event_logger.log_training_progress(step, total_steps, stats)
+
+    def log_training_complete(self, success: bool, stats: Dict[str, Any]) -> None:
+        """Log training completion (delegated to TrainingEventLogger)."""
+        self._event_logger.log_training_complete(success, stats)
+
+    def log_error(self, error: Exception, context: str = "") -> None:
+        """Log a training error (delegated to TrainingEventLogger)."""
+        self._event_logger.log_error(error, context)
+
+    def get_events(self) -> list:
+        """Get logged training events."""
+        return self._event_logger.get_events()
+
+    def save_events(self, filepath: str) -> None:
+        """Save logged events to file."""
+        self._event_logger.save_events(filepath)
+
+    def generate_ensemble_report(
+        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Generate ensemble analysis report (delegated to TrainingEventLogger)."""
+        return self._event_logger.generate_ensemble_report(ensemble_stats, decision_log)
+
+    def save_ensemble_report(
+        self, report: Dict[str, Any], output_dir: str = "reports"
+    ) -> str:
+        """Save ensemble report (delegated to TrainingEventLogger)."""
+        return self._event_logger.save_ensemble_report(report, output_dir=output_dir)
 
         self.logger.info(f"Algorithm: {meta['algorithm'].upper()}")
         self.logger.info(f"Model: {meta['model_name']}")

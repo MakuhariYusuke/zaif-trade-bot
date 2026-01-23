@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Set
 
 import pandas as pd
 
-from ztb.analysis.market_regime_types import MarketRegime
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.utils.logging_utils import get_logger
 
 from .adaptive_pattern_selector import AdaptivePatternSelector

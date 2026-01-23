@@ -220,6 +220,19 @@ class CalibrationGate:
         stats_fb = stats_bundle["fallback"]
         n_min = stats_bundle["n_min"]
 
+        # If no data, allow entry for initial exploration
+        if stats_l1.get("n_eff", 0.0) < EPSILON and stats_fb.get("n_eff", 0.0) < EPSILON:
+            return {
+                "should_enter": True,
+                "ev": 0.0,
+                "ev_l1": 0.0,
+                "ev_fb": 0.0,
+                "lambda_val": 0.0,
+                "cost": 0.0,
+                "stats": stats_l1,
+                "stats_fallback": stats_fb,
+            }
+
         # 2. Estimate Cost
         cost = self._estimate_cost(market_data, rl_action, size_to_use)
 
@@ -287,6 +300,7 @@ class CalibrationGate:
         # Fail-closed check for missing data
         # Added check for close <= EPSILON as Fee depends on it
         # Also check for NaN/Inf
+        volume_check = self.config.get("volume_check", True)
         if (
             not math.isfinite(high)
             or high <= EPSILON
@@ -294,8 +308,7 @@ class CalibrationGate:
             or low <= EPSILON
             or not math.isfinite(atr)
             or atr <= EPSILON
-            or not math.isfinite(volume)
-            or volume <= EPSILON
+            or (volume_check and (not math.isfinite(volume) or volume <= EPSILON))
             or not math.isfinite(close)
             or close <= EPSILON
             or not math.isfinite(order_size)

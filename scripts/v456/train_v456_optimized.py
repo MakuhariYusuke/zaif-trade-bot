@@ -136,7 +136,7 @@ class V456TrainingPipelineOptimized:
         gradient_steps: int = 1,
         use_checkpoint: bool = True,
         use_cache: bool = True,
-        config_path: str = "config/v456/base/config.yaml",
+        config_path: str = "config/v458/base/config.yaml",
     ) -> None:
         """
         Args:
@@ -201,7 +201,7 @@ class V456TrainingPipelineOptimized:
             )
             logger.info("✓ CacheCoordinator initialized (LRU+TTL)")
     
-    def load_data(self, csv_path: str = "test_synthetic_dataset.csv") -> pd.DataFrame:
+    def load_data(self, csv_path: str = "data/btc_jpy_training_data.csv") -> pd.DataFrame:
         """
         訓練データを読み込む
         

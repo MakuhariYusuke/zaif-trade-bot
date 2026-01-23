@@ -168,15 +168,7 @@ class BacktestResult:
         return summary
 
 
-@dataclass
-class WalkForwardResult:
-    """ウォークフォワード分析結果"""
-
-    in_sample_results: List[BacktestResult] = field(default_factory=list)
-    out_of_sample_results: List[BacktestResult] = field(default_factory=list)
-    overall_performance: Dict[str, Any] = field(default_factory=dict)
-    parameter_stability: Dict[str, Any] = field(default_factory=dict)
-    overfitting_metrics: Dict[str, Any] = field(default_factory=dict)
+from ztb.evaluation.walk_forward import WalkForwardResult
 
 
 @dataclass

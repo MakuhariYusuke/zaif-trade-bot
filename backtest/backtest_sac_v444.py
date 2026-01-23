@@ -20,7 +20,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from utils.results_utils import save_backtest_results
-from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+from ztb.analysis.regime.v444_regime_classifier import V444RegimeClassifier
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv

@@ -48,7 +48,7 @@ from stable_baselines3 import SAC
 sys.path.append(str(PROJECT_ROOT))
 
 from ztb.trading.environment.heavy_env import HeavyTradingEnv
-from ztb.analysis.market_regime_classifier import RegimeType
+from ztb.analysis.regime.market_regime_classifier import RegimeType
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.file_utils import safe_json_dump

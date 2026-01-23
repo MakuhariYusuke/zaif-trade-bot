@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
 from ztb.metrics.statistics import calculate_volatility, rolling_statistics
-from ztb.trading.risk.interfaces import RiskManagerProtocol
+from ztb.trading.risk.risk_manager import RiskManager as BaseRiskManager
+from ztb.trading.types import PositionManagementConfig
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_to_float
 
@@ -14,11 +15,26 @@ if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
 
-class RiskManager(RiskManagerProtocol):
+class RiskManager(BaseRiskManager):
     """Manages trading risk limits and emergency stops."""
 
     def __init__(self, live_trader: "LiveTrader"):
         """Initialize risk manager with reference to live trader."""
+        # Create PositionManagementConfig from live trader config
+        pm_config = PositionManagementConfig(
+            max_portfolio_risk_pct=live_trader.config.get("max_portfolio_risk_pct", 0.10),
+            max_single_position_risk_pct=live_trader.config.get("max_single_position_risk_pct", 0.05),
+            stop_loss_pct=live_trader.config.get("stop_loss_pct", 0.02),
+            take_profit_pct=live_trader.config.get("take_profit_pct", 0.05),
+            capital_buffer_pct=live_trader.config.get("capital_buffer_pct", 0.05),
+            min_signal_strength=live_trader.config.get("min_signal_strength", 0.5),
+            max_volatility_threshold=live_trader.config.get("max_volatility_threshold", 0.05),
+            default_position_size_pct=live_trader.config.get("default_position_size_pct", 0.02),
+        )
+
+        # Initialize base risk manager
+        super().__init__(pm_config)
+
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
 

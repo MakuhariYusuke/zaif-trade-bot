@@ -5,7 +5,7 @@ import numpy as np
 eval_log_path = "eval_logs/evaluations.npz"
 
 if os.path.exists(eval_log_path):
-    data = np.load(eval_log_path)
+    data = np.load(eval_log_path, allow_pickle=True)
     print("Keys in npz:", data.files)
 
     # Assuming standard stable-baselines3 eval log structure

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 from stable_baselines3 import SAC
 
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager, TrainingCheckpointConfig
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback

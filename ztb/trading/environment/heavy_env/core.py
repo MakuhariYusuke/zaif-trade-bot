@@ -23,9 +23,9 @@ except Exception:
 from numpy.typing import NDArray
 
 # Import v444 regime classifier for advanced market regime adaptation
-from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
-from ztb.analysis.market_regime_classifier import RegimeType as GenericRegimeType
-from ztb.analysis.market_regime_types import MarketRegime
+from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier
+from ztb.analysis.regime.market_regime_classifier import RegimeType as GenericRegimeType
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 # Backward compatibility: use the generic regime enum for v444-type references.

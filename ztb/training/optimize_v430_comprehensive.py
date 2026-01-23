@@ -16,7 +16,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ztb.optimization.hyperparameter_optimizer import HyperparameterOptimizer
-from ztb.optimization.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.reward_function_optimizer.reward_function_optimizer import RewardFunctionOptimizer
 
 
 class SACv430Optimizer:

@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
-from ztb.analysis.market_regime_types import MarketRegime
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.utils.logging_utils import get_logger
 
 

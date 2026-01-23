@@ -590,7 +590,7 @@ class ActionSignalGuide:
         except Exception as e:
             self.logger.warning(f"Failed to detect market regime: {e}")
             # Default to moderate volatility ranging market
-            from ztb.analysis.market_regime_types import MarketRegime
+            from ztb.analysis.regime.market_regime_types import MarketRegime
 
             return MarketRegime.MODERATE_VOLATILITY_RANGING
 

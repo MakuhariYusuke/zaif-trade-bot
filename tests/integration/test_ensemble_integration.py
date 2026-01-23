@@ -7,7 +7,7 @@ import json
 
 import numpy as np
 
-from ztb.training.core.config_manager import ConfigManager
+from ztb.utils.config_manager import ConfigManager
 from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
 from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
 

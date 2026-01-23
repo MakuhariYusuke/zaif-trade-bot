@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.analysis.market_regime_classifier import (
+from ztb.analysis.regime.market_regime_classifier import (
     MarketRegimeClassifier,
     RegimeDetectionResult,
     RegimeMetrics,

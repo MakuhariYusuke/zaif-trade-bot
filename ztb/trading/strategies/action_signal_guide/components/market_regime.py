@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from ztb.analysis.market_regime_types import MarketRegime
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.trading.signal.common.utilities import (
     calculate_volatility as calculate_volatility_util,
 )

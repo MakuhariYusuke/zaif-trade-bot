@@ -28,6 +28,9 @@ from ztb.trading.environment.components.fast_intraday_action_processor import (
 from ztb.trading.environment.components.threshold_manager import (
     ThresholdManager,
 )
+from ztb.trading.environment.components.position_manager import (
+    PositionManager,
+)
 from ztb.trading.rewards.fast_intraday import compute_hft_reward
 from ztb.utils.fee_model import ExchangeFeeModel
 
@@ -146,8 +149,12 @@ class FastIntradayEnvV456(gym.Env):
         z_score_threshold: float = 3.0,
         z_score_method: str = "mad",
         min_action_threshold: float = 0.001,
+        env_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
+        
+        # Store config for entry gate
+        self.config = env_config or {}
         
         # Data
         self.df = df.reset_index(drop=True)
@@ -199,6 +206,20 @@ class FastIntradayEnvV456(gym.Env):
             # But let's assume if critical cols are missing, calculation fails.
             pass
 
+        # Pre-extract market data for entry gate
+        self.regime_data = df[regime_feature_columns]
+        self.high_prices = df.get('high', df['close']).values
+        self.low_prices = df.get('low', df['close']).values
+        self.open_prices = df.get('open', df['close']).values
+        try:
+            self.volume = df['volume'].values
+        except KeyError:
+            self.volume = np.ones(len(df), dtype=np.float64)  # Default volume
+        try:
+            self.atr_values = df['atr'].values
+        except KeyError:
+            self.atr_values = np.ones(len(df), dtype=np.float64) * 0.01  # Default ATR
+
         # ★ Fix Finding 3: Calculate Ichimoku AFTER validation
         # Requires OHLC which are in base features.
         try:
@@ -241,6 +262,27 @@ class FastIntradayEnvV456(gym.Env):
         self.z_score_method = z_score_method
         self.min_action_threshold = min_action_threshold
         self.ttl_enabled = action_space_type != "1d_position"
+        self.env_config = env_config or {}
+        self.previous_action = 0.0
+        self.regime = "UNKNOWN"
+        
+        # ★ P1-1: TP/SL閾値設定（Phase 2簡易実装）
+        self.tp_threshold = self.env_config.get("tp_threshold", 0.02)  # 2% profit
+        self.sl_threshold = self.env_config.get("sl_threshold", 0.01)  # 1% loss
+
+        # Entry gate system (optional)
+        entry_gate_config = self.env_config.get("entry_gate", {})
+        if entry_gate_config.get("enabled", False):
+            from ztb.trading.signal.entry_system import IntegratedEntrySystem
+            self.entry_system = IntegratedEntrySystem(entry_gate_config)
+            # Load calibration state if path provided
+            calibration_path = entry_gate_config.get("calibration_map_path")
+            if calibration_path:
+                self.entry_system.load_state(calibration_path)
+                logger.info(f"Loaded entry gate calibration from {calibration_path}")
+            logger.info("Entry gate system enabled")
+        else:
+            self.entry_system = None
 
         # Dynamic threshold manager
         threshold_config = {
@@ -260,6 +302,15 @@ class FastIntradayEnvV456(gym.Env):
             max_position=self.max_position,
             cooldown_steps=self.cooldown_steps,
         )
+        self.position_manager = PositionManager(
+            config={
+                "max_position": self.max_position,
+                "commission_rate": commission_rate,
+                "max_ttl_steps": self.max_ttl_steps,
+                "allow_reverse": True,  # デフォルトでreverse許可
+            },
+            get_price_callback=lambda: self.close_prices[self.current_step],
+        )
         self.accounting = FastIntradayAccounting(initial_balance=self.initial_balance)
         
         # Fee model
@@ -267,6 +318,10 @@ class FastIntradayEnvV456(gym.Env):
             "zaif": {"buy": commission_rate, "sell": commission_rate}
         })
         self.fee_model.set_exchange("zaif")
+        
+        # Entry price tracking for trade PnL calculation
+        self.entry_price = 0.0
+        self.last_execution_price = 0.0
         
         # ★ Phase 1.1: Check for missing features before accessing
         missing_base = [col for col in base_feature_columns if col not in self.df.columns]
@@ -351,6 +406,9 @@ class FastIntradayEnvV456(gym.Env):
         self.net_pnl = 0.0
         self.total_fees = 0.0
         self.total_slippage = 0.0
+        
+        # Recorder for backtest reporting
+        self.recorder = None
         self.total_pnl = 0.0
         self.max_balance = initial_balance
         self.last_step_cost = 0.0
@@ -403,6 +461,7 @@ class FastIntradayEnvV456(gym.Env):
         self.steps_held = 0
         self.cooldown_counter = 0
         self.accounting.reset()
+        self.position_manager.reset()
         self.gross_pnl = self.accounting.gross_pnl
         self.net_pnl = self.accounting.net_pnl
         self.total_fees = self.accounting.total_fees
@@ -429,23 +488,109 @@ class FastIntradayEnvV456(gym.Env):
             "start_index": int(self.current_step),
             "seed": seed,
         }
+        
+        # Initialize entry system if configured
+        entry_gate_config = self.config.get("environment", {}).get("entry_gate") if self.config else None
+        if entry_gate_config:
+            from ztb.trading.entry_system import IntegratedEntrySystem
+            self.entry_system = IntegratedEntrySystem(config=entry_gate_config)
+            # Load calibration map if available
+            if hasattr(self.entry_system, 'calibration_map') and self.entry_system.calibration_map:
+                self.entry_system.calibration_map.load()
+        else:
+            self.entry_system = None
+        
         return self._get_observation(), info
+    
+    def _is_entry_action(self, target_position: float, current_position: float) -> bool:
+        """
+        Doc04仕様: 新規エントリー/拡大のみをゲートチェック対象に
+        exit/close/reduceは常に許可
+        
+        Args:
+            target_position: 目標ポジション
+            current_position: 現在ポジション
+        
+        Returns:
+            True: エントリー/拡大（ゲートチェック必要）
+            False: exit/close/reduce（常に許可）
+        """
+        # 絶対値が増える = エントリー/拡大
+        return abs(target_position) > abs(current_position)
+    
+    def _convert_to_hold_action(self) -> np.ndarray:
+        """
+        Doc04仕様: エントリーブロック時にHOLDに変換
+        
+        Returns:
+            HOLD相当のアクション配列
+        """
+        if self.action_space_type == "2d_position_ttl":
+            return np.array([0.0, 0.5])  # position=0, ttl=default
+        else:
+            return np.array([0.0])
     
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """1ステップ実行"""
+        # Store previous action for calibration
+        self.previous_action = action[0]
+        
         # 価格取得
         price_now = self.close_prices[self.current_step]
         price_prev = self.close_prices[self.current_step - 1] if self.current_step > 0 else price_now
         atr = self.atr_data[self.current_step]
         position_prev = self.position
         
+        # ★ P1-1: close_reason初期化（スコープ全体で利用）
+        close_reason: Optional[str] = None
+        trade_pnl = 0.0
+        
         # Update threshold manager with raw action
         self.threshold_manager.update_action_stats(abs(action[0]))
         
+        # Parse action first to get target position
         action_result = self.action_processor.parse_action(action)
-        trade_pnl = self.position_manager.execute_action(action_result, price_now, atr)
         target_pos_fraction = action_result.target_pos_fraction
         ttl_fraction = action_result.ttl_fraction
+        
+        # Apply entry gate if enabled (Doc04仕様: exit/closeは常時許可)
+        if self.entry_system is not None:
+            is_entry = self._is_entry_action(target_pos_fraction, position_prev)
+            
+            if is_entry:
+                # エントリー/拡大のみゲートチェック
+                from ztb.trading.types import MarketState
+                market_state = MarketState(
+                    high=self.high_prices[self.current_step],
+                    low=self.low_prices[self.current_step],
+                    close=self.close_prices[self.current_step],
+                    atr=self.atr_values[self.current_step],
+                    volume=self.volume[self.current_step],
+                    spread=0.0,
+                    timestamp=None,
+                )
+                current_regime_data = self.regime_data.iloc[self.current_step]
+                regime = current_regime_data.idxmax() if current_regime_data.sum() > 0 else "UNKNOWN"
+                gate_result = self.entry_system.process_signal(
+                    rl_action=action[0],
+                    market_data=market_state,
+                    regime=regime,
+                    threshold=self.min_action_threshold,
+                )
+                if not gate_result["should_enter"]:
+                    # エントリーブロック → HOLDに変換
+                    action = self._convert_to_hold_action()
+                    action_result = self.action_processor.parse_action(action)
+                    target_pos_fraction = 0.0
+                    logger.debug(
+                        f"Gate blocked entry: original_action={action[0]:.3f}, "
+                        f"regime={regime}, threshold={self.min_action_threshold:.3f}"
+                    )
+            # else: exit/close/reduceは常に許可（ゲートチェックなし）
+        
+        # Position transition
+        position_prev = self.position
+        delta = target_pos_fraction - position_prev
         
         # Apply dynamic threshold
         threshold = self.threshold_manager.get_threshold(raw_action_value=target_pos_fraction)
@@ -467,7 +612,7 @@ class FastIntradayEnvV456(gym.Env):
             self.cooldown_triggers += 1
         
         # ポジション遷移
-        delta = raw_target_position - self.position
+        delta = raw_target_position - position_prev
         
         # デッドバンド
         if abs(delta) < self.min_delta * self.max_position:
@@ -478,7 +623,7 @@ class FastIntradayEnvV456(gym.Env):
         if abs(delta) > max_delta:
             delta = np.sign(delta) * max_delta
         
-        new_position = self.position + delta
+        new_position = position_prev + delta
         
         # スリッページと手数料の計算
         fee_paid = 0.0
@@ -493,6 +638,8 @@ class FastIntradayEnvV456(gym.Env):
             # 実行価格
             execution_price = price_now * (1.0 + np.sign(delta) * slippage / price_now)
 
+            self.last_execution_price = execution_price
+
             # 手数料
             trade_type = "buy" if delta > 0 else "sell"
             fee_rate = self.fee_model.get_fee_rate(trade_type)
@@ -506,6 +653,47 @@ class FastIntradayEnvV456(gym.Env):
             self.position = new_position
             self.last_step_cost = execution_price
 
+            # ★ P0-3: Calculate trade_pnl as NET PnL (costs already deducted)
+            # This value is used in info['trade_pnl'] for Reporter.record_trade()
+            # ★ P1-1: close_reasonはstep()冒頭で初期化済み
+            
+            # ★ P1-2: 反転検出（Long⇄Short）
+            is_reversal = (abs(position_prev) > 1e-6 and 
+                          abs(new_position) > 1e-6 and 
+                          position_prev * new_position < 0)
+            
+            # 既存ポジションの決済PnL計算
+            if abs(position_prev) > 1e-6:
+                realized_pnl = position_prev * (execution_price - self.entry_price) - fee_paid - slippage_paid
+                trade_pnl = realized_pnl  # NET PnL (gross - costs)
+                
+                # ★ P1-1: close_reason判定（ポジション決済時）
+                if abs(new_position) <= 1e-6 or is_reversal:
+                    # 判定優先順位: TP/SL > 反転 > 手動
+                    # 理由: 反転でもTP/SL達成なら、その情報を記録すべき
+                    if self._is_take_profit_exit(trade_pnl, abs(position_prev)):
+                        close_reason = "tp"
+                    elif self._is_stop_loss_exit(trade_pnl, abs(position_prev)):
+                        close_reason = "sl"
+                    elif is_reversal:
+                        close_reason = "reversal"
+                    else:
+                        close_reason = "manual"  # TTL強制決済、手動決済含む
+            
+            # 新規ポジションのentry_price更新
+            if abs(new_position) > 1e-6:
+                # ★ P1-2: 反転時も含め、新ポジション開始時は必ずentry_price更新
+                self.entry_price = execution_price
+                
+                # エントリーコストの記録（純粋な新規エントリー時のみ、反転時は除外）
+                if abs(position_prev) <= 1e-6:
+                    trade_pnl = -fee_paid - slippage_paid
+
+            # Update entry system outcome on trade close
+            if self.entry_system and abs(position_prev) > 1e-6 and abs(new_position) <= 1e-6:
+                outcome = 1 if trade_pnl > 0 else -1
+                self.entry_system.update_outcome(outcome)
+
             # TTL更新（エントリー時）
             if abs(delta) > 1e-6 and abs(new_position) > 1e-6:
                 if self.ttl_enabled:
@@ -514,7 +702,9 @@ class FastIntradayEnvV456(gym.Env):
                 else:
                     self.position_ttl = self.max_ttl_steps
                 self.steps_held = 0
-
+        
+        # else: delta が小さい場合、trade_pnl/close_reasonは初期値（0/None）のまま
+        
         # ポジション保有ステップカウント
         if abs(self.position) > 1e-6:
             self.steps_held += 1
@@ -607,7 +797,27 @@ class FastIntradayEnvV456(gym.Env):
         if self.current_step >= self.data_len - 1:
             truncated = True
         
+        # Force close position at end of episode
+        if truncated and abs(self.position) > 1e-6:
+            realized_pnl = self.position * (price_now - self.entry_price)
+            self.accounting.gross_pnl += realized_pnl
+            self.accounting.net_pnl = self.accounting.gross_pnl - self.accounting.total_fees - self.accounting.total_slippage
+            self.balance = self.accounting.portfolio_value()
+            if self.recorder:
+                self.recorder.record_trade(
+                    trade_type="long" if self.position > 0 else "short",
+                    pnl=realized_pnl,
+                    entry_price=self.entry_price,
+                    exit_price=price_now,
+                    size=abs(self.position),
+                    fee=0.0,
+                    slippage=0.0
+                )
+            self.position = 0.0
+        
         # 情報辞書
+        # ★ P0-3規約: 'trade_pnl'はNET PnL（コスト控除済み）
+        # Reporter.record_trade()はこの値を使用し、二重控除しない
         info = {
             'balance': self.balance,
             'position': self.position,
@@ -629,8 +839,31 @@ class FastIntradayEnvV456(gym.Env):
             'steps_held': self.steps_held,
             'ttl_forced_exits': self.ttl_forced_exits,
             'cooldown_triggers': self.cooldown_triggers,
-            'trade_pnl': trade_pnl,
+            'trade_pnl': trade_pnl,  # NET PnL (costs deducted)
+            'entry_price': self.entry_price,
+            'close_reason': close_reason,  # ★ P1-1: close理由（"tp", "sl", "reversal", "manual"）
+            'exit_price': self.last_execution_price,
         }
+        
+        # Update calibration if trade closed
+        if abs(self.position) < 1e-6 and abs(position_prev) > 1e-6:  # trade closed
+            if self.entry_system and hasattr(self.entry_system, 'calibration_map') and self.entry_system.calibration_map:
+                current_regime_data = self.regime_data.iloc[self.current_step]
+                regime = current_regime_data.idxmax() if current_regime_data.sum() > 0 else "UNKNOWN"
+                self.entry_system.calibration_map.update(regime, self.previous_action, trade_pnl, self.current_step)
+            
+            # Record trade for reporter
+            trade_type = "long" if position_prev > 0 else "short"
+            if self.recorder:
+                self.recorder.record_trade(
+                    trade_type=trade_type,
+                    pnl=trade_pnl,
+                    entry_price=self.entry_price,
+                    exit_price=price_now,
+                    size=abs(position_prev),
+                    fee=fee_paid,
+                    slippage=slippage_paid,
+                )
         
         # 次の観測
         next_obs = self._get_observation()
@@ -645,7 +878,10 @@ class FastIntradayEnvV456(gym.Env):
         obs[self.OBSERVATION_DIMS['base'][0]:self.OBSERVATION_DIMS['base'][1]] = self.base_features[idx]
         
         # [30:57] MTF features
-        obs[self.OBSERVATION_DIMS['mtf'][0]:self.OBSERVATION_DIMS['mtf'][1]] = self.mtf_features[idx]
+        mtf_obs = self.mtf_features[idx]
+        # Check for NaN/inf and replace with 0
+        mtf_obs = np.nan_to_num(mtf_obs, nan=0.0, posinf=0.0, neginf=0.0)
+        obs[self.OBSERVATION_DIMS['mtf'][0]:self.OBSERVATION_DIMS['mtf'][1]] = mtf_obs
         
         # [57:63] Cyclical time features
         # Restored "Lost Alpha" from v451/v456 proposals
@@ -687,6 +923,50 @@ class FastIntradayEnvV456(gym.Env):
         obs_scaled = self.scaler.transform(obs)
         
         return obs_scaled
+    
+    def _is_take_profit_exit(self, trade_pnl: float, position_size: float) -> bool:
+        """
+        TP条件を満たすかチェック（Phase 2簡易実装）
+        
+        Args:
+            trade_pnl: 決済時の実現PnL（NET PnL、コスト控除済み）
+            position_size: ポジションサイズ（絶対値）
+        
+        Returns:
+            bool: TP条件を満たす場合True
+        """
+        if abs(position_size) < 1e-6:
+            return False
+        
+        # PnL率計算: pnl / (position_size * entry_price)
+        notional_value = position_size * self.entry_price
+        if notional_value < 1e-6:
+            return False
+        
+        pnl_pct = trade_pnl / notional_value
+        return pnl_pct > self.tp_threshold
+    
+    def _is_stop_loss_exit(self, trade_pnl: float, position_size: float) -> bool:
+        """
+        SL条件を満たすかチェック（Phase 2簡易実装）
+        
+        Args:
+            trade_pnl: 決済時の実現PnL（NET PnL、コスト控除済み）
+            position_size: ポジションサイズ（絶対値）
+        
+        Returns:
+            bool: SL条件を満たす場合True
+        """
+        if abs(position_size) < 1e-6:
+            return False
+        
+        # PnL率計算
+        notional_value = position_size * self.entry_price
+        if notional_value < 1e-6:
+            return False
+        
+        pnl_pct = trade_pnl / notional_value
+        return pnl_pct < -self.sl_threshold
     
     def _get_observation(self) -> np.ndarray:
         """現在の観測を取得"""

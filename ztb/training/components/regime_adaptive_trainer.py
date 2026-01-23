@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from ztb.analysis.market_regime_classifier import (
+from ztb.analysis.regime.market_regime_classifier import (
     MarketRegimeClassifier,
     RegimeDetectionResult,
     RegimeType,

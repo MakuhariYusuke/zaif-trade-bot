@@ -2188,7 +2188,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Initialize and attach Market Regime Classifier
             try:
-                from ztb.analysis.market_regime_classifier import MarketRegimeClassifier
+                from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier
 
                 classifier = MarketRegimeClassifier()
                 env.enable_market_regime_adaptation(regime_classifier=classifier)

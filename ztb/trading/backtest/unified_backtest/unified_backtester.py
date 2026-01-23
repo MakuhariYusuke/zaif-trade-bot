@@ -17,7 +17,7 @@ import pandas as pd
 
 from ....utils.config_utils import load_config_unified
 from ....utils.logging_utils import get_logger
-from ....utils.results_utils import save_backtest_results
+from utils.results_utils import save_backtest_results
 from ....utils.training_utils import load_model
 from ....metrics.metrics import sharpe_ratio
 from ..adapters import StrategyAdapter

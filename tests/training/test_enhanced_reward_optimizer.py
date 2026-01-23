@@ -16,7 +16,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ztb.optimization.reward_function_optimizer import RewardFunctionOptimizer
+from ztb.training.reward_function_optimizer.reward_function_optimizer import RewardFunctionOptimizer
 
 
 def test_enhanced_optimizer():

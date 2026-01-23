@@ -119,7 +119,7 @@ class SACStrategy(MLTradingStrategy):
 
         try:
             # Import here to avoid circular imports
-            from ztb.analysis.v444_regime_classifier import V444RegimeClassifier
+            from ztb.analysis.regime.v444_regime_classifier import V444RegimeClassifier
 
             self.regime_classifier = V444RegimeClassifier()
             # Note: load_model method may not exist, using alternative approach
