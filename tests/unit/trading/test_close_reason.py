@@ -104,7 +104,7 @@ class TestCloseReasonDetection:
             assert info['close_reason'] in ["manual", "tp", "sl", "reversal", None]
     
     def test_close_reason_reversal_on_position_flip(self, env: FastIntradayEnvV456):
-        """反転時にclose_reason="reversal"が記録される"""
+        """反転時にclose_reasonが記録される（TP/SL優先のため、tp/sl/reversalのいずれか）"""
         env.reset()
         
         # Longエントリー
@@ -120,9 +120,10 @@ class TestCloseReasonDetection:
         action = np.array([-0.8, 1.0])
         obs, reward, done, truncated, info = env.step(action)
         
-        # ★ P1-1検証: close_reason="reversal"
-        assert info['close_reason'] == "reversal", \
-            f"Expected 'reversal', got '{info['close_reason']}'"
+        # ★ Doc19指摘[Minor]: TP/SL優先のため、価格推移でtp/slになる可能性もある
+        # 反転時はclose_reasonが必ず設定されることを検証（tp/sl/reversalのいずれか）
+        assert info['close_reason'] in ["tp", "sl", "reversal"], \
+            f"Expected tp/sl/reversal on reversal, got '{info['close_reason']}'"
     
     def test_close_reason_manual_on_normal_exit(self, env: FastIntradayEnvV456):
         """通常のエグジットでclose_reason="manual"が記録される"""

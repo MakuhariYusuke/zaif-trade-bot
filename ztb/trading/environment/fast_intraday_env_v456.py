@@ -543,6 +543,10 @@ class FastIntradayEnvV456(gym.Env):
         
         # ★ P1-1: close_reason初期化（スコープ全体で利用）
         close_reason: Optional[str] = None
+        # ★ Doc19指摘[Major]: prev_entry_price初期化
+        prev_entry_price = self.entry_price
+        # ★ P0-3: trade_pnl初期化
+        trade_pnl = 0.0
         trade_pnl = 0.0
         
         # Update threshold manager with raw action
@@ -656,38 +660,41 @@ class FastIntradayEnvV456(gym.Env):
             # ★ P0-3: Calculate trade_pnl as NET PnL (costs already deducted)
             # This value is used in info['trade_pnl'] for Reporter.record_trade()
             # ★ P1-1: close_reasonはstep()冒頭で初期化済み
+            # ★ Doc19指摘[Major]: prev_entry_priceはstep()冒頭で初期化済み
             
             # ★ P1-2: 反転検出（Long⇄Short）
             is_reversal = (abs(position_prev) > 1e-6 and 
                           abs(new_position) > 1e-6 and 
                           position_prev * new_position < 0)
             
-            # 既存ポジションの決済PnL計算
-            if abs(position_prev) > 1e-6:
+            # 既存ポジションの決済PnL計算（完全クローズ or 反転時のみ）
+            if abs(position_prev) > 1e-6 and (abs(new_position) <= 1e-6 or is_reversal):
                 realized_pnl = position_prev * (execution_price - self.entry_price) - fee_paid - slippage_paid
                 trade_pnl = realized_pnl  # NET PnL (gross - costs)
                 
                 # ★ P1-1: close_reason判定（ポジション決済時）
-                if abs(new_position) <= 1e-6 or is_reversal:
-                    # 判定優先順位: TP/SL > 反転 > 手動
-                    # 理由: 反転でもTP/SL達成なら、その情報を記録すべき
-                    if self._is_take_profit_exit(trade_pnl, abs(position_prev)):
-                        close_reason = "tp"
-                    elif self._is_stop_loss_exit(trade_pnl, abs(position_prev)):
-                        close_reason = "sl"
-                    elif is_reversal:
-                        close_reason = "reversal"
-                    else:
-                        close_reason = "manual"  # TTL強制決済、手動決済含む
+                # 判定優先順位: TP/SL > 反転 > 手動
+                # 理由: 反転でもTP/SL達成なら、その情報を記録すべき
+                if self._is_take_profit_exit(trade_pnl, abs(position_prev)):
+                    close_reason = "tp"
+                elif self._is_stop_loss_exit(trade_pnl, abs(position_prev)):
+                    close_reason = "sl"
+                elif is_reversal:
+                    close_reason = "reversal"
+                else:
+                    close_reason = "manual"  # TTL強制決済、手動決済含む
             
             # 新規ポジションのentry_price更新
             if abs(new_position) > 1e-6:
                 # ★ P1-2: 反転時も含め、新ポジション開始時は必ずentry_price更新
                 self.entry_price = execution_price
                 
-                # エントリーコストの記録（純粋な新規エントリー時のみ、反転時は除外）
+                # ★ Doc19指摘[Major]: 反転時はクローズ側にPnL、新規側にエントリーコストのみ
+                # （純粋な新規エントリー時のみエントリーコストをtrade_pnlに記録）
                 if abs(position_prev) <= 1e-6:
+                    # 完全フラットからの新規エントリー
                     trade_pnl = -fee_paid - slippage_paid
+                # 反転時はtrade_pnlは既にクローズ側PnLが設定済（上書きしない）
 
             # Update entry system outcome on trade close
             if self.entry_system and abs(position_prev) > 1e-6 and abs(new_position) <= 1e-6:
@@ -803,16 +810,9 @@ class FastIntradayEnvV456(gym.Env):
             self.accounting.gross_pnl += realized_pnl
             self.accounting.net_pnl = self.accounting.gross_pnl - self.accounting.total_fees - self.accounting.total_slippage
             self.balance = self.accounting.portfolio_value()
-            if self.recorder:
-                self.recorder.record_trade(
-                    trade_type="long" if self.position > 0 else "short",
-                    pnl=realized_pnl,
-                    entry_price=self.entry_price,
-                    exit_price=price_now,
-                    size=abs(self.position),
-                    fee=0.0,
-                    slippage=0.0
-                )
+            # ★ Doc19指摘[Critical]: recorder呼び出しを削除（Evaluatorが記録するため二重記録）
+            # if self.recorder:
+            #     self.recorder.record_trade(...)
             self.position = 0.0
         
         # 情報辞書
@@ -841,6 +841,7 @@ class FastIntradayEnvV456(gym.Env):
             'cooldown_triggers': self.cooldown_triggers,
             'trade_pnl': trade_pnl,  # NET PnL (costs deducted)
             'entry_price': self.entry_price,
+            'prev_entry_price': prev_entry_price,  # ★ Doc19指摘[Major]: 反転時の旧entry_price保存
             'close_reason': close_reason,  # ★ P1-1: close理由（"tp", "sl", "reversal", "manual"）
             'exit_price': self.last_execution_price,
         }
@@ -852,18 +853,11 @@ class FastIntradayEnvV456(gym.Env):
                 regime = current_regime_data.idxmax() if current_regime_data.sum() > 0 else "UNKNOWN"
                 self.entry_system.calibration_map.update(regime, self.previous_action, trade_pnl, self.current_step)
             
-            # Record trade for reporter
-            trade_type = "long" if position_prev > 0 else "short"
-            if self.recorder:
-                self.recorder.record_trade(
-                    trade_type=trade_type,
-                    pnl=trade_pnl,
-                    entry_price=self.entry_price,
-                    exit_price=price_now,
-                    size=abs(position_prev),
-                    fee=fee_paid,
-                    slippage=slippage_paid,
-                )
+            # ★ Doc19指摘[Critical]: recorder呼び出しを削除（Evaluatorが記録するため二重記録）
+            # Record trade for reporter - REMOVED: Evaluator handles this
+            # trade_type = "long" if position_prev > 0 else "short"
+            # if self.recorder:
+            #     self.recorder.record_trade(...)
         
         # 次の観測
         next_obs = self._get_observation()
