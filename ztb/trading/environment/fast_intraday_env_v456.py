@@ -685,9 +685,11 @@ class FastIntradayEnvV456(gym.Env):
                     close_reason = "manual"  # TTL強制決済、手動決済含む
             
             # 新規ポジションのentry_price更新
+            # ★ Doc21指摘[Major]: Add/Reduce時はentry_price保持（基準価格を維持）
             if abs(new_position) > 1e-6:
-                # ★ P1-2: 反転時も含め、新ポジション開始時は必ずentry_price更新
-                self.entry_price = execution_price
+                # 完全クローズからの新規 or 反転時のみentry_price更新
+                if abs(position_prev) <= 1e-6 or is_reversal:
+                    self.entry_price = execution_price
                 
                 # ★ Doc19指摘[Major]: 反転時はクローズ側にPnL、新規側にエントリーコストのみ
                 # （純粋な新規エントリー時のみエントリーコストをtrade_pnlに記録）
@@ -844,6 +846,8 @@ class FastIntradayEnvV456(gym.Env):
             'prev_entry_price': prev_entry_price,  # ★ Doc19指摘[Major]: 反転時の旧entry_price保存
             'close_reason': close_reason,  # ★ P1-1: close理由（"tp", "sl", "reversal", "manual"）
             'exit_price': self.last_execution_price,
+            'position_before': position_prev,  # ★ Doc21指摘[Minor]: position変化の記録
+            'position_after': self.position,  # ★ Doc21指摘[Minor]: position変化の記録
         }
         
         # Update calibration if trade closed
