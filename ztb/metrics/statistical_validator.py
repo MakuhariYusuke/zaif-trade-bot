@@ -15,7 +15,7 @@ from statsmodels.stats.multitest import multipletests
 
 from ztb.metrics import sharpe_ratio
 from ztb.metrics.metrics import kurtosis, skewness
-from ztb.metrics.statistics import calculate_volatility, rolling_statistics
+from ztb.metrics.metrics import calculate_volatility, rolling_statistics
 from ztb.metrics.technical import calculate_volatility_from_returns
 from ztb.utils.logging_utils import get_logger
 

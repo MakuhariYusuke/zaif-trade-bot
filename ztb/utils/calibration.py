@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 import numpy as np
 from numpy.typing import NDArray
 
-from ztb.metrics.statistics import calculate_distribution_stats
+from ztb.metrics.metrics import calculate_distribution_stats
 
 
 class BrierScoreDict(TypedDict):

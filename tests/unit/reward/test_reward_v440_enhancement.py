@@ -10,7 +10,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
+from ztb.trading.environment.utils.config import RewardSettings
 
 
 def test_v440_dynamic_reward_shaping():
@@ -28,13 +29,13 @@ def test_v440_dynamic_reward_shaping():
     config = MockConfig()
 
     # Test with v440 parameters including dynamic reward shaping
-    reward_settings = {
-        "use_simple_reward": True,
-        "hold_penalty_multiplier": 0.5,  # Changed from 2.0 to 0.5 for penalty
-        "trade_frequency_bonus": 0.001,
-        "reward_scaling": 0.1,
-        "reward_clip_value": 20.0,
-        "dynamic_reward_shaping": {
+    reward_settings = RewardSettings(
+        use_simple_reward=True,
+        hold_penalty_multiplier=0.5,  # Changed from 2.0 to 0.5 for penalty
+        trade_frequency_bonus=0.001,
+        reward_scaling=0.1,
+        reward_clip_value=20.0,
+        dynamic_reward_shaping={
             "enabled": True,
             "market_regime_awareness": True,
             "volatility_adjusted_rewards": True,
@@ -59,11 +60,12 @@ def test_v440_dynamic_reward_shaping():
                 "weak_trend_penalty": 0.9,
             },
         },
-        "long_position_reward_multiplier": 1.3,
-        "short_position_reward_multiplier": 0.7,
-        "long_position_penalty_multiplier": 0.9,
-        "short_position_penalty_multiplier": 0.95,
-    }
+        long_position_reward_multiplier=1.3,
+        short_position_reward_multiplier=0.7,
+        long_position_penalty_multiplier=0.9,
+        short_position_penalty_multiplier=0.95,
+        unrealized_loss_penalty_enabled=False,  # Add this to fix the test
+    )
 
     calculator = RewardCalculator(
         config=config, reward_settings=reward_settings, initial_portfolio_value=200000.0

@@ -9,11 +9,11 @@ Training Logger Utility - 統一訓練ログユーティリティ
 - 進捗情報の統一フォーマット
 """
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.io.json_io import write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -303,8 +303,7 @@ class TrainingConsoleLogger:
 
         # ファイルに保存
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(serializable_metrics, f, indent=2, ensure_ascii=False)
+        write_json(output_path, serializable_metrics, indent=2, ensure_ascii=False)
 
         if self.verbose:
             print(f"📝 Metrics saved to: {output_path}")

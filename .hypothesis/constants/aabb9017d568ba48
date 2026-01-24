@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\asymmetric_reward_scaler.py
+# hypothesis_version: 6.140.3
+
+[-0.01, 0.01, 1.0, 'long', 'neutral', 'reward_settings', 'short']

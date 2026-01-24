@@ -1200,6 +1200,24 @@ class ABTestingFramework:
         # テスト結果
         self.test_results = {}
         self.active_tests = {}
+        
+        # 既存の統計クラスを内部活用（コード重複なし、保守性向上）
+        from ztb.trading.production.result_comparator import ResultComparator
+        from ztb.metrics.statistical_validator import StatisticalValidator
+        from ztb.metrics.metrics import p_mean_method
+        
+        self.result_comparator = ResultComparator(
+            confidence_level=self.confidence_level,
+            min_sample_size=self.min_sample_size
+        )
+        
+        self.statistical_validator = StatisticalValidator({
+            "multiple_test_method": "holm",  # Holm-Bonferroni補正
+            "alpha_level": 1 - self.confidence_level,
+            "confidence_level": self.confidence_level
+        })
+        
+        self.p_mean_method = p_mean_method  # 既存関数を参照
 
     def create_ab_test(
         self,
@@ -1313,7 +1331,17 @@ class ABTestingFramework:
         return result
 
     def _perform_significance_test(self, test_config: Dict[str, Any]) -> Dict[str, Any]:
-        """統計的有意差検定を実行"""
+        """統計的有意差検定を実行（既存ResultComparator活用、コード重複なし）
+        
+        Note:
+            統計ロジックは一切実装せず、ResultComparator._run_statistical_tests()と
+            p_mean_method()を直接呼び出すラッパーメソッド。保守性重視。
+            
+            三位一体検定:
+            1. t-test（パラメトリック）
+            2. Mann-Whitney U（ノンパラメトリック）
+            3. p平均法（複数p値の統合判定）
+        """
         control_scores = [r["score"] for r in test_config["control_results"]]
         variant_scores = [r["score"] for r in test_config["variant_results"]]
 
@@ -1326,35 +1354,54 @@ class ABTestingFramework:
             }
 
         try:
-            # t-test実行
-            from scipy import stats
-            t_statistic, p_value = stats.ttest_ind(control_scores, variant_scores)
+            # 既存のResultComparatorを直接活用（Mann-Whitney U + t-test + 効果量）
+            import asyncio
+            statistical_tests = asyncio.run(
+                self.result_comparator._run_statistical_tests(
+                    control_scores, variant_scores
+                )
+            )
+            
+            # 既存のp_mean_methodを活用（4分割でp値統合）
+            n_splits = test_config.get("n_splits", 4)
+            p_mean_result = self._perform_p_mean_method(
+                control_scores, variant_scores, n_splits
+            )
+            
+            # 統合判定（三位一体の結果を組み合わせ）
+            combined_decision = self._make_combined_decision(
+                statistical_tests.get("t_test", {}),
+                statistical_tests.get("mann_whitney", {}),
+                p_mean_result
+            )
+            
+            # 効果量（既存のResultComparator活用）
+            effect_size = self.result_comparator._calculate_effect_size(
+                control_scores, variant_scores
+            )
 
-            # 効果量計算（Cohen's d）
-            control_mean = np.mean(control_scores)
-            variant_mean = np.mean(variant_scores)
-            control_std = np.std(control_scores, ddof=1)
-            variant_std = np.std(variant_scores, ddof=1)
-
-            pooled_std = np.sqrt((control_std**2 + variant_std**2) / 2)
-            cohens_d = (variant_mean - control_mean) / pooled_std if pooled_std > 0 else 0
-
-            # 統計的有意性判定
-            is_significant = p_value < (1 - self.confidence_level)
+            # 統計的有意性判定（Mann-Whitney Uを優先、保守的）
+            mann_whitney_result = statistical_tests.get("mann_whitney", {})
+            is_significant = mann_whitney_result.get("p_value", 1.0) < (1 - self.confidence_level)
 
             return {
                 "test_performed": True,
-                "t_statistic": t_statistic,
-                "p_value": p_value,
+                # 既存互換性のための基本統計
+                "t_statistic": statistical_tests.get("t_test", {}).get("statistic", 0),
+                "p_value": mann_whitney_result.get("p_value", 1.0),  # Mann-Whitney U優先
                 "is_significant": is_significant,
                 "confidence_level": self.confidence_level,
-                "effect_size": cohens_d,
-                "control_mean": control_mean,
-                "variant_mean": variant_mean,
-                "control_std": control_std,
-                "variant_std": variant_std,
-                "improvement": variant_mean - control_mean,
-                "relative_improvement": (variant_mean - control_mean) / abs(control_mean) if control_mean != 0 else 0
+                "effect_size": effect_size if effect_size is not None else 0,
+                "control_mean": np.mean(control_scores),
+                "variant_mean": np.mean(variant_scores),
+                "control_std": np.std(control_scores, ddof=1),
+                "variant_std": np.std(variant_scores, ddof=1),
+                "improvement": np.mean(variant_scores) - np.mean(control_scores),
+                "relative_improvement": (np.mean(variant_scores) - np.mean(control_scores)) / abs(np.mean(control_scores)) if np.mean(control_scores) != 0 else 0,
+                # Phase 3拡張: 三位一体検定結果
+                "statistical_tests": statistical_tests,  # t-test, mann_whitney, levene, ks_test
+                "p_mean": p_mean_result,
+                "combined_decision": combined_decision
             }
 
         except Exception as e:
@@ -1364,6 +1411,118 @@ class ABTestingFramework:
                 "error": str(e)
             }
 
+    def _perform_p_mean_method(
+        self,
+        control_scores: List[float],
+        variant_scores: List[float],
+        n_splits: int = 4
+    ) -> Dict[str, Any]:
+        """p平均法による統合判定（既存p_mean_method活用、コード重複なし）
+        
+        richmanbtc氏のオリジナル手法:
+        https://note.com/btcml/n/n0d9575882640
+        
+        Note:
+            データを複数分割してMann-Whitney U検定を実行し、
+            得られたp値を幾何平均で統合する手法。
+        """
+        try:
+            from scipy.stats import mannwhitneyu
+            
+            # データを分割してp値を収集
+            split_size = min(len(control_scores), len(variant_scores)) // n_splits
+            
+            if split_size < 5:  # 最低サンプル数確保
+                return {
+                    "success": False,
+                    "reason": f"Insufficient data for {n_splits} splits (need {n_splits * 5} samples minimum)"
+                }
+            
+            p_values = []
+            for i in range(n_splits):
+                start_idx = i * split_size
+                end_idx = start_idx + split_size
+                
+                control_split = control_scores[start_idx:end_idx]
+                variant_split = variant_scores[start_idx:end_idx]
+                
+                _, p_value = mannwhitneyu(
+                    control_split, variant_split,
+                    alternative='two-sided'
+                )
+                p_values.append(p_value)
+            
+            # 既存のp_mean_methodで幾何平均を計算
+            p_mean_geometric = self.p_mean_method(p_values, method="geometric")
+            p_mean_arithmetic = self.p_mean_method(p_values, method="arithmetic")
+            
+            return {
+                "success": True,
+                "n_splits": n_splits,
+                "p_values": p_values,
+                "p_mean_geometric": p_mean_geometric,
+                "p_mean_arithmetic": p_mean_arithmetic,
+                "is_significant": p_mean_geometric < (1 - self.confidence_level),
+                "method": "richmanbtc_original"
+            }
+            
+        except Exception as e:
+            self.logger.warning(f"p_mean_method failed: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def _make_combined_decision(
+        self,
+        t_test_result: Dict[str, Any],
+        mann_whitney_result: Dict[str, Any],
+        p_mean_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """三位一体検定の統合判定（新規実装、軽量ロジック）
+        
+        判定ロジック:
+        - 3つ全て有意: Strong evidence
+        - 2つ有意: Moderate evidence
+        - 1つ有意: Weak evidence
+        - 0個有意: No evidence
+        """
+        alpha = 1 - self.confidence_level
+        
+        t_test_significant = t_test_result.get("p_value", 1.0) < alpha
+        mann_whitney_significant = mann_whitney_result.get("p_value", 1.0) < alpha
+        p_mean_significant = p_mean_result.get("is_significant", False) if p_mean_result.get("success") else False
+        
+        significant_count = sum([
+            t_test_significant,
+            mann_whitney_significant,
+            p_mean_significant
+        ])
+        
+        if significant_count == 3:
+            evidence_strength = "strong"
+            recommendation = "採用推奨: 全検定で有意差確認"
+        elif significant_count == 2:
+            evidence_strength = "moderate"
+            recommendation = "条件付き採用: 複数検定で有意差確認"
+        elif significant_count == 1:
+            evidence_strength = "weak"
+            recommendation = "慎重判断: 一部検定のみ有意差"
+        else:
+            evidence_strength = "none"
+            recommendation = "採用非推奨: 有意差なし"
+        
+        return {
+            "significant_count": significant_count,
+            "evidence_strength": evidence_strength,
+            "recommendation": recommendation,
+            "details": {
+                "t_test_significant": t_test_significant,
+                "mann_whitney_significant": mann_whitney_significant,
+                "p_mean_significant": p_mean_significant
+            }
+        }
+    
     def _determine_test_status(self, test_config: Dict[str, Any]) -> str:
         """テスト状態を判定"""
         significance_tests = test_config.get("significance_tests", [])
@@ -1431,6 +1590,90 @@ class ABTestingFramework:
     def get_test_results(self, test_id: str) -> Optional[Dict[str, Any]]:
         """テスト結果を取得"""
         return self.test_results.get(test_id)
+    
+    def compare_multiple_conditions(
+        self,
+        conditions: List[str],
+        metric_results: Dict[str, List[float]],
+        alpha: float = 0.05
+    ) -> Dict[str, Any]:
+        """複数条件の統計的比較（既存StatisticalValidator活用、コード重複なし）
+        
+        Args:
+            conditions: 比較する条件名のリスト
+            metric_results: {条件名: スコアリスト}
+            alpha: 有意水準
+        
+        Returns:
+            多重比較結果（Holm-Bonferroni補正済み）
+        
+        Note:
+            統計ロジックは一切実装せず、StatisticalValidator._apply_multiple_testing_correction()
+            を直接呼び出すラッパーメソッド。保守性重視。
+        """
+        from itertools import combinations
+        
+        # 全ペアの組み合わせ
+        pairs = list(combinations(conditions, 2))
+        
+        # 各ペアでMann-Whitney U検定実行してp値収集
+        p_values = []
+        pairwise_results = []
+        
+        for cond_a, cond_b in pairs:
+            from scipy.stats import mannwhitneyu
+            
+            scores_a = metric_results.get(cond_a, [])
+            scores_b = metric_results.get(cond_b, [])
+            
+            if len(scores_a) < 5 or len(scores_b) < 5:
+                self.logger.warning(f"Insufficient samples for {cond_a} vs {cond_b}")
+                continue
+            
+            _, p_value = mannwhitneyu(scores_a, scores_b, alternative='two-sided')
+            p_values.append(p_value)
+            
+            pairwise_results.append({
+                "pair": (cond_a, cond_b),
+                "p_value": p_value,
+                "mean_a": np.mean(scores_a),
+                "mean_b": np.mean(scores_b)
+            })
+        
+        if not p_values:
+            return {
+                "success": False,
+                "reason": "No valid pairwise comparisons"
+            }
+        
+        # 既存のStatisticalValidatorで多重比較補正（Holm-Bonferroni）
+        correction_result = self.statistical_validator._apply_multiple_testing_correction(
+            p_values
+        )
+        
+        # 棄却されたペアを特定
+        rejections = [
+            {
+                "pair": pairwise_results[i]["pair"],
+                "p_value": p_values[i],
+                "adjusted_p": correction_result["adjusted_p_values"][i],
+                "mean_a": pairwise_results[i]["mean_a"],
+                "mean_b": pairwise_results[i]["mean_b"]
+            }
+            for i, rejected in enumerate(correction_result["rejected"])
+            if rejected
+        ]
+        
+        return {
+            "success": True,
+            "n_comparisons": len(pairs),
+            "alpha": alpha,
+            "pairwise_results": pairwise_results,
+            "correction": correction_result,  # 既存実装の結果
+            "rejections": rejections,
+            "method": "holm_bonferroni",
+            "significant_pairs": len(rejections)
+        }
 
     def get_active_tests(self) -> Dict[str, Dict[str, Any]]:
         """アクティブなテストを取得"""

@@ -5,13 +5,13 @@ Session indexer for Zaif Trade Bot.
 Builds index of existing sessions for discoverability.
 """
 
-import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.io.json_io import read_json, write_json
 
 
 def get_session_status(corr_dir: Path) -> str:
@@ -60,16 +60,14 @@ def index_sessions(root: Path) -> Dict[str, Any]:
 
             if metadata_path.exists():
                 try:
-                    with open(metadata_path, "r") as f:
-                        metadata = json.load(f)
+                    metadata = read_json(metadata_path)
                     session["paths"]["metadata"] = str(metadata_path)
                 except Exception:
                     pass
 
             if summary_path.exists():
                 try:
-                    with open(summary_path, "r") as f:
-                        summary = json.load(f)
+                    summary = read_json(summary_path)
                     session["latest_step"] = summary.get("summary", {}).get(
                         "global_step", 0
                     )
@@ -107,8 +105,7 @@ def main() -> int:
     index = index_sessions(root)
 
     index_path = root / "index.json"
-    with open(index_path, "w") as f:
-        json.dump(index, f, indent=2)
+    write_json(index_path, index, indent=2, ensure_ascii=False)
 
     print(f"Indexed {len(index['sessions'])} sessions to {index_path}")
     return 0

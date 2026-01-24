@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Protocol
 
+from ztb.io.json_io import read_json
 from ztb.utils.checkpoint import TrainingStateManager
 
 logger = logging.getLogger(__name__)
@@ -195,13 +196,9 @@ def resume_sac_training(
 ) -> Dict[str, Any]:
     """Convenience function to resume SAC training"""
 
-    # Load configuration
-    import json
-
     from ztb.training.sac_trainer import SACTrainer
 
-    with open(config_path, "r") as f:
-        config = json.load(f)
+    config = read_json(config_path)
 
     # Create trainer
     trainer = SACTrainer(config)

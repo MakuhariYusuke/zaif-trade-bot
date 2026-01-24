@@ -6,13 +6,14 @@ configuration across the ZTB system. It centralizes configuration handling
 to ensure consistency and reduce duplication.
 """
 
-import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
 
+from ztb.io.json_io import read_json, write_json
+from ztb.io.yaml_io import read_yaml, write_yaml
 from ztb.types.common import ConfigDict
 from ztb.utils.exceptions.custom_exceptions import ConfigurationError, ValidationError
 from ztb.utils.file_utils import safe_json_dump
@@ -232,16 +233,15 @@ class ConfigManager(BaseConfigManager):
     def _load_yaml(self, path: Path) -> ConfigDict:
         """Load YAML configuration."""
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return cast(Dict[str, Any], yaml.safe_load(f) or {})
+            content = path.read_text(encoding="utf-8")
+            return cast(Dict[str, Any], yaml.safe_load(content) or {})
         except Exception as e:
             raise ConfigurationError(f"Failed to load YAML config: {e}") from e
 
     def _load_json(self, path: Path) -> ConfigDict:
         """Load JSON configuration."""
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            return cast(Dict[str, Any], read_json(path))
         except Exception as e:
             raise ConfigurationError(f"Failed to load JSON config: {e}") from e
 
@@ -268,15 +268,14 @@ class ConfigManager(BaseConfigManager):
     def _save_yaml(self, config: ConfigDict, path: Path) -> None:
         """Save YAML configuration."""
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+            write_yaml(path, config, default_flow_style=False, sort_keys=False)
         except Exception as e:
             raise ConfigurationError(f"Failed to save YAML config: {e}") from e
 
     def _save_json(self, config: ConfigDict, path: Path) -> None:
         """Save JSON configuration."""
         try:
-            safe_json_dump(config, str(path), indent=2, ensure_ascii=False)
+            write_json(path, config, indent=2, ensure_ascii=False)
         except Exception as e:
             raise ConfigurationError(f"Failed to save JSON config: {e}") from e
 

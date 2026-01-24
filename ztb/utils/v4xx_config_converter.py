@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from ztb.io.json_io import read_json, write_json
 from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
 
@@ -338,8 +339,7 @@ class V4XXConfigConverter:
             Unified trainer configuration dictionary
         """
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            config = read_json(config_path)
 
             return cls.convert_to_unified(config)
 
@@ -369,8 +369,7 @@ def convert_config_file(input_path: str, output_path: Optional[str] = None) -> s
 
     unified_config = V4XXConfigConverter.load_and_convert_config(input_path)
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(unified_config, f, indent=2, ensure_ascii=False)
+    write_json(output_path, unified_config, indent=2, ensure_ascii=False)
 
     logger.info(f"Converted configuration saved to: {output_path}")
     return output_path

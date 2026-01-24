@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import List
 
+from ztb.io.text_io import read_text, write_text
 
 def extract_errors_from_logs(log_dir: Path) -> List[str]:
     """Extract ERROR/FAIL lines from log files."""
@@ -19,8 +20,7 @@ def extract_errors_from_logs(log_dir: Path) -> List[str]:
 
     for log_file in log_files:
         try:
-            with open(log_file, "r") as f:
-                lines = f.readlines()
+            lines = read_text(log_file).splitlines()
 
             # Look for ERROR or FAIL in lines
             for line in lines[-1000:]:  # Last 1000 lines
@@ -40,8 +40,7 @@ def extract_errors_from_watch_log(watch_log_path: Path) -> List[str]:
         return errors
 
     try:
-        with open(watch_log_path, "r") as f:
-            lines = f.readlines()
+        lines = read_text(watch_log_path).splitlines()
 
         for line in lines[-1000:]:  # Last 1000 entries
             try:
@@ -82,13 +81,14 @@ def write_errors_report(correlation_id: str, errors: List[str]) -> None:
 
     report_path = reports_dir / "last_errors.txt"
 
-    with open(report_path, "w") as f:
-        if errors:
-            f.write("Last errors collected:\n\n")
-            for error in errors:
-                f.write(f"{error}\n")
-        else:
-            f.write("no recent errors\n")
+    if errors:
+        lines = ["Last errors collected:", ""]
+        lines.extend(errors)
+        content = "\n".join(lines) + "\n"
+    else:
+        content = "no recent errors\n"
+
+    write_text(report_path, content)
 
     print(f"Errors report written to {report_path}")
 

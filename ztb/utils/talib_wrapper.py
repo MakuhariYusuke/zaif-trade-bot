@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ztb.metrics.statistics import calculate_volatility
+from ztb.metrics.metrics import calculate_volatility
 from ztb.utils.types import IndicatorInfo
 
 # Try to import Ta-Lib, fallback to custom implementations if not available

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
-from ztb.metrics.statistics import calculate_volatility, rolling_statistics
+from ztb.metrics.metrics import calculate_volatility, rolling_statistics
 from ztb.trading.risk.risk_manager import RiskManager as BaseRiskManager
 from ztb.trading.types import PositionManagementConfig
 from ztb.utils.logging_utils import get_logger

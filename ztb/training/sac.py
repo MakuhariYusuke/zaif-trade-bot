@@ -36,7 +36,8 @@ from ztb.utils.file_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-from ztb.config.manager import ConfigManager
+from ztb.config import ConfigManager
+from ztb.io.json_io import read_json
 from ztb.training.constants import (
     SAC_DEFAULT_EPISODES,
     SAC_DEFAULT_SAMPLES,
@@ -204,10 +205,7 @@ class SACSuite:
 
             # Load config files if provided
             if getattr(args, "config", None):
-                import json
-
-                with open(args.config, "r") as f:
-                    config_data = json.load(f)
+                config_data = read_json(args.config)
                 # Apply to all configs
                 for config in configs:
                     for key, value in config_data.items():

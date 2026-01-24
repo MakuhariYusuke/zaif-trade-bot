@@ -7,10 +7,12 @@ trading performance metrics with comprehensive error handling.
 
 from .metrics import (
     autocorrelation,
+    BacktestMetrics,
     calculate_all_metrics,
     classify_market_regime,
     coefficient_of_variation,
     kurtosis,
+    MetricsCalculator,
     max_drawdown,
     multi_market_backtest_analysis,
     profit_factor,
@@ -31,8 +33,10 @@ __all__ = [
     "kurtosis",
     "test_normality",
     "autocorrelation",
+    "BacktestMetrics",
     "calculate_all_metrics",
     "classify_market_regime",
     "multi_market_backtest_analysis",
     "seasonality_analysis",
+    "MetricsCalculator",
 ]

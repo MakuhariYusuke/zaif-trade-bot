@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 
 
@@ -187,12 +187,10 @@ def test_sell_action_bonus_zero():
 def test_environment_config_action_bonuses_loading():
     """Test that EnvironmentConfig.from_dict correctly loads action_bonuses from reward_settings."""
     config_dict = {
-        "reward_settings": {
-            "action_bonuses": {
-                "buy_action_bonus": -0.01,
-                "sell_action_bonus": 3.0,
-                "hold_action_bonus": 0.01,
-            }
+        "action_bonuses": {
+            "buy_action_bonus": -0.01,
+            "sell_action_bonus": 3.0,
+            "hold_action_bonus": 0.01,
         }
     }
 

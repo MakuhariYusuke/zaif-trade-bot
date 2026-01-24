@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 import importlib.util
 
-from ztb.metrics.statistics import calculate_autocorrelation, detect_outliers_iqr
+from ztb.metrics.metrics import calculate_autocorrelation, detect_outliers_iqr
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
 

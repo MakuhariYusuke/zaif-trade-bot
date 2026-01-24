@@ -6,12 +6,12 @@ configuration files in YAML, JSON, and TOML formats.
 """
 
 import asyncio
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO, Union, cast
 
-import yaml
-
+from ztb.config.core.base import BaseConfigLoader
+from ztb.io.json_io import write_json
+from ztb.io.yaml_io import read_yaml, write_yaml
 from ztb.types.common import ConfigDict
 from ztb.utils.config_manager import save_toml_to_file_obj
 from ztb.utils.file_utils import safe_json_load
@@ -59,8 +59,7 @@ def load_yaml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], yaml.safe_load(f))
+    return cast(Dict[str, Any], read_yaml(file_path))
 
 
 def load_json_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -173,12 +172,15 @@ def find_config_file(
     return None
 
 
-class BaseConfigLoader(ABC):
-    """Abstract base class for configuration loaders."""
-
-    @abstractmethod
-    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
-        pass
+__all__ = [
+    "BaseConfigLoader",
+    "ConfigLoader",
+    "load_yaml_config",
+    "load_json_config",
+    "load_toml_config",
+    "load_config",
+    "find_config_file",
+]
 
 
 class ConfigLoader(BaseConfigLoader):
@@ -248,14 +250,14 @@ class ConfigLoader(BaseConfigLoader):
 
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            if format in ["yaml", "yml"]:
-                yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-            elif format == "json":
-                import json
-
-                json.dump(config, f, indent=2, ensure_ascii=False)
-            elif format == "toml":
+        if format in ["yaml", "yml"]:
+            write_yaml(file_path, config, default_flow_style=False, sort_keys=False)
+            return
+        if format == "json":
+            write_json(file_path, config, indent=2, ensure_ascii=False)
+            return
+        if format == "toml":
+            with open(file_path, "w", encoding="utf-8") as f:
                 ConfigLoader._save_toml(config, f)
 
     @staticmethod

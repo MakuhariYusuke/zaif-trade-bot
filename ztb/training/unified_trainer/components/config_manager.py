@@ -70,7 +70,7 @@ class TrainingConfigManager:
     def _process_zaif_config(self, config: Any) -> Dict[str, Any]:
         """Process ZaifTradeBotConfig into training config dict."""
         try:
-            from ztb.config.schema import ZaifTradeBotConfig
+            from ztb.config.schemas.zaif import ZaifTradeBotConfig
 
             if not isinstance(config, ZaifTradeBotConfig):
                 raise TypeError(f"Expected ZaifTradeBotConfig, got {type(config)}")

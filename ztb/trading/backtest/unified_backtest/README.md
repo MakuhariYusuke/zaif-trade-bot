@@ -242,8 +242,8 @@ config = BacktestConfig(
 The unified backtest framework integrates with existing ztb components:
 
 - **BacktestEngine**: Uses existing backtest engine for execution
-- **MetricsCalculator**: Leverages existing metrics calculation
-- **ReportGenerator**: Uses existing report generation
+- **MetricsCalculator**: Uses centralized metrics in `ztb.metrics.metrics` (backtest metrics module is deprecated)
+- **ReportGenerator**: Uses `ztb.reporting.generators.backtest` (legacy module is deprecated)
 - **Strategy Adapters**: Compatible with existing adapter interface
 
 ## SAC Learning Integration

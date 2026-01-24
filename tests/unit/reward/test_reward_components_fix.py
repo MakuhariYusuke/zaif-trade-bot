@@ -3,16 +3,16 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD
 
 
-@patch('ztb.trading.environment.components.reward_calculator.BehavioralPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.AsymmetricRewardScaler')
-@patch('ztb.trading.environment.components.reward_calculator.DynamicRewardShaper')
-@patch('ztb.trading.environment.components.reward_calculator.SignalIntegrator')
-@patch('ztb.trading.environment.components.reward_calculator.OpportunityCostPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.UnrealizedLossPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.BehavioralPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.AsymmetricRewardScaler')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.DynamicRewardShaper')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.SignalIntegrator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.OpportunityCostPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.UnrealizedLossPenaltyCalculator')
 def test_reward_components_populated_in_simple_reward(
     mock_unrealized_loss,
     mock_opportunity_cost,
@@ -103,12 +103,12 @@ def test_reward_components_populated_in_simple_reward(
     assert components["hold_penalty_applied"] == False  # Not HOLD
 
 
-@patch('ztb.trading.environment.components.reward_calculator.BehavioralPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.AsymmetricRewardScaler')
-@patch('ztb.trading.environment.components.reward_calculator.DynamicRewardShaper')
-@patch('ztb.trading.environment.components.reward_calculator.SignalIntegrator')
-@patch('ztb.trading.environment.components.reward_calculator.OpportunityCostPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.UnrealizedLossPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.BehavioralPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.AsymmetricRewardScaler')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.DynamicRewardShaper')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.SignalIntegrator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.OpportunityCostPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.UnrealizedLossPenaltyCalculator')
 def test_reward_components_with_hold_action(
     mock_unrealized_loss,
     mock_opportunity_cost,
@@ -163,12 +163,12 @@ def test_reward_components_with_hold_action(
     assert components["trade_bonus_applied"] == False
 
 
-@patch('ztb.trading.environment.components.reward_calculator.BehavioralPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.AsymmetricRewardScaler')
-@patch('ztb.trading.environment.components.reward_calculator.DynamicRewardShaper')
-@patch('ztb.trading.environment.components.reward_calculator.SignalIntegrator')
-@patch('ztb.trading.environment.components.reward_calculator.OpportunityCostPenaltyCalculator')
-@patch('ztb.trading.environment.components.reward_calculator.UnrealizedLossPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.BehavioralPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.AsymmetricRewardScaler')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.DynamicRewardShaper')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.SignalIntegrator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.OpportunityCostPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.UnrealizedLossPenaltyCalculator')
 def test_reward_components_with_exception(
     mock_unrealized_loss,
     mock_opportunity_cost,

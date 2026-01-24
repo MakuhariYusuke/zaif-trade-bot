@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.metrics.statistical_validator import StatisticalValidator
-from ztb.metrics.statistics import calculate_atr
+from ztb.metrics.metrics import calculate_atr
 from ztb.risk.enhanced_risk_manager import EnhancedRiskManager
 from ztb.trading.backtest.runner import BacktestEngine
 from ztb.trading.risk.compat import ensure_risk_manager_protocol

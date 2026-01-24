@@ -13,7 +13,8 @@ This module provides comprehensive trading performance metrics with:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, TypedDict, Union, cast
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,7 @@ from ztb.trading.constants import (
     TRADING_DAYS_PER_YEAR,
 )
 from ztb.utils.errors import safe_operation
+from ztb.utils.types import FeatureMetrics, StatsResult
 
 
 class MetricsResult(TypedDict):
@@ -127,6 +129,63 @@ def _sharpe_ratio_impl(
     # Annualize the ratio
     mean_excess_return = np.mean(excess_returns)
     return (mean_excess_return / volatility) * np.sqrt(period_per_year)
+
+
+def calculate_deflated_sharpe_ratio(
+    returns: Union[pd.Series, NDArray[Any], List[float]],
+    num_strategies: int = 1000,
+    risk_free_rate: float = 0.0,
+) -> float:
+    """
+    Calculate Deflated Sharpe Ratio (DSR) to account for multiple testing.
+
+    This is a simplified version that adjusts the Sharpe Ratio based on the
+    number of trials (strategies tested).
+    """
+    if isinstance(returns, list):
+        returns = np.array(returns)
+
+    sr = sharpe_ratio(returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR)
+    deflation_factor = 1.0 / np.sqrt(num_strategies) if num_strategies > 0 else 1.0
+
+    return float(sr * deflation_factor)
+
+
+def calculate_bootstrap_pvalue(
+    strategy_returns: Union[pd.Series, NDArray[Any], List[float]],
+    benchmark_returns: Union[pd.Series, NDArray[Any], List[float]],
+    n_bootstrap: int = 1000,
+) -> float:
+    """
+    Calculate bootstrap p-value for strategy vs benchmark comparison.
+
+    Tests the null hypothesis that the strategy returns are not significantly
+    different from the benchmark returns.
+    """
+    if isinstance(strategy_returns, list):
+        strategy_returns = np.array(strategy_returns)
+    if isinstance(benchmark_returns, list):
+        benchmark_returns = np.array(benchmark_returns)
+
+    if len(strategy_returns) != len(benchmark_returns):
+        min_len = min(len(strategy_returns), len(benchmark_returns))
+        strategy_returns = strategy_returns[:min_len]
+        benchmark_returns = benchmark_returns[:min_len]
+
+    observed_diff = np.mean(strategy_returns) - np.mean(benchmark_returns)
+    combined = np.concatenate([strategy_returns, benchmark_returns])
+    n = len(strategy_returns)
+
+    bootstrap_diffs = []
+    for _ in range(n_bootstrap):
+        strat_sample = np.random.choice(combined, size=n, replace=True)
+        bench_sample = np.random.choice(combined, size=n, replace=True)
+        bootstrap_diffs.append(np.mean(strat_sample) - np.mean(bench_sample))
+
+    bootstrap_array = np.array(bootstrap_diffs)
+    p_value = np.mean(np.abs(bootstrap_array) >= np.abs(observed_diff))
+
+    return float(p_value)
 
 
 def sortino_ratio(
@@ -1877,3 +1936,579 @@ def calculate_performance_metrics(
         "max_drawdown": max_drawdown,
         "win_rate": win_rate,
     }
+
+
+def calculate_returns(equity_curve: pd.Series, freq: str = "D") -> pd.Series:
+    """
+    Calculate periodic returns from an equity curve.
+    """
+    if freq == "D":
+        return equity_curve.pct_change().fillna(0)
+    return equity_curve.resample(freq).last().pct_change().fillna(0)
+
+
+def calculate_cagr(equity_curve: pd.Series) -> float:
+    """
+    Calculate Compound Annual Growth Rate (CAGR).
+    """
+    if len(equity_curve) < 2:
+        return 0.0
+
+    total_return = equity_curve.iloc[-1] / equity_curve.iloc[0] - 1
+    years = len(equity_curve) / TRADING_DAYS_PER_YEAR
+    if years <= 0 or total_return <= -1:
+        return 0.0
+    return float((1 + total_return) ** (1 / years) - 1)
+
+
+def calculate_trade_metrics(
+    orders: pd.DataFrame,
+) -> Dict[str, float]:
+    """
+    Calculate trade-level metrics from order history.
+
+    Returns keys: total_trades, win_rate, avg_win, avg_loss, profit_factor.
+    """
+    if orders.empty:
+        return {
+            "total_trades": 0.0,
+            "win_rate": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": 0.0,
+            "profit_factor": 0.0,
+        }
+
+    if "pnl" not in orders.columns:
+        total_trades = float(len(orders))
+        return {
+            "total_trades": total_trades,
+            "win_rate": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": 0.0,
+            "profit_factor": 0.0,
+        }
+
+    pnls = orders["pnl"].dropna()
+    if len(pnls) == 0:
+        total_trades = float(len(orders))
+        return {
+            "total_trades": total_trades,
+            "win_rate": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": 0.0,
+            "profit_factor": 0.0,
+        }
+
+    winning_trades = pnls[pnls > 0]
+    losing_trades = pnls[pnls < 0]
+
+    total_trades = float(len(pnls))
+    win_rate_val = float(len(winning_trades) / total_trades) if total_trades > 0 else 0.0
+    avg_win = float(winning_trades.mean()) if len(winning_trades) > 0 else 0.0
+    avg_loss = float(abs(losing_trades.mean())) if len(losing_trades) > 0 else 0.0
+
+    total_win = float(winning_trades.sum())
+    total_loss = float(abs(losing_trades.sum()))
+    profit_factor = total_win / total_loss if total_loss > 0 else float("inf")
+
+    return {
+        "total_trades": total_trades,
+        "win_rate": win_rate_val,
+        "avg_win": avg_win,
+        "avg_loss": avg_loss,
+        "profit_factor": float(profit_factor),
+    }
+
+
+def estimate_turnover(
+    orders: pd.DataFrame, initial_capital: float = 10000
+) -> float:
+    """
+    Estimate portfolio turnover (annualized).
+    """
+    if orders.empty or "notional" not in orders.columns:
+        return 0.0
+
+    total_turnover = float(orders["notional"].abs().sum())
+    days = len(orders) if len(orders) > 0 else 1
+    annualized_turnover = total_turnover / initial_capital * (
+        TRADING_DAYS_PER_YEAR / days
+    )
+    return float(annualized_turnover)
+
+
+def estimate_slippage_bps(orders: pd.DataFrame, slippage_bps: float = 5.0) -> float:
+    """
+    Estimate slippage impact in basis points.
+    """
+    if orders.empty:
+        return float(slippage_bps)
+    return float(slippage_bps)
+
+
+def _ensure_numpy(data: Union[List[float], np.ndarray, pd.Series]) -> np.ndarray:
+    """Convert input data to numpy array."""
+    if isinstance(data, pd.Series):
+        return data.to_numpy()
+    if isinstance(data, list):
+        return np.array(data)
+    if isinstance(data, np.ndarray):
+        return data
+    raise TypeError(f"Unsupported data type: {type(data)}")
+
+
+def p_mean_method(p_values: List[float], method: str = "arithmetic") -> float:
+    """
+    Calculate combined p-value using the p-mean method.
+    """
+    if not p_values:
+        return 1.0
+
+    p_array = np.array(p_values)
+    if method == "arithmetic":
+        return float(np.mean(p_array))
+    if method == "geometric":
+        p_array = np.clip(p_array, 1e-10, 1.0)
+        return float(np.exp(np.mean(np.log(p_array))))
+    raise ValueError(f"Unknown method: {method}")
+
+
+def rolling_statistics(
+    data: Union[List[float], np.ndarray, pd.Series], window: int
+) -> Dict[str, List[float]]:
+    """
+    Calculate rolling mean/std/min/max for time series data.
+    """
+    np_data = _ensure_numpy(data)
+    if len(np_data) < window:
+        return {"mean": [], "std": [], "min": [], "max": []}
+
+    if isinstance(data, pd.Series):
+        rolling = data.rolling(window=window)
+        return {
+            "mean": rolling.mean().dropna().tolist(),
+            "std": rolling.std().dropna().tolist(),
+            "min": rolling.min().dropna().tolist(),
+            "max": rolling.max().dropna().tolist(),
+        }
+
+    means: List[float] = []
+    stds: List[float] = []
+    mins: List[float] = []
+    maxs: List[float] = []
+
+    for i in range(window - 1, len(np_data)):
+        window_data = np_data[i - window + 1 : i + 1]
+        means.append(float(np.mean(window_data)))
+        stds.append(float(np.std(window_data, ddof=1)))
+        mins.append(float(np.min(window_data)))
+        maxs.append(float(np.max(window_data)))
+
+    return {"mean": means, "std": stds, "min": mins, "max": maxs}
+
+
+def calculate_volatility(
+    data: Union[List[float], np.ndarray, pd.Series], window: int = 20
+) -> List[float]:
+    """
+    Calculate rolling volatility (standard deviation).
+    """
+    stats = rolling_statistics(data, window)
+    return stats["std"]
+
+
+def calculate_autocorrelation(
+    data: Union[List[float], np.ndarray, pd.Series], lag: int = 1
+) -> float:
+    """
+    Calculate autocorrelation at specified lag.
+    """
+    series = data if isinstance(data, pd.Series) else pd.Series(data)
+    return autocorrelation(series, lag=lag)
+
+
+def detect_outliers_iqr(
+    data: Union[List[float], np.ndarray, pd.Series], multiplier: float = 1.5
+) -> List[bool]:
+    """
+    Detect outliers using the IQR method.
+    """
+    np_data = _ensure_numpy(data)
+    if len(np_data) == 0:
+        return []
+
+    q1 = np.percentile(np_data, 25)
+    q3 = np.percentile(np_data, 75)
+    iqr = q3 - q1
+
+    lower_bound = q1 - multiplier * iqr
+    upper_bound = q3 + multiplier * iqr
+
+    return [(x < lower_bound or x > upper_bound) for x in np_data]
+
+
+def calculate_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    Calculate Average True Range (ATR).
+    """
+    if len(data) == 0:
+        return pd.Series(dtype=float)
+
+    if (
+        "high" not in data.columns
+        or "low" not in data.columns
+        or "close" not in data.columns
+    ):
+        raise ValueError("Data must contain 'high', 'low', and 'close' columns")
+
+    from ztb.features.generators.technical.volatility.atr import compute_atr
+
+    return compute_atr(data, period=period)
+
+
+def calculate_distribution_stats(
+    data: Union[List[float], np.ndarray], decimals: int = 6
+) -> Dict[str, Any]:
+    """
+    Calculate distribution statistics (mean, std, 95% CI).
+    """
+    np_data = _ensure_numpy(data)
+    if len(np_data) == 0:
+        return {"mean": 0.0, "std": 0.0, "ci95": [0.0, 0.0]}
+
+    mean = float(np.mean(np_data))
+    std = float(np.std(np_data, ddof=1))
+    ci95_low = float(np.percentile(np_data, 2.5))
+    ci95_high = float(np.percentile(np_data, 97.5))
+
+    return {
+        "mean": round(mean, decimals),
+        "std": round(std, decimals),
+        "ci95": [round(ci95_low, decimals), round(ci95_high, decimals)],
+    }
+
+
+def sharpe_with_stats(sharpes: List[float]) -> StatsResult:
+    """
+    Calculate summary statistics for Sharpe ratios.
+
+    Args:
+        sharpes: List of Sharpe ratios
+
+    Returns:
+        StatsResult with mean, std, and 95% CI.
+    """
+    return cast(StatsResult, calculate_distribution_stats(sharpes))
+
+
+def calculate_delta_sharpe(
+    base_sharpes: List[float],
+    with_feature_sharpes: List[float],
+    min_samples: int = 10000,
+) -> Optional[StatsResult]:
+    """
+    Calculate delta Sharpe (stabilized) between baseline and feature-enhanced runs.
+
+    Args:
+        base_sharpes: Sharpe ratios for baseline configuration
+        with_feature_sharpes: Sharpe ratios with added feature
+        min_samples: Minimum combined sample size
+
+    Returns:
+        StatsResult for delta Sharpe, or None if insufficient samples.
+    """
+    total_samples = len(base_sharpes) + len(with_feature_sharpes)
+    if total_samples < min_samples:
+        return None
+    if len(base_sharpes) == 0 or len(with_feature_sharpes) == 0:
+        return None
+
+    base_stats = sharpe_with_stats(base_sharpes)
+    with_stats = sharpe_with_stats(with_feature_sharpes)
+
+    delta_mean = cast(float, with_stats["mean"]) - cast(float, base_stats["mean"])
+    delta_std = np.sqrt(
+        cast(float, with_stats["std"]) ** 2 + cast(float, base_stats["std"]) ** 2
+    )
+
+    delta_ci95_low = delta_mean - 1.96 * delta_std
+    delta_ci95_high = delta_mean + 1.96 * delta_std
+
+    return {
+        "mean": round(delta_mean, 6),
+        "std": round(delta_std, 6),
+        "ci95": [round(delta_ci95_low, 6), round(delta_ci95_high, 6)],
+    }
+
+
+def calculate_feature_metrics(
+    feature_data: pd.Series, price_data: pd.Series, feature_name: str
+) -> FeatureMetrics:
+    """Calculate basic trading metrics for feature evaluation."""
+    if feature_name == "RSI":
+        signals = pd.Series(0, index=feature_data.index)
+        signals[feature_data < 30] = 1
+        signals[feature_data > 70] = -1
+    elif feature_name == "ROC":
+        signals = pd.Series(0, index=feature_data.index)
+        signals[feature_data > 5] = 1
+        signals[feature_data < -5] = -1
+    elif feature_name == "OBV":
+        obv_change = feature_data.diff().astype(float)
+        signals = pd.Series(0, index=feature_data.index)
+        signals[obv_change > 0] = 1
+        signals[obv_change < 0] = -1
+    elif feature_name == "ZScore":
+        signals = pd.Series(0, index=feature_data.index)
+        signals[feature_data < -1] = 1
+        signals[feature_data > 1] = -1
+    else:
+        signals = (feature_data > 0).astype(int) - (feature_data < 0).astype(int)
+
+    returns = price_data.pct_change().shift(-1)
+    valid_idx = signals.notna() & returns.notna() & (signals != 0)
+    if valid_idx.sum() == 0:
+        return {
+            "win_rate": 0.0,
+            "max_drawdown": 0.0,
+            "sharpe_ratio": 0.0,
+            "sortino_ratio": 0.0,
+            "calmar_ratio": 0.0,
+            "sample_count": 0,
+        }
+
+    strategy_returns = signals[valid_idx] * returns[valid_idx]
+    cumulative = (1 + strategy_returns).cumprod()
+
+    return {
+        "win_rate": win_rate(strategy_returns),
+        "max_drawdown": max_drawdown(cumulative),
+        "sharpe_ratio": sharpe_ratio(strategy_returns),
+        "sortino_ratio": sortino_ratio(strategy_returns),
+        "calmar_ratio": calmar_ratio(strategy_returns),
+        "sample_count": int(valid_idx.sum()),
+    }
+
+
+def validate_ablation_results(results: Dict[str, Any]) -> bool:
+    """
+    Validate ablation results for expected delta Sharpe structure.
+
+    Args:
+        results: Ablation result dict
+
+    Returns:
+        True if results look valid, False otherwise.
+    """
+    if "delta_sharpe" not in results or results["delta_sharpe"] is None:
+        return False
+
+    delta = results["delta_sharpe"]
+    required_keys = ["mean", "std", "ci95"]
+    for key in required_keys:
+        if key not in delta:
+            return False
+
+    if not isinstance(delta["ci95"], list) or len(delta["ci95"]) != 2:
+        return False
+
+    return True
+
+
+@dataclass
+class BacktestMetrics:
+    """Container for backtest performance metrics."""
+
+    # Risk-adjusted returns
+    sharpe_ratio: float
+    sortino_ratio: float
+    calmar_ratio: float
+
+    # Return metrics
+    total_return: float
+    cagr: float
+    annualized_return: float
+
+    # Risk metrics
+    max_drawdown: float
+    volatility: float
+
+    # Trade metrics
+    total_trades: int
+    win_rate: float
+    avg_win: float
+    avg_loss: float
+    profit_factor: float
+    turnover: float
+
+    # Slippage estimate
+    estimated_slippage_bps: float
+
+    # Statistical significance (optional)
+    deflated_sharpe_ratio: Optional[float] = None
+    pvalue_bootstrap: Optional[float] = None
+
+
+class MetricsCalculator:
+    """Calculates comprehensive trading performance metrics."""
+
+    @staticmethod
+    def calculate_returns(equity_curve: pd.Series, freq: str = "D") -> pd.Series:
+        """Calculate periodic returns from equity curve."""
+        return calculate_returns(equity_curve, freq=freq)
+
+    @staticmethod
+    def calculate_sharpe_ratio(
+        returns: pd.Series, risk_free_rate: float = 0.02
+    ) -> float:
+        """Calculate Sharpe ratio (annualized)."""
+        return sharpe_ratio(
+            returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
+        )
+
+    @staticmethod
+    def calculate_sortino_ratio(
+        returns: pd.Series, risk_free_rate: float = 0.02
+    ) -> float:
+        """Calculate Sortino ratio (downside deviation only)."""
+        return sortino_ratio(
+            returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
+        )
+
+    @staticmethod
+    def calculate_calmar_ratio(returns: pd.Series, max_dd: float) -> float:
+        """Calculate Calmar ratio (annualized return / max drawdown)."""
+        _ = max_dd
+        return calmar_ratio(returns, period_per_year=TRADING_DAYS_PER_YEAR)
+
+    @staticmethod
+    def calculate_cagr(equity_curve: pd.Series) -> float:
+        """Calculate Compound Annual Growth Rate."""
+        return calculate_cagr(equity_curve)
+
+    @staticmethod
+    def calculate_trade_metrics(
+        orders: pd.DataFrame,
+    ) -> Tuple[int, float, float, float, float]:
+        """
+        Calculate trade-level metrics.
+
+        Returns: (total_trades, win_rate, avg_win, avg_loss, profit_factor)
+        """
+        metrics = calculate_trade_metrics(orders)
+        return (
+            int(metrics["total_trades"]),
+            float(metrics["win_rate"]),
+            float(metrics["avg_win"]),
+            float(metrics["avg_loss"]),
+            float(metrics["profit_factor"]),
+        )
+
+    @staticmethod
+    def estimate_turnover(
+        orders: pd.DataFrame, initial_capital: float = 10000
+    ) -> float:
+        """Estimate portfolio turnover (annualized)."""
+        return estimate_turnover(orders, initial_capital=initial_capital)
+
+    @staticmethod
+    def estimate_slippage_bps(orders: pd.DataFrame, slippage_bps: float = 5.0) -> float:
+        """Estimate slippage impact in basis points."""
+        return estimate_slippage_bps(orders, slippage_bps=slippage_bps)
+
+    @classmethod
+    def calculate_all_metrics(
+        cls,
+        equity_curve: pd.Series,
+        orders: pd.DataFrame,
+        initial_capital: float = 10000,
+        risk_free_rate: float = 0.02,
+        slippage_bps: float = 5.0,
+    ) -> BacktestMetrics:
+        """Calculate all performance metrics."""
+
+        returns = cls.calculate_returns(equity_curve)
+
+        sharpe = cls.calculate_sharpe_ratio(returns, risk_free_rate)
+        sortino = cls.calculate_sortino_ratio(returns, risk_free_rate)
+        max_dd = max_drawdown(equity_curve)
+        calmar = cls.calculate_calmar_ratio(returns, max_dd)
+        cagr = cls.calculate_cagr(equity_curve)
+
+        total_return = (
+            (equity_curve.iloc[-1] / equity_curve.iloc[0] - 1)
+            if len(equity_curve) > 1
+            else 0.0
+        )
+        from ztb.metrics.technical import calculate_volatility_from_returns
+
+        volatility = calculate_volatility_from_returns(
+            returns, window=len(returns), annualize=True
+        )
+
+        (
+            total_trades,
+            win_rate_val,
+            avg_win,
+            avg_loss,
+            profit_factor,
+        ) = cls.calculate_trade_metrics(orders)
+        turnover = cls.estimate_turnover(orders, initial_capital)
+        estimated_slippage = cls.estimate_slippage_bps(orders, slippage_bps)
+
+        deflated_sharpe = cls.calculate_deflated_sharpe_ratio(returns)
+        pvalue_bootstrap = cls.calculate_bootstrap_pvalue(
+            returns, benchmark_returns=returns * 0.5
+        )
+
+        return BacktestMetrics(
+            sharpe_ratio=sharpe,
+            sortino_ratio=sortino,
+            calmar_ratio=calmar,
+            total_return=total_return,
+            cagr=cagr,
+            annualized_return=cagr,
+            max_drawdown=max_dd,
+            volatility=volatility,
+            total_trades=total_trades,
+            win_rate=win_rate_val,
+            avg_win=avg_win,
+            avg_loss=avg_loss,
+            profit_factor=profit_factor,
+            turnover=turnover,
+            estimated_slippage_bps=estimated_slippage,
+            deflated_sharpe_ratio=deflated_sharpe,
+            pvalue_bootstrap=pvalue_bootstrap,
+        )
+
+    @staticmethod
+    def calculate_deflated_sharpe_ratio(
+        returns: pd.Series, num_strategies: int = 1000
+    ) -> float:
+        """Calculate deflated Sharpe ratio to account for multiple testing."""
+        return calculate_deflated_sharpe_ratio(returns, num_strategies)
+
+    @staticmethod
+    def calculate_bootstrap_pvalue(
+        strategy_returns: pd.Series,
+        benchmark_returns: pd.Series,
+        num_bootstrap: int = 1000,
+    ) -> float:
+        """Calculate bootstrap p-value for strategy vs benchmark comparison."""
+        return calculate_bootstrap_pvalue(
+            strategy_returns, benchmark_returns, n_bootstrap=num_bootstrap
+        )
+
+    @staticmethod
+    def calculate_returns_autocorrelation(returns: pd.Series, lag: int = 1) -> float:
+        """Calculate autocorrelation of returns at specified lag."""
+        returns_list = returns.dropna().tolist()
+        return autocorrelation(returns_list, lag=lag)
+
+    @staticmethod
+    def detect_return_outliers(
+        returns: pd.Series, multiplier: float = 1.5
+    ) -> List[bool]:
+        """Detect outliers in returns using IQR method."""
+        returns_list = returns.dropna().tolist()
+        return detect_outliers_iqr(returns_list, multiplier)

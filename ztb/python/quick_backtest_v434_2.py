@@ -13,7 +13,7 @@ import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ztb.metrics.statistics import calculate_distribution_stats
+from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.utils.data_utils import load_csv_data_optimized
 
 

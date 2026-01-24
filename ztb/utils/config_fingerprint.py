@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+from ztb.io.json_io import read_json
 from ztb.types.common import ConfigDict
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
@@ -281,8 +282,7 @@ class ConfigFingerprint:
         Returns:
             ConfigFingerprint instance
         """
-        with open(path, "r") as f:
-            data = json.load(f)
+        data = read_json(path)
 
         return cls(**data)
 

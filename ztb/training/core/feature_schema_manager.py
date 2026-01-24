@@ -23,7 +23,6 @@ Feature Management System - モデルごとの特徴量スキーマ管理
 
 import asyncio
 import hashlib
-import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +31,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from ztb.io.json_io import read_json, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -191,8 +191,7 @@ class FeatureSchemaManager:
                 f"Expected at: {metadata_path}"
             )
 
-        with open(metadata_path, "r") as f:
-            data = json.load(f)
+        data = read_json(metadata_path)
 
         metadata = FeatureSchemaMetadata.from_dict(data)
 
@@ -294,15 +293,13 @@ class FeatureSchemaManager:
     def _save_features_schema(self, features: List[str], schema_hash: str) -> None:
         """features_schema.jsonを保存"""
         schema_path = self.model_schema_dir / "features_schema.json"
-        with open(schema_path, "w") as f:
-            json.dump(features, f, indent=2)
+        write_json(schema_path, features, indent=2, ensure_ascii=False)
         logger.debug(f"Saved features schema: {schema_path}")
 
     def _save_metadata(self, metadata: FeatureSchemaMetadata) -> None:
         """metadata.jsonを保存"""
         metadata_path = self.model_schema_dir / "metadata.json"
-        with open(metadata_path, "w") as f:
-            json.dump(metadata.to_dict(), f, indent=2)
+        write_json(metadata_path, metadata.to_dict(), indent=2, ensure_ascii=False)
         logger.debug(f"Saved metadata: {metadata_path}")
 
     def _save_scaler(
@@ -389,8 +386,7 @@ def migrate_legacy_schema(
     if not legacy_schema_path.exists():
         raise FileNotFoundError(f"Legacy schema not found: {legacy_schema_path}")
 
-    with open(legacy_schema_path, "r") as f:
-        schema_data = json.load(f)
+    schema_data = read_json(legacy_schema_path)
 
     # features_schema.jsonからcolumnsを抽出
     if isinstance(schema_data, dict) and "columns" in schema_data:

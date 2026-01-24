@@ -3,14 +3,14 @@
 Dump configuration JSON schema to schema/config_schema.json
 """
 
-import json
 import sys
 from pathlib import Path
 
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ztb.config.schema import GlobalConfig
+from ztb.config.schemas.zaif import GlobalConfig
+from ztb.io.json_io import write_json
 
 
 def main() -> None:
@@ -18,8 +18,7 @@ def main() -> None:
     output_path = Path("schema/config_schema.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(schema, f, indent=2, ensure_ascii=False)
+    write_json(output_path, schema, indent=2, ensure_ascii=False)
 
     print(f"Schema dumped to {output_path}")
 

@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ztb.io.text_io import read_text
+
 try:
     import requests
 
@@ -36,17 +38,16 @@ def load_alerts(
     level_order = {"INFO": 0, "WARN": 1, "ERROR": 2, "CRITICAL": 3}
 
     try:
-        with open(jsonl_path, "r") as f:
-            for line in f:
-                try:
-                    alert = json.loads(line.strip())
-                    alert_time = datetime.fromisoformat(alert["timestamp"])
-                    if alert_time >= since_time and level_order.get(
-                        alert.get("level", "INFO"), 0
-                    ) >= level_order.get(min_level, 1):
-                        alerts.append(alert)
-                except (json.JSONDecodeError, ValueError):
-                    continue
+        for line in read_text(jsonl_path).splitlines():
+            try:
+                alert = json.loads(line.strip())
+                alert_time = datetime.fromisoformat(alert["timestamp"])
+                if alert_time >= since_time and level_order.get(
+                    alert.get("level", "INFO"), 0
+                ) >= level_order.get(min_level, 1):
+                    alerts.append(alert)
+            except (json.JSONDecodeError, ValueError):
+                continue
     except Exception as e:
         print(f"Error reading JSONL: {e}", file=sys.stderr)
 

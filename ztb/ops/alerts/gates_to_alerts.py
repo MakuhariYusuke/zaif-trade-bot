@@ -5,7 +5,6 @@ Gate alerts glue for Zaif Trade Bot.
 Reads gates.json and sends alerts for failures to webhook.
 """
 
-import json
 import os
 import sys
 from datetime import datetime
@@ -16,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, cast
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
 
 from ztb.utils.cli_common import CLIFormatter, CommonArgs, create_standard_parser
+from ztb.io.json_io import read_json
 
 try:
     from ztb.ops.monitoring.alert_notifier import send_webhook
@@ -32,8 +32,7 @@ def load_gates(gates_path: Path) -> Dict[str, Any]:
         return {}
 
     try:
-        with open(gates_path, "r") as f:
-            return cast(Dict[str, Any], json.load(f))
+        return cast(Dict[str, Any], read_json(gates_path))
     except Exception:
         return {}
 

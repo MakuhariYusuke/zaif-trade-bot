@@ -17,7 +17,7 @@ import pandas as pd
 import psutil
 from pandas.api import types as ptypes
 
-from ztb.metrics.statistics import calculate_atr
+from ztb.metrics.metrics import calculate_atr
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.types.protocols import FeatureRegistryProtocol
 

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import (
+    BacktestMetrics,
     calculate_all_metrics,
     calmar_ratio,
     classify_market_regime,
@@ -22,6 +23,7 @@ from ztb.metrics.metrics import (
     sharpe_ratio,
     sortino_ratio,
     win_rate,
+    MetricsCalculator,
 )
 
 
@@ -175,6 +177,25 @@ class TestMetrics:
 
         assert isinstance(result, dict)
         # Should return default values for empty data
+
+    def test_metrics_calculator_smoke(self):
+        """Smoke test for MetricsCalculator wrapper."""
+        equity_curve = pd.Series([100000, 101000, 99000, 102000, 98000])
+        orders = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2023-01-01", periods=5),
+                "pnl": [1000, -1000, 2000, -2000, 1000],
+            }
+        )
+
+        metrics = MetricsCalculator.calculate_all_metrics(equity_curve, orders)
+
+        assert isinstance(metrics, BacktestMetrics)
+        assert hasattr(metrics, "sharpe_ratio")
+        assert hasattr(metrics, "total_return")
+        assert hasattr(metrics, "max_drawdown")
+        assert hasattr(metrics, "win_rate")
+        assert hasattr(metrics, "total_trades")
 
     def test_expected_value_normal(self):
         """Test expected value calculation with normal returns."""

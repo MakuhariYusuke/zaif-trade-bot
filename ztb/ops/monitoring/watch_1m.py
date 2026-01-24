@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
+from ztb.io.json_io import read_json
 
 try:
     import psutil
@@ -102,10 +103,9 @@ class TrainingWatcher:
         metrics_file = self.artifacts_dir / "metrics.json"
         if metrics_file.exists():
             try:
-                with open(metrics_file, "r") as f:
-                    data = json.load(f)
-                    if "global_step" in data:
-                        return cast(int, data["global_step"])
+                data = read_json(metrics_file)
+                if "global_step" in data:
+                    return cast(int, data["global_step"])
             except Exception:
                 pass
 
@@ -227,17 +227,16 @@ class TrainingWatcher:
         metrics_file = self.artifacts_dir / "metrics.json"
         if metrics_file.exists():
             try:
-                with open(metrics_file, "r") as f:
-                    data = json.load(f)
-                    backlog = data.get("checkpoint_backlog", 0)
-                    if backlog > 0:
-                        self.emit_alert(
-                            "WARN",
-                            "checkpoint_backlog",
-                            f"Checkpoint backlog: {backlog}",
-                            {"backlog": backlog},
-                        )
-                        return True
+                data = read_json(metrics_file)
+                backlog = data.get("checkpoint_backlog", 0)
+                if backlog > 0:
+                    self.emit_alert(
+                        "WARN",
+                        "checkpoint_backlog",
+                        f"Checkpoint backlog: {backlog}",
+                        {"backlog": backlog},
+                    )
+                    return True
             except Exception:
                 pass
         return False

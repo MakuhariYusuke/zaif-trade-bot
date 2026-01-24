@@ -20,7 +20,7 @@ from backtest.config import get_backtest_config, get_engine_config
 from backtest.data_generator import generate_synthetic_data
 from backtest.results_runner import display_backtest_results, display_signal_statistics
 from ztb.trading.backtest.adapters import ActionSignalGuideAdapter
-from ztb.trading.backtest.metrics import MetricsCalculator
+from ztb.metrics.metrics import MetricsCalculator
 
 
 class SimpleBacktestEngine:

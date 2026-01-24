@@ -83,7 +83,7 @@ logger.info("Operation started", extra={
 Advanced trading performance metrics calculation (Sharpe/Sortino/Calmar ratios).
 
 ```python
-from ztb.utils.metrics.trading_metrics import sharpe_ratio, sharpe_with_stats
+from ztb.metrics.metrics import sharpe_ratio, sharpe_with_stats
 
 # Calculate Sharpe ratio
 returns = [0.01, 0.02, -0.005, 0.015, -0.01]
@@ -145,9 +145,9 @@ df_outliers = detect_outliers_zscore(df, "volume", threshold=3.0)
 - Safe operation with error handling
 - Integration with pandas DataFrames
 
-#### `data/report_generator.py` - Report Generation
+#### `reporting/generators/analysis.py` - Report Generation
 
-Generate analysis reports from data processing results.
+Generate analysis reports from data processing results (migrated under `ztb/reporting`).
 
 #### `memory/dtypes.py` - Memory Optimization
 

@@ -3,11 +3,13 @@
 Configuration validation and management for Unified Trainer.
 """
 
+import json
 import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from ztb.types.common import ConfigDict
+from ztb.io.json_io import read_json
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
@@ -219,10 +221,7 @@ class ConfigurationFileManager:
             Tuple of (config, is_valid, errors, warnings)
         """
         try:
-            import json
-
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            config = read_json(config_path)
 
             self.logger.info(f"Loaded configuration from {config_path}")
 

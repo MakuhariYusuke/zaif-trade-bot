@@ -29,7 +29,7 @@ except ImportError:
     get_global_kill_switch = None
     PositionSizer = None
 from .adapters import StrategyAdapter, create_adapter
-from .metrics import MetricsCalculator
+from ztb.metrics.metrics import MetricsCalculator
 from .report import ReportGenerator
 
 # Import adaptation system

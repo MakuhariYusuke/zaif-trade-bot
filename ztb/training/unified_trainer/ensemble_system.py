@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from ztb.io.json_io import read_json
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
@@ -467,10 +468,7 @@ class EnsemblePredictor:
 
     def load_ensemble_state(self, path: str):
         """アンサンブルの状態を読み込み"""
-        import json
-
-        with open(path, "r") as f:
-            state = json.load(f)
+        state = read_json(path)
 
         # 設定を復元
         config_dict = state.get("config", {})

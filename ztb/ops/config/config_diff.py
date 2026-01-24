@@ -4,17 +4,16 @@ Compare two effective-config JSON files and show differences.
 """
 
 import argparse
-import json
 import sys
 from typing import Any, List
 
+from ztb.io.json_io import read_json
 
 def load_json(file_path: str) -> Any:
     """Load JSON file."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+        return read_json(file_path)
+    except Exception as e:
         print(f"Error loading {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
 

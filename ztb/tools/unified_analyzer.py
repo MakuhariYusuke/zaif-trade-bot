@@ -17,7 +17,8 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.analysis.core.analyzer import UnifiedAnalyzer
-from ztb.analysis.reporting.generator import ReportGenerator
+from ztb.io.json_io import read_json
+from ztb.reporting.generators.analysis_rich import ReportGenerator
 from ztb.training.core.config_manager import ConfigManager
 
 
@@ -45,8 +46,7 @@ class UnifiedAnalysisTool:
         if not self.config_path.exists():
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
 
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return read_json(self.config_path)
 
     def _setup_logging(self):
         """ロギング設定"""

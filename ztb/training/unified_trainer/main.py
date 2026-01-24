@@ -113,10 +113,9 @@ def main() -> None:
     try:
         if args.config:
             # Load JSON config directly for training configs
-            import json
+            from ztb.io.json_io import read_json
 
-            with open(args.config, "r") as f:
-                raw_config = json.load(f)
+            raw_config = read_json(args.config)
 
             # Process config using ConfigManager to build unified config
             from ztb.training.core.config_manager import ConfigManager
@@ -152,7 +151,7 @@ def main() -> None:
         else:
             print("DEBUG: Using GlobalConfigManager")
             # Use ConfigManager for default config loading
-            from ztb.config.manager import ConfigManager as GlobalConfigManager
+            from ztb.config import ConfigManager as GlobalConfigManager
 
             config_manager = GlobalConfigManager.get_instance()
             config = config_manager.load_config()

@@ -40,7 +40,7 @@ def evaluate_experimental_features(
     }
 
 
-from ztb.utils.metrics.trading_metrics import (
+from ztb.metrics.metrics import (
     calculate_delta_sharpe,
     sharpe_ratio,
     sharpe_with_stats,

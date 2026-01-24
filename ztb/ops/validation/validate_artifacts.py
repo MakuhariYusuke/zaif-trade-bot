@@ -18,6 +18,7 @@ try:
 except ImportError:
     HAS_JSONSCHEMA = False
 
+from ztb.io.json_io import read_json, write_json
 
 def load_expectations() -> Dict[str, Any]:
     """Load validation expectations."""
@@ -30,8 +31,7 @@ def load_expectations() -> Dict[str, Any]:
             "metrics_schema": {},
         }
 
-    with open(schema_path, "r") as f:
-        return cast(Dict[str, Any], json.load(f))
+    return cast(Dict[str, Any], read_json(schema_path))
 
 
 def validate_file_presence(
@@ -85,8 +85,7 @@ def validate_json_schema(file_path: Path, schema: Dict[str, Any]) -> List[str]:
 
     errors = []
     try:
-        with open(file_path, "r") as f:
-            data = json.load(f)
+        data = read_json(file_path)
 
         jsonschema.validate(instance=data, schema=schema)
     except jsonschema.ValidationError as e:
@@ -171,8 +170,7 @@ def main() -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_dir / "validation_report.json"
 
-    with open(report_path, "w") as f:
-        json.dump(result, f, indent=2)
+    write_json(report_path, result, indent=2, ensure_ascii=False)
 
     # Print summary
     if result["valid"]:

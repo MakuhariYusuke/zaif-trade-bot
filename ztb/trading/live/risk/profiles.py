@@ -6,7 +6,7 @@ Provides preset risk management configurations and validation.
 
 from typing import Dict, Optional
 
-from ztb.config.schema import RiskProfileConfig
+from ztb.config.schemas.zaif import RiskProfileConfig
 
 
 class RiskProfileManager:

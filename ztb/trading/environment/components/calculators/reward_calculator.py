@@ -176,7 +176,7 @@ class RewardCalculator:
             config=config, trend_detector=self.trend_detector
         )
         # Lightweight MTF weight manager (Layer 5 foundation)
-        from .reward.mtf_weight_manager import MTFWeightManager
+        from ..reward.mtf_weight_manager import MTFWeightManager
 
         self.mtf_weight_manager = MTFWeightManager(config)
         self.unrealized_loss_penalty_calculator = UnrealizedLossPenaltyCalculator(
@@ -1300,7 +1300,7 @@ class RewardCalculator:
             dynamic_reward_shaper=getattr(self, "dynamic_reward_shaper", None),
         )
 
-    def _calculate_forced_balance_reward(self, **kwargs) -> float:
+    def _calculate_forced_balance_reward(self, action: int, **kwargs) -> float:
         """
         Stage: Forced balance reward that encourages corrective actions toward configured targets.
         Delegates to ForcedBalanceReward component.
@@ -1314,11 +1314,13 @@ class RewardCalculator:
         except Exception:
             pass
 
-        action = kwargs.get("action")
+        action = action
         self._record_action(action)
 
         # Build Context
-        context = self._build_reward_context(**kwargs)
+        context_kwargs = kwargs.copy()
+        context_kwargs["action"] = action
+        context = self._build_reward_context(**context_kwargs)
 
         # If global balance penalty is disabled, the forced_balance stage should be neutral.
         if getattr(self, "balance_penalty", 1.0) == 0.0:

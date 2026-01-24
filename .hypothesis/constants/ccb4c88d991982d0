@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_evaluator.py
+# hypothesis_version: 6.140.3
+
+[-0.001, 0.0, 0.001, 0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.5, 0.7, 1.0, 2.0, 3.0, 5.0, 10.0, 5000000.0, 10000000.0, 1000, 5000, 10000, 'action', 'amount', 'balance_penalty', 'balanced_transition', 'bear', 'benchmark_return', 'bull', 'buy', 'calmar_ratio', 'cash', 'conditions_tested', 'consistency', 'consistency_weight', 'consistency_window', 'episode', 'evaluation_episodes', 'growth_bonus_weight', 'hold', 'hold_penalty_rate', 'inf', 'market_condition', 'market_conditions', 'max_drawdown', 'portfolio_value', 'position', 'price', 'profit', 'profit_factor', 'profit_optimized', 'profit_weight', 'r', 'recovery_factor', 'reward', 'risk_free_rate', 'risk_weight', 'sell', 'sharpe', 'sideways', 'sortino_ratio', 'step', 'timestamp', 'total_episodes', 'trading_bonus', 'trading_focused', 'ultra_profit', 'utf-8', 'volatile', 'volatility', 'win_rate']

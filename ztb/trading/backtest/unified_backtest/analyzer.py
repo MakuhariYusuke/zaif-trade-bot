@@ -14,7 +14,7 @@ import pandas as pd
 from scipy import stats
 
 from ....utils.logging_utils import get_logger
-from ..metrics import MetricsCalculator
+from ztb.metrics.metrics import MetricsCalculator
 from .unified_backtester import BacktestResult
 
 logger = get_logger(__name__)

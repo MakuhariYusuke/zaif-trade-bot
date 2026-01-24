@@ -444,7 +444,7 @@ def create_trading_objective_function(backtest_data: pd.DataFrame):
         try:
             # Import here to avoid circular imports
             from ztb.trading.backtest.adapters import RLPolicyAdapter
-            from ztb.trading.backtest.metrics import MetricsCalculator
+            from ztb.metrics.metrics import MetricsCalculator
             from ztb.trading.backtest.runner import BacktestEngine
 
             # Create adapter with parameters

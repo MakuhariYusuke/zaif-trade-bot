@@ -17,7 +17,7 @@ sys.path.insert(0, str(project_root))
 import pandas as pd
 
 from ztb.trading.backtest.adapters import ActionSignalGuideAdapter
-from ztb.trading.backtest.metrics import MetricsCalculator
+from ztb.metrics.metrics import MetricsCalculator
 from ztb.trading.backtest.report import ReportGenerator
 from ztb.trading.backtest.runner import BacktestEngine
 

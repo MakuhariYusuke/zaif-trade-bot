@@ -14,11 +14,11 @@ Features:
   - Milestone bonuses
 """
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from ztb.io.json_io import read_json, write_json
 from ztb.training.core.unified_trainer import UnifiedTrainer
 from ztb.utils.config import ZTBConfig
 
@@ -74,8 +74,7 @@ class CurriculumTrainer:
         self.experiment_name = experiment_name
 
         # Load base configuration
-        with open(self.base_config_path) as f:
-            self.base_config = json.load(f)
+        self.base_config = read_json(self.base_config_path)
 
         # Define curriculum phases
         self.phases = self._define_curriculum_phases()
@@ -182,8 +181,7 @@ class CurriculumTrainer:
 
         # Save phase config
         config_path = self.output_dir / f"phase{phase.phase_id}_config.json"
-        with open(config_path, "w") as f:
-            json.dump(phase_config, f, indent=2)
+        write_json(config_path, phase_config, indent=2)
         logger.info(f"Phase config saved: {config_path}")
 
         # Create trainer
@@ -228,17 +226,16 @@ class CurriculumTrainer:
 
         # Save curriculum results
         results_path = self.output_dir / "curriculum_results.json"
-        with open(results_path, "w") as f:
-            json.dump(
-                {
-                    "experiment_name": self.experiment_name,
-                    "base_config": str(self.base_config_path),
-                    "total_phases": len(self.phases),
-                    "phases": self.phase_results,
-                },
-                f,
-                indent=2,
-            )
+        write_json(
+            results_path,
+            {
+                "experiment_name": self.experiment_name,
+                "base_config": str(self.base_config_path),
+                "total_phases": len(self.phases),
+                "phases": self.phase_results,
+            },
+            indent=2,
+        )
 
         logger.info("\n" + "#" * 80)
         logger.info("# CURRICULUM LEARNING COMPLETED")

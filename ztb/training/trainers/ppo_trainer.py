@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 from ztb.training.constants import SAVE_INTERVAL
 from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
-from ztb.training.unified_trainer.components.reporter import TrainingReporter
+from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
 from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
 from ztb.utils.logging_utils import get_logger

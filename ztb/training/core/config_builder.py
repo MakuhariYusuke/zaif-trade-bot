@@ -18,7 +18,7 @@ from ztb.trading.environment.utils.config import (
     EnvironmentConfig as TradingEnvironmentConfig,
 )
 from ztb.training.config.ppo_config import PPOConfig
-from ztb.training.core.config_manager import ConfigManager
+from ztb.training.core.config_manager import TrainingConfigManager
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_config_get
 
@@ -40,7 +40,7 @@ class ConfigBuilder:
 
     Attributes:
         config: 元の設定辞書
-        config_manager: ConfigManagerインスタンス（遅延初期化）
+        config_manager: TrainingConfigManagerインスタンス（遅延初期化）
     """
 
     def __init__(self, config: Dict[str, Any]):
@@ -51,15 +51,15 @@ class ConfigBuilder:
             config: 設定辞書（JSON設定ファイルから読み込んだもの）
         """
         self.config = config
-        self._config_manager: Optional[ConfigManager] = None
+        self._config_manager: Optional[TrainingConfigManager] = None
 
     @property
-    def config_manager(self) -> ConfigManager:
-        """ConfigManagerの遅延初期化"""
+    def config_manager(self) -> TrainingConfigManager:
+        """TrainingConfigManagerの遅延初期化"""
         if self._config_manager is None:
-            from ztb.training.core.config_manager import ConfigManager
+            from ztb.training.core.config_manager import TrainingConfigManager
 
-            self._config_manager = ConfigManager(self.config)
+            self._config_manager = TrainingConfigManager(self.config)
         return self._config_manager
 
     def get_config_value(
@@ -248,7 +248,7 @@ class ConfigBuilder:
         """
         統合設定を構築。
 
-        ConfigManagerを使用して全ての設定を統合する。
+        TrainingConfigManagerを使用して全ての設定を統合する。
 
         Args:
             enable_streaming: ストリーミングデータパイプライン有効化

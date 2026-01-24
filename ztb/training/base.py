@@ -5,7 +5,6 @@
 結果を保存するためのデータ構造を定義します。
 """
 
-import json
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -13,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from ztb.io.json_io import read_json, write_json
 
 class ParameterType(Enum):
     """パラメータの型"""
@@ -159,16 +159,14 @@ class OptimizationResult:
             "all_trials": [t.to_dict() for t in self.all_trials],
         }
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(result_dict, f, indent=2, ensure_ascii=False)
+        write_json(output_path, result_dict, indent=2, ensure_ascii=False)
 
         print(f"✅ 最適化結果を保存: {output_path}")
 
     @classmethod
     def load(cls, input_path: Path) -> "OptimizationResult":
         """JSONファイルから結果を読み込み"""
-        with open(input_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = read_json(input_path)
 
         all_trials = [
             TrialResult(

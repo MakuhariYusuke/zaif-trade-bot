@@ -7,7 +7,6 @@ Checks various metrics and provides GO/NO-GO/CONDITIONAL recommendations.
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -17,6 +16,8 @@ from typing import Any, Callable, Dict, List
 
 import psutil
 
+from ztb.io.json_io import read_json
+from ztb.io.text_io import read_text
 
 class GoNoGoChecker:
     """Automated Go/No-Go evaluation system."""
@@ -160,10 +161,9 @@ def check_configuration(checker: GoNoGoChecker) -> tuple[bool, str]:
         return False, ".env file missing"
 
     # Basic checks (don't validate secrets)
-    with open(env_file) as f:
-        content = f.read()
-        if "ZAIF_API_KEY" not in content or content.strip() == "":
-            return False, ".env file incomplete"
+    content = read_text(env_file)
+    if "ZAIF_API_KEY" not in content or content.strip() == "":
+        return False, ".env file incomplete"
 
     return True, "Configuration files present"
 
@@ -193,8 +193,7 @@ def check_data_quality(checker: GoNoGoChecker) -> tuple[bool, str]:
         if not stats_file.exists():
             return False, "No recent stats file found"
 
-        with open(stats_file) as f:
-            stats = json.load(f)
+        stats = read_json(stats_file)
 
         # Check for recent data
         if "date" not in stats:

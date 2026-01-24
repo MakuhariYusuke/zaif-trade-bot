@@ -5,14 +5,16 @@ Unified Configuration System
 すべての設定ファイルを統一的に管理し、型安全性を確保
 """
 
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import json
 import yaml
 
+from ztb.io.json_io import read_json, write_json
+from ztb.io.yaml_io import read_yaml, write_yaml
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -121,25 +123,24 @@ class UnifiedConfig:
 
         # ファイル読み込み
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                if format_type == ConfigFormat.JSON:
-                    try:
-                        data = json.load(f)
-                    except json.JSONDecodeError as e:
-                        raise json.JSONDecodeError(
-                            f"Invalid JSON format in {config_path}: {e}", e.doc, e.pos
+            if format_type == ConfigFormat.JSON:
+                try:
+                    data = read_json(path)
+                except json.JSONDecodeError as e:
+                    raise json.JSONDecodeError(
+                        f"Invalid JSON format in {config_path}: {e}", e.doc, e.pos
+                    )
+            else:  # YAML
+                try:
+                    data = read_yaml(path)
+                    if data is None:
+                        raise ValueError(
+                            f"YAML file is empty or contains only comments: {config_path}"
                         )
-                else:  # YAML
-                    try:
-                        data = yaml.safe_load(f)
-                        if data is None:
-                            raise ValueError(
-                                f"YAML file is empty or contains only comments: {config_path}"
-                            )
-                    except yaml.YAMLError as e:
-                        raise yaml.YAMLError(
-                            f"Invalid YAML format in {config_path}: {e}"
-                        )
+                except yaml.YAMLError as e:
+                    raise yaml.YAMLError(
+                        f"Invalid YAML format in {config_path}: {e}"
+                    )
         except (IOError, OSError) as e:
             raise IOError(f"Failed to read config file {config_path}: {e}")
 
@@ -241,11 +242,10 @@ class UnifiedConfig:
         path = Path(config_path)
         data = self.to_dict()
 
-        with open(path, "w", encoding="utf-8") as f:
-            if format_type == ConfigFormat.JSON:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            else:
-                yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+        if format_type == ConfigFormat.JSON:
+            write_json(path, data, indent=2, ensure_ascii=False)
+        else:
+            write_yaml(path, data, default_flow_style=False, allow_unicode=False)
 
     def get_feature_count(self) -> int:
         """特徴量の総数を返す"""

@@ -8,7 +8,32 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from ztb.risk.rules import RiskRuleEngine
+from ztb.risk.rules import RiskRuleEngine, RiskLimits
+
+
+@pytest.fixture
+def sample_risk_limits():
+    """Sample risk limits for testing."""
+    return RiskLimits(
+        max_daily_loss_pct=0.05,
+        max_single_trade_risk_pct=0.02,
+        max_portfolio_risk_pct=0.10,
+        max_correlation_risk_pct=0.05,
+        min_liquidity_threshold=1000.0,
+        max_volatility_threshold=0.05,
+        cooldown_period_seconds=300,
+        max_trades_per_hour=10,
+        max_trades_per_day=50,
+        daily_loss_limit_pct=0.05,
+        max_drawdown_pct=0.10,
+        max_position_notional=100000.0,
+        max_single_trade_pct=0.05,
+        max_volatility_pct=0.15,
+        stop_loss_pct=0.02,
+        take_profit_pct=0.05,
+        min_trade_interval_sec=60,
+        required_sharpe_ratio=1.0,
+    )
 
 
 @pytest.fixture

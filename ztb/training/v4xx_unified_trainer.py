@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.config.loader import PriorityConfigLoader
+from ztb.config.loaders.priority_loader import PriorityConfigLoader
 from ztb.features.processors.optimization.features import OptimizerFeatureTracker
 from ztb.training.core.unified_base import UnifiedBase
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer

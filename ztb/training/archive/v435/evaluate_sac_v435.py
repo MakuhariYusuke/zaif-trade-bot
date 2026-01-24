@@ -17,7 +17,7 @@ from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.risk.risk_manager import RiskManager
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.training.utils.risk_management_utils import setup_risk_management_config
-from ztb.utils.trading_metrics import win_rate
+from ztb.metrics.metrics import win_rate
 
 logger = logging.getLogger(__name__)
 

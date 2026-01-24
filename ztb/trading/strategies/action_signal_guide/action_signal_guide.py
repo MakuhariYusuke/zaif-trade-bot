@@ -1850,10 +1850,11 @@ class ActionSignalGuide:
 
         # Use variance in success rates as inverse consistency measure
         # This is a simplified implementation
-        if pattern_stats.total_occurrences < 10:
+        if pattern_stats.get("total_detections", 0) < 10:
             return 0.5  # Neutral consistency for insufficient data
 
-        return min(1.0, max(0.0, pattern_stats.success_rate))
+        success_rate = pattern_stats.get("successful_detections", 0) / max(1, pattern_stats.get("total_detections", 1))
+        return min(1.0, max(0.0, success_rate))
 
     def set_feature_names(self, feature_names: List[str]) -> None:
         """Set feature names for observation conversion."""

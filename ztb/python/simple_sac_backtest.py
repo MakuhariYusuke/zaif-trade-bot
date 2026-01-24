@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from stable_baselines3 import SAC
 
-from ztb.metrics.statistics import calculate_distribution_stats
+from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.trading.environment.constants import DEFAULT_TRANSACTION_COST
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig

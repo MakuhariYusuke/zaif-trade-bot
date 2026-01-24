@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 import jsonschema
 import requests
 
+from ztb.io.json_io import read_json
 
 @dataclass
 class ValidationResult:
@@ -40,8 +41,7 @@ class ConfigLinter:
     def _load_schemas(self) -> None:
         """Load JSON schemas from schema directory."""
         for schema_file in self.schema_dir.glob("*.json"):
-            with open(schema_file, "r", encoding="utf-8") as f:
-                self.schemas[schema_file.stem] = json.load(f)
+            self.schemas[schema_file.stem] = read_json(schema_file)
 
     def validate_config(
         self,
@@ -66,8 +66,7 @@ class ConfigLinter:
 
         # Load config
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            config = read_json(config_path)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             errors.append(f"Failed to load config {config_path}: {e}")
             return ValidationResult(False, errors, warnings, False)

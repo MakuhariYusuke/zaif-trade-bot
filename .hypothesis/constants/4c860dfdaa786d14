@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward\metrics.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-06, 0.2, 0.4, 1.0, 100, 'action_history', 'balance_stability', 'cost_efficiency', 'drawdown', 'episode_returns', 'final_reward', 'gross_pnl', 'max_drawdown', 'portfolio_values', 'reward', 'sharpe', 'sharpe_ratio', 'stability', 'sustainability_score', 'transaction_costs']

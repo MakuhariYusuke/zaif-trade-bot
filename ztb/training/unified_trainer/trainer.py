@@ -100,7 +100,7 @@ from ztb.utils.logging_utils import get_logger
 # Import optimization utilities
 from ztb.utils.memory_utils import OperationMemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
-from ztb.utils.trading_metrics import win_rate as calculate_win_rate
+from ztb.metrics.metrics import win_rate as calculate_win_rate
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.

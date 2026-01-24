@@ -16,6 +16,7 @@ except ImportError:
 
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_config_get, safe_to_bool, safe_to_float, safe_to_int
+from ztb.io.json_io import read_json
 
 logger = get_logger(__name__)
 
@@ -513,8 +514,5 @@ class ValidatedConfig(TypedConfig):
     @classmethod
     def from_json_file(cls, file_path: str) -> "ValidatedConfig":
         """JSONファイルから設定を読み込み検証"""
-        import json
-
-        with open(file_path, "r") as f:
-            data = json.load(f)
+        data = read_json(file_path)
         return cls(**data)

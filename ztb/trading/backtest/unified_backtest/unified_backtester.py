@@ -21,7 +21,7 @@ from utils.results_utils import save_backtest_results
 from ....utils.training_utils import load_model
 from ....metrics.metrics import sharpe_ratio
 from ..adapters import StrategyAdapter
-from ..metrics import BacktestMetrics, MetricsCalculator
+from ztb.metrics.metrics import BacktestMetrics, MetricsCalculator
 from .signal_performance import BacktestSignalPerformanceAnalyzer
 from .strategy_base import TradingStrategy, validate_trading_strategy
 

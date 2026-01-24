@@ -3,7 +3,7 @@
 from unittest.mock import Mock
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.trading.environment.components.calculators.reward_calculator import RewardCalculator
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.trading.environment.components.behavioral_penalty_calculator import BehavioralPenaltyCalculator
 

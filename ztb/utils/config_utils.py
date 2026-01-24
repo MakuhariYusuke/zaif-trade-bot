@@ -1,7 +1,7 @@
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ztb.io.json_io import read_json
 
 def read_model_name_from_config(cfg_path: Path) -> Optional[str]:
     """Read model_name from a config JSON if present.
@@ -14,7 +14,7 @@ def read_model_name_from_config(cfg_path: Path) -> Optional[str]:
     """
     try:
         p = Path(cfg_path)
-        obj = json.loads(p.read_text(encoding="utf-8"))
+        obj = read_json(p)
         return obj.get("training", {}).get("model_name")
     except Exception:
         return None
@@ -37,8 +37,7 @@ def load_config_unified(
         Exception: If loading fails
     """
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
+        config = read_json(config_path)
         if required_keys:
             for key in required_keys:
                 if key not in config:

@@ -5,7 +5,6 @@ Cost estimator for training runs.
 Estimates GPU, power, and cloud costs based on run metadata and rates.
 """
 
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
@@ -20,6 +19,7 @@ from ztb.utils.cli_common import (
     create_standard_parser,
     get_env_default,
 )
+from ztb.io.json_io import read_json, write_json
 
 
 def calculate_jp_residential_tiered(kwh: float) -> float:
@@ -47,9 +47,8 @@ def load_metadata(
         return None
 
     try:
-        with open(metadata_path, "r") as f:
-            return cast(Dict[str, Any], json.load(f))
-    except (OSError, json.JSONDecodeError):
+        return cast(Dict[str, Any], read_json(metadata_path))
+    except Exception:
         return None
 
 
@@ -62,9 +61,8 @@ def load_summary(
         return None
 
     try:
-        with open(summary_path, "r") as f:
-            return cast(Dict[str, Any], json.load(f))
-    except (OSError, json.JSONDecodeError):
+        return cast(Dict[str, Any], read_json(summary_path))
+    except Exception:
         return None
 
 
@@ -138,8 +136,7 @@ def estimate_cost(
 def save_estimate(estimate: Dict[str, Any], output_path: Path) -> None:
     """Save estimate as JSON."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(estimate, f, indent=2, ensure_ascii=False)
+    write_json(output_path, estimate, indent=2, ensure_ascii=False)
 
 
 def generate_markdown(estimate: Dict[str, Any]) -> str:

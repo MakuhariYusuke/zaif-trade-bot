@@ -8,8 +8,8 @@ This module provides centralized configuration management with support for:
 - Dynamic configuration reloading
 """
 
-from .manager import ZaifTradeBotConfigManager as ConfigManager
-from .schema import GlobalConfig
+from ztb.config.managers.ztb_manager import ZaifTradeBotConfigManager as ConfigManager
+from ztb.config.schemas import GlobalConfig
 
 __all__ = [
     "ConfigManager",

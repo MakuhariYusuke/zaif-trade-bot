@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\rewards\profit_optimized.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-08, 0.01, 0.02, 0.05, 0.1, 0.15, 0.425, 1.5, 2.0, 3.0, 6.0, 'activity_bonus_rate', 'balance_penalty', 'hold_penalty_rate', 'profit_multiplier', 'profit_optimized', 'trading_bonus']

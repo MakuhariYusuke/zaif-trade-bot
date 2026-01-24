@@ -14,6 +14,13 @@ def reward_component():
 
 
 @pytest.fixture
+def mock_config():
+    config = MagicMock()
+    config.get_setting_float = MagicMock(return_value=1.0)
+    config.get_setting_int = MagicMock(return_value=10)
+    config.get_setting_bool = MagicMock(return_value=False)
+    config.get_setting_str = MagicMock(return_value="default")
+    return config
 
 
 def test_calculate_basic_pnl(reward_component, mock_config):

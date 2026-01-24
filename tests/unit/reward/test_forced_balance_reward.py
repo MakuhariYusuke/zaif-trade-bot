@@ -99,6 +99,11 @@ def test_calculate_corrective_bonus(reward_component, mock_config):
         target_ratios={"HOLD": 0.33, "BUY": 0.33, "SELL": 0.33},
     )
 
+    # Mock settings to ensure we trigger bonus
+    def get_setting(key, default):
+        if key == "forced_balance_threshold":
+            return 0.1
+        return default
 
     mock_config.get.side_effect = get_setting
 

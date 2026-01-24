@@ -13,7 +13,8 @@ from pathlib import Path
 # Add ztb to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ztb.config.loader import load_config
+from ztb.config.loaders.priority_loader import load_config
+from ztb.io.json_io import write_json
 
 
 def main() -> None:
@@ -27,8 +28,7 @@ def main() -> None:
         config_dict = config.model_dump()
 
         if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                json.dump(config_dict, f, indent=2, ensure_ascii=False)
+            write_json(args.output, config_dict, indent=2, ensure_ascii=False)
             print(f"Configuration written to {args.output}")
         else:
             print(json.dumps(config_dict, indent=2, ensure_ascii=False))

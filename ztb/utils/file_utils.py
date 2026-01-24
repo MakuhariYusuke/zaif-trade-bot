@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 
+from ztb.io.json_io import read_json, write_json
+from ztb.io.text_io import read_text, write_text
 from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import get_project_root
 
@@ -29,8 +31,7 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
         Parsed JSON data or default value
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return read_json(file_path)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load JSON from {file_path}: {e}")
         # If default is callable, call it to get the default value
@@ -66,10 +67,13 @@ def safe_json_dump(
             file_path = Path(file_path)
 
         # Ensure parent directory exists
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=indent, ensure_ascii=False, default=default)
+        write_json(
+            file_path,
+            data,
+            indent=indent,
+            ensure_ascii=False,
+            default=default,
+        )
         return True
     except Exception as e:
         logger.error(f"Failed to save JSON to {file_path}: {e}")
@@ -123,7 +127,7 @@ def read_text_file(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
         File content as string or None if failed
     """
     try:
-        return file_path.read_text(encoding=encoding)
+        return read_text(file_path, encoding=encoding)
     except Exception as e:
         logger.error(f"Failed to read text file {file_path}: {e}")
         return None
@@ -142,8 +146,7 @@ def write_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> b
         True if successful, False otherwise
     """
     try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding=encoding)
+        write_text(file_path, content, encoding=encoding)
         return True
     except Exception as e:
         logger.error(f"Failed to write text file {file_path}: {e}")

@@ -13,6 +13,64 @@ from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 
 
+def calculate_balance_penalty(actions, balance_penalty_scale):
+    """Calculate balance penalty for a sequence of actions."""
+    if not actions:
+        return 0.0
+    
+    # Count action frequencies
+    action_counts = Counter(actions)
+    total_actions = len(actions)
+    
+    buy_ratio = action_counts.get(ACTION_BUY, 0) / total_actions
+    sell_ratio = action_counts.get(ACTION_SELL, 0) / total_actions
+    hold_ratio = action_counts.get(ACTION_HOLD, 0) / total_actions
+    
+    # Make BUY/SELL targets asymmetric so all-BUY vs all-SELL penalties differ
+    buy_target = 0.4
+    sell_target = 0.35
+    hold_target = 0.2
+
+    penalty = (
+        abs(buy_ratio - buy_target)
+        + abs(sell_ratio - sell_target)
+        + abs(hold_ratio - hold_target)
+        + abs(buy_ratio - sell_ratio) * 0.5  # Additional penalty for BUY/SELL imbalance
+    ) * balance_penalty_scale
+
+    return penalty
+
+    return penalty
+
+
+def calculate_improved_balance_penalty(actions, balance_penalty_scale):
+    """Calculate improved balance penalty for a sequence of actions."""
+    if not actions:
+        return 0.0
+    
+    # Count action frequencies
+    action_counts = Counter(actions)
+    total_actions = len(actions)
+    
+    buy_ratio = action_counts.get(ACTION_BUY, 0) / total_actions
+    sell_ratio = action_counts.get(ACTION_SELL, 0) / total_actions
+    hold_ratio = action_counts.get(ACTION_HOLD, 0) / total_actions
+    
+    # Make BUY/SELL targets asymmetric so all-BUY vs all-SELL penalties differ
+    buy_target = 0.4
+    sell_target = 0.35
+    hold_target = 0.2
+
+    penalty = (
+        abs(buy_ratio - buy_target)
+        + abs(sell_ratio - sell_target)
+        + abs(hold_ratio - hold_target)
+        + abs(buy_ratio - sell_ratio) * 0.3  # Reduced penalty for BUY/SELL imbalance
+    ) * balance_penalty_scale
+
+    return penalty
+
+
 def test_balance_penalty_bug():
     """Test that demonstrates the balance penalty bug."""
     scale = 1000.0

@@ -5,12 +5,12 @@ Base Classes for Unified Training and Analysis Systems
 Common functionality shared between trainers and analyzers.
 """
 
-import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
 
+from ztb.io.json_io import read_json, write_json
 from ztb.utils.logging_utils import get_logger, setup_logging
 from ztb.utils.safety import safe_config_get
 
@@ -36,8 +36,7 @@ class UnifiedBase(ABC):
         # Setup logging if config specifies level
         if self.config_path and self.config_path.exists():
             try:
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    temp_config = json.load(f)
+                temp_config = read_json(self.config_path)
                 log_level = safe_config_get(temp_config, "logging_level", "INFO")
                 # Convert string level to int if needed
                 if isinstance(log_level, str):
@@ -49,8 +48,7 @@ class UnifiedBase(ABC):
     def load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from file."""
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            config = read_json(config_path)
             self.logger.info(f"Configuration loaded from: {config_path}")
             return cast(Dict[str, Any], config)
         except Exception as e:
@@ -60,8 +58,7 @@ class UnifiedBase(ABC):
     def save_config(self, config: Dict[str, Any], output_path: str) -> None:
         """Save configuration to file."""
         try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            write_json(output_path, config, indent=2, ensure_ascii=False)
             self.logger.info(f"Configuration saved to: {output_path}")
         except Exception as e:
             self.logger.error(f"Failed to save configuration: {e}")

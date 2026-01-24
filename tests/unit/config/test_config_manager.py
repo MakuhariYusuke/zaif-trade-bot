@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from ztb.utils.config_manager import ConfigManager as UtilsConfigManager, validate_config
-from ztb.training.core.config_manager import ConfigManager as TrainingConfigManager
+from ztb.training.core.config_manager import TrainingConfigManager
 from ztb.utils.exceptions.custom_exceptions import ConfigurationError
 
 

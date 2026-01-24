@@ -30,6 +30,17 @@ class RiskLimits:
     max_trades_per_hour: int = 10  # Maximum trades per hour
     max_trades_per_day: int = 50  # Maximum trades per day
 
+    # Additional limits for compatibility
+    daily_loss_limit_pct: float = 0.05  # Daily loss limit percentage
+    max_drawdown_pct: float = 0.10  # Maximum drawdown percentage
+    max_position_notional: float = 100000.0  # Maximum position notional
+    max_single_trade_pct: float = 0.05  # Maximum single trade percentage
+    max_volatility_pct: float = 0.15  # Maximum volatility percentage
+    stop_loss_pct: float = 0.02  # Stop loss percentage
+    take_profit_pct: float = 0.05  # Take profit percentage
+    min_trade_interval_sec: int = 60  # Minimum trade interval in seconds
+    required_sharpe_ratio: float = 1.0  # Required Sharpe ratio
+
 
 class RiskRuleEngine:
     """Engine for evaluating and enforcing risk rules."""

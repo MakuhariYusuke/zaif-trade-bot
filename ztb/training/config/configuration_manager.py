@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Protocol, TypeVar, Union, cast
 
 import jsonschema
-from ztb.config.schema import DataConfig, EnvironmentConfig, TrainingConfig
+from ztb.config.schemas.zaif import DataConfig, EnvironmentConfig, TrainingConfig
 from ztb.types.common import ConfigDict, ConfigValue
 
 ConfigProfile = Dict[str, ConfigValue]
@@ -42,7 +42,7 @@ class ValidatorFunc(Protocol):
 from enum import Enum
 
 # Configuration classes for type safety
-# DataConfig moved to ztb.config.schema
+# DataConfig moved to ztb.config.schemas.zaif
 
 
 class ConfigFormat(Enum):

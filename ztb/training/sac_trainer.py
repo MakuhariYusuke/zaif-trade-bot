@@ -12,7 +12,6 @@ This script provides unified training capabilities for SAC trading models includ
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -30,6 +29,7 @@ from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
+from ztb.io.json_io import read_json
 from ztb.utils.path_utils import get_project_root
 
 # Get project root using utility
@@ -352,8 +352,7 @@ def main():
     if args.curriculum:
         # Run curriculum training
         try:
-            with open(args.curriculum, "r", encoding="utf-8") as f:
-                curriculum_config = json.load(f)
+                curriculum_config = read_json(args.curriculum)
 
             stages = curriculum_config.get("stages", [])
             results = trainer.run_curriculum_training(stages)

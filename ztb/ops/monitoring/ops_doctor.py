@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from ztb.io.text_io import write_text
 
 def run_script(
     script_name: str, args: list[str], cwd: Optional[str] = None
@@ -79,10 +80,14 @@ def main() -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_path = reports_dir / "doctor.txt"
 
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"Correlation ID: {correlation_id}\n\n")
-        f.write(f"{summary}\n\n")
-        f.writelines(details)
+    report_lines = [
+        f"Correlation ID: {correlation_id}",
+        "",
+        summary,
+        "",
+    ]
+    report_lines.extend(details)
+    write_text(report_path, "\n".join(report_lines))
 
     print(f"Details saved to {report_path}")
 

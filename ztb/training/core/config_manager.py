@@ -35,6 +35,14 @@ class TrainingConfigManager(BaseConfigManager):
         self.config = config
         self.logger = get_logger(__name__)
 
+    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
+        """Return the in-memory config for compatibility."""
+        return self.config
+
+    def save_config(self, *args, **kwargs) -> None:
+        """TrainingConfigManager does not persist configs."""
+        raise NotImplementedError("TrainingConfigManager does not support save_config")
+
     def _get_config_value(
         self, key: str, sections: Optional[List[str]] = None, default: Any = None
     ) -> Any:

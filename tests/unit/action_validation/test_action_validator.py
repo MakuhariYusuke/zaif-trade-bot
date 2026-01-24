@@ -245,7 +245,7 @@ class TestActionValidator:
     def test_action_validator_logging(self, action_validator, price_history, caplog):
         """Test that ActionValidator produces appropriate log output."""
         import logging
-        caplog.set_level(logging.INFO)
+        caplog.set_level(logging.DEBUG)
 
         legal_actions = action_validator.get_legal_actions(
             current_step=100,
