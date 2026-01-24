@@ -3,17 +3,19 @@
 Training reporting and logging utilities.
 """
 
-import json
 import logging
-import os
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
+from ztb.reporting.services.training_reports import (
+    save_ensemble_report,
+    save_training_report,
+)
 from ztb.types.common import ConfigDict
-from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 # Magic number constants for reporting
@@ -61,21 +63,10 @@ class TrainingReporter:
 
     def save_report(self, report: Dict[str, Any], output_dir: str = "reports") -> str:
         """Save training report to file."""
-        os.makedirs(output_dir, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        algorithm = report["metadata"]["algorithm"]
-        model_name = report["metadata"]["model_name"]
-
-        filename = f"training_report_{algorithm}_{model_name}_{timestamp}.json"
-        filepath = os.path.join(output_dir, filename)
-
         try:
-            safe_json_dump(report, filepath, indent=2, ensure_ascii=False, default=str)
-
+            filepath = save_training_report(report, output_dir=output_dir)
             self.logger.info(f"Training report saved to {filepath}")
             return filepath
-
         except Exception as e:
             self.logger.error(f"Failed to save training report: {e}")
             return ""
@@ -280,7 +271,11 @@ class TrainingEventLogger:
     def save_events(self, filepath: str) -> None:
         """Save events to file."""
         try:
-            safe_json_dump(self.events, filepath, indent=2, ensure_ascii=False, default=str)
+            save_path = Path(filepath)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            from ztb.io.json_io import write_json
+
+            write_json(save_path, self.events, indent=2, ensure_ascii=False, default=str)
             self.logger.info(f"Training events saved to {filepath}")
         except Exception as e:
             self.logger.error(f"Failed to save training events: {e}")
@@ -926,18 +921,10 @@ class TrainingEventLogger:
         self, report: Dict[str, Any], output_dir: str = "reports"
     ) -> str:
         """Save ensemble report to file."""
-        os.makedirs(output_dir, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"ensemble_analysis_report_{timestamp}.json"
-        filepath = os.path.join(output_dir, filename)
-
         try:
-            safe_json_dump(report, filepath, indent=2, ensure_ascii=False, default=str)
-
+            filepath = save_ensemble_report(report, output_dir=output_dir)
             self.logger.info(f"Ensemble report saved to {filepath}")
             return filepath
-
         except Exception as e:
             self.logger.error(f"Failed to save ensemble report: {e}")
             return ""

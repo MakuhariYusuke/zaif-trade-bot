@@ -89,19 +89,12 @@ def test_balance_penalty_bug():
     balanced = [ACTION_BUY, ACTION_SELL, ACTION_HOLD] * 3 + [ACTION_BUY]  # 4 BUY, 3 SELL, 3 HOLD
     penalty_balanced = calculate_balance_penalty(balanced, scale)
     print(f"Balanced penalty: {penalty_balanced}")
-    # Make BUY/SELL targets asymmetric so all-BUY vs all-SELL penalties differ
-    buy_target = 0.4
-    sell_target = 0.35
-    hold_target = 0.2
 
-    penalty = (
-        abs(buy_ratio - buy_target)
-        + abs(sell_ratio - sell_target)
-        + abs(hold_ratio - hold_target)
-        + abs(buy_ratio - sell_ratio) * 0.5  # Additional penalty for BUY/SELL imbalance
-    ) * balance_penalty_scale
-
-    return penalty
+    # Sanity checks: all-BUY and all-SELL should differ, and balanced should be lower
+    assert penalty_sell != penalty_buy, f"Penalties should differ, got SELL: {penalty_sell}, BUY: {penalty_buy}"
+    assert penalty_balanced < min(penalty_sell, penalty_buy), (
+        f"Balanced penalty {penalty_balanced} should be less than both {penalty_sell} and {penalty_buy}"
+    )
 
 
 def test_improved_balance_penalty():

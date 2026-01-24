@@ -67,6 +67,10 @@ class RewardSettings:
     trade_cooldown_penalty: float = 0.01
     max_consecutive_trades: int = 3
     consecutive_trade_penalty: float = 0.05
+    # Additional multiplicative penalty/bonus scalars for specific actions
+    hold_penalty_multiplier: float = 1.0
+    trade_frequency_bonus: float = 0.0
+    
     volatility_window: int = 20
     volatility_penalty_scale: float = 0.01
     sharpe_bonus_scale: float = 0.01
@@ -92,6 +96,9 @@ class RewardSettings:
         }
     )
 
+    # Accept dynamic shaping configuration (backwards compatibility for v440 tests)
+    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
+
     # Backwards-compatible extension point to hold unknown/experimental reward keys
     custom_reward_params: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
@@ -107,6 +114,41 @@ class RewardSettings:
     action_smoothing: float = 0.0
     consistency_penalty: float = 0.0
     redundant_trade_penalty: float = 0.0
+
+    # Backwards compatibility alias - some configs refer to 'reward_scaling'
+    reward_scaling: float | None = None
+
+    # Backwards compatibility for v440-style long/short multipliers
+    long_position_reward_multiplier: float = 1.0
+    short_position_reward_multiplier: float = 1.0
+    long_position_penalty_multiplier: float = 1.0
+    short_position_penalty_multiplier: float = 1.0
+
+    def __post_init__(self):
+        # If legacy 'reward_scaling' provided, map it to 'reward_scale'
+        try:
+            if self.reward_scaling is not None:
+                self.reward_scale = float(self.reward_scaling)
+        except Exception:
+            pass
+
+        # If multipliers were provided as top-level fields, ensure the asymmetric map reflects them
+        try:
+            if isinstance(self.asymmetric_reward_scaling, dict):
+                self.asymmetric_reward_scaling["long_position_reward_multiplier"] = float(
+                    self.long_position_reward_multiplier
+                )
+                self.asymmetric_reward_scaling["short_position_reward_multiplier"] = float(
+                    self.short_position_reward_multiplier
+                )
+                self.asymmetric_reward_scaling["long_position_penalty_multiplier"] = float(
+                    self.long_position_penalty_multiplier
+                )
+                self.asymmetric_reward_scaling["short_position_penalty_multiplier"] = float(
+                    self.short_position_penalty_multiplier
+                )
+        except Exception:
+            pass
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "RewardSettings":

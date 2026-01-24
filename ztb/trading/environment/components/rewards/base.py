@@ -70,7 +70,8 @@ class RewardComponent(ABC):
         - Falls back to `context.config.get(key, default)` when available.
         - Optionally casts the result with `cast` (e.g., float, int).
         """
-        print(f"DEBUG base _get_setting called with key={key}")
+        import logging
+        logging.getLogger(__name__).debug(f"base _get_setting called with key={key}")
         if context.reward_settings:
             val = None
             # If reward_settings behaves like a dict or has a `get` method, prefer that
@@ -90,7 +91,8 @@ class RewardComponent(ABC):
                 custom_params = getattr(context.reward_settings, "custom_reward_params", None)
                 if isinstance(custom_params, dict):
                     val = custom_params.get(key)
-                    print(f"DEBUG base: key={key}, val from custom_params={val}")
+                    import logging
+                    logging.getLogger(__name__).debug(f"base: key={key}, val from custom_params={val}")
 
             if val is not None:
                 try:
@@ -116,7 +118,8 @@ class RewardComponent(ABC):
 
     def _get_setting_int(self, context: RewardContext, key: str, default: int) -> int:
         """Typed int helper that delegates to `_get_setting` with casting."""
-        print(f"DEBUG base _get_setting_int called with key={key}")
+        import logging
+        logging.getLogger(__name__).debug(f"base _get_setting_int called with key={key}")
         try:
             return self._get_setting(context, key, default, cast=int)
         except (ValueError, TypeError):

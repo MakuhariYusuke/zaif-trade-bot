@@ -49,32 +49,39 @@ class ForcedBalanceReward(RewardComponent):
                 return None
         return current
 
-    def _get_setting(self, context: RewardContext, key: str, default: Any) -> Any:
-        print(f"DEBUG: _get_setting called with key={key}")
+    def _get_setting(self, context: RewardContext, key: str, default: Any, cast=None) -> Any:
+        """Component-specialized lookup that still supports the base `cast` arg."""
         # Prefer nested lookup for dot-separated keys; otherwise use base helper
         val = self._get_nested_setting(context, key)
-        print(f"DEBUG ForcedBalanceReward _get_setting: key={key}, val from nested={val}")
         if val is not None:
-            return val
+            try:
+                return cast(val) if cast is not None else val
+            except (ValueError, TypeError):
+                return default
+
         # Check custom_reward_params for keys that match our component
-        if context.reward_settings and hasattr(context.reward_settings, 'custom_reward_params'):
+        if context.reward_settings and hasattr(context.reward_settings, "custom_reward_params"):
             custom_params = context.reward_settings.custom_reward_params
             if isinstance(custom_params, dict):
                 # Try direct key match first
                 if key in custom_params:
                     val = custom_params[key]
-                    print(f"DEBUG ForcedBalanceReward: found {key}={val} in custom_params")
-                    return val
+                    try:
+                        return cast(val) if cast is not None else val
+                    except (ValueError, TypeError):
+                        return default
                 # Try component-prefixed key (e.g., forced_balance_min_actions)
                 # But avoid double-prefixing if key already starts with component name
                 if not key.startswith("forced_balance_"):
                     component_key = f"forced_balance_{key}"
                     if component_key in custom_params:
                         val = custom_params[component_key]
-                        print(f"DEBUG ForcedBalanceReward: found {component_key}={val} in custom_params")
-                        return val
-        print(f"DEBUG ForcedBalanceReward calling super()._get_setting")
-        return super()._get_setting(context, key, default)
+                        try:
+                            return cast(val) if cast is not None else val
+                        except (ValueError, TypeError):
+                            return default
+
+        return super()._get_setting(context, key, default, cast=cast)
 
 
     def _map_forced_balance_penalty(
@@ -173,15 +180,17 @@ class ForcedBalanceReward(RewardComponent):
         self._forced_balance_log_counter += 1
 
         min_actions = self._get_setting_int(context, "forced_balance_min_actions", 0)
-        print(f"DEBUG: after _get_setting_int, min_actions={min_actions}")
+        self.logger.debug(f"after _get_setting_int, min_actions={min_actions}")
         exploration_reward = self._get_setting_float(
             context, "forced_balance_exploration_reward", 2.0
         )
 
-        print(f"DEBUG: min_actions={min_actions}, exploration_reward={exploration_reward}, total_actions={total_actions}")
-        print(f"DEBUG: context.reward_settings={context.reward_settings}")
+        self.logger.debug(
+            f"min_actions={min_actions}, exploration_reward={exploration_reward}, total_actions={total_actions}"
+        )
+        self.logger.debug(f"context.reward_settings={context.reward_settings}")
         if hasattr(context.reward_settings, 'custom_reward_params'):
-            print(f"DEBUG: custom_reward_params={context.reward_settings.custom_reward_params}")
+            self.logger.debug(f"custom_reward_params={context.reward_settings.custom_reward_params}")
 
         if total_actions < min_actions:
             if should_log_detailed:

@@ -113,28 +113,47 @@ class DynamicRewardShaper(IDynamicRewardShaper):
 
         # Market regime awareness
         if self.market_regime_awareness:
-            regime = self.market_regime_detector.detect_regime(current_price, step)
+            try:
+                # Support detectors with different signatures: prefer (current_price, step),
+                # fall back to older interface that expects market_data.
+                try:
+                    regime = self.market_regime_detector.detect_regime(current_price, step)
+                except TypeError:
+                    # Older detectors may expect a DataFrame or single 'market_data' argument.
+                    # Construct minimal DataFrame-like object when possible or call with a single arg.
+                    try:
+                        import pandas as pd
 
-            if regime == "bull":
-                shaped_reward *= self.bull_market_bonus_coeff
-                self.logger.debug(
-                    f"Applied bull market bonus: {self.bull_market_bonus_coeff}x"
-                )
-            elif regime == "bear":
-                shaped_reward *= self.bear_market_penalty_coeff
-                self.logger.debug(
-                    f"Applied bear market penalty: {self.bear_market_penalty_coeff}x"
-                )
-            elif regime == "sideways":
-                shaped_reward *= self.sideways_market_penalty_coeff
-                self.logger.debug(
-                    f"Applied sideways market penalty: {self.sideways_market_penalty_coeff}x"
-                )
-            elif regime == "volatile":
-                shaped_reward *= self.volatile_market_bonus_coeff
-                self.logger.debug(
-                    f"Applied volatile market bonus: {self.volatile_market_bonus_coeff}x"
-                )
+                        market_df = pd.DataFrame({"close": [current_price]})
+                        regime = self.market_regime_detector.detect_regime(market_df)
+                    except Exception:
+                        # Last resort: call with current_price only
+                        regime = self.market_regime_detector.detect_regime(current_price)
+
+                if regime == "bull":
+                    shaped_reward *= self.bull_market_bonus_coeff
+                    self.logger.debug(
+                        f"Applied bull market bonus: {self.bull_market_bonus_coeff}x"
+                    )
+                elif regime == "bear":
+                    shaped_reward *= self.bear_market_penalty_coeff
+                    self.logger.debug(
+                        f"Applied bear market penalty: {self.bear_market_penalty_coeff}x"
+                    )
+                elif regime == "sideways":
+                    shaped_reward *= self.sideways_market_penalty_coeff
+                    self.logger.debug(
+                        f"Applied sideways market penalty: {self.sideways_market_penalty_coeff}x"
+                    )
+                elif regime == "volatile":
+                    shaped_reward *= self.volatile_market_bonus_coeff
+                    self.logger.debug(
+                        f"Applied volatile market bonus: {self.volatile_market_bonus_coeff}x"
+                    )
+            except Exception:
+                # Be defensive: dynamic shaping must not break reward calculation
+                self.logger.exception("Market regime detection failed; skipping regime-based shaping")
+                regime = "sideways"
 
         # Volatility adjusted rewards
         if (

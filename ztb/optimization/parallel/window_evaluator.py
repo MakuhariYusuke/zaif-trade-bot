@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 
-from ztb.evaluation.walk_forward.evaluator import WalkForwardModelEvaluator
+from ztb.evaluation.unified_evaluation import UnifiedEvaluator
 from ztb.evaluation.walk_forward.types import TimeSeriesWindow, WindowPerformance
 from ztb.utils.error_utils import safe_operation
 from ztb.utils.cache_coordination import CacheCoordinator, FeatureCacheKey
@@ -74,10 +74,13 @@ def eval_window_worker(
     def evaluate_single_window():
         """Evaluate a single window"""
         try:
-            # Create evaluator with factory functions
-            evaluator = WalkForwardModelEvaluator(
-                env_factory=worker_args["env_factory"],
-                algorithm_factory=worker_args["algorithm_factory"],
+            evaluator = UnifiedEvaluator(
+                config={
+                    "walk_forward_env_factory": worker_args["env_factory"],
+                    "walk_forward_algorithm_factory": worker_args["algorithm_factory"],
+                    "walk_forward_timesteps": worker_args["timesteps"],
+                    "walk_forward_continue_on_error": True,
+                }
             )
             
             # Create TimeSeriesWindow object
@@ -99,13 +102,17 @@ def eval_window_worker(
             ], ignore_index=True)
             
             # Train and evaluate
-            performance = evaluator.train_and_evaluate_window(
+            evaluation, performances, errors = evaluator.evaluate_walk_forward_details_from_df(
                 df=combined_data,
-                window=window,
-                timesteps=worker_args["timesteps"],
-                continue_on_error=True,
+                windows=[window],
+                model_name=f"window_{window_id}",
             )
-            
+            _ = evaluation
+
+            performance = performances[0] if performances else None
+            if errors:
+                raise RuntimeError(next(iter(errors.values())))
+
             return performance
         except Exception as e:
             logger.error(f"Window {window_id} evaluation failed: {e}", exc_info=True)

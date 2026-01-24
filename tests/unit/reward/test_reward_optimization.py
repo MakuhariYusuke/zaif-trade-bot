@@ -8,6 +8,7 @@ all components work correctly together.
 
 import sys
 from pathlib import Path
+import pytest
 
 from ztb.training.reward_function_evaluator import RewardFunctionEvaluator
 from ztb.training.reward_function_optimizer import RewardFunctionOptimizer
