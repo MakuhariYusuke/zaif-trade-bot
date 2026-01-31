@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [Phase 4] Day 10: Comprehensive Experiment Suite - 2026-02-01
 
+#### 83# Codex Review 対応 (84#)
+
+- **84# レビュー対応計画作成**: `docs/v459/84_day10_review_response_and_fix_plan.md`
+  - 83# Codexレビューの「追加で見落とされがちな観点」を全て評価
+  - reward_scale実効値ログ: ✅ 妥当、Phase 3で対応
+  - walk-forward無効化の影響: ✅ 重要、45# Day5との主要差分
+  - reward構成要素の相殺: ✅ 妥当、D2_stage2の0% ROI原因
+  - 行動の質の低下: ✅ 妥当、1トレード当たりPnL分析で検証
+
+- **run_day10_comprehensive.py 環境アクセス修正**
+  - 問題: `trainer.model.env` ではなく `trainer.algorithm_trainer.model.env` が正しいパス
+  - 問題: `portfolio_value` ではなく `balance` が正しい属性名
+  - 修正: algorithm_trainer経由のアクセス追加
+  - 修正: balance/initial_balance属性の優先チェック
+  - 追加: reward_scale/clip実効値のログ出力
+  - 追加: total_trades, initial_balanceのメトリクス追加
+
 #### 79# Codex Review 対応
 
 - **81# レビュー対応文書作成**: `docs/v459/81_day9b_review_response.md`

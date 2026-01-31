@@ -370,18 +370,32 @@ def run_single_experiment(exp: Dict[str, Any]) -> Dict[str, Any]:
     estimated_roi_old = final_reward * 100
     
     # Try to get accurate ROI from environment
+    # 84# Fix: Use correct path through algorithm_trainer
     final_balance = None
     initial_balance = 100000.0
     accurate_roi = None
+    total_trades = None
     
     try:
         env = None
-        if hasattr(trainer, 'model') and hasattr(trainer.model, 'env') and trainer.model.env is not None:
-            env = trainer.model.env
-        elif hasattr(trainer, 'model') and hasattr(trainer.model, 'get_env'):
-            env = trainer.model.get_env()
-        elif hasattr(trainer, 'env') and trainer.env is not None:
-            env = trainer.env
+        # 84# Fix: Access through algorithm_trainer for UnifiedTrainer
+        if hasattr(trainer, 'algorithm_trainer'):
+            alg_trainer = trainer.algorithm_trainer
+            if alg_trainer is not None:
+                if hasattr(alg_trainer, 'model') and alg_trainer.model is not None:
+                    if hasattr(alg_trainer.model, 'env') and alg_trainer.model.env is not None:
+                        env = alg_trainer.model.env
+                    elif hasattr(alg_trainer.model, 'get_env'):
+                        env = alg_trainer.model.get_env()
+        
+        # Fallback to direct trainer attributes
+        if env is None:
+            if hasattr(trainer, 'model') and hasattr(trainer.model, 'env') and trainer.model.env is not None:
+                env = trainer.model.env
+            elif hasattr(trainer, 'model') and hasattr(trainer.model, 'get_env'):
+                env = trainer.model.get_env()
+            elif hasattr(trainer, 'env') and trainer.env is not None:
+                env = trainer.env
         
         if env is not None:
             actual_env = env
@@ -395,15 +409,37 @@ def run_single_experiment(exp: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     break
             
-            if hasattr(unwrapped_env, 'portfolio_value'):
+            # 84# Fix: Check for 'balance' first (fast_intraday_env_v456 uses this)
+            if hasattr(unwrapped_env, 'balance'):
+                final_balance = float(unwrapped_env.balance)
+            elif hasattr(unwrapped_env, 'portfolio_value'):
                 final_balance = float(unwrapped_env.portfolio_value)
-            if hasattr(unwrapped_env, 'initial_portfolio_value'):
+            
+            # 84# Fix: Check for 'initial_balance' first
+            if hasattr(unwrapped_env, 'initial_balance'):
+                initial_balance = float(unwrapped_env.initial_balance)
+            elif hasattr(unwrapped_env, 'initial_portfolio_value'):
                 initial_balance = float(unwrapped_env.initial_portfolio_value)
+            
+            # Get trade count
+            if hasattr(unwrapped_env, 'total_trades'):
+                total_trades = int(unwrapped_env.total_trades)
+            
+            # 84# Fix: Log effective reward settings for debugging
+            if hasattr(unwrapped_env, 'reward_scale'):
+                logger.info(f"  Effective reward_scale: {unwrapped_env.reward_scale}")
+            if hasattr(unwrapped_env, 'reward_clip_min') and hasattr(unwrapped_env, 'reward_clip_max'):
+                logger.info(f"  Effective reward_clip: [{unwrapped_env.reward_clip_min}, {unwrapped_env.reward_clip_max}]")
             
             if final_balance is not None:
                 accurate_roi = (final_balance - initial_balance) / initial_balance * 100
+                logger.info(f"  ✓ Got final_balance from env: {final_balance:.2f}")
+        else:
+            logger.warning("  ✗ Could not access environment - env is None")
     except Exception as e:
         logger.warning(f"Could not get environment metrics: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
     
     # Use accurate ROI if available, otherwise fallback
     roi_to_use = accurate_roi if accurate_roi is not None else estimated_roi_old
@@ -414,8 +450,12 @@ def run_single_experiment(exp: Dict[str, Any]) -> Dict[str, Any]:
     if accurate_roi is not None:
         logger.warning(f"  Accurate ROI (balance): {accurate_roi:.2f}%")
         logger.warning(f"  Final Balance: {final_balance:.2f}")
+    else:
+        logger.warning(f"  ⚠️ Could not get balance-based ROI, using reward-based estimate")
     logger.warning(f"  Estimated ROI (reward): {estimated_roi_old:.2f}%")
     logger.warning(f"  HOLD ratio: {action_dist.get('HOLD', 0.0)*100:.1f}%")
+    if total_trades is not None:
+        logger.warning(f"  Total trades: {total_trades}")
     logger.warning(f"  Training time: {elapsed:.1f}s\n")
     
     result = {
@@ -430,6 +470,8 @@ def run_single_experiment(exp: Dict[str, Any]) -> Dict[str, Any]:
             "estimated_roi_reward": estimated_roi_old,
             "accurate_roi_balance": accurate_roi,
             "final_balance": final_balance,
+            "initial_balance": initial_balance,
+            "total_trades": total_trades,
             "roi_used": roi_to_use,
             "roi_source": roi_source,
             "action_distribution": action_dist,
