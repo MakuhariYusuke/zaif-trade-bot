@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### [Phase 4] Day 10: Comprehensive Experiment Suite - 2026-01-XX
+
+#### 79# Codex Review 対応
+
+- **81# レビュー対応文書作成**: `docs/v459/81_day9b_review_response.md`
+  - ROI計算の問題を認識: `final_reward×100` は不正確、`final_balance` ベースに移行
+  - update intensity過剰の問題を確認: Day9b (4e-8) vs Day5 (3e-9) → 13倍の差
+  - 45# Day5設定再現の必要性を認識
+
+- **Day 10 包括的実験スクリプト作成**: `scripts/v459/run_day10_comprehensive.py`
+  - カテゴリA: 45# Day5 SAC_DEFAULT再現 (50k, 2 seeds)
+  - カテゴリB: gamma×ent_coef 2×2実験 (50k, 8実験)
+  - カテゴリC: batch×grad_steps 2×2 ablation (25k, 8実験)
+  - カテゴリD: 報酬構造実験 - simple/stage2/no_scale (25k, 6実験)
+  - 合計24実験、推定17時間、無人実行対応
+  - 中間結果の自動保存、環境からfinal_balance取得による正確ROI計算
+
+- **80# 実験計画文書更新**: `docs/v459/80_day10_comprehensive_experiment_plan.md`
+  - 実行方法セクション追加
+  - スクリプト機能説明追加
+
+### [Phase 3.5] Feature Generation Optimization - 2026-01-27
+
+#### Performance Optimization - 99.8% Feature Generation Time Reduction
+- **Precomputed Features**: Implemented feature precomputation with Parquet storage, reducing feature generation from 466s to 1.1s (99.8% reduction)
+  - Created `scripts/v459/precompute_optimized_features.py` for correlation-based feature selection (threshold=0.95, 8 features)
+  - Stores OHLCV + features in Parquet format (14 columns, 14.05MB)
+  - Uses correct APIs: `FeatureRegistry.compute_features_batch()`, `get_optimized_feature_set()`, `list()`
+
+- **Automatic Parquet Detection**: Enhanced AB experiment runner with intelligent precomputed feature detection
+  - Added `_setup_optimized_data_path()` in `run_ab_reward_experiments.py` for automatic CSV→Parquet path conversion
+  - Auto-configures feature generation skip when precomputed features detected
+
+- **Parquet Loading Support**: Extended data loading to support both CSV and Parquet formats
+  - Added `_load_data_with_format_detection()` to `sac_trainer.py` with automatic format detection
+  - Implements smart feature detection (skips generation when 5+ non-OHLCV columns present)
+  - Uses `pd.read_parquet()` for Parquet files, falls back to CSV loader
+
+- **Overall Performance Impact**:
+  - Total training time: 720s → 230s (68% reduction, 3.1x speedup)
+  - Memory usage: ~970MB → ~590MB (38% reduction)
+  - Expected 12-experiment time: 8,640s → 2,760s (saving ~1.6 hours)
+
+#### Data Update Source Fixes - 2026-01-27
+- **Yahoo Finance Robustness**: Enhanced error handling in `data_update_utils.py`
+  - Added empty data checks and multi-index column flattening
+  - Prevents "Missing OHLCV columns" errors from malformed responses
+
+- **BitFlyer Tolerance**: Relaxed validation rules in `update_data_comprehensive.py`
+  - Reduced minimum rows requirement: 2→1
+  - Changed `require_volume` from True→False for cases where volume unavailable
+
+- **CoinCheck Timeout**: Added connection timeout to `update_data_coincheck.py`
+  - Set session timeout to (5s connect, 10s read) to handle DNS resolution failures
+  - Prevents indefinite hangs on network issues
+
 ## [Unreleased] - Risk Manager Protocol Implementation & Cross-Module Integration - 2026-01-23
 
 ### Risk Management Enhancement - 2026-01-23
