@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [Phase 4] Day 10: Comprehensive Experiment Suite - 2026-01-XX
+### [Phase 4] Day 10: Comprehensive Experiment Suite - 2026-02-01
 
 #### 79# Codex Review 対応
 
@@ -27,6 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **80# 実験計画文書更新**: `docs/v459/80_day10_comprehensive_experiment_plan.md`
   - 実行方法セクション追加
   - スクリプト機能説明追加
+
+#### Day 10 実験結果 (24実験完了)
+
+- **82# 結果分析文書作成**: `docs/v459/82_day10_comprehensive_results.md`
+  - 全24実験完了（失敗0）
+  - 重大発見: 全実験でfinal_balance取得失敗、ROI計算が不正確
+  - A: ベースライン再現失敗 (ROI=-36% vs 45#の-5%)
+  - B: gamma=0.99 + ent_coef=0.01が最良・最安定 (-24% ± 4%)
+  - C: 25kステップで安定 (-5.5%〜-8.3%)
+  - D: stage2報酬でROI≈0%（異常値、要調査）
+  - 次アクション: ROI計算修正、45# run_ab_feature_test.pyでの再実験
 
 ### [Phase 3.5] Feature Generation Optimization - 2026-01-27
 
