@@ -13,7 +13,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 
 
 def load_v434_2_configs():
@@ -49,7 +49,7 @@ def run_v434_2_backtest(model_path: str, data_path: str, episodes: int = 10):
     print()
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     print(f"Data: {len(df):,} rows")
 
     # 環境作成（v434.2設定適用）

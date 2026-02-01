@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\analysis_formatters.py
+# hypothesis_version: 6.140.3
+
+[100, ' | ', 'Analysis Results', 'N/A', '_', 'cache_hit_rate', 'effectiveness_score', 'other', 'pattern_statistics', 'pct', 'percent', 'performance_summary', 'pnl', 'profit', 'profitable_trades', 'rate', 'recognition_rate', 'return', 'total_profit', 'total_trades', 'uptime_seconds']

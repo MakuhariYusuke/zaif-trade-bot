@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\safety\anomaly_manager.py
+# hypothesis_version: 6.140.3
+
+[0.02, 0.1, 0.4, 0.6, 0.8, 1.0, 3.0, 5.0, 45.5, 67.8, 150.0, -100, 100, 1000, 3600, '1', 'SKIP_HEAVY_IMPORTS', 'ZTB_SKIP_SKLEARN', 'affected_metrics', 'anomalies_per_hour', 'anomaly_id', 'anomaly_score', 'autoencoder', 'average_confidence', 'confidence', 'cpu_usage', 'description', 'error', 'error_rate', 'features', 'high_confidence', 'isolation_forest', 'low_confidence', 'mean', 'medium_confidence', 'memory_usage', 'message', 'method', 'method_distribution', 'one_class_svm', 'period_hours', 'prediction', 'prophet', 'rbf', 'response_time', 'severity', 'statistical', 'std', 'timestamp', 'total_anomalies', 'type', 'type_distribution', 'window_size', 'z_score']

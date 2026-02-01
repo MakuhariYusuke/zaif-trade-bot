@@ -13,7 +13,7 @@ All data loading should go through this module to ensure consistency.
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Union, cast
+from typing import Any, Dict, Iterator, Optional, Union, cast
 
 import pandas as pd
 
@@ -23,6 +23,17 @@ from ztb.utils.file_utils import safe_json_load
 
 class DataLoader:
     """Unified data loader for ZTB."""
+
+    @staticmethod
+    def _resolve_csv_engine(requested_engine: Optional[str]) -> Optional[str]:
+        """Resolve the CSV engine, preferring pyarrow when available."""
+        if requested_engine:
+            return requested_engine
+        try:
+            import pyarrow  # noqa: F401
+        except Exception:
+            return None
+        return "pyarrow"
 
     @staticmethod
     def load_parquet(file_path: Union[str, Path]) -> pd.DataFrame:
@@ -92,8 +103,12 @@ class DataLoader:
             return pd.read_sql_query(query, conn)
 
     @staticmethod
-    def load_csv(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
+    def load_csv(
+        file_path: Union[str, Path], *, strict: bool = False, **kwargs: Any
+    ) -> pd.DataFrame:
         """Load data from CSV file."""
+        if strict:
+            return DataLoader._load_csv_impl(file_path, **kwargs)
         return cast(
             pd.DataFrame,
             safe_operation(
@@ -105,12 +120,176 @@ class DataLoader:
         )
 
     @staticmethod
+    def load_csv_strict(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
+        """Load data from CSV file and raise on failure."""
+        return DataLoader._load_csv_impl(file_path, **kwargs)
+
+    @staticmethod
+    def load_csv_iter(
+        file_path: Union[str, Path], chunksize: int, **kwargs: Any
+    ) -> Iterator[pd.DataFrame]:
+        """Load CSV data in chunks."""
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"CSV file not found: {file_path}")
+
+        try:
+            return cast(
+                Iterator[pd.DataFrame],
+                pd.read_csv(file_path, chunksize=chunksize, **kwargs),
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to load data from {file_path}: {e}") from e
+
+    @staticmethod
+    def load_csv_optimized(
+        file_path: Union[str, Path],
+        usecols: Optional[list[str]] = None,
+        dtype: Optional[dict[str, Any]] = None,
+        parse_dates: Optional[list[str]] = None,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
+        """Load CSV data with memory optimization."""
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"CSV file not found: {file_path}")
+
+        if dtype is None:
+            dtype = {
+                "close": "float32",
+                "high": "float32",
+                "low": "float32",
+                "open": "float32",
+                "volume": "float32",
+                "qty": "float32",
+                "price": "float32",
+                "rsi": "float32",
+                "sma_short": "float32",
+                "sma_long": "float32",
+                "ADX": "float32",
+                "ATR": "float32",
+                "ATR_simplified": "float32",
+                "BB_Lower": "float32",
+                "BB_Middle": "float32",
+                "BB_Position": "float32",
+                "BB_Upper": "float32",
+                "BB_Width": "float32",
+                "CCI": "float32",
+                "DOW": "float32",
+                "Donchian_Pos_2": "float32",
+                "Donchian_Slope_20": "float32",
+                "Donchian_Width_Rel_20": "float32",
+                "EMACross_Diff": "float32",
+                "EMACross_Signal": "float32",
+                "HV": "float32",
+                "HeikinAshi_Close": "float32",
+                "HeikinAshi_High": "float32",
+                "HeikinAshi_Low": "float32",
+                "HeikinAshi_Open": "float32",
+                "HourOfDay": "int32",
+                "Ichimoku_Chikou": "float32",
+                "Ichimoku_Cloud_Thickness": "float32",
+                "Ichimoku_Composite_Signal": "float32",
+                "Ichimoku_Cross": "float32",
+                "Ichimoku_Diff_Norm": "float32",
+                "Ichimoku_Kijun": "float32",
+                "Ichimoku_Price_Cloud_Distance": "float32",
+                "Ichimoku_Senkou_A": "float32",
+                "Ichimoku_Senkou_B": "float32",
+                "Ichimoku_Tenkan": "float32",
+                "Ichimoku_Trend": "float32",
+                "KAMA": "float32",
+                "Kalman_Estimate": "float32",
+                "Kalman_Residual": "float32",
+                "Kalman_Residual_Norm": "float32",
+                "MACD": "float32",
+                "MFI": "float32",
+                "MinusDI": "float32",
+                "OBV": "float32",
+                "PlusDI": "float32",
+                "PriceVolumeCorr": "float32",
+                "ROC": "float32",
+                "RSI": "float32",
+                "ReturnMA_Medium": "float32",
+                "ReturnMA_Short": "float32",
+                "ReturnStdDev": "float32",
+                "Stochastic": "float32",
+                "Supertrend": "float32",
+                "Supertrend_Direction": "float32",
+                "TEMA": "float32",
+                "VWAP": "float32",
+                "ZScore": "float32",
+                "atr_10": "float32",
+                "ema_5": "float32",
+                "rolling_mean_20": "float32",
+                "win": "int32",
+            }
+
+        header_df = DataLoader.load_csv_strict(file_path, nrows=0)
+        available_columns = list(header_df.columns)
+
+        if dtype:
+            dtype = {
+                key: value
+                for key, value in dtype.items()
+                if key in available_columns
+                and (usecols is None or key in usecols)
+            }
+        else:
+            dtype = None
+
+        if parse_dates is None:
+            parse_dates = [
+                col for col in ["timestamp", "ts"] if col in available_columns
+            ]
+
+        if "memory_map" not in kwargs:
+            kwargs["memory_map"] = True
+        engine = DataLoader._resolve_csv_engine(kwargs.pop("engine", None))
+        read_kwargs = {
+            "usecols": usecols,
+            "dtype": cast(Any, dtype) if dtype else None,
+            "parse_dates": parse_dates,
+            **kwargs,
+        }
+        if engine:
+            try:
+                df = cast(
+                    pd.DataFrame,
+                    pd.read_csv(file_path, engine=engine, **read_kwargs),
+                )
+            except ValueError as exc:
+                message = str(exc).lower()
+                if "engine" not in message and "pyarrow" not in message:
+                    raise
+                df = cast(pd.DataFrame, pd.read_csv(file_path, **read_kwargs))
+        else:
+            df = cast(pd.DataFrame, pd.read_csv(file_path, **read_kwargs))
+
+        if df.empty and kwargs.get("nrows") != 0:
+            raise ValueError(f"Loaded data is empty: {file_path}")
+
+        return df
+
+    @staticmethod
     def _load_csv_impl(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
         """Implementation of CSV data loading."""
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"CSV file not found: {file_path}")
 
+        if "memory_map" not in kwargs:
+            kwargs["memory_map"] = True
+        engine = DataLoader._resolve_csv_engine(kwargs.pop("engine", None))
+        if engine:
+            try:
+                return cast(
+                    pd.DataFrame, pd.read_csv(file_path, engine=engine, **kwargs)
+                )
+            except ValueError as exc:
+                message = str(exc).lower()
+                if "engine" not in message and "pyarrow" not in message:
+                    raise
         return cast(pd.DataFrame, pd.read_csv(file_path, **kwargs))
 
     @staticmethod

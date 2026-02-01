@@ -116,23 +116,48 @@ try:
         @contextmanager
         def _dummy_sync_client(*args, **kwargs):
             """Minimal contextmanager for `websockets.sync.client` used during test collection."""
-            try:
-                yield None
-            finally:
-                pass
+            yield None
 
         # Expose as a simple contextmanager-compatible callable
         mod.client = _dummy_sync_client
         sys.modules["websockets.sync.client"] = mod
 
-    # Ensure 'websockets' is package-like
-    ws = sys.modules.get("websockets")
-    if ws is None or not hasattr(ws, "__path__"):
-        pkg = types.ModuleType("websockets")
-        pkg.__path__ = [str(project_root / "websockets")]
-        sys.modules["websockets"] = pkg
+        # Ensure 'websockets' is package-like
+        ws = sys.modules.get("websockets")
+        if ws is None or not hasattr(ws, "__path__"):
+            pkg = types.ModuleType("websockets")
+            pkg.__path__ = [str(project_root / "websockets")]
+            sys.modules["websockets"] = pkg
+
 except Exception:
     pass
+
+
+# Auto-mark tests based on file path to enforce layered testing (unit/integration/slow)
+# This helps maintain a clear test hierarchy and keeps CI fast by default.
+def pytest_collection_modifyitems(config, items):
+    import pytest
+    from pathlib import Path
+
+    for item in items:
+        p = Path(str(item.fspath))
+        parts = [str(x) for x in p.parts]
+        if "tests" in parts:
+            # Derive layer from immediate subdir under tests (tests/unit, tests/integration, tests/e2e)
+            try:
+                idx = parts.index("tests")
+                layer = parts[idx + 1]
+            except Exception:
+                layer = None
+
+            if layer == "unit":
+                item.add_marker(pytest.mark.unit)
+            elif layer == "integration":
+                item.add_marker(pytest.mark.integration)
+            elif layer == "e2e":
+                item.add_marker(pytest.mark.slow)
+
+
 
 # Final assertive repairs: ensure callbacks submodule exposes required names and
 # that core algorithm symbols exist on the root module. Do this as late as

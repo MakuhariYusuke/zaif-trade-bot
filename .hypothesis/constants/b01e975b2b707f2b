@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\technical_indicators.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.5, 2.0, 50.0, 100, 'atr', 'bb_lower', 'bb_middle', 'bb_position', 'bb_upper', 'close', 'high', 'low', 'macd_histogram', 'macd_line', 'macd_signal', 'momentum', 'rsi', 'stoch_d', 'stoch_k']

@@ -303,9 +303,9 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
         if data_path and Path(data_path).exists():
             try:
-                from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 
-                return load_csv_data(data_path)
+                return DataLoader.load_csv_strict(data_path)
             except Exception as e:
                 logger.warning(f"Failed to load market data from {data_path}: {e}")
 

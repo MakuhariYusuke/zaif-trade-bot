@@ -47,16 +47,25 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
 
 
 def safe_json_dump(
-    data: Any, file_path: Union[str, Path], indent: int = 2, default: Any = None
+    data: Any,
+    file_path: Union[str, Path],
+    indent: int = 2,
+    default: Any = None,
+    ensure_ascii: bool = False,
+    encoding: str = "utf-8",
 ) -> bool:
     """
     Safely dump data to JSON file with error handling.
+
+    Backwards-compatible: accepts `ensure_ascii` and `encoding` kwargs used in callers.
 
     Args:
         data: Data to serialize
         file_path: Path to save the JSON file
         indent: JSON indentation level
         default: Default function for objects that can't be serialized
+        ensure_ascii: Whether to escape non-ASCII characters
+        encoding: File encoding
 
     Returns:
         True if successful, False otherwise
@@ -67,12 +76,15 @@ def safe_json_dump(
             file_path = Path(file_path)
 
         # Ensure parent directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
         write_json(
             file_path,
             data,
             indent=indent,
-            ensure_ascii=False,
+            ensure_ascii=ensure_ascii,
             default=default,
+            encoding=encoding,
         )
         return True
     except Exception as e:

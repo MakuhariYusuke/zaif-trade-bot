@@ -14,7 +14,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.metrics.metrics import calculate_distribution_stats
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 
 
 def load_v434_2_reward_config():
@@ -58,7 +58,7 @@ def run_v434_2_quick_backtest(model_path: str, data_path: str, episodes: int = 1
     reward_config = load_v434_2_reward_config()
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     print(f"Data: {len(df):,} rows")
 
     # 環境作成（Pendulum環境を使用 - v434.2は制御タスク用）

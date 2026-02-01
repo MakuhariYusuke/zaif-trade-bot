@@ -28,6 +28,7 @@ from typing import (
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -65,7 +66,7 @@ from ztb.trading.environment.environment import HeavyTradingEnv  # noqa: E402
 from ztb.trading.environment.utils.config import EnvironmentConfig  # noqa: E402
 from ztb.training.config.ppo_config import PPOConfig, get_ppo_config  # noqa: E402
 from ztb.utils.cli_common import CLIFormatter  # noqa: E402
-from ztb.utils.data_utils import load_csv_data_optimized  # noqa: E402
+from ztb.io.data_loader import DataLoader
 
 
 class TrainingCallback(BaseCallback):
@@ -337,7 +338,7 @@ class HyperparameterOptimizer(ABC):
         if self._data_cache is not None:
             return self._data_cache
 
-        df = load_csv_data_optimized(self.data_path)
+        df = DataLoader.load_csv_optimized(self.data_path)
         df = df.sort_values("timestamp").reset_index(drop=True)
         if self.training_row_limit is not None:
             df = df.tail(self.training_row_limit)
@@ -429,10 +430,8 @@ class HyperparameterOptimizer(ABC):
         buy_pct = _extract_pct("buy_pct")
         sell_pct = _extract_pct("sell_pct")
 
-        balance_penalty = (
-            abs(hold_pct - self.target_action_pct)
-            + abs(buy_pct - self.target_action_pct)
-            + abs(sell_pct - self.target_action_pct)
+        balance_penalty = RewardUtils.calculate_balance_deviation_from_percentages(
+            [hold_pct, buy_pct, sell_pct], self.target_action_pct
         )
         balance_bonus = max(0.0, 100.0 - balance_penalty) / 100.0
 

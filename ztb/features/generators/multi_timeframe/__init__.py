@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 from ztb.features.feature_set_config import get_feature_config
+from ztb.features.generators.multi_timeframe.datetime_utils import (
+    safe_to_datetime_series,
+)
 from ztb.features.generators.multi_timeframe.config import MultiTimeframeConfig
 from ztb.features.generators.multi_timeframe.data_pipeline import (
     MultiTimeframeDataPipeline,
@@ -126,7 +129,9 @@ class MultiTimeframeFeatureSystem:
                     raise ValueError("No timestamp column found")
 
             if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
-                df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+                df["timestamp"] = safe_to_datetime_series(
+                    df["timestamp"], errors="coerce"
+                )
 
             df = df.dropna(subset=["timestamp"])
             df = df.sort_values("timestamp").reset_index(drop=True)

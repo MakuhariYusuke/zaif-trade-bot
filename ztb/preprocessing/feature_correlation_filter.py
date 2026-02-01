@@ -15,7 +15,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 
 from ztb.analysis.common.plot_utils import setup_plot_style, save_plot
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import save_csv_data
 from ztb.utils.errors import safe_operation
 from ztb.utils.logging_utils import get_logger
@@ -267,7 +267,7 @@ def process_dataset(
         Processing report
     """
     LOGGER.info(f"Loading dataset from {input_path}")
-    df = load_csv_data(input_path)
+    df = DataLoader.load_csv_strict(input_path)
 
     # Identify feature columns
     if feature_prefixes:

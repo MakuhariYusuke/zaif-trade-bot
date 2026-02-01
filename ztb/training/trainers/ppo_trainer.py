@@ -234,7 +234,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             import pandas as pd
 
             from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-            from ztb.utils.data_utils import load_csv_data_optimized
+            from ztb.io.data_loader import DataLoader
 
             # Load DataFrame if not provided
             if df is None:
@@ -242,7 +242,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 if not data_path:
                     self.logger.warning("No data_path in config, skipping schema save")
                     return
-                df = load_csv_data_optimized(data_path)
+                df = DataLoader.load_csv_optimized(data_path)
 
             # Auto-detect feature columns (exclude meta columns)
             exclude_cols = {

@@ -24,6 +24,7 @@ try:
     from stable_baselines3.common.vec_env import DummyVecEnv
 
     # Import environment and data handling
+    from ztb.io.data_loader import DataLoader
     from ztb.trading.environment import HeavyTradingEnv
     from ztb.trading.environment.utils.config import EnvironmentConfig
     from ztb.utils.logging_utils import get_logger
@@ -97,7 +98,7 @@ def run_full_training():
         # Load data
         print("📊 Loading trading data...")
         data_path = "data/btc_jpy_real_dataset.csv"
-        df = pd.read_csv(data_path)
+        df = DataLoader.load_csv_strict(data_path)
         print(f"Loaded {len(df):,} rows of data")
 
         # Create environment config

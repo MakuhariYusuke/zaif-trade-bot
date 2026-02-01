@@ -1,13 +1,116 @@
 #!/usr/bin/env python3
 """
 Data loading utilities for consistent data handling across the codebase.
+
+Deprecated: Prefer ztb.io.data_loader.DataLoader for CSV/JSON/Parquet loading and
+data handling utilities. This module remains for backward compatibility and
+will be removed after legacy callers are migrated.
 """
 
 import logging
+import os
+import warnings
 from pathlib import Path
 from typing import Any, Iterator, Literal, Optional, Union, cast
 
 import pandas as pd
+
+from ztb.io.data_loader import DataLoader
+from ztb.utils.signal_utils import suppress_signals
+
+logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "ztb.utils.data_utils is deprecated; prefer ztb.io.data_loader.DataLoader "
+    "and dedicated utilities in ztb.io.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+
+def load_csv_data_cached(
+    file_path: str | Path,
+    force_refresh: bool = False,
+    cache_format: Literal["feather", "parquet"] = "feather",
+    **kwargs: Any
+) -> pd.DataFrame:
+    """
+    Load CSV data with caching to avoid repeated timestamp parsing.
+    
+    This function creates a cached version of the CSV file in feather/parquet format
+    with timestamps already converted. This avoids pandas' C extension issues on Windows.
+    
+    Args:
+        file_path: Path to the CSV file
+        force_refresh: Force recreation of cache
+        cache_format: Cache file format ('feather' or 'parquet')
+        **kwargs: Additional arguments passed to pd.read_csv
+        
+    Returns:
+        Loaded DataFrame with timestamps already converted
+    """
+    warnings.warn(
+        "load_csv_data_cached is deprecated; use ztb.io.data_loader.DataLoader "
+        "directly (or a cache-specific utility).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Data file not found: {file_path}")
+    
+    # Determine cache path (append, not replace suffix)
+    cache_ext = f".cached.{cache_format}"
+    cache_path = file_path.parent / (file_path.name + cache_ext)
+    
+    # Check if cache exists and is newer than source
+    use_cache = (
+        not force_refresh
+        and cache_path.exists()
+        and cache_path.stat().st_mtime > file_path.stat().st_mtime
+    )
+    
+    if use_cache:
+        try:
+            logger.info(f"Loading cached data from {cache_path}")
+            if cache_format == "feather":
+                df = pd.read_feather(cache_path)
+            else:
+                df = pd.read_parquet(cache_path)
+            logger.info(f"✅ Cache loaded: {df.shape}")
+            return df
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}, regenerating...")
+    
+    # Load from CSV and create cache
+    logger.info(f"Loading CSV and creating cache: {file_path}")
+    
+    try:
+        policy = os.getenv("ZTB_SIGINT_POLICY", "default")
+        with suppress_signals(policy=policy, enabled=True):
+            # Load CSV
+            df = cast(pd.DataFrame, DataLoader.load_csv(file_path, **kwargs))
+
+            # Convert timestamp if present
+            if "timestamp" in df.columns and not pd.api.types.is_datetime64_any_dtype(
+                df["timestamp"]
+            ):
+                logger.info("Converting timestamps...")
+                # Use basic pd.to_datetime in a controlled environment
+                df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+
+            # Save to cache
+            logger.info(f"Saving cache to {cache_path}")
+            if cache_format == "feather":
+                df.to_feather(cache_path)
+            else:
+                df.to_parquet(cache_path, index=False)
+
+            logger.info(f"✅ Cache created: {cache_path}")
+            return df
+
+    except Exception as e:
+        raise ValueError(f"Failed to load/cache data from {file_path}: {e}") from e
 
 
 def optimize_dataframe_memory(df: pd.DataFrame) -> pd.DataFrame:
@@ -20,6 +123,12 @@ def optimize_dataframe_memory(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Memory-optimized DataFrame
     """
+    warnings.warn(
+        "optimize_dataframe_memory is deprecated; prefer specialized utilities "
+        "or DataLoader.load_csv_optimized where appropriate.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     df_optimized = df.copy()
 
     for col in df_optimized.select_dtypes(include=["int64"]).columns:
@@ -58,6 +167,12 @@ def safe_merge_dataframes(
     Returns:
         Merged DataFrame
     """
+    warnings.warn(
+        "safe_merge_dataframes is deprecated; prefer dedicated merge utilities "
+        "or pandas operations in-place.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     try:
         result = pd.merge(left, right, on=on, how=how, **kwargs)
         return optimize_dataframe_memory(result)
@@ -80,17 +195,41 @@ def load_csv_data(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
         FileNotFoundError: If the file doesn't exist
         ValueError: If the file cannot be loaded
     """
+    warnings.warn(
+        "load_csv_data is deprecated; use ztb.io.data_loader.DataLoader.load_csv",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     file_path = Path(file_path)
     if not file_path.exists():
         raise FileNotFoundError(f"Data file not found: {file_path}")
 
     try:
-        df = cast(pd.DataFrame, pd.read_csv(file_path, **kwargs))
-        if df.empty:
+        df = cast(pd.DataFrame, DataLoader.load_csv(file_path, **kwargs))
+        if df.empty and kwargs.get("nrows") != 0:
             raise ValueError(f"Loaded data is empty: {file_path}")
         return df
     except Exception as e:
         raise ValueError(f"Failed to load data from {file_path}: {e}") from e
+
+
+def load_csv_data_strict(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
+    """
+    Load CSV data and raise on failure.
+
+    Args:
+        file_path: Path to the CSV file
+        **kwargs: Additional arguments passed to pd.read_csv
+
+    Returns:
+        Loaded DataFrame
+    """
+    warnings.warn(
+        "load_csv_data_strict is deprecated; use ztb.io.data_loader.DataLoader.load_csv_strict",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return DataLoader.load_csv_strict(file_path, **kwargs)
 
 
 def load_csv_data_iter(
@@ -111,17 +250,12 @@ def load_csv_data_iter(
         FileNotFoundError: If the file doesn't exist
         ValueError: If the file cannot be loaded
     """
-    file_path = Path(file_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Data file not found: {file_path}")
-
-    try:
-        return cast(
-            Iterator[pd.DataFrame],
-            pd.read_csv(file_path, chunksize=chunksize, **kwargs),
-        )
-    except Exception as e:
-        raise ValueError(f"Failed to load data from {file_path}: {e}") from e
+    warnings.warn(
+        "load_csv_data_iter is deprecated; use ztb.io.data_loader.DataLoader.load_csv_iter",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return DataLoader.load_csv_iter(file_path, chunksize, **kwargs)
 
 
 def load_csv_data_optimized(
@@ -147,113 +281,18 @@ def load_csv_data_optimized(
         FileNotFoundError: If the file doesn't exist
         ValueError: If the file cannot be loaded
     """
-    file_path = Path(file_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Data file not found: {file_path}")
-
-    try:
-        # Default dtype optimizations for common trading data columns
-        if dtype is None:
-            dtype = {
-                # Price and volume data - use float32 for memory efficiency
-                "close": "float32",
-                "high": "float32",
-                "low": "float32",
-                "open": "float32",
-                "volume": "float32",
-                "qty": "float32",
-                "price": "float32",
-                # Technical indicators - float32 is usually sufficient
-                "rsi": "float32",
-                "sma_short": "float32",
-                "sma_long": "float32",
-                "ADX": "float32",
-                "ATR": "float32",
-                "ATR_simplified": "float32",
-                "BB_Lower": "float32",
-                "BB_Middle": "float32",
-                "BB_Position": "float32",
-                "BB_Upper": "float32",
-                "BB_Width": "float32",
-                "CCI": "float32",
-                "DOW": "float32",
-                "Donchian_Pos_2": "float32",
-                "Donchian_Slope_20": "float32",
-                "Donchian_Width_Rel_20": "float32",
-                "EMACross_Diff": "float32",
-                "EMACross_Signal": "float32",
-                "HV": "float32",
-                "HeikinAshi_Close": "float32",
-                "HeikinAshi_High": "float32",
-                "HeikinAshi_Low": "float32",
-                "HeikinAshi_Open": "float32",
-                "HourOfDay": "int32",
-                "Ichimoku_Chikou": "float32",
-                "Ichimoku_Cloud_Thickness": "float32",
-                "Ichimoku_Composite_Signal": "float32",
-                "Ichimoku_Cross": "float32",
-                "Ichimoku_Diff_Norm": "float32",
-                "Ichimoku_Kijun": "float32",
-                "Ichimoku_Price_Cloud_Distance": "float32",
-                "Ichimoku_Senkou_A": "float32",
-                "Ichimoku_Senkou_B": "float32",
-                "Ichimoku_Tenkan": "float32",
-                "Ichimoku_Trend": "float32",
-                "KAMA": "float32",
-                "Kalman_Estimate": "float32",
-                "Kalman_Residual": "float32",
-                "Kalman_Residual_Norm": "float32",
-                "MACD": "float32",
-                "MFI": "float32",
-                "MinusDI": "float32",
-                "OBV": "float32",
-                "PlusDI": "float32",
-                "PriceVolumeCorr": "float32",
-                "ROC": "float32",
-                "RSI": "float32",
-                "ReturnMA_Medium": "float32",
-                "ReturnMA_Short": "float32",
-                "ReturnStdDev": "float32",
-                "Stochastic": "float32",
-                "Supertrend": "float32",
-                "Supertrend_Direction": "float32",
-                "TEMA": "float32",
-                "VWAP": "float32",
-                "ZScore": "float32",
-                "atr_10": "float32",
-                "ema_5": "float32",
-                "rolling_mean_20": "float32",
-                # Integer columns
-                "win": "int32",
-            }
-
-        # Read header to determine available columns for parse_dates
-        header_df = pd.read_csv(file_path, nrows=0)
-        available_columns = list(header_df.columns)
-
-        # Default parse_dates for timestamp columns
-        if parse_dates is None:
-            parse_dates = [
-                col for col in ["timestamp", "ts"] if col in available_columns
-            ]
-
-        df = cast(
-            pd.DataFrame,
-            pd.read_csv(
-                file_path,
-                usecols=usecols,
-                dtype=cast(Any, dtype),
-                parse_dates=parse_dates,
-                **kwargs,
-            ),
-        )
-
-        if df.empty:
-            raise ValueError(f"Loaded data is empty: {file_path}")
-
-        return df
-    except Exception as e:
-        raise ValueError(f"Failed to load optimized data from {file_path}: {e}") from e
+    warnings.warn(
+        "load_csv_data_optimized is deprecated; use ztb.io.data_loader.DataLoader.load_csv_optimized",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return DataLoader.load_csv_optimized(
+        file_path,
+        usecols=usecols,
+        dtype=dtype,
+        parse_dates=parse_dates,
+        **kwargs,
+    )
 
 
 logger = logging.getLogger(__name__)

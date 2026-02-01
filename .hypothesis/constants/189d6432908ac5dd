@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\optimization\parallel\window_evaluator.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1000, 3600, 'MlpPolicy', 'algorithm_factory', 'algorithm_params', 'avg_sharpe', 'avg_test_roi', 'avg_val_roi', 'env_factory', 'error_count', 'policy', 'std_sharpe', 'std_test_roi', 'test_data', 'timesteps', 'total_windows', 'train_data', 'val_data', 'window_id']

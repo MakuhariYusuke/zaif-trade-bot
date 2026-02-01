@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\signal_quality\signal_quality_analyzer.py
+# hypothesis_version: 6.140.3
+
+[-0.1, -0.01, 0.0, 0.01, 0.02, 0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0, 1.5, 1000, 'action', 'buy', 'close', 'confidence', 'drawdown_impact', 'f1_score', 'hold', 'long', 'market_adaptation', 'market_alignment', 'performance', 'precision', 'recall', 'recommendations', 'risk_metrics', 'sell', 'short', 'signal_distribution', 'signal_type', 'summary', 'timestamp', 'total_signals', 'volatility_alignment', 'volume', 'volume_confirmation']

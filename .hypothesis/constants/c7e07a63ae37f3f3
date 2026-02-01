@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\reporting\generators\analysis_rich.py
+# hypothesis_version: 6.140.3
+
+['\n        </ul>', '\n</body>\n</html>\n', '    </div>', '%Y%m%d_%H%M%S', '1.0', 'analysis_report.html', 'behavioral', 'html', 'json', 'markdown', 'metadata', 'performance', 'report_type', 'results', 'risk', 'templates', 'timestamp', 'unified_analysis', 'version', 'xml']

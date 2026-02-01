@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\reporting\services\training_reports.py
+# hypothesis_version: 6.140.3
+
+['%Y%m%d_%H%M%S', 'algorithm', 'metadata', 'model_name', 'reports', 'unknown']

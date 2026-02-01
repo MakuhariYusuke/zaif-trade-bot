@@ -228,16 +228,16 @@ def test_balance_penalty_calculation():
             total = len(recent_actions)
 
             if total > 0:
-                buy_ratio = buy_count / total
-                sell_ratio = sell_count / total
-                hold_ratio = hold_count / total
-                imbalance = abs(buy_ratio - sell_ratio)
+                    buy_ratio = buy_count / total
+                    sell_ratio = sell_count / total
+                    hold_ratio = hold_count / total
+                    from ztb.trading.environment.components.rewards.utils import RewardUtils
+                    imbalance = RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
 
-                print(
-                    f"Step {step:2d}: BUY={buy_ratio:.2%} SELL={sell_ratio:.2%} HOLD={hold_ratio:.2%} | "
-                    f"Imbalance={imbalance:.2%} | Reward={reward:.4f}"
-                )
-
+                    print(
+                        f"Step {step:2d}: BUY={buy_ratio:.2%} SELL={sell_ratio:.2%} HOLD={hold_ratio:.2%} | "
+                        f"Imbalance={imbalance:.2%} | Reward={reward:.4f}"
+                    )
     print("\n✓ TEST 3 PASSED: balance_penalty is being calculated\n")
     return True
 

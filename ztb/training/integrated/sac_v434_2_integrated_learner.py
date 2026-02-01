@@ -15,6 +15,7 @@ import pandas as pd
 from ztb.analysis.features.feature_correlation_analyzer import (
     FeatureCorrelationAnalyzer,
 )
+from ztb.io.data_loader import DataLoader
 from ztb.multimodal.features.news_feature_processor import NewsFeatureProcessor
 from ztb.trading.cost.venue_transaction_cost_manager import VenueTransactionCostManager
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
@@ -328,12 +329,12 @@ class SACv434IntegratedLearner:
 
                     # 価格データとの統合
                     integrated_df = self.news_processor.integrate_with_price_features(
-                        news_features_df, pd.read_csv(price_data_path)
+                        news_features_df, DataLoader.load_csv_strict(price_data_path)
                     )
 
                     # ニュース影響分析
                     news_impact_df = self.news_processor.create_news_impact_features(
-                        news_features_df, pd.read_csv(price_data_path)
+                        news_features_df, DataLoader.load_csv_strict(price_data_path)
                     )
 
                     logger.info(
@@ -352,7 +353,7 @@ class SACv434IntegratedLearner:
                 logger.info("ニュースデータなし - 価格特徴量のみを使用")
 
             # ニュースデータがない場合でも価格データを返す
-            price_df = pd.read_csv(price_data_path)
+            price_df = DataLoader.load_csv_strict(price_data_path)
             return {
                 "integrated_data": price_df,
                 "news_features": None,

@@ -58,7 +58,9 @@ def normalize_ohlcv_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize OHLCV column names and order."""
     df = df.copy()
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(-1)
+        # yfinance 0.2.37+ returns MultiIndex like ('Open', 'BTC-JPY')
+        # Use level 0 (column names) not level -1 (ticker)
+        df.columns = df.columns.get_level_values(0)
 
     df.columns = [str(col).strip().lower().replace(" ", "_") for col in df.columns]
 
@@ -171,22 +173,38 @@ def fetch_yahoo_ohlcv(
     """Fetch OHLCV data from Yahoo Finance via yfinance."""
     import yfinance as yf
 
-    if start is not None or end is not None:
-        df = yf.download(
-            ticker,
-            start=start,
-            end=end,
-            interval=interval,
-            progress=False,
-            auto_adjust=False,
-        )
-    else:
-        df = yf.download(
-            ticker,
-            interval=interval,
-            period=period,
-            progress=False,
-            auto_adjust=False,
-        )
-
-    return df
+    try:
+        if start is not None or end is not None:
+            df = yf.download(
+                ticker,
+                start=start,
+                end=end,
+                interval=interval,
+                progress=False,
+                auto_adjust=False,
+            )
+        else:
+            df = yf.download(
+                ticker,
+                interval=interval,
+                period=period,
+                progress=False,
+                auto_adjust=False,
+            )
+        
+        # 空データチェック
+        if df is None or df.empty:
+            print("[Yahoo] Warning: Empty data returned")
+            return pd.DataFrame()
+        
+        # マルチインデックスの場合はフラット化
+        # yfinance 0.2.37+ returns MultiIndex like ('Open', 'BTC-JPY')
+        # Use level 0 (column names) not level -1 (ticker)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        
+        return df
+        
+    except Exception as e:
+        print(f"[Yahoo] Error fetching data: {e}")
+        return pd.DataFrame()

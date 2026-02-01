@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\multi_timeframe\datetime_utils.py
+# hypothesis_version: 6.140.3
+
+[1000000000.0, 1000000000000.0, 1000000000000000.0, 1000, 1000000000, '+00:00', '0', '1', 'UTC', 'Z', 'ZTB_SAFE_DATETIME', 'coerce', 'nt', 'raise']

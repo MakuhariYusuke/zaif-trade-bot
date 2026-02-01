@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 
+from ztb.io.data_loader import DataLoader
 from ztb.utils.observability import generate_correlation_id, setup_observability
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.run_metadata import RunMetadata
@@ -127,7 +128,7 @@ class BacktestEngine:
                     raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
 
             print(f"Loading data from: {data_path}")
-            data = pd.read_csv(data_path)
+            data = DataLoader.load_csv_strict(data_path)
 
             # Ensure timestamp column exists and is datetime
             if "timestamp" not in data.columns:

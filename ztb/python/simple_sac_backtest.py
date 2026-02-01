@@ -13,7 +13,7 @@ from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.trading.environment.constants import DEFAULT_TRANSACTION_COST
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 
 
 def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
@@ -26,7 +26,7 @@ def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10)
     print(f"{'='*80}\n")
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     print(f"Data: {len(df):,} rows")
 
     # 環境作成（HeavyTradingEnv直接使用）

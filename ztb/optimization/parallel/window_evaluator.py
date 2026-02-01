@@ -33,7 +33,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from stable_baselines3 import SAC
+try:
+    from stable_baselines3 import SAC  # type: ignore
+except Exception:  # pragma: no cover - defensive fallback for test environments
+    SAC = None  # type: ignore
 
 from ztb.evaluation.unified_evaluation import UnifiedEvaluator
 from ztb.evaluation.walk_forward.types import TimeSeriesWindow, WindowPerformance

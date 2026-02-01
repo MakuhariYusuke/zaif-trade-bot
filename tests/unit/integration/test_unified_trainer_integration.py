@@ -21,6 +21,8 @@ def create_test_config():
         "algorithm": "sac",
         "model_name": "test_sac_v442",
         "training": {
+            "model_name": "test_sac_v442",
+            "algorithm": "sac",
             "total_timesteps": 1000,
             "learning_rate": 0.001,
             "batch_size": 64,

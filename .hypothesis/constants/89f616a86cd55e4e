@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\v4xx_unified_trainer.py
+# hypothesis_version: 6.140.3
+
+[1.5, 1000, 3600, '--episodes', '--save-config', '--total-timesteps', '--validate-only', '--version', 'MlpPolicy', '__main__', '_metadata', 'algorithm', 'algorithm_params', 'analyze_results', 'checkpoint_dir', 'config', 'config_path', 'config_unified.json', 'converted_at', 'enable_normalization', 'environment', 'episodes', 'evaluation', 'max_episode_length', 'max_episode_steps', 'max_history', 'model_name', 'normalization_method', 'optimizer_features', 'original_version', 'outlier_threshold', 'policy', 'robust', 'store_true', 'total_timesteps', 'training', 'unified_trainer', 'validate_config', 'zstd']

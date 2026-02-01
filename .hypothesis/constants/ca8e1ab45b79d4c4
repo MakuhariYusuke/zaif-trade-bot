@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\distributed\distributed_training.py
+# hypothesis_version: 6.140.3
+
+[0.1, 1800, '12345', '127.0.0.1', 'DIST_BACKEND', 'INIT_METHOD', 'MASTER_ADDR', 'MASTER_PORT', 'MAX', 'MEAN', 'MIN', 'RANK', 'SUM', 'Timeout', 'WORLD_SIZE', 'backend', 'cpu', 'cuda', 'distributed_config', 'epoch', 'gloo', 'is_distributed', 'model_state_dict', 'nccl', 'optimizer_state_dict', 'rank', 'scheduler_state_dict', 'world_size']

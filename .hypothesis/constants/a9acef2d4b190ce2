@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_config_schema.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 0.5, 1.0, 2.0, 5.0, 100, 200, '*.yaml', '*.yml', 'RewardConfigSchema', 'action_smoothing', 'balance_penalty', 'calmar_bonus_scale', 'compare_configs', 'confidence_penalty', 'configs/rewards', 'consistency_penalty', 'consistency_weight', 'curriculum_learning', 'curriculum_stage', 'custom_reward_params', 'description', 'enabled', 'entropy_bonus', 'forced_balance', 'inventory_window', 'load_reward_config', 'metadata', 'name', 'position_soft_cap', 'profit_optimized', 'profit_weight', 'r', 'reward_clip_max', 'reward_clip_min', 'reward_clip_value', 'reward_scale', 'risk_weight', 'sharpe_bonus_scale', 'simple', 'sortino_bonus_scale', 'trade_cooldown_steps', 'trading_bonus', 'trading_focused', 'ultra_profit', 'use_simple_reward', 'utf-8', 'volatility_window']

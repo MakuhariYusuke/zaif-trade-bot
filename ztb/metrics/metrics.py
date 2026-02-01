@@ -14,12 +14,21 @@ This module provides comprehensive trading performance metrics with:
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from scipy import stats
+
+_SKIP_SCIPY = os.getenv("SKIP_HEAVY_IMPORTS") == "1" or os.getenv("ZTB_SKIP_SCIPY") == "1"
+if _SKIP_SCIPY:
+    stats = None
+else:
+    try:
+        from scipy import stats
+    except BaseException:
+        stats = None
 
 # Trading constants
 from ztb.trading.constants import (

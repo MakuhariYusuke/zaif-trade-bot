@@ -2,7 +2,24 @@ from typing import List
 
 
 class RewardUtils:
-    """Utility functions for reward calculations to reduce duplication."""
+    """Utility functions for reward calculations to reduce duplication.
+
+    Purpose:
+    - Centralize balance-related calculations (deviation, buy/sell diff) to ensure
+      all modules use a consistent definition and behavior (including tolerances).
+    - Provide small helpers for common reward shaping computations (activity bonus,
+      position penalties, trading bonuses).
+
+    Usage guidance:
+    - Prefer `calculate_balance_penalty` for penalties driven by target ratios and
+      tolerances used by the environment and calculators.
+    - Use `calculate_buy_sell_diff` where a simple absolute imbalance metric is
+      sufficient (e.g., monitoring, quick analysis scripts).
+
+    Note:
+    - Keep this module dependency-free (no heavy imports) so it can be used in
+      unit tests and analysis scripts safely.
+    """
 
     @staticmethod
     def calculate_pnl_reward(pnl: float, scaling: float = 1.0) -> float:
@@ -35,6 +52,47 @@ class RewardUtils:
                 balance_penalty += penalty_coeff * excess_deviation
 
         return balance_penalty
+
+    @staticmethod
+    def calculate_balance_deviation_from_ratios(
+        ratios: List[float], target_ratios: List[float]
+    ) -> float:
+        """Calculate sum of absolute deviations between action ratios and targets.
+
+        Ratios are expected in 0..1. target_ratios may be shorter; comparison stops
+        at the shortest length.
+        """
+        if not ratios or not target_ratios:
+            return 0.0
+        s = 0.0
+        for i, r in enumerate(ratios):
+            if i >= len(target_ratios):
+                break
+            s += abs(r - target_ratios[i])
+        return s
+
+    @staticmethod
+    def calculate_balance_deviation_from_percentages(
+        percentages: List[float], target_pct: float
+    ) -> float:
+        """Calculate sum of absolute deviations between percentages and a target percentage.
+
+        Percentages are expected in the same scale as target_pct (e.g. 0..100).
+        """
+        if not percentages:
+            return 0.0
+        return sum(abs(p - target_pct) for p in percentages)
+
+    @staticmethod
+    def calculate_buy_sell_diff(buy: float, sell: float) -> float:
+        """Return absolute difference between buy and sell ratios.
+
+        Centralizes the simple BUY/SELL imbalance metric used in several places.
+        """
+        try:
+            return abs(buy - sell)
+        except Exception:
+            return 0.0
 
     @staticmethod
     def calculate_trading_bonus(

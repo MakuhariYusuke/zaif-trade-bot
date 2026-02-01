@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\seed_manager.py
+# hypothesis_version: 6.140.3
+
+[':4096:8', 'HAS_TORCH', 'allow_tf32', 'big', 'matmul', 'torch']

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\comparative\benchmark_comparison.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.02, 0.3, 0.7, 0.8, 0.98, 1.0, 1.5, 180, '+', '--benchmark-files', '--output-dir', '--risk-free-rate', '--strategy-file', 'Alpha', 'Benchmark', 'Beta', 'Cumulative Return', 'Date', 'Excess Returns', 'Rolling Alpha', 'Rolling Beta', 'Strategy', 'Tracking Error', '__main__', 'alpha', 'avg_alpha', 'benchmark_name', 'best_benchmark', 'beta', 'comparisons', 'information_ratio', 'round', 'strategy_performance', 'summary_stats', 'tab10', 'top', 'tracking_error', 'white', 'worst_benchmark', 'ベンチマークリターンファイル', 'ベンチマーク比較分析', '出力ディレクトリ', '戦略リターンファイル', '無リスク金利']

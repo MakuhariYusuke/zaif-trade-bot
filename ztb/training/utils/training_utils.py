@@ -19,7 +19,7 @@ from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
 from ztb.training.constants import DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM, DEFAULT_VERBOSE
 from ztb.training.utils.parallel_utils import DataLoaderParallelizer, default_processor
 from ztb.cache.memory_cache import default_memory_manager
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 
 
 def setup_project_path() -> Path:
@@ -135,7 +135,7 @@ def print_training_start(
 
 def load_training_data(csv_path: str = "ml-dataset-enhanced.csv") -> pd.DataFrame:
     """Load and preprocess training data"""
-    df = load_csv_data(csv_path)
+    df = DataLoader.load_csv_strict(csv_path)
     df = df.sort_values("timestamp").reset_index(drop=True)
     return df
 

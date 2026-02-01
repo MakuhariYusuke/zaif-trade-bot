@@ -12,7 +12,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 
 
 def run_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
@@ -25,7 +25,7 @@ def run_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
     print(f"{'='*80}\n")
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     print(f"Data: {len(df):,} rows")
 
     # 環境作成（スキーマベース）

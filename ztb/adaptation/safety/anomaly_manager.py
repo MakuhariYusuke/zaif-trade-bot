@@ -4,6 +4,7 @@ Anomaly Detection Manager
 """
 
 import logging
+import os
 import threading
 import time
 from collections import defaultdict
@@ -13,13 +14,12 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
 
 from ..monitoring.safety import SafetyManager
 from .types import AnomalyType, SafetyLevel
 
 logger = logging.getLogger(__name__)
+_SKIP_SKLEARN = os.getenv("SKIP_HEAVY_IMPORTS") == "1" or os.getenv("ZTB_SKIP_SKLEARN") == "1"
 
 
 class AnomalyDetectionMethod(Enum):
@@ -97,6 +97,12 @@ class AnomalyDetectionManager:
     ):
         self.safety_manager = safety_manager
         self.config = config or AnomalyConfig()
+        if _SKIP_SKLEARN:
+            self.config.enabled_methods = [
+                method
+                for method in self.config.enabled_methods
+                if method == AnomalyDetectionMethod.STATISTICAL
+            ]
 
         # 検知器の初期化
         self.detectors: Dict[AnomalyDetectionMethod, Any] = {}
@@ -200,11 +206,20 @@ class AnomalyDetectionManager:
         try:
             for method in self.config.enabled_methods:
                 if method == AnomalyDetectionMethod.ISOLATION_FOREST:
+                    try:
+                        from sklearn.ensemble import IsolationForest
+                    except Exception as e:
+                        logger.warning("IsolationForest unavailable: %s", e)
+                        continue
                     self.detectors[method] = IsolationForest(
                         contamination=self.config.ml_contamination, random_state=42
                     )
                 elif method == AnomalyDetectionMethod.ONE_CLASS_SVM:
-                    from sklearn.svm import OneClassSVM
+                    try:
+                        from sklearn.svm import OneClassSVM
+                    except Exception as e:
+                        logger.warning("OneClassSVM unavailable: %s", e)
+                        continue
 
                     self.detectors[method] = OneClassSVM(
                         nu=self.config.ml_contamination, kernel="rbf"
@@ -334,6 +349,11 @@ class AnomalyDetectionManager:
 
             # スケーリング
             if "isolation_forest" not in self.scalers:
+                try:
+                    from sklearn.preprocessing import StandardScaler
+                except Exception as e:
+                    logger.warning("StandardScaler unavailable: %s", e)
+                    return anomalies
                 self.scalers["isolation_forest"] = StandardScaler()
                 X_scaled = self.scalers["isolation_forest"].fit_transform(X)
             else:

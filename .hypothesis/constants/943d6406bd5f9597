@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\global_market_v456.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.001, 0.1, 0.5, 1.0, 10.0, 155.0, -1000, -100, 100, 1000, 8900, 9000, 9100, 10000, 57900, 58000, 58100, 100000, '1min', '2025-01-10 10:00', 'UTC', '__main__', 'close', 'global_flag_return', 'global_flag_spread', 'global_return_1m', 'global_return_5m', 'global_spread', 'global_stale_flag', 'global_usdt_premium', 'global_vol_1m', 'global_vol_ratio', 'high', 'low', 'open', 'volume']

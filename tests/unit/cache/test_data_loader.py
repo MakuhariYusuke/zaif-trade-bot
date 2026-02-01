@@ -9,22 +9,22 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from ztb.cache.data_loader import DataLoader
+from ztb.cache.data_loader import CacheDataLoader
 
 
 class TestDataLoader:
-    """Test cases for DataLoader class."""
+    """Test cases for CacheDataLoader class."""
 
     def test_init(self):
         """Test DataLoader initialization."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            loader = DataLoader(cache_dir=tmp_dir)
+            loader = CacheDataLoader(cache_dir=tmp_dir)
             assert loader.cache_dir == Path(tmp_dir)
             assert loader.cache_dir.exists()
 
     def test_init_default_cache_dir(self):
         """Test DataLoader with default cache directory."""
-        loader = DataLoader()
+        loader = CacheDataLoader()
         assert loader.cache_dir == Path("data/cache")
         # Don't check exists() as it may not exist in test environment
 
@@ -39,7 +39,7 @@ class TestDataLoader:
         with open(cache_file, "wb") as f:
             pickle.dump(test_df, f)
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         def mock_load_func():
             return pd.DataFrame({"new": [5, 6]})
@@ -54,7 +54,7 @@ class TestDataLoader:
         cache_dir = tmp_path / "cache"
         cache_dir.mkdir()
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         test_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -80,7 +80,7 @@ class TestDataLoader:
         with open(cache_file, "wb") as f:
             f.write(b"corrupted data")
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         test_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -97,7 +97,7 @@ class TestDataLoader:
         """Test load_with_cache when safe_operation fails."""
         mock_safe_operation.return_value = pd.DataFrame()
 
-        loader = DataLoader()
+        loader = CacheDataLoader()
 
         def mock_load_func():
             return pd.DataFrame({"col1": [1, 2]})
@@ -113,7 +113,7 @@ class TestDataLoader:
         cache_dir = tmp_path / "cache"
         cache_dir.mkdir()
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         loaders = {
             "key1": lambda: pd.DataFrame({"a": [1]}),
@@ -131,7 +131,7 @@ class TestDataLoader:
         """Test load_multiple when safe_operation fails."""
         mock_safe_operation.return_value = {}
 
-        loader = DataLoader()
+        loader = CacheDataLoader()
 
         loaders = {"key1": lambda: pd.DataFrame({"a": [1]})}
 
@@ -152,7 +152,7 @@ class TestDataLoader:
         cache_file1.write_text("data1")
         cache_file2.write_text("data2")
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         loader.clear_cache("key1")
 
@@ -170,7 +170,7 @@ class TestDataLoader:
         cache_file1.write_text("data1")
         cache_file2.write_text("data2")
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         loader.clear_cache()
 
@@ -187,7 +187,7 @@ class TestDataLoader:
         (cache_dir / "key2.pkl").write_text("data2")
         (cache_dir / "not_cache.txt").write_text("not cache")  # Non-pkl file
 
-        loader = DataLoader(cache_dir=str(cache_dir))
+        loader = CacheDataLoader(cache_dir=str(cache_dir))
 
         cached_keys = loader.list_cached()
 

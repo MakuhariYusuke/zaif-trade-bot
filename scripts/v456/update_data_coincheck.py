@@ -54,6 +54,8 @@ class CoinCheckDataFetcher:
         self.pair = pair
         self.rate_limit_delay = rate_limit_delay
         self.session = requests.Session()
+        # タイムアウト設定（DNS解決とデータ取得）
+        self.session.timeout = (5, 10)  # (connect timeout, read timeout)
     
     def fetch_ohlc_from_trades(
         self,

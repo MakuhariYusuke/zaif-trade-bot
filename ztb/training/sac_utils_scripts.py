@@ -30,6 +30,7 @@ from ztb.utils.path_utils import get_project_root
 project_root = get_project_root()
 
 from ztb.utils.logging_utils import get_logger
+from ztb.io.data_loader import DataLoader
 
 logger = get_logger(__name__)
 
@@ -138,9 +139,7 @@ class SACUtilities:
             validation_results["total_files"] += 1
 
             try:
-                import pandas as pd
-
-                df = pd.read_csv(data_file)
+                df = DataLoader.load_csv_strict(data_file)
 
                 file_info = {
                     "filename": data_file.name,

@@ -1,5 +1,5 @@
 """
-DataLoader: Unified data loading with caching.
+CacheDataLoader: Unified data loading with caching.
 
 Provides a common interface for loading data with automatic caching.
 Enhanced with TTLCache memory management integration.
@@ -16,7 +16,7 @@ from ztb.utils.errors import safe_operation
 from .memory_cache import default_memory_manager
 
 
-class DataLoader:
+class CacheDataLoader:
     """Unified data loader with caching support"""
 
     def __init__(
@@ -46,9 +46,10 @@ class DataLoader:
         self, key: str, load_func: Callable[[], pd.DataFrame]
     ) -> pd.DataFrame:
         """Implementation of load with cache."""
+        cache_key = f"{self.cache_dir.resolve()}::{key}"
         # Check memory cache first
         if self.memory_manager:
-            cached_data = self.memory_manager.get_cached_training_data(key)
+            cached_data = self.memory_manager.get_cached_training_data(cache_key)
             if cached_data is not None:
                 return cached_data
 
@@ -59,7 +60,7 @@ class DataLoader:
                     data = cast(pd.DataFrame, pickle.load(f))
                     # Cache in memory for future use
                     if self.memory_manager:
-                        self.memory_manager.cache_training_data(key, data)
+                        self.memory_manager.cache_training_data(cache_key, data)
                     return data
             except Exception:
                 # If cache is corrupted, remove it
@@ -85,7 +86,7 @@ class DataLoader:
             tmp_path.replace(cache_path)
             # Also cache in memory
             if self.memory_manager:
-                self.memory_manager.cache_training_data(key, data)
+                self.memory_manager.cache_training_data(cache_key, data)
         except Exception:
             # If caching fails, continue without error
             pass
@@ -126,3 +127,7 @@ class DataLoader:
     def list_cached(self) -> list[str]:
         """List cached keys"""
         return [f.stem for f in self.cache_dir.glob("*.pkl")]
+
+
+# Backwards-compatible alias to reduce churn in legacy scripts/tests.
+DataLoader = CacheDataLoader

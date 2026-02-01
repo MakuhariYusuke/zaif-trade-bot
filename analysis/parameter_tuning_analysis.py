@@ -70,7 +70,7 @@ class ParameterAnalyzer:
     def calculate_penalty_impact(self) -> Dict:
         """
         balance_penalty の影響を計算
-        Reward = PnL - balance_penalty * abs(buy_ratio - sell_ratio)
+        Reward = PnL - balance_penalty * RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
         """
         impact_analysis = {}
         
@@ -93,7 +93,7 @@ class ParameterAnalyzer:
             
             for buy_ratio in ratios:
                 sell_ratio = 0.5  # Fixed for analysis
-                diff = abs(buy_ratio - sell_ratio)
+                diff = RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
                 penalty = penalty_scale * diff
                 total_reward = pnl - penalty
                 

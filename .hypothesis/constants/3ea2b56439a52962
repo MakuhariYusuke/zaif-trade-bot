@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\model_compression.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.3, 0.5, 1.0, 2.0, '.1%', '.1f', 'amount', 'batchmean', 'compressed_size_mb', 'compression_ratio', 'compression_stats', 'distillation', 'final_sparsity', 'l1_unstructured', 'l2_unstructured', 'model_state_dict', 'original_size_mb', 'original_sparsity', 'pruning', 'quantization', 'sparsity_increase', 'structured', 'teacher_model', 'technique', 'techniques', 'type']

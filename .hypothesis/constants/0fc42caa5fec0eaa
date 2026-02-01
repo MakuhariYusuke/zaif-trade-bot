@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\optimization\model_compression.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.1, 0.2, 0.5, 1.0, 1024.0, 'LowRankApproximator', 'ModelCompressor', 'SACPruner', 'alpha', 'amount', 'batchmean', 'compress_model', 'compression_ratio', 'compression_stats', 'distillation', 'distilled', 'dynamic', 'l1_unstructured', 'l2_unstructured', 'low_rank', 'mixed_precision', 'model_state_dict', 'original_size_mb', 'pruning', 'pruning_type', 'quantization', 'quantization_type', 'static', 'structured', 'technique', 'techniques', 'temperature', 'type']

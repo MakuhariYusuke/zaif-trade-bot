@@ -18,6 +18,7 @@ import numpy as np
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 
+from ztb.io.data_loader import DataLoader
 # Import callbacks with a defensive fallback so test collection doesn't fail
 # if a lightweight stub or unusual import order leaves the callbacks module
 # temporarily without the expected symbols.
@@ -310,9 +311,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # ★ MODIFIED: Create model with CustomPPO instead of standard flow
             if self.model is None:
                 # Load data
-                import pandas as pd
-
-                df_full = pd.read_csv(self.data_path)  # type: ignore[attr-defined]
+                df_full = DataLoader.load_csv_strict(self.data_path)  # type: ignore[attr-defined]
 
                 # ====================================================================
                 # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)

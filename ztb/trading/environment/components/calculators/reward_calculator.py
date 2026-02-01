@@ -7,6 +7,7 @@ Refactored to follow SOLID principles with component-based architecture.
 
 # mypy: disable-error-code=literal-required
 
+import dataclasses
 import inspect
 import logging
 from typing import Dict, List, Optional, Union
@@ -31,6 +32,7 @@ from ..reward.balance_curriculum import BalanceCurriculumManager
 from ..reward.opportunity_cost_penalty_calculator import OpportunityCostPenaltyCalculator
 from ..reward.trend_detector import TrendDetector
 from ..reward.unrealized_loss_penalty_calculator import UnrealizedLossPenaltyCalculator
+from ..rewards.utils import RewardUtils
 from ..rewards.base import RewardContext
 from ..rewards.confidence_penalty import ConfidencePenaltyReward
 from ..rewards.forced_balance import ForcedBalanceReward
@@ -86,6 +88,21 @@ class RewardCalculator:
         self.structured_logger = StructuredLogger(
             "ztb.trading.environment.reward", json_format=True
         )
+        try:
+            custom_params = (
+                self.reward_settings.custom_reward_params
+                if hasattr(self.reward_settings, "custom_reward_params")
+                else {}
+            )
+            self.logger.warning("========== REWARD PARAMS (REWARD CALC) ==========")
+            self.logger.warning(
+                "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+            )
+            if custom_params:
+                self.logger.warning("custom_reward_params: %s", custom_params)
+            self.logger.warning("=================================================")
+        except Exception as e:
+            self.logger.debug("Failed to log reward params in RewardCalculator: %s", e)
 
         # Internal state for tracking
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
@@ -1241,7 +1258,10 @@ class RewardCalculator:
                 "hold_penalty_multiplier", 1.0
             )
             trade_frequency_bonus = self.get_setting_float("trade_frequency_bonus", 0.0)
-            reward_scaling = self.get_setting_float("reward_scaling", 1.0)
+            # reward_scale (YAML) -> reward_scaling (internal) フォールバック対応
+            reward_scaling = self.get_setting_float(
+                "reward_scaling", self.get_setting_float("reward_scale", 1.0)
+            )
             reward_clip_value = self.get_setting_float("reward_clip_value", 10.0)
 
             # Adjust PnL for transaction costs if trade occurred
@@ -1467,7 +1487,6 @@ class RewardCalculator:
         balance_penalty = 0.0
 
         if total_actions >= 10:
-            action_ratios = [count / total_actions for count in self._action_counts]
             # Get target ratios from config
             hold_target = self.get_setting_float(
                 "balance_penalty_targets.hold_target", 0.4
@@ -1480,15 +1499,13 @@ class RewardCalculator:
             )
             target_ratios = [hold_target, buy_target, sell_target]  # [HOLD, BUY, SELL]
 
-            for i, ratio in enumerate(action_ratios):
-                deviation = abs(ratio - target_ratios[i])
-                if deviation > tolerance:
-                    # Penalty proportional to deviation beyond tolerance
-                    excess_deviation = deviation - tolerance
-                    balance_penalty += penalty * excess_deviation
-                    self.logger.info(
-                        f"Balance penalty applied: {balance_penalty:.3f}, ratios: {action_ratios}, targets: {target_ratios}"
-                    )
+            # Delegate to canonical utility
+            balance_penalty = RewardUtils.calculate_balance_penalty(
+                self._action_counts, target_ratios, tolerance, penalty
+            )
+            self.logger.info(
+                f"Balance penalty (utility): {balance_penalty:.3f}, action_counts: {self._action_counts}, targets: {target_ratios}"
+            )
 
         # Calculate base reward
         base_reward = self._calculate_base_reward(

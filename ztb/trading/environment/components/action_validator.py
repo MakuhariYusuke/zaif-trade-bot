@@ -162,18 +162,18 @@ class ActionValidator:
             legal[2] = 1
 
         # HOLDは常に合法なので、全て0になることはない
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "ActionValidator: legal_actions=%s, affordable_size=%.6f, "
-                "ideal_buy_cost=%.2f, ideal_sell_value=%.2f, portfolio_value=%.2f, "
-                "position=%.6f",
-                [bool(x) for x in legal],
-                affordable_size,
-                ideal_buy_cost,
-                ideal_sell_value,
-                portfolio_value,
-                position,
-            )
+        # Emit debug info unconditionally (logger.debug will be a no-op if level > DEBUG)
+        logger.debug(
+            "ActionValidator: legal_actions=%s, affordable_size=%.6f, "
+            "ideal_buy_cost=%.2f, ideal_sell_value=%.2f, portfolio_value=%.2f, "
+            "position=%.6f",
+            [bool(x) for x in legal],
+            affordable_size,
+            ideal_buy_cost,
+            ideal_sell_value,
+            portfolio_value,
+            position,
+        )
         return legal
 
     def _resolve_price(

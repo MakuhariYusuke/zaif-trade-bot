@@ -7,8 +7,9 @@ caching, and parallel processing for improved performance.
 
 import asyncio
 import logging
-import mmap
 import time
+import warnings
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, partial
 from pathlib import Path
@@ -17,6 +18,8 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
+from ztb.io.advanced_csv import read_csv_async, read_csv_cached, read_csv_mmap
+from ztb.io.data_loader import DataLoader
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.errors import ZTBError
@@ -42,7 +45,14 @@ class ImprovedDataLoader:
         prefetch_buffer_size: int = 1000,
         enable_memory_mapping: bool = True,
         enable_async_loading: bool = True,
+        max_cache_entries: int = 16,
     ):
+        warnings.warn(
+            "ImprovedDataLoader is deprecated; use ztb.io.data_loader.DataLoader "
+            "for standard CSV loading. This class remains for legacy mmap/async paths.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         Initialize improved data loader.
 
@@ -59,11 +69,28 @@ class ImprovedDataLoader:
         self.prefetch_buffer_size = prefetch_buffer_size
         self.enable_memory_mapping = enable_memory_mapping
         self.enable_async_loading = enable_async_loading
+        try:
+            self.max_cache_entries = max(1, int(max_cache_entries))
+        except (TypeError, ValueError):
+            self.max_cache_entries = 16
 
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._prefetch_queue = asyncio.Queue(maxsize=prefetch_buffer_size)
-        self._cache = {}
-        self._mmap_files = {}
+        self._cache: "OrderedDict[str, pd.DataFrame]" = OrderedDict()
+        self._mmap_files: "OrderedDict[str, object]" = OrderedDict()
+
+    def _evict_oldest_cache(self) -> None:
+        """Evict oldest cached entry to keep memory bounded."""
+        if not self._cache:
+            return
+        cache_key, _ = self._cache.popitem(last=False)
+        mmap_key = cache_key.replace("mmap_", "", 1)
+        mmap_obj = self._mmap_files.pop(mmap_key, None)
+        if mmap_obj is not None:
+            try:
+                mmap_obj.close()
+            except Exception:
+                pass
 
     def load_csv_memory_mapped(
         self, file_path: Union[str, Path], chunk_size: Optional[int] = None, **kwargs
@@ -85,50 +112,23 @@ class ImprovedDataLoader:
 
         cache_key = f"mmap_{file_path.stem}_{file_path.stat().st_mtime}"
         if cache_key in self._cache:
-            return self._cache[cache_key].copy()
+            cached = self._cache.pop(cache_key)
+            self._cache[cache_key] = cached
+            return cached.copy()
 
         try:
-            if (
-                self.enable_memory_mapping
-                and file_path.stat().st_size > 10 * BYTES_PER_MB
-            ):  # >10MB
-                # Memory-mapped loading
-                with open(file_path, "r+b") as f:
-                    mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                    self._mmap_files[str(file_path)] = mm
-
-                    # Read in chunks to avoid loading entire file
-                    if chunk_size:
-                        chunks = []
-                        offset = 0
-                        while offset < len(mm):
-                            chunk_data = mm[
-                                offset : offset + chunk_size * 1000
-                            ]  # Rough estimate
-                            if not chunk_data:
-                                break
-                            chunk_df = pd.read_csv(
-                                pd.io.common.StringIO(chunk_data.decode("utf-8")),
-                                **kwargs,
-                            )
-                            chunks.append(chunk_df)
-                            offset += len(chunk_data)
-                        df = pd.concat(chunks, ignore_index=True)
-                    else:
-                        content = mm.read().decode("utf-8")
-                        df = pd.read_csv(pd.io.common.StringIO(content), **kwargs)
-            else:
-                # Standard loading with chunking
-                if chunk_size:
-                    chunks = []
-                    for chunk in pd.read_csv(file_path, chunksize=chunk_size, **kwargs):
-                        chunks.append(chunk)
-                    df = pd.concat(chunks, ignore_index=True)
-                else:
-                    df = pd.read_csv(file_path, **kwargs)
+            df = read_csv_mmap(
+                file_path,
+                chunk_size=chunk_size,
+                enable_mmap=self.enable_memory_mapping,
+                min_mmap_bytes=10 * BYTES_PER_MB,
+                **kwargs,
+            )
 
             # Cache result
             self._cache[cache_key] = df.copy()
+            if len(self._cache) > self.max_cache_entries:
+                self._evict_oldest_cache()
             logger.info(f"Loaded data from {file_path} with {len(df)} rows")
             return df
 
@@ -152,9 +152,13 @@ class ImprovedDataLoader:
         if not self.enable_async_loading:
             return self.load_csv_memory_mapped(file_path, **kwargs)
 
-        loop = asyncio.get_event_loop()
-        func = partial(self.load_csv_memory_mapped, file_path, **kwargs)
-        return await loop.run_in_executor(self.executor, func)
+        return await read_csv_async(
+            file_path,
+            executor=self.executor,
+            enable_mmap=self.enable_memory_mapping,
+            min_mmap_bytes=10 * BYTES_PER_MB,
+            **kwargs,
+        )
 
     def compute_features_parallel(
         self,
@@ -257,7 +261,16 @@ class ImprovedDataLoader:
         if not self.enable_async_loading:
             return
 
-        tasks = [self.load_csv_async(path, **kwargs) for path in file_paths]
+        tasks = [
+            read_csv_async(
+                path,
+                executor=self.executor,
+                enable_mmap=self.enable_memory_mapping,
+                min_mmap_bytes=10 * BYTES_PER_MB,
+                **kwargs,
+            )
+            for path in file_paths
+        ]
 
         await asyncio.gather(*tasks, return_exceptions=True)
         logger.info(f"Prefetched {len(file_paths)} files")
@@ -265,7 +278,10 @@ class ImprovedDataLoader:
     def cleanup(self):
         """Clean up resources."""
         for mm in self._mmap_files.values():
-            mm.close()
+            try:
+                mm.close()
+            except Exception:
+                pass
         self._mmap_files.clear()
         self._cache.clear()
         self.executor.shutdown(wait=True)
@@ -290,12 +306,9 @@ def load_market_data_cached(
 
     Args:
         file_path: Path to data file
-        loader: Data loader instance
+        loader: Data loader instance (deprecated; ignored)
 
     Returns:
         Loaded DataFrame
     """
-    if loader is None:
-        loader = get_cached_data_loader()
-
-    return loader.load_csv_memory_mapped(file_path)
+    return read_csv_cached(file_path)

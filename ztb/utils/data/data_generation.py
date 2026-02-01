@@ -5,9 +5,11 @@ This module provides functions for generating synthetic market data
 and loading sample datasets for testing and experimentation.
 """
 
+import gzip
 import hashlib
 import logging
 import pickle
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
@@ -15,6 +17,8 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
+from ztb.io.advanced_csv import prefetch_csv, read_csvs_async
+from ztb.io.data_loader import DataLoader
 from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
@@ -260,20 +264,6 @@ class DataGenerator:
         dataset_hash = hashlib.md5(dataset.encode()).hexdigest()[:8]
         return self.cache_dir / f"dataset_{dataset_hash}.pkl"
 
-
-def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
-    """Convenience helper used by tests to quickly get a sample dataset.
-
-    Args:
-        n_samples: number of rows to generate (default 100)
-        version: generator version
-
-    Returns:
-        pd.DataFrame with synthetic OHLCV data
-    """
-    dg = DataGenerator()
-    return dg.generate_synthetic_market_data(n_samples=n_samples, version=version)
-
     def clear_cache(self) -> None:
         """
         Clear data cache.
@@ -295,8 +285,6 @@ def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
             datasets: List of dataset names to preload
             max_workers: Maximum number of parallel workers
         """
-        from concurrent.futures import ThreadPoolExecutor
-
         logger.info(f"Preloading {len(datasets)} datasets with {max_workers} workers")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -532,6 +520,73 @@ def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
         )
 
         return df
+
+    def load_data_with_memory_map(self, file_path: str) -> np.memmap:
+        """
+        Load numpy data with memory mapping.
+
+        Args:
+            file_path: Path to .npy file
+        """
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        return cast(np.memmap, np.load(path, mmap_mode="r"))
+
+    def load_compressed_data(self, file_path: str, compression: str = "gzip") -> Any:
+        """
+        Load compressed pickled data.
+
+        Args:
+            file_path: Path to compressed pickle
+            compression: Compression type (gzip)
+        """
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+        if compression != "gzip":
+            raise ValueError("Unsupported compression")
+        with gzip.open(path, "rb") as f:
+            return pickle.load(f)
+
+    async def load_data_async(
+        self, file_paths: List[str], max_workers: int = 4, **kwargs
+    ) -> List[pd.DataFrame]:
+        """
+        Load multiple CSV files asynchronously.
+        """
+        return await read_csvs_async(file_paths, max_workers=max_workers, **kwargs)
+
+    def prefetch_data(
+        self, file_paths: List[str], prefetch_size: int = 2, **kwargs
+    ) -> ThreadPoolExecutor:
+        """
+        Prefetch data files and warm in-memory cache.
+        """
+        executor = prefetch_csv(file_paths[:prefetch_size], max_workers=prefetch_size, **kwargs)
+        if self.enable_memory_cache:
+            for path in file_paths[:prefetch_size]:
+                cache_key = f"prefetch_{hashlib.md5(path.encode()).hexdigest()}"
+                try:
+                    df = DataLoader.load_csv_optimized(path, **kwargs)
+                    self._memory_cache[cache_key] = df
+                except Exception:
+                    pass
+        return executor
+
+
+def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
+    """Convenience helper used by tests to quickly get a sample dataset.
+
+    Args:
+        n_samples: number of rows to generate (default 100)
+        version: generator version
+
+    Returns:
+        pd.DataFrame with synthetic OHLCV data
+    """
+    dg = DataGenerator()
+    return dg.generate_synthetic_market_data(n_samples=n_samples, version=version)
 
 
 # Global cache for backward compatibility

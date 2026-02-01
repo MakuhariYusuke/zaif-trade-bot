@@ -25,7 +25,7 @@ from ztb.utils.cli_common import (
     create_standard_parser,
 )
 from ztb.utils.config_loader import ConfigLoader
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import save_csv_data
 from ztb.utils.path_utils import ensure_dir
 
@@ -196,7 +196,7 @@ class PaperTrader:
         if self.data_feed is None:
             if not self.dataset:
                 raise ValueError("No dataset provided for replay mode")
-            self.data_feed = load_csv_data(self.dataset)
+            self.data_feed = DataLoader.load_csv_strict(self.dataset)
             self.data_feed = self._prepare_data_feed(self.data_feed)
             print(f"Data columns: {self.data_feed.columns.tolist()}")
 

@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\baseline_comparison.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.01, 1.0, '## Model Performance', '## Statistical Tests', 'Buy and Hold', 'SMA Crossover', 'WalkForwardResult', '_', 'buy_hold', 'close', 'end_price', 'fast_period', 'fast_sma', 'holding_period_days', 'position_change', 'returns', 'signal', 'slow_period', 'slow_sma', 'sma_crossover', 'start_price', 'strategy_returns', 'total_signals']

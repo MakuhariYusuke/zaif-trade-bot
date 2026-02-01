@@ -56,8 +56,13 @@ class RewardFunctionEvaluator:
         Args:
             config_path: Path to configuration file
         """
-        self.config_path = config_path or "configs/reward_evaluation.json"
         self.logger = get_logger("ztb.optimization.reward_evaluator")
+        self.logger.warning(
+            "RewardFunctionEvaluator is deprecated; use "
+            "ztb.training.reward_function_optimizer.components.evaluation_engine "
+            "or UnifiedEvaluator-based flows."
+        )
+        self.config_path = config_path or "configs/reward_evaluation.json"
 
         # Load default evaluation settings
         self.evaluation_settings = self._load_evaluation_settings()

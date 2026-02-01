@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\utils\config.py
+# hypothesis_version: 6.140.3
+
+[-80.0, 0.0, 0.001, 0.005, 0.01, 0.015, 0.05, 0.1, 0.2, 0.5, 0.8, 0.95, 1.0, 1.1, 1.5, 2.0, 80.0, 100.0, 1000.0, 2000.0, 200000.0, 512, '0', '1', '1m', 'EnvironmentConfig', 'RewardSettings', 'action_bonuses', 'action_smoothing', 'balance_penalty', 'base_action_penalty', 'behavioral_penalty', 'binance', 'bitflyer', 'buy', 'buy_action_bonus', 'close', 'coincheck', 'commission', 'consistency_penalty', 'custom_reward_params', 'domain_randomization', 'environment', 'exchange_profile', 'false', 'float16', 'full', 'high', 'hold_action_bonus', 'low', 'max_action_threshold', 'max_position_size', 'max_steps', 'n', 'no', 'off', 'on', 'open', 'partial', 'reward_settings', 'sell_action_bonus', 'simple', 'slippage', 'transaction_cost', 'true', 'volume', 'y', 'yes']

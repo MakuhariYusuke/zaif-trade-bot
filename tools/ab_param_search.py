@@ -47,6 +47,7 @@ import uuid
 
 from ztb.training.unified_optimizer import OptimizationConfig, UnifiedOptimizer
 from ztb.utils.report_utils import extract_action_distribution, find_reports_for_model
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 def set_nested(dictionary: Dict[str, Any], dotted_key: str, value: Any) -> None:
@@ -80,8 +81,8 @@ def score_distribution(dist: Dict[str, float], objective: str) -> float:
     sell = dist.get("SELL", 0.0)
     if objective == "min_sell":
         return -sell
-    # balance
-    return -abs(buy - sell)
+    # balance: use canonical deviation helper (target 50/50 for BUY/SELL)
+    return -RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
 
 
 def main():

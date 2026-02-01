@@ -8,6 +8,7 @@ This script investigates whether balanced BUY/SELL ratios lead to higher profita
 import json
 from pathlib import Path
 import statistics
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 def analyze_profitability_balance() -> None:
@@ -51,7 +52,8 @@ def analyze_profitability_balance() -> None:
             else:
                 buy_sell_ratio = 999.0  # Very high if no SELL
             
-            buy_sell_diff = abs(buy - sell)
+            # Use canonical deviation helper (target 50/50 for BUY/SELL)
+            buy_sell_diff = RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
             buy_sell_balance = min(buy, sell)  # Perfect balance = 0.5 each
             
             data_points.append({

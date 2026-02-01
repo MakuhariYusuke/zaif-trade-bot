@@ -66,7 +66,8 @@ from ztb.trading.environment.constants import (
 from ztb.trading.environment.environment import HeavyTradingEnv as TradingEnvironment
 from ztb.training.config.ppo_config import get_ppo_config
 from ztb.utils import DiscordNotifier
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.utils.env_metrics import unwrap_env
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 
@@ -176,6 +177,7 @@ class PaperTrader:
         self.test_df: Optional[pd.DataFrame] = None
         self.model: Optional[Union[MaskablePPO, SAC]] = None
         self.env: Optional[DummyVecEnv] = None
+        self._base_env: Optional[TradingEnvironment] = None
         self.episode_results: List[EpisodeResultDict] = []
         self._normalization_stats: Optional[
             Any
@@ -187,7 +189,7 @@ class PaperTrader:
         """Common configuration setup for both PPO and SAC."""
         # Load test data first
         self.logger.info(f"Loading test data from {self.test_data_path}")
-        self.test_df = load_csv_data_optimized(str(self.test_data_path))
+        self.test_df = DataLoader.load_csv_optimized(str(self.test_data_path))
         self.logger.info(f"Loaded {len(self.test_df)} rows of test data")
 
         # Initialize environment
@@ -247,6 +249,17 @@ class PaperTrader:
                 "correlation_reduction": False,  # Also set the actual config key
             }
         )
+
+    def _get_base_env(self) -> Optional[TradingEnvironment]:
+        """Return the unwrapped TradingEnvironment for the current env."""
+        if self._base_env is not None:
+            return self._base_env
+        if self.env is None:
+            return None
+        base_env = unwrap_env(self.env)
+        if isinstance(base_env, TradingEnvironment):
+            self._base_env = base_env
+        return self._base_env
 
     def _create_env(self) -> DummyVecEnv:
         """Create evaluation environment."""
@@ -488,9 +501,12 @@ class PaperTrader:
     def _get_ppo_action(self, obs: np.ndarray) -> tuple:
         """Get action from PPO model using inference pipeline."""
         # Get legal actions mask for MaskablePPO
+        base_env = self._get_base_env()
+        if base_env is None:
+            raise RuntimeError("Base environment not initialized for PPO action.")
         action_masks = cast(
             NDArray[np.bool_],
-            cast(TradingEnvironment, self.env.envs[0]).get_legal_actions(),
+            base_env.get_legal_actions(),
         )
 
         # Get logits from policy network
@@ -545,7 +561,7 @@ class PaperTrader:
     def _load_test_data(self) -> None:
         """Load test data for evaluation."""
         if self.test_data_path.exists():
-            self.test_df = load_csv_data_optimized(self.test_data_path)
+            self.test_df = DataLoader.load_csv_optimized(self.test_data_path)
             # Use a subset for testing (e.g., last 20% of data)
             test_size = int(len(self.test_df) * 0.2)
             self.test_df = self.test_df.tail(test_size)
@@ -643,8 +659,10 @@ class PaperTrader:
 
             # Debug: Log action distribution for first few steps AND environment state
             if self.verbose and steps < 10:
-                env_obj = cast(TradingEnvironment, self.env.envs[0])
-                curriculum_stage = getattr(env_obj, "curriculum_stage", "UNKNOWN")
+                base_env = self._get_base_env()
+                if base_env is None:
+                    raise RuntimeError("Base environment not available for debug.")
+                curriculum_stage = getattr(base_env, "curriculum_stage", "UNKNOWN")
                 print(f"\n{'='*60}")
                 print(f"Step {steps} - Environment & Decode Diagnostics")
                 print(f"{'='*60}")
@@ -655,7 +673,7 @@ class PaperTrader:
                 if self.algorithm == "ppo":
                     action_masks = cast(
                         NDArray[np.bool_],
-                        cast(TradingEnvironment, self.env.envs[0]).get_legal_actions(),
+                        base_env.get_legal_actions(),
                     )
                     print(f"  Legal Actions Mask: {action_masks}")
                 print("\n[Decode Pipeline Results]")
@@ -689,10 +707,11 @@ class PaperTrader:
             reward = reward[0]
 
             # Update from environment
-            self.portfolio_value = cast(
-                TradingEnvironment, self.env.envs[0]
-            ).portfolio_value
-            self.position = cast(TradingEnvironment, self.env.envs[0]).position
+            base_env = self._get_base_env()
+            if base_env is None:
+                raise RuntimeError("Base environment not available for state update.")
+            self.portfolio_value = base_env.portfolio_value
+            self.position = base_env.position
 
             # Record trade if position changed
             if (

@@ -479,3 +479,9 @@ class TrainingConfigManager(BaseConfigManager):
         unified["environment"]["debug_internal_state"] = debug_internal_state
 
         return unified
+
+
+# Backwards compatibility alias
+# Historically tests and other modules imported `ConfigManager` from this module.
+# Keep an alias to avoid breaking external imports.
+ConfigManager = TrainingConfigManager

@@ -23,8 +23,10 @@ try:
     from stable_baselines3.common.vec_env import DummyVecEnv
 
     # Import environment and data handling
+    from ztb.io.data_loader import DataLoader
     from ztb.trading.environment import HeavyTradingEnv
     from ztb.trading.environment.utils.config import EnvironmentConfig
+    from ztb.utils.env_metrics import unwrap_env
     from ztb.utils.logging_utils import get_logger
 
     logger = get_logger(__name__)
@@ -75,7 +77,7 @@ def run_backtest():
         # Load data
         print("📊 Loading backtest data...")
         data_path = "data/btc_jpy_real_dataset.csv"
-        df = pd.read_csv(data_path)
+        df = DataLoader.load_csv_strict(data_path)
         print(f"Loaded {len(df):,} rows of data")
 
         # Create environment config
@@ -97,6 +99,9 @@ def run_backtest():
         # Wrap environment
         env = Monitor(env)
         env = DummyVecEnv([lambda: env])
+        base_env = unwrap_env(env)
+        if base_env is None:
+            raise RuntimeError("Failed to unwrap backtest environment")
 
         # Run backtest
         print("🎯 Running backtest...")
@@ -116,7 +121,7 @@ def run_backtest():
             obs, reward, done, info = env.step(action)
 
             total_reward += reward
-            portfolio_history.append(env.envs[0].env.portfolio_value)
+            portfolio_history.append(base_env.portfolio_value)
             actions_history.append(float(action[0]))
             timestamps.append(step_count)
 
@@ -124,7 +129,7 @@ def run_backtest():
 
             if step_count % 1000 == 0:
                 print(
-                    f"Step {step_count}: Portfolio = {env.envs[0].env.portfolio_value:.2f}"
+                    f"Step {step_count}: Portfolio = {base_env.portfolio_value:.2f}"
                 )
 
         # Create backtest results

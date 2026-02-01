@@ -21,7 +21,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
 from ztb.types.common import ConfigDict
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -51,7 +51,7 @@ def create_v434_2_environment(
     logger.info("Creating v434.2 environment with improved reward function")
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     logger.info(f"Loaded data: {len(df):,} rows")
 
     # 特徴量スキーマの作成/読み込み

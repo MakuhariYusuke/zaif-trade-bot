@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\orders\state_machine.py
+# hypothesis_version: 6.140.3
+
+[3600, 'cancel', 'cancelled', 'confirm', 'confirmed', 'expire', 'expired', 'fail', 'failed', 'fill', 'filled', 'market', 'partial', 'partial_fill', 'pending', 'reject', 'rejected', 'submit']

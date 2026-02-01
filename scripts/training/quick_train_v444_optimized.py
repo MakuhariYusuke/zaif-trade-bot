@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np
 
 from ztb.trading.environment.heavy_env import HeavyEnvironment
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 from ztb.training.base_trainer import TrainerConfig, TrainingSession
 
 
@@ -95,9 +96,12 @@ def analyze_action_distribution(
             "q75": float(np.percentile(actions, 75)),
         },
         "balance_metrics": {
-            "buy_sell_diff": abs(action_ratios[1] - action_ratios[2]),
+            "buy_sell_diff": RewardUtils.calculate_buy_sell_diff(
+                action_ratios[1], action_ratios[2]
+            ),
             "buy_sell_ratio": action_ratios[1] / max(action_ratios[2], 1e-6),
         },
+
     }
 
     env.close()

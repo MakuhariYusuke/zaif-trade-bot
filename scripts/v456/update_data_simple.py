@@ -118,7 +118,14 @@ def update_btc_jpy_data(
 
 
 if __name__ == "__main__":
-    success = update_btc_jpy_data(days_back=30)
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Update BTC/JPY 1m data from yfinance")
+    parser.add_argument("--days-back", type=int, default=7, help="Days to fetch (max 7 for 1m)")
+    parser.add_argument("--data-file", type=str, default=None, help="Data file path")
+    args = parser.parse_args()
+    
+    success = update_btc_jpy_data(data_file=args.data_file, days_back=args.days_back)
     
     if success:
         print(f"\n✅ データ更新完了")

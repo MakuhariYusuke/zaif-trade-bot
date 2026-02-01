@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\behavioral_penalty_calculator.py
+# hypothesis_version: 6.140.3
+
+[-500.0, -0.05, 0.0, 1e-06, 0.01, 0.05, 0.1, 0.3, 0.4, 0.5, 0.8, 1.0, 100, 'balance_penalty', 'behavior', 'buy_target', 'consistency_lookback', 'consistency_penalty', 'custom_reward_params', 'enabled', 'hold_target', 'lookback', 'penalty', 'reset', 'reward_settings', 'sell_target', 'skewness_lookback', 'threshold', 'value']

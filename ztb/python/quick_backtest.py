@@ -24,7 +24,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 
 
 def generate_basic_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -158,7 +158,7 @@ def run_quick_backtest(
     print(f"{'='*80}\n")
 
     # データ読み込み
-    df = load_csv_data_optimized(data_path)
+    df = DataLoader.load_csv_optimized(data_path)
     print(f"Data: {len(df):,} rows, {len(df.columns)} columns")
 
     # 特徴量エンジニアリング適用（スキーマに必要な特徴量を生成）

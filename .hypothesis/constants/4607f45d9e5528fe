@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\time\cyclical_v456.py
+# hypothesis_version: 6.140.3
+
+[-1.001, 0.01, 0.1, 1.001, 23.98, 100, '1min', '2025-01-10 00:00', 'UTC', '__main__', 'dow_cos', 'dow_sin', 'hour_cos', 'hour_sin', 'minute_cos', 'minute_sin', 'price']

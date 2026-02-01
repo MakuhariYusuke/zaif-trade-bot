@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
+from ztb.io.data_loader import DataLoader
 from ....utils.config_utils import load_config_unified
 from ....utils.logging_utils import get_logger
 from utils.results_utils import save_backtest_results
@@ -541,7 +542,9 @@ class UnifiedBacktester:
 
             # Load data
             self.logger.info(f"Loading data from {data_path}")
-            data = pd.read_csv(data_path, index_col=0, parse_dates=True)
+            data = DataLoader.load_csv_strict(
+                data_path, index_col=0, parse_dates=True
+            )
 
             # Setup environment config
             env_config = config["training"]["environment"]["config"]

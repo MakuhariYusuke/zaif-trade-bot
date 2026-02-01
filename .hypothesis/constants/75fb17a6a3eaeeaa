@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\multi_timeframe\data_pipeline.py
+# hypothesis_version: 6.140.3
+
+[0.0, 240, 1440, '15min', '1D', '1h', '1min', '4h', '5min', 'Close', 'Date', 'High', 'Low', 'Open', 'Time', 'Timestamp', 'Volume', 'all', 'backward', 'btc_jpy_15min.csv', 'btc_jpy_1day.csv', 'btc_jpy_1hour.csv', 'btc_jpy_1min.csv', 'btc_jpy_4hour.csv', 'btc_jpy_5min.csv', 'close', 'coerce', 'column_count', 'data', 'data_completeness', 'data_quality', 'date_range', 'end', 'first', 'high', 'last', 'low', 'max', 'min', 'missing_data', 'nan_rate', 'open', 'positive_prices', 'row_count', 'start', 'sum', 'summary', 'timeframes', 'timestamp', 'total_nan', 'total_timeframes', 'valid_ohlc', 'volume']

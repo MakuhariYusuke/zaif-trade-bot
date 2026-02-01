@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\realtime_optimization\adaptive_learning_system.py
+# hypothesis_version: 6.140.3
+
+[-0.2, 0.0, 0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.95, 1.0, 2.0, 3.0, 1000, 1800, 'Learning loop ended', 'aggressive', 'buy', 'conservative', 'hold', 'inf', 'is_learning', 'last_learning_cycle', 'sell', 'strategy_count', 'total_experiences', 'trend', 'volatility']

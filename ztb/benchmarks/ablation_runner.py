@@ -18,7 +18,7 @@ import pandas as pd
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 from ztb.utils.config_loader import ConfigLoader
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -100,7 +100,7 @@ def run_ablation_analysis(
 
     # データ読み込み（仮）
     if data_path and data_path.exists():
-        df = load_csv_data(data_path)
+        df = DataLoader.load_csv_strict(data_path)
     else:
         # サンプルデータ生成
         np.random.seed(42)  # 再現性のためにシード固定

@@ -18,6 +18,9 @@ import psutil
 from ztb.features import FeatureRegistry
 from ztb.analysis.common.types import PerformanceMonitorProtocol
 
+# Constants
+BYTES_PER_MB = 1024 * 1024
+
 
 class PerformanceProfiler(PerformanceMonitorProtocol):
     """Performance profiling utilities for feature computation"""

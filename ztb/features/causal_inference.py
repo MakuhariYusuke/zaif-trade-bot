@@ -11,12 +11,26 @@ Causal Inference Feature Selection for SAC v422
 """
 
 import gc
+import os
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
-from sklearn.preprocessing import StandardScaler
+
+# Lazy import sklearn to avoid Windows SIGINT issues
+_SKIP_SKLEARN = os.getenv("SKIP_HEAVY_IMPORTS") == "1" or os.getenv("ZTB_SKIP_SKLEARN") == "1"
+if _SKIP_SKLEARN:
+    LinearRegression = None  # type: ignore
+    r2_score = None  # type: ignore
+    StandardScaler = None  # type: ignore
+else:
+    try:
+        from sklearn.linear_model import LinearRegression
+        from sklearn.metrics import r2_score
+        from sklearn.preprocessing import StandardScaler
+    except Exception:
+        LinearRegression = None  # type: ignore
+        r2_score = None  # type: ignore
+        StandardScaler = None  # type: ignore
 
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.memory.dtypes import optimize_dtypes
@@ -46,9 +60,14 @@ class CausalFeatureSelector:
         self.max_features = max_features
         self.memory_manager = memory_manager
 
-        # 因果推定モデル
-        self.causal_model = LinearRegression()
-        self.scaler = StandardScaler()
+        # 因果推定モデル (sklearn available check)
+        if LinearRegression is not None and StandardScaler is not None:
+            self.causal_model = LinearRegression()
+            self.scaler = StandardScaler()
+        else:
+            self.causal_model = None
+            self.scaler = None
+            logger.warning("sklearn not available, causal inference disabled")
 
         # 結果キャッシュ
         self.causal_effects: Dict[str, float] = {}
@@ -91,6 +110,11 @@ class CausalFeatureSelector:
             data = df[available_features].dropna()
 
             if len(data) < self.min_samples:
+                return {"effect": 0.0, "p_value": 1.0, "confidence": 0.0}
+
+            # Check if sklearn models are available
+            if self.causal_model is None or self.scaler is None:
+                logger.warning("sklearn not available, returning zero effect")
                 return {"effect": 0.0, "p_value": 1.0, "confidence": 0.0}
 
             # スケーリング

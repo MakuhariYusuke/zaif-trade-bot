@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from ztb.io.data_loader import DataLoader
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,7 +127,7 @@ class DataLoaderParallelizer:
         """
         def load_csv(file_path: str) -> pd.DataFrame:
             try:
-                df = pd.read_csv(file_path, **read_kwargs)
+                df = DataLoader.load_csv_strict(file_path, **read_kwargs)
                 logger.debug(f"Loaded CSV: {file_path} ({len(df)} rows)")
                 return df
             except Exception as e:

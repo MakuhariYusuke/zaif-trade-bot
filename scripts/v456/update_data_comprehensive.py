@@ -36,14 +36,14 @@ QUALITY_RULES = {
     "yahoo": {
         "min_rows": 1,
         "expected_interval_seconds": 60,
-        "require_minute_alignment": True,
+        "require_minute_alignment": False,  # Yahooは分単位でない場合がある
         "require_volume": False,
     },
     "bitflyer": {
-        "min_rows": 2,
+        "min_rows": 1,  # 最低1行でも受け入れる
         "expected_interval_seconds": 60,
         "require_minute_alignment": True,
-        "require_volume": True,
+        "require_volume": False,  # Volumeが取得できない場合もある
     },
     "coincheck": {
         "min_rows": 2,

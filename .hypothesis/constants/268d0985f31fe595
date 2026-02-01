@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\performance_profiler.py
+# hypothesis_version: 6.140.3
+
+[1.0, 10.0, 50.0, 100, 105, 190, 200, 202, 210, 1000, 1024, 5000, 10000, 1000000, '\nSUMMARY STATISTICS:', '-', '1min', '2023-01-01', '=', 'ADX', 'KalmanFilter', 'KalmanVelocity', 'MACD', 'RSI', 'RegimeClustering', '__main__', 'atr_14', 'avg_memory_mb', 'avg_time_ms', 'close', 'count', 'cumulative', 'current_memory_mb', 'current_traced_mb', 'dtype', 'error', 'execution_time', 'final_memory_mb', 'high', 'initial_memory_mb', 'lineno', 'low', 'macd', 'macd_hist', 'max_time_ms', 'memory_delta_mb', 'min_time_ms', 'open', 'operation', 'output_dtype', 'output_shape', 'peak_memory_mb', 'peak_traced_mb', 'per_sample_us', 'percent', 'potential_leaks', 'psutil not available', 'rsi_14', 'rss_mb', 'shape', 'size_mb', 'slow_features', 'total_traced_mb', 'traceback', 'unknown', 'vms_mb', 'volume']

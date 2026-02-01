@@ -4,6 +4,7 @@ Anomaly Detection for SAC v421
 """
 
 from dataclasses import dataclass
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -28,9 +29,17 @@ except Exception:
         Dropout=_dummy,
         Sequential=lambda *a, **k: None,
     )
-from sklearn.covariance import EllipticEnvelope
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
+_SKIP_SKLEARN = os.getenv("SKIP_HEAVY_IMPORTS") == "1" or os.getenv("ZTB_SKIP_SKLEARN") == "1"
+if _SKIP_SKLEARN:
+    EllipticEnvelope = None
+    IsolationForest = None
+else:
+    try:
+        from sklearn.covariance import EllipticEnvelope
+        from sklearn.ensemble import IsolationForest
+    except BaseException:
+        EllipticEnvelope = None
+        IsolationForest = None
 
 from ztb.utils.logging_utils import get_logger
 
@@ -69,7 +78,7 @@ class StatisticalAnomalyDetector:
         self.threshold = threshold
         self.window_size = window_size
         self.history = []
-        self.scaler = StandardScaler()
+        self._use_manual_zscore = True
 
     def detect(
         self, data: np.ndarray, feature_names: Optional[List[str]] = None
@@ -120,8 +129,11 @@ class StatisticalAnomalyDetector:
         if len(history_array.shape) == 1:
             history_array = history_array.reshape(-1, 1)
 
-        self.scaler.fit(history_array)
-        z_scores = np.abs(self.scaler.transform(data.reshape(1, -1))[0])
+        sample = data.reshape(-1)
+        mean = np.mean(history_array, axis=0)
+        std = np.std(history_array, axis=0, ddof=0)
+        std_safe = np.where(std < 1e-12, 1.0, std)
+        z_scores = np.abs((sample - mean) / std_safe)
 
         max_z_score = np.max(z_scores)
         is_anomaly = max_z_score > self.threshold
@@ -216,22 +228,34 @@ class MLAnomalyDetector:
         self.random_state = random_state
         self.model = None
         self.is_fitted = False
+        self.disabled = False
 
         # モデル初期化
         if method == "isolation_forest":
-            self.model = IsolationForest(
-                contamination=contamination, random_state=random_state, n_estimators=100
-            )
+            if IsolationForest is None:
+                self.disabled = True
+                logger.warning("IsolationForest unavailable; ML anomaly detection disabled.")
+            else:
+                self.model = IsolationForest(
+                    contamination=contamination, random_state=random_state, n_estimators=100
+                )
         elif method == "elliptic_envelope":
-            self.model = EllipticEnvelope(
-                contamination=contamination, random_state=random_state
-            )
+            if EllipticEnvelope is None:
+                self.disabled = True
+                logger.warning("EllipticEnvelope unavailable; ML anomaly detection disabled.")
+            else:
+                self.model = EllipticEnvelope(
+                    contamination=contamination, random_state=random_state
+                )
 
     def fit(self, data: np.ndarray) -> bool:
         """モデル学習"""
         try:
             if len(data.shape) == 1:
                 data = data.reshape(-1, 1)
+
+            if self.disabled or self.model is None:
+                return False
 
             if len(data) < 10:
                 logger.warning("Insufficient data for ML anomaly detection training")
@@ -248,6 +272,15 @@ class MLAnomalyDetector:
     def detect(self, data: np.ndarray) -> AnomalyResult:
         """異常検知実行"""
         try:
+            if self.disabled or self.model is None:
+                return AnomalyResult(
+                    is_anomaly=False,
+                    anomaly_score=0.0,
+                    method=self.method,
+                    confidence=0.0,
+                    details={"reason": "ml_detector_disabled"},
+                )
+
             if not self.is_fitted:
                 return AnomalyResult(
                     is_anomaly=False,
@@ -490,15 +523,16 @@ class ComprehensiveAnomalyDetector:
                 )
 
         # ML検知器初期化
-        for method in ml_methods:
-            if method == "isolation_forest":
-                self.ml_detectors[method] = MLAnomalyDetector(
-                    "isolation_forest", contamination=0.1
-                )
-            elif method == "elliptic_envelope":
-                self.ml_detectors[method] = MLAnomalyDetector(
-                    "elliptic_envelope", contamination=0.1
-                )
+        if ml_methods and not _SKIP_SKLEARN:
+            for method in ml_methods:
+                if method == "isolation_forest":
+                    self.ml_detectors[method] = MLAnomalyDetector(
+                        "isolation_forest", contamination=0.1
+                    )
+                elif method == "elliptic_envelope":
+                    self.ml_detectors[method] = MLAnomalyDetector(
+                        "elliptic_envelope", contamination=0.1
+                    )
 
         # オートエンコーダー初期化
         if enable_autoencoder:

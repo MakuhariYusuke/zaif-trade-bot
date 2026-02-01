@@ -5,6 +5,7 @@ Refactored Unified Trainer implementation with enhanced UI and modularity.
 """
 
 import copy
+import os
 import threading
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
@@ -35,13 +36,15 @@ from ztb.types.common import (
     MetaLearnerProtocol,
     TrainingStats,
 )
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
+from ztb.cache.parquet_io import read_parquet
 from ztb.utils.error_utils import safe_execute
 from ztb.utils.exceptions.custom_exceptions import TrainingError
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.memory_utils import cleanup_training_memory
 from ztb.utils.performance_profiler import MemoryProfiler
 from ztb.metrics.metrics import sharpe_ratio
+from ztb.features.generators.multi_timeframe.datetime_utils import safe_to_datetime_series
 
 OPACUS_AVAILABLE = importlib.util.find_spec("opacus") is not None
 
@@ -69,7 +72,6 @@ from ztb.adaptation.continual_learning import (
     TaskData,
 )
 from ztb.adaptation.meta_learning import MarketMetaLearner
-from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
 from ztb.training.checkpoint.checkpoint_manager import TrainingCheckpointManager
 
 # Import distributed training utilities
@@ -163,6 +165,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         # Initialize components first
         self.logger = get_logger(__name__)
+        sig_policy = os.getenv("ZTB_SIGINT_POLICY")
+        if sig_policy:
+            from ztb.utils.signal_utils import configure_signal_handling
+
+            configure_signal_handling(sig_policy, self.logger)
         self.config_manager = TrainingConfigManager()
         self.ui_manager = TrainingUIManager(self.logger)
         self.reporter = reporting.TrainingReporter(self.logger)
@@ -191,7 +198,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # Algorithm trainer (created during run)
         self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
         # Exposed model handle (if algorithm produces one during training)
-        self.model: Optional[Any] = None
+        self._model: Optional[Any] = None
+        # Optional explicit env override (if set externally)
+        self._env: Optional[Any] = None
 
         # Anomaly Detection components
         self.anomaly_detector: Optional[AnomalyDetectorProtocol] = None
@@ -293,6 +302,76 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         if self.enable_v433_adaptive:
             self._initialize_v433_components()
+
+    @property
+    def model(self) -> Optional[Any]:
+        """Return the underlying model from the algorithm trainer when available."""
+        alg_trainer = self.algorithm_trainer
+        if alg_trainer is not None and hasattr(alg_trainer, "model"):
+            model = getattr(alg_trainer, "model")
+            if model is not None:
+                return model
+        return self._model
+
+    @model.setter
+    def model(self, value: Optional[Any]) -> None:
+        """Set the model and propagate to the algorithm trainer if present."""
+        self._model = value
+        alg_trainer = self.algorithm_trainer
+        if alg_trainer is not None and hasattr(alg_trainer, "model"):
+            try:
+                setattr(alg_trainer, "model", value)
+            except Exception:
+                # Avoid crashing on custom trainer implementations
+                pass
+
+    @property
+    def env(self) -> Optional[Any]:
+        """Return the training environment if available."""
+        if self._env is not None:
+            return self._env
+
+        model = self.model
+        if model is not None:
+            if hasattr(model, "env") and getattr(model, "env") is not None:
+                return getattr(model, "env")
+            if hasattr(model, "get_env"):
+                try:
+                    return model.get_env()
+                except Exception:
+                    return None
+
+        alg_trainer = self.algorithm_trainer
+        if alg_trainer is not None and hasattr(alg_trainer, "env"):
+            try:
+                return getattr(alg_trainer, "env")
+            except Exception:
+                return None
+        return None
+
+    @env.setter
+    def env(self, value: Optional[Any]) -> None:
+        """Set the training environment and propagate when possible."""
+        self._env = value
+        alg_trainer = self.algorithm_trainer
+        if alg_trainer is not None and hasattr(alg_trainer, "env"):
+            try:
+                setattr(alg_trainer, "env", value)
+            except Exception:
+                pass
+
+        model = self.model
+        if model is not None and hasattr(model, "set_env"):
+            try:
+                model.set_env(value)
+            except Exception:
+                pass
+
+    def get_environment_metrics(self) -> Dict[str, Any]:
+        """Extract environment metrics such as balance and trade count."""
+        from ztb.training.utils.env_metrics import extract_trainer_env_metrics
+
+        return extract_trainer_env_metrics(self, include_optional=False)
 
     def _initialize_ensemble_system(self, config: ConfigDict) -> None:
         """Initialize ensemble system for SAC v428 Phase 3."""
@@ -656,7 +735,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Read data file to get actual feature count
             try:
                 # Read only header to get column count efficiently
-                df_header = load_csv_data(data_file, nrows=0)
+                df_header = DataLoader.load_csv(data_file, nrows=0)
                 actual_feature_count = (
                     len(df_header.columns) - 1
                 )  # Exclude timestamp/index column
@@ -697,7 +776,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
                 # Read full data to get feature names
                 try:
-                    df_sample = load_csv_data(
+                    df_sample = DataLoader.load_csv_strict(
                         data_file, nrows=5
                     )  # Read sample for feature names
                     actual_features = df_sample.columns[
@@ -1387,19 +1466,24 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Anomaly Detection Setup
             if self.config.get("enable_anomaly_detection", False):
                 self.logger.info("Setting up anomaly detection...")
-                self.anomaly_detector = ComprehensiveAnomalyDetector(
-                    statistical_methods=self.config.get(
-                        "anomaly_statistical_methods", ["zscore", "iqr"]
-                    ),
-                    ml_methods=self.config.get(
-                        "anomaly_ml_methods", ["isolation_forest"]
-                    ),
-                    enable_autoencoder=self.config.get(
-                        "enable_anomaly_autoencoder", False
-                    ),
-                    voting_threshold=self.config.get("anomaly_voting_threshold", 0.5),
-                )
-                self.ui.print_info("Anomaly detection enabled")
+                try:
+                    from ztb.data.anomaly_detection import ComprehensiveAnomalyDetector
+                except Exception as e:
+                    self.logger.warning("Anomaly detection unavailable: %s", e)
+                else:
+                    self.anomaly_detector = ComprehensiveAnomalyDetector(
+                        statistical_methods=self.config.get(
+                            "anomaly_statistical_methods", ["zscore", "iqr"]
+                        ),
+                        ml_methods=self.config.get(
+                            "anomaly_ml_methods", ["isolation_forest"]
+                        ),
+                        enable_autoencoder=self.config.get(
+                            "enable_anomaly_autoencoder", False
+                        ),
+                        voting_threshold=self.config.get("anomaly_voting_threshold", 0.5),
+                    )
+                    self.ui.print_info("Anomaly detection enabled")
 
             # Meta Learning Setup
             if self.config.get("enable_meta_learning", False):
@@ -2064,6 +2148,43 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self.logger.error(f"V433 adaptive training failed: {e}")
             return False
 
+    def _load_data_with_format_detection(self, data_path: str) -> pd.DataFrame:
+        """
+        データファイルを拡張子に応じて読み込む（CSV/Parquet対応）
+        
+        Args:
+            data_path: データファイルパス
+            
+        Returns:
+            pd.DataFrame: 読み込んだデータ
+            
+        Note:
+            v459最適化: Parquet形式の特徴生成済みデータに対応
+        """
+        from pathlib import Path
+        
+        path = Path(data_path)
+        
+        # Parquet形式の場合
+        if path.suffix.lower() == '.parquet':
+            self.logger.info(f"📦 Loading pre-computed features from Parquet: {data_path}")
+            try:
+                df = read_parquet(path)
+                self.logger.info(f"✅ Parquet loaded: {df.shape}, {len(df.columns)} features")
+                return df
+            except Exception as e:
+                self.logger.error(f"❌ Parquet loading failed: {e}")
+                raise
+        
+        # CSV形式の場合（従来の処理）
+        else:
+            self.logger.info(f"📄 Loading CSV data: {data_path}")
+            df = DataLoader.load_csv_optimized(data_path)
+            if "timestamp" in df.columns:
+                df["timestamp"] = safe_to_datetime_series(df["timestamp"])
+            self.logger.info(f"✅ CSV loaded: {df.shape}")
+            return df
+    
     def _validate_v454_columns(self, df: pd.DataFrame, data_path: str) -> None:
         """
         Validate that the DataFrame contains v454 specific columns.
@@ -2088,8 +2209,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             import importlib
 
             try:
+                # Use full-featured HeavyTradingEnv that respects action_type configuration
                 mod = importlib.import_module(
-                    "ztb.training.environments.heavy_trading_env"
+                    "ztb.trading.environment.heavy_env.core"
                 )
                 HeavyTradingEnv = getattr(mod, "HeavyTradingEnv", None)
             except Exception:
@@ -2137,7 +2259,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 return None
 
             try:
-                data = load_csv_data(data_path)
+                data = self._load_data_with_format_detection(data_path)
                 self.logger.info(f"Loaded data from {data_path}, shape: {data.shape}")
                 # Validate v454 columns
                 self._validate_v454_columns(data, str(data_path))
@@ -2258,8 +2380,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Load data
             if data_path and Path(data_path).exists():
-                custom_df = load_csv_data(data_path)
-                custom_df["timestamp"] = pd.to_datetime(custom_df["timestamp"])
+                custom_df = self._load_data_with_format_detection(data_path)
+                custom_df["timestamp"] = safe_to_datetime_series(custom_df["timestamp"])
                 self.logger.info(
                     f"Loaded custom data from {data_path}, shape: {custom_df.shape}"
                 )
@@ -2271,8 +2393,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     raise FileNotFoundError(
                         f"Default data file not found: {default_path}"
                     )
-                df = load_csv_data(default_path)
-                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                df = DataLoader.load_csv_optimized(default_path)
+                df["timestamp"] = safe_to_datetime_series(df["timestamp"])
                 self.logger.info(f"Loaded default data, shape: {df.shape}")
 
             # Create environment config (simplified version)
@@ -2618,8 +2740,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             import pandas as pd
 
-            df = load_csv_data(csv_path)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df = DataLoader.load_csv_optimized(csv_path)
+            df["timestamp"] = safe_to_datetime_series(df["timestamp"])
             return df
         except Exception as e:
             self.logger.error(f"Failed to load backtest data: {e}")
@@ -2639,11 +2761,14 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             end_idx = len(df) - 1
 
             if start_date:
-                start_mask = df["timestamp"] >= pd.to_datetime(start_date)
+                # Use pd.Timestamp directly to avoid C extension
+                start_ts = pd.Timestamp(start_date)
+                start_mask = df["timestamp"] >= start_ts
                 start_idx = start_mask.idxmax() if start_mask.any() else 0
 
             if end_date:
-                end_mask = df["timestamp"] <= pd.to_datetime(end_date)
+                end_ts = pd.Timestamp(end_date)
+                end_mask = df["timestamp"] <= end_ts
                 end_idx = end_mask.idxmax() if end_mask.any() else len(df) - 1
 
             # Run the period test

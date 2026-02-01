@@ -15,6 +15,7 @@ import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.io.data_loader import DataLoader
 from ztb.metrics import sharpe_ratio as calculate_sharpe_ratio
 from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.trading.environment.schema_env_factory import create_env_from_schema
@@ -284,7 +285,7 @@ class SACv434Trainer:
             raise FileNotFoundError(f"データファイルが見つかりません: {data_path}")
 
         # CSVデータを読み込み
-        df = pd.read_csv(data_path)
+        df = DataLoader.load_csv_strict(data_path)
         logger.info(f"データを読み込みました: {len(df)} 行")
 
         # 特徴量統合
@@ -477,7 +478,7 @@ def run_trading_backtest(
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"テストデータが見つかりません: {data_path}")
 
-        test_data = pd.read_csv(data_path)
+        test_data = DataLoader.load_csv_strict(data_path)
         logger.info(f"テストデータ読み込み完了: {len(test_data)} 行")
 
         # モデルが訓練された環境と同じ環境を使用（Pendulum環境）

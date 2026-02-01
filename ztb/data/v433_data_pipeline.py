@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import safe_json_dump
 
 # ロギング設定
@@ -294,7 +295,11 @@ class YahooFinanceDataPipeline:
         """
         if format == "csv":
             filepath = self.data_dir / f"{filename}.csv"
-            df = pd.read_csv(filepath, index_col=0, parse_dates=True)
+            df = DataLoader.load_csv_strict(
+                filepath,
+                index_col=0,
+                parse_dates=True,
+            )
         elif format == "pkl":
             filepath = self.data_dir / f"{filename}.pkl"
             df = pd.read_pickle(filepath)

@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 def load_training_reports(reports_dir: Path, pattern: str = "training_report_*.json") -> List[Dict[str, Any]]:
@@ -58,7 +59,9 @@ def analyze_action_balance(report: Dict[str, Any]) -> Dict[str, float]:
     hold_ratio = hold / total
     
     # Balance score: deviation from ideal 1/3 each
-    balance_score = abs(buy_ratio - 0.333) + abs(sell_ratio - 0.333) + abs(hold_ratio - 0.333)
+    balance_score = RewardUtils.calculate_balance_deviation_from_ratios(
+        [buy_ratio, sell_ratio, hold_ratio], [0.333, 0.333, 0.333]
+    )
     
     return {
         "balance_score": balance_score,

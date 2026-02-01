@@ -17,6 +17,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 from ztb.adaptation.monitoring.types import TradingPerformanceMetrics
+from ztb.io.data_loader import DataLoader
 from ztb.metrics.metrics import coefficient_of_variation
 from ztb.trading.v433_integration_manager import V433IntegrationManager
 from ztb.utils.file_utils import save_csv_data
@@ -188,14 +189,23 @@ BacktestConfiguration = BacktestConfig
 class DataManager:
     """データ管理クラス"""
 
-    def __init__(self, data_directory: str = "data"):
+    def __init__(self, data_directory: str = "data", max_cache_entries: int = 8):
         self.data_directory = Path(data_directory)
         self.data_directory.mkdir(exist_ok=True)
         self.logger = get_logger(__name__)
+        try:
+            self.max_cache_entries = max(1, int(max_cache_entries))
+        except (TypeError, ValueError):
+            self.max_cache_entries = 8
 
         # データキャッシュ
         self.price_cache: Dict[str, pd.DataFrame] = {}
         self.fundamental_cache: Dict[str, pd.DataFrame] = {}
+
+    def _prune_cache(self, cache: Dict[str, pd.DataFrame]) -> None:
+        """Prune cache to avoid unbounded growth in long runs."""
+        while len(cache) > self.max_cache_entries:
+            cache.pop(next(iter(cache)))
 
     def load_historical_data(
         self, symbol: str, start_date: datetime, end_date: datetime
@@ -211,7 +221,9 @@ class DataManager:
             data_file = self.data_directory / f"{symbol}_historical.csv"
 
             if data_file.exists():
-                df = pd.read_csv(data_file, index_col=0, parse_dates=True)
+                df = DataLoader.load_csv_strict(
+                    data_file, index_col=0, parse_dates=True
+                )
                 df = df.loc[start_date:end_date]
 
                 # データの検証
@@ -223,6 +235,7 @@ class DataManager:
                 df = self._clean_price_data(df)
 
                 self.price_cache[cache_key] = df
+                self._prune_cache(self.price_cache)
                 return df
 
             else:
@@ -232,6 +245,7 @@ class DataManager:
                 )
                 df = self._generate_synthetic_data(symbol, start_date, end_date)
                 self.price_cache[cache_key] = df
+                self._prune_cache(self.price_cache)
                 return df
 
         except Exception as e:
@@ -239,6 +253,7 @@ class DataManager:
             # フォールバック：シミュレーションデータ
             df = self._generate_synthetic_data(symbol, start_date, end_date)
             self.price_cache[cache_key] = df
+            self._prune_cache(self.price_cache)
             return df
 
     def load_fundamental_data(
@@ -255,10 +270,13 @@ class DataManager:
             data_file = self.data_directory / f"{symbol}_fundamental.csv"
 
             if data_file.exists():
-                df = pd.read_csv(data_file, index_col=0, parse_dates=True)
+                df = DataLoader.load_csv_strict(
+                    data_file, index_col=0, parse_dates=True
+                )
                 df = df.loc[start_date:end_date]
 
                 self.fundamental_cache[cache_key] = df
+                self._prune_cache(self.fundamental_cache)
                 return df
             else:
                 # 空のDataFrameを返す

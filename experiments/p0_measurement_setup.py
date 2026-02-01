@@ -4,6 +4,8 @@ P0: 計測基盤整備スクリプト
 
 89#に基づき、環境メトリクス（gross_pnl/net_pnl/total_fees等）の
 取得・検証機能を整備する。
+
+Day11 run_day11_verification.pyのアプローチを踏襲。
 """
 
 from __future__ import annotations
@@ -21,8 +23,11 @@ from typing import Any
 
 import numpy as np
 
-from ztb.environments.fast_intraday_env_v456 import FastIntradayEnv
-from ztb.rl.common.evaluate_policy import evaluate_policy
+from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+from ztb.training.utils.env_metrics import (
+    extract_trainer_env_metrics,
+    compute_balance_roi,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -144,41 +149,49 @@ class EnvironmentMetrics:
         return "\n".join(lines)
 
 
-def extract_environment_metrics(env: Any) -> EnvironmentMetrics:
+def extract_environment_metrics(trainer: SACTrainer) -> EnvironmentMetrics:
     """
-    環境オブジェクトから詳細メトリクスを抽出
+    トレーナーから環境メトリクスを抽出
     
-    VecEnv、Monitor等でラップされていても対応
+    extract_trainer_env_metrics() を使用してメトリクスを取得し、
+    EnvironmentMetricsデータクラスに変換。
     """
-    # VecEnvをunwrap
-    actual_env = env
-    if hasattr(env, 'envs') and len(env.envs) > 0:
-        actual_env = env.envs[0]
-    
-    # さらにMonitor等をunwrap
-    unwrapped = actual_env
-    for _ in range(10):
-        if hasattr(unwrapped, 'env'):
-            unwrapped = unwrapped.env
-        elif hasattr(unwrapped, 'unwrapped'):
-            unwrapped = unwrapped.unwrapped
-        else:
-            break
-    
-    # メトリクス取得
-    def safe_get(attr: str, default: float = 0.0) -> float:
-        val = getattr(unwrapped, attr, default)
-        return float(val) if val is not None else default
+    metrics_dict = extract_trainer_env_metrics(trainer, include_optional=True)
     
     return EnvironmentMetrics(
-        balance=safe_get('balance', 100000.0),
-        initial_balance=safe_get('initial_balance', 100000.0),
-        gross_pnl=safe_get('gross_pnl'),
-        net_pnl=safe_get('net_pnl'),
-        total_fees=safe_get('total_fees'),
-        total_slippage=safe_get('total_slippage'),
-        total_trades=int(safe_get('total_trades')),
+        balance=metrics_dict.get('final_balance', metrics_dict.get('balance', 100000.0)),
+        initial_balance=metrics_dict.get('initial_balance', 100000.0),
+        gross_pnl=metrics_dict.get('gross_pnl', 0.0),
+        net_pnl=metrics_dict.get('net_pnl', 0.0),
+        total_fees=metrics_dict.get('total_fees', 0.0),
+        total_slippage=metrics_dict.get('total_slippage', 0.0),
+        total_trades=int(metrics_dict.get('total_trades', 0)),
     )
+
+
+def create_minimal_config(seed: int = 42) -> dict:
+    """最小限の設定を作成（Day11ベース）"""
+    return {
+        "experiment_name": "p0_measurement_test",
+        "data": {
+            "data_file": str(project_root / "data" / "btc_jpy_1m_v451_optimized_features.parquet"),
+        },
+        "environment": {
+            "initial_balance": 100000.0,
+            "max_steps": None,
+            "use_continuous_actions": True,
+            "action_space_type": "continuous",
+        },
+        "training": {
+            "total_timesteps": 1000,  # 短時間テスト
+            "seed": seed,
+            "walk_forward": {
+                "enabled": False,
+            },
+        },
+        "sac": {},  # デフォルト値使用
+        "reward": {},  # デフォルト値使用
+    }
 
 
 def run_p0_validation() -> None:
@@ -187,42 +200,21 @@ def run_p0_validation() -> None:
     logger.info("P0: 計測基盤整備 - 検証開始")
     logger.info("=" * 60)
     
-    # 環境構築
-    logger.info("環境を構築中...")
-    env = FastIntradayEnv(
-        data_dir=str(project_root / "data"),
-        initial_balance=100000.0,
-        max_steps=1000,
-        transaction_cost=0.001,  # 0.1%
-    )
+    # SACTrainerを使用して学習実行
+    logger.info("短時間学習を実行中（1000ステップ）...")
+    config = create_minimal_config(seed=42)
     
-    # 初期状態確認
-    obs, info = env.reset()
-    metrics_initial = extract_environment_metrics(env)
-    logger.info("\n初期状態:")
-    logger.info(f"  Balance: {metrics_initial.balance:,.2f}")
-    logger.info(f"  Gross PnL: {metrics_initial.gross_pnl:.2f}")
-    logger.info(f"  Net PnL: {metrics_initial.net_pnl:.2f}")
+    trainer = SACTrainer(config=config, logger=logger)
+    trainer.train()
     
-    # ランダム取引でテスト
-    logger.info("\nランダム取引を実行中（1000ステップ）...")
-    total_reward = 0.0
+    # 学習後にメトリクスを取得
+    logger.info("\n学習後のメトリクス取得...")
+    metrics = extract_environment_metrics(trainer)
     
-    for step in range(1000):
-        action = env.action_space.sample()
-        obs, reward, terminated, truncated, info = env.step(action)
-        total_reward += reward
-        
-        if terminated or truncated:
-            break
-    
-    # 最終状態
-    metrics_final = extract_environment_metrics(env)
-    
-    logger.info("\n" + metrics_final.summary())
+    logger.info("\n" + metrics.summary())
     
     # 整合性チェック
-    errors = metrics_final.validate()
+    errors = metrics.validate()
     if errors:
         logger.error("整合性エラー検出:")
         for err in errors:
@@ -230,76 +222,18 @@ def run_p0_validation() -> None:
     else:
         logger.info("✅ 整合性チェック: OK")
     
-    # info dictからの取得もテスト
-    logger.info("\ninfo dictからのメトリクス:")
-    for key in ['balance', 'gross_pnl', 'net_pnl', 'total_fees', 'fee_paid', 'slippage_paid']:
-        if key in info:
-            logger.info(f"  {key}: {info[key]}")
-    
-    env.close()
+    # ROI計算
+    roi_value = compute_balance_roi({
+        'final_balance': metrics.balance,
+        'initial_balance': metrics.initial_balance,
+    })
+    if roi_value is not None:
+        logger.info(f"\nBalance ROI: {roi_value:+.2f}%")
     
     logger.info("\n" + "=" * 60)
     logger.info("P0 検証完了")
     logger.info("=" * 60)
 
 
-def run_cost_breakdown_analysis() -> None:
-    """取引コストの内訳分析"""
-    logger.info("\n" + "=" * 60)
-    logger.info("取引コスト内訳分析")
-    logger.info("=" * 60)
-    
-    # 異なる取引コスト率でテスト
-    cost_rates = [0.0, 0.0005, 0.001, 0.002]
-    results = []
-    
-    for cost_rate in cost_rates:
-        env = FastIntradayEnv(
-            data_dir=str(project_root / "data"),
-            initial_balance=100000.0,
-            max_steps=1000,
-            transaction_cost=cost_rate,
-        )
-        
-        env.reset()
-        
-        # 固定パターンで取引（BUY-SELL繰り返し）
-        for step in range(500):
-            # 交互にBUY/SELL
-            action = np.array([1.0 if step % 20 < 10 else -1.0], dtype=np.float32)
-            obs, reward, terminated, truncated, info = env.step(action)
-            if terminated or truncated:
-                break
-        
-        metrics = extract_environment_metrics(env)
-        results.append({
-            'cost_rate': cost_rate * 100,  # %表示
-            'gross_pnl': metrics.gross_pnl,
-            'total_fees': metrics.total_fees,
-            'net_pnl': metrics.net_pnl,
-            'total_trades': metrics.total_trades,
-            'gross_roi': metrics.gross_roi,
-            'net_roi': metrics.net_roi,
-        })
-        
-        env.close()
-    
-    # 結果表示
-    logger.info("\n取引コスト影響分析:")
-    logger.info("-" * 80)
-    logger.info(f"{'Cost Rate':>10} | {'Trades':>7} | {'Gross PnL':>12} | {'Fees':>12} | {'Net PnL':>12} | {'Gross ROI':>10} | {'Net ROI':>10}")
-    logger.info("-" * 80)
-    
-    for r in results:
-        logger.info(
-            f"{r['cost_rate']:>9.2f}% | {r['total_trades']:>7} | {r['gross_pnl']:>+12,.2f} | "
-            f"{r['total_fees']:>12,.2f} | {r['net_pnl']:>+12,.2f} | "
-            f"{r['gross_roi']:>+9.2f}% | {r['net_roi']:>+9.2f}%"
-        )
-    
-    logger.info("-" * 80)
-
-
 if __name__ == "__main__":
     run_p0_validation()
-    run_cost_breakdown_analysis()

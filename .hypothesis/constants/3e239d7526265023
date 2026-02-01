@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\core\logger.py
+# hypothesis_version: 6.140.3
+
+[50.0, 100, 200, 204, 300, 1024, 1800, 3600, 39423, 43775, 65280, 16711680, 16776960, '#', '%Y%m%d-%H%M%S', '%Y%m%d_%H%M%S', '***MASKED***', '.env', '100k', '=', 'BTC', 'Config', 'Content-Type', 'DISCORD_WEBHOOK', 'JPY', 'LoggerManager', 'Metrics', 'Trading RL Bot', '\\1: ***MASKED***', '```', '```\n', 'a', 'application/json', 'avatar_url', 'buy_ratio', 'color', 'config', 'content', 'default', 'details', 'embeds', 'error', 'error_message', 'event', 'experiment', 'experiment_end', 'experiment_id', 'experiment_name', 'experiment_start', 'info', 'logs', 'mean_total_pnl', 'message', 'name', 'pnl_stats', 'profit_factor', 'r', 'results', 'reward_stats', 'sell_ratio', 'session_id', 'standard', 'timestamp', 'total_trades', 'trading_stats', 'training', 'username', 'utf-8', 'value', 'warning', 'winning_trades', '💓 Heartbeat', '📣 Training Update', '🚀', '🚨', '🚨 Error', '🧪']

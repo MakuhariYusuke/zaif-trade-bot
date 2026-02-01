@@ -13,6 +13,7 @@ import numpy as np
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.types.common import StageChangeEvent
 from ztb.utils.logging_utils import get_logger
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 class BalanceCurriculumManager:
@@ -225,7 +226,7 @@ class BalanceCurriculumManager:
 
         buy_ratio = action_counts[1] / total_actions
         sell_ratio = action_counts[2] / total_actions
-        buy_sell_diff = abs(buy_ratio - sell_ratio)
+        buy_sell_diff = RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
 
         # Emergency condition: extreme bias
         if buy_sell_diff > 0.35:
@@ -295,7 +296,7 @@ class BalanceCurriculumManager:
 
         buy_ratio = action_counts[1] / total_actions
         sell_ratio = action_counts[2] / total_actions
-        buy_sell_diff = abs(buy_ratio - sell_ratio)
+        buy_sell_diff = RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
 
         # Check balance threshold
         balance_met = buy_sell_diff < conditions["balance_threshold"]
@@ -332,8 +333,8 @@ class BalanceCurriculumManager:
         # Check balance (more lenient than forced_balance)
         total_actions = sum(action_counts)
         if total_actions >= 100:
-            buy_sell_diff = abs(
-                action_counts[1] / total_actions - action_counts[2] / total_actions
+            buy_sell_diff = RewardUtils.calculate_buy_sell_diff(
+                action_counts[1] / total_actions, action_counts[2] / total_actions
             )
             balance_ok = buy_sell_diff < conditions.get("balance_threshold", 0.20)
         else:

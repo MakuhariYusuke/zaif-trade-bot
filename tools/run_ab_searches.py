@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, Any
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 def run_ab_search(
@@ -92,7 +93,8 @@ def analyze_reward_components(reports_dir: Path) -> Dict[str, Any]:
                 if action_dist:
                     buy = action_dist.get("BUY", 0)
                     sell = action_dist.get("SELL", 0)
-                    balance_score = abs(buy - sell)
+                    # Use canonical deviation helper (target 50/50 for BUY/SELL)
+                    balance_score = RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
                     
                     if balance_score < analysis["best_balance_score"]:
                         analysis["best_balance_score"] = balance_score

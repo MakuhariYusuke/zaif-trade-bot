@@ -18,7 +18,7 @@ from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.types.common import ConfigDict
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import save_csv_data
 from ztb.utils.logging_utils import get_logger
 
@@ -187,7 +187,7 @@ class SACv427AdvancedTrainer(BaseTrainer):
                 logger.info(f"Created mock data at {data_path}")
 
             # Load and validate data
-            df = load_csv_data(data_path)
+            df = DataLoader.load_csv_strict(data_path)
             logger.info(f"Loaded data with shape: {df.shape}")
 
             # Set timestamp as index if it exists

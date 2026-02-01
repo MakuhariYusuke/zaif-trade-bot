@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Unit tests for data loading improvements in DataGenerator and ImprovedDataLoader.
+Unit tests for legacy data loading helpers.
+
+Note: ImprovedDataLoader is kept for backward compatibility; advanced CSV I/O
+is centralized in ztb.io.advanced_csv.
 """
 
 import gzip
@@ -41,7 +44,7 @@ class TestDataLoadingImprovements:
 
                 # Verify it's memory mapped
                 assert hasattr(mmap_data, "filename")
-                assert mmap_data.filename == tmp.name
+                assert Path(mmap_data.filename) == Path(tmp.name)
 
             finally:
                 try:
@@ -137,11 +140,12 @@ class TestDataLoadingImprovements:
 
 
 class TestImprovedDataLoader:
-    """Test ImprovedDataLoader features."""
+    """Test legacy ImprovedDataLoader features (compat coverage)."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.loader = ImprovedDataLoader()
+        self.generator = DataGenerator(enable_memory_cache=True)
 
     def teardown_method(self):
         """Clean up after tests."""

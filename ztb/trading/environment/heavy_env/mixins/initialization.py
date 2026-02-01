@@ -13,6 +13,7 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 from pandas.api import types as ptypes
 
+from ztb.io.data_loader import DataLoader
 from ztb.features.generators.adaptive.selection import AdaptiveFeatureSelector
 from ztb.trading.environment.components import (
     ActionValidator,
@@ -168,7 +169,7 @@ def _initialize_data(self: Any, df: Optional[pd.DataFrame]) -> None:
         if csv_path is not None:
             logger.info(f"Loading data from CSV: {csv_path}")
             try:
-                base_df = pd.read_csv(csv_path)
+                base_df = DataLoader.load_csv_strict(csv_path)
                 logger.info(f"Loaded {len(base_df)} rows from CSV")
             except Exception as e:
                 raise ValidationError(
@@ -272,11 +273,8 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
             )
 
         # Check if multi-timeframe features should be included
-        # Force enable if not explicitly disabled, as requested by user
-        include_mtf = feature_flags.get("include_multi_timeframe_features", False)
-        if not include_mtf:
-            logger.info("Forcing enable of multi-timeframe features (v455 requirement)")
-            include_mtf = True
+        # Allow disabling via feature_flags (v459: removed forced enable for optimization)
+        include_mtf = feature_flags.get("include_multi_timeframe_features", True)
 
         if include_mtf:
             # Add multi-timeframe features if available

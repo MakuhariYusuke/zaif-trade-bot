@@ -6,7 +6,6 @@ import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-import pandas as pd
 
 # Avoid importing stable_baselines3 at module import time to prevent
 # collection-time failures in minimal test environments. Import lazily
@@ -18,11 +17,11 @@ from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_BATCH_SIZE
 from ztb.training.environments.environment_config import EnvironmentConfig
 from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.trading.environment.constants import PPO_DEFAULT_N_STEPS
-from ztb.training.environments.heavy_trading_env import HeavyTradingEnv
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
+from ztb.io.data_loader import DataLoader
 from ztb.features.processors.optimization.features import OptimizerFeatureTracker
 from ztb.training.unified_trainer.base.base_trainer import DataError, ModelError
 
@@ -142,7 +141,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
             raise DataError(f"Data file not found: {data_path}")
 
         self.log_structured_event("data", "loading", {"path": data_path})
-        df = pd.read_csv(data_path)
+        df = DataLoader.load_csv_strict(data_path)
         self.log_structured_event("data", "loaded", {"rows": len(df)})
 
         # Create environment configuration from unified config

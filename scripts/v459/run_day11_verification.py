@@ -27,6 +27,10 @@ sys.path.insert(0, str(project_root))
 import numpy as np
 
 from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+from ztb.training.utils.env_metrics import (
+    compute_balance_roi,
+    extract_trainer_env_metrics,
+)
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger("day11_verification")
@@ -138,74 +142,37 @@ def run_single_experiment(config: dict) -> Dict[str, Any]:
         
         # 環境からメトリクスを抽出（84#修正版）
         try:
-            env = None
-            # SACTrainerはtrainer.model.envでアクセス可能
-            if hasattr(trainer, 'model') and trainer.model is not None:
-                if hasattr(trainer.model, 'env') and trainer.model.env is not None:
-                    env = trainer.model.env
-                elif hasattr(trainer.model, 'get_env'):
-                    env = trainer.model.get_env()
-            
-            if env is not None:
-                # VecEnvをunwrap
-                actual_env = env
-                if hasattr(env, 'envs') and len(env.envs) > 0:
-                    actual_env = env.envs[0]
-                
-                # さらにMonitor等をunwrap
-                unwrapped_env = actual_env
-                max_unwrap = 10
-                for _ in range(max_unwrap):
-                    if hasattr(unwrapped_env, 'env'):
-                        unwrapped_env = unwrapped_env.env
-                    else:
-                        break
-                
-                # 84# Fix: Check for 'balance' first
-                if hasattr(unwrapped_env, 'balance'):
-                    training_result["final_balance"] = float(unwrapped_env.balance)
-                    logger.info(f"  ✓ Got balance: {training_result['final_balance']:.2f}")
-                elif hasattr(unwrapped_env, 'portfolio_value'):
-                    training_result["final_balance"] = float(unwrapped_env.portfolio_value)
-                    logger.info(f"  ✓ Got portfolio_value: {training_result['final_balance']:.2f}")
-                
-                # 84# Fix: Check for 'initial_balance' first
-                initial_balance = 100000.0
-                if hasattr(unwrapped_env, 'initial_balance'):
-                    initial_balance = float(unwrapped_env.initial_balance)
-                elif hasattr(unwrapped_env, 'initial_portfolio_value'):
-                    initial_balance = float(unwrapped_env.initial_portfolio_value)
-                training_result["initial_balance"] = initial_balance
-                
-                # ROI計算
-                if "final_balance" in training_result:
-                    roi = (training_result["final_balance"] - initial_balance) / initial_balance * 100
+            metrics = extract_trainer_env_metrics(trainer, include_optional=True)
+            if metrics:
+                if "final_balance" in metrics:
+                    logger.info(f"  ✓ Got balance: {metrics['final_balance']:.2f}")
+
+                if "final_balance" in metrics and "initial_balance" not in metrics:
+                    metrics["initial_balance"] = 100000.0
+
+                for key, value in metrics.items():
+                    if key not in training_result:
+                        training_result[key] = value
+
+                roi = compute_balance_roi(metrics)
+                if roi is not None:
                     training_result["final_roi"] = roi
                     training_result["net_roi"] = roi
-                
-                # 取引回数
-                if hasattr(unwrapped_env, 'total_trades'):
-                    training_result["total_trades"] = int(unwrapped_env.total_trades)
-                if hasattr(unwrapped_env, 'buy_count'):
-                    training_result["buy_count"] = int(unwrapped_env.buy_count)
-                if hasattr(unwrapped_env, 'sell_count'):
-                    training_result["sell_count"] = int(unwrapped_env.sell_count)
-                
-                # Sharpe ratio
-                if hasattr(unwrapped_env, 'get_sharpe_ratio'):
-                    training_result["sharpe_ratio"] = float(unwrapped_env.get_sharpe_ratio())
-                elif hasattr(unwrapped_env, 'sharpe_ratio'):
-                    training_result["sharpe_ratio"] = float(unwrapped_env.sharpe_ratio)
-                
-                # 84# Fix: Log effective reward settings
-                if hasattr(unwrapped_env, 'reward_scale'):
-                    training_result["effective_reward_scale"] = float(unwrapped_env.reward_scale)
-                    logger.info(f"  Effective reward_scale: {unwrapped_env.reward_scale}")
-                    
-                logger.info(f"環境から取得したメトリクス:")
-                logger.info(f"  final_balance: {training_result.get('final_balance', 'N/A')}")
+
+                if "reward_scale" in metrics:
+                    training_result["effective_reward_scale"] = metrics["reward_scale"]
+                    logger.info(
+                        f"  Effective reward_scale: {metrics['reward_scale']}"
+                    )
+
+                logger.info("環境から取得したメトリクス:")
+                logger.info(
+                    f"  final_balance: {training_result.get('final_balance', 'N/A')}"
+                )
                 logger.info(f"  ROI: {training_result.get('final_roi', 'N/A')}")
-                logger.info(f"  total_trades: {training_result.get('total_trades', 'N/A')}")
+                logger.info(
+                    f"  total_trades: {training_result.get('total_trades', 'N/A')}"
+                )
             else:
                 logger.warning("環境へのアクセスに失敗しました")
         except Exception as env_error:

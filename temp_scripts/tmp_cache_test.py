@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from ztb.cache.data_loader import DataLoader
+from ztb.cache.data_loader import CacheDataLoader
 
 p = tempfile.TemporaryDirectory()
 cache_dir = Path(p.name) / "cache"
 cache_dir.mkdir()
 
-loader = DataLoader(cache_dir=str(cache_dir))
+loader = CacheDataLoader(cache_dir=str(cache_dir))
 
 test_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 

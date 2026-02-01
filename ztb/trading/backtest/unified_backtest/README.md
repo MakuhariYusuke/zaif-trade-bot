@@ -48,8 +48,8 @@ sac_strategy = SACStrategy(
 backtester.register_strategy("sac_v444", sac_strategy)
 
 # Load market data
-import pandas as pd
-data = pd.read_csv("data/market_data.csv", index_col=0, parse_dates=True)
+from ztb.io.data_loader import DataLoader
+data = DataLoader.load_csv_strict("data/market_data.csv", index_col=0, parse_dates=True)
 
 # Configure backtest
 config = BacktestConfig(

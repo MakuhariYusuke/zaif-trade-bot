@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\scripts\backtest\backtest_sac_v438_quick.py
+# hypothesis_version: 6.140.3
+
+[0.0, 'avg_total_reward', 'best_episode_reward', 'run_quick_backtest', 'total_episodes', 'total_reward', 'worst_episode_reward']

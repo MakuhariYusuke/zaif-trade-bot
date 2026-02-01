@@ -5,6 +5,7 @@ import json
 import time
 from pathlib import Path
 from datetime import datetime
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
 def check_recent_reports(minutes=10):
@@ -30,12 +31,13 @@ def analyze_report(report_path):
         actions = ts.get("action_distribution", {})
         
         # Calculate balance score (distance from 33/33/33)
-        target = 0.333
         buy = actions.get("BUY", 0)
         sell = actions.get("SELL", 0)
         hold = actions.get("HOLD", 0)
-        
-        balance_score = abs(buy - target) + abs(sell - target) + abs(hold - target)
+
+        balance_score = RewardUtils.calculate_balance_deviation_from_ratios(
+            [buy, sell, hold], [0.333, 0.333, 0.333]
+        )
         
         return {
             "file": report_path.name,

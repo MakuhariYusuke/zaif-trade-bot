@@ -53,6 +53,8 @@ class PositionManager:
         # PnL tracking
         self.realized_pnl: float = 0.0
         self.total_pnl: float = 0.0  # For backward compatibility
+        self.total_fees: float = 0.0
+        self.total_slippage: float = 0.0
 
         # Trade tracking
         self.trades_count: int = 0
@@ -209,7 +211,7 @@ class PositionManager:
         )
 
         # Determine if reversal is allowed
-        allow_reverse = self.config.get("allow_reverse", True)
+        allow_reverse = getattr(self.config, "allow_reverse", True)
         if filter_active:
             allow_reverse = False
         if force_no_reverse:
@@ -476,6 +478,9 @@ class PositionManager:
                 current_atr=atr,
             )
             execution_price = sim_result.executed_price
+            slippage_cost = abs(execution_price - current_price) * abs(
+                actual_position_size
+            )
             entry_cost = sim_result.fee
         else:
             trade_value = abs(float(actual_position_size)) * execution_price
@@ -492,6 +497,9 @@ class PositionManager:
             else:
                 # Fallback to legacy transaction_cost
                 entry_cost = trade_value * float(self.config.transaction_cost)
+            slippage_cost = abs(execution_price - current_price) * abs(
+                actual_position_size
+            )
 
         # Check if we have enough funds
         if available_funds < entry_cost:
@@ -505,6 +513,8 @@ class PositionManager:
         # Deduct entry cost from realized PnL
         self.realized_pnl -= entry_cost
         self.total_pnl = self.realized_pnl
+        self.total_fees += float(entry_cost)
+        self.total_slippage += float(slippage_cost)
 
         # Open position with actual size
         self.position = direction * actual_position_size
@@ -557,6 +567,7 @@ class PositionManager:
             execution_price = sim_result.executed_price
             slippage_rate = sim_result.slippage_rate
             exit_cost = sim_result.fee
+            slippage_cost = abs(execution_price - current_price) * abs(self.position)
         else:
             # Apply slippage to execution price (Legacy)
             slippage_rate = 0.0
@@ -591,6 +602,7 @@ class PositionManager:
             else:
                 # Fallback to legacy transaction_cost
                 exit_cost = trade_value * float(self.config.transaction_cost)
+            slippage_cost = abs(execution_price - current_price) * abs(self.position)
 
         price_change = execution_price - self.entry_price
         realized_trade_pnl = float(self.position) * price_change
@@ -600,6 +612,8 @@ class PositionManager:
         # Accumulate realized PnL
         self.realized_pnl += realized_trade_pnl
         self.total_pnl = self.realized_pnl
+        self.total_fees += float(exit_cost)
+        self.total_slippage += float(slippage_cost)
 
         # Update trade tracking if step provided
         if current_step is not None:
@@ -650,12 +664,17 @@ class PositionManager:
         Returns:
             Dictionary with position details
         """
+        gross_pnl = self.realized_pnl + self.total_fees + self.total_slippage
         return {
             "position": self.position,
             "entry_price": self.entry_price,
             "realized_pnl": self.realized_pnl,
             "unrealized_pnl": self.calculate_unrealized_pnl(),
             "total_pnl": self.total_pnl,
+            "gross_pnl": gross_pnl,
+            "net_pnl": self.realized_pnl,
+            "total_fees": self.total_fees,
+            "total_slippage": self.total_slippage,
             "trades_count": self.trades_count,
             "consecutive_trade_steps": self._consecutive_trade_steps,
         }
@@ -666,6 +685,8 @@ class PositionManager:
         self.entry_price = 0.0
         self.realized_pnl = 0.0
         self.total_pnl = 0.0
+        self.total_fees = 0.0
+        self.total_slippage = 0.0
         self.trades_count = 0
         self._last_trade_step = -1
         self._consecutive_trade_steps = 0

@@ -58,7 +58,39 @@ def _load_real_sb3_into_current_module() -> bool:
     if spec.submodule_search_locations is not None:
         module.__path__ = list(spec.submodule_search_locations)
 
-    spec.loader.exec_module(module)  # type: ignore[call-arg]
+    try:
+        spec.loader.exec_module(module)  # type: ignore[call-arg]
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        # If loading the real SB3 package fails for any reason (broken install,
+        # missing optional deps, etc.), fall back to the lightweight local
+        # dummies below instead of raising during import-time. Tests and
+        # minimal tooling should be able to import `stable_baselines3`.
+        import warnings
+
+        warnings.warn(
+            "Failed to load real 'stable_baselines3' package; using local "
+            "dummy shims. Original error: %r" % (exc,),
+            RuntimeWarning,
+        )
+        return False
+
+    # Ensure key exports exist at the package level (some SB3 installs may
+    # not re-export algorithm classes at the top-level). Attempt to locate
+    # common algorithm classes to preserve `from stable_baselines3 import SAC`.
+    try:  # pragma: no cover - best-effort recovery
+        if not hasattr(module, "SAC"):
+            sac_mod = importlib.import_module("stable_baselines3.sac.sac")
+            module.SAC = getattr(sac_mod, "SAC", getattr(sac_mod, "sac", None))
+    except Exception:
+        try:
+            sac_pkg = importlib.import_module("stable_baselines3.sac")
+            module.SAC = getattr(sac_pkg, "SAC", None)
+        except Exception:
+            # Give up silently; downstream code should handle missing classes
+            # gracefully (e.g., import-time guarded or try/except around
+            # `from stable_baselines3 import SAC`).
+            pass
+
     return True
 
 
@@ -100,3 +132,11 @@ if not _load_real_sb3_into_current_module():
     monitor_mod = types.ModuleType("stable_baselines3.common.monitor")
     monitor_mod.Monitor = type("Monitor", (), {})
     sys.modules.setdefault("stable_baselines3.common.monitor", monitor_mod)
+
+    save_util_mod = types.ModuleType("stable_baselines3.common.save_util")
+    def _load_from_zip_file(*args, **kwargs):
+        raise NotImplementedError(
+            "Local stable_baselines3 shim does not implement `load_from_zip_file`."
+        )
+    save_util_mod.load_from_zip_file = _load_from_zip_file
+    sys.modules.setdefault("stable_baselines3.common.save_util", save_util_mod)

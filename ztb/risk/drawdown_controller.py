@@ -142,10 +142,10 @@ class DrawdownController:
             control_info["reduction_triggered"] = True
             control_info["position_reduction_factor"] = reduction_factor
 
-        # 警告
+        # 警告（ログスパム防止のため100ステップごと、INFOレベル）
         elif self.current_drawdown >= self.warning_threshold:
-            if step - self.last_warning_step > 10:  # 10ステップごとに警告
-                logger.warning(
+            if step - self.last_warning_step > 100:  # 100ステップごとに警告
+                logger.info(
                     f"⚠️ High drawdown warning at step {step}: "
                     f"drawdown {self.current_drawdown:.1%} exceeds warning threshold {self.warning_threshold:.1%}"
                 )

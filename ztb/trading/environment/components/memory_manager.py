@@ -53,10 +53,10 @@ class MemoryManager:
 
         rss_mb = self._process.memory_info().rss / BYTES_PER_MB
         target_df = df_override if df_override is not None else pd.DataFrame()
-        # NOTE: memory_usage(deep=True) is expensive for large DataFrames.
-        # Consider skipping or limiting frequency for performance.
+        # NOTE: Using deep=False to avoid Windows C extension SIGINT issues
+        # deep=True calls lib.memory_usage_of_objects() which triggers SIGINT
         df_mem_mb = (
-            target_df.memory_usage(deep=True).sum() / BYTES_PER_MB
+            target_df.memory_usage(deep=False).sum() / BYTES_PER_MB
             if isinstance(target_df, pd.DataFrame)
             else 0.0
         )

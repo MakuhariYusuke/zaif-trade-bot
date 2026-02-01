@@ -9,6 +9,9 @@ from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
 
+# Expose RewardUtils at module level for tests and external callers
+from .rewards.utils import RewardUtils
+
 
 class BehavioralPenaltyCalculator:
     """
@@ -43,12 +46,13 @@ class BehavioralPenaltyCalculator:
             self.lookback,
             getattr(self, "skewness_lookback", 0),
             getattr(self, "action_entropy_lookback", 0),
+            max(0, getattr(self, "forced_balance_min_actions", 0)),
         ]
         max_lookback = max(1, max(history_windows))
 
-        # Reserve space for lookback-based checks. Use max_lookback as the deque length
-        # so that recent_actions contains exactly the number of samples expected by tests.
-        self.recent_actions: deque[int] = deque(maxlen=max_lookback)
+        # Reserve space for lookback-based checks plus an extra slot for the current action.
+        # This ensures a lookback of N will have access to N previous samples plus the current one.
+        self.recent_actions: deque[int] = deque(maxlen=max_lookback + 1)
         self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
 
     def _load_settings(self):
@@ -205,9 +209,9 @@ class BehavioralPenaltyCalculator:
             # Ensure penalty is negative (penalty magnitude is stored as positive in configs)
             self.penalty_value = -abs(float(_rs_get("consistency_penalty", 0.05)))  # type: ignore
             self.lookback = int(_rs_get("consistency_lookback", 50))  # type: ignore
-            # Clamp lookback=0 to minimum 1 for window semantics expected by tests
-            if self.lookback == 0:
-                self.lookback = 1
+            # Treat lookback == 0 as disabled; negative values are clamped to 0
+            if self.lookback < 0:
+                self.lookback = 0
             # Minimum non-HOLD action count required to evaluate consistency penalties
             self.consistency_min_actions = int(_rs_get("consistency_min_actions", 2))
 
@@ -389,20 +393,17 @@ class BehavioralPenaltyCalculator:
     ) -> float:
         """
         Calculates a penalty to encourage balanced BUY and SELL actions,
-        considering the hypothetical impact of the current action and any bonus.
-        A higher bonus should make the agent more resilient to penalties.
+        delegating core deviation calculation to RewardUtils to avoid duplication.
         """
         if not self.balance_penalty_enabled:
             return 0.0
 
+        # Build hypothetical counts including the current action
         hypothetical_counts = self._get_recent_counts()
-        action_index = -1
         if action == ACTION_BUY:
-            action_index = 1
-            hypothetical_counts[action_index] += 1
+            hypothetical_counts[1] += 1
         elif action == ACTION_SELL:
-            action_index = 2
-            hypothetical_counts[action_index] += 1
+            hypothetical_counts[2] += 1
         else:
             return 0.0
 
@@ -410,30 +411,29 @@ class BehavioralPenaltyCalculator:
         if total_actions < self.balance_penalty_min_actions:
             return 0.0
 
-        buy_ratio = hypothetical_counts[1] / total_actions
-        sell_ratio = hypothetical_counts[2] / total_actions
-
-        penalty = 0.0
-        deviation = 0.0
         # Use adjusted targets when trend adjustment is enabled
         adjusted_targets = self._adjust_targets_by_trend()
-        adj_buy_target = adjusted_targets.get("buy_target", self.buy_target)
-        adj_sell_target = adjusted_targets.get("sell_target", self.sell_target)
-        if action == ACTION_BUY:
-            deviation = buy_ratio - adj_buy_target
-        elif action == ACTION_SELL:
-            deviation = sell_ratio - adj_sell_target
+        target_ratios = [
+            adjusted_targets.get("hold_target", self.hold_target),
+            adjusted_targets.get("buy_target", self.buy_target),
+            adjusted_targets.get("sell_target", self.sell_target),
+        ]
 
-        # Only penalize if the action increases the imbalance
-        if deviation > self.balance_penalty_tolerance:
-            # The bonus reduces the "effective" deviation that is penalized.
-            # A larger bonus leads to a larger reduction in penalized deviation.
-            bonus_effect = action_bonus / (self.balance_penalty_value + 1e-6)
-            penalized_deviation = max(
-                0, (deviation - self.balance_penalty_tolerance) - bonus_effect
-            )
-            penalty = penalized_deviation * self.balance_penalty_value
+        # Delegate calculation of summed excess deviations (penalty_coeff=1.0 -> returns sum of excess deviations)
+        from .rewards.utils import RewardUtils
 
+        raw_excess_sum = RewardUtils.calculate_balance_penalty(
+            hypothetical_counts,
+            target_ratios,
+            self.balance_penalty_tolerance,
+            penalty_coeff=1.0,
+        )
+
+        # Apply action_bonus as a reduction in the summed excess before final scaling
+        bonus_effect = action_bonus / (self.balance_penalty_value + 1e-6)
+        penalized_sum = max(0.0, raw_excess_sum - bonus_effect)
+
+        penalty = penalized_sum * self.balance_penalty_value
         return -penalty
 
     def calculate_balance_shaping(self, action: int) -> float:
@@ -584,7 +584,7 @@ class BehavioralPenaltyCalculator:
 
         buy_ratio = counts[1] / total
         sell_ratio = counts[2] / total
-        buy_sell_diff = abs(buy_ratio - sell_ratio)
+        buy_sell_diff = RewardUtils.calculate_buy_sell_diff(buy_ratio, sell_ratio)
 
         threshold = getattr(self, "emergency_intervention_threshold", 0.30)
         if buy_sell_diff > threshold:

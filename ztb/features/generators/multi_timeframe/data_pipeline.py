@@ -14,6 +14,9 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.timeframe import Timeframe
+from ztb.features.generators.multi_timeframe.datetime_utils import (
+    safe_to_datetime_series,
+)
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -153,7 +156,9 @@ class MultiTimeframeDataPipeline:
 
         # Convert to datetime if not already
         if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
-            df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+            df["timestamp"] = safe_to_datetime_series(
+                df["timestamp"], errors="coerce"
+            )
 
         # Drop rows with invalid timestamps
         df = df.dropna(subset=["timestamp"])
@@ -236,8 +241,10 @@ class MultiTimeframeDataPipeline:
         df = df.copy()
         base_df = base_df.copy()
 
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
-        base_df["timestamp"] = pd.to_datetime(base_df["timestamp"])
+        if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+            df["timestamp"] = safe_to_datetime_series(df["timestamp"])
+        if not pd.api.types.is_datetime64_any_dtype(base_df["timestamp"]):
+            base_df["timestamp"] = safe_to_datetime_series(base_df["timestamp"])
 
         df = df.sort_values("timestamp").reset_index(drop=True)
         base_df = base_df.sort_values("timestamp").reset_index(drop=True)

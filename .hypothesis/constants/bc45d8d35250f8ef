@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\action_confidence_diagnostics.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.005, 0.01, 0.015, 0.03, 1.0, '*', '--bins', '--out-csv', '--trade-log', '__main__', 'abs_action', 'action', 'action_bin', 'count', 'duration', 'entry_action', 'entry_step_pnl', 'mae', 'mean', 'median', 'mfe', 'pnl', 'position', 'realized_pnl', 'step_pnl']

@@ -6,12 +6,21 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import numpy as np
 
 from ztb.types.alert_types import AlertLevel
-from ztb.adaptation.monitoring.types import MetricValue, ReportData
+
+# Avoid importing adaptation.monitoring at module import time to prevent
+# circular imports (monitor imports ReportGenerator and reporting imports
+# monitoring types). Use TYPE_CHECKING for type hints only.
+if TYPE_CHECKING:
+    from ztb.adaptation.monitoring.types import MetricValue, ReportData, AlertManager
+else:
+    MetricValue = Any
+    ReportData = Any
+    AlertManager = Any
 
 
 class ReportGenerator:

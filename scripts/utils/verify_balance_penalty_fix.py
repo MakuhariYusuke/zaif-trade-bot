@@ -57,14 +57,14 @@ def verify_reward_calculator_fix():
         print("❌ Missing or incorrect condition")
         return False
 
-    # Check 4: Verify balance_penalty calculation is present
+    # Check 4: Verify balance_penalty calculation now delegates to behavioral_penalty_calculator
     if (
-        "balance_penalty = abs(buy_ratio - sell_ratio) * balance_penalty_scale"
-        in content
+        "behavioral_penalty_calculator.calculate_balance_penalty" in content
+        or "RewardUtils.calculate_balance_penalty" in content
     ):
-        print("✓ Found correct balance_penalty calculation")
+        print("✓ Found delegated balance_penalty calculation (behavioral_penalty_calculator or RewardUtils)")
     else:
-        print("❌ Missing or incorrect balance_penalty calculation")
+        print("❌ Missing or incorrect balance_penalty calculation; expected delegation to behavioral_penalty_calculator or RewardUtils")
         return False
 
     # Check 5: Verify logging includes curriculum_stage

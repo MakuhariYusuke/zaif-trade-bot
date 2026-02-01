@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\config\loaders\priority_loader.py
+# hypothesis_version: 6.140.3
+
+['.', 'ZTB_', 'ZTB_ENV', '_', 'cli', 'defaults', 'development', 'env', 'yaml']

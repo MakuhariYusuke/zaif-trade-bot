@@ -5,12 +5,12 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-import pandas as pd
 import torch
 
 # Import SSPTrainer lazily at runtime where needed to avoid pulling heavy
 # multimodal/pretraining modules at import time during test collection.
 from ztb.training.config.configuration_manager import ConfigurationManager
+from ztb.io.data_loader import DataLoader
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.features.processors.optimization.features import OptimizerFeatureTracker
@@ -156,7 +156,6 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
                 return False
 
             import torch
-            import pandas as pd
 
             # If explicit paths provided, load CSVs
             train_path = None
@@ -166,12 +165,12 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
                 val_path = self.config.get("val_data_path") or cfg.get("val_data_path")
 
             if train_path or val_path:
-                # Attempt to load provided CSVs; tests may mock pandas.read_csv
+                # Attempt to load provided CSVs through the unified loader.
                 if train_path:
-                    df_train = pd.read_csv(train_path)
+                    df_train = DataLoader.load_csv_strict(train_path)
                     self.train_data = torch.tensor(df_train.values, dtype=torch.float32).unsqueeze(0)
                 if val_path:
-                    df_val = pd.read_csv(val_path)
+                    df_val = DataLoader.load_csv_strict(val_path)
                     self.val_data = torch.tensor(df_val.values, dtype=torch.float32).unsqueeze(0)
                 # If one is missing, mirror the other for simple tests
                 if self.train_data is None and self.val_data is not None:

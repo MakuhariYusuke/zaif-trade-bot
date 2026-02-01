@@ -13,7 +13,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from ztb.data.marketdata_registry import MarketDataSource
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class ReplayMarket(MarketDataSource):
         """Load market data from file."""
         if self._data is None:
             if self.data_path.suffix == ".csv":
-                self._data = load_csv_data(self.data_path)
+                self._data = DataLoader.load_csv_strict(self.data_path)
             elif self.data_path.suffix == ".json":
                 self._data = pd.read_json(self.data_path)
             else:

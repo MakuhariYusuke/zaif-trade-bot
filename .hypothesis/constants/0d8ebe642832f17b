@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\realtime_optimization\realtime_optimizer.py
+# hypothesis_version: 6.140.3
+
+[0.4, 0.5, 0.7, 0.8, 2.0, 3600, 'atr_multiplier', 'confidence_threshold', 'conservative', 'current_parameters', 'dynamic', 'full', 'half', 'high_volatility', 'is_running', 'kelly_fraction', 'last_optimization', 'max_positions', 'moderate', 'quarter', 'total_optimizations', 'trending']

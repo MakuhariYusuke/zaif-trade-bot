@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\config_manager.py
+# hypothesis_version: 6.140.3
+
+['.json', '.toml', '.yaml', '.yml', 'batch_size', 'config', 'general', 'initial_balance', 'json', 'learning_rate', 'max_position_size', 'model', 'rb', 'toml', 'total_timesteps', 'trading', 'training', 'utf-8', 'wb', 'yaml']

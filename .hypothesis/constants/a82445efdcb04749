@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\reporting\generators\analysis.py
+# hypothesis_version: 6.140.3
+
+[' |', ' | ', '# Report', '---', 'config', 'error', 'experiment_id', 'logs/dumps', 'timestamp', 'traceback', '| ']

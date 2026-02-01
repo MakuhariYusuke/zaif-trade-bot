@@ -517,6 +517,51 @@ class TestRewardCalculatorReset:
 class TestRewardCalculatorEdgeCases:
     """Test edge cases and error conditions."""
 
+
+def test_record_action_builds_recent_actions_from_action_counts(reward_calculator):
+    """If RewardCalculator._action_counts is preset and recent_actions is empty, _record_action should build the deque from counts and then record the incoming action."""
+    from collections import deque
+
+    # Ensure recent_actions is empty first
+    reward_calculator.behavioral_penalty_calculator.recent_actions = deque()
+
+    # Preset counts: HOLD=0, BUY=2, SELL=1
+    reward_calculator._action_counts = [0, 2, 1]
+
+    # Record one BUY action
+    reward_calculator._record_action(ACTION_BUY)
+
+    # After recording, action_counts should reflect the added action
+    assert reward_calculator._action_counts[1] == 3
+    assert reward_calculator._action_counts[2] == 1
+    # Recent actions deque should contain the expected counts (at least the built + recorded action)
+    recent = list(reward_calculator.behavioral_penalty_calculator.recent_actions)
+    assert recent.count(ACTION_BUY) >= 3
+    assert recent.count(ACTION_SELL) >= 1
+
+
+def test_record_action_clears_recent_actions_when_counts_zero(reward_calculator):
+    """If _action_counts is zero but recent_actions contains items, _record_action should clear it before recording current action."""
+    from collections import deque
+
+    # Populate recent_actions with some history
+    reward_calculator.behavioral_penalty_calculator.recent_actions = deque([ACTION_BUY, ACTION_SELL, ACTION_BUY])
+
+    # Ensure we start with non-zero recent history
+    assert len(reward_calculator.behavioral_penalty_calculator.recent_actions) > 0
+
+    # Set action counts to zero
+    reward_calculator._action_counts = [0, 0, 0]
+
+    # Record a HOLD action
+    reward_calculator._record_action(ACTION_HOLD)
+
+    # After recording, recent should have been cleared and then include only the HOLD (or at least one HOLD)
+    recent = list(reward_calculator.behavioral_penalty_calculator.recent_actions)
+    assert recent.count(ACTION_HOLD) >= 1
+    # And _action_counts should reflect the HOLD recorded
+    assert reward_calculator._action_counts[0] >= 1
+
     def test_calculate_reward_with_zero_atr(self, reward_calculator):
         """Test reward calculation with zero ATR."""
         reward = reward_calculator.calculate_reward(

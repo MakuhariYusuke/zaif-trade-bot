@@ -3,6 +3,7 @@ import json
 import glob
 from typing import List, Dict, Any
 from pathlib import Path
+from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 def analyze_reports(limit: int = 20) -> List[Dict[str, Any]]:
     """最近のレポートを分析"""
@@ -31,7 +32,9 @@ def analyze_reports(limit: int = 20) -> List[Dict[str, Any]]:
                 'buy': actions.get('BUY', 0),
                 'sell': actions.get('SELL', 0),
                 'hold': actions.get('HOLD', 0),
-                'buy_sell_diff': abs(actions.get('BUY', 0) - actions.get('SELL', 0)),
+                'buy_sell_diff': RewardUtils.calculate_buy_sell_diff(
+                    actions.get('BUY', 0), actions.get('SELL', 0)
+                ),
             })
         except Exception as e:
             print(f"Error processing {report_path}: {e}")

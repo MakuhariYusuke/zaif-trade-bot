@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\common\data_loaders.py
+# hypothesis_version: 6.140.3
+
+['.csv', '.json', '_', 'analysis', 'backtest_experiments', 'experiment_dir', 'portfolio_values.csv', 'results', 'trades_history.csv']

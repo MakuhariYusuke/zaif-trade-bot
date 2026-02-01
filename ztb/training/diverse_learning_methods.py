@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from ztb.io.data_loader import DataLoader
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -497,7 +498,7 @@ if __name__ == "__main__":
 
     # Load sample data
     try:
-        data = pd.read_csv("data/btc_jpy_real_dataset.csv")
+        data = DataLoader.load_csv_strict("data/btc_jpy_real_dataset.csv")
         data["timestamp"] = pd.to_datetime(data["timestamp"])
         data = data.set_index("timestamp")
 

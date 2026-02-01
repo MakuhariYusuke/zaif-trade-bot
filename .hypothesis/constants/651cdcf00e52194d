@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\signal_utils.py
+# hypothesis_version: 6.140.3
+
+['SIGBREAK', 'Signal received: %s', 'default', 'ignore', 'log', 'none', 'nt', 'off']

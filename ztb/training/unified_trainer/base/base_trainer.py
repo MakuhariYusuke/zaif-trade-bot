@@ -7,7 +7,10 @@ import logging
 import os
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional
+
+import pandas as pd
 
 from ztb.training.constants import DEFAULT_CHECK_FREQ, DEFAULT_MAX_MEMORY_GB
 from ztb.training.gradient_accumulation import GradientAccumulator
@@ -60,6 +63,104 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         self.lr_scheduler: Optional[DynamicLRScheduler] = None
         self.early_stopping: Optional[EarlyStopping] = None
         self.memory_loader: Optional[MemoryEfficientLoader] = None
+
+    def load_data(self, data_path: str) -> pd.DataFrame:
+        """
+        統合的なデータ読み込みメソッド（CSV/Parquet自動検出）
+        
+        Phase 4 Week 1 Day 2-3実装: 
+        - すべてのアルゴリズム（SAC/PPO/DQN/A2C）で共通経路を使用
+        - 事前計算特徴の検出とスキップ処理
+        - 特徴検出ロジックの厳密化（42番再レビュー対応）
+        
+        Args:
+            data_path: データファイルのパス（CSV or Parquet）
+            
+        Returns:
+            読み込まれたDataFrame
+        """
+        from ztb.io.data_loader import DataLoader
+
+        path = Path(data_path)
+        
+        if path.suffix == '.parquet':
+            self.logger.info(f"Parquet形式検出: {data_path}")
+            df = pd.read_parquet(path)
+            self.logger.info(f"Parquet読み込み完了: {len(df)}行、{len(df.columns)}列")
+            
+            # 事前計算特徴の厳密な検出（42番再レビュー対応）
+            if self._has_precomputed_features(df):
+                self.logger.info("事前計算特徴を検出、特徴生成をスキップします")
+                self._apply_feature_skip()
+            
+            return df
+        else:
+            self.logger.info(f"CSV形式として読み込み: {data_path}")
+            df = DataLoader.load_csv_strict(data_path)
+            self.logger.info(f"CSV読み込み完了: {len(df)}行、{len(df.columns)}列")
+            return df
+    
+    def _has_precomputed_features(self, df: pd.DataFrame) -> bool:
+        """
+        事前計算特徴の存在を厳密に検証（42番再レビュー対応）
+        
+        Phase 4実装: feature_cols >= 5 だけでは誤検出リスクがあるため、
+        明示的な特徴列の存在確認を追加
+        
+        Args:
+            df: 検証対象のDataFrame
+            
+        Returns:
+            True: 事前計算特徴が存在
+            False: OHLCV のみ
+        """
+        # 1. 必須列の存在確認
+        required_ohlcv = {'open', 'high', 'low', 'close', 'volume', 'timestamp'}
+        if not required_ohlcv.issubset(df.columns):
+            return False
+        
+        # 2. OHLCV以外の列をカウント
+        feature_cols = [c for c in df.columns if c not in required_ohlcv]
+        
+        # 3. 想定している8特徴（またはそのサブセット）の存在確認
+        expected_features = {
+            'rsi', 'macd', 'bb_width', 'volatility', 
+            'momentum', 'volume_ma_ratio', 'atr', 'obv'
+        }
+        detected_features = set(feature_cols) & expected_features
+        
+        # 4. 特徴数 >= 5 かつ 既知特徴 >= 3 で事前計算と判定
+        has_features = len(feature_cols) >= 5 and len(detected_features) >= 3
+        
+        if has_features:
+            self.logger.info(
+                f"事前計算特徴検出: {len(feature_cols)}列 "
+                f"({len(detected_features)}個の既知特徴: {detected_features})"
+            )
+        else:
+            self.logger.debug(
+                f"事前計算特徴なし: {len(feature_cols)}列、"
+                f"既知特徴{len(detected_features)}個"
+            )
+        
+        return has_features
+    
+    def _apply_feature_skip(self) -> None:
+        """
+        事前計算特徴検出時の設定適用
+        
+        feature_set を "minimal" に設定して特徴生成をスキップ
+        """
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        
+        # training.features.feature_set に設定
+        if "training" not in config_dict:
+            config_dict["training"] = {}
+        if "features" not in config_dict["training"]:
+            config_dict["training"]["features"] = {}
+        
+        config_dict["training"]["features"]["feature_set"] = "minimal"
+        self.logger.info("feature_set='minimal' を設定しました")
 
     def safe_training_operation(
         self, operation: Callable, operation_name: str, **kwargs
@@ -436,14 +537,15 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
 
             return result
 
-        except KeyboardInterrupt:
-            self.logger.warning(f"⚠️  {algorithm_name} training interrupted by user")
+        except KeyboardInterrupt as kb_int:
+            # Only catch true KeyboardInterrupt - let other exceptions fall through
+            self.logger.warning(f"⚠️  {algorithm_name} training interrupted by user (KeyboardInterrupt)")
             self.log_structured_event(
                 "interruption",
                 "pipeline",
-                {"algorithm": algorithm_name, "reason": "user_interrupt"},
+                {"algorithm": algorithm_name, "reason": "user_interrupt", "exception": str(kb_int)},
             )
-            return False
+            raise  # Re-raise to prevent masking real issues
 
         except TrainingError as e:
             self.logger.error(f"❌ {algorithm_name} training failed: {e}")

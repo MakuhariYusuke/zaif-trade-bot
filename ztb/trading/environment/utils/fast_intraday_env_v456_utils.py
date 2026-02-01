@@ -7,6 +7,7 @@ import pandas as pd
 
 from ztb.trading.environment.factory_v456 import EnvironmentFactory
 from ztb.trading.environment.fast_intraday_env_v456 import FastIntradayEnvV456
+from ztb.utils.env_metrics import unwrap_env
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def create_fast_intraday_env_v456(
 
 def apply_reward_config(env: Any, env_config: Mapping[str, Any]) -> None:
     """Apply reward settings/scale/clip to FastIntradayEnvV456-compatible environments."""
-    target_env = env.unwrapped if hasattr(env, "unwrapped") else env
+    target_env = unwrap_env(env) or env
 
     reward_settings = env_config.get("reward_settings")
     if isinstance(reward_settings, Mapping):

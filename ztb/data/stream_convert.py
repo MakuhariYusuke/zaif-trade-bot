@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ztb.utils.data_utils import load_csv_data_iter
+from ztb.io.data_loader import DataLoader
 from ztb.utils.memory.dtypes import downcast_df
 
 
@@ -31,7 +31,7 @@ def csv_to_parquet_streaming(
     parquet_path_obj = Path(parquet_path)
     parquet_path_obj.parent.mkdir(parents=True, exist_ok=True)
     writer = None
-    for chunk in load_csv_data_iter(csv_path, chunksize=chunksize):
+    for chunk in DataLoader.load_csv_iter(csv_path, chunksize=chunksize):
         chunk = downcast_df(chunk)
         table = pa.Table.from_pandas(chunk)
         if writer is None:

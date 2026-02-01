@@ -38,63 +38,33 @@ def test_sac_trainer_train_creates_and_saves_model(mock_algo_factory, tmp_path):
     ):
         # Mock SAC algorithm and model
         mock_algo = MagicMock()
-        from unittest.mock import MagicMock, patch
+        mock_model = MagicMock()
+        mock_algo.create_model.return_value = mock_model
+        mock_algo.train.return_value = mock_model
+        mock_algo.save.return_value = None
+        mock_algo.get_default_config.return_value = {}
 
-        from ztb.training.core.config_manager import ConfigManager
-        from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
+        mock_algo_factory.create.return_value = mock_algo
 
-        @patch("ztb.training.trainers.sac_trainer.AlgorithmFactory")
-        def test_sac_trainer_train_creates_and_saves_model(mock_algo_factory, tmp_path):
-            # Arrange
-            cm = ConfigManager({})
-            trainer = SACAlgorithmTrainer(config_manager=cm)
+        # Prepare unified_config
+        unified_config = {
+            "model_name": "test_sac",
+            "session_id": "test_session",
+            "total_timesteps": 1,
+            "sac_hyperparameters": {},
+            "data_path": "dummy.csv",
+        }
 
-            # Mock data loader to return a small dataframe-like object
-            dummy_df = MagicMock()
-            dummy_df.__len__.return_value = 10
+        # Act
+        result = trainer.train(unified_config)
 
-            # Provide a lightweight DummyEnv to avoid HeavyTradingEnv initialization/type checks
-
-            class DummyEnv:
-                def __init__(self, df=None, config=None):
-                    # Accept any df (we mock load_csv to return a MagicMock)
-                    pass
-
-            with patch(
-                "ztb.training.trainers.sac_trainer.HeavyTradingEnv", new=DummyEnv
-            ), patch(
-                "ztb.training.trainers.sac_trainer.DummyVecEnv",
-                new=lambda fns: fns[0](),
-            ):
-                # Mock SAC algorithm and model
-                mock_algo = MagicMock()
-                mock_model = MagicMock()
-                mock_algo.create_model.return_value = mock_model
-                mock_algo.train.return_value = mock_model
-                mock_algo.save.return_value = None
-                mock_algo.get_default_config.return_value = {}
-
-                mock_algo_factory.create.return_value = mock_algo
-
-                # Prepare unified_config
-                unified_config = {
-                    "model_name": "test_sac",
-                    "session_id": "test_session",
-                    "total_timesteps": 1,
-                    "sac_hyperparameters": {},
-                    "data_path": "dummy.csv",
-                }
-
-                # Act
-                result = trainer.train(unified_config)
-
-                # Assert
-                assert result["success"] is True
-                assert "model_path" in result
-                # Ensure create_model and save called
-                mock_algo.create_model.assert_called()
-                mock_algo.train.assert_called()
-                mock_algo.save.assert_called()
+        # Assert
+        assert result["success"] is True
+        assert "model_path" in result
+        # Ensure create_model and save called
+        mock_algo.create_model.assert_called()
+        mock_algo.train.assert_called()
+        mock_algo.save.assert_called()
 
 
 class TestTrainingProgressCallbackDebugLogs:

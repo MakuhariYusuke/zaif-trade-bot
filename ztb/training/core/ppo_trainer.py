@@ -37,7 +37,7 @@ from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.evaluation.eval_gates import EvalGates
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.policies.policy_utils import neutralize_policy_bias
-from ztb.utils.data_utils import load_csv_data_optimized
+from ztb.io.data_loader import DataLoader
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -288,7 +288,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 
     def _create_environment(self) -> ActionMasker:
         """Create and configure the trading environment."""
-        df_full = load_csv_data_optimized(self.data_path)
+        df_full = DataLoader.load_csv_optimized(self.data_path)
 
         # ========================================================================
         # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)

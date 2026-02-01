@@ -458,6 +458,21 @@ class HeavyTradingEnv(
 
         # Create RewardSettings object for RewardCalculator
         self.reward_settings_obj: RewardSettings = self.reward_settings
+        try:
+            custom_params = (
+                self.reward_settings.custom_reward_params
+                if hasattr(self.reward_settings, "custom_reward_params")
+                else {}
+            )
+            self.logger.warning("========== REWARD PARAMS (ENV INIT) ==========")
+            self.logger.warning(
+                "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+            )
+            if custom_params:
+                self.logger.warning("custom_reward_params: %s", custom_params)
+            self.logger.warning("==============================================")
+        except Exception as e:
+            self.logger.debug("Failed to log reward params at env init: %s", e)
 
         # Fee model is now handled via EnvironmentConfig.exchange_profile
         if hasattr(self.config, "exchange_profile") and self.config.exchange_profile:
@@ -685,6 +700,10 @@ class HeavyTradingEnv(
         self.entry_price = pos_info["entry_price"]
         self.realized_pnl = pos_info["realized_pnl"]
         self.total_pnl = pos_info["total_pnl"]
+        self.gross_pnl = pos_info.get("gross_pnl", self.realized_pnl)
+        self.net_pnl = pos_info.get("net_pnl", self.realized_pnl)
+        self.total_fees = pos_info.get("total_fees", 0.0)
+        self.total_slippage = pos_info.get("total_slippage", 0.0)
         self.trades_count = pos_info["trades_count"]
 
     def get_legal_actions(self) -> Any:
@@ -1588,6 +1607,28 @@ class HeavyTradingEnv(
 
     def get_last_actions(self) -> List[int]:
         return self._current_episode_actions.copy()
+    
+    # メトリクス抽出用プロパティ
+    @property
+    def total_trades(self) -> int:
+        """総取引回数"""
+        return self.trades_count
+    
+    @property
+    def buy_count(self) -> int:
+        """買い取引回数（position_managerから取得）"""
+        if hasattr(self, 'position_manager') and hasattr(self.position_manager, 'buy_count'):
+            return self.position_manager.buy_count
+        # フォールバック: 統計から推定
+        return int(self.trades_count * 0.5)  # 概算
+    
+    @property
+    def sell_count(self) -> int:
+        """売り取引回数（position_managerから取得）"""
+        if hasattr(self, 'position_manager') and hasattr(self.position_manager, 'sell_count'):
+            return self.position_manager.sell_count
+        # フォールバック: 統計から推定
+        return int(self.trades_count * 0.5)  # 概算
 
     def enable_market_regime_adaptation(
         self,

@@ -31,6 +31,10 @@ os.environ.setdefault("ZTB_SKIP_SCIPY", "1")
 os.environ.setdefault("ZTB_SKIP_SKLEARN", "1")
 
 from ztb.training.unified_trainer import UnifiedTrainer
+from ztb.training.utils.env_metrics import (
+    compute_balance_roi,
+    extract_trainer_env_metrics,
+)
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -375,64 +379,31 @@ def run_single_experiment(exp: Dict[str, Any]) -> Dict[str, Any]:
     initial_balance = 100000.0
     accurate_roi = None
     total_trades = None
-    
+
     try:
-        env = None
-        # 84# Fix: Access through algorithm_trainer for UnifiedTrainer
-        if hasattr(trainer, 'algorithm_trainer'):
-            alg_trainer = trainer.algorithm_trainer
-            if alg_trainer is not None:
-                if hasattr(alg_trainer, 'model') and alg_trainer.model is not None:
-                    if hasattr(alg_trainer.model, 'env') and alg_trainer.model.env is not None:
-                        env = alg_trainer.model.env
-                    elif hasattr(alg_trainer.model, 'get_env'):
-                        env = alg_trainer.model.get_env()
-        
-        # Fallback to direct trainer attributes
-        if env is None:
-            if hasattr(trainer, 'model') and hasattr(trainer.model, 'env') and trainer.model.env is not None:
-                env = trainer.model.env
-            elif hasattr(trainer, 'model') and hasattr(trainer.model, 'get_env'):
-                env = trainer.model.get_env()
-            elif hasattr(trainer, 'env') and trainer.env is not None:
-                env = trainer.env
-        
-        if env is not None:
-            actual_env = env
-            if hasattr(env, 'envs') and len(env.envs) > 0:
-                actual_env = env.envs[0]
-            
-            unwrapped_env = actual_env
-            for _ in range(5):
-                if hasattr(unwrapped_env, 'env'):
-                    unwrapped_env = unwrapped_env.env
-                else:
-                    break
-            
-            # 84# Fix: Check for 'balance' first (fast_intraday_env_v456 uses this)
-            if hasattr(unwrapped_env, 'balance'):
-                final_balance = float(unwrapped_env.balance)
-            elif hasattr(unwrapped_env, 'portfolio_value'):
-                final_balance = float(unwrapped_env.portfolio_value)
-            
-            # 84# Fix: Check for 'initial_balance' first
-            if hasattr(unwrapped_env, 'initial_balance'):
-                initial_balance = float(unwrapped_env.initial_balance)
-            elif hasattr(unwrapped_env, 'initial_portfolio_value'):
-                initial_balance = float(unwrapped_env.initial_portfolio_value)
-            
-            # Get trade count
-            if hasattr(unwrapped_env, 'total_trades'):
-                total_trades = int(unwrapped_env.total_trades)
-            
-            # 84# Fix: Log effective reward settings for debugging
-            if hasattr(unwrapped_env, 'reward_scale'):
-                logger.info(f"  Effective reward_scale: {unwrapped_env.reward_scale}")
-            if hasattr(unwrapped_env, 'reward_clip_min') and hasattr(unwrapped_env, 'reward_clip_max'):
-                logger.info(f"  Effective reward_clip: [{unwrapped_env.reward_clip_min}, {unwrapped_env.reward_clip_max}]")
-            
-            if final_balance is not None:
-                accurate_roi = (final_balance - initial_balance) / initial_balance * 100
+        metrics = extract_trainer_env_metrics(trainer, include_optional=True)
+        if metrics:
+            if "final_balance" in metrics:
+                final_balance = metrics["final_balance"]
+            if "initial_balance" in metrics:
+                initial_balance = metrics["initial_balance"]
+            if "total_trades" in metrics:
+                total_trades = metrics["total_trades"]
+
+            if "final_balance" in metrics and "initial_balance" not in metrics:
+                metrics["initial_balance"] = initial_balance
+
+            if "reward_scale" in metrics:
+                logger.info(f"  Effective reward_scale: {metrics['reward_scale']}")
+            if "reward_clip_min" in metrics and "reward_clip_max" in metrics:
+                logger.info(
+                    "  Effective reward_clip: [%s, %s]",
+                    metrics["reward_clip_min"],
+                    metrics["reward_clip_max"],
+                )
+
+            accurate_roi = compute_balance_roi(metrics)
+            if accurate_roi is not None and final_balance is not None:
                 logger.info(f"  ✓ Got final_balance from env: {final_balance:.2f}")
         else:
             logger.warning("  ✗ Could not access environment - env is None")

@@ -31,6 +31,7 @@ from ztb.training.utils.v457_config_utils import (
     extract_env_config,
     extract_seed,
 )
+from ztb.utils.env_metrics import unwrap_env
 from ztb.utils.seed_manager import set_global_seed
 from utils.results_utils import save_backtest_results
 
@@ -496,13 +497,13 @@ def run_backtest_v456(
     reporter.stats["model_path"] = str(model_path) if model_path else None
     reporter.stats["data_path"] = str(data_path)
     reporter.stats["config_path"] = str(config_path) if config_path else None
+    target_env = unwrap_env(env) or env
     reporter.stats["action_space_type"] = getattr(
-        env.unwrapped if hasattr(env, "unwrapped") else env,
+        target_env,
         "action_space_type",
         env_config.get("action_space_type") if isinstance(env_config, dict) else None,
     )
     reporter.stats["baseline_mode"] = baseline_mode
-    target_env = env.unwrapped if hasattr(env, "unwrapped") else env
     reporter.stats["reward_scale"] = getattr(target_env, "reward_scale", None)
     reporter.stats["reward_clip"] = getattr(target_env, "reward_clip", None)
     

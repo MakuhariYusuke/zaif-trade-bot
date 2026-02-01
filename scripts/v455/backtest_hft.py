@@ -13,6 +13,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.features.hft_proxies import add_hft_features
 from ztb.trading.environment.fast_intraday_env import FastIntradayEnv
+from ztb.utils.env_metrics import unwrap_env
 from ztb.utils.logging_utils import setup_logging, get_logger
 from ztb.utils import format_number
 
@@ -97,6 +98,9 @@ def main():
     env = VecNormalize.load(VEC_NORM_PATH, env)
     env.training = False # Don't update stats during backtest
     env.norm_reward = False # Don't normalize rewards for backtest reporting
+    base_env = unwrap_env(env)
+    if base_env is None:
+        raise RuntimeError("Failed to unwrap backtest environment")
     
     # Load Model
     logger.info(f"Loading model from {MODEL_PATH}...")
@@ -115,8 +119,8 @@ def main():
     logger.info(f"Starting backtest from step {start_step} to {total_len} ({test_len} steps)...")
     
     # Access the inner env to set start step
-    env.envs[0].set_start_step(start_step)
-    env.envs[0].max_steps = test_len # Limit episode length
+    base_env.set_start_step(start_step)
+    base_env.max_steps = test_len # Limit episode length
     
     obs = env.reset()
     
@@ -139,7 +143,7 @@ def main():
         info_dict = info[0]
         history["balance"].append(info_dict["balance"])
         history["position"].append(info_dict["position"])
-        history["price"].append(env.envs[0].close_prices[env.envs[0].current_step - 1])
+        history["price"].append(base_env.close_prices[base_env.current_step - 1])
         history["action_target"].append(action[0][0]) # Raw action
         history["pnl"].append(info_dict.get("pnl", 0)) # Need to ensure pnl is in info?
         # FastIntradayEnv info doesn't have raw PnL per step explicitly named 'pnl' usually, 

@@ -10,11 +10,21 @@ Adaptive Feature Selection for SAC v422
 """
 
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+
+# Lazy import sklearn to avoid Windows SIGINT issues
+_SKIP_SKLEARN = os.getenv("SKIP_HEAVY_IMPORTS") == "1" or os.getenv("ZTB_SKIP_SKLEARN") == "1"
+if _SKIP_SKLEARN:
+    StandardScaler = None  # type: ignore
+else:
+    try:
+        from sklearn.preprocessing import StandardScaler
+    except Exception:
+        StandardScaler = None  # type: ignore
 
 try:
     from ztb.features.attention_trainer import AttentionTrainer, FeatureAttentionLayer
@@ -168,7 +178,11 @@ class FeaturesAdaptiveFeatureSelector:
         self.attention_layer = None
         self.attention_trainer: Optional[AttentionTrainer] = None
         self.causal_engine: Optional[CausalInferenceEngine] = None
-        self.feature_scaler = StandardScaler()
+        # Use StandardScaler only if available
+        if StandardScaler is not None:
+            self.feature_scaler = StandardScaler()
+        else:
+            self.feature_scaler = None  # Will use manual normalization
 
     def get_regime_weights(self, regime: str) -> Dict[str, float]:
         """
@@ -426,7 +440,11 @@ class FeaturesAdaptiveFeatureSelector:
             latest_features = df[features].iloc[-1:].values  # (1, n_features)
 
             # スケーリング
-            scaled_features = self.feature_scaler.fit_transform(latest_features)
+            if self.feature_scaler is not None:
+                scaled_features = self.feature_scaler.fit_transform(latest_features)
+            else:
+                # Manual normalization if sklearn not available
+                scaled_features = (latest_features - latest_features.mean()) / (latest_features.std() + 1e-8)
 
             # 注意重みを取得
             attention_weights = self.attention_trainer.get_attention_weights(

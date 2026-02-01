@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import SAC
 
+from ztb.io.data_loader import DataLoader
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -20,7 +21,7 @@ def get_v436_features():
     """v436の特徴量セットを取得（モデルの観測空間に合わせた次元）"""
     try:
         # データファイルに存在する特徴量を取得
-        df = pd.read_csv("data/btc_jpy_featured_dataset.csv")
+        df = DataLoader.load_csv_strict("data/btc_jpy_featured_dataset.csv")
         available_features = [
             col for col in df.columns if col not in ["timestamp", "episode_id"]
         ]
@@ -83,7 +84,7 @@ def run_v436_backtest(
             print(f"❌ Data file not found: {data_path}")
             return None
 
-        df = pd.read_csv(data_path)
+        df = DataLoader.load_csv_strict(data_path)
         print(f"✅ Data loaded: {len(df)} rows")
 
         # 観測空間の次元に基づいて特徴量を選択

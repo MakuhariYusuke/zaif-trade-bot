@@ -15,6 +15,7 @@ import pandas as pd
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from ztb.io.data_loader import DataLoader
 from ztb.multimodal.models.architectures.multimodal_architecture import (
     MultiModalTradingAgent,
 )
@@ -467,7 +468,7 @@ def run_trading_backtest(
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"テストデータが見つかりません: {data_path}")
 
-        test_data = pd.read_csv(data_path)
+        test_data = DataLoader.load_csv_strict(data_path)
         logger.info(f"テストデータ読み込み完了: {len(test_data)} 行")
 
         # モデルが訓練された環境と同じ環境を使用（Pendulum環境）

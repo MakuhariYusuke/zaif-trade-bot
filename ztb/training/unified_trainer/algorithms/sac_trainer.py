@@ -1,13 +1,14 @@
 """SAC algorithm trainer implementation."""
 
 import copy
+import dataclasses
+import math
 import logging
 import os
 import time
 from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
-import pandas as pd
 import torch
 
 # Guard SB3 imports to avoid import-time errors in minimal test environments.
@@ -30,8 +31,9 @@ except Exception:
     VecNormalize = None
 
 from ztb.features.processors.optimization.features import OptimizerFeatureTracker
+from ztb.io.data_loader import DataLoader
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.training.checkpoint.checkpoint_manager import (
     TrainingCheckpointConfig,
     TrainingCheckpointManager,
@@ -106,6 +108,9 @@ class SACTrainer(BaseAlgorithmTrainer):
         if self.market_regime_adaptation.get("enabled", False) and self.env is not None:
             self._initialize_market_regime_adaptation()
 
+    # Phase 4: _load_data_with_format_detection() は BaseAlgorithmTrainer.load_data() に統合されました
+    # 統合経路により、すべてのアルゴリズム（SAC/PPO/DQN/A2C）で共通の特徴検出ロジックを使用
+
     @staticmethod
     def _is_valid_feature_set_name(value: Optional[str]) -> bool:
         """Return True when value looks like an explicit, non-placeholder feature set."""
@@ -138,6 +143,179 @@ class SACTrainer(BaseAlgorithmTrainer):
         else:
             candidate = None
         return candidate
+
+    def _format_reward_params(self, params: Dict[str, Any]) -> str:
+        if not params:
+            return "None"
+        parts = []
+        for key in sorted(params.keys()):
+            value = params.get(key, "NOT_FOUND")
+            parts.append(f"{key}={value}")
+        return ", ".join(parts)
+
+    def _extract_expected_reward_params(self, config: ConfigDict) -> Dict[str, Any]:
+        expected: Dict[str, Any] = {}
+        if not isinstance(config, dict):
+            return expected
+
+        reward_block = config.get("reward")
+        if isinstance(reward_block, dict):
+            expected.update(reward_block)
+
+        env_section = config.get("training", {}).get("environment", {})
+        if not env_section:
+            env_section = config.get("environment", {})
+        if isinstance(env_section, dict):
+            reward_settings = env_section.get("reward_settings")
+            if isinstance(reward_settings, dict):
+                expected.update(reward_settings)
+            elif isinstance(reward_settings, RewardSettings):
+                expected.update(dataclasses.asdict(reward_settings))
+        return expected
+
+    def _collect_actual_reward_params(self, env: Any) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if env is None:
+            return params
+        reward_settings = getattr(env, "reward_settings", None)
+        if isinstance(reward_settings, RewardSettings):
+            params.update(dataclasses.asdict(reward_settings))
+            custom_params = reward_settings.custom_reward_params
+            if isinstance(custom_params, dict):
+                params.update(custom_params)
+        elif isinstance(reward_settings, dict):
+            params.update(reward_settings)
+        return params
+
+    def _log_reward_params_verification(
+        self, env: Any, expected_params: Dict[str, Any]
+    ) -> None:
+        actual_params = self._collect_actual_reward_params(env)
+        keys = sorted(expected_params.keys())
+        if not keys:
+            self.logger.warning("========== REWARD PARAMS VERIFICATION ==========")
+            self.logger.warning("EXPECTED: None (no reward overrides found)")
+            self.logger.warning(
+                "ACTUAL:   %s", self._format_reward_params(actual_params)
+            )
+            self.logger.warning(
+                "STATUS:  ⚠️ NO EXPECTED PARAMS - verify config source"
+            )
+            self.logger.warning("===============================================")
+            return
+
+        mismatches = []
+        for key in keys:
+            expected = expected_params.get(key, "NOT_FOUND")
+            actual = actual_params.get(key, "NOT_FOUND")
+            if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+                if not math.isfinite(float(expected)) or not math.isfinite(
+                    float(actual)
+                ):
+                    if expected != actual:
+                        mismatches.append(key)
+                elif abs(float(expected) - float(actual)) > 1e-9:
+                    mismatches.append(key)
+            else:
+                if expected != actual:
+                    mismatches.append(key)
+
+        expected_line = self._format_reward_params(
+            {k: expected_params.get(k, "NOT_FOUND") for k in keys}
+        )
+        actual_line = self._format_reward_params(
+            {k: actual_params.get(k, "NOT_FOUND") for k in keys}
+        )
+
+        self.logger.warning("========== REWARD PARAMS VERIFICATION ==========")
+        self.logger.warning("EXPECTED: %s", expected_line)
+        self.logger.warning("ACTUAL:   %s", actual_line)
+        if mismatches:
+            self.logger.warning(
+                "STATUS: ❌ MISMATCH - Settings may not be applied correctly!"
+            )
+            self.logger.warning("MISMATCH KEYS: %s", ", ".join(sorted(mismatches)))
+            self.logger.warning("Check config propagation path.")
+        else:
+            self.logger.warning("STATUS: ✅ MATCH - Settings correctly applied")
+        self.logger.warning("===============================================")
+
+    def _log_cost_breakdown(self) -> None:
+        from ztb.utils.env_metrics import extract_trainer_env_metrics
+
+        metrics = extract_trainer_env_metrics(self, include_optional=True)
+        if not metrics:
+            self.logger.warning("========== COST BREAKDOWN ANALYSIS ==========")
+            self.logger.warning("No environment metrics available.")
+            self.logger.warning("============================================")
+            return
+
+        gross = metrics.get("gross_pnl")
+        fees = metrics.get("total_fees")
+        slip = metrics.get("total_slippage")
+        net = metrics.get("net_pnl")
+        initial_balance = metrics.get("initial_balance")
+
+        if gross is None and net is not None and fees is not None and slip is not None:
+            gross = float(net) + float(fees) + float(slip)
+        if net is None and gross is not None and fees is not None and slip is not None:
+            net = float(gross) - float(fees) - float(slip)
+
+        def pct(value: Optional[float]) -> str:
+            if value is None or not initial_balance:
+                return "N/A"
+            return f"{(float(value) / float(initial_balance)) * 100:+.2f}%"
+
+        if gross is None and net is None and fees is None and slip is None:
+            self.logger.warning("========== COST BREAKDOWN ANALYSIS ==========")
+            self.logger.warning("Cost metrics not available in environment.")
+            self.logger.warning("============================================")
+            return
+
+        total_costs = 0.0
+        if fees is not None:
+            total_costs += float(fees)
+        if slip is not None:
+            total_costs += float(slip)
+
+        cost_ratio = None
+        if gross is not None and float(gross) != 0.0:
+            cost_ratio = (total_costs / abs(float(gross))) * 100.0
+
+        interpretation = "取引自体が損失"
+        if gross is not None and float(gross) > 0:
+            if net is not None and float(net) < 0:
+                interpretation = "取引自体は利益だがコストに負けている"
+            else:
+                interpretation = "取引自体もコスト控除後も利益"
+
+        self.logger.warning("========== COST BREAKDOWN ANALYSIS ==========")
+        if gross is not None:
+            self.logger.warning(
+                "Gross PnL:     %s JPY (%s)", f"{float(gross):+,.0f}", pct(gross)
+            )
+        if fees is not None:
+            self.logger.warning(
+                "Total Fees:    %s JPY (%s)",
+                f"{-abs(float(fees)):+,.0f}",
+                pct(-abs(float(fees))),
+            )
+        if slip is not None:
+            self.logger.warning(
+                "Total Slippage: %s JPY (%s)",
+                f"{-abs(float(slip)):+,.0f}",
+                pct(-abs(float(slip))),
+            )
+        if net is not None:
+            self.logger.warning(
+                "Net PnL:       %s JPY (%s)", f"{float(net):+,.0f}", pct(net)
+            )
+        if cost_ratio is not None and math.isfinite(cost_ratio):
+            self.logger.warning(
+                "Cost Ratio:    %.1f%% (costs / |gross_pnl|)", cost_ratio
+            )
+        self.logger.warning("Interpretation: %s", interpretation)
+        self.logger.warning("============================================")
 
     def _resolve_feature_set_override(self, env_candidate: Any) -> Optional[str]:
         """Find the most reliable feature_set declaration in the stacked config."""
@@ -316,6 +494,10 @@ class SACTrainer(BaseAlgorithmTrainer):
         Args:
             total_timesteps: Total number of timesteps to train for
         """
+        env = None
+        wrapped_env = None
+        eval_env = None
+
         try:
             # Get training parameters from config or parameter
             config_timesteps = self.config.get("training", {}).get(
@@ -417,8 +599,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                 raise FileNotFoundError(f"Data file not found: {data_path}")
 
             self.log_structured_event("data", "loading", {"path": data_path})
-            df = pd.read_csv(data_path)
-            self.log_structured_event("data", "loaded", {"rows": len(df)})
+            # Phase 4: BaseAlgorithmTrainer.load_data() を使用（統合経路）
+            df = self.load_data(data_path)
+            self.log_structured_event("data", "loaded", {"rows": len(df), "columns": len(df.columns)})
 
             # Create environment
             self.log_structured_event(
@@ -430,6 +613,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 env_config = self.config.get("training", {}).get("environment", {})
             # Extract the actual config from the environment section (could be nested)
             actual_env_config = env_config.get("config", env_config)
+            
             # Log the exact object passed to the environment so we can trace
             # where boolean flags like `use_continuous_actions` may be lost.
             try:
@@ -484,15 +668,10 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Convert whatever shape we received into an EnvironmentConfig instance
             # EnvironmentConfig.from_dict can handle nested layouts (training.environment, training.environment.config)
             try:
-                # print(f"DEBUG: About to create EnvironmentConfig from actual_env_config")
-                # print(f"DEBUG: actual_env_config type: {type(actual_env_config)}")
+                # Gate 0 Debug: Log reward_settings before EnvironmentConfig creation
                 if isinstance(actual_env_config, dict):
-                    pass
-                    # print(f"DEBUG: actual_env_config keys: {list(actual_env_config.keys())}")
-                    # print(f"DEBUG: actual_env_config feature_set: {actual_env_config.get('feature_set', 'NOT_FOUND')}")
-                elif hasattr(actual_env_config, "feature_set"):
-                    pass
-                    # print(f"DEBUG: actual_env_config.feature_set: {actual_env_config.feature_set}")
+                    rs = actual_env_config.get("reward_settings", "NOT_FOUND")
+                    self.logger.warning(f"Gate0 Debug: actual_env_config.reward_settings = {rs}")
                 if isinstance(actual_env_config, EnvironmentConfig):
                     env_config_obj = actual_env_config
                 elif isinstance(actual_env_config, dict):
@@ -500,6 +679,12 @@ class SACTrainer(BaseAlgorithmTrainer):
                 else:
                     # Fallback: try converting the whole training section or full config
                     env_config_obj = EnvironmentConfig.from_dict(self.config)
+                
+                # Gate 0 Debug: Log reward_settings after EnvironmentConfig creation  
+                if hasattr(env_config_obj, "reward_settings"):
+                    import dataclasses
+                    rs_dict = dataclasses.asdict(env_config_obj.reward_settings) if env_config_obj.reward_settings else None
+                    self.logger.warning(f"Gate0 Debug: env_config_obj.reward_settings = {rs_dict}")
 
                 # 🔧 CRITICAL FIX: Inject curriculum_learning config if present in training config
                 # This ensures BalanceCurriculumManager receives the necessary configuration
@@ -617,6 +802,17 @@ class SACTrainer(BaseAlgorithmTrainer):
                 config=env_config_obj,
                 optimizer_tracker=self.optimizer_tracker,
             )
+            try:
+                expected_reward_params = self._extract_expected_reward_params(
+                    self.config
+                )
+                self._log_reward_params_verification(env, expected_reward_params)
+            except Exception as e:
+                self.logger.warning(
+                    "Reward params verification skipped due to error: %s", e
+                )
+                import traceback
+                self.logger.warning("Traceback: %s", traceback.format_exc())
             # Attempt to capture feature generation time as measured by the environment construction
             try:
                 env._feature_generation_time = time.perf_counter() - feature_start
@@ -641,7 +837,7 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
                 self.logger.info("Market regime adaptation enabled in environment")
 
-            wrapped_env: Monitor = Monitor(env)
+            wrapped_env = Monitor(env)
 
             # 🔧 CRITICAL FIX: Apply VecNormalize to prevent input saturation
             # Even though HeavyTradingEnv has internal normalization, VecNormalize handles
@@ -689,7 +885,6 @@ class SACTrainer(BaseAlgorithmTrainer):
                 )
 
             # --- Evaluation Environment Setup ---
-            eval_env = None
             eval_callback = None
             evaluation_config = self.config.get("evaluation", {})
 
@@ -718,7 +913,8 @@ class SACTrainer(BaseAlgorithmTrainer):
                 eval_data_path = evaluation_config.get("data_path")
                 if eval_data_path and os.path.exists(eval_data_path):
                     self.logger.info(f"Loading evaluation data from {eval_data_path}")
-                    eval_df = pd.read_csv(eval_data_path)
+                    # Phase 4: BaseAlgorithmTrainer.load_data() を使用（統合経路）
+                    eval_df = self.load_data(eval_data_path)
                 else:
                     eval_df = (
                         df  # Use same dataframe (be careful about leakage if not split)
@@ -1060,11 +1256,20 @@ class SACTrainer(BaseAlgorithmTrainer):
             except Exception as e:
                 self.logger.debug(f"Could not collect reward_components: {e}")
 
+            try:
+                self._log_cost_breakdown()
+            except Exception as e:
+                self.logger.debug("Cost breakdown logging failed: %s", e)
+
             self.log_training_completion(training_time, self.training_stats)
             return True
 
-        except KeyboardInterrupt:
-            self.logger.warning("Training interrupted by user")
+        except KeyboardInterrupt as kb_int:
+            # Only log as "user interrupt" if it's truly KeyboardInterrupt
+            import traceback
+            self.logger.error(f"⚠️ KeyboardInterrupt detected: {kb_int}")
+            self.logger.error("Full traceback:")
+            self.logger.error(traceback.format_exc())
             # Try to save partial model
             self._attempt_emergency_save()
             return False
@@ -1089,32 +1294,31 @@ class SACTrainer(BaseAlgorithmTrainer):
                 except Exception as retry_e:
                     self.logger.error(f"Retry also failed: {retry_e}")
 
-            self.logger.warning("Training interrupted by user")
-            # Try to save partial model
-            self._attempt_emergency_save()
             return False
-
-        except MemoryError:
-            self.logger.error("Memory error during training - attempting cleanup")
-            self._cleanup_on_memory_error()
-            return False
-
-        except Exception as e:
-            self.logger.error(f"❌ SAC training failed: {e}")
-            import traceback
-
-            self.logger.error(traceback.format_exc())
-
-            # Attempt recovery based on error type
-            if self._attempt_error_recovery(e):
-                self.logger.info("Error recovery attempted - retrying training")
+        finally:
+            # Ensure environments are closed even on failure to avoid lingering
+            # handles/threads between sequential experiments.
+            if eval_env is not None and hasattr(eval_env, "close"):
                 try:
-                    # Retry with reduced parameters
-                    return self._retry_training_with_reduced_params()
-                except Exception as retry_e:
-                    self.logger.error(f"Retry also failed: {retry_e}")
-
-            return False
+                    eval_env.close()
+                except Exception as close_err:
+                    self.logger.debug(
+                        "Failed to close eval env cleanly: %s", close_err
+                    )
+            if wrapped_env is not None and hasattr(wrapped_env, "close"):
+                try:
+                    wrapped_env.close()
+                except Exception as close_err:
+                    self.logger.debug(
+                        "Failed to close training env cleanly: %s", close_err
+                    )
+            elif env is not None and hasattr(env, "close"):
+                try:
+                    env.close()
+                except Exception as close_err:
+                    self.logger.debug(
+                        "Failed to close base env cleanly: %s", close_err
+                    )
 
     def _attempt_emergency_save(self) -> None:
         """Attempt to save model in case of interruption."""
@@ -1486,6 +1690,63 @@ class SACTrainer(BaseAlgorithmTrainer):
         except Exception as e:
             self.logger.error(f"Training with overrides failed: {e}")
             return False
+
+    def _setup_callbacks(self):
+        """Create callback list including a configured CheckpointCallback."""
+        try:
+            from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
+        except Exception:
+            # Fallback to simple list if SB3 is not available during lightweight tests
+            CallbackList = list
+            CheckpointCallback = None
+
+        checkpoint_interval = self.config.get("checkpoint_interval", self.config.get("training", {}).get("checkpoint_interval", 1000))
+        checkpoint_dir = self.config.get("checkpoint_dir", self.config.get("training", {}).get("checkpoint_dir", "models/checkpoints"))
+        try:
+            os.makedirs(checkpoint_dir, exist_ok=True)
+        except Exception:
+            pass
+
+        if CheckpointCallback is None:
+            return CallbackList()
+
+        checkpoint_cb = CheckpointCallback(save_freq=checkpoint_interval, save_path=checkpoint_dir, name_prefix="sac_checkpoint", verbose=1)
+        return CallbackList([checkpoint_cb])
+
+    def _log_sac_training_completion(self, training_time: float, callback: Any) -> None:
+        """Log final SAC training statistics in a deterministic debug format."""
+        try:
+            total_timesteps = int(self.config.get("training", {}).get("total_timesteps", 0))
+            sps = total_timesteps / training_time if training_time and training_time > 0 else 0.0
+
+            # Best-effort extraction of final metrics
+            final_actor_loss = 0.0
+            final_critic_loss = 0.0
+            final_ent_coef = 0.0
+            try:
+                logger_obj = getattr(self.model, "logger", None)
+                logger_values = getattr(logger_obj, "name_to_value", {}) if logger_obj is not None else {}
+                final_actor_loss = float(logger_values.get("train/actor_loss", 0.0))
+                final_critic_loss = float(logger_values.get("train/critic_loss", 0.0))
+                final_ent_coef = float(logger_values.get("train/ent_coef", 0.0))
+            except Exception:
+                pass
+
+            # Final reward extraction
+            final_reward = 0.0
+            try:
+                cb = callback.callbacks[0] if hasattr(callback, "callbacks") else callback
+                final_reward = float(cb.reward_history[-1]) if hasattr(cb, "reward_history") and cb.reward_history else 0.0
+            except Exception:
+                pass
+
+            # Structured debug line expected by unit tests
+            self.logger.debug(
+                f"SAC training completed: Time={training_time:.2f}s | Steps={total_timesteps} | SPS={sps:.2f} | "
+                f"Final ActorLoss={final_actor_loss:.4f} | CriticLoss={final_critic_loss:.4f} | EntCoef={final_ent_coef:.4f} | FinalReward={final_reward:.4f}"
+            )
+        except Exception as e:
+            self.logger.debug(f"Failed to emit SAC completion log: {e}")
 
     def _convert_to_sac_v435_config(self) -> Dict[str, Any]:
         """Convert unified config to SAC v435 config format."""

@@ -9,7 +9,14 @@ Features:
 - Model interpretability metrics
 """
 
-from .analyzer import ExplainabilityAnalyzer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .analyzer import ExplainabilityAnalyzer
+else:
+    # Lazy import to avoid heavy dependencies (shap, IPython, jedi)
+    ExplainabilityAnalyzer = None
+
 from .config import ExplainabilityConfig
 from .types import DecisionExplanation, ExplanationResult, FeatureImportance
 

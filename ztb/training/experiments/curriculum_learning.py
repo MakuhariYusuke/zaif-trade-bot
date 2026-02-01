@@ -123,15 +123,14 @@ def evaluate_stage_performance(stage_name: str) -> None:
         print(f"モデルファイルが見つかりません: {model_path}")
         return
 
-    # regime_evaluation.pyを使用して評価
+    # run_regime_eval.py を使用して評価
     import subprocess
 
     result = subprocess.run(
         [
             "python",
-            "regime_evaluation.py",
-            "--models",
-            f"{stage_name}:{model_path}",
+            "-m",
+            "ztb.analysis.regime.run_regime_eval",
             "--price-data",
             "ml-dataset-enhanced.csv",
         ],

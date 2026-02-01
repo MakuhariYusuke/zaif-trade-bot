@@ -91,7 +91,7 @@ def test_cache_integration():
     """Test cache system integration."""
     logger.info("Testing cache integration...")
 
-    from ztb.cache.data_loader import DataLoader
+    from ztb.cache.data_loader import CacheDataLoader
     from ztb.cache.sqlite_cache import SQLiteCache
 
     # Test SQLiteCache with memory integration
@@ -112,7 +112,7 @@ def test_cache_integration():
     import pandas as pd
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        loader = DataLoader(cache_dir=temp_dir, enable_memory_cache=True)
+        loader = CacheDataLoader(cache_dir=temp_dir, enable_memory_cache=True)
 
         # Create test DataFrame
         test_df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})

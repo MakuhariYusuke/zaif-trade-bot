@@ -19,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ztb.utils.data_utils import load_csv_data
+from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import get_project_root
 
 # Add project root to path
@@ -64,7 +64,7 @@ class SACUtilities:
             validation_results["total_files"] += 1
 
             try:
-                df = load_csv_data(data_file)
+                df = DataLoader.load_csv_strict(data_file)
 
                 file_info = {
                     "filename": data_file.name,
