@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [Phase 4.5] Day 12: Profitability Focus - 2026-02-02
+
+#### 89# Phase 4.5 詳細実行計画（88# レビュー反映版）
+
+- **89# 詳細計画作成**: `docs/v459/89_phase4.5_detailed_execution_plan.md`
+  - 88# レビュー指摘の妥当性を全て検証
+  - 取引コスト推定の過大化: ✅ 正しい（260×0.1%=26%は誤り、実際は約定金額×手数料）
+  - 検証順序修正: ✅ 妥当（P0計測→P1基準→P2崩壊点→P3コスト→P4チューニング）
+  - 成功基準強化: ✅ 妥当（信頼区間・シード分散・期間分散の併記）
+
+- **P0 計測基盤整備**: `experiments/p0_measurement_setup.py`
+  - EnvironmentMetricsデータクラス作成（gross_pnl/net_pnl/total_fees/balance）
+  - extract_environment_metrics()関数（VecEnv/Monitor対応unwrap）
+  - 整合性チェック（net_pnl = gross_pnl - fees - slippage）
+  - 取引コスト内訳分析機能
+
+- **P1 基準モデル作成**: `experiments/run_p1_baseline.py`
+  - P1-1: PnLのみ（ペナルティ全無効）- 純粋なPnL性能測定
+  - P1-2: PnL - 基本コスト（fee+slip自然控除のみ）
+  - P1-3: 現行設定（Day11再現・比較用）
+  - P1-4: コストゼロ環境でPnLのみ（理論上限）
+  - 判断基準: P1-1 > 0% → 取引自体は利益、コスト/ペナルティ調整で改善可能
+
+- **修正版優先順位**:
+  | 優先度 | フェーズ | 目的 | 実験数 |
+  |--------|----------|------|--------|
+  | P0 | 計測基盤整備 | gross/net/fee分解ログ | 0 |
+  | P1 | 基準モデル作成 | PnLのみ報酬で基準 | 4 |
+  | P2 | 崩壊点特定 | ステップ別性能推移 | 4 |
+  | P3 | コスト感度分析 | 取引コスト影響測定 | 4 |
+  | P4 | 報酬チューニング | 最小限ペナルティ追加 | 4 |
+
 ### [Phase 4] Day 10: Comprehensive Experiment Suite - 2026-02-01
 
 #### 83# Codex Review 対応 (84#)
