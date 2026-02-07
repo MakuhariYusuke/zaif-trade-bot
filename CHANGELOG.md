@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [Phase 4.5] Day 14: Phase B Results Analysis - 2026-02-08
+
+#### 97# Phase B 実験結果分析
+
+- **Phase B 全8実験完了（4シード×2条件×50Kステップ）**
+  - P1-1（純粋PnL）: Gross PnL平均 +389 JPY, Net ROI -15.00%
+  - P1-3（現行設定）: Gross PnL平均 -306 JPY, Net ROI -15.01%
+  - 結果: 手数料(~15,000 JPY)が完全に支配、Net ROIは全条件で-15%に収束
+- **97# 分析ドキュメント作成**: `docs/v459/97_phase_b_results_analysis.md`
+  - 多角的考察（手数料構造、Gross PnL評価、BUY:SELL対称性、残存汚染）
+  - 統計的評価（Welch's t-test概算: p≈0.20、有意でない）
+  - `calculate_reward_simple()` 内ハードコードペナルティの発見
+  - ファイル・ログ参照一覧（Codexレビュー用）
+  - 次ステップ提案（Phase C取引頻度削減が最優先）
+
 ### [Phase 4.5] Day 12: Profitability Focus - 2026-02-02
 
 #### 89# Phase 4.5 詳細実行計画（88# レビュー反映版）
