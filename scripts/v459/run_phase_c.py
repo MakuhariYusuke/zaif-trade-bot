@@ -219,6 +219,8 @@ def build_config(
         "initial_portfolio_value": INITIAL_BALANCE,
         "transaction_cost": 0.001,
         "reward_settings": reward_params,
+        "feature_set": "v451",  # MTF無効化（OOM回避）。v451 parquetに適合
+        "correlation_reduction": False,  # 相関削減スキップ（O(m⁴)→O(1)高速化）
     }
     env_config.update(env_overrides)
 
@@ -244,6 +246,134 @@ def build_config(
     return config
 
 
+def _deterministic_eval_gate2(
+    trainer: Any,
+    config: Dict[str, Any],
+) -> Dict[str, Any]:
+    """学習後にdeterministic=Trueで1エピソード評価し、Gate2 KPIを計算。
+    
+    学習中はVecEnvの自動リセットでbalance履歴がクリアされるため、
+    学習後に同じ環境をresetしてdeterministic評価を行う。
+    新規env作成はMTF特徴量再計算でメモリ爆発するため、学習envを再利用する。
+    """
+    try:
+        # モデル取得
+        model = None
+        if hasattr(trainer, "model") and trainer.model is not None:
+            model = trainer.model
+        elif hasattr(trainer, "algorithm_trainer"):
+            at = trainer.algorithm_trainer
+            if hasattr(at, "model") and at.model is not None:
+                model = at.model
+        
+        if model is None:
+            return {"gate2_available": False, "gate2_error": "model not found"}
+        
+        # 学習envを再利用（MTF特徴量再計算を回避）
+        from ztb.utils.env_metrics import resolve_env, unwrap_env
+        
+        vec_env = resolve_env(trainer)
+        if vec_env is None and hasattr(model, "get_env"):
+            vec_env = model.get_env()
+        
+        eval_env = unwrap_env(vec_env) if vec_env is not None else None
+        
+        if eval_env is None:
+            return {"gate2_available": False, "gate2_error": "env not found for eval"}
+        
+        # 環境をリセットして評価開始
+        obs, _ = eval_env.reset(seed=42)
+        done = False
+        balances = [float(eval_env.portfolio_value)]
+        step_count = 0
+        # n_stepsはlen(df)≈1.2Mなので、学習と同じTOTAL_TIMESTEPSでキャップ
+        eval_timesteps = config.get("training", {}).get("total_timesteps", TOTAL_TIMESTEPS)
+        max_eval_steps = min(
+            getattr(eval_env, "n_steps", eval_timesteps),
+            eval_timesteps,
+        )
+        
+        while not done and step_count < max_eval_steps:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, _reward, terminated, truncated, _info = eval_env.step(action)
+            done = terminated or truncated
+            balances.append(float(eval_env.portfolio_value))
+            step_count += 1
+        
+        # Gate2 KPI計算
+        balances_arr = np.array(balances, dtype=np.float64)
+        gate2 = compute_gate2_metrics_from_balances(balances_arr)
+        
+        # 追加メトリクス
+        gate2["eval_steps"] = step_count
+        gate2["eval_trades"] = int(eval_env.total_trades)
+        gate2["eval_gross_pnl"] = float(getattr(eval_env, "gross_pnl", 0.0))
+        gate2["eval_net_roi"] = float((balances_arr[-1] - balances_arr[0]) / balances_arr[0] * 100)
+        gate2["eval_total_fees"] = float(getattr(eval_env, "total_fees", 0.0))
+        gate2["eval_buy_count"] = int(getattr(eval_env, "buy_count", 0))
+        gate2["eval_sell_count"] = int(getattr(eval_env, "sell_count", 0))
+        
+        return gate2
+        
+    except Exception as e:
+        logger.error(f"Deterministic eval failed: {e}", exc_info=True)
+        return {"gate2_available": False, "gate2_error": str(e)}
+
+
+def compute_gate2_metrics_from_balances(balances: np.ndarray) -> Dict[str, Any]:
+    """balance配列からGate 2 KPIを計算。
+    
+    0番 §5.2 基準:
+    - Net ROI > 5%
+    - PF > 1.20
+    - Sharpe > 1.0
+    - MaxDD < 15%
+    - WinRate > 35%
+    """
+    if balances is None or len(balances) < 10:
+        return {"gate2_available": False, "gate2_error": "insufficient balance data"}
+    
+    returns = np.diff(balances) / np.maximum(balances[:-1], 1e-10)
+    returns = np.nan_to_num(returns, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    gate2: Dict[str, Any] = {"gate2_available": True}
+    
+    try:
+        gate2["sharpe"] = float(sharpe_ratio(returns, period_per_year=525600))
+    except Exception:
+        gate2["sharpe"] = 0.0
+    
+    try:
+        gate2["max_drawdown"] = float(max_drawdown(balances))
+    except Exception:
+        gate2["max_drawdown"] = 0.0
+    
+    try:
+        gate2["profit_factor"] = float(profit_factor(returns))
+    except Exception:
+        gate2["profit_factor"] = 0.0
+    
+    try:
+        gate2["win_rate"] = float(win_rate(returns))
+    except Exception:
+        gate2["win_rate"] = 0.0
+    
+    gate2["mtm_roi"] = float((balances[-1] - balances[0]) / balances[0] * 100)
+    gate2["balance_samples"] = len(balances)
+    gate2["final_balance"] = float(balances[-1])
+    gate2["initial_balance_sampled"] = float(balances[0])
+    
+    gate2["gate2_pass"] = (
+        gate2["mtm_roi"] > 5.0
+        and gate2["profit_factor"] > 1.20
+        and gate2["sharpe"] > 1.0
+        and abs(gate2["max_drawdown"]) < 15.0
+        and gate2["win_rate"] > 0.35
+    )
+    
+    return gate2
+
+
 def compute_gate2_metrics(env: Any) -> Dict[str, Any]:
     """Gate 2 KPI を環境のportfolio_value_historyから計算。
     
@@ -253,17 +383,19 @@ def compute_gate2_metrics(env: Any) -> Dict[str, Any]:
     - Sharpe > 1.0
     - MaxDD < 15%
     - WinRate > 35%
+    
+    Args:
+        env: unwrap済みのHeavyTradingEnv（またはNone）
     """
+    if env is None:
+        return {"gate2_available": False, "gate2_error": "env is None"}
+    
     # portfolio_value_history は deque(maxlen=512) → 全ステップ不足
     # statistics_calculator.portfolio_value_history は deque(maxlen=None) → 全ステップあり
     balances: Optional[np.ndarray] = None
     
-    unwrapped = unwrap_env(env)
-    if unwrapped is None:
-        return {"gate2_available": False, "gate2_error": "env unwrap failed"}
-    
     # 優先1: statistics_calculator (全ステップ保持, maxlen=None)
-    sc = getattr(unwrapped, "statistics_calculator", None)
+    sc = getattr(env, "statistics_calculator", None)
     if sc is not None:
         pvh = getattr(sc, "portfolio_value_history", None)
         if pvh is not None and len(pvh) > 10:
@@ -271,7 +403,7 @@ def compute_gate2_metrics(env: Any) -> Dict[str, Any]:
     
     # フォールバック: core.py の portfolio_value_history (最後512ステップ)
     if balances is None:
-        pvh = getattr(unwrapped, "portfolio_value_history", None)
+        pvh = getattr(env, "portfolio_value_history", None)
         if pvh is not None and len(pvh) > 10:
             balances = np.array(pvh, dtype=np.float64)
     
@@ -365,7 +497,7 @@ def run_single_experiment(
             },
         }
         
-        # P1互換メトリクス
+        # P1互換メトリクス（学習時の最終エピソード値）
         metrics = extract_trainer_env_metrics(trainer, include_optional=True)
         if metrics:
             result.update(metrics)
@@ -375,10 +507,10 @@ def run_single_experiment(
             if "gross_pnl" in metrics and metrics.get("initial_balance", 0) > 0:
                 result["gross_roi"] = metrics["gross_pnl"] / metrics["initial_balance"] * 100
         
-        # ★ Gate 2 KPI (0番§5.2, 66番指摘)
-
-        env = resolve_env(trainer)
-        gate2 = compute_gate2_metrics(env)
+        # ★ Gate 2 KPI: 学習後にdeterministic評価を実行
+        # VecEnvリセットで学習中の履歴はクリアされるため、
+        # 別途1エピソードをdeterministic=Trueで走らせて計測
+        gate2 = _deterministic_eval_gate2(trainer, config)
         result["gate2"] = gate2
         
         # サマリログ

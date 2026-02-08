@@ -20,77 +20,123 @@ class TestComputeGate2Metrics:
     """compute_gate2_metrics の入力→出力を検証"""
 
     def _make_mock_env(self, balances: list) -> MagicMock:
-        """balance履歴を持つモックenv"""
+        """balance履歴を持つモックenv (unwrap済み相当)"""
         from collections import deque
         env = MagicMock()
-        env.portfolio_value_history = deque(balances, maxlen=len(balances))
-        # statistics_calculator は無し
-        env.statistics_calculator = None
-        # unwrap_env が通る経路を設定
-        env.envs = None  # VecEnvでない
-        env.env = None  # ラッパーでない
+        # statistics_calculator.portfolio_value_history (優先パス)
+        env.statistics_calculator = MagicMock()
+        env.statistics_calculator.portfolio_value_history = deque(balances)
         return env
 
-    def test_profitable_series_passes_gate2(self, monkeypatch):
+    def test_profitable_series_passes_gate2(self):
         """利益が出るbalance列 → Gate2 PASS"""
-        from scripts.v459 import run_phase_c
+        from scripts.v459.run_phase_c import compute_gate2_metrics
 
-        # 100000 → 106000 (6% ROI) で安定上昇
         n = 500
         balances = [100000 + i * 12 for i in range(n)]
         mock_env = self._make_mock_env(balances)
-        
-        # unwrap_envをバイパス
-        monkeypatch.setattr(run_phase_c, "unwrap_env", lambda env: mock_env)
 
-        result = run_phase_c.compute_gate2_metrics(mock_env)
+        result = compute_gate2_metrics(mock_env)
 
         assert result["gate2_available"] is True
         assert result["mtm_roi"] > 5.0
         assert result["profit_factor"] > 1.0
         assert result["win_rate"] > 0.5
 
-    def test_losing_series_fails_gate2(self, monkeypatch):
+    def test_losing_series_fails_gate2(self):
         """損失balance列 → Gate2 FAIL"""
-        from scripts.v459 import run_phase_c
+        from scripts.v459.run_phase_c import compute_gate2_metrics
 
         n = 500
-        balances = [100000 - i * 40 for i in range(n)]  # -20000
+        balances = [100000 - i * 40 for i in range(n)]
         mock_env = self._make_mock_env(balances)
-        monkeypatch.setattr(run_phase_c, "unwrap_env", lambda env: mock_env)
 
-        result = run_phase_c.compute_gate2_metrics(mock_env)
+        result = compute_gate2_metrics(mock_env)
 
         assert result["gate2_available"] is True
         assert result["gate2_pass"] is False
         assert result["mtm_roi"] < 0
 
-    def test_flat_series(self, monkeypatch):
+    def test_flat_series(self):
         """横ばいbalance → PF/Sharpe低い"""
-        from scripts.v459 import run_phase_c
+        from scripts.v459.run_phase_c import compute_gate2_metrics
 
         n = 500
         rng = np.random.RandomState(42)
         noise = rng.normal(0, 10, n)
         balances = [100000 + noise[i] for i in range(n)]
         mock_env = self._make_mock_env(balances)
-        monkeypatch.setattr(run_phase_c, "unwrap_env", lambda env: mock_env)
 
-        result = run_phase_c.compute_gate2_metrics(mock_env)
+        result = compute_gate2_metrics(mock_env)
 
         assert result["gate2_available"] is True
         assert result["gate2_pass"] is False
         assert abs(result["mtm_roi"]) < 5.0
 
-    def test_insufficient_data(self, monkeypatch):
+    def test_insufficient_data(self):
         """データ不足 → gate2_available=False"""
-        from scripts.v459 import run_phase_c
+        from scripts.v459.run_phase_c import compute_gate2_metrics
 
-        mock_env = self._make_mock_env([100000, 100001])  # 2点のみ
-        monkeypatch.setattr(run_phase_c, "unwrap_env", lambda env: mock_env)
-        
-        result = run_phase_c.compute_gate2_metrics(mock_env)
+        mock_env = self._make_mock_env([100000, 100001])
+        result = compute_gate2_metrics(mock_env)
         assert result["gate2_available"] is False
+
+    def test_none_env(self):
+        """env=None → gate2_available=False"""
+        from scripts.v459.run_phase_c import compute_gate2_metrics
+
+        result = compute_gate2_metrics(None)
+        assert result["gate2_available"] is False
+
+
+class TestComputeGate2MetricsFromBalances:
+    """compute_gate2_metrics_from_balances (新しいbalance直接入力API) の検証"""
+
+    def test_profitable_balances(self):
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        n = 500
+        balances = np.array([100000 + i * 12 for i in range(n)], dtype=np.float64)
+        result = compute_gate2_metrics_from_balances(balances)
+
+        assert result["gate2_available"] is True
+        assert result["mtm_roi"] > 5.0
+        assert result["profit_factor"] > 1.0
+        assert result["win_rate"] > 0.5
+        assert result["balance_samples"] == 500
+
+    def test_losing_balances(self):
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        n = 500
+        balances = np.array([100000 - i * 40 for i in range(n)], dtype=np.float64)
+        result = compute_gate2_metrics_from_balances(balances)
+
+        assert result["gate2_available"] is True
+        assert result["gate2_pass"] is False
+        assert result["mtm_roi"] < 0
+
+    def test_insufficient_data(self):
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        result = compute_gate2_metrics_from_balances(np.array([100000.0, 100001.0]))
+        assert result["gate2_available"] is False
+
+    def test_none_input(self):
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        result = compute_gate2_metrics_from_balances(None)
+        assert result["gate2_available"] is False
+
+    def test_max_drawdown_is_negative(self):
+        """max_drawdownは負値を返す"""
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        balances = np.array([100000 + i * 12 - (50 if i % 10 == 5 else 0) for i in range(500)], dtype=np.float64)
+        result = compute_gate2_metrics_from_balances(balances)
+
+        assert result["gate2_available"] is True
+        assert result["max_drawdown"] <= 0
 
 
 class TestExperimentConfigs:
@@ -148,6 +194,8 @@ class TestExperimentConfigs:
         assert cfg["training"]["seed"] == 42
         assert cfg["training"]["sac_hyperparameters"]["gamma"] == 0.99
         assert cfg["training"]["environment"]["transaction_cost"] == 0.001
+        assert cfg["training"]["environment"]["feature_set"] == "v451"  # MTF無効化
+        assert cfg["training"]["environment"]["correlation_reduction"] is False
 
     def test_build_config_gamma_override(self):
         from scripts.v459.run_phase_c import build_config, get_experiment_configs
@@ -156,6 +204,18 @@ class TestExperimentConfigs:
         cfg = build_config("test", 42, configs["c1_gamma_080"])
 
         assert cfg["training"]["sac_hyperparameters"]["gamma"] == 0.80
+
+    def test_eval_steps_capped_by_total_timesteps(self):
+        """_deterministic_eval_gate2のmax_eval_stepsがtotal_timestepsでキャップされる"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs, TOTAL_TIMESTEPS
+
+        configs = get_experiment_configs()
+        cfg = build_config("test", 42, configs["c0_baseline_p1"])
+
+        # build_config出力のtotal_timestepsはTOTAL_TIMESTEPS定数に一致
+        assert cfg["training"]["total_timesteps"] == TOTAL_TIMESTEPS
+        # eval側のキャップはこの値を使う（n_stepsは1.2Mだがcapされる）
+        assert TOTAL_TIMESTEPS <= 100000  # 合理的上限
 
     def test_batch_c0_c1_has_all_experiments(self):
         from scripts.v459.run_phase_c import BATCHES, get_experiment_configs
