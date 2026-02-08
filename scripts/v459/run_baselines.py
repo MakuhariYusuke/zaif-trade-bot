@@ -33,7 +33,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,7 +79,7 @@ def create_env(df: pd.DataFrame, seed: int) -> HeavyTradingEnv:
         feature_names=list(df.columns),
         initial_portfolio_value=INITIAL_BALANCE,
         use_continuous_actions=True,
-        reward_settings=REWARD_SETTINGS,
+        reward_settings=RewardSettings.from_dict(REWARD_SETTINGS),
     )
     env = HeavyTradingEnv(df, config)
     return env
