@@ -58,6 +58,8 @@ class PositionManager:
 
         # Trade tracking
         self.trades_count: int = 0
+        self.buy_count: int = 0
+        self.sell_count: int = 0
         self._last_trade_step: int = -1
         self._consecutive_trade_steps: int = 0
 
@@ -520,6 +522,10 @@ class PositionManager:
         self.position = direction * actual_position_size
         self.entry_price = execution_price  # Use execution price as entry price
         self.trades_count += 1
+        if direction > 0:
+            self.buy_count += 1
+        else:
+            self.sell_count += 1
         self._last_trade_step = current_step
 
         logger.debug(
@@ -631,6 +637,11 @@ class PositionManager:
         ) if self.trades_count % 5 == 0 else None
 
         self.trades_count += 1
+        # Closing Long = SELL execution, Closing Short = BUY execution
+        if self.position > 0:
+            self.sell_count += 1
+        else:
+            self.buy_count += 1
         self.position = 0.0
         self.entry_price = 0.0
 
@@ -676,6 +687,8 @@ class PositionManager:
             "total_fees": self.total_fees,
             "total_slippage": self.total_slippage,
             "trades_count": self.trades_count,
+            "buy_count": self.buy_count,
+            "sell_count": self.sell_count,
             "consecutive_trade_steps": self._consecutive_trade_steps,
         }
 
@@ -688,6 +701,8 @@ class PositionManager:
         self.total_fees = 0.0
         self.total_slippage = 0.0
         self.trades_count = 0
+        self.buy_count = 0
+        self.sell_count = 0
         self._last_trade_step = -1
         self._consecutive_trade_steps = 0
 

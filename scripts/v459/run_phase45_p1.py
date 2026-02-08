@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Phase 4.5 P1: 基準モデル作成実験
+Phase 4.5 P1: 基準モデル作成実験（96#改訂版）
 
 89#に基づき、ペナルティなしのPnLのみ報酬で基準モデルを作成。
-Day11 run_day11_verification.pyと完全互換（同じ環境構築ロジック）。
+95#レビュー反映: use_simple_reward=True で複合報酬経路をバイパス。
+96#計画: 4 seeds × 50K steps で統計的信頼性を確保。
 
 実験:
-- P1-1: PnLのみ（ペナルティ全無効）
+- P1-1: 真のPnLのみ（use_simple_reward=True、ペナルティ/シェーピング全無効）
 - P1-3: 現行設定（Day11再現・比較用）
 
 判断基準:
@@ -14,6 +15,7 @@ Day11 run_day11_verification.pyと完全互換（同じ環境構築ロジック�
 - P1-1 < 0%: 取引戦略自体が損失 → 学習設計根本見直し必要
 """
 
+import gc
 import json
 import logging
 import sys
@@ -62,9 +64,12 @@ SAC_DEFAULT = {
     "target_entropy": "auto",
 }
 
-# P1-1: PnLのみ（ペナルティ全無効）
-# NOTE: RewardSettings dataclass の実際のフィールド名を使用
+# P1-1: 真のPnLのみ（95#レビュー反映版）
+# NOTE: use_simple_reward=True で複合報酬経路をバイパス
+# 95#指摘: confidence_penalty, balance_shaping, entropy_shaping の暗黙動作を排除
 REWARD_PARAMS_P1_1 = {
+    # ★ 最重要: simple_reward経路を使用（複合経路の汚染を回避）
+    "use_simple_reward": True,
     # ペナルティ関連を全て0に
     "balance_penalty": 0.0,
     "balance_penalty_tolerance": 1.0,  # 大きな許容で無効化
@@ -74,20 +79,30 @@ REWARD_PARAMS_P1_1 = {
     "trade_frequency_penalty": 0.0,
     "trade_cooldown_penalty": 0.0,
     "consecutive_trade_penalty": 0.0,
-    "hold_penalty_multiplier": 0.0,
+    "hold_penalty_multiplier": 1.0,  # 98#修正: 0.0はHOLD報酬消去、1.0はPnL保持
     "volatility_penalty_scale": 0.0,
     "consistency_penalty": 0.0,
     "redundant_trade_penalty": 0.0,
     # ボーナス関連は1.0（デフォルト）に
     "profit_weight": 1.0,
     "reward_scale": 100.0,
+    # 95#指摘: 暗黙動作する追加コンポーネントを明示的に無効化
+    "confidence_penalty_factor": 0.0,
+    "balance_shaping_enabled": False,
+    "action_entropy_shaping_enabled": False,
+    # 非対称報酬スケーリング無効化
+    "long_position_reward_multiplier": 1.0,
+    "short_position_reward_multiplier": 1.0,
+    "long_position_penalty_multiplier": 1.0,
+    "short_position_penalty_multiplier": 1.0,
 }
 
 # P1-3: 現行設定（デフォルト）
 REWARD_PARAMS_P1_3 = {}  # デフォルト値使用
 
-SEEDS = [42]  # 検証用に1シードのみ
-TOTAL_TIMESTEPS = 10000  # 検証用に短縮
+# 96#計画: 4 seeds × 50K steps（0番§5.6準拠、統計的信頼性確保）
+SEEDS = [42, 123, 456, 789]
+TOTAL_TIMESTEPS = 50000
 
 
 def create_experiment_config(
@@ -146,6 +161,7 @@ def run_single_experiment(config: dict) -> Dict[str, Any]:
     logger.warning(f"  total_timesteps: {config['training']['total_timesteps']}")
     logger.warning(f"  seed: {config['training']['seed']}")
 
+    trainer = None
     try:
         # SACTrainerを直接使用（Day11と同じ）
         trainer = SACTrainer(config=config, logger=logger)
@@ -230,6 +246,15 @@ def run_single_experiment(config: dict) -> Dict[str, Any]:
             "error": str(e),
             "timestamp": datetime.now().isoformat(),
         }
+    finally:
+        # メモリリーク防止: 既存cleanup + 明示的解放
+        if trainer is not None:
+            try:
+                trainer.cleanup_training_environment()
+            except Exception:
+                pass
+            del trainer
+        gc.collect()
 
 
 def main():
@@ -259,6 +284,7 @@ def main():
         result = run_single_experiment(config)
         result["experiment_category"] = "P1-1"
         all_results.append(result)
+        gc.collect()  # seed間でメモリ解放
     
     # P1-3: 現行設定（比較用）
     logger.warning("\n" + "="*60)
@@ -275,6 +301,7 @@ def main():
         result = run_single_experiment(config)
         result["experiment_category"] = "P1-3"
         all_results.append(result)
+        gc.collect()  # seed間でメモリ解放
     
     # 結果分析
     logger.warning("\n" + "="*70)
@@ -362,5 +389,31 @@ def main():
     logger.warning("="*70 + "\n")
 
 
+def run_single(category: str, seed: int):
+    """サブプロセスから呼ばれる単一実験モード。結果JSONをstdoutに出力。"""
+    reward_params = REWARD_PARAMS_P1_1 if category == "P1-1" else REWARD_PARAMS_P1_3
+    config = create_experiment_config(
+        experiment_name=f"{category}_seed{seed}",
+        seed=seed,
+        reward_params=reward_params,
+        total_timesteps=TOTAL_TIMESTEPS,
+    )
+    result = run_single_experiment(config)
+    result["experiment_category"] = category
+    # 結果JSONを stdout の最終行に出力（subprocess runner が読み取る）
+    import json as _json
+    print(_json.dumps(result, ensure_ascii=False))
+
+
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--single-run", action="store_true", help="単一実験モード")
+    parser.add_argument("--category", type=str, default="P1-1")
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+
+    if args.single_run:
+        run_single(args.category, args.seed)
+    else:
+        main()

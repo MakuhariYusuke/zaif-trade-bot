@@ -1286,8 +1286,14 @@ class RewardCalculator:
 
             continuous_action_value: Optional[float] = (None,)
             position_change = abs(position - old_position)
-            if position_change > 0.1:  # Large position change
-                reward -= 0.1
+            position_change_penalty = self.get_setting_float(
+                "position_change_penalty", 0.0
+            )
+            position_change_threshold = self.get_setting_float(
+                "position_change_threshold", 0.1
+            )
+            if position_change_penalty > 0 and position_change > position_change_threshold:
+                reward -= position_change_penalty
 
             # Apply dynamic reward shaping (v440.1 enhancement)
             reward = self.dynamic_reward_shaper.shape_reward(
