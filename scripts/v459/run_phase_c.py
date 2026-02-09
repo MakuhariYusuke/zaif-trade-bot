@@ -296,6 +296,37 @@ def _find_vec_normalize(env: Any) -> Any:
     return None
 
 
+def _reset_risk_controllers(env: Any) -> None:
+    """DrawdownController等のリスク管理状態をリセット。
+
+    学習中にemergency_stopがラッチされるとeval時に全取引がブロックされる。
+    env.reset()はposition_managerのリスク管理をリセットしないため、
+    eval前に明示的にリセットする必要がある。
+    """
+    # position_manager.risk_manager.drawdown_controller
+    pm = getattr(env, "position_manager", None)
+    if pm is not None:
+        rm = getattr(pm, "risk_manager", None)
+        if rm is not None and hasattr(rm, "reset"):
+            rm.reset()
+            logger.info("Risk manager reset for eval (emergency_stop cleared)")
+            return
+    # フォールバック: drawdown_controllerを直接探す
+    for attr_path in [
+        ("risk_manager", "drawdown_controller"),
+        ("position_manager", "risk_manager", "drawdown_controller"),
+    ]:
+        obj = env
+        for attr in attr_path:
+            obj = getattr(obj, attr, None)
+            if obj is None:
+                break
+        if obj is not None and hasattr(obj, "reset"):
+            obj.reset()
+            logger.info(f"DrawdownController reset via {'.'.join(attr_path)}")
+            return
+
+
 def _run_deterministic_eval(
     model: Any,
     raw_env: Any,
@@ -309,6 +340,10 @@ def _run_deterministic_eval(
     Args:
         normalize_fn: obs→正規化obs変換関数。Noneなら生obs使用。
     """
+    # DrawdownControllerのemergency_stopラッチを解除
+    # (学習中の15%DDでラッチされ、reset()で解除されない場合の安全策)
+    _reset_risk_controllers(raw_env)
+
     obs_raw, _ = raw_env.reset(seed=42)
     obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
     done = False

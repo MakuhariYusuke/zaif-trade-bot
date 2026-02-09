@@ -705,6 +705,10 @@ class PositionManager:
         self.sell_count = 0
         self._last_trade_step = -1
         self._consecutive_trade_steps = 0
+        # risk_manager (DrawdownController等) もリセット
+        # 103# C0': emergency_stopラッチがeval時に取引をブロックする問題の修正
+        if hasattr(self, "risk_manager") and hasattr(self.risk_manager, "reset"):
+            self.risk_manager.reset()
 
 
 __all__ = ["PositionManager"]
