@@ -238,3 +238,135 @@ class TestSubprocessRunner:
         from scripts.v459.run_phase_c_subprocess import C0_C1_SCREENING
 
         assert len(C0_C1_SCREENING) == 14
+
+
+class TestFindVecNormalize:
+    """_find_vec_normalize のラッパー検出テスト"""
+
+    def test_finds_vec_normalize_at_top(self):
+        from scripts.v459.run_phase_c import _find_vec_normalize
+
+        mock_vn = MagicMock()
+        mock_vn.__class__.__name__ = "VecNormalize"
+        # isinstance チェックのため、実際の型を使う
+        try:
+            from stable_baselines3.common.vec_env import VecNormalize
+            mock_vn.__class__ = VecNormalize
+            result = _find_vec_normalize(mock_vn)
+            assert result is mock_vn
+        except ImportError:
+            pytest.skip("stable_baselines3 not available")
+
+    def test_returns_none_when_no_vec_normalize(self):
+        from scripts.v459.run_phase_c import _find_vec_normalize
+
+        mock_env = MagicMock(spec=[])  # no venv attribute
+        result = _find_vec_normalize(mock_env)
+        assert result is None
+
+    def test_returns_none_for_none_input(self):
+        from scripts.v459.run_phase_c import _find_vec_normalize
+
+        result = _find_vec_normalize(None)
+        assert result is None
+
+
+class TestRunDeterministicEval:
+    """_run_deterministic_eval のロジック検証"""
+
+    def _make_mock_env_and_model(self, n_steps=100, initial_balance=100000.0):
+        """モックenv + modelを作成"""
+        env = MagicMock()
+        env.portfolio_value = initial_balance
+        env.total_trades = 0
+        env.gross_pnl = 0.0
+        env.total_fees = 0.0
+        env.buy_count = 0
+        env.sell_count = 0
+        env.n_steps = n_steps * 10  # raw n_steps >> max_eval_steps
+
+        step_count = [0]
+
+        def reset_fn(seed=None):
+            step_count[0] = 0
+            env.portfolio_value = initial_balance
+            env.total_trades = 0
+            return np.zeros(8, dtype=np.float32), {}
+
+        def step_fn(action):
+            step_count[0] += 1
+            # action の符号でbalanceを微小変動
+            action_val = float(action) if np.isscalar(action) else float(action.flatten()[0])
+            env.portfolio_value += action_val * 10
+            if abs(action_val) > 0.33:
+                env.total_trades += 1
+            terminated = step_count[0] >= n_steps
+            return np.zeros(8, dtype=np.float32), 0.0, terminated, False, {}
+
+        env.reset = reset_fn
+        env.step = step_fn
+
+        model = MagicMock()
+        # predict → 固定action (threshold超過)
+        model.predict = MagicMock(return_value=(np.array([0.5]), None))
+
+        return env, model
+
+    def test_with_no_normalization(self):
+        """normalize_fn=None → 生obs評価"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env, model = self._make_mock_env_and_model(n_steps=50)
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=50, threshold=0.33,
+            normalize_fn=None, label="raw",
+        )
+
+        assert result["eval_method"] == "raw"
+        assert result["eval_steps"] == 50
+        assert result["eval_trades"] > 0  # action=0.5 > threshold=0.33
+        assert "action_stats" in result
+        assert result["action_stats"]["mean"] == pytest.approx(0.5, abs=0.01)
+
+    def test_with_normalization(self):
+        """normalize_fn指定 → 正規化obs評価"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env, model = self._make_mock_env_and_model(n_steps=50)
+
+        normalize_fn = lambda obs: obs * 0.1  # なんらかの正規化
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=50, threshold=0.33,
+            normalize_fn=normalize_fn, label="normalized",
+        )
+
+        assert result["eval_method"] == "normalized"
+        assert result["eval_steps"] == 50
+        # normalize_fnが呼ばれた=obs変換されたことを確認
+        # model.predictは変換後のobsで呼ばれる（直接検証は困難だがメソッド正常完了で可）
+
+    def test_action_stats_threshold_ratio(self):
+        """abs_above_thresholdの計算が正しい"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env, model = self._make_mock_env_and_model(n_steps=20)
+        # model always outputs 0.5 → all above threshold 0.33
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=20, threshold=0.33,
+        )
+
+        assert result["action_stats"]["abs_above_threshold"] == pytest.approx(1.0)
+
+    def test_action_stats_below_threshold(self):
+        """全actionが閾値以下 → abs_above_threshold=0"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env, model = self._make_mock_env_and_model(n_steps=20)
+        model.predict = MagicMock(return_value=(np.array([0.1]), None))
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=20, threshold=0.33,
+        )
+
+        assert result["action_stats"]["abs_above_threshold"] == pytest.approx(0.0)

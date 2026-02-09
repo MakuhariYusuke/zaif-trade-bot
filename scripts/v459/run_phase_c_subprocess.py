@@ -217,12 +217,20 @@ C0_C1_SCREENING = [
     "c1_v451_golden",           # v451 Golden Era復元
 ]
 
+# C1': 最小因果分離 (103# §3.2) — 評価修正済み
+C1_PRIME = [
+    "c0_baseline_p1",          # 基準 (scale=100, ent=auto)
+    "c1p_scale1000",           # reward_scale=1000
+    "c1p_ent001",              # ent_coef=0.01
+    "c1p_scale1000_ent001",    # reward_scale=1000 + ent_coef=0.01
+]
+
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Phase C サブプロセスランナー")
     parser.add_argument("--batch", type=str, default="c0_c1",
-                       choices=["c0_c1", "custom"],
+                       choices=["c0_c1", "c1_prime", "custom"],
                        help="バッチ名")
     parser.add_argument("--experiments", type=str, default=None,
                        help="カンマ区切り実験名 (--batch custom 時)")
@@ -234,6 +242,8 @@ def main():
     
     if args.batch == "c0_c1":
         experiments = C0_C1_SCREENING
+    elif args.batch == "c1_prime":
+        experiments = C1_PRIME
     elif args.batch == "custom" and args.experiments:
         experiments = [e.strip() for e in args.experiments.split(",")]
     else:

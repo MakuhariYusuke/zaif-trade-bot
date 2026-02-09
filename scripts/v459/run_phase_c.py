@@ -173,6 +173,27 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         "env_overrides": {},
     }
 
+    # --- C1': 最小因果分離 (103# §3.2) ---
+    # reward_scale {100, 1000} × ent_coef {auto, 0.01}
+    configs["c1p_scale1000"] = {
+        "description": "reward_scale=1000 (10× base), ent_coef=auto",
+        "sac_overrides": {},
+        "reward_overrides": {"reward_scale": 1000.0},
+        "env_overrides": {},
+    }
+    configs["c1p_ent001"] = {
+        "description": "ent_coef=0.01 (exploitation促進), reward_scale=100",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {},
+    }
+    configs["c1p_scale1000_ent001"] = {
+        "description": "reward_scale=1000 + ent_coef=0.01 (combo)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {"reward_scale": 1000.0},
+        "env_overrides": {},
+    }
+
     return configs
 
 
@@ -189,6 +210,18 @@ BATCHES = {
         "c1_gamma080_threshold_50", "c1_gamma080_threshold_60", "c1_gamma080_threshold_70",
         "c1_holding_5", "c1_holding_10", "c1_holding_15",
         "c1_v451_golden",
+    ],
+    # C0': 評価経路整合修正 + baseline再検証
+    "c0_prime": [
+        "c0_baseline_p1",
+    ],
+    # C1': 最小因果分離 (103# §3.2)
+    # reward_scale 100 vs 1000 × ent_coef auto vs 0.01
+    "c1_prime": [
+        "c0_baseline_p1",          # 基準 (scale=100, ent=auto)
+        "c1p_scale1000",           # scale=1000, ent=auto
+        "c1p_ent001",              # scale=100, ent=0.01
+        "c1p_scale1000_ent001",    # scale=1000, ent=0.01
     ],
     # screening後のフルseed展開（実行時に動的指定）
     "full_seeds": [],
@@ -246,15 +279,95 @@ def build_config(
     return config
 
 
+def _find_vec_normalize(env: Any) -> Any:
+    """VecEnvラッパースタックからVecNormalizeを探す。"""
+    try:
+        from stable_baselines3.common.vec_env import VecNormalize
+    except ImportError:
+        return None
+    current = env
+    for _ in range(10):
+        if isinstance(current, VecNormalize):
+            return current
+        if hasattr(current, "venv"):
+            current = current.venv
+        else:
+            break
+    return None
+
+
+def _run_deterministic_eval(
+    model: Any,
+    raw_env: Any,
+    max_eval_steps: int,
+    threshold: float,
+    normalize_fn: Any = None,
+    label: str = "eval",
+) -> Dict[str, Any]:
+    """1エピソードのdeterministic評価を実行。
+
+    Args:
+        normalize_fn: obs→正規化obs変換関数。Noneなら生obs使用。
+    """
+    obs_raw, _ = raw_env.reset(seed=42)
+    obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
+    done = False
+    balances = [float(raw_env.portfolio_value)]
+    actions: list[float] = []
+    step_count = 0
+
+    while not done and step_count < max_eval_steps:
+        action, _ = model.predict(obs, deterministic=True)
+        action_scalar = float(action.flatten()[0]) if hasattr(action, "flatten") else float(action)
+        actions.append(action_scalar)
+
+        obs_raw, _reward, terminated, truncated, _info = raw_env.step(action)
+        done = terminated or truncated
+        obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
+        balances.append(float(raw_env.portfolio_value))
+        step_count += 1
+
+    balances_arr = np.array(balances, dtype=np.float64)
+    result = compute_gate2_metrics_from_balances(balances_arr)
+
+    result["eval_steps"] = step_count
+    result["eval_trades"] = int(raw_env.total_trades)
+    result["eval_gross_pnl"] = float(getattr(raw_env, "gross_pnl", 0.0))
+    result["eval_net_roi"] = float(
+        (balances_arr[-1] - balances_arr[0]) / balances_arr[0] * 100
+    )
+    result["eval_total_fees"] = float(getattr(raw_env, "total_fees", 0.0))
+    result["eval_buy_count"] = int(getattr(raw_env, "buy_count", 0))
+    result["eval_sell_count"] = int(getattr(raw_env, "sell_count", 0))
+
+    if actions:
+        arr = np.array(actions)
+        result["action_stats"] = {
+            "mean": float(np.mean(arr)),
+            "std": float(np.std(arr)),
+            "min": float(np.min(arr)),
+            "max": float(np.max(arr)),
+            "p10": float(np.percentile(arr, 10)),
+            "p50": float(np.percentile(arr, 50)),
+            "p90": float(np.percentile(arr, 90)),
+            "abs_above_threshold": float(np.mean(np.abs(arr) > threshold)),
+        }
+
+    result["eval_method"] = label
+    return result
+
+
 def _deterministic_eval_gate2(
     trainer: Any,
     config: Dict[str, Any],
 ) -> Dict[str, Any]:
     """学習後にdeterministic=Trueで1エピソード評価し、Gate2 KPIを計算。
-    
-    学習中はVecEnvの自動リセットでbalance履歴がクリアされるため、
-    学習後に同じ環境をresetしてdeterministic評価を行う。
-    新規env作成はMTF特徴量再計算でメモリ爆発するため、学習envを再利用する。
+
+    103# C0' 修正: VecNormalize正規化ミスマッチの解消。
+    学習時は VecNormalize で obs が正規化されるが、旧コードは
+    unwrap_env() で生 obs をモデルに入力していた。
+    → Eval-A: VecNormalize.normalize_obs() で手動正規化して raw env 経由で評価
+    → Eval-B: 生 obs のまま評価（旧方式、比較用）
     """
     try:
         # モデル取得
@@ -265,56 +378,78 @@ def _deterministic_eval_gate2(
             at = trainer.algorithm_trainer
             if hasattr(at, "model") and at.model is not None:
                 model = at.model
-        
+
         if model is None:
             return {"gate2_available": False, "gate2_error": "model not found"}
-        
+
         # 学習envを再利用（MTF特徴量再計算を回避）
         from ztb.utils.env_metrics import resolve_env, unwrap_env
-        
+
         vec_env = resolve_env(trainer)
         if vec_env is None and hasattr(model, "get_env"):
             vec_env = model.get_env()
-        
-        eval_env = unwrap_env(vec_env) if vec_env is not None else None
-        
-        if eval_env is None:
+
+        raw_env = unwrap_env(vec_env) if vec_env is not None else None
+
+        if raw_env is None:
             return {"gate2_available": False, "gate2_error": "env not found for eval"}
-        
-        # 環境をリセットして評価開始
-        obs, _ = eval_env.reset(seed=42)
-        done = False
-        balances = [float(eval_env.portfolio_value)]
-        step_count = 0
-        # n_stepsはlen(df)≈1.2Mなので、学習と同じTOTAL_TIMESTEPSでキャップ
-        eval_timesteps = config.get("training", {}).get("total_timesteps", TOTAL_TIMESTEPS)
+
+        # VecNormalize検出 → 正規化関数を構築
+        vec_normalize = _find_vec_normalize(vec_env)
+        if vec_normalize is not None:
+            vec_normalize.training = False  # 統計更新を停止
+            logger.info(
+                "VecNormalize detected — running Eval-A (normalized) + Eval-B (raw)"
+            )
+        else:
+            logger.warning("VecNormalize not found — running Eval-B (raw) only")
+
+        # 評価パラメータ
+        eval_timesteps = config.get("training", {}).get(
+            "total_timesteps", TOTAL_TIMESTEPS
+        )
         max_eval_steps = min(
-            getattr(eval_env, "n_steps", eval_timesteps),
+            getattr(raw_env, "n_steps", eval_timesteps),
             eval_timesteps,
         )
-        
-        while not done and step_count < max_eval_steps:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, _reward, terminated, truncated, _info = eval_env.step(action)
-            done = terminated or truncated
-            balances.append(float(eval_env.portfolio_value))
-            step_count += 1
-        
-        # Gate2 KPI計算
-        balances_arr = np.array(balances, dtype=np.float64)
-        gate2 = compute_gate2_metrics_from_balances(balances_arr)
-        
-        # 追加メトリクス
-        gate2["eval_steps"] = step_count
-        gate2["eval_trades"] = int(eval_env.total_trades)
-        gate2["eval_gross_pnl"] = float(getattr(eval_env, "gross_pnl", 0.0))
-        gate2["eval_net_roi"] = float((balances_arr[-1] - balances_arr[0]) / balances_arr[0] * 100)
-        gate2["eval_total_fees"] = float(getattr(eval_env, "total_fees", 0.0))
-        gate2["eval_buy_count"] = int(getattr(eval_env, "buy_count", 0))
-        gate2["eval_sell_count"] = int(getattr(eval_env, "sell_count", 0))
-        
+        threshold = config.get("training", {}).get("environment", {}).get(
+            "continuous_to_discrete_threshold", 0.3333
+        )
+
+        # ===== Eval-A: VecNormalize 正規化 obs =====
+        normalize_fn = vec_normalize.normalize_obs if vec_normalize else None
+        gate2 = _run_deterministic_eval(
+            model, raw_env, max_eval_steps, threshold,
+            normalize_fn=normalize_fn,
+            label="normalized" if vec_normalize else "raw",
+        )
+
+        # ===== Eval-B: 生 obs (旧方式、比較用) =====
+        if vec_normalize is not None:
+            eval_b = _run_deterministic_eval(
+                model, raw_env, max_eval_steps, threshold,
+                normalize_fn=None,
+                label="raw",
+            )
+            gate2["eval_b_comparison"] = {
+                "eval_trades": eval_b["eval_trades"],
+                "eval_net_roi": eval_b["eval_net_roi"],
+                "eval_buy_count": eval_b.get("eval_buy_count", 0),
+                "eval_sell_count": eval_b.get("eval_sell_count", 0),
+                "action_stats": eval_b.get("action_stats", {}),
+            }
+            logger.info(
+                f"Eval-A trades={gate2['eval_trades']} | "
+                f"Eval-B trades={eval_b['eval_trades']} "
+                f"(VecNormalize mismatch check)"
+            )
+
+        # VecNormalize 状態を復元
+        if vec_normalize is not None:
+            vec_normalize.training = True
+
         return gate2
-        
+
     except Exception as e:
         logger.error(f"Deterministic eval failed: {e}", exc_info=True)
         return {"gate2_available": False, "gate2_error": str(e)}
@@ -515,16 +650,37 @@ def run_single_experiment(
         
         # サマリログ
         logger.warning(f"  完了: {elapsed:.0f}秒")
-        logger.warning(f"  Net ROI: {result.get('net_roi', 'N/A')}")
-        logger.warning(f"  Trades: {result.get('total_trades', 'N/A')}")
-        logger.warning(f"  Gross PnL: {result.get('gross_pnl', 'N/A')}")
-        logger.warning(f"  Fees: {result.get('total_fees', 'N/A')}")
+        logger.warning(f"  [Training] Net ROI: {result.get('net_roi', 'N/A')}")
+        logger.warning(f"  [Training] Trades: {result.get('total_trades', 'N/A')}")
+        logger.warning(f"  [Training] Gross PnL: {result.get('gross_pnl', 'N/A')}")
+        logger.warning(f"  [Training] Fees: {result.get('total_fees', 'N/A')}")
         if gate2.get("gate2_available"):
-            logger.warning(f"  [Gate2] PF={gate2['profit_factor']:.3f} "
-                         f"Sharpe={gate2['sharpe']:.3f} "
-                         f"MaxDD={gate2['max_drawdown']:.2f}% "
-                         f"WinRate={gate2['win_rate']:.1%} "
-                         f"{'PASS' if gate2['gate2_pass'] else 'FAIL'}")
+            a_trades = gate2.get("eval_trades", "?")
+            a_stats = gate2.get("action_stats", {})
+            a_above = a_stats.get("abs_above_threshold", 0)
+            logger.warning(
+                f"  [Gate2 Eval-A] trades={a_trades} "
+                f"action_mean={a_stats.get('mean', 0):.4f} "
+                f"action_std={a_stats.get('std', 0):.4f} "
+                f"|a|>thr={a_above:.1%}"
+            )
+            logger.warning(
+                f"  [Gate2 Eval-A] PF={gate2['profit_factor']:.3f} "
+                f"Sharpe={gate2['sharpe']:.3f} "
+                f"MaxDD={gate2['max_drawdown']:.2f}% "
+                f"WinRate={gate2['win_rate']:.1%} "
+                f"{'PASS' if gate2['gate2_pass'] else 'FAIL'}"
+            )
+            eval_b = gate2.get("eval_b_comparison", {})
+            if eval_b:
+                b_stats = eval_b.get("action_stats", {})
+                logger.warning(
+                    f"  [Gate2 Eval-B] trades={eval_b.get('eval_trades', '?')} "
+                    f"action_mean={b_stats.get('mean', 0):.4f} "
+                    f"action_std={b_stats.get('std', 0):.4f} "
+                    f"|a|>thr={b_stats.get('abs_above_threshold', 0):.1%} "
+                    f"(raw obs, 旧方式)"
+                )
         
         return result
         
