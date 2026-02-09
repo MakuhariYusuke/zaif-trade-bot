@@ -545,8 +545,20 @@ def run_single_experiment(
                 trainer.cleanup_training_environment()
             except Exception:
                 pass
+            try:
+                if hasattr(trainer, 'model') and trainer.model is not None:
+                    del trainer.model
+            except Exception:
+                pass
             del trainer
+        # メモリリーク防止: GC + torch cache clear
         gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
 
 
 def run_batch(batch_name: str, seeds: Optional[List[int]] = None) -> List[Dict[str, Any]]:
