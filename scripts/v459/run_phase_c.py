@@ -29,6 +29,8 @@ import numpy as np
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from scipy.stats import binomtest
+
 from ztb.metrics.metrics import (
     calculate_all_metrics,
     max_drawdown,
@@ -263,6 +265,86 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         "eval_dd_threshold": 1.0,
     }
 
+    # ================================================================
+    # D1: 特徴量セット比較 (107# §4.2)
+    # C3 best設定 (ent=0.01, thr=0.70, nodd) を固定し、特徴量のみ変更
+    # ================================================================
+    _d1_base_sac = {"ent_coef": 0.01}
+    _d1_base_env = {"continuous_to_discrete_threshold": 0.70}
+
+    # D1-1: 現行 v451_optimized (8特徴) - ベースライン
+    configs["d1_v451opt"] = {
+        "description": "D1: v451_optimized 8特徴 (現行ベースライン)",
+        "sac_overrides": _d1_base_sac,
+        "reward_overrides": {},
+        "env_overrides": _d1_base_env,
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    # D1-2: minimal (20特徴) - FeatureSetManager経由
+    configs["d1_minimal"] = {
+        "description": "D1: minimal 20特徴",
+        "sac_overrides": _d1_base_sac,
+        "reward_overrides": {},
+        "env_overrides": _d1_base_env,
+        "data_path": str(project_root / "data" / "btc_jpy_1m_minimal_features.parquet"),
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    # D1-3: curated (~76特徴) - FeatureSetManager経由
+    configs["d1_curated"] = {
+        "description": "D1: curated ~76特徴",
+        "sac_overrides": _d1_base_sac,
+        "reward_overrides": {},
+        "env_overrides": _d1_base_env,
+        "data_path": str(project_root / "data" / "btc_jpy_1m_curated_features.parquet"),
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+
+    # ================================================================
+    # D2: コスト感度分析 + 報酬微調整 (107# §4.3)
+    # D1 best条件ベース（data_pathは実行時に決定、デフォルト=現行）
+    # ================================================================
+    _d2_base_sac = {"ent_coef": 0.01}
+    _d2_base_env = {"continuous_to_discrete_threshold": 0.70}
+
+    # D2-a: コスト感度
+    configs["d2_cost05"] = {
+        "description": "D2: maker想定 cost=0.0005",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "transaction_cost": 0.0005},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    configs["d2_cost10"] = {
+        "description": "D2: taker現状 cost=0.001 (baseline)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": _d2_base_env,
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    configs["d2_cost15"] = {
+        "description": "D2: 悪条件 cost=0.0015",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "transaction_cost": 0.0015},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+
+    # D2-b: 報酬微調整
+    configs["d2_asymm12"] = {
+        "description": "D2: 非対称報酬 loss×1.2 (91# v451知見)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {"loss_multiplier": 1.2},
+        "env_overrides": _d2_base_env,
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+
     return configs
 
 
@@ -307,6 +389,22 @@ BATCHES = {
         "c3_ent001_thr70_nodd",      # thr=0.70 + DD無効化
         "c3_gamma080_ent001_thr70",  # γ=0.80 + thr=0.70
     ],
+    # D1: 特徴量セット比較 (107# §4.2) — seed=42粗選別
+    "d1": [
+        "d1_v451opt",    # 現行8特徴 (baseline)
+        "d1_minimal",    # minimal 20特徴
+        "d1_curated",    # curated ~76特徴
+    ],
+    # D2: コスト感度 + 報酬微調整 (107# §4.3) — D1 best条件ベース
+    "d2_cost": [
+        "d2_cost05",    # maker想定
+        "d2_cost10",    # taker現状 (baseline)
+        "d2_cost15",    # 悪条件
+    ],
+    "d2_reward": [
+        "d2_cost10",    # baseline
+        "d2_asymm12",   # 非対称報酬
+    ],
     # screening後のフルseed展開（実行時に動的指定）
     "full_seeds": [],
 }
@@ -330,6 +428,9 @@ def build_config(
 
     env_overrides = exp_def.get("env_overrides", {})
 
+    # D0-b: data_path オーバーライド (実験ごとに Parquet を切替可能)
+    data_path = exp_def.get("data_path", DATA_PATH)
+
     env_config = {
         "use_continuous_actions": True,
         "action_space_type": "continuous",
@@ -352,7 +453,7 @@ def build_config(
             "seed": seed,
             "sac_hyperparameters": sac_params,
             "data_config": {
-                "data_path": DATA_PATH,
+                "data_path": data_path,
                 "window_size": 60,
             },
             "environment": env_config,
@@ -364,6 +465,10 @@ def build_config(
     # eval時DD閾値オーバーライド (C3: DD停止無効化実験用)
     if "eval_dd_threshold" in exp_def:
         config["eval_dd_threshold"] = exp_def["eval_dd_threshold"]
+
+    # D0-b: 複数DD閾値での並行評価
+    if "eval_dd_thresholds" in exp_def:
+        config["eval_dd_thresholds"] = exp_def["eval_dd_thresholds"]
 
     return config
 
@@ -473,6 +578,12 @@ def _run_deterministic_eval(
     actions: list[float] = []
     step_count = 0
 
+    # D0: 取引ベース PnL 追跡 (env 既存属性の差分のみ、独自実装なし)
+    # 流用元: PositionManager.close_position() → trades_count+1 & realized_pnl 更新
+    trade_pnls: list[float] = []
+    prev_trades_count = int(raw_env.trades_count)
+    prev_realized_pnl = float(raw_env.realized_pnl)
+
     while not done and step_count < max_eval_steps:
         action, _ = model.predict(obs, deterministic=True)
         action_scalar = float(action.flatten()[0]) if hasattr(action, "flatten") else float(action)
@@ -483,6 +594,15 @@ def _run_deterministic_eval(
         obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
         balances.append(float(raw_env.portfolio_value))
         step_count += 1
+
+        # D0: 取引クローズ検出 (trades_count 増加 = close_position 発生)
+        current_trades_count = int(raw_env.trades_count)
+        current_realized_pnl = float(raw_env.realized_pnl)
+        if current_trades_count > prev_trades_count:
+            # close_position で realized_pnl が変化した分 = 1 取引の PnL (net)
+            trade_pnls.append(current_realized_pnl - prev_realized_pnl)
+        prev_trades_count = current_trades_count
+        prev_realized_pnl = current_realized_pnl
 
     balances_arr = np.array(balances, dtype=np.float64)
     result = compute_gate2_metrics_from_balances(balances_arr)
@@ -496,6 +616,29 @@ def _run_deterministic_eval(
     result["eval_total_fees"] = float(getattr(raw_env, "total_fees", 0.0))
     result["eval_buy_count"] = int(getattr(raw_env, "buy_count", 0))
     result["eval_sell_count"] = int(getattr(raw_env, "sell_count", 0))
+
+    # D0: 取引ベースメトリクス (流用元: performance_validator.py L290, run_baselines.py L113)
+    n_trades = len(trade_pnls)
+    if n_trades > 0:
+        win_trades = sum(1 for p in trade_pnls if p > 0)
+        result["trade_win_rate"] = float(win_trades / n_trades)
+        result["trade_win_count"] = win_trades
+        result["trade_loss_count"] = n_trades - win_trades
+        # 流用元: run_baselines.py L113-114
+        result["avg_gross_per_trade"] = result["eval_gross_pnl"] / n_trades
+        result["avg_fee_per_trade"] = result["eval_total_fees"] / n_trades
+        result["avg_net_pnl_per_trade"] = float(np.mean(trade_pnls))
+        # 流用元: performance_validator.py L294 (scipy.stats.binomtest)
+        result["binom_p_value"] = float(binomtest(win_trades, n_trades, 0.5).pvalue)
+    else:
+        result["trade_win_rate"] = 0.0
+        result["trade_win_count"] = 0
+        result["trade_loss_count"] = 0
+        result["avg_gross_per_trade"] = 0.0
+        result["avg_fee_per_trade"] = 0.0
+        result["avg_net_pnl_per_trade"] = 0.0
+        result["binom_p_value"] = 1.0
+    result["trade_pnls"] = trade_pnls
 
     if actions:
         arr = np.array(actions)
@@ -575,6 +718,8 @@ def _deterministic_eval_gate2(
 
         # eval時DD閾値オーバーライド (C3: DD停止無効化実験用)
         eval_dd_threshold = config.get("eval_dd_threshold", None)
+        # D0-b: 複数閾値での並行評価 (例: [1.0, 0.30])
+        eval_dd_thresholds = config.get("eval_dd_thresholds", None)
 
         # ===== Eval-A: VecNormalize 正規化 obs =====
         normalize_fn = vec_normalize.normalize_obs if vec_normalize else None
@@ -605,6 +750,35 @@ def _deterministic_eval_gate2(
                 f"Eval-B trades={eval_b['eval_trades']} "
                 f"(VecNormalize mismatch check)"
             )
+
+        # ===== D0-b: 追加DD閾値での並行評価 =====
+        if eval_dd_thresholds:
+            gate2["multi_dd_eval"] = {}
+            for dd_thr in eval_dd_thresholds:
+                dd_label = f"dd{int(dd_thr * 100):03d}"
+                dd_result = _run_deterministic_eval(
+                    model, raw_env, max_eval_steps, threshold,
+                    normalize_fn=normalize_fn,
+                    label=f"normalized_{dd_label}" if vec_normalize else f"raw_{dd_label}",
+                    eval_dd_threshold=float(dd_thr),
+                )
+                gate2["multi_dd_eval"][dd_label] = {
+                    "eval_dd_threshold": float(dd_thr),
+                    "eval_trades": dd_result.get("eval_trades", 0),
+                    "eval_net_roi": dd_result.get("eval_net_roi", 0.0),
+                    "profit_factor": dd_result.get("profit_factor", 0.0),
+                    "step_win_rate": dd_result.get("step_win_rate", 0.0),
+                    "trade_win_rate": dd_result.get("trade_win_rate", 0.0),
+                    "max_drawdown": dd_result.get("max_drawdown", 0.0),
+                    "binom_p_value": dd_result.get("binom_p_value", 1.0),
+                    "gate2_pass": dd_result.get("gate2_pass", False),
+                }
+                logger.info(
+                    f"Multi-DD eval [{dd_label}]: trades={dd_result.get('eval_trades', 0)}, "
+                    f"ROI={dd_result.get('eval_net_roi', 0):.2f}%, "
+                    f"PF={dd_result.get('profit_factor', 0):.3f}, "
+                    f"trade_WR={dd_result.get('trade_win_rate', 0):.3f}"
+                )
 
         # VecNormalize 状態を復元
         if vec_normalize is not None:
@@ -651,9 +825,11 @@ def compute_gate2_metrics_from_balances(balances: np.ndarray) -> Dict[str, Any]:
         gate2["profit_factor"] = 0.0
     
     try:
-        gate2["win_rate"] = float(win_rate(returns))
+        gate2["step_win_rate"] = float(win_rate(returns))
     except Exception:
-        gate2["win_rate"] = 0.0
+        gate2["step_win_rate"] = 0.0
+    # D0: 後方互換性のため win_rate も残す (= step_win_rate)
+    gate2["win_rate"] = gate2["step_win_rate"]
     
     gate2["mtm_roi"] = float((balances[-1] - balances[0]) / balances[0] * 100)
     gate2["balance_samples"] = len(balances)
@@ -665,7 +841,7 @@ def compute_gate2_metrics_from_balances(balances: np.ndarray) -> Dict[str, Any]:
         and gate2["profit_factor"] > 1.20
         and gate2["sharpe"] > 1.0
         and abs(gate2["max_drawdown"]) < 15.0
-        and gate2["win_rate"] > 0.35
+        and gate2["step_win_rate"] > 0.35
     )
     
     return gate2
@@ -830,9 +1006,19 @@ def run_single_experiment(
                 f"  [Gate2 Eval-A] PF={gate2['profit_factor']:.3f} "
                 f"Sharpe={gate2['sharpe']:.3f} "
                 f"MaxDD={gate2['max_drawdown']:.2f}% "
-                f"WinRate={gate2['win_rate']:.1%} "
+                f"StepWR={gate2.get('step_win_rate', gate2.get('win_rate', 0)):.1%} "
                 f"{'PASS' if gate2['gate2_pass'] else 'FAIL'}"
             )
+            # D0: 取引ベースメトリクスのログ出力
+            trade_wr = gate2.get("trade_win_rate", None)
+            if trade_wr is not None:
+                logger.warning(
+                    f"  [Gate2 Trade] TradeWR={trade_wr:.1%} "
+                    f"({gate2.get('trade_win_count', 0)}W/{gate2.get('trade_loss_count', 0)}L) "
+                    f"AvgNet/Trade={gate2.get('avg_net_pnl_per_trade', 0):.2f} "
+                    f"AvgFee/Trade={gate2.get('avg_fee_per_trade', 0):.2f} "
+                    f"Binom_p={gate2.get('binom_p_value', 1.0):.4f}"
+                )
             eval_b = gate2.get("eval_b_comparison", {})
             if eval_b:
                 b_stats = eval_b.get("action_stats", {})

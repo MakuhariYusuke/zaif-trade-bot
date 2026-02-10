@@ -128,6 +128,9 @@ class SACTrainer(BaseAlgorithmTrainer):
             "no_harmful",
             "v435_risk_managed",
             "v435_risk_managed_no_multi_timeframe",
+            "curated",
+            "v451",
+            "v454",
         ]
         return name in valid_sets
 

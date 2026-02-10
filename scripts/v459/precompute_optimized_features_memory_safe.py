@@ -20,8 +20,9 @@ import psutil
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from typing import List
+from typing import List, Optional
 from ztb.features.core.registry import FeatureRegistry
+from ztb.features.feature_set_manager import get_feature_manager
 from ztb.utils.data_utils import load_csv_data_cached
 
 
@@ -37,6 +38,7 @@ def precompute_optimized_features_memory_safe(
     correlation_threshold: float = 0.95,
     chunk_size: int = 500,  # メモリ節約のため小さく
     temp_dir: str = None,
+    feature_set: Optional[str] = None,
 ):
     """
     メモリ効率的な特徴量事前計算
@@ -47,6 +49,8 @@ def precompute_optimized_features_memory_safe(
         correlation_threshold: 相関削減の閾値
         chunk_size: チャンクサイズ（小さいほどメモリ節約）
         temp_dir: 一時ファイルディレクトリ（Noneの場合は出力ファイルと同じディレクトリ）
+        feature_set: FeatureSetManagerのセット名 (curated/minimal/full).
+                     Noneの場合はFeatureRegistryの最適化セットを使用.
     """
     print(f"=== メモリセーフ特徴量計算開始 ===")
     print(f"入力: {data_file}")
@@ -77,13 +81,29 @@ def precompute_optimized_features_memory_safe(
     print(f"✅ データ読み込み完了: {total_rows:,}行")
     print(f"メモリ使用量: {get_memory_usage_mb():.1f} MB")
     
-    # 2. 最適化済み特徴セット取得
-    print(f"\n[2/4] 最適化済み特徴セット取得中...")
-    optimized_features = FeatureRegistry.get_optimized_feature_set(
-        correlation_threshold=correlation_threshold,
-        analysis_file=None
-    )
-    print(f"✅ 特徴数: {len(optimized_features)}")
+    # 2. 特徴セット取得
+    print(f"\n[2/4] 特徴セット取得中...")
+    if feature_set:
+        # FeatureSetManagerから名前付きセットを取得
+        manager = get_feature_manager()
+        available = list(manager.list_feature_sets().keys())
+        feature_list = manager.get_feature_set(feature_set)
+        if not feature_list:
+            raise ValueError(
+                f"特徴量セット '{feature_set}' が見つかりません。"
+                f"利用可能: {available}"
+            )
+        # OHLCV は必須列として別途追加されるため、特徴量リストから除外
+        ohlcv_names = {'timestamp', 'open', 'high', 'low', 'close', 'volume'}
+        optimized_features = [f for f in feature_list if f not in ohlcv_names]
+        print(f"✅ 特徴セット '{feature_set}': {len(optimized_features)}個 (OHLCV除外後)")
+    else:
+        # 従来のFeatureRegistryの最適化セット
+        optimized_features = FeatureRegistry.get_optimized_feature_set(
+            correlation_threshold=correlation_threshold,
+            analysis_file=None
+        )
+        print(f"✅ 最適化特徴数: {len(optimized_features)}")
     
     # 必須列
     required_cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
@@ -267,6 +287,11 @@ if __name__ == '__main__':
         help='一時ファイルディレクトリ'
     )
     parser.add_argument(
+        '--feature-set',
+        default=None,
+        help='FeatureSetManagerのセット名 (curated/minimal/full). 未指定時はFeatureRegistryの最適化セットを使用'
+    )
+    parser.add_argument(
         '--resume',
         action='store_true',
         help='中断からの再開'
@@ -288,5 +313,6 @@ if __name__ == '__main__':
             output_file=args.output_file,
             correlation_threshold=args.correlation_threshold,
             chunk_size=args.chunk_size,
-            temp_dir=args.temp_dir
+            temp_dir=args.temp_dir,
+            feature_set=args.feature_set,
         )

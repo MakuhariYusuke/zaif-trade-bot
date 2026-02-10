@@ -173,8 +173,6 @@ class FeatureSetManager:
             "EMACross_Signal_M15",  # 15分足EMAクロスシグナル
             "EMACross_Signal_H1",  # 1時間足EMAクロスシグナル
             "EMACross_Signal_H4",  # 4時間足EMAクロスシグナル
-            "EMACross_Signal_H1",  # 1時間足EMAクロスシグナル
-            "EMACross_Signal_H4",  # 4時間足EMAクロスシグナル
             "EMACross_Signal_D1",  # 日足EMAクロスシグナル
             "TEMA",  # トリプルEMA
             "ema_5",  # 短期EMA

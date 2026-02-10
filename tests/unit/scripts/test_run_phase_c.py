@@ -372,6 +372,353 @@ class TestRunDeterministicEval:
         assert result["action_stats"]["abs_above_threshold"] == pytest.approx(0.0)
 
 
+class TestD0TradePnlTracking:
+    """D0: 取引ベース PnL 追跡のテスト (107# §7 D0-a)"""
+
+    def _make_trade_mock_env(
+        self,
+        n_steps: int = 100,
+        initial_balance: float = 100000.0,
+        trades: list | None = None,
+    ):
+        """trades_count/realized_pnl を正しくシミュレートするモック env。
+
+        trades: [(step_number, pnl_delta), ...] — 指定ステップで取引がクローズされる。
+        """
+        env = MagicMock()
+        env.portfolio_value = initial_balance
+        env.total_trades = 0
+        env.gross_pnl = 0.0
+        env.total_fees = 0.0
+        env.buy_count = 0
+        env.sell_count = 0
+        env.n_steps = n_steps * 10
+        # D0 追跡対象属性
+        env.trades_count = 0
+        env.realized_pnl = 0.0
+
+        if trades is None:
+            trades = []
+        trade_map = {s: pnl for s, pnl in trades}
+
+        step_count = [0]
+
+        def reset_fn(seed=None):
+            step_count[0] = 0
+            env.portfolio_value = initial_balance
+            env.total_trades = 0
+            env.trades_count = 0
+            env.realized_pnl = 0.0
+            env.gross_pnl = 0.0
+            env.total_fees = 0.0
+            return np.zeros(8, dtype=np.float32), {}
+
+        def step_fn(action):
+            step_count[0] += 1
+            s = step_count[0]
+            action_val = float(action) if np.isscalar(action) else float(action.flatten()[0])
+            env.portfolio_value += action_val * 10
+
+            if s in trade_map:
+                pnl = trade_map[s]
+                env.trades_count += 1
+                env.realized_pnl += pnl
+                env.total_trades += 1
+                env.gross_pnl += abs(pnl) if pnl > 0 else pnl
+                env.total_fees += 5.0  # 固定手数料
+
+            terminated = s >= n_steps
+            return np.zeros(8, dtype=np.float32), 0.0, terminated, False, {}
+
+        env.reset = reset_fn
+        env.step = step_fn
+
+        model = MagicMock()
+        model.predict = MagicMock(return_value=(np.array([0.5]), None))
+        return env, model
+
+    def test_trade_pnls_populated(self):
+        """取引クローズ時に trade_pnls が正しく記録される"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        trades = [(10, 100.0), (20, -50.0), (30, 200.0)]
+        env, model = self._make_trade_mock_env(n_steps=40, trades=trades)
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=40, threshold=0.33,
+        )
+
+        assert len(result["trade_pnls"]) == 3
+        assert result["trade_pnls"][0] == pytest.approx(100.0)
+        assert result["trade_pnls"][1] == pytest.approx(-50.0)
+        assert result["trade_pnls"][2] == pytest.approx(200.0)
+
+    def test_trade_win_rate_calculation(self):
+        """trade_win_rate = 勝ち取引 / 全取引"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        trades = [(5, 100.0), (15, -50.0), (25, 200.0), (35, -10.0)]
+        env, model = self._make_trade_mock_env(n_steps=40, trades=trades)
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=40, threshold=0.33,
+        )
+
+        assert result["trade_win_rate"] == pytest.approx(0.5)  # 2/4
+        assert result["trade_win_count"] == 2
+        assert result["trade_loss_count"] == 2
+
+    def test_no_trades_returns_zero(self):
+        """取引なしの場合 trade_win_rate=0, binom_p=1.0"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env, model = self._make_trade_mock_env(n_steps=20, trades=[])
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=20, threshold=0.33,
+        )
+
+        assert result["trade_win_rate"] == 0.0
+        assert result["trade_win_count"] == 0
+        assert result["binom_p_value"] == 1.0
+        assert result["avg_gross_per_trade"] == 0.0
+        assert result["avg_fee_per_trade"] == 0.0
+
+
+class TestD0PerTradeMetrics:
+    """D0: per-trade 平均メトリクスのテスト (107# §7 D0-a.2)"""
+
+    def test_avg_gross_and_fee_per_trade(self):
+        """avg_gross_per_trade, avg_fee_per_trade が正しく計算される"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env = MagicMock()
+        env.portfolio_value = 100000.0
+        env.total_trades = 0
+        env.gross_pnl = 0.0
+        env.total_fees = 0.0
+        env.buy_count = 0
+        env.sell_count = 0
+        env.n_steps = 500
+        env.trades_count = 0
+        env.realized_pnl = 0.0
+
+        step_count = [0]
+
+        def reset_fn(seed=None):
+            step_count[0] = 0
+            env.portfolio_value = 100000.0
+            env.total_trades = 0
+            env.trades_count = 0
+            env.realized_pnl = 0.0
+            env.gross_pnl = 300.0   # 3取引合計 gross
+            env.total_fees = 60.0   # 3取引合計 fee
+            return np.zeros(8, dtype=np.float32), {}
+
+        def step_fn(action):
+            step_count[0] += 1
+            # step 10, 20, 30 で取引クローズ
+            if step_count[0] in (10, 20, 30):
+                env.trades_count += 1
+                env.realized_pnl += 50.0
+            terminated = step_count[0] >= 40
+            return np.zeros(8, dtype=np.float32), 0.0, terminated, False, {}
+
+        env.reset = reset_fn
+        env.step = step_fn
+
+        model = MagicMock()
+        model.predict = MagicMock(return_value=(np.array([0.5]), None))
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=40, threshold=0.33,
+        )
+
+        assert result["avg_gross_per_trade"] == pytest.approx(100.0)  # 300/3
+        assert result["avg_fee_per_trade"] == pytest.approx(20.0)     # 60/3
+
+
+class TestD0BinomTest:
+    """D0: 簡易二項検定の出力テスト (107# §7 D0-a.3)"""
+
+    def test_binom_p_value_exists(self):
+        """binom_p_value がfloat値として出力される"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env = MagicMock()
+        env.portfolio_value = 100000.0
+        env.total_trades = 0
+        env.gross_pnl = 0.0
+        env.total_fees = 0.0
+        env.buy_count = 0
+        env.sell_count = 0
+        env.n_steps = 500
+        env.trades_count = 0
+        env.realized_pnl = 0.0
+
+        step_count = [0]
+
+        def reset_fn(seed=None):
+            step_count[0] = 0
+            env.portfolio_value = 100000.0
+            env.trades_count = 0
+            env.realized_pnl = 0.0
+            env.total_trades = 0
+            env.gross_pnl = 0.0
+            env.total_fees = 0.0
+            return np.zeros(8, dtype=np.float32), {}
+
+        def step_fn(action):
+            step_count[0] += 1
+            # 10取引: 7勝3敗
+            if step_count[0] <= 10:
+                env.trades_count += 1
+                pnl = 100.0 if step_count[0] <= 7 else -50.0
+                env.realized_pnl += pnl
+            terminated = step_count[0] >= 20
+            return np.zeros(8, dtype=np.float32), 0.0, terminated, False, {}
+
+        env.reset = reset_fn
+        env.step = step_fn
+
+        model = MagicMock()
+        model.predict = MagicMock(return_value=(np.array([0.5]), None))
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=20, threshold=0.33,
+        )
+
+        assert isinstance(result["binom_p_value"], float)
+        assert 0.0 <= result["binom_p_value"] <= 1.0
+        # 7/10 勝ち: 二項検定で p < 0.5 程度（有意ではないが 0.5 より大)
+        assert result["trade_win_rate"] == pytest.approx(0.7)
+
+    def test_binom_all_wins(self):
+        """全勝の場合 p-value は非常に小さい"""
+        from scipy.stats import binomtest
+
+        # 直接 binomtest を検証（run_phase_c の内部で使うのと同じ）
+        r = binomtest(10, 10, 0.5)
+        assert r.pvalue < 0.01  # 10/10 全勝は p≈0.001
+
+
+class TestD0DataPathOverride:
+    """D0-b: data_path オーバーライドのテスト (107# §7)"""
+
+    def test_default_data_path(self):
+        """exp_def に data_path がなければデフォルト DATA_PATH を使用"""
+        from scripts.v459.run_phase_c import build_config, DATA_PATH
+
+        config = build_config("test_exp", 42, {
+            "sac_overrides": {},
+            "reward_overrides": {},
+            "env_overrides": {},
+        })
+
+        assert config["training"]["data_config"]["data_path"] == DATA_PATH
+
+    def test_custom_data_path(self):
+        """exp_def に data_path 指定 → config に反映"""
+        from scripts.v459.run_phase_c import build_config
+
+        custom_path = "data/btc_jpy_1m_curated_features.parquet"
+        config = build_config("test_exp", 42, {
+            "sac_overrides": {},
+            "reward_overrides": {},
+            "env_overrides": {},
+            "data_path": custom_path,
+        })
+
+        assert config["training"]["data_config"]["data_path"] == custom_path
+
+    def test_eval_dd_thresholds_in_config(self):
+        """eval_dd_thresholds が config に含まれる"""
+        from scripts.v459.run_phase_c import build_config
+
+        config = build_config("test_exp", 42, {
+            "sac_overrides": {},
+            "reward_overrides": {},
+            "env_overrides": {},
+            "eval_dd_thresholds": [1.0, 0.30],
+        })
+
+        assert config["eval_dd_thresholds"] == [1.0, 0.30]
+
+    def test_eval_dd_thresholds_absent(self):
+        """eval_dd_thresholds 未設定 → config に含まれない"""
+        from scripts.v459.run_phase_c import build_config
+
+        config = build_config("test_exp", 42, {
+            "sac_overrides": {},
+            "reward_overrides": {},
+            "env_overrides": {},
+        })
+
+        assert "eval_dd_thresholds" not in config
+
+
+class TestD0StepVsTradeWinRate:
+    """step_win_rate と trade_win_rate が両方計測されることを確認"""
+
+    def test_both_win_rates_in_gate2_metrics(self):
+        """compute_gate2_metrics_from_balances に step_win_rate がある"""
+        from scripts.v459.run_phase_c import compute_gate2_metrics_from_balances
+
+        balances = np.array([100000 + i * 5 for i in range(200)], dtype=np.float64)
+        result = compute_gate2_metrics_from_balances(balances)
+
+        assert "step_win_rate" in result
+        assert "win_rate" in result  # 後方互換
+        assert result["step_win_rate"] == result["win_rate"]
+
+    def test_trade_win_rate_in_eval_result(self):
+        """_run_deterministic_eval に trade_win_rate が含まれる"""
+        from scripts.v459.run_phase_c import _run_deterministic_eval
+
+        env = MagicMock()
+        env.portfolio_value = 100000.0
+        env.total_trades = 0
+        env.gross_pnl = 0.0
+        env.total_fees = 0.0
+        env.buy_count = 0
+        env.sell_count = 0
+        env.n_steps = 500
+        env.trades_count = 0
+        env.realized_pnl = 0.0
+
+        step_count = [0]
+
+        def reset_fn(seed=None):
+            step_count[0] = 0
+            env.trades_count = 0
+            env.realized_pnl = 0.0
+            env.total_trades = 0
+            env.gross_pnl = 0.0
+            env.total_fees = 0.0
+            env.portfolio_value = 100000.0
+            return np.zeros(8, dtype=np.float32), {}
+
+        def step_fn(action):
+            step_count[0] += 1
+            terminated = step_count[0] >= 10
+            return np.zeros(8, dtype=np.float32), 0.0, terminated, False, {}
+
+        env.reset = reset_fn
+        env.step = step_fn
+
+        model = MagicMock()
+        model.predict = MagicMock(return_value=(np.array([0.1]), None))
+
+        result = _run_deterministic_eval(
+            model, env, max_eval_steps=10, threshold=0.33,
+        )
+
+        # step_win_rate は balance-based → compute_gate2_metrics_from_balances から
+        assert "step_win_rate" in result
+        # trade_win_rate は trade-based
+        assert "trade_win_rate" in result
+
+
 class TestC2Experiments:
     """C2実験定義の整合性テスト"""
 
@@ -475,3 +822,91 @@ class TestC3Experiments:
         configs = get_experiment_configs()
         config = build_config("c0_baseline_p1", 42, configs["c0_baseline_p1"])
         assert "eval_dd_threshold" not in config
+
+
+class TestD1Experiments:
+    """D1: 特徴量セット比較実験 (107# §4.2)"""
+
+    def test_d1_configs_exist(self):
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name in ["d1_v451opt", "d1_minimal", "d1_curated"]:
+            assert name in configs, f"{name} not in configs"
+
+    def test_d1_all_have_eval_dd_thresholds(self):
+        """D1実験はすべて eval_dd_thresholds=[1.0, 0.30] を持つ"""
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name in ["d1_v451opt", "d1_minimal", "d1_curated"]:
+            cfg = configs[name]
+            assert cfg.get("eval_dd_thresholds") == [1.0, 0.30], (
+                f"{name} missing eval_dd_thresholds"
+            )
+
+    def test_d1_all_have_ent001_thr70(self):
+        """D1実験はC3 best設定を固定 (ent=0.01, thr=0.70)"""
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name in ["d1_v451opt", "d1_minimal", "d1_curated"]:
+            cfg = configs[name]
+            assert cfg["sac_overrides"].get("ent_coef") == 0.01
+            assert cfg["env_overrides"].get("continuous_to_discrete_threshold") == 0.70
+
+    def test_d1_data_paths_differ(self):
+        """D1実験は各々異なる data_path を持つ"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs
+
+        configs = get_experiment_configs()
+        paths = set()
+        for name in ["d1_v451opt", "d1_minimal", "d1_curated"]:
+            c = build_config(name, 42, configs[name])
+            paths.add(c["training"]["data_config"]["data_path"])
+        assert len(paths) == 3, "D1 experiments should use 3 different parquets"
+
+    def test_d1_batch_matches_configs(self):
+        from scripts.v459.run_phase_c import BATCHES, get_experiment_configs
+
+        configs = get_experiment_configs()
+        for exp_name in BATCHES["d1"]:
+            assert exp_name in configs, f"{exp_name} not in configs"
+
+
+class TestD2Experiments:
+    """D2: コスト感度+報酬微調整実験 (107# §4.3)"""
+
+    def test_d2_configs_exist(self):
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name in ["d2_cost05", "d2_cost10", "d2_cost15", "d2_asymm12"]:
+            assert name in configs, f"{name} not in configs"
+
+    def test_d2_cost_variations(self):
+        """D2-a: 3つのコスト設定が正しいこと"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs
+
+        configs = get_experiment_configs()
+        expected = {"d2_cost05": 0.0005, "d2_cost10": 0.001, "d2_cost15": 0.0015}
+        for name, expected_cost in expected.items():
+            c = build_config(name, 42, configs[name])
+            actual = c["training"]["environment"]["transaction_cost"]
+            assert actual == expected_cost, f"{name}: {actual} != {expected_cost}"
+
+    def test_d2_asymm_has_loss_multiplier(self):
+        """D2-b: 非対称報酬 loss_multiplier=1.2"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs
+
+        configs = get_experiment_configs()
+        c = build_config("d2_asymm12", 42, configs["d2_asymm12"])
+        assert c["reward"].get("loss_multiplier") == 1.2
+
+    def test_d2_batches_match_configs(self):
+        from scripts.v459.run_phase_c import BATCHES, get_experiment_configs
+
+        configs = get_experiment_configs()
+        for batch_name in ["d2_cost", "d2_reward"]:
+            for exp_name in BATCHES[batch_name]:
+                assert exp_name in configs, f"{exp_name} not in configs"
