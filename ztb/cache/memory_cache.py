@@ -391,7 +391,11 @@ class DynamicBufferManager:
 
 
 # Global instances
-default_memory_manager = MemoryManager(max_memory_mb=800.0)  # Increased from 500MB to handle feature engineering
+# NOTE: SAC training with 1M replay buffer typically uses 800-1000 MB.
+# Setting threshold to 1500 MB to avoid spurious warnings and unnecessary
+# monitoring overhead during training.  Background monitoring is disabled
+# to eliminate the 10-second psutil polling thread that adds GIL contention.
+default_memory_manager = MemoryManager(max_memory_mb=1500.0, enable_monitoring=False)
 default_buffer_manager = DynamicBufferManager()
 
 

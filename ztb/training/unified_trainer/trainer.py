@@ -256,9 +256,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 "enable_performance_profiling", True
             ),
             enable_io_caching=self.config.get("enable_io_caching", True),
-            memory_threshold_mb=self.config.get("memory_threshold_mb", 100.0),
+            memory_threshold_mb=self.config.get("memory_threshold_mb", 1500.0),
             cache_ttl_seconds=self.config.get("cache_ttl_seconds", 300),
-            gc_interval_steps=self.config.get("gc_interval_steps", 100),
+            gc_interval_steps=self.config.get("gc_interval_steps", 1000),
         )
 
         # Parallel config will be initialized when needed for parallel experiments

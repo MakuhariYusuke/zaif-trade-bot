@@ -1483,7 +1483,7 @@ class HeavyTradingEnv(
         if self.memory_manager.should_log_memory(self.current_step):
             self.memory_manager.log_memory_usage(f"step_{self.current_step}")
 
-        if self.memory_manager.should_collect_garbage:
+        if self.memory_manager.should_collect_garbage_at_step(self.current_step):
             self.memory_manager.collect_garbage(generation=0)
 
         if self.current_step % self.DEFAULT_GC_STEP_INTERVAL == 0:

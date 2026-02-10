@@ -131,16 +131,18 @@ class OperationMemoryTracker:
             )
 
         # Trigger memory optimization if memory usage is high
-        if self.memory_manager and final_memory > 800 * BYTES_PER_MB:  # 800MB threshold
+        if self.memory_manager and final_memory > 1500 * BYTES_PER_MB:  # 1500MB threshold
             logger.info("High memory usage detected, triggering optimization...")
             self.memory_manager.optimize_memory_usage()
 
-        # Memory leak prevention: force garbage collection
-        import gc
+        # Memory leak prevention: only run GC on large memory increases
+        # Unconditional gc.collect() per-call was causing severe performance degradation
+        if memory_delta > 50 * BYTES_PER_MB:
+            import gc
 
-        collected = gc.collect()
-        if collected > 0:
-            logger.debug(f"Garbage collection freed {collected} objects")
+            collected = gc.collect()
+            if collected > 0:
+                logger.debug(f"Garbage collection freed {collected} objects")
 
 
 def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:

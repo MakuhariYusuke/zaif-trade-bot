@@ -40,9 +40,9 @@ class SystemOptimizer:
         enable_memory_tracking: bool = True,
         enable_performance_profiling: bool = True,
         enable_io_caching: bool = True,
-        memory_threshold_mb: float = 100.0,
+        memory_threshold_mb: float = 1500.0,
         cache_ttl_seconds: int = 300,
-        gc_interval_steps: int = 100,
+        gc_interval_steps: int = 1000,
     ):
         """
         Initialize system optimizer.

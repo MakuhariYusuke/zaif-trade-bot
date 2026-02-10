@@ -61,8 +61,8 @@ class TestOperationMemoryTracker(unittest.TestCase):
     @patch("ztb.utils.memory_utils.default_memory_manager")
     def test_memory_tracker_high_memory_optimization(self, mock_memory_manager, mock_psutil):
         """Test automatic memory optimization on high memory usage."""
-        # Mock high memory usage that triggers optimization
-        mock_psutil.Process.return_value.memory_info.return_value.rss = 900 * 1024 * 1024  # 900MB
+        # Mock high memory usage that triggers optimization (threshold=1500MB)
+        mock_psutil.Process.return_value.memory_info.return_value.rss = 1600 * 1024 * 1024  # 1600MB
         mock_memory_manager.get_cache_stats.return_value = {"total_cache_entries": 0}
 
         with OperationMemoryTracker(enable_cache_tracking=True) as tracker:
