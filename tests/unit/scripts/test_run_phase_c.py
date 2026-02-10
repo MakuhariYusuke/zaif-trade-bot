@@ -370,3 +370,44 @@ class TestRunDeterministicEval:
         )
 
         assert result["action_stats"]["abs_above_threshold"] == pytest.approx(0.0)
+
+
+class TestC2Experiments:
+    """C2実験定義の整合性テスト"""
+
+    def test_c2_configs_exist(self):
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        c2_names = [
+            "c2_ent001_thr50", "c2_ent001_thr60",
+            "c2_ent001_hold10", "c2_ent001_thr50_hold10",
+        ]
+        for name in c2_names:
+            assert name in configs, f"{name} not in configs"
+
+    def test_c2_all_have_ent001(self):
+        """全C2実験にent_coef=0.01が設定されている"""
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name, cfg in configs.items():
+            if name.startswith("c2_"):
+                assert cfg["sac_overrides"].get("ent_coef") == 0.01, (
+                    f"{name} missing ent_coef=0.01"
+                )
+
+    def test_c2_batch_matches_configs(self):
+        """C2バッチの全実験がコンフィグに存在"""
+        from scripts.v459.run_phase_c import BATCHES, get_experiment_configs
+
+        configs = get_experiment_configs()
+        for exp_name in BATCHES["c2"]:
+            assert exp_name in configs, f"{exp_name} not in configs"
+
+    def test_c2_subprocess_list_matches(self):
+        """サブプロセスランナーのC2リストがバッチ定義と一致"""
+        from scripts.v459.run_phase_c_subprocess import C2_FEE_REDUCTION
+        from scripts.v459.run_phase_c import BATCHES
+
+        assert set(C2_FEE_REDUCTION) == set(BATCHES["c2"])

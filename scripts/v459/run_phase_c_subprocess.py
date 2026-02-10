@@ -225,12 +225,21 @@ C1_PRIME = [
     "c1p_scale1000_ent001",    # reward_scale=1000 + ent_coef=0.01
 ]
 
+# C2: ent_coef=0.01ベース + 取引頻度削減
+C2_FEE_REDUCTION = [
+    "c1p_ent001",              # C1' winner (参照)
+    "c2_ent001_thr50",         # threshold=0.50
+    "c2_ent001_thr60",         # threshold=0.60
+    "c2_ent001_hold10",        # holding=10
+    "c2_ent001_thr50_hold10",  # combo
+]
+
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Phase C サブプロセスランナー")
     parser.add_argument("--batch", type=str, default="c0_c1",
-                       choices=["c0_c1", "c1_prime", "custom"],
+                       choices=["c0_c1", "c1_prime", "c2", "custom"],
                        help="バッチ名")
     parser.add_argument("--experiments", type=str, default=None,
                        help="カンマ区切り実験名 (--batch custom 時)")
@@ -244,6 +253,8 @@ def main():
         experiments = C0_C1_SCREENING
     elif args.batch == "c1_prime":
         experiments = C1_PRIME
+    elif args.batch == "c2":
+        experiments = C2_FEE_REDUCTION
     elif args.batch == "custom" and args.experiments:
         experiments = [e.strip() for e in args.experiments.split(",")]
     else:

@@ -194,6 +194,37 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         "env_overrides": {},
     }
 
+    # --- C2: 手数料削減実験 (C1' ent001ベース + 取引頻度削減) ---
+    # C1'結果: ent001は gross PnL=+5,833 だが fees=20,882 (3.6倍)
+    # → 取引頻度を下げて fee/gross 比率を改善
+    configs["c2_ent001_thr50"] = {
+        "description": "ent=0.01 + threshold=0.50 (中程度の頻度削減)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.50},
+    }
+    configs["c2_ent001_thr60"] = {
+        "description": "ent=0.01 + threshold=0.60 (積極的な頻度削減)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.60},
+    }
+    configs["c2_ent001_hold10"] = {
+        "description": "ent=0.01 + min_holding=10 (チャーン抑制)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"min_holding_period": 10},
+    }
+    configs["c2_ent001_thr50_hold10"] = {
+        "description": "ent=0.01 + threshold=0.50 + holding=10 (コンボ)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {
+            "continuous_to_discrete_threshold": 0.50,
+            "min_holding_period": 10,
+        },
+    }
+
     return configs
 
 
@@ -222,6 +253,14 @@ BATCHES = {
         "c1p_scale1000",           # scale=1000, ent=auto
         "c1p_ent001",              # scale=100, ent=0.01
         "c1p_scale1000_ent001",    # scale=1000, ent=0.01
+    ],
+    # C2: ent_coef=0.01 + 取引頻度削減 (C1'結果ベース)
+    "c2": [
+        "c1p_ent001",              # C1' winner (参照用)
+        "c2_ent001_thr50",         # threshold=0.50
+        "c2_ent001_thr60",         # threshold=0.60
+        "c2_ent001_hold10",        # holding=10
+        "c2_ent001_thr50_hold10",  # combo
     ],
     # screening後のフルseed展開（実行時に動的指定）
     "full_seeds": [],
