@@ -234,12 +234,20 @@ C2_FEE_REDUCTION = [
     "c2_ent001_thr50_hold10",  # combo
 ]
 
+# C3: DD停止無効化 + γ/threshold最適組合せ
+C3_DD_DISABLE = [
+    "c3_ent001_thr60_nodd",      # C2 best + DD無効化
+    "c3_gamma080_ent001_thr60",  # γ=0.80 + C2 best
+    "c3_ent001_thr70_nodd",      # thr=0.70 + DD無効化
+    "c3_gamma080_ent001_thr70",  # γ=0.80 + thr=0.70
+]
+
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Phase C サブプロセスランナー")
     parser.add_argument("--batch", type=str, default="c0_c1",
-                       choices=["c0_c1", "c1_prime", "c2", "custom"],
+                       choices=["c0_c1", "c1_prime", "c2", "c3", "custom"],
                        help="バッチ名")
     parser.add_argument("--experiments", type=str, default=None,
                        help="カンマ区切り実験名 (--batch custom 時)")
@@ -255,6 +263,8 @@ def main():
         experiments = C1_PRIME
     elif args.batch == "c2":
         experiments = C2_FEE_REDUCTION
+    elif args.batch == "c3":
+        experiments = C3_DD_DISABLE
     elif args.batch == "custom" and args.experiments:
         experiments = [e.strip() for e in args.experiments.split(",")]
     else:

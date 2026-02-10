@@ -411,3 +411,67 @@ class TestC2Experiments:
         from scripts.v459.run_phase_c import BATCHES
 
         assert set(C2_FEE_REDUCTION) == set(BATCHES["c2"])
+
+
+class TestC3Experiments:
+    """C3実験定義の整合性テスト"""
+
+    def test_c3_configs_exist(self):
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        c3_names = [
+            "c3_ent001_thr60_nodd", "c3_gamma080_ent001_thr60",
+            "c3_ent001_thr70_nodd", "c3_gamma080_ent001_thr70",
+        ]
+        for name in c3_names:
+            assert name in configs, f"{name} not in configs"
+
+    def test_c3_all_have_eval_dd_threshold(self):
+        """全C3実験にeval_dd_threshold=1.0が設定されている"""
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name, cfg in configs.items():
+            if name.startswith("c3_"):
+                assert cfg.get("eval_dd_threshold") == 1.0, (
+                    f"{name} missing eval_dd_threshold=1.0"
+                )
+
+    def test_c3_all_have_ent001(self):
+        """全C3実験にent_coef=0.01が設定されている"""
+        from scripts.v459.run_phase_c import get_experiment_configs
+
+        configs = get_experiment_configs()
+        for name, cfg in configs.items():
+            if name.startswith("c3_"):
+                assert cfg["sac_overrides"].get("ent_coef") == 0.01
+
+    def test_c3_batch_matches_configs(self):
+        from scripts.v459.run_phase_c import BATCHES, get_experiment_configs
+
+        configs = get_experiment_configs()
+        for exp_name in BATCHES["c3"]:
+            assert exp_name in configs, f"{exp_name} not in configs"
+
+    def test_c3_subprocess_list_matches(self):
+        from scripts.v459.run_phase_c_subprocess import C3_DD_DISABLE
+        from scripts.v459.run_phase_c import BATCHES
+
+        assert set(C3_DD_DISABLE) == set(BATCHES["c3"])
+
+    def test_build_config_includes_eval_dd_threshold(self):
+        """eval_dd_thresholdがconfigに含まれることを確認"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs
+
+        configs = get_experiment_configs()
+        config = build_config("c3_ent001_thr60_nodd", 42, configs["c3_ent001_thr60_nodd"])
+        assert config.get("eval_dd_threshold") == 1.0
+
+    def test_build_config_without_eval_dd_threshold(self):
+        """eval_dd_threshold未設定の実験はconfigに含まれない"""
+        from scripts.v459.run_phase_c import build_config, get_experiment_configs
+
+        configs = get_experiment_configs()
+        config = build_config("c0_baseline_p1", 42, configs["c0_baseline_p1"])
+        assert "eval_dd_threshold" not in config

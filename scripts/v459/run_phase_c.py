@@ -225,6 +225,44 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         },
     }
 
+    # --- C3: DD停止無効化 + 最適条件組合せ ---
+    # C2結果: thr60+ent001 が PF=0.932, WinRate=31% で最良だが
+    # DD stopがstep 31K/50Kで発動し残り37%が取引ブロック
+    # → eval時にDD閾値を1.0(100%)に上げて真のモデル性能を計測
+
+    # C3-1: C2 best (thr60+ent001) のDD停止無効化版
+    configs["c3_ent001_thr60_nodd"] = {
+        "description": "C2 best + eval DD無効化 (真のモデル性能計測)",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.60},
+        "eval_dd_threshold": 1.0,  # eval時DD停止を事実上無効化
+    }
+    # C3-2: gamma=0.80 + ent001 + thr60 (v451短期視野 + C2 best)
+    configs["c3_gamma080_ent001_thr60"] = {
+        "description": "γ=0.80 + ent=0.01 + thr=0.60 (短期視野 + 精選取引)",
+        "sac_overrides": {"gamma": 0.80, "ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.60},
+        "eval_dd_threshold": 1.0,
+    }
+    # C3-3: thr=0.70 (さらに厳格なフィルタ)
+    configs["c3_ent001_thr70_nodd"] = {
+        "description": "ent=0.01 + thr=0.70 + eval DD無効化",
+        "sac_overrides": {"ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.70},
+        "eval_dd_threshold": 1.0,
+    }
+    # C3-4: gamma=0.80 + thr=0.70 (短期視野 + 最厳格)
+    configs["c3_gamma080_ent001_thr70"] = {
+        "description": "γ=0.80 + ent=0.01 + thr=0.70 + eval DD無効化",
+        "sac_overrides": {"gamma": 0.80, "ent_coef": 0.01},
+        "reward_overrides": {},
+        "env_overrides": {"continuous_to_discrete_threshold": 0.70},
+        "eval_dd_threshold": 1.0,
+    }
+
     return configs
 
 
@@ -261,6 +299,13 @@ BATCHES = {
         "c2_ent001_thr60",         # threshold=0.60
         "c2_ent001_hold10",        # holding=10
         "c2_ent001_thr50_hold10",  # combo
+    ],
+    # C3: DD停止無効化 + γ/threshold最適組合せ (C2結果ベース)
+    "c3": [
+        "c3_ent001_thr60_nodd",      # C2 best + DD無効化
+        "c3_gamma080_ent001_thr60",  # γ=0.80 + C2 best
+        "c3_ent001_thr70_nodd",      # thr=0.70 + DD無効化
+        "c3_gamma080_ent001_thr70",  # γ=0.80 + thr=0.70
     ],
     # screening後のフルseed展開（実行時に動的指定）
     "full_seeds": [],
@@ -315,6 +360,11 @@ def build_config(
         },
         "reward": reward_params,
     }
+
+    # eval時DD閾値オーバーライド (C3: DD停止無効化実験用)
+    if "eval_dd_threshold" in exp_def:
+        config["eval_dd_threshold"] = exp_def["eval_dd_threshold"]
+
     return config
 
 
@@ -335,35 +385,66 @@ def _find_vec_normalize(env: Any) -> Any:
     return None
 
 
-def _reset_risk_controllers(env: Any) -> None:
+def _reset_risk_controllers(env: Any, eval_dd_threshold: Optional[float] = None) -> None:
     """DrawdownController等のリスク管理状態をリセット。
 
     学習中にemergency_stopがラッチされるとeval時に全取引がブロックされる。
     env.reset()はposition_managerのリスク管理をリセットしないため、
     eval前に明示的にリセットする必要がある。
+
+    Args:
+        eval_dd_threshold: eval時に設定するDD閾値。Noneなら変更しない。
+            1.0を指定すると事実上DD停止を無効化できる。
     """
+    dc = None  # DrawdownControllerへの参照
+
     # position_manager.risk_manager.drawdown_controller
     pm = getattr(env, "position_manager", None)
     if pm is not None:
         rm = getattr(pm, "risk_manager", None)
         if rm is not None and hasattr(rm, "reset"):
             rm.reset()
+            dc = getattr(rm, "drawdown_controller", None)
             logger.info("Risk manager reset for eval (emergency_stop cleared)")
-            return
-    # フォールバック: drawdown_controllerを直接探す
-    for attr_path in [
-        ("risk_manager", "drawdown_controller"),
-        ("position_manager", "risk_manager", "drawdown_controller"),
-    ]:
-        obj = env
-        for attr in attr_path:
-            obj = getattr(obj, attr, None)
-            if obj is None:
+        else:
+            # フォールバック: drawdown_controllerを直接探す
+            for attr_path in [
+                ("risk_manager", "drawdown_controller"),
+                ("position_manager", "risk_manager", "drawdown_controller"),
+            ]:
+                obj = env
+                for attr in attr_path:
+                    obj = getattr(obj, attr, None)
+                    if obj is None:
+                        break
+                if obj is not None and hasattr(obj, "reset"):
+                    obj.reset()
+                    dc = obj
+                    logger.info(f"DrawdownController reset via {'.'.join(attr_path)}")
+                    break
+    else:
+        # フォールバック: drawdown_controllerを直接探す
+        for attr_path in [
+            ("risk_manager", "drawdown_controller"),
+        ]:
+            obj = env
+            for attr in attr_path:
+                obj = getattr(obj, attr, None)
+                if obj is None:
+                    break
+            if obj is not None and hasattr(obj, "reset"):
+                obj.reset()
+                dc = obj
+                logger.info(f"DrawdownController reset via {'.'.join(attr_path)}")
                 break
-        if obj is not None and hasattr(obj, "reset"):
-            obj.reset()
-            logger.info(f"DrawdownController reset via {'.'.join(attr_path)}")
-            return
+
+    # eval時にDD閾値を変更
+    if eval_dd_threshold is not None and dc is not None:
+        original = getattr(dc, "emergency_stop_threshold", None)
+        dc.emergency_stop_threshold = eval_dd_threshold
+        logger.info(
+            f"DD threshold overridden for eval: {original} → {eval_dd_threshold}"
+        )
 
 
 def _run_deterministic_eval(
@@ -373,15 +454,17 @@ def _run_deterministic_eval(
     threshold: float,
     normalize_fn: Any = None,
     label: str = "eval",
+    eval_dd_threshold: Optional[float] = None,
 ) -> Dict[str, Any]:
     """1エピソードのdeterministic評価を実行。
 
     Args:
         normalize_fn: obs→正規化obs変換関数。Noneなら生obs使用。
+        eval_dd_threshold: eval時DD閾値。Noneなら変更なし。1.0でDD停止無効化。
     """
     # DrawdownControllerのemergency_stopラッチを解除
     # (学習中の15%DDでラッチされ、reset()で解除されない場合の安全策)
-    _reset_risk_controllers(raw_env)
+    _reset_risk_controllers(raw_env, eval_dd_threshold=eval_dd_threshold)
 
     obs_raw, _ = raw_env.reset(seed=42)
     obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
@@ -490,12 +573,16 @@ def _deterministic_eval_gate2(
             "continuous_to_discrete_threshold", 0.3333
         )
 
+        # eval時DD閾値オーバーライド (C3: DD停止無効化実験用)
+        eval_dd_threshold = config.get("eval_dd_threshold", None)
+
         # ===== Eval-A: VecNormalize 正規化 obs =====
         normalize_fn = vec_normalize.normalize_obs if vec_normalize else None
         gate2 = _run_deterministic_eval(
             model, raw_env, max_eval_steps, threshold,
             normalize_fn=normalize_fn,
             label="normalized" if vec_normalize else "raw",
+            eval_dd_threshold=eval_dd_threshold,
         )
 
         # ===== Eval-B: 生 obs (旧方式、比較用) =====
@@ -504,6 +591,7 @@ def _deterministic_eval_gate2(
                 model, raw_env, max_eval_steps, threshold,
                 normalize_fn=None,
                 label="raw",
+                eval_dd_threshold=eval_dd_threshold,
             )
             gate2["eval_b_comparison"] = {
                 "eval_trades": eval_b["eval_trades"],
