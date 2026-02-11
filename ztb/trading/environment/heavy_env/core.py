@@ -124,7 +124,7 @@ class HeavyTradingEnv(
 
     # Class constants for better maintainability
     DEFAULT_MEMORY_LOG_INTERVAL = 2000
-    DEFAULT_GC_STEP_INTERVAL = 1000
+    DEFAULT_GC_STEP_INTERVAL = 50000  # 112# Perf: 1000→50000。毎ステップGCは、2-5xの速度低下を引き起こす
     DEFAULT_MAX_HISTORY_LENGTH = 512
     DEFAULT_MAX_ACTION_HISTORY = 256
     DEFAULT_INVENTORY_WINDOW = 64
@@ -644,9 +644,11 @@ class HeavyTradingEnv(
                     f"Reset with randomized profile: {randomized_profile.name} (intensity={dr_intensity})"
                 )
 
-        random_start = (
-            options and options.get("random_start", False)
-        ) or self.random_start
+        # 112# Fix: options で明示された場合はそちらを優先（Boolean or の罠を修正）
+        if options and "random_start" in options:
+            random_start = bool(options["random_start"])
+        else:
+            random_start = self.random_start
 
         # 🔧 DEBUG: random_start が False になる原因を特定
         logger = logging.getLogger(__name__)
@@ -680,6 +682,9 @@ class HeavyTradingEnv(
         self.reward_calculator.reset()
         self.statistics_calculator.reset()
         self.state_manager.reset_state()
+        # 112# config dict cache invalidation (DomainRandomization等でconfig変更時に再生成)
+        if hasattr(self, '_config_dict_cache'):
+            del self._config_dict_cache
         # Track the market regime that the currently-open position was entered in.
         # Used for optional regime-specific exit overrides (e.g., hold-until-TP/SL).
         self._entry_regime = None
@@ -1538,6 +1543,10 @@ class HeavyTradingEnv(
         return obs
 
     def _get_info(self) -> Any:
+        # 112# Perf: dataclasses.asdict(self.config) をキャッシュ化
+        # 80+フィールドのネストdataclassを毎ステップ再帰変換するのは高コスト
+        if not hasattr(self, '_config_dict_cache'):
+            self._config_dict_cache = dataclasses.asdict(self.config)
         base_info = self.observation_builder.get_info(
             self.current_step,
             self.n_steps,
@@ -1545,7 +1554,7 @@ class HeavyTradingEnv(
             self.total_pnl,
             self.trades_count,
             self.features,
-            dataclasses.asdict(self.config),
+            self._config_dict_cache,
         )
 
         # Add market regime for regime-aware diagnostics

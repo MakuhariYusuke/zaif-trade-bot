@@ -281,23 +281,25 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         "eval_dd_threshold": 1.0,
         "eval_dd_thresholds": [1.0, 0.30],
     }
-    # D1-2: minimal (20特徴) - FeatureSetManager経由
-    configs["d1_minimal"] = {
-        "description": "D1: minimal 20特徴",
+    # D1-2: medium 25特徴 (RSI+Scalping+ATR+ReturnStdDev)
+    # feature_sets.yaml のminimalはRegistry未登録特徴が多いため、
+    # 実際にRegistry計算可能な多様なカテゴリの特徴を選定
+    configs["d1_medium"] = {
+        "description": "D1: medium 25特徴 (RSI+Scalping+ATR+Time)",
         "sac_overrides": _d1_base_sac,
         "reward_overrides": {},
         "env_overrides": _d1_base_env,
-        "data_path": str(project_root / "data" / "btc_jpy_1m_minimal_features.parquet"),
+        "data_path": str(project_root / "data" / "btc_jpy_1m_medium_features.parquet"),
         "eval_dd_threshold": 1.0,
         "eval_dd_thresholds": [1.0, 0.30],
     }
-    # D1-3: curated (~76特徴) - FeatureSetManager経由
-    configs["d1_curated"] = {
-        "description": "D1: curated ~76特徴",
+    # D1-3: full_registry 73特徴 (Registry登録済み全特徴)
+    configs["d1_full_registry"] = {
+        "description": "D1: full_registry 73特徴 (Ichimoku+RSI+Scalping+Time+ATR)",
         "sac_overrides": _d1_base_sac,
         "reward_overrides": {},
         "env_overrides": _d1_base_env,
-        "data_path": str(project_root / "data" / "btc_jpy_1m_curated_features.parquet"),
+        "data_path": str(project_root / "data" / "btc_jpy_1m_full_registry_features.parquet"),
         "eval_dd_threshold": 1.0,
         "eval_dd_thresholds": [1.0, 0.30],
     }
@@ -341,6 +343,56 @@ def get_experiment_configs() -> Dict[str, Dict[str, Any]]:
         "sac_overrides": _d2_base_sac,
         "reward_overrides": {"loss_multiplier": 1.2},
         "env_overrides": _d2_base_env,
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+
+    # D2-c: スイングトレード寄せ — 取引頻度削減による手数料圧縮 (110#)
+    # threshold引上げ: HOLD率を上げて低確信取引を排除
+    configs["d2_thr80"] = {
+        "description": "D2: threshold=0.80 (HOLD率引上げ→手数料圧縮)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "continuous_to_discrete_threshold": 0.80},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    configs["d2_thr85"] = {
+        "description": "D2: threshold=0.85 (高確信取引のみ)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "continuous_to_discrete_threshold": 0.85},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    # min_holding_period引上げ: ドテン防止→ポジション保持時間延長
+    configs["d2_hold10"] = {
+        "description": "D2: min_holding=10 (10分保持→スイング寄せ)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "min_holding_period": 10},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    configs["d2_hold30"] = {
+        "description": "D2: min_holding=30 (30分保持→スイング本格化)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {**_d2_base_env, "min_holding_period": 30},
+        "eval_dd_threshold": 1.0,
+        "eval_dd_thresholds": [1.0, 0.30],
+    }
+    # 最有力複合: 高閾値+長保持+低コスト
+    configs["d2_swing_combo"] = {
+        "description": "D2: thr=0.80+hold=10+cost=0.0005 (スイング複合)",
+        "sac_overrides": _d2_base_sac,
+        "reward_overrides": {},
+        "env_overrides": {
+            **_d2_base_env,
+            "continuous_to_discrete_threshold": 0.80,
+            "min_holding_period": 10,
+            "transaction_cost": 0.0005,
+        },
         "eval_dd_threshold": 1.0,
         "eval_dd_thresholds": [1.0, 0.30],
     }
@@ -391,9 +443,9 @@ BATCHES = {
     ],
     # D1: 特徴量セット比較 (107# §4.2) — seed=42粗選別
     "d1": [
-        "d1_v451opt",    # 現行8特徴 (baseline)
-        "d1_minimal",    # minimal 20特徴
-        "d1_curated",    # curated ~76特徴
+        "d1_v451opt",        # 現行8特徴 (baseline)
+        "d1_medium",         # medium 25特徴 (RSI+Scalping+ATR+Time)
+        "d1_full_registry",  # 全Registry 73特徴
     ],
     # D2: コスト感度 + 報酬微調整 (107# §4.3) — D1 best条件ベース
     "d2_cost": [
@@ -404,6 +456,22 @@ BATCHES = {
     "d2_reward": [
         "d2_cost10",    # baseline
         "d2_asymm12",   # 非対称報酬
+    ],
+    # D2-c: スイングトレード寄せ (110#)
+    "d2_swing": [
+        "d2_thr80",         # 高閾値
+        "d2_thr85",         # 超高閾値
+        "d2_hold10",        # 保持期間10
+        "d2_hold30",        # 保持期間30
+        "d2_swing_combo",   # 複合
+    ],
+    # D2全体
+    "d2_all": [
+        "d2_cost05", "d2_cost10", "d2_cost15",
+        "d2_asymm12",
+        "d2_thr80", "d2_thr85",
+        "d2_hold10", "d2_hold30",
+        "d2_swing_combo",
     ],
     # screening後のフルseed展開（実行時に動的指定）
     "full_seeds": [],
@@ -439,6 +507,9 @@ def build_config(
         "reward_settings": reward_params,
         "feature_set": "v451",  # MTF無効化（OOM回避）。v451 parquetに適合
         "correlation_reduction": False,  # 相関削減スキップ（O(m⁴)→O(1)高速化）
+        # 112# Fix: train_end_index を明示してOOSリーク警告を解消
+        # データの80%を訓練用、残り20%を将来のOOS用に確保
+        "train_end_index": 973544,  # int(1216930 * 0.80)
     }
     env_config.update(env_overrides)
 
@@ -571,7 +642,9 @@ def _run_deterministic_eval(
     # (学習中の15%DDでラッチされ、reset()で解除されない場合の安全策)
     _reset_risk_controllers(raw_env, eval_dd_threshold=eval_dd_threshold)
 
-    obs_raw, _ = raw_env.reset(seed=42)
+    # 112# Fix: random_start=False を明示して eval の決定性を担保
+    # HeavyTradingEnv.reset() は options={"random_start": False} で current_step=0 固定
+    obs_raw, _ = raw_env.reset(seed=42, options={"random_start": False})
     obs = normalize_fn(obs_raw.copy()) if normalize_fn else obs_raw
     done = False
     balances = [float(raw_env.portfolio_value)]
@@ -730,6 +803,30 @@ def _deterministic_eval_gate2(
             eval_dd_threshold=eval_dd_threshold,
         )
 
+        # ===== 110# 再現性チェック: evalAを2回実行して一致確認 =====
+        gate2_verify = _run_deterministic_eval(
+            model, raw_env, max_eval_steps, threshold,
+            normalize_fn=normalize_fn,
+            label="reproducibility_check",
+            eval_dd_threshold=eval_dd_threshold,
+        )
+        roi_diff = abs(gate2["eval_net_roi"] - gate2_verify["eval_net_roi"])
+        trades_match = gate2["eval_trades"] == gate2_verify["eval_trades"]
+        gate2["reproducibility"] = {
+            "roi_diff_pt": round(roi_diff, 6),
+            "trades_match": trades_match,
+            "pass": roi_diff < 0.2 and trades_match,
+        }
+        if roi_diff >= 0.2 or not trades_match:
+            logger.warning(
+                f"⚠️ Eval reproducibility FAIL: ROI diff={roi_diff:.4f}pt, "
+                f"trades_match={trades_match}"
+            )
+        else:
+            logger.info(
+                f"✅ Eval reproducibility PASS: ROI diff={roi_diff:.6f}pt"
+            )
+
         # ===== Eval-B: 生 obs (旧方式、比較用) =====
         if vec_normalize is not None:
             eval_b = _run_deterministic_eval(
@@ -752,16 +849,24 @@ def _deterministic_eval_gate2(
             )
 
         # ===== D0-b: 追加DD閾値での並行評価 =====
+        # 110# Fix: evalAと同じDD閾値の場合はevalA結果を再利用（env状態ブリード回避）
         if eval_dd_thresholds:
             gate2["multi_dd_eval"] = {}
             for dd_thr in eval_dd_thresholds:
                 dd_label = f"dd{int(dd_thr * 100):03d}"
-                dd_result = _run_deterministic_eval(
-                    model, raw_env, max_eval_steps, threshold,
-                    normalize_fn=normalize_fn,
-                    label=f"normalized_{dd_label}" if vec_normalize else f"raw_{dd_label}",
-                    eval_dd_threshold=float(dd_thr),
-                )
+                # evalAと同じDD閾値なら再走行せず結果を再利用
+                if eval_dd_threshold is not None and abs(float(dd_thr) - float(eval_dd_threshold)) < 1e-9:
+                    dd_result = gate2  # evalA結果を再利用
+                    logger.info(
+                        f"Multi-DD eval [{dd_label}]: reusing evalA result (same DD threshold)"
+                    )
+                else:
+                    dd_result = _run_deterministic_eval(
+                        model, raw_env, max_eval_steps, threshold,
+                        normalize_fn=normalize_fn,
+                        label=f"normalized_{dd_label}" if vec_normalize else f"raw_{dd_label}",
+                        eval_dd_threshold=float(dd_thr),
+                    )
                 gate2["multi_dd_eval"][dd_label] = {
                     "eval_dd_threshold": float(dd_thr),
                     "eval_trades": dd_result.get("eval_trades", 0),
@@ -1180,8 +1285,15 @@ def main():
     parser.add_argument("--batch", type=str, default=None)
     parser.add_argument("--seeds", type=str, default="42",
                        help="カンマ区切りseed例: 42,123,456,789")
+    parser.add_argument("--timesteps", type=int, default=None,
+                       help="TOTAL_TIMESTEPSオーバーライド（スクリーニング用）")
     args = parser.parse_args()
-    
+
+    if args.timesteps is not None:
+        global TOTAL_TIMESTEPS
+        TOTAL_TIMESTEPS = args.timesteps
+        logger.warning(f"TOTAL_TIMESTEPS overridden to {TOTAL_TIMESTEPS}")
+
     if args.single_run:
         experiments = get_experiment_configs()
         if args.experiment not in experiments:

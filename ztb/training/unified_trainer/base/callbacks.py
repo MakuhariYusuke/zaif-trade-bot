@@ -167,8 +167,9 @@ class TrainingProgressCallback(BaseCallback):
                                     info["reward_components"].copy()
                                 )
 
-                            # Compact INFO log with key metrics (every 10 steps to reduce verbosity)
-                            if self.n_calls % 10 == 0:
+                            # Compact INFO log with key metrics (every 100 steps to reduce I/O)
+                            # 112# Perf: 10→100。毎10ステップのファイルI/Oは50Kで5000回→500回に削減
+                            if self.n_calls % 100 == 0:
                                 logging.info(
                                     f"Step {self.n_calls}: Action={discrete_action}({action_value:.3f}) | "
                                     f"Reward={reward:.4f} | PnL={pnl:.2f} | Portfolio={portfolio_value:.2f} | "
