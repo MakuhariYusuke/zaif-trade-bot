@@ -954,83 +954,37 @@ def compute_gate2_metrics_from_balances(balances: np.ndarray) -> Dict[str, Any]:
 
 def compute_gate2_metrics(env: Any) -> Dict[str, Any]:
     """Gate 2 KPI を環境のportfolio_value_historyから計算。
-    
-    0番 §5.2 基準:
-    - Net ROI > 5%
-    - PF > 1.20
-    - Sharpe > 1.0
-    - MaxDD < 15%
-    - WinRate > 35%
-    
+
+    env から balance 配列を抽出し、compute_gate2_metrics_from_balances() に委譲。
+    R1 リファクタリング (111# §9.2): KPI 計算ロジックの重複を排除。
+
     Args:
         env: unwrap済みのHeavyTradingEnv（またはNone）
     """
     if env is None:
         return {"gate2_available": False, "gate2_error": "env is None"}
-    
+
     # portfolio_value_history は deque(maxlen=512) → 全ステップ不足
     # statistics_calculator.portfolio_value_history は deque(maxlen=None) → 全ステップあり
     balances: Optional[np.ndarray] = None
-    
+
     # 優先1: statistics_calculator (全ステップ保持, maxlen=None)
     sc = getattr(env, "statistics_calculator", None)
     if sc is not None:
         pvh = getattr(sc, "portfolio_value_history", None)
         if pvh is not None and len(pvh) > 10:
             balances = np.array(pvh, dtype=np.float64)
-    
+
     # フォールバック: core.py の portfolio_value_history (最後512ステップ)
     if balances is None:
         pvh = getattr(env, "portfolio_value_history", None)
         if pvh is not None and len(pvh) > 10:
             balances = np.array(pvh, dtype=np.float64)
-    
+
     if balances is None or len(balances) < 10:
         return {"gate2_available": False, "gate2_error": "insufficient balance history"}
-    
-    # balance → step returns
-    returns = np.diff(balances) / np.maximum(balances[:-1], 1e-10)
-    returns = np.nan_to_num(returns, nan=0.0, posinf=0.0, neginf=0.0)
-    
-    # Gate 2 KPI計算
-    gate2: Dict[str, Any] = {"gate2_available": True}
-    
-    try:
-        gate2["sharpe"] = float(sharpe_ratio(returns, period_per_year=525600))  # 1分足→年換算
-    except Exception:
-        gate2["sharpe"] = 0.0
-    
-    try:
-        gate2["max_drawdown"] = float(max_drawdown(balances))
-    except Exception:
-        gate2["max_drawdown"] = 0.0
-    
-    try:
-        gate2["profit_factor"] = float(profit_factor(returns))
-    except Exception:
-        gate2["profit_factor"] = 0.0
-    
-    try:
-        gate2["win_rate"] = float(win_rate(returns))
-    except Exception:
-        gate2["win_rate"] = 0.0
-    
-    # ROI (mark-to-market)
-    gate2["mtm_roi"] = float((balances[-1] - balances[0]) / balances[0] * 100)
-    gate2["balance_samples"] = len(balances)
-    gate2["final_balance"] = float(balances[-1])
-    gate2["initial_balance_sampled"] = float(balances[0])
-    
-    # Gate 2 判定
-    gate2["gate2_pass"] = (
-        gate2["mtm_roi"] > 5.0
-        and gate2["profit_factor"] > 1.20
-        and gate2["sharpe"] > 1.0
-        and abs(gate2["max_drawdown"]) < 15.0
-        and gate2["win_rate"] > 0.35
-    )
-    
-    return gate2
+
+    return compute_gate2_metrics_from_balances(balances)
 
 
 def run_single_experiment(
