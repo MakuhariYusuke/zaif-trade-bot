@@ -1422,39 +1422,12 @@ class SACTrainer(BaseAlgorithmTrainer):
             return False
 
     def _train_with_curriculum_learning(self) -> bool:
-        """Train using curriculum learning with SAC v435 trainer."""
-        try:
-            from ztb.training.v435.train_sac_v435 import SACv435Trainer
-
-            # Convert unified config to SAC v435 config format
-            sac_v435_config = self._convert_to_sac_v435_config()
-
-            # Create SAC v435 trainer
-            trainer = SACv435Trainer(sac_v435_config)
-
-            # Train with curriculum learning
-            result = trainer.train()
-
-            # Update training stats
-            self.training_stats.update(
-                {
-                    "curriculum_learning": True,
-                    "stages_completed": result.get("stages_completed", 0),
-                    "total_timesteps": result.get("total_timesteps", 0),
-                    "model_path": result.get("model_path", ""),
-                    "status": result.get("status", "unknown"),
-                }
-            )
-
-            self.logger.info(f"✅ Curriculum learning training completed: {result}")
-            return result.get("status") == "success"
-
-        except Exception as e:
-            self.logger.error(f"❌ Curriculum learning training failed: {e}")
-            import traceback
-
-            traceback.print_exc()
-            return False
+        """Train using curriculum learning (v435 archived in 030#)."""
+        self.logger.warning(
+            "Curriculum learning (v435) has been archived. "
+            "Use standard SACTrainer.train() instead."
+        )
+        return False
 
     def _calculate_final_action_distribution(self, callback) -> Dict[str, float]:
         """Calculate final action distribution from callback data."""

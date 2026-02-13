@@ -107,11 +107,6 @@ from ztb.metrics.metrics import win_rate as calculate_win_rate
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
     from ztb.optimization.unified_optimizer import UnifiedOptimizer
-    from ztb.training.adaptive_sac_core import AdaptiveSACConfig, AdaptiveSACCore
-    from ztb.training.online_learning_engine import (
-        OnlineLearningConfig,
-        OnlineLearningEngine,
-    )
     from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 
     # Type-only import to avoid name collision with runtime EnsemblePredictor
@@ -282,26 +277,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         self.world_size = world_size
         self.distributed_backend = distributed_backend
 
-        # V433 Adaptive Learning Components
-        self.enable_v433_adaptive = (
-            self.config.get("enable_v433_adaptive", False)
-            if isinstance(self.config, dict)
-            else False
-        )
-
-        # Adaptive SAC Core
-        self.adaptive_sac_core: Optional["AdaptiveSACCore"] = None
-        self.adaptive_sac_config: Optional["AdaptiveSACConfig"] = None
-
-        # Online Learning Engine
-        self.online_learning_engine: Optional["OnlineLearningEngine"] = None
-        self.online_learning_config: Optional["OnlineLearningConfig"] = None
-
-        # Unified Optimizer
-        self.unified_optimizer: Optional["UnifiedOptimizer"] = None
-
-        if self.enable_v433_adaptive:
-            self._initialize_v433_components()
+        # V433 Adaptive Learning Components (archived in 030#)
+        self.enable_v433_adaptive = False
 
     @property
     def model(self) -> Optional[Any]:

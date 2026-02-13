@@ -4,12 +4,28 @@ SAC適応設定
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Any, Dict
 
 from .monitoring.config import MonitoringConfig
-from .online_learning.config import OnlineLearningConfig
-from .operations.config import OperationsConfig
-from .safety.config import SafetyConfig
+
+# Archived modules (030#) — use Any as placeholder types
+try:
+    from .online_learning.config import OnlineLearningConfig
+except ImportError:
+    OnlineLearningConfig = None  # type: ignore[misc,assignment]
+try:
+    from .operations.config import OperationsConfig
+except ImportError:
+    OperationsConfig = None  # type: ignore[misc,assignment]
+try:
+    from .safety.config import SafetyConfig
+except ImportError:
+    SafetyConfig = None  # type: ignore[misc,assignment]
+
+
+def _default_factory(cls: Any) -> Any:
+    """Safe default factory for potentially archived config classes."""
+    return cls() if cls is not None else None
 
 
 @dataclass
@@ -22,9 +38,9 @@ class SACConfig:
 
     # 各コンポーネント設定
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
-    safety: SafetyConfig = field(default_factory=SafetyConfig)
-    online_learning: OnlineLearningConfig = field(default_factory=OnlineLearningConfig)
-    operations: OperationsConfig = field(default_factory=OperationsConfig)
+    safety: Any = field(default_factory=lambda: _default_factory(SafetyConfig))
+    online_learning: Any = field(default_factory=lambda: _default_factory(OnlineLearningConfig))
+    operations: Any = field(default_factory=lambda: _default_factory(OperationsConfig))
 
     # 統合設定
     integration_enabled: bool = True

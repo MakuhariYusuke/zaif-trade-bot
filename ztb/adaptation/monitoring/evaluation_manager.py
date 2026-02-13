@@ -12,7 +12,10 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import numpy as np
 
-from ..concept_drift.manager import ConceptDriftManager
+try:
+    from ..concept_drift.manager import ConceptDriftManager
+except ImportError:
+    ConceptDriftManager = None  # type: ignore[misc,assignment]  # archived in 030#
 from ..monitoring.monitor import PerformanceMonitor
 from ..monitoring.safety import SafetyManager
 
