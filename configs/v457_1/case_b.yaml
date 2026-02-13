@@ -1,0 +1,14 @@
+version: '4.5.8-CaseB'
+description: "v458 Parameter Tuning Case B: High Aggression"
+
+training:
+  environment:
+    initial_balance: 1000000.0
+    transaction_cost: 0.0005
+    max_position_size: 1.0
+    min_delta: 0.02  # Significantly Lowered
+    max_ttl_steps: 60
+    
+    reward_settings:
+      hold_grace: 20
+      hold_ramp: 50.0

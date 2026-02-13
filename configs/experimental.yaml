@@ -1,0 +1,17 @@
+# Experimental Features Configuration
+# 実験的特徴量の設定
+
+features:
+  MovingAverages:
+    enabled: true
+    maturity: prototype
+    description: "移動平均特徴量"
+    evaluation_period: 30
+    risk_level: low
+
+  GradientSign:
+    enabled: true
+    maturity: prototype
+    description: "価格勾配符号特徴量"
+    evaluation_period: 30
+    risk_level: low

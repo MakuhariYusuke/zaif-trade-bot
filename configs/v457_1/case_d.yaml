@@ -1,0 +1,25 @@
+version: '4.5.8-CaseD'
+description: "v458 Frequency Control: Cooldown & Edge Filter"
+
+training:
+  environment:
+    initial_balance: 1000000.0
+    transaction_cost: 0.0005
+    max_position_size: 1.0
+    
+    # Base Control
+    min_delta: 0.03
+    max_ttl_steps: 30
+    
+    # Frequency Suppression (Case D)
+    cooldown_steps: 60  # 1 Hour cooldown after trade
+    
+    reward_settings:
+      hold_grace: 20
+      hold_ramp: 20.0
+      
+      # Edge Filter
+      edge_penalty_rate: 1.0
+      min_edge_mult: 1.5  # Higher edge requirement
+      vol_floor: 0.0005
+      vol_floor_penalty: 20000000.0

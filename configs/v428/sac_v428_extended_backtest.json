@@ -1,0 +1,76 @@
+{
+  "model_name": "sac_v428_optimized_final",
+  "algorithm": "sac",
+  "total_timesteps": 10000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_extended_dataset.csv",
+  "sac_hyperparameters": {
+    "learning_rate": 0.007441015314076285,
+    "buffer_size": 200000,
+    "learning_starts": 1000,
+    "batch_size": 64,
+    "tau": 0.00880540073794548,
+    "gamma": 0.9086614354464461,
+    "ent_coef": 0.003522806125338838,
+    "target_update_interval": 1,
+    "target_entropy": -2.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": false,
+    "feature_set": "v427_adaptive"
+  },
+  "backtest_config": {
+    "extended_period": true,
+    "start_date": "2022-01-01",
+    "end_date": "2024-01-04",
+    "evaluation_intervals": [
+      {"name": "full_period", "start": "2022-01-01", "end": "2024-01-04"},
+      {"name": "bull_market_2023", "start": "2023-01-01", "end": "2023-12-31"},
+      {"name": "bear_market_2022", "start": "2022-01-01", "end": "2022-12-31"},
+      {"name": "high_volatility_q2_2022", "start": "2022-04-01", "end": "2022-06-30"}
+    ],
+    "chunk_size": 50000,
+    "memory_optimization": true
+  },
+  "reward_settings": {
+    "reward_scale": 921.6178345145494,
+    "reward_clip_min": -200.0,
+    "reward_clip_max": 200.0,
+    "use_simple_reward": false
+  },
+  "logging": {
+    "log_interval": 1000,
+    "eval_interval": 5000,
+    "save_interval": 5000,
+    "tensorboard_log": "./tensorboard/sac_v428_extended_backtest",
+    "advanced_metrics": true,
+    "extended_logging": true
+  },
+  "optimization_config": {
+    "enable_hyperparameter_optimization": true,
+    "optimization_method": "bayesian",
+    "n_trials": 20,
+    "cross_validation": false,
+    "regime_specific_optimization": true,
+    "parameter_space": {
+      "learning_rate": {"min": 0.00001, "max": 0.001, "type": "log"},
+      "buffer_size": {"min": 50000, "max": 200000, "type": "int"},
+      "batch_size": {"min": 64, "max": 512, "type": "categorical", "choices": [64, 128, 256, 512]},
+      "tau": {"min": 0.001, "max": 0.01, "type": "log"},
+      "gamma": {"min": 0.95, "max": 0.999, "type": "uniform"},
+      "ent_coef": {"min": 0.001, "max": 0.1, "type": "log"},
+      "target_entropy": {"min": -5.0, "max": -1.0, "type": "uniform"},
+      "reward_scale": {"min": 50, "max": 1000, "type": "log"},
+      "reward_clip_min": {"min": -500, "max": -50, "type": "uniform"},
+      "reward_clip_max": {"min": 50, "max": 500, "type": "uniform"},
+      "use_simple_reward": {"type": "categorical", "choices": [true, false]}
+    }
+  },
+  "notes": "SAC v428 Extended Duration Backtest: Testing over 2+ years of market data (2022-2024)"
+}

@@ -1,0 +1,186 @@
+categories:
+  trend_features:
+    logic: "AND"
+    criteria:
+      - name: sharpe_ratio
+        operator: ">"
+        value: 0.3
+        weight: 0.3
+        type: ratio
+      - name: sortino_ratio
+        operator: ">"
+        value: 0.4
+        weight: 0.25
+        type: ratio
+      - name: calmar_ratio
+        operator: ">"
+        value: 0.5
+        weight: 0.2
+        type: ratio
+      - name: max_drawdown_duration_days
+        operator: "<"
+        value: 30
+        weight: 0.25
+        type: duration
+    hard_requirements:
+      - name: max_drawdown
+        operator: "<"
+        value: -0.3
+        type: numeric
+      - name: win_rate
+        operator: ">"
+        value: 0.4
+        type: numeric
+    required_score: 0.7
+
+  oscillator_features:
+    logic: "AND"
+    criteria:
+      - name: sharpe_ratio
+        operator: ">"
+        value: 0.25
+        weight: 0.4
+        type: ratio
+      - name: sortino_ratio
+        operator: ">"
+        value: 0.35
+        weight: 0.3
+        type: ratio
+      - name: max_drawdown
+        operator: "<"
+        value: -0.2
+        weight: 0.3
+        type: numeric
+    hard_requirements:
+      - name: max_drawdown
+        operator: "<"
+        value: -0.4
+        type: numeric
+      - name: win_rate
+        operator: ">"
+        value: 0.35
+        type: numeric
+    required_score: 0.65
+
+  volume_features:
+    logic: "AND"
+    criteria:
+      - name: sharpe_ratio
+        operator: ">"
+        value: 0.2
+        weight: 0.4
+        type: ratio
+      - name: win_rate
+        operator: ">"
+        value: 0.45
+        weight: 0.3
+        type: numeric
+      - name: max_drawdown
+        operator: "<"
+        value: -0.25
+        weight: 0.3
+        type: numeric
+    hard_requirements:
+      - name: max_drawdown
+        operator: "<"
+        value: -0.35
+        type: numeric
+    required_score: 0.6
+
+  channel_features:
+    logic: "AND"
+    criteria:
+      - name: sharpe_ratio
+        operator: ">"
+        value: 0.35
+        weight: 0.4
+        type: ratio
+      - name: calmar_ratio
+        operator: ">"
+        value: 0.6
+        weight: 0.3
+        type: ratio
+      - name: max_drawdown
+        operator: "<"
+        value: -0.12
+        weight: 0.3
+        type: numeric
+    hard_requirements:
+      - name: max_drawdown
+        operator: "<"
+        value: -0.25
+        type: numeric
+      - name: win_rate
+        operator: ">"
+        value: 0.5
+        type: numeric
+    required_score: 0.75
+
+# Default criteria for features that don't match any category
+default:
+  logic: "AND"
+  criteria:
+    - name: sharpe_ratio
+      operator: ">"
+      value: 0.2
+      weight: 0.4
+      type: ratio
+    - name: win_rate
+      operator: ">"
+      value: 0.5
+      weight: 0.3
+      type: numeric
+    - name: max_drawdown
+      operator: "<"
+      value: -0.2
+      weight: 0.3
+      type: numeric
+  hard_requirements:
+    - name: max_drawdown
+      operator: "<"
+      value: -0.3
+      type: numeric
+  required_score: 0.6
+
+  simple_features:
+    logic: "AND"
+    criteria:
+      - name: win_rate
+        operator: ">"
+        value: 0.4
+        weight: 1.0
+        type: numeric
+      - name: max_drawdown
+        operator: "<"
+        value: -0.3
+        weight: 1.0
+        type: numeric
+      - name: sharpe_ratio
+        operator: ">"
+        value: 0.3
+        weight: 1.0
+        type: ratio
+      - name: sortino_ratio
+        operator: ">"
+        value: 0.3
+        weight: 1.0
+        type: ratio
+      - name: calmar_ratio
+        operator: ">"
+        value: 0.5
+        weight: 1.0
+        type: ratio
+    hard_requirements:
+      - name: sample_count
+        operator: ">"
+        value: 5000
+        type: numeric
+    required_score: 0.8
+
+# Staging requirements (minimum samples for staging promotion)
+staging:
+  min_samples_required: 5000
+  consecutive_success_required: 3  # 連続3回成功
+  distribution_stability_threshold: 0.8  # 分布安定性80%以上
+  hard_requirement_mode: "strict"  # "strict" or "warning" - strict=即FAIL, warning=一時pending
+  demotion_mode: "graceful"  # "direct" or "graceful" - direct=即FAILED, graceful=STAGING経由

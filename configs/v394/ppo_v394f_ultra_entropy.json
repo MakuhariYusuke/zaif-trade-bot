@@ -1,0 +1,74 @@
+{
+  "model_name": "ppo_v394f_ultra_entropy",
+  "model_type": "ppo",
+  "total_timesteps": 100000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "ppo_hyperparameters": {
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "ent_coef": 0.2,
+    "vf_coef": 0.5,
+    "max_grad_norm": 5.05
+  },
+  "lagrange_constraint": {
+    "enabled": true,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "eta_min": 0.001,
+    "eta_max": 100.0,
+    "eta_lr": 0.001
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.1,
+      "consecutive_hold_penalty": 0.05,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 10000,
+  "notes": "v394f: 超激辛版（Ultra High Entropy）",
+  "changes_from_v394d": [
+    "🔥🔥🔥 ent_coef: 0.01 → 0.2 (20倍強化！)",
+    "🔥 v394dの報酬設定を継承（最も効果的）",
+    "🎯 エントロピーボーナスを極大化",
+    "🎯 HOLD収束を強制的に抑制",
+    "🎯 訓練全期間で探索を維持"
+  ],
+  "expected_improvements": [
+    "✅ エントロピー維持で訓練後期でもAction多様性",
+    "✅ HOLD比率が50-60%で安定する可能性",
+    "✅ BUY/SELL行動が訓練終了まで維持",
+    "⚠️ 超高エントロピーによる学習不安定リスク",
+    "⚠️ 収束が遅くなる可能性"
+  ],
+  "hypothesis": [
+    "v394dの問題: ent_coef=0.01ではエントロピーが0.61まで減少",
+    "ent_coef=0.2なら: エントロピーを1.0-1.5で維持可能",
+    "期待結果: HOLD比率が訓練全期間で50-70%を維持",
+    "成功条件: 最終HOLD比率 < 70% かつ Return > 0%"
+  ]
+}

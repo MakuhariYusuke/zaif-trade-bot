@@ -1,0 +1,12 @@
+{
+  "training": {
+    "model_name": "mtf_test_candidate_0_candidate_1_candidate_2"
+  },
+  "multi_timeframe": {
+    "feature_weights": {
+      "1min": 0.332713031,
+      "5min": 0.566054711,
+      "15min": 0.101232257
+    }
+  }
+}

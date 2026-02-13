@@ -1,0 +1,174 @@
+{
+  "version": "1.0",
+  "algorithm": "sac",
+  "model_name": "sac_v454_retrain_phaseA_hvr_only",
+  "logging_level": "WARNING",
+  "description": "SAC v454 Phase A (HVR-only): model-driven entries with Z-score gate; all non-HVR regimes denied",
+  "regime_adaptation": {
+    "enabled": true,
+    "regime_classifier_config": {
+      "regime_scheme": "comprehensive",
+      "use_multi_timeframe": true,
+      "confidence_threshold": 0.6
+    },
+    "adaptation_rules": {
+      "hyperparameter_adjustment": true,
+      "reward_scaling": true,
+      "exploration_adjustment": true
+    },
+    "regime_specific_params": {
+      "strong_bull": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2
+      },
+      "strong_bear": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2
+      },
+      "high_volatility_range": {
+        "ent_coef": 0.05,
+        "learning_rate": 0.0005,
+        "reward_scale": 0.8
+      },
+      "consolidation": {
+        "ent_coef": 0.02,
+        "learning_rate": 0.0001,
+        "reward_scale": 1.5
+      }
+    },
+    "adaptation_frequency": 100,
+    "performance_tracking_window": 1000
+  },
+  "training": {
+    "algorithm": "sac",
+    "model_name": "sac_v454_retrain_phaseA_hvr_only",
+    "total_timesteps": 50000,
+    "data_config": {
+      "csv_path": "data/btc_jpy_1m_v454.csv",
+      "data_path": "data/btc_jpy_1m_v454.csv",
+      "use_real_data": true,
+      "validation_split": 0.2
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 100000,
+      "learning_starts": 1000,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": "auto",
+      "target_update_interval": 1,
+      "target_entropy": "auto"
+    }
+  },
+  "features": {
+      "feature_set": "high_quality"
+    },
+    "environment": {
+      "feature_set": "high_quality",
+      "initial_balance": 1000000.0,
+      "commission": 0.001,
+      "max_position_size": 1.0,
+      "reward_scaling": 1.0,
+      "action_space_type": "continuous",
+      "use_continuous_actions": true,
+      "target_feature_count": 166,
+      "curriculum_stage": "advanced_regime_adaptation",
+      "continuous_to_discrete_threshold": 0.5,
+      "adaptive_threshold_mode": true,
+      "threshold_volatility_multiplier": 1.0,
+      "risk_management": {
+        "min_trade_size": 0.0001,
+        "take_profit_pct": 0.0
+      },
+      "behavior_optimization": {
+        "action_balance_target": 0.35,
+        "entropy_regularization": 0.01,
+        "action_smoothing": 0.1,
+        "consistency_penalty": 0.05,
+        "balance_penalty": 1.0
+      },
+      "reward_settings": {
+        "reward_clip_min": -200.0,
+        "reward_clip_max": 200.0,
+        "custom_reward_params": {
+          "pnl_mode": "hybrid",
+          "step_pnl_weight": 0.1,
+          "trade_pnl_weight": 0.9,
+          "trade_pnl_apply": "always",
+          "pnl_reward_multiplier": 0.05
+        }
+      },
+      "hybrid_config": {
+        "enabled": true,
+        "time_filter": {
+          "enabled": false,
+          "excluded_hours": [
+            1,
+            14,
+            17
+          ],
+          "multiplier": 0.0
+        },
+        "volatility_filter": {
+          "enabled": true,
+          "danger_zone_min": 0.005,
+          "danger_zone_max": 0.015,
+          "multiplier": 0.0
+        },
+          "regime_filter": {
+          "enabled": true,
+          "mode": "soft",
+          "force_exit": false,
+          "excluded_regimes": [
+            "strong_bull_trend",
+            "moderate_bull_trend",
+            "weak_bull_trend",
+            "strong_bear_trend",
+            "moderate_bear_trend",
+            "weak_bear_trend",
+            "moderate_volatility_ranging",
+            "low_volatility_ranging",
+            "extreme_volatility",
+            "consolidation",
+            "breakout_setup",
+            "breakdown_setup",
+            "buy_breakout",
+            "buy_divergence",
+            "buy_momentum_strong",
+            "buy_volume_surge",
+            "sell_breakdown",
+            "sell_divergence",
+            "sell_momentum_weak",
+            "sell_volume_surge"
+          ],
+          "regime_constraints": {
+            "high_volatility_ranging": {
+              "action_permission": "restricted",
+              "position_multiplier": 1.0,
+              "confidence_threshold_modifier": -0.15,
+              "entry_action_source": "model",
+              "exit_action_source": "tp_sl",
+              "entry_zscore_threshold": 1.3,
+              "stop_loss_pct": 0.008,
+              "take_profit_pct": 0.013
+            }
+          }
+        },
+        "trend_filter": {
+          "enabled": false,
+          "min_trend_strength": 0.0,
+          "multiplier": 1.0
+        }
+      },
+      "advanced_market_regime": {
+        "enabled": true,
+        "regime_detection_window": 20,
+        "adaptation_frequency": 5,
+        "multi_timeframe_confirmation": true,
+        "dynamic_thresholds": true
+      }
+    }
+}

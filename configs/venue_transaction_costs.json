@@ -1,0 +1,58 @@
+{
+  "venues": [
+    {
+      "venue_name": "zaif",
+      "maker_fee": 0.001,
+      "taker_fee": 0.001,
+      "min_fee": 0.0001,
+      "max_fee": 0.01,
+      "currency": "JPY",
+      "last_updated": "2024-01-01"
+    },
+    {
+      "venue_name": "bitflyer",
+      "maker_fee": -0.0002,
+      "taker_fee": 0.0012,
+      "min_fee": 0.0001,
+      "max_fee": 0.01,
+      "currency": "JPY",
+      "last_updated": "2024-01-01"
+    },
+    {
+      "venue_name": "coincheck",
+      "maker_fee": 0.0,
+      "taker_fee": 0.0,
+      "min_fee": 0.0,
+      "max_fee": 0.01,
+      "currency": "JPY",
+      "last_updated": "2024-01-01"
+    },
+    {
+      "venue_name": "binance",
+      "maker_fee": 0.001,
+      "taker_fee": 0.001,
+      "min_fee": 0.0001,
+      "max_fee": 0.01,
+      "currency": "USDT",
+      "last_updated": "2024-01-01"
+    },
+    {
+      "venue_name": "bybit",
+      "maker_fee": -0.00025,
+      "taker_fee": 0.00075,
+      "min_fee": 0.0001,
+      "max_fee": 0.01,
+      "currency": "USDT",
+      "last_updated": "2024-01-01"
+    },
+    {
+      "venue_name": "generic_high_cost",
+      "maker_fee": 0.002,
+      "taker_fee": 0.002,
+      "min_fee": 0.0005,
+      "max_fee": 0.02,
+      "currency": "USD",
+      "last_updated": "2024-01-01"
+    }
+  ]
+}
