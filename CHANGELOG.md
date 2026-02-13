@@ -38,6 +38,19 @@ v459 No-Go 確定を受け、マイクロストラクチャ特徴量ベースの
 - **fill_test .env 自動読込 + --start-side** オプション
 - **000# §3.9 継続中止ルール** — fill_rate<70% 中止、AS>spread/2 中止、実損キャップ 10,000 JPY
 
+- **fill_test モニタリングスクリプト** (`scripts/v460/monitor_fill_test.py`)
+  - §3.9 継続中止ルール自動判定、G1.1 Gate 指標のリアルタイム表示
+  - `--watch` モード (定期自動実行)、JSON スナップショット保存
+  - 累積 PnL 概算、n=200/n=500 到達推定時間表示
+
+- **WebSocket client テスト** (`tests/unit/v460/test_websocket_client.py`) — 44/44 PASS
+  - パーサー (trades/orderbook)、Public/Private WS ライフサイクル、認証、ディスパッチ、統計
+
+- **Config validation テスト** (`tests/unit/v460/test_config_validation.py`) — 28/28 PASS
+  - `_deep_merge` / `_validate` / `load_config` 統合テスト
+  - `gate_thresholds.yaml` 全ゲート閾値整合性検証
+  - base.yaml / 全実験 YAML のロード可能性検証
+
 #### Changed
 
 - `ztb/risk/__init__.py` — `PnLMonteCarloSimulator`, `MonteCarloConfig`, `MonteCarloResult` をエクスポート
@@ -48,11 +61,13 @@ v459 No-Go 確定を受け、マイクロストラクチャ特徴量ベースの
 #### Fixed
 
 - Exchange API 全修正実装 (013# C-3〜C-9, D-1〜D-5) — 97/97 テスト PASS
+- `.gitattributes` LFS 問題発見: `ztb/analysis/**`, `ztb/evaluation/**`, `docs/**` がLFS化
+  - `git lfs pull` で作業コピー復元済み (恒久修正は git cleanup セッションで実施)
 
 #### Documentation
 
 - 000# — §3.9 継続中止ルール追記、§6 リスクテーブル更新
-- 014# — ph2 完遂計画: T3(DONE), T4(DONE), T5(DONE), fill_test n=15 進行中
+- 014# — ph2 完遂計画: T3-T5(DONE), fill_test n=35 進行中, テストカバレッジ 258/258
 
 ### [Phase 4.5] Day 14: Phase B Results Analysis - 2026-02-08
 
