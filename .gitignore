@@ -48,6 +48,14 @@ tmp*/
 *.tmp
 *.cache
 
+# Root-level temporary artifacts
+/*.txt
+/*.log
+/*.csv
+/*.png
+/tmp_*.py
+/temp_*.py
+
 # Notebook checkpoints
 .ipynb_checkpoints/
 
@@ -66,9 +74,18 @@ temp_model/
 tensorboard/
 
 # Large/archived data
+data/
 data/*.csv
+data/*.parquet
 data/*.zip
 data/metadata/
+checkpoints/**/*.zip
+models/**/*.zip
+archived/
+backtest/
+*.feather
+*.joblib
+*.jsonl.gz
 
 # Backtest/results/artifacts
 results/
@@ -93,3 +110,11 @@ backtest_experiments/**/trades_history.csv
 backtest_results/trades_history.csv
 test_backtest_results/trades_history.csv
 remove_paths.txt
+
+# Test/IDE/OS-local artifacts
+.hypothesis/
+.idea/
+.vscode/settings.json
+*.code-workspace
+Thumbs.db
+.DS_Store
