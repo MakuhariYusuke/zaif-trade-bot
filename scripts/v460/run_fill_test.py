@@ -6,6 +6,7 @@ maker limit 注文を発注し、fill rate / queue wait / adverse selection を�
 
 Usage:
   python scripts/v460/run_fill_test.py --hours 24 --dry-run
+  python scripts/v460/run_fill_test.py --hours 168              # .env から自動読込
   python scripts/v460/run_fill_test.py --hours 168 --api-key KEY --api-secret SECRET
   python scripts/v460/run_fill_test.py --results-only --results-dir results/v460/fill_test
 """
@@ -17,6 +18,7 @@ import asyncio
 import atexit
 import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -62,6 +64,8 @@ class FillTestConfig:
     results_dir: str = "results/v460/fill_test"
     # 安全設計: 片側蓄積禁止 — buy/sell 交互
     max_consecutive_same_side: int = 2
+    # 開始サイド: JPY 残高不足時は "sell" で開始すると自己資金循環できる
+    start_side: str = "buy"
 
 
 # ======================================================================
@@ -84,7 +88,11 @@ class FillTestRunner:
         self._results_dir = Path(config.results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
         self._cycle_count = 0
-        self._last_side: Optional[str] = None
+        # start_side に応じて _last_side を設定 (交互ロジック用)
+        if config.start_side == "sell":
+            self._last_side = "buy"  # → _next_side() が "sell" を返す
+        else:
+            self._last_side = None  # → _next_side() が "buy" を返す
         self._same_side_count = 0
         self._shutdown_requested = False
         self._pending_order_id: Optional[str] = None
@@ -414,6 +422,8 @@ def main() -> None:
                         help="サイクル間隔 (秒)")
     parser.add_argument("--output", default=None,
                         help="判定結果の JSON 出力先")
+    parser.add_argument("--start-side", choices=["buy", "sell"], default="buy",
+                        help="開始サイド (JPY残高不足時は sell 推奨)")
     args = parser.parse_args()
 
     if args.results_only:
@@ -427,15 +437,30 @@ def main() -> None:
         sys.exit(0 if result.get("gate_result") == "PASS" else 1)
 
     # Adapter setup
+    # .env ファイルから API 認証情報を自動読込 (CLI 引数が未指定の場合)
+    from dotenv import load_dotenv
+
+    load_dotenv(_PROJECT_ROOT / ".env")
+    api_key = args.api_key or os.environ.get("COINCHECK_API_KEY")
+    api_secret = args.api_secret or os.environ.get("COINCHECK_API_SECRET")
+
+    if not args.dry_run and not (api_key and api_secret):
+        logger.error(
+            "API credentials required for live mode. "
+            "Set COINCHECK_API_KEY/COINCHECK_API_SECRET in .env or use --api-key/--api-secret"
+        )
+        sys.exit(1)
+
     adapter = CoincheckAdapter(
-        api_key=args.api_key,
-        api_secret=args.api_secret,
+        api_key=api_key,
+        api_secret=api_secret,
         dry_run=args.dry_run,
     )
 
     config = FillTestConfig(
         cycle_interval_sec=args.cycle_interval,
         results_dir=args.results_dir,
+        start_side=args.start_side,
     )
 
     runner = FillTestRunner(adapter, config)
