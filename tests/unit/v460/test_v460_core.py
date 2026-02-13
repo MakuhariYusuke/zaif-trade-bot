@@ -742,3 +742,129 @@ class TestFoldResultsSlimming:
 
         # Raw arrays preserved
         assert fold_results_for_save["direction_h1"][0][0] == [1.0, 2.0, 3.0]
+
+
+# =====================================================================
+# 007# F5: run_gate_check g1_judgment_cache 互換
+# =====================================================================
+
+class TestGateCheckCacheCompat:
+    """007# F5: stats-only JSON でも run_gate_check が動作することを検証."""
+
+    def test_cached_judgment_used(self) -> None:
+        """g1_judgment_cache があればそれを使用し、fold_results を再計算しない."""
+        from scripts.v460.run_gate_check import run_g1_judgment
+
+        # Stats-only fold_results (g1_judgment() に直接渡すとクラッシュする)
+        exp_results = {
+            "xgboost": {
+                "direction_h1": {
+                    "ic_mean": 0.05,
+                    "accuracy_mean": 0.55,
+                    "ic_significant_count": 3,
+                },
+            },
+            "fold_results": {
+                "direction_h1": [
+                    {"n_model": 100, "model_mean": 0.5},  # stats dict, not arrays
+                ],
+            },
+            "g1_judgment_cache": {
+                "g1_pass": True,
+                "passed_targets": ["direction_h1"],
+                "details": {
+                    "direction_h1": {
+                        "p_geo": 0.001,
+                        "pmean_pass": True,
+                        "holm_pass": True,
+                        "cliff_d": 0.45,
+                    }
+                },
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        ) as f:
+            json.dump(exp_results, f)
+            tmp_path = f.name
+
+        result = run_g1_judgment(tmp_path)
+        # Cache says PASS, extra threshold direction_h1 passes → final PASS
+        assert result["gate_result"] == "PASS"
+
+    def test_stats_only_no_cache_fallback(self) -> None:
+        """g1_judgment_cache がなく fold_results が stats → FAIL (クラッシュしない)."""
+        from scripts.v460.run_gate_check import run_g1_judgment
+
+        exp_results = {
+            "xgboost": {
+                "direction_h1": {
+                    "ic_mean": 0.05,
+                    "accuracy_mean": 0.55,
+                    "ic_significant_count": 3,
+                },
+            },
+            "fold_results": {
+                "direction_h1": [
+                    {"n_model": 100, "model_mean": 0.5},  # stats dict
+                ],
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        ) as f:
+            json.dump(exp_results, f)
+            tmp_path = f.name
+
+        # Should NOT crash — graceful fallback to FAIL
+        result = run_g1_judgment(tmp_path)
+        assert result["gate_result"] == "FAIL"
+
+
+# =====================================================================
+# 007# F7: _task preservation in config_loader
+# =====================================================================
+
+class TestConfigLoaderTaskPreservation:
+    """007# F7: _task がマージ後も保持されることを検証."""
+
+    def test_task_preserved(self, tmp_path: Path) -> None:
+        """実験 YAML の _task が load_config 結果に含まれる."""
+        from scripts.v460.lib.config_loader import load_config
+
+        base_yaml = tmp_path / "base.yaml"
+        base_yaml.write_text(yaml.dump({
+            "data": {"train_end_index": 1000, "ohlcv_path": "test.parquet"},
+            "features": {"selected": ["feat_a"]},
+        }))
+
+        exp_yaml = tmp_path / "exp.yaml"
+        exp_yaml.write_text(yaml.dump({
+            "_base": str(base_yaml),
+            "_gate": "G1-info",
+            "_task": "sac_train",
+        }))
+
+        cfg = load_config(str(exp_yaml))
+        assert cfg["_task"] == "sac_train"
+
+    def test_task_default(self, tmp_path: Path) -> None:
+        """_task 未指定時はデフォルト feature_info."""
+        from scripts.v460.lib.config_loader import load_config
+
+        base_yaml = tmp_path / "base.yaml"
+        base_yaml.write_text(yaml.dump({
+            "data": {"train_end_index": 1000, "ohlcv_path": "test.parquet"},
+            "features": {"selected": ["feat_a"]},
+        }))
+
+        exp_yaml = tmp_path / "exp.yaml"
+        exp_yaml.write_text(yaml.dump({
+            "_base": str(base_yaml),
+            "_gate": "G1-info",
+        }))
+
+        cfg = load_config(str(exp_yaml))
+        assert cfg["_task"] == "feature_info"

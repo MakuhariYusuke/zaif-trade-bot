@@ -77,6 +77,8 @@ def load_config(
     except ValueError:
         merged["_base"] = str(base_path)
     merged["_gate"] = exp_raw.get("_gate", "unknown")
+    # 007# F7: _task も明示復元 (_deep_merge がスキップするため)
+    merged["_task"] = exp_raw.get("_task", "feature_info")
     try:
         merged["_experiment"] = str(exp_path.relative_to(_PROJECT_ROOT))
     except ValueError:

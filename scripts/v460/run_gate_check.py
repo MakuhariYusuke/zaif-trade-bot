@@ -117,14 +117,34 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     with open(results_path, "r", encoding="utf-8") as f:
         exp_results = json.load(f)
 
-    # Import gate_checks
-    from ztb.metrics.gate_checks import g1_judgment
-
-    judgment = g1_judgment(
-        fold_results=exp_results.get("fold_results", {}),
-        alpha=thresholds.get("p_alpha", 0.05),
-        min_effect=thresholds.get("min_cliff_d", 0.33),
-    )
+    # 007# F5: g1_judgment_cache があればそれを使用 (stats-only JSON 互換)
+    # fold_results が生配列でない場合、g1_judgment() は構造不一致でクラッシュする
+    cached_judgment = exp_results.get("g1_judgment_cache")
+    if cached_judgment is not None:
+        judgment = cached_judgment
+        logger.info("Using cached g1_judgment result from experiment JSON")
+    else:
+        # Legacy: 生配列の fold_results がある場合のみ直接計算
+        from ztb.metrics.gate_checks import g1_judgment
+        fold_results = exp_results.get("fold_results", {})
+        # Validate that fold_results contains raw arrays, not stats dicts
+        is_raw = False
+        if fold_results:
+            first_val = next(iter(fold_results.values()), None)
+            if isinstance(first_val, list) and first_val:
+                is_raw = isinstance(first_val[0], (list, tuple))
+        if is_raw:
+            judgment = g1_judgment(
+                fold_results=fold_results,
+                alpha=thresholds.get("p_alpha", 0.05),
+                min_effect=thresholds.get("min_cliff_d", 0.33),
+            )
+        else:
+            logger.warning(
+                "fold_results is stats-only and no g1_judgment_cache found. "
+                "Cannot re-run g1_judgment. Treating as FAIL."
+            )
+            judgment = {"g1_pass": False, "passed_targets": [], "details": {}}
 
     # 003# #6, 007# F1/F2: Threshold checks per target — any() per 000# §3.2
     # "1 組合せでも PASS すれば G1 通過" → ∃ target, not ∀ target

@@ -97,6 +97,10 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
 
         results = task_fn(cfg)
 
+        # Determine gate result using thresholds from config
+        # 007# F5: Must run BEFORE save so g1_judgment_cache is included in JSON
+        gate_result = _evaluate_gate(gate, results, cfg)
+
         # Save results
         # 007# F4: fold_results 生配列を保存用に差し替え (JSON 肥大化回避)
         results_to_save = dict(results)
@@ -119,9 +123,6 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
             json.dump(results_to_save, f, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved: {out_path}")
 
-        # Determine gate result using thresholds from config
-        gate_result = _evaluate_gate(gate, results, cfg)
-
         manifest.finish_run(
             entry, metrics=results.get("xgboost", {}),
             gate_result=gate_result,
@@ -143,6 +144,8 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
     """Gate evaluation using thresholds from config.
 
     003# #7: gate_thresholds.yaml の閾値を g1_judgment に渡す.
+    007# F5: g1_judgment 結果を results にキャッシュ (JSON 保存用).
+    007# F6: IC/accuracy/sig_folds の any() チェックを追加 (判定統一).
     """
     if "G1" in gate:
         from ztb.metrics.gate_checks import g1_judgment
@@ -161,13 +164,32 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
                 logger.warning("gate_thresholds.yaml not found, using defaults")
                 alpha = 0.05
                 min_effect = 0.33
+                g1_cfg = {}
 
             judgment = g1_judgment(
                 fold_results,
                 alpha=alpha,
                 min_effect=min_effect,
             )
-            return "PASS" if judgment["g1_pass"] else "FAIL"
+
+            # 007# F5: Cache judgment result for run_gate_check.py re-use
+            results["g1_judgment_cache"] = judgment
+
+            # 007# F6: Extra threshold checks (unified with run_gate_check.py)
+            min_ic = g1_cfg.get("min_ic", 0.02)
+            min_accuracy = g1_cfg.get("min_accuracy", 0.51)
+            min_sig_folds = g1_cfg.get("min_significant_folds", 2)
+
+            xgb_results = results.get("xgboost", {})
+            extra_any_pass = any(
+                td.get("ic_mean", 0.0) >= min_ic
+                and td.get("accuracy_mean", 0.0) >= min_accuracy
+                and td.get("ic_significant_count", 0) >= min_sig_folds
+                for td in xgb_results.values()
+            ) if xgb_results else False
+
+            final_pass = judgment["g1_pass"] and extra_any_pass
+            return "PASS" if final_pass else "FAIL"
     return "PENDING"
 
 
