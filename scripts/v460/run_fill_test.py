@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import signal
+import subprocess
 import sys
 import time
 import uuid
@@ -106,8 +107,29 @@ class FillTestRunner:
         self._shutdown_requested = False
         self._pending_order_id: Optional[str] = None
 
+        # 020# O4: データバージョン管理
+        self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        self._git_sha = self._get_git_sha()
+
         # 安全設計: atexit + signal で残存注文を一括キャンセル
         atexit.register(self._cleanup_sync)
+
+    @staticmethod
+    def _get_git_sha() -> Optional[str]:
+        """現在の git commit short hash を取得."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                cwd=str(_PROJECT_ROOT),
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+        return None
 
     def resume_from_existing(self) -> list[FillRecord]:
         """既存 fill_records から状態を復元する (レジューム対応).
@@ -327,6 +349,7 @@ class FillTestRunner:
         mid_30s_after: Optional[float] = None
         post_fill_pnl: Optional[float] = None
         adverse_selected: Optional[bool] = None
+        adverse_selected_raw: Optional[bool] = None
 
         if filled and fill_price is not None:
             try:
@@ -348,11 +371,15 @@ class FillTestRunner:
                 if side == "buy":
                     # buy: 価格上昇が有利
                     post_fill_pnl = (mid_30s_after - mid_at_fill) / mid_at_fill * 10000
+                    # 020# O5: raw AS 判定 (deadzone 非適用)
+                    adverse_selected_raw = mid_30s_after < mid_at_fill
                     # CM-3: AS デッドゾーン — ノイズ幅以内の逆行は AS と判定しない
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
                 else:
                     # sell: 価格下落が有利
                     post_fill_pnl = (mid_at_fill - mid_30s_after) / mid_at_fill * 10000
+                    # 020# O5: raw AS 判定 (deadzone 非適用)
+                    adverse_selected_raw = mid_30s_after > mid_at_fill
                     # CM-3: AS デッドゾーン
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
 
@@ -370,7 +397,10 @@ class FillTestRunner:
             mid_30s_after=mid_30s_after,
             post_fill_30s_pnl=post_fill_pnl,
             adverse_selected=adverse_selected,
+            adverse_selected_raw=adverse_selected_raw,
             cancel_reason="timeout" if (not filled and queue_wait >= self.config.order_timeout_sec) else None,
+            run_id=self._run_id,
+            git_sha=self._git_sha,
         )
 
         logger.info(

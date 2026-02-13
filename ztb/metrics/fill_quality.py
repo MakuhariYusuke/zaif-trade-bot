@@ -49,8 +49,11 @@ class FillRecord:
     mid_at_fill: Optional[float] = None  # 約定時の mid price
     mid_30s_after: Optional[float] = None  # 約定 30 秒後の mid price
     post_fill_30s_pnl: Optional[float] = None  # 30 秒後 PnL (bps)
-    adverse_selected: Optional[bool] = None  # 30 秒後に逆行したか
+    adverse_selected: Optional[bool] = None  # 30 秒後に逆行したか (CM-3 deadzone 適用後)
+    adverse_selected_raw: Optional[bool] = None  # 020# O5: 生の逆行判定 (deadzone 非適用)
     cancel_reason: Optional[str] = None  # CM-2: キャンセル理由 (api_error / timeout / post_only_reject)
+    run_id: Optional[str] = None  # 020# O4: 実験ラン識別子
+    git_sha: Optional[str] = None  # 020# O4: コミットハッシュ
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
@@ -77,11 +80,13 @@ class FillMetrics:
     queue_wait_median_sec: float = 0.0  # E3
     post_fill_30s_pnl_mean: float = 0.0  # E4
     post_fill_30s_pnl_pvalue: float = 1.0  # E4 片側 t 検定
-    adverse_selection_ratio: float = 0.0  # E5
+    adverse_selection_ratio: float = 0.0  # E5 (deadzone 適用後)
+    adverse_selection_ratio_raw: float = 0.0  # E5-raw (020# O5: 並行監視用)
 
     # 補助情報
     daily_fill_rates: list[float] = field(default_factory=list)
     measurement_days: int = 0
+    sample_sufficient: bool = False  # 020# O1: n>=200 & 3暦日 達成フラグ
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
@@ -160,6 +165,17 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     n_adverse = sum(1 for r in adverse_records if r.adverse_selected)
     adverse_ratio = n_adverse / len(adverse_records) if adverse_records else 0.0
 
+    # --- E5-raw: 020# O5 — deadzone 非適用の生データ並行監視 ---
+    adverse_raw_records = [
+        r for r in filled
+        if r.adverse_selected_raw is not None
+    ]
+    n_adverse_raw = sum(1 for r in adverse_raw_records if r.adverse_selected_raw)
+    adverse_ratio_raw = n_adverse_raw / len(adverse_raw_records) if adverse_raw_records else adverse_ratio
+
+    # --- 020# O1: サンプル充足判定 ---
+    sample_sufficient = total >= 200 and len(daily_fill_rates) >= 3
+
     return FillMetrics(
         total_orders=total,
         filled_orders=len(filled),
@@ -170,8 +186,10 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         post_fill_30s_pnl_mean=pnl_mean,
         post_fill_30s_pnl_pvalue=pnl_pvalue,
         adverse_selection_ratio=adverse_ratio,
+        adverse_selection_ratio_raw=adverse_ratio_raw,
         daily_fill_rates=daily_fill_rates,
         measurement_days=len(daily_fill_rates),
+        sample_sufficient=sample_sufficient,
     )
 
 
@@ -245,11 +263,26 @@ def g1_1_judgment(
         "pass": metrics.adverse_selection_ratio <= max_adverse,
     }
 
-    all_pass = all(c["pass"] for c in checks.values())
+    # E5-raw: 020# O5 — deadzone 非適用の並行監視
+    checks["E5_adverse_selection_raw"] = {
+        "value": metrics.adverse_selection_ratio_raw,
+        "threshold": max_adverse,
+        "pass": metrics.adverse_selection_ratio_raw <= max_adverse,
+        "informational": True,  # Gate 判定には影響しない (監視用)
+    }
+
+    # Gate 判定には informational=True のチェックは含めない
+    gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}
+    all_pass = all(c["pass"] for c in gate_checks.values())
+
+    # 020# O1: サンプル要件不足の場合は暫定判定
+    judgment_type = "FINAL" if metrics.sample_sufficient else "PROVISIONAL"
 
     return {
         "gate": "G1.1-exec",
         "gate_result": "PASS" if all_pass else "FAIL",
+        "judgment_type": judgment_type,  # 020# O1
+        "sample_sufficient": metrics.sample_sufficient,
         "checks": checks,
         "metrics_summary": metrics.to_dict(),
     }

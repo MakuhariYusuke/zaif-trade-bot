@@ -108,6 +108,48 @@ class TestFillRecord:
         )
         assert r.cancel_reason is None
 
+    def test_new_fields_020(self) -> None:
+        """020# O4/O5: run_id, git_sha, adverse_selected_raw フィールド."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="o20",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+            adverse_selected=False,
+            adverse_selected_raw=True,
+            run_id="1234_abc",
+            git_sha="abc1234",
+        )
+        assert r.adverse_selected_raw is True
+        assert r.run_id == "1234_abc"
+        assert r.git_sha == "abc1234"
+        # round-trip
+        d = r.to_dict()
+        assert d["adverse_selected_raw"] is True
+        assert d["run_id"] == "1234_abc"
+        r2 = FillRecord.from_dict(d)
+        assert r2.adverse_selected_raw is True
+        assert r2.run_id == "1234_abc"
+        assert r2.git_sha == "abc1234"
+
+    def test_new_fields_020_defaults_none(self) -> None:
+        """020# フィールドはデフォルト None."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="d020",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+        )
+        assert r.adverse_selected_raw is None
+        assert r.run_id is None
+        assert r.git_sha is None
+
 
 # =====================================================================
 # compute_fill_metrics
@@ -217,6 +259,73 @@ class TestComputeFillMetrics:
             ))
         m = compute_fill_metrics(records)
         assert m.adverse_selection_ratio == pytest.approx(0.3)
+
+    def test_adverse_selection_raw_020(self) -> None:
+        """020# O5: E5-raw (deadzone 非適用) が並行計算されることを検証."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+
+        records = []
+        base_ts = 1700000000.0
+        for i in range(10):
+            records.append(FillRecord(
+                cycle_id=f"asr_{i}",
+                timestamp=base_ts + i * 120,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                filled=True,
+                adverse_selected=(i < 2),       # 20% (deadzone 適用後)
+                adverse_selected_raw=(i < 4),    # 40% (raw)
+                post_fill_30s_pnl=-1.0 if i < 2 else 1.0,
+            ))
+        m = compute_fill_metrics(records)
+        assert m.adverse_selection_ratio == pytest.approx(0.2)
+        assert m.adverse_selection_ratio_raw == pytest.approx(0.4)
+
+    def test_sample_sufficient_true(self) -> None:
+        """020# O1: n>=200 & 3暦日 → sample_sufficient=True."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+
+        records = []
+        # UTC midnight-aligned timestamp to avoid date-boundary issues
+        base_ts = 1700006400.0  # 2023-11-15 00:00:00 UTC
+        for day in range(3):
+            for i in range(70):
+                records.append(FillRecord(
+                    cycle_id=f"ss_d{day}_{i}",
+                    timestamp=base_ts + day * 86400 + i * 120,
+                    side="buy",
+                    order_price=100.0,
+                    order_quantity=0.001,
+                    filled=True,
+                    queue_wait_sec=10.0,
+                    post_fill_30s_pnl=0.5,
+                    adverse_selected=False,
+                ))
+        m = compute_fill_metrics(records)
+        assert m.total_orders == 210
+        assert m.measurement_days >= 3
+        assert m.sample_sufficient is True
+
+    def test_sample_sufficient_false_n(self) -> None:
+        """020# O1: n<200 → sample_sufficient=False."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+
+        records = []
+        base_ts = 1700000000.0
+        for day in range(3):
+            for i in range(30):
+                records.append(FillRecord(
+                    cycle_id=f"ssf_d{day}_{i}",
+                    timestamp=base_ts + day * 86400 + i * 120,
+                    side="buy",
+                    order_price=100.0,
+                    order_quantity=0.001,
+                    filled=True,
+                ))
+        m = compute_fill_metrics(records)
+        assert m.total_orders == 90
+        assert m.sample_sufficient is False
 
     def test_daily_fill_rates(self) -> None:
         from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
@@ -362,6 +471,76 @@ class TestG11Judgment:
         result = g1_1_judgment(metrics, thresholds)
         assert result["gate_result"] == "FAIL"
         assert result["checks"]["E3_queue_wait_median"]["pass"] is False
+
+    def test_judgment_type_provisional(self) -> None:
+        """020# O1: sample_sufficient=False → judgment_type=PROVISIONAL."""
+        from ztb.metrics.fill_quality import FillMetrics, g1_1_judgment
+
+        metrics = FillMetrics(
+            total_orders=95,
+            fill_rate_p90=0.95,
+            cancel_ratio=0.05,
+            queue_wait_median_sec=10.0,
+            post_fill_30s_pnl_mean=0.5,
+            adverse_selection_ratio=0.05,
+            sample_sufficient=False,
+        )
+        thresholds = {
+            "min_fill_rate_p90": 0.90,
+            "max_cancel_ratio": 0.30,
+            "max_queue_wait_median_sec": 60,
+            "min_post_fill_30s_pnl": 0.0,
+            "max_adverse_selection_ratio": 0.20,
+        }
+        result = g1_1_judgment(metrics, thresholds)
+        assert result["judgment_type"] == "PROVISIONAL"
+        assert result["sample_sufficient"] is False
+
+    def test_judgment_type_final(self) -> None:
+        """020# O1: sample_sufficient=True → judgment_type=FINAL."""
+        from ztb.metrics.fill_quality import FillMetrics, g1_1_judgment
+
+        metrics = FillMetrics(
+            total_orders=250,
+            fill_rate_p90=0.95,
+            cancel_ratio=0.05,
+            queue_wait_median_sec=10.0,
+            post_fill_30s_pnl_mean=0.5,
+            adverse_selection_ratio=0.05,
+            sample_sufficient=True,
+        )
+        thresholds = {
+            "min_fill_rate_p90": 0.90,
+            "max_cancel_ratio": 0.30,
+            "max_queue_wait_median_sec": 60,
+            "min_post_fill_30s_pnl": 0.0,
+            "max_adverse_selection_ratio": 0.20,
+        }
+        result = g1_1_judgment(metrics, thresholds)
+        assert result["judgment_type"] == "FINAL"
+        assert result["sample_sufficient"] is True
+
+    def test_e5_raw_informational(self) -> None:
+        """020# O5: E5-raw チェックは informational で gate に影響しない."""
+        from ztb.metrics.fill_quality import FillMetrics, g1_1_judgment
+
+        metrics = FillMetrics(
+            fill_rate_p90=0.95,
+            cancel_ratio=0.05,
+            queue_wait_median_sec=10.0,
+            post_fill_30s_pnl_mean=0.5,
+            adverse_selection_ratio=0.05,
+            adverse_selection_ratio_raw=0.85,  # 超過しているが informational
+            sample_sufficient=True,
+        )
+        thresholds = {"max_adverse_selection_ratio": 0.20}
+        result = g1_1_judgment(metrics, thresholds)
+        # E5 (deadzone) は PASS
+        assert result["checks"]["E5_adverse_selection"]["pass"] is True
+        # E5-raw は informational (gate に影響しない)
+        assert result["checks"]["E5_adverse_selection_raw"]["informational"] is True
+        # gate は PASS のまま
+        assert result["gate_result"] == "PASS"
 
 
 # =====================================================================
