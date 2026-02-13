@@ -731,3 +731,126 @@ class TestAdapterRealModeP20:
 
         source = inspect.getsource(CoincheckAdapter.get_positions)
         assert "NotImplementedError" not in source
+
+
+# =====================================================================
+# 024# R1-R4: FillTestRunner 保存耐障害性テスト
+# =====================================================================
+
+class TestFillTestRunnerSaveResilience:
+    """024# R1-R4: _try_save_batch / _save_batch_by_date / _emergency_dump のテスト."""
+
+    def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
+        """テスト用の FillTestRunner を作成 (adapter は mock)."""
+        from unittest.mock import MagicMock as Mock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+
+        adapter = Mock()
+        config = FillTestConfig(results_dir=str(tmp_path / "results"))
+        runner = FillTestRunner(adapter, config)
+        return runner
+
+    def _make_record(self, ts: float = 1700000000.0, side: str = "buy") -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id=f"test_{int(ts)}",
+            timestamp=ts,
+            side=side,
+            order_price=15000000.0,
+            order_quantity=0.001,
+            filled=True,
+            fill_price=15000000.0,
+        )
+
+    def test_try_save_batch_success(self, tmp_path: Path) -> None:
+        """正常保存時に True を返し、ファイルが作成される."""
+        runner = self._make_runner(tmp_path)
+        batch = [self._make_record(ts=1700000000.0 + i) for i in range(5)]
+
+        result = runner._try_save_batch(batch)
+
+        assert result is True
+        assert runner._save_fail_count == 0
+        # JSONL ファイルが作成されている
+        jsonl_files = list((tmp_path / "results").glob("fill_records_*.jsonl"))
+        assert len(jsonl_files) >= 1
+
+    def test_try_save_batch_retry_on_failure(self, tmp_path: Path) -> None:
+        """保存失敗時にリトライし、最終的に失敗を返す."""
+        from unittest.mock import patch
+        runner = self._make_runner(tmp_path)
+        batch = [self._make_record()]
+
+        with patch.object(runner, "_save_batch_by_date", side_effect=IOError("disk full")):
+            result = runner._try_save_batch(batch)
+
+        assert result is False
+        assert runner._save_fail_count == 1
+        assert len(runner._unsaved_batch) == 1
+
+    def test_try_save_batch_emergency_dump_after_3_failures(self, tmp_path: Path) -> None:
+        """3回連続失敗で緊急ダンプが発動する."""
+        from unittest.mock import patch
+        runner = self._make_runner(tmp_path)
+        runner._save_fail_count = 2  # 既に2回失敗
+        batch = [self._make_record()]
+
+        with patch.object(runner, "_save_batch_by_date", side_effect=IOError("disk full")):
+            result = runner._try_save_batch(batch)
+
+        # 緊急ダンプが発動 → True を返す
+        assert result is True
+        assert runner._save_fail_count == 0
+        # emergency ディレクトリにファイルが作成
+        emergency_files = list((tmp_path / "results" / "emergency").glob("emergency_*.jsonl"))
+        assert len(emergency_files) >= 1
+
+    def test_save_batch_by_date_groups_by_utc_date(self, tmp_path: Path) -> None:
+        """024# R4: record.timestamp 由来で日付別ファイル分割."""
+        runner = self._make_runner(tmp_path)
+
+        # 2つの異なる UTC 日付のレコード
+        # 2023-11-14 23:59 UTC と 2023-11-15 00:01 UTC
+        batch = [
+            self._make_record(ts=1700006340.0),  # 2023-11-14 23:59 UTC
+            self._make_record(ts=1700006460.0),  # 2023-11-15 00:01 UTC
+        ]
+
+        runner._save_batch_by_date(batch)
+
+        results_dir = tmp_path / "results"
+        f1 = results_dir / "fill_records_20231114.jsonl"
+        f2 = results_dir / "fill_records_20231115.jsonl"
+        assert f1.exists(), f"Expected {f1}"
+        assert f2.exists(), f"Expected {f2}"
+
+    def test_emergency_dump_creates_file(self, tmp_path: Path) -> None:
+        """緊急ダンプがファイルを作成する."""
+        runner = self._make_runner(tmp_path)
+        batch = [self._make_record()]
+
+        runner._emergency_dump(batch, "test_reason")
+
+        emergency_files = list((tmp_path / "results" / "emergency").glob("emergency_test_reason_*.jsonl"))
+        assert len(emergency_files) == 1
+
+    def test_cleanup_sync_saves_unsaved_batch(self, tmp_path: Path) -> None:
+        """atexit で未保存バッチが退避される."""
+        runner = self._make_runner(tmp_path)
+        runner._unsaved_batch = [self._make_record()]
+
+        runner._cleanup_sync()
+
+        assert runner._unsaved_batch == []
+        emergency_files = list((tmp_path / "results" / "emergency").glob("emergency_atexit_*.jsonl"))
+        assert len(emergency_files) == 1
+
+    def test_cleanup_sync_no_unsaved_no_dump(self, tmp_path: Path) -> None:
+        """未保存バッチが空なら緊急ダンプは作成されない."""
+        runner = self._make_runner(tmp_path)
+
+        runner._cleanup_sync()
+
+        emergency_dir = tmp_path / "results" / "emergency"
+        if emergency_dir.exists():
+            assert len(list(emergency_dir.glob("*.jsonl"))) == 0

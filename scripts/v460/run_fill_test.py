@@ -18,6 +18,7 @@ import asyncio
 import atexit
 import json
 import logging
+import logging.handlers
 import os
 import signal
 import subprocess
@@ -111,7 +112,12 @@ class FillTestRunner:
         self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         self._git_sha = self._get_git_sha()
 
-        # 安全設計: atexit + signal で残存注文を一括キャンセル
+        # 024# R1: 保存失敗トラッキング
+        self._unsaved_batch: list[FillRecord] = []
+        self._save_fail_count: int = 0
+        self._max_save_retries: int = 3
+
+        # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避
         atexit.register(self._cleanup_sync)
 
     @staticmethod
@@ -417,46 +423,57 @@ class FillTestRunner:
 
         009# §4.4: 7 日間 (168h) の実測想定.
         中断→再開時は既存 fill_records を自動復元 (レジューム対応).
+
+        024# R1-R4: 保存失敗耐性・例外分離・メモリ制御を強化.
         """
         end_time = time.time() + hours * 3600
 
         # レジューム: 既存レコードから状態復元
         existing_records = self.resume_from_existing()
-        records: list[FillRecord] = list(existing_records)
-        batch: list[FillRecord] = []
+        # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
+        total_count = len(existing_records)
+        filled_count = sum(1 for r in existing_records if r.filled)
+        del existing_records  # メモリ解放
+
+        batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
+        self._unsaved_batch = []
         batch_size = 10  # 10 サイクルごとに保存
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._shutdown_requested:
+            # --- サイクル実行 ---
             try:
                 record = await self.run_single_cycle()
-                records.append(record)
-                batch.append(record)
-
-                # バッチ保存
-                if len(batch) >= batch_size:
-                    self._save_batch(batch)
-                    batch = []
-
-                # 進捗ログ
-                if self._cycle_count % 50 == 0:
-                    filled_count = sum(1 for r in records if r.filled)
-                    logger.info(
-                        f"Progress: {self._cycle_count} cycles, "
-                        f"fill rate={filled_count}/{len(records)} "
-                        f"({filled_count/len(records)*100:.1f}%)"
-                    )
-
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._shutdown_requested = True
                 break
             except Exception as e:
-                logger.error(f"Cycle error: {e}", exc_info=True)
-                # エラーでも続行 — R3 対策 (API 障害耐性)
+                # 024# R2: 例外分類 — サイクル実行エラーは継続可能
+                logger.error(f"Cycle execution error: {e}", exc_info=True)
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
+
+            total_count += 1
+            if record.filled:
+                filled_count += 1
+            batch.append(record)
+
+            # --- バッチ保存 (024# R1: 独立 try/except) ---
+            if len(batch) >= batch_size:
+                if self._try_save_batch(batch):
+                    batch = []
+                # 失敗時: batch は保持 → 次回再試行
+
+            # 進捗ログ
+            if self._cycle_count % 50 == 0:
+                logger.info(
+                    f"Progress: {self._cycle_count} cycles, "
+                    f"fill rate={filled_count}/{total_count} "
+                    f"({filled_count/total_count*100:.1f}%), "
+                    f"unsaved_batch={len(batch)}"
+                )
 
             # 次サイクルまで待機
             if time.time() < end_time and not self._shutdown_requested:
@@ -464,24 +481,115 @@ class FillTestRunner:
 
         # 残りバッチを保存
         if batch:
-            self._save_batch(batch)
+            if not self._try_save_batch(batch):
+                # 最終手段: 緊急ダンプ
+                self._emergency_dump(batch, "final")
 
         logger.info(
-            f"Fill test completed: {len(records)} cycles, "
-            f"{sum(1 for r in records if r.filled)} filled"
+            f"Fill test completed: {total_count} cycles, "
+            f"{filled_count} filled"
         )
-        return records
+        # 024# O4: 集計用に全レコードをリロード
+        return load_fill_records_glob(str(self._results_dir))
 
-    def _save_batch(self, batch: list[FillRecord]) -> None:
-        """日別 JSONL ファイルにバッチ保存."""
+    def _try_save_batch(self, batch: list[FillRecord]) -> bool:
+        """バッチ保存を試行。失敗時はリトライ + フォールバック.
+
+        024# R1: 保存専用 try/except を分離し、失敗を握り潰さない.
+        024# R4: record.timestamp 由来の日付でファイル分割.
+
+        Returns:
+            True if save succeeded, False otherwise.
+        """
         from datetime import datetime, timezone
 
-        day_str = datetime.now(timezone.utc).strftime("%Y%m%d")
-        path = self._results_dir / f"fill_records_{day_str}.jsonl"
-        save_fill_records(batch, path)
+        last_error: Optional[Exception] = None
+        for attempt in range(self._max_save_retries):
+            try:
+                self._save_batch_by_date(batch)
+                self._save_fail_count = 0
+                return True
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"Batch save attempt {attempt + 1}/{self._max_save_retries} "
+                    f"failed: {e}",
+                    exc_info=True,
+                )
+                time.sleep(0.5 * (2 ** attempt))  # 指数バックオフ
+
+        # 全リトライ失敗
+        self._save_fail_count += 1
+        logger.error(
+            f"Batch save FAILED after {self._max_save_retries} retries "
+            f"(consecutive failures: {self._save_fail_count}): {last_error}"
+        )
+
+        # 024# R1: 連続失敗時は緊急ダンプ
+        if self._save_fail_count >= 3:
+            self._emergency_dump(batch, "save_fail")
+            self._save_fail_count = 0
+            return True  # ダンプ成功ならバッチクリア
+
+        # batch は呼び出し元で保持 → 次回再試行
+        self._unsaved_batch = list(batch)
+        return False
+
+    def _save_batch_by_date(self, batch: list[FillRecord]) -> None:
+        """024# R4: record.timestamp 由来の日付でファイル分割保存."""
+        from datetime import datetime, timezone
+
+        # レコードを UTC 日付ごとにグルーピング
+        by_date: dict[str, list[FillRecord]] = {}
+        for record in batch:
+            day_str = datetime.fromtimestamp(
+                record.timestamp, tz=timezone.utc
+            ).strftime("%Y%m%d")
+            by_date.setdefault(day_str, []).append(record)
+
+        for day_str, day_records in by_date.items():
+            path = self._results_dir / f"fill_records_{day_str}.jsonl"
+            save_fill_records(day_records, path)
+
+    def _emergency_dump(self, batch: list[FillRecord], reason: str) -> None:
+        """024# R1: 緊急ダンプ — 通常保存が不可能な場合のフォールバック."""
+        import traceback
+        from datetime import datetime, timezone
+
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        dump_dir = self._results_dir / "emergency"
+        dump_dir.mkdir(parents=True, exist_ok=True)
+        dump_path = dump_dir / f"emergency_{reason}_{ts}.jsonl"
+
+        try:
+            save_fill_records(batch, dump_path)
+            logger.warning(
+                f"Emergency dump: {len(batch)} records saved to {dump_path}"
+            )
+        except Exception as e:
+            # 最終手段: stderr に直接出力
+            import sys
+            print(
+                f"CRITICAL: Emergency dump also failed: {e}\n"
+                f"Unsaved records: {len(batch)}",
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
 
     def _cleanup_sync(self) -> None:
-        """atexit: 残存注文のキャンセル (同期 wrapper)."""
+        """atexit: 残存注文キャンセル + 未保存データ退避 (同期 wrapper).
+
+        024# R1: 未保存バッチを緊急ダンプに退避.
+        """
+        # 未保存バッチの退避
+        if self._unsaved_batch:
+            logger.warning(
+                f"Saving {len(self._unsaved_batch)} unsaved records on exit"
+            )
+            self._emergency_dump(self._unsaved_batch, "atexit")
+            self._unsaved_batch = []
+
+        # 残存注文のキャンセル
         if self._pending_order_id:
             logger.warning(f"Cleaning up pending order: {self._pending_order_id}")
             try:
@@ -591,6 +699,22 @@ def main() -> None:
     )
 
     runner = FillTestRunner(adapter, config)
+
+    # 024# O3: ログファイル出力 (ローテーション付き)
+    log_dir = Path(args.results_dir) / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_dir / "fill_test.log",
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+    )
+    logging.getLogger().addHandler(file_handler)
+    logger.info(f"Log file: {log_dir / 'fill_test.log'}")
 
     # Signal handler for graceful shutdown
     def _signal_handler(signum: int, frame: object) -> None:
