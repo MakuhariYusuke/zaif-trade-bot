@@ -1,9 +1,13 @@
 """
 Broker interface definitions for live and paper trading.
+
+v460: OrderBookSnapshot / TradeRecord / MarketDataNotSupported added.
+      get_orderbook / get_recent_trades are NON-abstract (default raises
+      MarketDataNotSupported) so existing adapters remain unbroken.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -42,6 +46,50 @@ class Balance:
     free: float
     locked: float
     total: float
+
+
+# ---------------------------------------------------------------------------
+# v460: Market data types
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class OrderBookSnapshot:
+    """Orderbook snapshot at a point in time.
+
+    bids: [(price, size), ...] in descending price order.
+    asks: [(price, size), ...] in ascending price order.
+    """
+
+    timestamp: float
+    bids: list[tuple[float, float]] = field(default_factory=list)
+    asks: list[tuple[float, float]] = field(default_factory=list)
+    exchange: str = ""
+
+
+@dataclass
+class TradeRecord:
+    """Single trade (execution) record."""
+
+    timestamp: float
+    price: float
+    amount: float
+    side: str  # 'buy' or 'sell'
+
+
+class MarketDataNotSupported(Exception):
+    """Raised when an adapter does not support market data collection."""
+
+
+# ---------------------------------------------------------------------------
+# Normalisation helper — internal symbol is always lowercase.
+# Each adapter converts to exchange-native format in API calls.
+# ---------------------------------------------------------------------------
+
+
+def normalize_symbol(symbol: str) -> str:
+    """Normalize symbol to lowercase internal representation."""
+    return symbol.lower()
 
 
 class IBroker(ABC):
@@ -84,6 +132,35 @@ class IBroker(ABC):
     @abstractmethod
     async def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current market price for symbol."""
+
+    # -------------------------------------------------------------------
+    # v460 market-data methods (non-abstract — default raises)
+    # -------------------------------------------------------------------
+
+    async def get_orderbook(
+        self, symbol: str, depth: int = 10
+    ) -> OrderBookSnapshot:
+        """Get orderbook snapshot (top *depth* levels).
+
+        Default implementation raises ``MarketDataNotSupported`` so that
+        existing adapters (SimBroker, ZaifAdapter …) keep working without
+        any changes.  Override in adapters that support this call.
+        """
+        raise MarketDataNotSupported(
+            f"{self.__class__.__name__} does not support orderbook"
+        )
+
+    async def get_recent_trades(
+        self, symbol: str, limit: int = 100
+    ) -> list[TradeRecord]:
+        """Get recent trades.
+
+        Default implementation raises ``MarketDataNotSupported``.
+        Override in adapters that support this call.
+        """
+        raise MarketDataNotSupported(
+            f"{self.__class__.__name__} does not support trades"
+        )
 
 
 class ZaifAdapter(IBroker):

@@ -1,0 +1,44 @@
+# v460 Gate 閾値定義
+# 000# §3 準拠
+
+g0_data:
+  data_hash_match: true
+  min_feature_columns: 4
+  max_nan_ratio: 0.01
+  manifest_required: true
+
+g1_info:
+  min_ic: 0.02       # OOS Spearman IC 下限
+  min_accuracy: 0.51  # OOS accuracy 下限
+  min_significant_folds: 2   # p<0.05 の fold 最低数 (/ 5 folds)
+  p_alpha: 0.05
+  min_cliff_d: 0.33   # Cliff's Delta 最小効果量
+  # Multi-target: 3 horizon × 3 target = 9 組合せ
+  horizons: [1, 5, 15]
+  targets: [direction, magnitude, volatility]
+  holm_family_size: 9
+
+g1_1_exec:
+  min_fill_rate_p90: 0.90
+  max_cancel_ratio: 0.30
+  max_queue_wait_median_sec: 60
+  min_post_fill_30s_pnl: 0.0
+  max_adverse_selection_ratio: 0.20
+
+g2_train:
+  min_positive_seed_ratio: 0.75   # 3/4
+  max_ic_seed_std: 0.03
+  convergence_window_start: 30000
+  max_roi_variance_pct: 5.0
+  worst_seed_min_roi: -0.02
+
+g3_pnl:
+  min_pf_median: 1.05
+  min_pf_worst: 0.95
+  max_drawdown: 0.15
+  min_sharpe_annual: 0.8
+  gross_gt_fee: true
+
+g4_live:
+  min_paper_days: 7
+  # 詳細は Phase 5 で確定

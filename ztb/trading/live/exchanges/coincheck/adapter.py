@@ -19,7 +19,16 @@ import requests
 from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, NetworkError
 from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
 
-from ..base.broker_interfaces import Balance, IBroker, Order, Position
+from ..base.broker_interfaces import (
+    Balance,
+    IBroker,
+    MarketDataNotSupported,
+    Order,
+    OrderBookSnapshot,
+    Position,
+    TradeRecord,
+    normalize_symbol,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -540,3 +549,74 @@ class CoincheckAdapter(IBroker):
         base_price = self._current_prices.get(symbol, 5000000.0)
         self._current_prices[symbol] = base_price * (1 + random.uniform(-0.005, 0.005))
         return self._current_prices[symbol]
+
+    # -------------------------------------------------------------------
+    # v460: Market data methods (板情報・約定フロー)
+    # -------------------------------------------------------------------
+
+    async def get_orderbook(
+        self, symbol: str, depth: int = 10
+    ) -> OrderBookSnapshot:
+        """Fetch orderbook from Coincheck ``GET /api/order_books``.
+
+        Public API — no authentication required.
+        """
+        await self._check_rate_limit()
+        url = f"{self.api_base_url}/api/order_books"
+        try:
+            response = requests.get(url, timeout=self.request_timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            raw_bids: list[list[str]] = data.get("bids", [])[:depth]
+            raw_asks: list[list[str]] = data.get("asks", [])[:depth]
+
+            bids = [(float(p), float(s)) for p, s in raw_bids]
+            asks = [(float(p), float(s)) for p, s in raw_asks]
+
+            return OrderBookSnapshot(
+                timestamp=time.time(),
+                bids=bids,
+                asks=asks,
+                exchange="coincheck",
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Coincheck orderbook request failed: {e}")
+            raise NetworkError(f"Coincheck orderbook error: {e}")
+
+    async def get_recent_trades(
+        self, symbol: str, limit: int = 100
+    ) -> list[TradeRecord]:
+        """Fetch recent trades from Coincheck ``GET /api/trades``.
+
+        Public API — no authentication required.
+
+        Args:
+            symbol: Trading pair in internal format (e.g. ``btc_jpy``).
+            limit: Max number of trades to fetch.
+        """
+        await self._check_rate_limit()
+        pair = normalize_symbol(symbol)
+        url = f"{self.api_base_url}/api/trades?pair={pair}&limit={limit}"
+        try:
+            response = requests.get(url, timeout=self.request_timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            trades: list[TradeRecord] = []
+            items = data.get("data", data) if isinstance(data, dict) else data
+            if not isinstance(items, list):
+                items = []
+            for item in items[:limit]:
+                trades.append(
+                    TradeRecord(
+                        timestamp=float(item.get("created_at", time.time())),
+                        price=float(item.get("rate", 0)),
+                        amount=float(item.get("amount", 0)),
+                        side=str(item.get("order_type", "buy")),
+                    )
+                )
+            return trades
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Coincheck trades request failed: {e}")
+            raise NetworkError(f"Coincheck trades error: {e}")

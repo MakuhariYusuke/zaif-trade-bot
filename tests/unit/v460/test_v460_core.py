@@ -1,0 +1,349 @@
+"""
+v460 単体テスト: gate_checks, config_loader, data_loader, manifest, microstructure.
+
+001# §6.5 テスト方針準拠.
+"""
+
+from __future__ import annotations
+
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
+import pandas as pd
+import pytest
+import yaml
+
+
+# =====================================================================
+# gate_checks
+# =====================================================================
+
+class TestCliffsD:
+    """cliffs_delta のテスト."""
+
+    def test_perfect_dominance(self) -> None:
+        from ztb.metrics.gate_checks import cliffs_delta
+        x = [10.0, 11.0, 12.0]
+        y = [1.0, 2.0, 3.0]
+        assert cliffs_delta(x, y) == 1.0
+
+    def test_no_dominance(self) -> None:
+        from ztb.metrics.gate_checks import cliffs_delta
+        x = [1.0, 2.0, 3.0]
+        y = [1.0, 2.0, 3.0]
+        assert cliffs_delta(x, y) == 0.0
+
+    def test_reverse_dominance(self) -> None:
+        from ztb.metrics.gate_checks import cliffs_delta
+        x = [1.0, 2.0, 3.0]
+        y = [10.0, 11.0, 12.0]
+        assert cliffs_delta(x, y) == -1.0
+
+    def test_empty(self) -> None:
+        from ztb.metrics.gate_checks import cliffs_delta
+        assert cliffs_delta([], [1.0]) == 0.0
+
+
+class TestHolmBonferroniGate:
+    """holm_bonferroni_gate のテスト."""
+
+    def test_all_pass(self) -> None:
+        from ztb.metrics.gate_checks import holm_bonferroni_gate
+        # Model strongly dominates baseline → should pass
+        model = list(np.random.normal(1.0, 0.1, 200))
+        baseline = list(np.random.normal(0.0, 0.1, 200))
+        results = {
+            "target_a": (model, baseline),
+            "target_b": (model, baseline),
+        }
+        gate = holm_bonferroni_gate(results, alpha=0.05, min_effect=0.33)
+        assert gate["target_a"]["pass"] is True
+        assert gate["target_b"]["pass"] is True
+
+    def test_no_pass(self) -> None:
+        from ztb.metrics.gate_checks import holm_bonferroni_gate
+        # Model ≈ baseline → should fail
+        np.random.seed(42)
+        model = list(np.random.normal(0.0, 1.0, 200))
+        baseline = list(np.random.normal(0.0, 1.0, 200))
+        results = {"target_a": (model, baseline)}
+        gate = holm_bonferroni_gate(results, alpha=0.05, min_effect=0.33)
+        assert bool(gate["target_a"]["pass"]) is False
+
+    def test_empty(self) -> None:
+        from ztb.metrics.gate_checks import holm_bonferroni_gate
+        assert holm_bonferroni_gate({}) == {}
+
+
+class TestPMeanGate:
+    """p_mean_gate のテスト."""
+
+    def test_all_significant(self) -> None:
+        from ztb.metrics.gate_checks import p_mean_gate
+        result = p_mean_gate([0.01, 0.02, 0.03], alpha=0.05)
+        assert result["pass"] is True
+        assert result["n_folds"] == 3
+        assert result["p_geometric"] < 0.05
+
+    def test_none_significant(self) -> None:
+        from ztb.metrics.gate_checks import p_mean_gate
+        result = p_mean_gate([0.5, 0.6, 0.7], alpha=0.05)
+        assert result["pass"] is False
+
+    def test_empty(self) -> None:
+        from ztb.metrics.gate_checks import p_mean_gate
+        result = p_mean_gate([])
+        assert result["pass"] is False
+
+
+class TestG1Judgment:
+    """g1_judgment のテスト (§5.3 厳密仕様)."""
+
+    def test_pass_scenario(self) -> None:
+        from ztb.metrics.gate_checks import g1_judgment
+
+        np.random.seed(42)
+        # 5 folds where model clearly dominates
+        folds = []
+        for _ in range(5):
+            m = list(np.random.normal(1.0, 0.1, 100))
+            b = list(np.random.normal(0.0, 0.1, 100))
+            folds.append((m, b))
+
+        result = g1_judgment({"h5_direction": folds})
+        assert result["g1_pass"] is True
+        assert "h5_direction" in result["passed_targets"]
+
+    def test_fail_scenario(self) -> None:
+        from ztb.metrics.gate_checks import g1_judgment
+
+        np.random.seed(42)
+        folds = []
+        for _ in range(5):
+            m = list(np.random.normal(0.0, 1.0, 100))
+            b = list(np.random.normal(0.0, 1.0, 100))
+            folds.append((m, b))
+
+        result = g1_judgment({"h5_direction": folds})
+        assert result["g1_pass"] is False
+        assert result["passed_targets"] == []
+
+    def test_empty(self) -> None:
+        from ztb.metrics.gate_checks import g1_judgment
+        result = g1_judgment({})
+        assert result["g1_pass"] is False
+
+
+# =====================================================================
+# config_loader
+# =====================================================================
+
+class TestConfigLoader:
+    """config_loader のテスト."""
+
+    def test_deep_merge(self) -> None:
+        from scripts.v460.lib.config_loader import _deep_merge
+        base = {"a": 1, "b": {"c": 2, "d": 3}, "e": 5}
+        override = {"b": {"c": 99}, "f": 6, "_meta": "skip"}
+        merged = _deep_merge(base, override)
+        assert merged["a"] == 1
+        assert merged["b"]["c"] == 99
+        assert merged["b"]["d"] == 3
+        assert merged["e"] == 5
+        assert merged["f"] == 6
+        assert "_meta" not in merged
+
+    def test_load_config_validation_error(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.config_loader import load_config
+
+        base = {"data": {"train_end_index": None}, "features": {"selected": None}}
+        base_path = tmp_path / "base.yaml"
+        with open(base_path, "w") as f:
+            yaml.dump(base, f)
+
+        exp = {"_base": str(base_path)}
+        exp_path = tmp_path / "exp.yaml"
+        with open(exp_path, "w") as f:
+            yaml.dump(exp, f)
+
+        with pytest.raises(ValueError, match="features.selected is null"):
+            load_config(exp_path, base_path=base_path)
+
+    def test_load_config_valid(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.config_loader import load_config
+
+        base = {
+            "data": {"train_end_index": None, "ohlcv_path": "test.parquet"},
+            "features": {"selected": None, "candidates": ["a", "b"]},
+        }
+        base_path = tmp_path / "base.yaml"
+        with open(base_path, "w") as f:
+            yaml.dump(base, f)
+
+        exp = {
+            "_base": str(base_path),
+            "_gate": "G1-info",
+            "data": {"train_end_index": 1000},
+            "features": {"selected": ["a", "b"]},
+        }
+        exp_path = tmp_path / "exp.yaml"
+        with open(exp_path, "w") as f:
+            yaml.dump(exp, f)
+
+        cfg = load_config(exp_path, base_path=base_path)
+        assert cfg["data"]["train_end_index"] == 1000
+        assert cfg["features"]["selected"] == ["a", "b"]
+        assert cfg["_gate"] == "G1-info"
+
+
+# =====================================================================
+# data_loader
+# =====================================================================
+
+class TestDataLoader:
+    """data_loader のテスト."""
+
+    def test_load_parquet(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.data_loader import load_parquet
+
+        df = pd.DataFrame({"close": [100, 101, 102], "feature_a": [1, 2, 3]})
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        loaded = load_parquet(p)
+        assert len(loaded) == 3
+        assert "close" in loaded.columns
+
+    def test_load_parquet_select_cols(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.data_loader import load_parquet
+
+        df = pd.DataFrame({"close": [100], "a": [1], "b": [2], "c": [3]})
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        loaded = load_parquet(p, feature_cols=["a", "b"])
+        assert "a" in loaded.columns
+        assert "close" in loaded.columns  # always kept
+
+    def test_split_train_eval(self) -> None:
+        from scripts.v460.lib.data_loader import split_train_eval
+
+        df = pd.DataFrame({"x": range(100)})
+        train, eval_ = split_train_eval(df, 80)
+        assert len(train) == 80
+        assert len(eval_) == 20
+
+    def test_generate_targets(self) -> None:
+        from scripts.v460.lib.data_loader import generate_targets
+
+        df = pd.DataFrame({"close": [100.0, 101.0, 102.0, 103.0, 104.0]})
+        result = generate_targets(df, horizons=[1], target_types=["direction"])
+        assert "target_direction_h1" in result.columns
+        # 100→101 is up, so first row should be 1
+        assert result["target_direction_h1"].iloc[0] == 1
+
+    def test_check_nan_ratio(self) -> None:
+        from scripts.v460.lib.data_loader import check_nan_ratio
+
+        df = pd.DataFrame({"a": [1, 2, np.nan], "b": [4, 5, 6]})
+        result = check_nan_ratio(df, max_ratio=0.5)
+        assert result["pass"] is True
+        assert result["nan_cells"] == 1
+
+    def test_compute_data_hash(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.data_loader import compute_data_hash
+
+        p = tmp_path / "test.bin"
+        p.write_bytes(b"hello")
+        h = compute_data_hash(p)
+        assert len(h) == 64  # SHA-256 hex
+
+
+# =====================================================================
+# manifest
+# =====================================================================
+
+class TestManifest:
+    """manifest.py のテスト."""
+
+    def test_write_and_read(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.manifest import ManifestWriter
+
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        entry = mw.start_run(
+            config_path="test.yaml",
+            config={"seed": 42},
+            data_path=str(tmp_path / "nonexist.parquet"),
+            gate="G1-info",
+            seed=42,
+        )
+        assert entry.status == "running"
+        assert "v460" in entry.run_id
+
+        mw.finish_run(
+            entry, metrics={"ic": 0.05}, gate_result="PASS",
+            artifacts=["result.json"],
+        )
+        entries = mw.read_all()
+        assert len(entries) == 2  # start + finish
+        assert entries[1]["status"] == "completed"
+        assert entries[1]["gate_result"] == "PASS"
+
+    def test_config_hash_deterministic(self) -> None:
+        from scripts.v460.lib.manifest import compute_config_hash
+
+        cfg = {"a": 1, "b": "c"}
+        h1 = compute_config_hash(cfg)
+        h2 = compute_config_hash(cfg)
+        assert h1 == h2
+        assert len(h1) == 16
+
+
+# =====================================================================
+# microstructure
+# =====================================================================
+
+class TestMicrostructure:
+    """microstructure.py のテスト."""
+
+    def _make_sample_df(self) -> pd.DataFrame:
+        n = 100
+        return pd.DataFrame({
+            "close": np.random.uniform(100, 110, n),
+            "best_bid": np.random.uniform(99, 105, n),
+            "best_ask": np.random.uniform(105, 110, n),
+            "mid_price": np.random.uniform(102, 108, n),
+            "spread": np.random.uniform(0.001, 0.01, n),
+            "bid_vol_5": np.random.uniform(1, 10, n),
+            "ask_vol_5": np.random.uniform(1, 10, n),
+            "depth_imbalance": np.random.uniform(-1, 1, n),
+            "buy_volume": np.random.uniform(0, 5, n),
+            "sell_volume": np.random.uniform(0, 5, n),
+            "trade_count": np.random.randint(0, 50, n).astype(float),
+            "vwap": np.random.uniform(100, 110, n),
+            "trade_flow_imbalance": np.random.uniform(-1, 1, n),
+        })
+
+    def test_feature_generation(self) -> None:
+        from ztb.features.microstructure import MICROSTRUCTURE_FEATURES, add_microstructure_features
+
+        df = self._make_sample_df()
+        result = add_microstructure_features(df, window=10)
+
+        for feat in MICROSTRUCTURE_FEATURES:
+            assert feat in result.columns, f"Missing feature: {feat}"
+
+        # No NaN
+        for feat in MICROSTRUCTURE_FEATURES:
+            assert result[feat].isna().sum() == 0, f"NaN in {feat}"
+
+    def test_no_mutation(self) -> None:
+        from ztb.features.microstructure import add_microstructure_features
+
+        df = self._make_sample_df()
+        original_cols = set(df.columns)
+        _ = add_microstructure_features(df)
+        assert set(df.columns) == original_cols  # input not mutated

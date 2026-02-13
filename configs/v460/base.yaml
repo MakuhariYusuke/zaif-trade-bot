@@ -1,0 +1,68 @@
+# v460 "Microstructure Edge" — 全実験共通ベース設定
+# 001# §4.2 準拠
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_v451_optimized_features.parquet"
+  v460_features_path: "data/v460/features/btc_jpy_1m_v460_features.parquet"
+  raw_dir: "data/v460/raw"
+  agg_dir: "data/v460/features"
+  # train_end_index は実験 YAML で必須 override
+  train_end_index: null
+
+# ---- 特徴量 ----
+features:
+  # §2.2 候補一覧 — 実験 YAML で選択
+  candidates:
+    - bid_ask_spread
+    - depth_imbalance
+    - trade_flow_imbalance
+    - vwap_deviation
+    - trade_intensity
+    - order_flow_toxicity
+    - price_impact
+    - micro_return_vol
+    - bid_depth_slope
+    - ask_depth_slope
+  # 実験 YAML で上書きして使用特徴量を決定
+  selected: null
+
+# ---- 取引 ----
+trading:
+  exchange: coincheck
+  symbol: btc_jpy
+  fee_model: maker_zero   # maker 0%, taker 禁止
+  order_type: maker_only
+
+# ---- Walk-Forward ----
+walk_forward:
+  n_folds: 5
+  train_ratio: 0.80
+
+# ---- XGBoost ----
+xgboost:
+  n_estimators: 200
+  max_depth: 6
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  eval_metric: logloss
+  verbosity: 0
+  n_jobs: -1
+
+# ---- SAC (G2 以降) ----
+sac:
+  total_steps: 50000
+  seeds: [42, 123, 456, 789]
+  batch_size: 256
+  lr: 0.0003
+  gamma: 0.99
+  tau: 0.005
+
+# ---- 結果出力 ----
+output:
+  results_dir: "results/v460"
+  manifest_path: "results/v460/manifest.jsonl"
+
+# ---- シード ----
+seed: 42

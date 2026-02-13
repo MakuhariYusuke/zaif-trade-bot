@@ -2066,20 +2066,8 @@ def _ensure_numpy(data: Union[List[float], np.ndarray, pd.Series]) -> np.ndarray
     raise TypeError(f"Unsupported data type: {type(data)}")
 
 
-def p_mean_method(p_values: List[float], method: str = "arithmetic") -> float:
-    """
-    Calculate combined p-value using the p-mean method.
-    """
-    if not p_values:
-        return 1.0
-
-    p_array = np.array(p_values)
-    if method == "arithmetic":
-        return float(np.mean(p_array))
-    if method == "geometric":
-        p_array = np.clip(p_array, 1e-10, 1.0)
-        return float(np.exp(np.mean(np.log(p_array))))
-    raise ValueError(f"Unknown method: {method}")
+# NOTE: p_mean_method は L1394 に正規定義あり。ここに重複定義があったが
+#       002# レビュー (D1) に基づき削除済み。
 
 
 def rolling_statistics(

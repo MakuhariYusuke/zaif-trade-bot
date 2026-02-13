@@ -17,7 +17,13 @@ from ztb.utils.errors import InsufficientFundsError, MinimumSizeError
 from ztb.utils.rate_limiter import RateLimiter
 
 from ..base.adapter import BaseExchangeAdapter
-from ..base.broker_interfaces import Balance, Order, Position
+from ..base.broker_interfaces import (
+    Balance,
+    Order,
+    OrderBookSnapshot,
+    Position,
+    TradeRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -419,3 +425,91 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         except Exception as e:
             logger.error(f"Failed to get current price from bitFlyer: {e}")
             return None
+
+    # -------------------------------------------------------------------
+    # v460: Market data methods (板情報・約定フロー)
+    # -------------------------------------------------------------------
+
+    async def get_orderbook(
+        self, symbol: str, depth: int = 10
+    ) -> OrderBookSnapshot:
+        """Fetch orderbook from bitFlyer ``GET /v1/board``.
+
+        Public API — no authentication required.
+
+        Args:
+            symbol: Internal format e.g. ``btc_jpy``.
+                    Auto-converted to bitFlyer native ``BTC_JPY``.
+            depth: Number of price levels per side.
+        """
+        # bitFlyer expects uppercase product_code
+        product_code = symbol.upper()
+        url = f"{self.BASE_URL}/v1/board?product_code={product_code}"
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            raw_bids = data.get("bids", [])[:depth]
+            raw_asks = data.get("asks", [])[:depth]
+
+            bids = [(float(b["price"]), float(b["size"])) for b in raw_bids]
+            asks = [(float(a["price"]), float(a["size"])) for a in raw_asks]
+
+            return OrderBookSnapshot(
+                timestamp=time.time(),
+                bids=bids,
+                asks=asks,
+                exchange="bitflyer",
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"bitFlyer orderbook request failed: {e}")
+            raise
+
+    async def get_recent_trades(
+        self, symbol: str, limit: int = 100
+    ) -> list[TradeRecord]:
+        """Fetch recent executions from bitFlyer ``GET /v1/executions``.
+
+        Public API — no authentication required.
+
+        Args:
+            symbol: Internal format e.g. ``btc_jpy``.
+            limit: Max number of trades to fetch (``count`` param).
+        """
+        product_code = symbol.upper()
+        url = (
+            f"{self.BASE_URL}/v1/executions"
+            f"?product_code={product_code}&count={limit}"
+        )
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            trades: list[TradeRecord] = []
+            items = data if isinstance(data, list) else []
+            for item in items[:limit]:
+                exec_date = item.get("exec_date", "")
+                # bitFlyer returns ISO datetime; convert roughly
+                try:
+                    from datetime import datetime
+
+                    ts = datetime.fromisoformat(
+                        exec_date.replace("Z", "+00:00")
+                    ).timestamp()
+                except Exception:
+                    ts = time.time()
+
+                trades.append(
+                    TradeRecord(
+                        timestamp=ts,
+                        price=float(item.get("price", 0)),
+                        amount=float(item.get("size", 0)),
+                        side=str(item.get("side", "BUY")).lower(),
+                    )
+                )
+            return trades
+        except requests.exceptions.RequestException as e:
+            logger.error(f"bitFlyer trades request failed: {e}")
+            raise
