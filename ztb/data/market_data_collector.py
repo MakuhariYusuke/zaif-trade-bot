@@ -115,7 +115,24 @@ class MarketDataCollector:
         self._ob_buffer.append(record)
 
     def _append_raw_trades(self, trades: list[TradeRecord]) -> None:
+        """Append trades with dedup via _last_trade_id.
+
+        003# #5: _last_trade_id was declared but never used.
+        Using timestamp+price+amount as composite trade ID for dedup.
+        """
+        new_trades: list[TradeRecord] = []
         for t in trades:
+            trade_id = f"{t.timestamp}:{t.price}:{t.amount}:{t.side}"
+            if self._last_trade_id is not None and trade_id <= self._last_trade_id:
+                continue  # Already seen or older
+            new_trades.append(t)
+
+        if new_trades:
+            # Update _last_trade_id to latest
+            latest = new_trades[-1]
+            self._last_trade_id = f"{latest.timestamp}:{latest.price}:{latest.amount}:{latest.side}"
+
+        for t in new_trades:
             self._tr_buffer.append(
                 {
                     "ts": t.timestamp,
@@ -253,10 +270,15 @@ class MarketDataCollector:
     # Continuous collection loop
     # ------------------------------------------------------------------
 
-    async def run_continuous(self, duration_hours: float = 24.0) -> None:
+    async def run_continuous(
+        self,
+        duration_hours: float = 24.0,
+        auto_aggregate: bool = False,
+    ) -> None:
         """Run collection loop for *duration_hours*.
 
         Flushes raw buffers every 10 minutes and at end.
+        003# #11: auto_aggregate=True triggers aggregate_to_1min after each flush.
         """
         self._running = True
         end_time = time.time() + duration_hours * 3600
@@ -281,6 +303,11 @@ class MarketDataCollector:
                 # Periodic flush
                 if time.time() - last_flush > flush_interval:
                     self.flush_raw()
+                    if auto_aggregate:
+                        try:
+                            self.aggregate_to_1min()
+                        except Exception as e:
+                            logger.warning(f"Auto-aggregate failed: {e}")
                     last_flush = time.time()
 
                 await asyncio.sleep(self.poll_interval_sec)
@@ -288,6 +315,11 @@ class MarketDataCollector:
             logger.info("Collection cancelled")
         finally:
             self.flush_raw()
+            if auto_aggregate:
+                try:
+                    self.aggregate_to_1min()
+                except Exception as e:
+                    logger.warning(f"Final auto-aggregate failed: {e}")
             logger.info(f"Collection finished. Total ticks: {ticks_collected}")
 
     def stop(self) -> None:

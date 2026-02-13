@@ -33,6 +33,33 @@ from ..base.broker_interfaces import (
 logger = logging.getLogger(__name__)
 
 
+# ---- Helpers ----
+
+def _parse_timestamp(value: Any) -> float:
+    """Parse timestamp from epoch float/int or ISO 8601 string.
+
+    Coincheck created_at can be either epoch or ISO 8601 (e.g. "2025-01-01T00:00:00.000Z").
+    003# #4: float() on ISO string raises ValueError — added dual parser.
+    """
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        # Try float (epoch) first
+        try:
+            return float(value)
+        except ValueError:
+            pass
+        # Try ISO 8601
+        from datetime import datetime, timezone
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt.timestamp()
+        except (ValueError, AttributeError):
+            logger.warning(f"Unparseable timestamp: {value!r}, using current time")
+            return time.time()
+    return time.time()
+
+
 # Type definitions for API responses
 CoincheckOrderResponse = Dict[str, Union[str, int, float]]
 CoincheckBalanceResponse = Dict[str, Union[str, float]]
@@ -560,11 +587,16 @@ class CoincheckAdapter(IBroker):
         """Fetch orderbook from Coincheck ``GET /api/order_books``.
 
         Public API — no authentication required.
+        003# #9: sync requests wrapped with asyncio.to_thread.
         """
+        import asyncio
+
         await self._check_rate_limit()
         url = f"{self.api_base_url}/api/order_books"
         try:
-            response = requests.get(url, timeout=self.request_timeout)
+            response = await asyncio.to_thread(
+                requests.get, url, timeout=self.request_timeout,
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -599,7 +631,11 @@ class CoincheckAdapter(IBroker):
         pair = normalize_symbol(symbol)
         url = f"{self.api_base_url}/api/trades?pair={pair}&limit={limit}"
         try:
-            response = requests.get(url, timeout=self.request_timeout)
+            import asyncio
+
+            response = await asyncio.to_thread(
+                requests.get, url, timeout=self.request_timeout,
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -610,7 +646,7 @@ class CoincheckAdapter(IBroker):
             for item in items[:limit]:
                 trades.append(
                     TradeRecord(
-                        timestamp=float(item.get("created_at", time.time())),
+                        timestamp=_parse_timestamp(item.get("created_at", time.time())),
                         price=float(item.get("rate", 0)),
                         amount=float(item.get("amount", 0)),
                         side=str(item.get("order_type", "buy")),

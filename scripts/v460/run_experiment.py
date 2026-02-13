@@ -6,6 +6,12 @@ v460 唯一のランナー (orchestrator 専任).
 責務: config 読込 → task ディスパッチ → 結果保存.
 ビジネスロジックは lib/ に委譲.
 
+003# レビュー反映:
+  #1: baseline を XGB vs Logistic/Ridge ペアに修正
+  #3: XGB パラメータ除外を _RESERVED_XGB_KEYS に委譲
+  #7: _evaluate_gate が gate_thresholds.yaml を参照
+  #16: task_feature_info を lib/tasks/ に分離
+
 Usage:
   python scripts/v460/run_experiment.py --config configs/v460/experiments/g1_xgb_h5_direction.yaml
   python scripts/v460/run_experiment.py --config configs/v460/experiments/g1_xgb_h5_direction.yaml --seed 123
@@ -24,89 +30,19 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.lib.config_loader import load_config
-from scripts.v460.lib.data_loader import generate_targets, load_parquet, split_train_eval
 from scripts.v460.lib.evaluator import (
     WalkForwardResult,
-    evaluate_multi_target,
     make_logistic,
+    make_ridge,
     make_xgboost,
+    make_xgboost_classifier,
+    make_xgboost_regressor,
 )
 from scripts.v460.lib.manifest import ManifestWriter
+from scripts.v460.lib.tasks.feature_info import task_feature_info
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-# ======================================================================
-# Task: feature_info (G1)
-# ======================================================================
-
-def task_feature_info(cfg: dict) -> dict:
-    """G1 feature information test — XGBoost walk-forward.
-
-    Returns results dict with fold_results for g1_judgment.
-    """
-    data_cfg = cfg["data"]
-    feat_cfg = cfg["features"]
-    wf_cfg = cfg.get("walk_forward", {})
-    xgb_cfg = cfg.get("xgboost", {})
-    seed = cfg.get("seed", 42)
-
-    # Load data
-    data_path = data_cfg.get("v460_features_path") or data_cfg.get("ohlcv_path")
-    feature_cols = feat_cfg["selected"]
-
-    df = load_parquet(data_path, feature_cols)
-
-    # Generate targets
-    g1_cfg = cfg.get("g1", {})
-    horizons = g1_cfg.get("horizons", [1, 5, 15])
-    target_types = g1_cfg.get("targets", ["direction", "magnitude", "volatility"])
-
-    df = generate_targets(df, horizons, target_types)
-
-    # Ensure features are float32
-    for col in feature_cols:
-        df[col] = df[col].astype("float32")
-
-    # XGBoost factory
-    def xgb_factory():
-        return make_xgboost(seed=seed, **{
-            k: v for k, v in xgb_cfg.items()
-            if k not in ("seed",)
-        })
-
-    # Walk-forward evaluation over all targets
-    n_folds = wf_cfg.get("n_folds", 5)
-    train_ratio = wf_cfg.get("train_ratio", 0.80)
-
-    multi_results = evaluate_multi_target(
-        df, feature_cols, horizons, target_types,
-        xgb_factory, "XGBoost", n_folds, train_ratio,
-    )
-
-    # Also run logistic baseline
-    baseline_results = evaluate_multi_target(
-        df, feature_cols, horizons, target_types,
-        lambda: make_logistic(seed=seed), "Logistic", n_folds, train_ratio,
-    )
-
-    # Build fold_results structure for g1_judgment
-    fold_results: dict[str, list[tuple[list[float], list[float]]]] = {}
-    for target_name, wf_result in multi_results.items():
-        fold_pairs: list[tuple[list[float], list[float]]] = []
-        for fold in wf_result.folds:
-            fold_pairs.append((fold.model_scores, fold.baseline_scores))
-        fold_results[target_name] = fold_pairs
-
-    # Summary metrics
-    summary: dict = {
-        "xgboost": {k: v.to_dict() for k, v in multi_results.items()},
-        "logistic": {k: v.to_dict() for k, v in baseline_results.items()},
-        "fold_results": fold_results,
-    }
-
-    return summary
 
 
 # ======================================================================
@@ -115,7 +51,10 @@ def task_feature_info(cfg: dict) -> dict:
 
 MODEL_FACTORIES = {
     "XGBoost": make_xgboost,
+    "XGBClassifier": make_xgboost_classifier,
+    "XGBRegressor": make_xgboost_regressor,
     "Logistic": make_logistic,
+    "Ridge": make_ridge,
 }
 
 TASK_DISPATCH = {
@@ -169,8 +108,8 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
             json.dump(results, f, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved: {out_path}")
 
-        # Determine gate result
-        gate_result = _evaluate_gate(gate, results)
+        # Determine gate result using thresholds from config
+        gate_result = _evaluate_gate(gate, results, cfg)
 
         manifest.finish_run(
             entry, metrics=results.get("xgboost", {}),
@@ -189,13 +128,32 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
         raise
 
 
-def _evaluate_gate(gate: str, results: dict) -> str:
-    """Quick gate evaluation from results."""
+def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
+    """Gate evaluation using thresholds from config.
+
+    003# #7: gate_thresholds.yaml の閾値を g1_judgment に渡す.
+    """
     if "G1" in gate:
         from ztb.metrics.gate_checks import g1_judgment
         fold_results = results.get("fold_results", {})
         if fold_results:
-            judgment = g1_judgment(fold_results)
+            # Load gate thresholds from config
+            thresholds_path = _PROJECT_ROOT / "configs/v460/gate_thresholds.yaml"
+            try:
+                gate_cfg = load_config(str(thresholds_path))
+                g1_cfg = gate_cfg.get("g1_info", {})
+                alpha = g1_cfg.get("p_alpha", 0.05)
+                min_effect = g1_cfg.get("min_cliff_d", 0.33)
+            except Exception:
+                logger.warning("gate_thresholds.yaml not found, using defaults")
+                alpha = 0.05
+                min_effect = 0.33
+
+            judgment = g1_judgment(
+                fold_results,
+                alpha=alpha,
+                min_effect=min_effect,
+            )
             return "PASS" if judgment["g1_pass"] else "FAIL"
     return "PENDING"
 

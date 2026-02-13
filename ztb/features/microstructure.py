@@ -111,7 +111,8 @@ def add_microstructure_features(
         df["ask_depth_slope"] = df["ask_vol_5"] / ask_range
 
     # Fill NaN from rolling ops
-    df = df.ffill().bfill().fillna(0)
+    # 003# #8: bfill() removed — causes look-ahead leakage in training
+    df = df.ffill().fillna(0)
 
     return df
 

@@ -5,6 +5,12 @@ K2 (scripts/v459/run_k2_nonrl_upper_bound.py) の walk_forward_eval() を
 ライブラリ化。G1-info 判定の評価エンジン。
 
 001# §6.4 準拠: K2 の walk_forward_eval() を evaluator.py にライブラリ化.
+
+003# レビュー反映:
+  #1: baseline をゼロベクトル → Logistic ペア化
+  #2: magnitude/volatility に回帰器 (XGBRegressor) 分離
+  #3: XGB パラメータ二重指定修正 (factory 側で _RESERVED_KEYS を除外)
+  #17: fold_results に統計量のみ保持 (生配列廃止)
 """
 
 from __future__ import annotations
@@ -17,45 +23,85 @@ from typing import Any, Callable, Optional
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+# Keys managed internally by factory — excluded from config pass-through
+_RESERVED_XGB_KEYS = frozenset({
+    "eval_metric", "n_jobs", "verbosity", "random_state", "seed",
+})
+
 # ---------------------------------------------------------------
 # Model factories
 # ---------------------------------------------------------------
 
-def make_xgboost(
-    n_estimators: int = 200,
-    max_depth: int = 6,
-    learning_rate: float = 0.05,
-    subsample: float = 0.8,
-    colsample_bytree: float = 0.8,
+def make_xgboost_classifier(
     seed: int = 42,
     **kwargs: Any,
 ) -> Any:
-    """XGBoost classifier factory."""
+    """XGBoost classifier factory (direction targets)."""
     from xgboost import XGBClassifier
+    # Filter out reserved keys to avoid TypeError from double specification
+    filtered = {k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS}
     return XGBClassifier(
-        n_estimators=n_estimators,
-        max_depth=max_depth,
-        learning_rate=learning_rate,
-        subsample=subsample,
-        colsample_bytree=colsample_bytree,
+        n_estimators=filtered.pop("n_estimators", 200),
+        max_depth=filtered.pop("max_depth", 6),
+        learning_rate=filtered.pop("learning_rate", 0.05),
+        subsample=filtered.pop("subsample", 0.8),
+        colsample_bytree=filtered.pop("colsample_bytree", 0.8),
         random_state=seed,
         eval_metric="logloss",
         verbosity=0,
         n_jobs=-1,
-        **kwargs,
+        **filtered,
     )
 
 
+def make_xgboost_regressor(
+    seed: int = 42,
+    **kwargs: Any,
+) -> Any:
+    """XGBoost regressor factory (magnitude/volatility targets)."""
+    from xgboost import XGBRegressor
+    filtered = {k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS}
+    return XGBRegressor(
+        n_estimators=filtered.pop("n_estimators", 200),
+        max_depth=filtered.pop("max_depth", 6),
+        learning_rate=filtered.pop("learning_rate", 0.05),
+        subsample=filtered.pop("subsample", 0.8),
+        colsample_bytree=filtered.pop("colsample_bytree", 0.8),
+        random_state=seed,
+        eval_metric="rmse",
+        verbosity=0,
+        n_jobs=-1,
+        **filtered,
+    )
+
+
+# Backward compat alias
+def make_xgboost(seed: int = 42, **kwargs: Any) -> Any:
+    """Alias for make_xgboost_classifier (backward compat)."""
+    return make_xgboost_classifier(seed=seed, **kwargs)
+
+
 def make_logistic(seed: int = 42) -> Any:
-    """Logistic regression factory (baseline)."""
+    """Logistic regression factory (baseline for classification)."""
     from sklearn.linear_model import LogisticRegression
     return LogisticRegression(max_iter=500, C=1.0, solver="lbfgs", random_state=seed)
+
+
+def make_ridge(seed: int = 42) -> Any:
+    """Ridge regression factory (baseline for regression)."""
+    from sklearn.linear_model import Ridge
+    return Ridge(alpha=1.0, random_state=seed)
+
+
+def _is_classification(target_type: str) -> bool:
+    """Determine if a target type requires classification or regression."""
+    return target_type == "direction"
 
 
 # ---------------------------------------------------------------
@@ -76,10 +122,11 @@ class FoldResult:
     ic_high_conf: Optional[float] = None
     n_high_conf: int = 0
     target_rate: float = 0.5
-
-    # For p-mean / Holm: raw model & baseline scores
-    model_scores: list[float] = field(default_factory=list)
-    baseline_scores: list[float] = field(default_factory=list)
+    mae: Optional[float] = None  # For regression targets
+    is_classification: bool = True
+    # Transient: per-fold signal for g1_judgment pairing.
+    # Not serialized in to_dict() — only used in-memory.
+    _signal: list[float] = field(default_factory=list, repr=False)
 
 
 @dataclass
@@ -109,6 +156,7 @@ class WalkForwardResult:
                 {
                     "fold": f.fold, "accuracy": f.accuracy,
                     "ic_spearman": f.ic_spearman, "ic_pvalue": f.ic_pvalue,
+                    "mae": f.mae,
                 }
                 for f in self.folds
             ],
@@ -127,10 +175,12 @@ def walk_forward_eval(
     model_name: str = "XGBoost",
     n_folds: int = 5,
     train_ratio: float = 0.80,
+    is_classification: bool = True,
 ) -> WalkForwardResult:
     """Walk-forward N-fold evaluation.
 
     K2 walk_forward_eval のライブラリ版。Blocked time-split.
+    分類/回帰の両方に対応。
 
     Args:
         df: Full DataFrame with feature and target columns.
@@ -140,6 +190,7 @@ def walk_forward_eval(
         model_name: Name for reporting.
         n_folds: Number of folds.
         train_ratio: Train proportion within each fold.
+        is_classification: True for classification, False for regression.
 
     Returns:
         WalkForwardResult with per-fold metrics.
@@ -177,18 +228,26 @@ def walk_forward_eval(
         # Predict
         y_pred = model.predict(X_test_s)
 
-        # Probabilities (for IC)
-        if hasattr(model, "predict_proba"):
+        # Signal for IC calculation
+        if is_classification and hasattr(model, "predict_proba"):
             y_prob = model.predict_proba(X_test_s)[:, 1]
+            signal = y_prob * 2 - 1  # [0,1] → [-1,1]
         else:
-            y_prob = y_pred.astype(float)
+            # Regression: predictions are the signal directly
+            signal = y_pred.astype(float)
 
         # Metrics
-        acc = float(accuracy_score(y_test, y_pred))
-        f1 = float(f1_score(y_test, y_pred, average="macro"))
+        if is_classification:
+            acc = float(accuracy_score(y_test, y_pred))
+            f1 = float(f1_score(y_test, y_pred, average="macro"))
+            mae = None
+        else:
+            # Regression: accuracy = direction agreement
+            acc = float(np.mean(np.sign(y_pred) == np.sign(y_test)))
+            f1 = 0.0
+            mae = float(mean_absolute_error(y_test, y_pred))
 
-        # IC: P(up) → [-1, 1] vs price_change
-        signal = y_prob * 2 - 1
+        # IC: signal vs price_change
         price_changes = df["close"].iloc[fold_start:fold_end].iloc[train_size:].diff().values
         if len(price_changes) == len(signal):
             ic_result = stats.spearmanr(signal, price_changes)
@@ -205,10 +264,6 @@ def walk_forward_eval(
             hc_result = stats.spearmanr(signal[high_conf_mask], price_changes[high_conf_mask])
             ic_high = float(hc_result.correlation) if not np.isnan(hc_result.correlation) else None
 
-        # Mann-Whitney scores for gate tests
-        model_scores = signal.tolist()
-        baseline_scores = np.zeros_like(signal).tolist()
-
         folds.append(FoldResult(
             fold=fold_i,
             model_name=model_name,
@@ -221,8 +276,9 @@ def walk_forward_eval(
             ic_high_conf=round(ic_high, 6) if ic_high is not None else None,
             n_high_conf=n_high,
             target_rate=round(float(y_test.mean()), 4),
-            model_scores=model_scores,
-            baseline_scores=baseline_scores,
+            mae=round(mae, 6) if mae is not None else None,
+            is_classification=is_classification,
+            _signal=signal.tolist(),
         ))
         logger.info(
             f"[{model_name}] fold={fold_i}: acc={acc:.4f} ic={ic:.6f} p={ic_p:.4f}"
@@ -256,18 +312,23 @@ def evaluate_multi_target(
     model_name: str = "XGBoost",
     n_folds: int = 5,
     train_ratio: float = 0.80,
+    regression_factory: Optional[Callable[[], Any]] = None,
 ) -> dict[str, WalkForwardResult]:
     """Run walk-forward for all horizon × target combinations.
+
+    分類 (direction) と回帰 (magnitude/volatility) を自動切替。
 
     Args:
         df: DataFrame with target columns (target_{type}_h{horizon}).
         feature_cols: Feature column names.
         horizons: List of horizons (1, 5, 15).
         target_types: List of target types (direction, magnitude, volatility).
-        model_factory: Model factory callable.
+        model_factory: Classifier factory (for direction targets).
         model_name: Model name for reporting.
         n_folds: Number of folds.
         train_ratio: Train ratio within each fold.
+        regression_factory: Regressor factory (for magnitude/volatility).
+            If None, uses model_factory for all targets.
 
     Returns:
         Dict of {target_name: WalkForwardResult}.
@@ -285,14 +346,23 @@ def evaluate_multi_target(
             mask = df[target_col].notna()
             df_clean = df.loc[mask].reset_index(drop=True)
 
-            # For classification targets, ensure int type
-            if ttype == "direction":
-                df_clean[target_col] = df_clean[target_col].astype(int)
+            is_cls = _is_classification(ttype)
 
-            logger.info(f"Evaluating {target_col}: {len(df_clean)} rows")
+            # Select appropriate factory
+            if is_cls:
+                factory = model_factory
+                df_clean[target_col] = df_clean[target_col].astype(int)
+            else:
+                factory = regression_factory or model_factory
+
+            logger.info(
+                f"Evaluating {target_col}: {len(df_clean)} rows "
+                f"({'classification' if is_cls else 'regression'})"
+            )
             wf = walk_forward_eval(
                 df_clean, feature_cols, target_col,
-                model_factory, model_name, n_folds, train_ratio,
+                factory, model_name, n_folds, train_ratio,
+                is_classification=is_cls,
             )
             wf.target_name = target_col
             results[target_col] = wf

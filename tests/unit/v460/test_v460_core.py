@@ -52,6 +52,8 @@ class TestHolmBonferroniGate:
 
     def test_all_pass(self) -> None:
         from ztb.metrics.gate_checks import holm_bonferroni_gate
+        # 003# #20: seed fixation for reproducibility
+        np.random.seed(42)
         # Model strongly dominates baseline → should pass
         model = list(np.random.normal(1.0, 0.1, 200))
         baseline = list(np.random.normal(0.0, 0.1, 200))
@@ -310,21 +312,23 @@ class TestMicrostructure:
     """microstructure.py のテスト."""
 
     def _make_sample_df(self) -> pd.DataFrame:
+        # 003# #20: seed fixation
+        rng = np.random.RandomState(42)
         n = 100
         return pd.DataFrame({
-            "close": np.random.uniform(100, 110, n),
-            "best_bid": np.random.uniform(99, 105, n),
-            "best_ask": np.random.uniform(105, 110, n),
-            "mid_price": np.random.uniform(102, 108, n),
-            "spread": np.random.uniform(0.001, 0.01, n),
-            "bid_vol_5": np.random.uniform(1, 10, n),
-            "ask_vol_5": np.random.uniform(1, 10, n),
-            "depth_imbalance": np.random.uniform(-1, 1, n),
-            "buy_volume": np.random.uniform(0, 5, n),
-            "sell_volume": np.random.uniform(0, 5, n),
-            "trade_count": np.random.randint(0, 50, n).astype(float),
-            "vwap": np.random.uniform(100, 110, n),
-            "trade_flow_imbalance": np.random.uniform(-1, 1, n),
+            "close": rng.uniform(100, 110, n),
+            "best_bid": rng.uniform(99, 105, n),
+            "best_ask": rng.uniform(105, 110, n),
+            "mid_price": rng.uniform(102, 108, n),
+            "spread": rng.uniform(0.001, 0.01, n),
+            "bid_vol_5": rng.uniform(1, 10, n),
+            "ask_vol_5": rng.uniform(1, 10, n),
+            "depth_imbalance": rng.uniform(-1, 1, n),
+            "buy_volume": rng.uniform(0, 5, n),
+            "sell_volume": rng.uniform(0, 5, n),
+            "trade_count": rng.randint(0, 50, n).astype(float),
+            "vwap": rng.uniform(100, 110, n),
+            "trade_flow_imbalance": rng.uniform(-1, 1, n),
         })
 
     def test_feature_generation(self) -> None:
@@ -347,3 +351,155 @@ class TestMicrostructure:
         original_cols = set(df.columns)
         _ = add_microstructure_features(df)
         assert set(df.columns) == original_cols  # input not mutated
+
+
+# =====================================================================
+# 003# #19: 異常系テスト
+# =====================================================================
+
+class TestTimestampParsing:
+    """003# #4: coincheck _parse_timestamp のテスト."""
+
+    def test_float_passthrough(self) -> None:
+        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+        assert _parse_timestamp(1234567890.5) == 1234567890.5
+
+    def test_epoch_string(self) -> None:
+        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+        result = _parse_timestamp("1234567890")
+        assert result == 1234567890.0
+
+    def test_iso8601(self) -> None:
+        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+        result = _parse_timestamp("2025-01-01T00:00:00Z")
+        assert isinstance(result, float)
+        assert result > 0
+
+    def test_iso8601_with_offset(self) -> None:
+        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+        result = _parse_timestamp("2025-01-01T09:00:00+09:00")
+        assert isinstance(result, float)
+
+    def test_garbage_fallback(self) -> None:
+        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+        result = _parse_timestamp("not-a-timestamp")
+        assert isinstance(result, float)  # Falls back to time.time()
+
+
+class TestCollectorDedup:
+    """003# #5: trade dedup via _last_trade_id のテスト."""
+
+    def test_dedup_prevents_duplicates(self) -> None:
+        from unittest.mock import AsyncMock
+
+        from ztb.data.market_data_collector import MarketDataCollector
+        from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
+
+        adapter = AsyncMock()
+        collector = MarketDataCollector(adapter, "btc_jpy", raw_dir="/tmp/test_raw")
+
+        trades = [
+            TradeRecord(timestamp=1000.0, price=50000.0, amount=0.1, side="buy"),
+            TradeRecord(timestamp=1001.0, price=50100.0, amount=0.2, side="sell"),
+        ]
+
+        collector._append_raw_trades(trades)
+        assert len(collector._tr_buffer) == 2
+
+        # Same trades again → should be filtered
+        collector._append_raw_trades(trades)
+        assert len(collector._tr_buffer) == 2  # No new
+
+
+class TestEvaluatorFactories:
+    """003# #2/3: factory 関数の分類/回帰テスト."""
+
+    def test_classifier_factory(self) -> None:
+        from scripts.v460.lib.evaluator import make_xgboost_classifier
+        model = make_xgboost_classifier(seed=42)
+        assert hasattr(model, "predict_proba")
+
+    def test_regressor_factory(self) -> None:
+        from scripts.v460.lib.evaluator import make_xgboost_regressor
+        model = make_xgboost_regressor(seed=42)
+        assert hasattr(model, "predict")
+        # Regressor should NOT have predict_proba
+        assert not hasattr(model, "predict_proba")
+
+    def test_reserved_keys_filtered(self) -> None:
+        """003# #3: reserved keys don't cause TypeError."""
+        from scripts.v460.lib.evaluator import make_xgboost_classifier
+        # Passing eval_metric/verbosity/n_jobs should not raise
+        model = make_xgboost_classifier(
+            seed=42,
+            eval_metric="auc",  # Should be filtered
+            verbosity=1,        # Should be filtered
+            n_jobs=2,           # Should be filtered
+        )
+        assert model is not None
+        # Factory should use its own hardcoded values, not the passed ones
+        assert model.get_params()["verbosity"] == 0
+
+    def test_ridge_factory(self) -> None:
+        from scripts.v460.lib.evaluator import make_ridge
+        model = make_ridge(seed=42)
+        assert hasattr(model, "predict")
+
+
+class TestDataLoaderEdgeCases:
+    """003# #12/#13/#14: data_loader 異常系テスト."""
+
+    def test_direction_nan_preserved(self) -> None:
+        """003# #12: NaN in returns should produce NaN direction, not 0."""
+        from scripts.v460.lib.data_loader import generate_targets
+
+        # Last row has no forward close → ret is NaN
+        df = pd.DataFrame({"close": [100.0, 101.0, 102.0]})
+        result = generate_targets(df, horizons=[1], target_types=["direction"])
+
+        # Last row (h=1) should be NaN (no future data)
+        assert pd.isna(result["target_direction_h1"].iloc[-1])
+
+    def test_column_order_deterministic(self, tmp_path: Path) -> None:
+        """003# #13: column order is stable across calls."""
+        from scripts.v460.lib.data_loader import load_parquet
+
+        df = pd.DataFrame({"close": [100], "z": [1], "a": [2], "m": [3]})
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        cols1 = list(load_parquet(p, feature_cols=["z", "a", "m"]).columns)
+        cols2 = list(load_parquet(p, feature_cols=["m", "z", "a"]).columns)
+        assert cols1 == cols2  # Same order regardless of input
+
+    def test_missing_column_raises(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.data_loader import load_parquet
+
+        df = pd.DataFrame({"close": [100], "a": [1]})
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        with pytest.raises(KeyError, match="Missing columns"):
+            load_parquet(p, feature_cols=["nonexistent"])
+
+
+class TestGateCheckG0FeatureColumns:
+    """003# #18: G0 column count uses feature columns only."""
+
+    def test_feature_column_count_excludes_targets(self, tmp_path: Path) -> None:
+        from scripts.v460.run_gate_check import run_g0
+
+        df = pd.DataFrame({
+            "close": [100.0, 101.0, 102.0],
+            "feat_a": [1, 2, 3],
+            "feat_b": [4, 5, 6],
+            "target_direction_h1": [1, 0, 1],
+        })
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        result = run_g0(str(p), thresholds={"min_feature_columns": 2, "max_nan_ratio": 0.01})
+        check = result["checks"]["feature_column_count"]
+        # Should count feat_a, feat_b only (not close, not target_*)
+        assert check["actual"] == 2
+        assert check["pass"] is True

@@ -146,7 +146,14 @@ class ManifestWriter:
         artifacts: Optional[list[str]] = None,
         status: str = "completed",
     ) -> None:
-        """Write a completed manifest line."""
+        """Write a completed manifest line.
+
+        NOTE (003# #15): By design, each run writes TWO lines to the manifest:
+          1. start_run() → status="running" (intent record / crash-recovery marker)
+          2. finish_run() → status="completed" (final result with metrics)
+        This is an event-log pattern, not a bug. To get the latest state,
+        group by run_id and take the last entry for each.
+        """
         entry.finished_at = datetime.now(timezone.utc).isoformat()
         entry.status = status
         entry.metrics = metrics

@@ -2,6 +2,11 @@
 v460 Data loader — Parquet 読込 + train/eval 分割.
 
 001# §1/§4 準拠.
+
+003# レビュー反映:
+  #12: direction NaN→0 を NaN 維持に修正
+  #13: set() による非決定的カラム順序を sorted() に修正
+  #14: pd.read_parquet に columns= を渡して必要列のみ読込
 """
 
 from __future__ import annotations
@@ -39,20 +44,26 @@ def load_parquet(
     if not p.exists():
         raise FileNotFoundError(f"Data file not found: {p}")
 
-    df = pd.read_parquet(p)
-    logger.info(f"Loaded {p.name}: shape={df.shape}")
-
     if feature_cols:
-        # Always keep close for target generation
-        keep = list(set(feature_cols + ["close"]))
-        missing = [c for c in keep if c not in df.columns]
+        # 003# #13: sorted() for deterministic column order (set() was non-deterministic)
+        # 003# #14: pass columns= to read_parquet for selective I/O
+        keep = sorted(set(feature_cols + ["close"]))
+
+        # Peek at available columns for timestamp detection
+        import pyarrow.parquet as pq
+        schema_cols = pq.read_schema(str(p)).names
+        for c in ["timestamp", "datetime", "dt"]:
+            if c in schema_cols and c not in keep:
+                keep.append(c)
+        missing = [c for c in keep if c not in schema_cols]
         if missing:
             raise KeyError(f"Missing columns in {p.name}: {missing}")
-        # Also keep timestamp/index columns if present
-        for c in ["timestamp", "datetime", "dt"]:
-            if c in df.columns and c not in keep:
-                keep.append(c)
-        df = df[keep]
+
+        df = pd.read_parquet(p, columns=keep)
+    else:
+        df = pd.read_parquet(p)
+
+    logger.info(f"Loaded {p.name}: shape={df.shape}")
 
     return df
 
@@ -100,7 +111,11 @@ def generate_targets(
         for ttype in target_types:
             col_name = f"target_{ttype}_h{h}"
             if ttype == "direction":
-                df[col_name] = (ret > 0).astype(np.int32)
+                # 003# #12: preserve NaN where ret is NaN (not ret > 0 → False → 0)
+                direction = pd.Series(np.nan, index=df.index, dtype="float32")
+                valid = ret.notna()
+                direction[valid] = (ret[valid] > 0).astype(np.int32)
+                df[col_name] = direction
             elif ttype == "magnitude":
                 df[col_name] = ret.astype(np.float32)
             elif ttype == "volatility":

@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 import requests
 
-from ztb.utils.errors import InsufficientFundsError, MinimumSizeError
+from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, NetworkError
 from ztb.utils.rate_limiter import RateLimiter
 
 from ..base.adapter import BaseExchangeAdapter
@@ -436,17 +436,23 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         """Fetch orderbook from bitFlyer ``GET /v1/board``.
 
         Public API — no authentication required.
+        003# #9: sync→asyncio.to_thread, #10: rate limit + NetworkError.
 
         Args:
             symbol: Internal format e.g. ``btc_jpy``.
                     Auto-converted to bitFlyer native ``BTC_JPY``.
             depth: Number of price levels per side.
         """
+        import asyncio
+
+        await self._check_rate_limit()
         # bitFlyer expects uppercase product_code
         product_code = symbol.upper()
         url = f"{self.BASE_URL}/v1/board?product_code={product_code}"
         try:
-            response = requests.get(url, timeout=10)
+            response = await asyncio.to_thread(
+                requests.get, url, timeout=10,
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -464,7 +470,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             )
         except requests.exceptions.RequestException as e:
             logger.error(f"bitFlyer orderbook request failed: {e}")
-            raise
+            raise NetworkError(f"bitFlyer orderbook error: {e}")
 
     async def get_recent_trades(
         self, symbol: str, limit: int = 100
@@ -472,18 +478,24 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         """Fetch recent executions from bitFlyer ``GET /v1/executions``.
 
         Public API — no authentication required.
+        003# #9: sync→asyncio.to_thread, #10: rate limit + NetworkError.
 
         Args:
             symbol: Internal format e.g. ``btc_jpy``.
             limit: Max number of trades to fetch (``count`` param).
         """
+        import asyncio
+
+        await self._check_rate_limit()
         product_code = symbol.upper()
         url = (
             f"{self.BASE_URL}/v1/executions"
             f"?product_code={product_code}&count={limit}"
         )
         try:
-            response = requests.get(url, timeout=10)
+            response = await asyncio.to_thread(
+                requests.get, url, timeout=10,
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -512,4 +524,4 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             return trades
         except requests.exceptions.RequestException as e:
             logger.error(f"bitFlyer trades request failed: {e}")
-            raise
+            raise NetworkError(f"bitFlyer trades error: {e}")

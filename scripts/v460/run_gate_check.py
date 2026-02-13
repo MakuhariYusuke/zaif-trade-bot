@@ -67,13 +67,15 @@ def run_g0(
         "pass": hash_ok,
     }
 
-    # Column count
+    # Column count — feature columns only (exclude target_, close, etc.)
+    # 003# #18: use feature columns, not all columns
     df = load_parquet(data_path)
-    n_cols = len(df.columns)
-    results["checks"]["column_count"] = {
-        "actual": n_cols,
+    feature_cols = [c for c in df.columns if not c.startswith("target_") and c != "close"]
+    n_feature_cols = len(feature_cols)
+    results["checks"]["feature_column_count"] = {
+        "actual": n_feature_cols,
         "threshold": min_cols,
-        "pass": n_cols >= min_cols,
+        "pass": n_feature_cols >= min_cols,
     }
 
     # NaN ratio
@@ -102,6 +104,9 @@ def run_g0(
 def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     """G1 judgment from pre-computed experiment results.
 
+    003# #6: Also check min_ic, min_accuracy, min_significant_folds
+    from gate_thresholds.yaml.
+
     Expects results JSON with fold_results structure per §5.3.
     """
     if thresholds is None:
@@ -110,7 +115,7 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     with open(results_path, "r", encoding="utf-8") as f:
         exp_results = json.load(f)
 
-    # Import gate_checks (will be created in P1-3/4)
+    # Import gate_checks
     from ztb.metrics.gate_checks import g1_judgment
 
     judgment = g1_judgment(
@@ -119,10 +124,42 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
         min_effect=thresholds.get("min_cliff_d", 0.33),
     )
 
+    # 003# #6: Additional threshold checks from gate_thresholds.yaml
+    min_ic = thresholds.get("min_ic", 0.02)
+    min_accuracy = thresholds.get("min_accuracy", 0.51)
+    min_sig_folds = thresholds.get("min_significant_folds", 2)
+
+    extra_checks: dict[str, dict] = {}
+    xgb_results = exp_results.get("xgboost", {})
+    for target_name, target_data in xgb_results.items():
+        ic_mean = target_data.get("ic_mean", 0.0)
+        acc_mean = target_data.get("accuracy_mean", 0.0)
+        sig_count = target_data.get("ic_significant_count", 0)
+
+        extra_checks[target_name] = {
+            "ic_pass": ic_mean >= min_ic,
+            "ic_mean": ic_mean,
+            "ic_threshold": min_ic,
+            "accuracy_pass": acc_mean >= min_accuracy,
+            "accuracy_mean": acc_mean,
+            "accuracy_threshold": min_accuracy,
+            "sig_folds_pass": sig_count >= min_sig_folds,
+            "sig_folds": sig_count,
+            "sig_folds_threshold": min_sig_folds,
+        }
+
+    extra_all_pass = all(
+        c["ic_pass"] and c["accuracy_pass"] and c["sig_folds_pass"]
+        for c in extra_checks.values()
+    ) if extra_checks else False
+
+    final_pass = judgment["g1_pass"] and extra_all_pass
+
     return {
         "gate": "G1-info",
-        "gate_result": "PASS" if judgment["g1_pass"] else "FAIL",
+        "gate_result": "PASS" if final_pass else "FAIL",
         "details": judgment,
+        "threshold_checks": extra_checks,
     }
 
 
