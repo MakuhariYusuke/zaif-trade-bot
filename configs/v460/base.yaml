@@ -5,6 +5,7 @@
 data:
   ohlcv_path: "data/btc_jpy_1m_v451_optimized_features.parquet"
   v460_features_path: "data/v460/features/btc_jpy_1m_v460_features.parquet"
+  v460_features_hash: "9494e9cf59834c56"  # SHA-256 prefix (G0 data hash)
   raw_dir: "data/v460/raw"
   agg_dir: "data/v460/features"
   # train_end_index は実験 YAML で必須 override

@@ -57,7 +57,9 @@ def run_g0(
     # Hash
     actual_hash = compute_data_hash(data_path)
     if expected_hash:
-        hash_ok = actual_hash == expected_hash
+        # Support prefix matching (e.g. 16-char prefix from config)
+        cmp_len = min(len(expected_hash), len(actual_hash))
+        hash_ok = actual_hash[:cmp_len] == expected_hash[:cmp_len]
     else:
         hash_ok = True  # No expected hash → skip (record for manifest)
         logger.warning("No expected hash provided. Recording actual hash only.")

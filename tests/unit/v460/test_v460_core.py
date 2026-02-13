@@ -503,3 +503,99 @@ class TestGateCheckG0FeatureColumns:
         # Should count feat_a, feat_b only (not close, not target_*)
         assert check["actual"] == 2
         assert check["pass"] is True
+
+
+# =====================================================================
+# build_features
+# =====================================================================
+
+class TestBuildFeatures:
+    """build_features.py の単体テスト."""
+
+    def test_proxy_features_generation(self) -> None:
+        """OHLCV から 10 特徴量が生成されること."""
+        from scripts.v460.build_features import V460_FEATURES, build_proxy_features
+
+        rng = np.random.RandomState(42)
+        n = 200
+        close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))
+        df = pd.DataFrame({
+            "open": close + rng.normal(0, 500, n),
+            "high": close + np.abs(rng.normal(0, 2000, n)),
+            "low": close - np.abs(rng.normal(0, 2000, n)),
+            "close": close,
+            "volume": rng.exponential(1.0, n),
+        })
+
+        result = build_proxy_features(df)
+
+        assert "close" in result.columns
+        for feat in V460_FEATURES:
+            assert feat in result.columns, f"Missing: {feat}"
+
+        # No NaN
+        assert result[V460_FEATURES].isna().sum().sum() == 0
+
+    def test_all_features_nontrivial(self) -> None:
+        """生成された特徴量が定数でないこと（標準偏差 > 0）."""
+        from scripts.v460.build_features import V460_FEATURES, build_proxy_features
+
+        rng = np.random.RandomState(123)
+        n = 500
+        close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))
+        df = pd.DataFrame({
+            "open": close + rng.normal(0, 500, n),
+            "high": close + np.abs(rng.normal(0, 2000, n)),
+            "low": close - np.abs(rng.normal(0, 2000, n)),
+            "close": close,
+            "volume": rng.exponential(1.0, n) + 0.01,
+        })
+
+        result = build_proxy_features(df)
+        for feat in V460_FEATURES:
+            std = result[feat].std()
+            assert std > 0, f"{feat} is constant (std=0)"
+
+
+class TestG0HashPrefix:
+    """G0 hash prefix matching テスト."""
+
+    def test_hash_prefix_match(self, tmp_path: Path) -> None:
+        from scripts.v460.run_gate_check import run_g0
+        from scripts.v460.lib.data_loader import compute_data_hash
+
+        df = pd.DataFrame({
+            "feat_a": [1, 2, 3],
+            "feat_b": [4, 5, 6],
+            "feat_c": [7, 8, 9],
+            "feat_d": [10, 11, 12],
+            "close": [100.0, 101.0, 102.0],
+        })
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        full_hash = compute_data_hash(str(p))
+        prefix = full_hash[:16]
+
+        # Full hash and prefix should both match
+        result = run_g0(str(p), expected_hash=prefix,
+                        thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01})
+        assert result["checks"]["data_hash"]["pass"] is True
+        assert result["gate_result"] == "PASS"
+
+    def test_hash_mismatch(self, tmp_path: Path) -> None:
+        from scripts.v460.run_gate_check import run_g0
+
+        df = pd.DataFrame({
+            "feat_a": [1, 2, 3],
+            "feat_b": [4, 5, 6],
+            "feat_c": [7, 8, 9],
+            "feat_d": [10, 11, 12],
+            "close": [100.0, 101.0, 102.0],
+        })
+        p = tmp_path / "test.parquet"
+        df.to_parquet(p)
+
+        result = run_g0(str(p), expected_hash="0000000000000000",
+                        thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01})
+        assert result["checks"]["data_hash"]["pass"] is False
