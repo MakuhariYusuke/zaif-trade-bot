@@ -247,10 +247,14 @@ def walk_forward_eval(
             f1 = 0.0
             mae = float(mean_absolute_error(y_test, y_pred))
 
-        # IC: signal vs price_change
-        price_changes = df["close"].iloc[fold_start:fold_end].iloc[train_size:].diff().values
-        if len(price_changes) == len(signal):
-            ic_result = stats.spearmanr(signal, price_changes)
+        # IC: Spearman rank correlation between signal and actual target.
+        # Classification: signal (continuous [-1,1]) vs binary y_test → rank biserial.
+        # Regression: predicted vs actual forward return → standard IC definition.
+        # BUG FIX: 旧コードは df["close"].diff() を使用 → 先頭 NaN が spearmanr を
+        # 完全に NaN 化していた。y_test を直接使用することで修正。
+        ic_target = y_test.astype(float)
+        if len(ic_target) >= 10:
+            ic_result = stats.spearmanr(signal, ic_target, nan_policy="omit")
             ic = float(ic_result.correlation) if not np.isnan(ic_result.correlation) else 0.0
             ic_p = float(ic_result.pvalue) if not np.isnan(ic_result.pvalue) else 1.0
         else:
@@ -261,7 +265,10 @@ def walk_forward_eval(
         n_high = int(high_conf_mask.sum())
         ic_high = None
         if n_high > 50:
-            hc_result = stats.spearmanr(signal[high_conf_mask], price_changes[high_conf_mask])
+            hc_result = stats.spearmanr(
+                signal[high_conf_mask], ic_target[high_conf_mask],
+                nan_policy="omit",
+            )
             ic_high = float(hc_result.correlation) if not np.isnan(hc_result.correlation) else None
 
         folds.append(FoldResult(

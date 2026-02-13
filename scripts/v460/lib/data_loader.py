@@ -119,9 +119,12 @@ def generate_targets(
             elif ttype == "magnitude":
                 df[col_name] = ret.astype(np.float32)
             elif ttype == "volatility":
-                # Rolling stdev of returns over the horizon window
+                # Rolling stdev of log returns over the horizon window.
+                # BUG FIX: rolling(1).std() is NaN (ddof=1 with 1 sample).
+                # Use min window of 2 to produce valid results for h=1.
                 log_ret = np.log(close / close.shift(1))
-                df[col_name] = log_ret.rolling(h).std().shift(-h).astype(np.float32)
+                vol_window = max(h, 2)
+                df[col_name] = log_ret.rolling(vol_window).std().shift(-h).astype(np.float32)
             else:
                 raise ValueError(f"Unknown target type: {ttype}")
 

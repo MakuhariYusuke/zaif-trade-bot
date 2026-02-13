@@ -10,11 +10,15 @@ v460 Gate 統計検定モジュール.
 
 from __future__ import annotations
 
+import numpy as np
 from scipy.stats import mannwhitneyu
 
 
 def cliffs_delta(x: list[float], y: list[float]) -> float:
-    """Cliff's Delta effect size.
+    """Cliff's Delta effect size — O(n log n) via Mann-Whitney U.
+
+    旧実装は O(n*m) のネストループで大規模データに非対応.
+    Mann-Whitney U 統計量から d = 2U/(n1*n2) - 1 で導出.
 
     Args:
         x: Model scores.
@@ -26,11 +30,10 @@ def cliffs_delta(x: list[float], y: list[float]) -> float:
     n1, n2 = len(x), len(y)
     if n1 == 0 or n2 == 0:
         return 0.0
-    dominance = sum(
-        (1 if a > b else -1 if a < b else 0)
-        for a in x for b in y
-    )
-    return dominance / (n1 * n2)
+    # Mann-Whitney U gives count of x[i] > y[j] pairs (+ 0.5 for ties)
+    # Cliff's delta = 2U / (n1*n2) - 1
+    u_stat, _ = mannwhitneyu(x, y, alternative="two-sided")
+    return float(2.0 * u_stat / (n1 * n2) - 1.0)
 
 
 def compare_single(
