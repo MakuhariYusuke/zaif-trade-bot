@@ -230,34 +230,16 @@ def run_g1_1(
     judgment = g1_1_judgment(metrics, thresholds)
 
     # Monte Carlo PnL シミュレーション (014# T5 統合)
+    # 027# 型統合: FillRecord 共通化によりフィールド変換不要
     if with_mc:
         try:
             from ztb.risk.pnl_monte_carlo import (
-                FillRecord as MCFillRecord,
                 MonteCarloConfig,
                 PnLMonteCarloSimulator,
             )
 
-            mc_records = [
-                MCFillRecord(
-                    cycle_id=r.cycle_id,
-                    timestamp=r.timestamp,
-                    side=r.side,
-                    order_price=r.order_price,
-                    order_quantity=r.order_quantity,
-                    fill_price=r.fill_price,
-                    filled=r.filled,
-                    cancelled=r.cancelled,
-                    queue_wait_sec=r.queue_wait_sec,
-                    mid_at_fill=r.mid_at_fill,
-                    mid_30s_after=r.mid_30s_after,
-                    post_fill_30s_pnl=r.post_fill_30s_pnl,
-                    adverse_selected=r.adverse_selected,
-                )
-                for r in records
-            ]
-            sim = PnLMonteCarloSimulator(MonteCarloConfig())
-            mc_result = sim.run(mc_records)
+            sim = PnLMonteCarloSimulator(records, MonteCarloConfig())
+            mc_result = sim.run()
             judgment["monte_carlo"] = mc_result.to_dict()
             logger.info(
                 f"MC: monthly PnL mean={mc_result.pnl_mean_jpy:+,.0f} JPY, "

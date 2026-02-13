@@ -306,6 +306,7 @@ class FillTestRunner:
         filled = False
         fill_price: Optional[float] = None
         t_fill: Optional[float] = None
+        cancel_reason_poll: Optional[str] = None  # 025# F6: poll 中の cancel 理由
         elapsed = 0.0
 
         while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
@@ -315,12 +316,34 @@ class FillTestRunner:
             try:
                 status_order = await self.adapter.get_order_status(order.order_id)
                 if status_order is None:
-                    # 注文が open orders にも transactions にもない
-                    # → 約定済みか期限切れ。transactions を確認して filled 扱い
-                    logger.info(f"Order {order.order_id} no longer found — likely filled")
-                    filled = True
-                    fill_price = order_price  # best estimate
-                    t_fill = time.time()
+                    # 025# F6: open orders にも transactions にもない
+                    # → API 一時障害の可能性があるため 1 回リトライ
+                    logger.warning(
+                        f"Order {order.order_id} not found — retrying after 2s"
+                    )
+                    await asyncio.sleep(2.0)
+                    status_order = await self.adapter.get_order_status(
+                        order.order_id,
+                    )
+                    if status_order is not None and status_order.status == "filled":
+                        filled = True
+                        fill_price = (
+                            status_order.price
+                            if status_order.price
+                            else order_price
+                        )
+                        t_fill = time.time()
+                        logger.info(
+                            f"Order confirmed filled on retry @ "
+                            f"{fill_price:.0f} JPY"
+                        )
+                        break
+                    # リトライ後も不明 → 保守的に cancelled 扱い
+                    logger.warning(
+                        f"Order {order.order_id} status unknown after retry "
+                        f"— treating as cancelled (status_unknown)"
+                    )
+                    cancel_reason_poll = "status_unknown"
                     break
                 elif status_order.status == "filled":
                     filled = True
@@ -404,7 +427,11 @@ class FillTestRunner:
             post_fill_30s_pnl=post_fill_pnl,
             adverse_selected=adverse_selected,
             adverse_selected_raw=adverse_selected_raw,
-            cancel_reason="timeout" if (not filled and queue_wait >= self.config.order_timeout_sec) else None,
+            cancel_reason=(
+                cancel_reason_poll
+                if cancel_reason_poll
+                else ("timeout" if (not filled and queue_wait >= self.config.order_timeout_sec) else None)
+            ),
             run_id=self._run_id,
             git_sha=self._git_sha,
         )

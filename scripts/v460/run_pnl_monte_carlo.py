@@ -111,7 +111,7 @@ def main() -> None:
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        result_dict = sim.to_dict(result)
+        result_dict = result.to_dict()
         if args.sensitivity:
             result_dict["sensitivity"] = sim.sensitivity_analysis()
         output_path.write_text(

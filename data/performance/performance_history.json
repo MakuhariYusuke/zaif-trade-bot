@@ -38,5 +38,45 @@
     "network_bytes_recv": 1198195072,
     "gpu_memory_used_mb": null,
     "gpu_utilization_percent": null
+  },
+  {
+    "timestamp": "2026-02-14T01:38:00.283958",
+    "cpu_percent": 13.2,
+    "memory_percent": 80.6,
+    "disk_usage_percent": 54.9,
+    "network_bytes_sent": 2468272161,
+    "network_bytes_recv": 4784776113,
+    "gpu_memory_used_mb": null,
+    "gpu_utilization_percent": null
+  },
+  {
+    "timestamp": "2026-02-14T01:38:06.612653",
+    "cpu_percent": 30.6,
+    "memory_percent": 80.6,
+    "disk_usage_percent": 54.9,
+    "network_bytes_sent": 2468284617,
+    "network_bytes_recv": 4784824595,
+    "gpu_memory_used_mb": null,
+    "gpu_utilization_percent": null
+  },
+  {
+    "timestamp": "2026-02-14T01:54:10.861539",
+    "cpu_percent": 70.8,
+    "memory_percent": 83.0,
+    "disk_usage_percent": 54.9,
+    "network_bytes_sent": 2510345859,
+    "network_bytes_recv": 4808833428,
+    "gpu_memory_used_mb": null,
+    "gpu_utilization_percent": null
+  },
+  {
+    "timestamp": "2026-02-14T01:54:17.260930",
+    "cpu_percent": 8.0,
+    "memory_percent": 83.9,
+    "disk_usage_percent": 54.9,
+    "network_bytes_sent": 2510364717,
+    "network_bytes_recv": 4808955505,
+    "gpu_memory_used_mb": null,
+    "gpu_utilization_percent": null
   }
 ]

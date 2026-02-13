@@ -854,3 +854,86 @@ class TestFillTestRunnerSaveResilience:
         emergency_dir = tmp_path / "results" / "emergency"
         if emergency_dir.exists():
             assert len(list(emergency_dir.glob("*.jsonl"))) == 0
+
+
+class TestUnknownFillHandling:
+    """025# F6: status_order is None 時に filled 扱いしない安全策のテスト."""
+
+    def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
+        """テスト用の FillTestRunner を作成 (adapter は AsyncMock)."""
+        from unittest.mock import AsyncMock, MagicMock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+
+        adapter = AsyncMock()
+        # get_orderbook の戻り値を設定
+        ob_mock = MagicMock()
+        ob_mock.bids = [(15000000.0, 0.1)]
+        ob_mock.asks = [(15001000.0, 0.1)]
+        adapter.get_orderbook.return_value = ob_mock
+        # place_order の戻り値
+        order_mock = MagicMock()
+        order_mock.order_id = "test_order_123"
+        adapter.place_order.return_value = order_mock
+
+        config = FillTestConfig(
+            results_dir=str(tmp_path / "results"),
+            order_timeout_sec=10.0,
+            poll_interval_sec=0.01,
+            post_fill_wait_sec=0.01,
+        )
+        runner = FillTestRunner(adapter, config)
+        return runner
+
+    @pytest.mark.asyncio
+    async def test_status_none_twice_becomes_cancelled_status_unknown(
+        self, tmp_path: Path,
+    ) -> None:
+        """get_order_status が 2 回 None → cancelled, cancel_reason=status_unknown."""
+        runner = self._make_runner(tmp_path)
+        # 初回も retry も None
+        runner.adapter.get_order_status.return_value = None
+
+        record = await runner.run_single_cycle()
+
+        assert record.filled is False
+        assert record.cancelled is True
+        assert record.cancel_reason == "status_unknown"
+
+    @pytest.mark.asyncio
+    async def test_status_none_then_filled_on_retry(
+        self, tmp_path: Path,
+    ) -> None:
+        """get_order_status が None → retry で filled → filled=True."""
+        from unittest.mock import MagicMock
+
+        runner = self._make_runner(tmp_path)
+        filled_order = MagicMock()
+        filled_order.status = "filled"
+        filled_order.price = 15000500.0
+        # 1 回目 None, 2 回目 filled
+        runner.adapter.get_order_status.side_effect = [None, filled_order]
+
+        record = await runner.run_single_cycle()
+
+        assert record.filled is True
+        assert record.fill_price == 15000500.0
+        assert record.cancel_reason is None
+
+    @pytest.mark.asyncio
+    async def test_status_filled_directly(
+        self, tmp_path: Path,
+    ) -> None:
+        """get_order_status が直接 filled → 通常の filled 処理."""
+        from unittest.mock import MagicMock
+
+        runner = self._make_runner(tmp_path)
+        filled_order = MagicMock()
+        filled_order.status = "filled"
+        filled_order.price = 15000200.0
+        runner.adapter.get_order_status.return_value = filled_order
+
+        record = await runner.run_single_cycle()
+
+        assert record.filled is True
+        assert record.fill_price == 15000200.0
+        assert record.cancel_reason is None

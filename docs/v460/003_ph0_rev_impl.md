@@ -1,25 +1,3 @@
-# 003# v460 Phase0+1 実装レビュー
-
-| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
-|---|--------|------------|------|---------|
-| 1 | CRITICAL | `scripts/v460/lib/evaluator.py`, `scripts/v460/run_experiment.py` | G1 の統計比較で baseline が実モデルではなくゼロベクトル固定になっている（`model_scores` vs `np.zeros_like(signal)`）。`Logistic` を計算しているのに G1 判定へ未使用（`evaluator.py:209-210`, `run_experiment.py:88-100`）。§5.3 の「model vs baseline 比較」から乖離。 | G1 用 `fold_results` は `XGBoost` と `Logistic` の同一 fold 出力をペア化して渡す。ゼロベクトル比較は廃止する。 |
-| 2 | CRITICAL | `scripts/v460/lib/evaluator.py` | `XGBClassifier`/`LogisticRegression` を `magnitude`/`volatility`（連続値）にも適用しており、`g1_full_9targets.yaml` で分類器要件と整合しない（`evaluator.py:289-290`）。実行時エラーまたは意味のない多クラス化が発生。 | `direction` は分類、`magnitude`/`volatility` は回帰器（`XGBRegressor` 等）に分離。評価指標も回帰用（IC/MAE等）へ分岐。 |
-| 3 | CRITICAL | `scripts/v460/run_experiment.py`, `scripts/v460/lib/evaluator.py`, `configs/v460/base.yaml` | `xgb_cfg` をそのまま `make_xgboost()` に渡すため、`eval_metric`/`n_jobs` が二重指定され `TypeError` を起こし得る（`run_experiment.py:74-76`, `evaluator.py:48-51`, `base.yaml:49-51`）。 | `make_xgboost` 側で `eval_metric`/`n_jobs` を引数化して単一経路に統一、または `run_experiment.py` で重複キーを除外する。 |
-| 4 | CRITICAL | `ztb/trading/live/exchanges/coincheck/adapter.py` | Coincheck trade の `created_at` を `float()` 変換しており、ISO文字列時に `ValueError` で落ちる（`adapter.py:613`）。`RequestException` しか捕捉しておらず回復不能。 | `created_at` は ISO8601 と epoch の両対応パーサを実装し、パース失敗時は安全な fallback + 警告ログにする。 |
-| 5 | HIGH | `ztb/data/market_data_collector.py` | §1.5 要件の「lastID追跡」で重複排除が未実装。`_last_trade_id` が未使用で、ポーリングごとに同一約定を再保存する（`market_data_collector.py:71`）。 | trade ID（または ts+price+amount+side）で dedup を実装し、`_last_trade_id` を更新・永続化する。 |
-| 6 | HIGH | `scripts/v460/run_gate_check.py`, `configs/v460/gate_thresholds.yaml` | G1 判定で `min_ic`/`min_accuracy`/`min_significant_folds` を使っていない（`run_gate_check.py:116-120`, `gate_thresholds.yaml:11-13`）。Gate 閾値定義と実装が不一致。 | `run_g1_judgment()` で統計判定に加えて閾値判定（IC/accuracy/significant_folds）を AND 統合する。 |
-| 7 | HIGH | `scripts/v460/run_experiment.py` | `run_experiment.py` 内 `_evaluate_gate()` がデフォルト引数で `g1_judgment()` を呼び、`gate_thresholds.yaml` を参照しない（`run_experiment.py:192-199`）。実行時判定と公式 Gate 判定が乖離。 | Gate 判定は `run_gate_check` を共通呼び出しに一本化し、閾値は常に `gate_thresholds.yaml` から解決する。 |
-| 8 | HIGH | `ztb/features/microstructure.py` | 特徴量生成後に `bfill()` を実施しており未来値混入（look-ahead leakage）が発生する（`microstructure.py:114`）。 | 学習用途では `ffill` のみに限定し、先頭欠損は 0 か sentinel で処理。`bfill` は禁止。 |
-| 9 | HIGH | `ztb/trading/live/exchanges/coincheck/adapter.py`, `ztb/trading/live/exchanges/bitflyer/adapter.py` | `async def` メソッド内で同期 `requests` を直接実行し、イベントループをブロックする（Coincheck: `adapter.py:567,602` / Bitflyer: `adapter.py:449,486`）。§1.5 の async/sync整合要件未達。 | `httpx.AsyncClient` へ移行、または暫定で `asyncio.to_thread()` へ隔離。 |
-| 10 | MEDIUM | `ztb/trading/live/exchanges/bitflyer/adapter.py` | 追加した market data API が `RateLimiter` を通っておらず、既存設計と不整合（`get_orderbook/get_recent_trades`）。また `NetworkError` へ正規化せず例外体系が揺れる（`adapter.py:465-467,513-515`）。 | `await self._check_rate_limit()` を追加し、通信例外は `NetworkError` へ統一変換する。 |
-| 11 | MEDIUM | `ztb/data/market_data_collector.py` | `run_continuous()` が raw flush のみで、1min Parquet 生成が自動実行されない（`market_data_collector.py:272-291`）。「二層保存」運用が手作業依存になる。 | 日次またはflush後に `aggregate_to_1min()` を自動起動するオプションを追加する。 |
-| 12 | MEDIUM | `scripts/v460/lib/data_loader.py` | `direction` ターゲット生成で末尾 `future_close=NaN` 行が `False→0` 化され、欠損でなく負例として学習される（`data_loader.py:97-104`）。 | `ret.isna()` 行は `target_direction` を NaN のまま保持し、後段で drop する。 |
-| 13 | MEDIUM | `scripts/v460/lib/data_loader.py` | `feature_cols` 選択時に `set()` を使って列順が不安定（`data_loader.py:47`）。再現性とモデル入力の安定性を損なう。 | 順序保持で `keep = feature_cols + ["close"]` を作り、重複除去は順序保存ロジックで行う。 |
-| 14 | MEDIUM | `scripts/v460/lib/data_loader.py` | `load_parquet()` が全列読込後に列絞り込みしており、大規模データでメモリ効率が悪い（`data_loader.py:42-55`）。 | `pd.read_parquet(..., columns=keep)` で必要列のみ読み込む。 |
-| 15 | MEDIUM | `scripts/v460/lib/manifest.py` | `start_run` と `finish_run` の2行追記で同一 `run_id` が重複記録され、§4.3の単一 run レコード想定と差が出る（`manifest.py:138,155`）。 | 仕様を「イベントログ（二段）」に明示するか、単一行更新方式（tmp+atomic replace）へ寄せる。 |
-| 16 | MEDIUM | `scripts/v460/run_experiment.py` | `run_experiment.py` が `task_feature_info` の実処理本体を持ち、§4.1の「orchestrator 専任」境界を破っている（`run_experiment.py:44-109`）。 | `task_feature_info` を `scripts/v460/lib/tasks/feature_info.py` 等へ移し、run_experiment はディスパッチ専任にする。 |
-| 17 | MEDIUM | `scripts/v460/lib/evaluator.py`, `scripts/v460/run_experiment.py` | `fold_results` にサンプル単位 `model_scores/baseline_scores` を全保持し JSON 出力しており、9ターゲット時にメモリ/ファイルサイズ肥大（`evaluator.py:80-82,224-225`, `run_experiment.py:95-107`）。 | Gate 判定に必要な統計量のみ保持（p値/効果量/fold summary）。生配列は保存しない。 |
-| 18 | MEDIUM | `scripts/v460/run_gate_check.py` | G0 の列数判定が「全列数」であり、特徴量列数の検証になっていない（`run_gate_check.py:71-77`）。 | 仕様どおり特徴量列（`features.selected` など）を対象に列数チェックする。 |
-| 19 | LOW | `tests/unit/v460/test_v460_core.py` | 26ケースあるが、Collector/Adapter/Runner/Gate CLI の異常系が未カバー。今回の重大不具合（timestamp parse, baseline比較, threshold未適用）を検出できない。 | `market_data_collector`, `run_experiment`, `run_gate_check`, adapters の統合寄りユニットテストを追加する。 |
-| 20 | LOW | `tests/unit/v460/test_v460_core.py` | 一部テストが乱数 seed 固定なし（例: `TestHolmBonferroniGate.test_all_pass`, `TestMicrostructure._make_sample_df`）で再現性が弱い。 | テストごとに seed を固定し、閾値アサーションを deterministic にする。 |
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:e7738a3b9a134a0bb74d248bf17bd796476779b3f5800a11b00c9456ed832cf8
+size 7742

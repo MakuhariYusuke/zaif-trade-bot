@@ -13,8 +13,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from ztb.metrics.fill_quality import FillRecord
 from ztb.risk.pnl_monte_carlo import (
-    FillRecord,
     MonteCarloConfig,
     MonteCarloResult,
     PnLMonteCarloSimulator,
@@ -82,22 +82,7 @@ def _write_jsonl(records: list[FillRecord], path: Path) -> None:
     """FillRecord リストを JSONL に書き出す."""
     lines: list[str] = []
     for r in records:
-        d = {
-            "cycle_id": r.cycle_id,
-            "timestamp": r.timestamp,
-            "side": r.side,
-            "order_price": r.order_price,
-            "order_quantity": r.order_quantity,
-            "fill_price": r.fill_price,
-            "filled": r.filled,
-            "cancelled": r.cancelled,
-            "queue_wait_sec": r.queue_wait_sec,
-            "mid_at_fill": r.mid_at_fill,
-            "mid_30s_after": r.mid_30s_after,
-            "post_fill_30s_pnl": r.post_fill_30s_pnl,
-            "adverse_selected": r.adverse_selected,
-        }
-        lines.append(json.dumps(d, ensure_ascii=False))
+        lines.append(json.dumps(r.to_dict(), ensure_ascii=False))
     path.write_text("\n".join(lines), encoding="utf-8")
 
 

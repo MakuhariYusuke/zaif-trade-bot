@@ -23,29 +23,10 @@ from typing import Any, Optional, Sequence
 
 import numpy as np
 
+# 027# 型統合: FillRecord は fill_quality の単一定義を使用
+from ztb.metrics.fill_quality import FillRecord  # noqa: F401 (re-export)
+
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Data types
-# ---------------------------------------------------------------------------
-
-@dataclass
-class FillRecord:
-    """fill_test 1 サイクルの結果."""
-    cycle_id: str
-    timestamp: float
-    side: str
-    order_price: float
-    order_quantity: float
-    fill_price: Optional[float]
-    filled: bool
-    cancelled: bool
-    queue_wait_sec: float
-    mid_at_fill: Optional[float]
-    mid_30s_after: Optional[float]
-    post_fill_30s_pnl: Optional[float]  # bps
-    adverse_selected: Optional[bool]
 
 
 @dataclass
@@ -106,6 +87,37 @@ class MonteCarloResult:
 
     raw_monthly_pnls: Optional[np.ndarray] = field(default=None, repr=False)
 
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-safe dict に変換 (027# 型統合: MonteCarloResult 自身に to_dict 追加)."""
+        return {
+            "n_records": self.n_records,
+            "n_filled": self.n_filled,
+            "n_cancelled": self.n_cancelled,
+            "observed_fill_rate": self.observed_fill_rate,
+            "observed_pnl_mean_bps": self.observed_pnl_mean_bps,
+            "observed_pnl_std_bps": self.observed_pnl_std_bps,
+            "observed_as_ratio": self.observed_as_ratio,
+            "n_simulations": self.n_simulations,
+            "cycles_per_month": self.cycles_per_month,
+            "pnl_mean_jpy": self.pnl_mean_jpy,
+            "pnl_std_jpy": self.pnl_std_jpy,
+            "pnl_percentiles_jpy": self.pnl_percentiles_jpy,
+            "pnl_mean_bps": self.pnl_mean_bps,
+            "pnl_std_bps": self.pnl_std_bps,
+            "var_95_jpy": self.var_95_jpy,
+            "cvar_95_jpy": self.cvar_95_jpy,
+            "prob_loss": self.prob_loss,
+            "prob_profit": self.prob_profit,
+            "g11_fill_rate": self.g11_fill_rate,
+            "g11_cancel_ratio": self.g11_cancel_ratio,
+            "g11_queue_wait_median": self.g11_queue_wait_median,
+            "g11_pnl_mean_bps": self.g11_pnl_mean_bps,
+            "g11_as_ratio": self.g11_as_ratio,
+            "g11_pass": self.g11_pass,
+            "breakeven_fill_rate": self.breakeven_fill_rate,
+            "breakeven_pnl_bps": self.breakeven_pnl_bps,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Core simulator
@@ -142,39 +154,19 @@ class PnLMonteCarloSimulator:
         path: str | Path,
         glob_pattern: str = "fill_records_*.jsonl",
     ) -> list[FillRecord]:
-        """Load fill records from JSONL file(s) in a directory or single file."""
+        """Load fill records from JSONL file(s) in a directory or single file.
+
+        027# 型統合: fill_quality.load_fill_records / load_fill_records_glob に委譲.
+        """
+        from ztb.metrics.fill_quality import load_fill_records, load_fill_records_glob
+
         p = Path(path)
-        files: list[Path] = []
         if p.is_file():
-            files = [p]
+            return load_fill_records(p)
         elif p.is_dir():
-            files = sorted(p.glob(glob_pattern))
+            return load_fill_records_glob(p)
         else:
             raise FileNotFoundError(f"Path not found: {path}")
-
-        records: list[FillRecord] = []
-        for f in files:
-            for line in f.read_text(encoding="utf-8").strip().split("\n"):
-                if not line.strip():
-                    continue
-                d = json.loads(line)
-                records.append(FillRecord(
-                    cycle_id=d["cycle_id"],
-                    timestamp=d["timestamp"],
-                    side=d["side"],
-                    order_price=d["order_price"],
-                    order_quantity=d["order_quantity"],
-                    fill_price=d.get("fill_price"),
-                    filled=d["filled"],
-                    cancelled=d["cancelled"],
-                    queue_wait_sec=d["queue_wait_sec"],
-                    mid_at_fill=d.get("mid_at_fill"),
-                    mid_30s_after=d.get("mid_30s_after"),
-                    post_fill_30s_pnl=d.get("post_fill_30s_pnl"),
-                    adverse_selected=d.get("adverse_selected"),
-                ))
-        logger.info(f"Loaded {len(records)} fill records from {len(files)} file(s)")
-        return records
 
     # ------------------------------------------------------------------
     # Simulation
