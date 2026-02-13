@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [v460] Phase 2 (G1.1-exec) — 2026-02-13
+
+v460 "Microstructure Edge" — BTC/JPY maker-only (手数料 0%) 自動取引システム。
+v459 No-Go 確定を受け、マイクロストラクチャ特徴量ベースの新アーキテクチャへ全面移行。
+
+#### Added
+
+- **PnL Monte Carlo シミュレータ** (`ztb/risk/pnl_monte_carlo.py`)
+  - fill_test 実測データ (JSONL) から月次 PnL 信頼区間を Bootstrap MC で推定
+  - 10,000 paths × 21,600 cycles/month、G1.1 判定指標同時出力
+  - VaR/CVaR リスク指標 + fill_rate × PnL 感度分析グリッド
+  - CLI: `scripts/v460/run_pnl_monte_carlo.py` (--sensitivity, --output)
+  - テスト: 34/34 PASS
+
+- **Coincheck WebSocket クライアント** (`ztb/trading/live/exchanges/coincheck/websocket_client.py`)
+  - Public: `btc_jpy-trades` + `btc_jpy-orderbook` (認証不要)
+  - Private: `order-events` + `execution-events` (HMAC-SHA256)
+  - 自動再接続 (exponential backoff) + 統計モニタリング内蔵
+  - MarketDataCollector に `run_continuous_ws()` モード追加
+  - テスト: 23/23 PASS
+
+- **Real data features パイプライン** (`scripts/v460/build_features.py --mode real`)
+  - raw orderbook/trades JSONL.gz → `aggregate_to_1min()` → microstructure 特徴量 → Parquet
+  - 10 マイクロストラクチャ特徴量: bid_ask_spread, depth_imbalance, trade_flow_imbalance, vwap_deviation, trade_intensity, order_flow_toxicity, price_impact, micro_return_vol, bid/ask_depth_slope
+
+- **Microstructure 特徴量テスト** (`tests/unit/v460/test_microstructure_features.py`) — 29/29 PASS
+- **aggregate_to_1min テスト** (`tests/unit/v460/test_aggregate_to_1min.py`) — 26/26 PASS
+- **G1 real data 実験 config** (`configs/v460/experiments/g1_real_full_9targets.yaml`)
+- **fill_test .env 自動読込 + --start-side** オプション
+- **000# §3.9 継続中止ルール** — fill_rate<70% 中止、AS>spread/2 中止、実損キャップ 10,000 JPY
+
+#### Changed
+
+- `ztb/risk/__init__.py` — `PnLMonteCarloSimulator`, `MonteCarloConfig`, `MonteCarloResult` をエクスポート
+- `ztb/features/__init__.py` — `add_microstructure_features`, `MICROSTRUCTURE_FEATURES` をエクスポート
+- `ztb/data/market_data_collector.py` — VWAP 計算の numpy shapes バグ修正
+- `conftest.py` — pytest 9.0.2 `collection_path` 移行 + websockets stub 条件修正
+
+#### Fixed
+
+- Exchange API 全修正実装 (013# C-3〜C-9, D-1〜D-5) — 97/97 テスト PASS
+
+#### Documentation
+
+- 000# — §3.9 継続中止ルール追記、§6 リスクテーブル更新
+- 014# — ph2 完遂計画: T3(DONE), T4(DONE), T5(DONE), fill_test n=15 進行中
+
 ### [Phase 4.5] Day 14: Phase B Results Analysis - 2026-02-08
 
 #### 99# 98#レビュー妥当性評価と実行計画

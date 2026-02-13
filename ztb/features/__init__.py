@@ -9,6 +9,7 @@ from types import ModuleType
 
 from .core.registry import FeatureRegistry
 from .feature_set_manager import get_feature_manager
+from .microstructure import MICROSTRUCTURE_FEATURES, add_microstructure_features
 
 
 def get_feature_manager() -> type[FeatureRegistry]:
@@ -56,4 +57,4 @@ def _ensure_module_loaded(module_name: str) -> None:
             _FEATURE_MODULES[module_name] = utils
 
 
-__all__ = ["FeatureRegistry", "get_feature_manager"]
+__all__ = ["FeatureRegistry", "get_feature_manager", "add_microstructure_features", "MICROSTRUCTURE_FEATURES"]

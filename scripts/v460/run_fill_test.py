@@ -100,6 +100,28 @@ class FillTestRunner:
         # 安全設計: atexit + signal で残存注文を一括キャンセル
         atexit.register(self._cleanup_sync)
 
+    def resume_from_existing(self) -> list[FillRecord]:
+        """既存 fill_records から状態を復元する (レジューム対応).
+
+        中断→再開時に:
+          - _cycle_count を復元
+          - _last_side を復元 (片側蓄積防止)
+          - 既存レコードを返す (結果集計用)
+        """
+        existing = load_fill_records_glob(str(self._results_dir))
+        if not existing:
+            return []
+
+        self._cycle_count = len(existing)
+        # 最後のレコードの side を復元
+        last_record = existing[-1]
+        self._last_side = last_record.side
+        logger.info(
+            f"Resumed from existing records: n={len(existing)}, "
+            f"last_side={self._last_side}, cycle_count={self._cycle_count}"
+        )
+        return existing
+
     def _next_side(self) -> str:
         """buy/sell を交互に返す.
 
@@ -297,9 +319,13 @@ class FillTestRunner:
         """指定時間、連続してサイクルを実行.
 
         009# §4.4: 7 日間 (168h) の実測想定.
+        中断→再開時は既存 fill_records を自動復元 (レジューム対応).
         """
         end_time = time.time() + hours * 3600
-        records: list[FillRecord] = []
+
+        # レジューム: 既存レコードから状態復元
+        existing_records = self.resume_from_existing()
+        records: list[FillRecord] = list(existing_records)
         batch: list[FillRecord] = []
         batch_size = 10  # 10 サイクルごとに保存
 
@@ -351,9 +377,9 @@ class FillTestRunner:
 
     def _save_batch(self, batch: list[FillRecord]) -> None:
         """日別 JSONL ファイルにバッチ保存."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        day_str = datetime.utcnow().strftime("%Y%m%d")
+        day_str = datetime.now(timezone.utc).strftime("%Y%m%d")
         path = self._results_dir / f"fill_records_{day_str}.jsonl"
         save_fill_records(batch, path)
 
@@ -362,13 +388,17 @@ class FillTestRunner:
         if self._pending_order_id:
             logger.warning(f"Cleaning up pending order: {self._pending_order_id}")
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+
+                if loop and loop.is_running():
                     loop.create_task(
                         self.adapter.cancel_order(self._pending_order_id)
                     )
                 else:
-                    loop.run_until_complete(
+                    asyncio.run(
                         self.adapter.cancel_order(self._pending_order_id)
                     )
             except Exception as e:
