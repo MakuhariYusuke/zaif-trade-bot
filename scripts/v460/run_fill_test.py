@@ -66,6 +66,15 @@ class FillTestConfig:
     max_consecutive_same_side: int = 2
     # 開始サイド: JPY 残高不足時は "sell" で開始すると自己資金循環できる
     start_side: str = "buy"
+    # CM-1: スプレッド比例オフセット (post_only リジェクト防止)
+    spread_offset_ratio: float = 0.2  # スプレッドの 20% を内側にオフセット
+    min_offset_jpy: float = 1.0  # 最小オフセット (JPY)
+    # CM-2: 注文失敗リトライ
+    max_order_retries: int = 1  # 失敗時のリトライ回数
+    retry_delay_sec: float = 2.0  # リトライ間隔
+    # CM-3: AS 判定デッドゾーン (bps)
+    # 30秒のランダムウォーク・ノイズを除外するための最小閾値
+    as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
 
 
 # ======================================================================
@@ -141,22 +150,41 @@ class FillTestRunner:
         return (best_bid + best_ask) / 2.0
 
     async def _compute_maker_price(self, side: str) -> float:
-        """maker limit 価格を算出: best bid+1 / best ask-1.
+        """maker limit 価格を算出: スプレッド比例オフセット + post_only 安全策.
 
         009# §4.2: スプレッド内側に配置して maker 約定を狙う.
+        CM-1: 固定 1 JPY → スプレッド比例 + post_only リジェクト防止.
         """
         ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
         if not ob.bids or not ob.asks:
             raise ValueError("Empty orderbook")
         best_bid = ob.bids[0][0]
         best_ask = ob.asks[0][0]
+        spread = best_ask - best_bid
+
+        # スプレッド比例オフセット (最小保証付き)
+        offset = max(self.config.min_offset_jpy, spread * self.config.spread_offset_ratio)
 
         if side == "buy":
-            # best bid + 1 JPY (スプレッド内側)
-            return best_bid + 1.0
+            price = best_bid + offset
+            # CM-1: post_only ガード — best_ask 以上にならないよう保護
+            if price >= best_ask:
+                price = best_bid  # best bid に退避 (確実に maker)
+                logger.info(
+                    f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
+                    f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
+                )
+            return price
         else:
-            # best ask - 1 JPY (スプレッド内側)
-            return best_ask - 1.0
+            price = best_ask - offset
+            # CM-1: post_only ガード — best_bid 以下にならないよう保護
+            if price <= best_bid:
+                price = best_ask  # best ask に退避 (確実に maker)
+                logger.info(
+                    f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
+                    f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
+                )
+            return price
 
     async def run_single_cycle(self) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
@@ -182,25 +210,60 @@ class FillTestRunner:
                 order_price=0.0,
                 order_quantity=self.config.order_quantity,
                 cancelled=True,
+                cancel_reason="orderbook_error",
             )
 
-        # 2. 発注
+        # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
-        try:
-            order = await self.adapter.place_order(
-                symbol=self.config.symbol,
-                side=side,
-                quantity=self.config.order_quantity,
-                price=order_price,
-                order_type="limit",
-            )
-            self._pending_order_id = order.order_id
-            logger.info(
-                f"Placed {side} limit @ {order_price:.0f} JPY, "
-                f"qty={self.config.order_quantity}, id={order.order_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to place order: {e}")
+        order = None
+        last_error: Optional[str] = None
+        for attempt in range(1 + self.config.max_order_retries):
+            try:
+                order = await self.adapter.place_order(
+                    symbol=self.config.symbol,
+                    side=side,
+                    quantity=self.config.order_quantity,
+                    price=order_price,
+                    order_type="limit",
+                )
+                self._pending_order_id = order.order_id
+                logger.info(
+                    f"Placed {side} limit @ {order_price:.0f} JPY, "
+                    f"qty={self.config.order_quantity}, id={order.order_id}"
+                    + (f" (retry {attempt})" if attempt > 0 else "")
+                )
+                break
+            except Exception as e:
+                last_error = str(e)
+                # CM-2: エラー分類
+                err_lower = last_error.lower()
+                if "post_only" in err_lower or "taker" in err_lower:
+                    cancel_reason = "post_only_reject"
+                elif "insufficient" in err_lower or "balance" in err_lower:
+                    cancel_reason = "insufficient_funds"
+                elif "minimum" in err_lower or "size" in err_lower:
+                    cancel_reason = "minimum_size"
+                else:
+                    cancel_reason = "api_error"
+
+                logger.warning(
+                    f"Order attempt {attempt + 1} failed ({cancel_reason}): {e}"
+                )
+
+                if attempt < self.config.max_order_retries:
+                    # リトライ: 板を再取得してより保守的な価格で再発注
+                    await asyncio.sleep(self.config.retry_delay_sec)
+                    try:
+                        ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
+                        if ob.bids and ob.asks:
+                            # 保守的価格: best_bid/best_ask そのまま (確実に maker)
+                            order_price = ob.bids[0][0] if side == "buy" else ob.asks[0][0]
+                            logger.info(f"Retry with conservative price: {order_price:.0f}")
+                    except Exception:
+                        pass  # 板取得失敗時は前回価格でリトライ
+
+        if order is None:
+            logger.error(f"All order attempts failed: {last_error}")
             return FillRecord(
                 cycle_id=cycle_id,
                 timestamp=t_submit,
@@ -208,6 +271,7 @@ class FillTestRunner:
                 order_price=order_price,
                 order_quantity=self.config.order_quantity,
                 cancelled=True,
+                cancel_reason=cancel_reason,  # type: ignore[possibly-undefined]
             )
 
         # 3. ポーリング監視
@@ -284,11 +348,13 @@ class FillTestRunner:
                 if side == "buy":
                     # buy: 価格上昇が有利
                     post_fill_pnl = (mid_30s_after - mid_at_fill) / mid_at_fill * 10000
-                    adverse_selected = mid_30s_after < mid_at_fill
+                    # CM-3: AS デッドゾーン — ノイズ幅以内の逆行は AS と判定しない
+                    adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
                 else:
                     # sell: 価格下落が有利
                     post_fill_pnl = (mid_at_fill - mid_30s_after) / mid_at_fill * 10000
-                    adverse_selected = mid_30s_after > mid_at_fill
+                    # CM-3: AS デッドゾーン
+                    adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
 
         record = FillRecord(
             cycle_id=cycle_id,
@@ -304,6 +370,7 @@ class FillTestRunner:
             mid_30s_after=mid_30s_after,
             post_fill_30s_pnl=post_fill_pnl,
             adverse_selected=adverse_selected,
+            cancel_reason="timeout" if (not filled and queue_wait >= self.config.order_timeout_sec) else None,
         )
 
         logger.info(

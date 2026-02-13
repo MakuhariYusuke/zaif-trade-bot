@@ -50,6 +50,7 @@ class FillRecord:
     mid_30s_after: Optional[float] = None  # 約定 30 秒後の mid price
     post_fill_30s_pnl: Optional[float] = None  # 30 秒後 PnL (bps)
     adverse_selected: Optional[bool] = None  # 30 秒後に逆行したか
+    cancel_reason: Optional[str] = None  # CM-2: キャンセル理由 (api_error / timeout / post_only_reject)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

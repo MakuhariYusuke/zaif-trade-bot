@@ -76,6 +76,38 @@ class TestFillRecord:
         assert r.fill_price is None
         assert r.post_fill_30s_pnl is None
 
+    def test_cancel_reason_field(self) -> None:
+        """CM-2: cancel_reason フィールドの追加確認."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="cr",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+            cancelled=True,
+            cancel_reason="post_only_reject",
+        )
+        assert r.cancel_reason == "post_only_reject"
+        d = r.to_dict()
+        assert d["cancel_reason"] == "post_only_reject"
+        r2 = FillRecord.from_dict(d)
+        assert r2.cancel_reason == "post_only_reject"
+
+    def test_cancel_reason_default_none(self) -> None:
+        """CM-2: cancel_reason はデフォルト None."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="cr2",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+        )
+        assert r.cancel_reason is None
+
 
 # =====================================================================
 # compute_fill_metrics
