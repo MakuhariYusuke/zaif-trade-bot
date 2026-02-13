@@ -1,8 +1,9 @@
 """
-Coincheck exchange adapter with dry-run support.
+Coincheck exchange adapter with dry-run and real trading support.
 
-Implements IBroker interface with dry-run simulation for testing.
-Real trading implementation is stubbed for future development.
+Implements IBroker interface for both dry-run simulation and live trading.
+013# C-3/C-4/C-7/C-9/D-3/D-5: Signature fix, async unification,
+order_type mapping, post_only support, rate limit correction.
 """
 
 import hashlib
@@ -68,10 +69,15 @@ CoincheckErrorResponse = Dict[str, str]
 
 class CoincheckAdapter(IBroker):
     """
-    Coincheck exchange adapter (dry-run simulation only).
+    Coincheck exchange adapter with dry-run and real trading support.
 
-    Real trading is not implemented; all operations are simulated for testing.
-    Real trading support may be added in the future.
+    Supports both dry-run simulation (for testing/paper trading) and
+    real trading via Coincheck REST API.
+    Real API paths: place_order, cancel_order, get_order_status,
+    get_open_orders, get_balance, get_current_price, get_orderbook,
+    get_recent_trades.
+
+    013# C-9: Updated to reflect actual implementation state.
     """
 
     def __init__(
@@ -107,8 +113,8 @@ class CoincheckAdapter(IBroker):
             random.seed(random_seed)
         if rate_limiter is None:
             config = RateLimitConfig(
-                requests_per_second=5.0
-            )  # 300 calls per minute = 5 per second
+                requests_per_second=4.0
+            )  # 013# D-5: Coincheck新規注文は秒間4リクエスト上限
             self.rate_limiter = RateLimiter(config)
         else:
             self.rate_limiter = rate_limiter
@@ -174,8 +180,15 @@ class CoincheckAdapter(IBroker):
         """
         nonce = str(int(time.time() * 1000000))
 
-        if data:
-            message = nonce + url + json.dumps(data, separators=(",", ":"))
+        # 013# C-3 FIX: 署名対象と実送信ボディを一致させる。
+        # Coincheck公式: SIGNATURE = HMAC(nonce + url + リクエストのボディ)
+        # POST時はurlencode済みbodyで署名し、同じbodyを送信する。
+        request_body: Optional[str] = None
+        if data and method.upper() == "POST":
+            request_body = urllib.parse.urlencode(data)
+
+        if request_body:
+            message = nonce + url + request_body
         else:
             message = nonce + url
 
@@ -194,14 +207,10 @@ class CoincheckAdapter(IBroker):
                     url, headers=headers, timeout=self.request_timeout
                 )
             elif method.upper() == "POST":
-                # Use URL-encoded data for POST requests
-                request_data = None
-                if data:
-                    request_data = urllib.parse.urlencode(data)
                 response = requests.post(
                     url,
                     headers=headers,
-                    data=request_data,
+                    data=request_body,
                     timeout=self.request_timeout,
                 )
             elif method.upper() == "DELETE":
@@ -248,23 +257,66 @@ class CoincheckAdapter(IBroker):
         await self._simulate_delay()
 
         if not self.dry_run:
+            import asyncio
+
             # Real API call
             url = f"{self.api_base_url}/api/exchange/orders"
 
-            # Prepare order data for Coincheck API
-            order_data = {
-                "pair": symbol.replace("_", "_"),  # btc_jpy -> btc_jpy
-                "order_type": side,  # "buy" or "sell"
-                "amount": str(quantity),
+            # 013# C-7 FIX: Coincheck order_type は以下の4値:
+            #   "buy"        = 指値買い (rate + amount 必須)
+            #   "sell"       = 指値売り (rate + amount 必須)
+            #   "market_buy"  = 成行買い (market_buy_amount=JPY金額 必須)
+            #   "market_sell" = 成行売り (amount 必須)
+            order_data: Dict[str, str] = {
+                "pair": normalize_symbol(symbol),
             }
 
             if order_type == "limit" and price is not None:
+                # 指値注文: order_type = "buy" or "sell"
+                order_data["order_type"] = side  # "buy" or "sell"
                 order_data["rate"] = str(int(price))
-            # For market orders, Coincheck uses market_buy_amount for buy orders
+                order_data["amount"] = str(quantity)
+                # 013# D-3: maker-only 戦略の保証 — post_only で taker 約定を防止
+                order_data["time_in_force"] = "post_only"
+            elif order_type == "market":
+                # 成行注文: order_type = "market_buy" or "market_sell"
+                if side == "buy":
+                    order_data["order_type"] = "market_buy"
+                    # Coincheck market_buy は JPY 金額指定が必須
+                    # quantity は BTC 数量なので、現在価格から JPY に変換
+                    current_price = self._current_prices.get(
+                        normalize_symbol(symbol), 0.0
+                    )
+                    if current_price > 0:
+                        jpy_amount = quantity * current_price
+                    else:
+                        # フォールバック: ticker から取得
+                        jpy_amount = quantity * 5000000.0  # 概算
+                        logger.warning(
+                            f"No cached price for {symbol}, using fallback for market_buy_amount"
+                        )
+                    order_data["market_buy_amount"] = str(int(jpy_amount))
+                else:
+                    order_data["order_type"] = "market_sell"
+                    order_data["amount"] = str(quantity)
+            else:
+                # デフォルト: 指値として扱う
+                order_data["order_type"] = side
+                order_data["amount"] = str(quantity)
+                if price is not None:
+                    order_data["rate"] = str(int(price))
 
             try:
-                result = self._make_api_request("POST", url, order_data)
+                # 013# C-4 FIX: asyncio.to_thread で同期 requests を非同期化
+                result = await asyncio.to_thread(
+                    self._make_api_request, "POST", url, order_data,
+                )
                 logger.info(f"Placed order: {result}")
+
+                # API エラーチェック
+                if isinstance(result, dict) and not result.get("success", True):
+                    error_msg = result.get("error", "Unknown API error")
+                    raise Exception(f"Coincheck API error: {error_msg}")
 
                 # Convert API response to Order object
                 order_id = str(result.get("id", self._generate_order_id()))
@@ -389,10 +441,15 @@ class CoincheckAdapter(IBroker):
         await self._simulate_delay()
 
         if not self.dry_run:
+            import asyncio
+
             # Real API call
             url = f"{self.api_base_url}/api/exchange/orders/{order_id}"
             try:
-                result = self._make_api_request("DELETE", url)
+                # 013# C-4 FIX: asyncio.to_thread で同期 requests を非同期化
+                result = await asyncio.to_thread(
+                    self._make_api_request, "DELETE", url, None,
+                )
                 logger.info(f"Cancelled order {order_id}: {result}")
                 success_value = result.get("success", False)
                 return (
@@ -564,10 +621,15 @@ class CoincheckAdapter(IBroker):
         await self._simulate_delay()
 
         if not self.dry_run:
+            import asyncio
+
             # Real API call
             url = f"{self.api_base_url}/api/accounts/balance"
             try:
-                result = self._make_api_request("GET", url)
+                # 013# C-4 FIX: asyncio.to_thread で同期 requests を非同期化
+                result = await asyncio.to_thread(
+                    self._make_api_request, "GET", url, None,
+                )
                 logger.info(f"Retrieved balance: {result}")
 
                 # Check if result is a dict

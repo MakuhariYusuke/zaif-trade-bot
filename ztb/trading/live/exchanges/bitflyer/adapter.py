@@ -207,8 +207,10 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     ) -> Order:
         """Place order via bitFlyer API."""
         try:
+            # 013# C-5 FIX: bitFlyer private API requires uppercase product_code
+            product_code = symbol.upper()
             order_data = {
-                "product_code": symbol,
+                "product_code": product_code,
                 "child_order_type": order_type.upper(),
                 "side": side.upper(),
                 "size": quantity,
@@ -264,6 +266,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     async def _cancel_order_real(self, order_id: str) -> bool:
         """Cancel order via bitFlyer API."""
         try:
+            # 013# C-5 FIX: product_code not needed for cancel
             cancel_data = {"child_order_acceptance_id": order_id}
 
             await self._make_request("POST", "/v1/me/cancelchildorder", cancel_data)
@@ -350,7 +353,8 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         try:
             params = {}
             if symbol:
-                params["product_code"] = symbol
+                # 013# C-5 FIX: bitFlyer requires uppercase product_code
+                params["product_code"] = symbol.upper()
             params["child_order_state"] = "ACTIVE"
 
             query_string = "&".join([f"{k}={v}" for k, v in params.items()])
@@ -411,8 +415,10 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     async def _get_current_price_real(self, symbol: str) -> Optional[float]:
         """Get current price from bitFlyer API."""
         try:
+            # 013# C-5 FIX: bitFlyer requires uppercase product_code
+            product_code = symbol.upper()
             response = await self._make_request(
-                "GET", f"/v1/ticker?product_code={symbol}"
+                "GET", f"/v1/ticker?product_code={product_code}"
             )
 
             if isinstance(response, dict) and "ltp" in response:
