@@ -68,7 +68,7 @@ class MarketDataCollector:
         # In-memory buffer for current day
         self._ob_buffer: list[dict[str, Any]] = []
         self._tr_buffer: list[dict[str, Any]] = []
-        self._last_trade_id: Optional[str] = None
+        self._last_trade_id: Optional[tuple[float, float, float, str]] = None
         self._running = False
 
     # ------------------------------------------------------------------
@@ -119,18 +119,23 @@ class MarketDataCollector:
 
         003# #5: _last_trade_id was declared but never used.
         Using timestamp+price+amount as composite trade ID for dedup.
+        007# F8 / 009# P2-2.1: 文字列比較 → タプル数値比較に修正.
+        文字列だと "10.5:..." < "9.5:..." (辞書順) になるバグがあった.
         """
         new_trades: list[TradeRecord] = []
         for t in trades:
-            trade_id = f"{t.timestamp}:{t.price}:{t.amount}:{t.side}"
-            if self._last_trade_id is not None and trade_id <= self._last_trade_id:
-                continue  # Already seen or older
+            trade_key = (t.timestamp, t.price, t.amount, t.side)
+            if self._last_trade_id is not None:
+                last_key = self._last_trade_id
+                # タプル比較: (timestamp, price, amount) で時系列順を判定
+                if trade_key[:3] <= last_key[:3]:
+                    continue  # Already seen or older
             new_trades.append(t)
 
         if new_trades:
-            # Update _last_trade_id to latest
+            # Update _last_trade_id to latest (tuple)
             latest = new_trades[-1]
-            self._last_trade_id = f"{latest.timestamp}:{latest.price}:{latest.amount}:{latest.side}"
+            self._last_trade_id = (latest.timestamp, latest.price, latest.amount, latest.side)
 
         for t in new_trades:
             self._tr_buffer.append(

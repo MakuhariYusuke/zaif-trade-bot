@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-v460 Gate Check Runner — G0/G1 閾値照合ユーティリティ.
+v460 Gate Check Runner — G0/G1/G1.1 閾値照合ユーティリティ.
 
 001# §4.1 / 000# §3 準拠.
+009# P2-3: G1.1-exec 追加.
 
 Usage:
   python scripts/v460/run_gate_check.py --gate G0 --data-path data/v460/features/btc_jpy_1m_v460_features.parquet
   python scripts/v460/run_gate_check.py --gate G1 --results-path results/v460/g1_results.json
+  python scripts/v460/run_gate_check.py --gate G1.1 --results-dir results/v460/fill_test
 """
 
 from __future__ import annotations
@@ -188,12 +190,45 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
 
 
 # ======================================================================
+# G1.1-exec (009# P2-3)
+# ======================================================================
+
+def run_g1_1(results_dir: str, thresholds: dict | None = None) -> dict:
+    """G1.1-exec Gate チェック.
+
+    000# §3.3 / 009# §2.1 準拠.
+    fill_records JSONL からメトリクスを算出し、閾値照合を行う.
+    """
+    from ztb.metrics.fill_quality import (
+        compute_fill_metrics,
+        g1_1_judgment,
+        load_fill_records_glob,
+    )
+
+    if thresholds is None:
+        thresholds = load_gate_thresholds().get("g1_1_exec", {})
+
+    records = load_fill_records_glob(results_dir)
+    if not records:
+        logger.error(f"No fill records found in {results_dir}")
+        return {
+            "gate": "G1.1-exec",
+            "gate_result": "NO_DATA",
+            "error": f"No fill records in {results_dir}",
+        }
+
+    metrics = compute_fill_metrics(records)
+    judgment = g1_1_judgment(metrics, thresholds)
+    return judgment
+
+
+# ======================================================================
 # CLI
 # ======================================================================
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="v460 Gate Check")
-    parser.add_argument("--gate", required=True, choices=["G0", "G1"],
+    parser.add_argument("--gate", required=True, choices=["G0", "G1", "G1.1"],
                         help="Gate to check")
     parser.add_argument("--data-path", default=None,
                         help="Path to data file (G0)")
@@ -201,6 +236,8 @@ def main() -> None:
                         help="Expected SHA-256 hash (G0)")
     parser.add_argument("--results-path", default=None,
                         help="Path to G1 results JSON")
+    parser.add_argument("--results-dir", default=None,
+                        help="Path to fill_records directory (G1.1)")
     parser.add_argument("--output", default=None,
                         help="Output JSON path")
     args = parser.parse_args()
@@ -213,6 +250,9 @@ def main() -> None:
         if not args.results_path:
             parser.error("--results-path required for G1")
         result = run_g1_judgment(args.results_path)
+    elif args.gate == "G1.1":
+        results_dir = args.results_dir or "results/v460/fill_test"
+        result = run_g1_1(results_dir)
     else:
         parser.error(f"Unknown gate: {args.gate}")
         return

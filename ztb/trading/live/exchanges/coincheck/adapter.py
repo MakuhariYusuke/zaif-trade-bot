@@ -418,22 +418,102 @@ class CoincheckAdapter(IBroker):
         return False
 
     async def get_order_status(self, order_id: str) -> Optional[Order]:
-        """Get status of a specific order."""
+        """Get status of a specific order.
+
+        Real mode: ``GET /api/exchange/orders/opens`` で確認後、
+        見つからなければ ``GET /api/exchange/orders/transactions`` で約定済みを確認。
+        009# P2-0: real mode 実装.
+        """
         await self._check_rate_limit()
         await self._simulate_delay()
 
         if not self.dry_run:
-            raise NotImplementedError("Real Coincheck trading not implemented")
+            import asyncio
+
+            # 1) Check open orders first
+            url_opens = f"{self.api_base_url}/api/exchange/orders/opens"
+            try:
+                result = await asyncio.to_thread(
+                    self._make_api_request, "GET", url_opens, None,
+                )
+                orders_list = result.get("orders", [])
+                for o in orders_list:
+                    if str(o.get("id")) == str(order_id):
+                        return Order(
+                            order_id=str(o["id"]),
+                            symbol=str(o.get("pair", "")),
+                            side=str(o.get("order_type", "buy")),
+                            quantity=float(o.get("pending_amount", o.get("amount", 0))),
+                            price=float(o.get("rate", 0)) if o.get("rate") else None,
+                            order_type="limit" if o.get("rate") else "market",
+                            status="pending",
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to check open orders for {order_id}: {e}")
+
+            # 2) Check transactions (filled orders)
+            url_txns = f"{self.api_base_url}/api/exchange/orders/transactions"
+            try:
+                result = await asyncio.to_thread(
+                    self._make_api_request, "GET", url_txns, None,
+                )
+                txns = result.get("transactions", [])
+                for t in txns:
+                    if str(t.get("order_id")) == str(order_id):
+                        return Order(
+                            order_id=str(t["order_id"]),
+                            symbol=str(t.get("pair", "")),
+                            side=str(t.get("side", "buy")),
+                            quantity=float(t.get("funds", {}).get("btc", 0)),
+                            price=float(t.get("rate", 0)) if t.get("rate") else None,
+                            order_type="limit",
+                            status="filled",
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to check transactions for {order_id}: {e}")
+
+            return None
 
         return self._orders.get(order_id)
 
     async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
-        """Get all open orders, optionally filtered by symbol."""
+        """Get all open orders, optionally filtered by symbol.
+
+        Real mode: ``GET /api/exchange/orders/opens``.
+        009# P2-0: real mode 実装.
+        """
         await self._check_rate_limit()
         await self._simulate_delay()
 
         if not self.dry_run:
-            raise NotImplementedError("Real Coincheck trading not implemented")
+            import asyncio
+
+            url = f"{self.api_base_url}/api/exchange/orders/opens"
+            try:
+                result = await asyncio.to_thread(
+                    self._make_api_request, "GET", url, None,
+                )
+                orders_list = result.get("orders", [])
+                orders: List[Order] = []
+                for o in orders_list:
+                    pair = str(o.get("pair", ""))
+                    if symbol and pair != normalize_symbol(symbol):
+                        continue
+                    orders.append(
+                        Order(
+                            order_id=str(o["id"]),
+                            symbol=pair,
+                            side=str(o.get("order_type", "buy")),
+                            quantity=float(o.get("pending_amount", o.get("amount", 0))),
+                            price=float(o.get("rate", 0)) if o.get("rate") else None,
+                            order_type="limit" if o.get("rate") else "market",
+                            status="pending",
+                        )
+                    )
+                return orders
+            except Exception as e:
+                logger.error(f"Failed to get open orders: {e}")
+                raise
 
         orders = [o for o in self._orders.values() if o.status == "pending"]
         if symbol:
@@ -441,12 +521,31 @@ class CoincheckAdapter(IBroker):
         return orders
 
     async def get_positions(self) -> List[Position]:
-        """Get current positions."""
+        """Get current positions.
+
+        Coincheck doesn't have a direct positions API for spot.
+        Return balance-based positions (BTC holdings as position).
+        009# P2-0: real mode — balance から推定.
+        """
         await self._check_rate_limit()
         await self._simulate_delay()
 
         if not self.dry_run:
-            raise NotImplementedError("Real Coincheck trading not implemented")
+            # Use balance to infer spot position
+            balances = await self.get_balance("BTC")
+            positions: List[Position] = []
+            for b in balances:
+                if b.total > 0:
+                    positions.append(
+                        Position(
+                            symbol="btc_jpy",
+                            quantity=b.total,
+                            avg_price=0.0,  # Not tracked by exchange
+                            current_price=0.0,
+                            pnl=0.0,
+                        )
+                    )
+            return positions
 
         return list(self._positions.values())
 
@@ -512,17 +611,20 @@ class CoincheckAdapter(IBroker):
         return balances
 
     async def get_current_price(self, symbol: str) -> Optional[float]:
-        """Get current market price for symbol."""
+        """Get current market price for symbol.
+
+        Real mode: ``GET /api/ticker`` (public, no auth).
+        009# P2-0: dry-run / real 共通で public ticker を参照.
+        """
         await self._check_rate_limit()
         await self._simulate_delay()
 
-        if not self.dry_run:
-            raise NotImplementedError("Real Coincheck trading not implemented")
-
-        # For dry-run, try to get real price first, then simulate if needed
+        # Public API — real / dry-run 共通でティッカーを取得
         try:
-            # Try to get real price from Coincheck API with improved error handling
-            response = requests.get(
+            import asyncio
+
+            response = await asyncio.to_thread(
+                requests.get,
                 f"{self.api_base_url}/api/ticker",
                 timeout=self.request_timeout,
                 headers={"User-Agent": "ZaifTradeBot/1.0"},
@@ -531,46 +633,32 @@ class CoincheckAdapter(IBroker):
             data = response.json()
             if isinstance(data, dict) and "last" in data:
                 real_price = float(data["last"])
-                # Update our simulated price with real price
                 self._current_prices[symbol] = real_price
                 logger.debug(f"Retrieved real price from Coincheck API: {real_price}")
                 return real_price
         except requests.exceptions.Timeout:
-            logger.warning("Coincheck API request timed out, using simulated price")
-            raise NetworkError(
-                "Coincheck API request timed out",
-                details={
-                    "symbol": symbol,
-                    "timeout": self.request_timeout,
-                    "url": f"{self.api_base_url}/api/ticker",
-                },
-            )
+            logger.warning("Coincheck API request timed out")
+            if not self.dry_run:
+                raise NetworkError(
+                    "Coincheck API request timed out",
+                    details={"symbol": symbol, "timeout": self.request_timeout},
+                )
         except requests.exceptions.RequestException as e:
-            logger.warning(
-                f"Failed to get real price from Coincheck API: {e}, using simulated price"
-            )
-            raise NetworkError(
-                f"Coincheck API request failed: {str(e)}",
-                details={
-                    "symbol": symbol,
-                    "error": str(e),
-                    "url": f"{self.api_base_url}/api/ticker",
-                },
-            )
+            logger.warning(f"Failed to get real price from Coincheck API: {e}")
+            if not self.dry_run:
+                raise NetworkError(
+                    f"Coincheck API request failed: {str(e)}",
+                    details={"symbol": symbol, "error": str(e)},
+                )
         except (ValueError, KeyError) as e:
-            logger.warning(
-                f"Invalid response from Coincheck API: {e}, using simulated price"
-            )
-            raise NetworkError(
-                f"Invalid Coincheck API response: {str(e)}",
-                details={
-                    "symbol": symbol,
-                    "error": str(e),
-                    "url": f"{self.api_base_url}/api/ticker",
-                },
-            )
+            logger.warning(f"Invalid response from Coincheck API: {e}")
+            if not self.dry_run:
+                raise NetworkError(
+                    f"Invalid Coincheck API response: {str(e)}",
+                    details={"symbol": symbol, "error": str(e)},
+                )
 
-        # Fallback to simulated price
+        # Dry-run fallback
         if self.fixed_price is not None:
             return self.fixed_price
         base_price = self._current_prices.get(symbol, 5000000.0)
