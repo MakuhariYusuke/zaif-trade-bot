@@ -108,6 +108,10 @@ except Exception:
 # Ensure websockets.sync.client exists so third-party packages such as yfinance
 # can import sync APIs during test collection without requiring real 'websockets'.
 try:
+    # Only stub if the real module is NOT installed
+    import websockets as _ws_check  # noqa: F401
+    from websockets.sync.client import connect as _ws_sync_check  # noqa: F401
+except (ImportError, ModuleNotFoundError):
     if "websockets.sync.client" not in sys.modules:
         from contextlib import contextmanager
 
@@ -1730,13 +1734,13 @@ if "seaborn" not in sys.modules:
     sys.modules["seaborn"] = _sns
 
 
-def pytest_ignore_collect(path, config):
+def pytest_ignore_collect(collection_path, config):
     """Skip collecting tests that live in legacy/script trees the maintainer
     asked to exclude (e.g., `archived/` and `scripts/`). This is a strong
     safeguard in case pytest ignores config-based --ignore rules for some
     discovery patterns on certain platforms.
     """
-    p = str(path)
+    p = str(collection_path)
     np = p.replace("\\", "/")
     if np.startswith("archived/") or "/archived/" in np:
         return True

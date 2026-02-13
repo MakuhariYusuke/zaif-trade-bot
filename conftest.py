@@ -6,9 +6,11 @@ project root directly (which can happen on some platforms/pyproject setups).
 """
 from __future__ import annotations
 
-def pytest_ignore_collect(path, config):
-    p = str(path)
-    np = p.replace("\\", "/")
+from pathlib import Path
+
+
+def pytest_ignore_collect(collection_path: Path, config):  # type: ignore[override]
+    np = str(collection_path).replace("\\", "/")
     if np.startswith("archived/") or "/archived/" in np:
         return True
     if np.startswith("scripts/") or "/scripts/" in np:

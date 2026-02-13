@@ -333,6 +333,89 @@ class MarketDataCollector:
                     logger.warning(f"Final auto-aggregate failed: {e}")
             logger.info(f"Collection finished. Total ticks: {ticks_collected}")
 
+    # ------------------------------------------------------------------
+    # WebSocket-based continuous collection
+    # ------------------------------------------------------------------
+
+    async def run_continuous_ws(
+        self,
+        duration_hours: float = 24.0,
+        auto_aggregate: bool = False,
+    ) -> None:
+        """WebSocket ストリーミングによるデータ収集.
+
+        REST ポーリング (run_continuous) の代替。
+        0.1s 間隔のリアルタイムデータを受信し、同じ raw 形式で保存する。
+        014# T4: REST 5秒 → WS 0.1秒 で情報密度 50x 向上。
+        """
+        from ztb.trading.live.exchanges.coincheck.websocket_client import (
+            Channel,
+            CoincheckPublicWS,
+        )
+
+        self._running = True
+        end_time = time.time() + duration_hours * 3600
+        flush_interval = 600  # 10 min
+        last_flush = time.time()
+        ticks_collected = 0
+
+        # Callbacks — buffer data using existing methods
+        async def _on_trade(trades: list["TradeRecord"]) -> None:
+            nonlocal ticks_collected
+            self._append_raw_trades(trades)
+            ticks_collected += len(trades)
+
+        async def _on_orderbook(ob: "OrderBookSnapshot") -> None:
+            nonlocal ticks_collected
+            self._append_raw_ob(ob)
+            ticks_collected += 1
+
+        ws = CoincheckPublicWS()
+        ws.on_trade = _on_trade
+        ws.on_orderbook = _on_orderbook
+
+        logger.info(
+            f"Starting WS collection: symbol={self.symbol}, "
+            f"duration={duration_hours}h"
+        )
+
+        await ws.start([Channel.TRADES, Channel.ORDERBOOK])
+
+        try:
+            while self._running and time.time() < end_time:
+                await asyncio.sleep(min(10.0, flush_interval))
+
+                # Periodic flush
+                if time.time() - last_flush > flush_interval:
+                    ob_path, tr_path = self.flush_raw()
+                    if auto_aggregate:
+                        try:
+                            day = self._today_str()
+                            agg_out = self.agg_dir / f"{day}.parquet"
+                            self.aggregate_to_1min(ob_path, tr_path, agg_out)
+                        except Exception as e:
+                            logger.warning(f"Auto-aggregate failed: {e}")
+                    last_flush = time.time()
+                    logger.info(
+                        f"WS collection: {ticks_collected} items, "
+                        f"ws_stats={ws.stats}"
+                    )
+        except asyncio.CancelledError:
+            logger.info("WS collection cancelled")
+        finally:
+            await ws.stop()
+            ob_path, tr_path = self.flush_raw()
+            if auto_aggregate:
+                try:
+                    day = self._today_str()
+                    agg_out = self.agg_dir / f"{day}.parquet"
+                    self.aggregate_to_1min(ob_path, tr_path, agg_out)
+                except Exception as e:
+                    logger.warning(f"Final auto-aggregate failed: {e}")
+            logger.info(
+                f"WS collection finished. Total items: {ticks_collected}"
+            )
+
     def stop(self) -> None:
         """Signal the collection loop to stop gracefully."""
         self._running = False

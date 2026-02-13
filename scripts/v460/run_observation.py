@@ -38,7 +38,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main(hours: float, interval: float, auto_agg: bool) -> None:
+async def main(hours: float, interval: float, auto_agg: bool, use_ws: bool) -> None:
     """Observation-only data collection."""
     # dry_run=True でも get_orderbook / get_recent_trades は public API を叩く
     adapter = CoincheckAdapter(dry_run=True)
@@ -49,10 +49,11 @@ async def main(hours: float, interval: float, auto_agg: bool) -> None:
         poll_interval_sec=interval,
     )
 
+    mode_str = "WebSocket streaming" if use_ws else f"REST polling ({interval}s)"
     logger.info(
         f"=== Observation Track Start ===\n"
         f"  Duration: {hours}h\n"
-        f"  Interval: {interval}s\n"
+        f"  Mode:     {mode_str}\n"
         f"  Raw dir:  {collector.raw_dir}\n"
         f"  Agg dir:  {collector.agg_dir}\n"
         f"  Auto-aggregate: {auto_agg}\n"
@@ -60,10 +61,16 @@ async def main(hours: float, interval: float, auto_agg: bool) -> None:
     )
 
     try:
-        await collector.run_continuous(
-            duration_hours=hours,
-            auto_aggregate=auto_agg,
-        )
+        if use_ws:
+            await collector.run_continuous_ws(
+                duration_hours=hours,
+                auto_aggregate=auto_agg,
+            )
+        else:
+            await collector.run_continuous(
+                duration_hours=hours,
+                auto_aggregate=auto_agg,
+            )
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
         collector.stop()
@@ -85,8 +92,12 @@ def cli() -> None:
         "--auto-aggregate", action="store_true",
         help="Auto-aggregate raw data to 1-min Parquet on each flush",
     )
+    parser.add_argument(
+        "--ws", action="store_true",
+        help="Use WebSocket streaming instead of REST polling (014# T4)",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.hours, args.interval, args.auto_aggregate))
+    asyncio.run(main(args.hours, args.interval, args.auto_aggregate, args.ws))
 
 
 if __name__ == "__main__":
