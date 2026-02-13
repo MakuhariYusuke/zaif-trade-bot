@@ -15,7 +15,6 @@ PnL モンテカルロシミュレータ — fill_test 実測データから月�
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,7 +23,11 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 # 027# 型統合: FillRecord は fill_quality の単一定義を使用
-from ztb.metrics.fill_quality import FillRecord  # noqa: F401 (re-export)
+from ztb.metrics.fill_quality import (
+    FillRecord,  # noqa: F401 (re-export)
+    FillMetrics,
+    compute_fill_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -176,16 +179,19 @@ class PnLMonteCarloSimulator:
         """Run Monte Carlo simulation."""
         cfg = self.config
 
-        # --- Observed statistics ---
-        filled = [r for r in self.records if r.filled]
-        cancelled = [r for r in self.records if r.cancelled]
-        n_total = len(self.records)
-        n_filled = len(filled)
-        n_cancelled = len(cancelled)
+        # --- Observed statistics (fill_quality.compute_fill_metrics に委譲) ---
+        metrics = compute_fill_metrics(self.records)
+        n_total = metrics.total_orders
+        n_filled = metrics.filled_orders
+        n_cancelled = metrics.cancelled_orders
         fill_rate = n_filled / n_total if n_total > 0 else 0.0
-        cancel_ratio = n_cancelled / n_total if n_total > 0 else 0.0
+        cancel_ratio = metrics.cancel_ratio
+        pnl_mean = metrics.post_fill_30s_pnl_mean
+        as_ratio = metrics.adverse_selection_ratio
+        queue_wait_median = metrics.queue_wait_median_sec
 
-        # PnL distribution (bps) — only from filled orders
+        # PnL distribution (bps) — bootstrap sampling 用の生配列
+        filled = [r for r in self.records if r.filled]
         pnl_bps = np.array([
             r.post_fill_30s_pnl for r in filled
             if r.post_fill_30s_pnl is not None
@@ -193,17 +199,7 @@ class PnLMonteCarloSimulator:
         if len(pnl_bps) == 0:
             pnl_bps = np.array([0.0])  # fallback for 0 fills
 
-        pnl_mean = float(np.mean(pnl_bps))
         pnl_std = float(np.std(pnl_bps, ddof=1)) if len(pnl_bps) > 1 else 0.0
-
-        # Adverse selection
-        as_filled = [r for r in filled if r.adverse_selected is not None]
-        as_count = sum(1 for r in as_filled if r.adverse_selected)
-        as_ratio = as_count / len(as_filled) if as_filled else 0.0
-
-        # Queue wait (filled only)
-        waits = [r.queue_wait_sec for r in filled]
-        queue_wait_median = float(np.median(waits)) if waits else 0.0
 
         # --- Monte Carlo ---
         cycles_per_month = cfg.cycles_per_day * cfg.days_per_month
@@ -413,32 +409,4 @@ class PnLMonteCarloSimulator:
         print(report)
         return report
 
-    def to_dict(self, result: MonteCarloResult) -> dict[str, Any]:
-        """Serialize result to dict (JSON-safe)."""
-        d = {
-            "n_records": result.n_records,
-            "n_filled": result.n_filled,
-            "n_cancelled": result.n_cancelled,
-            "observed_fill_rate": result.observed_fill_rate,
-            "observed_pnl_mean_bps": result.observed_pnl_mean_bps,
-            "observed_pnl_std_bps": result.observed_pnl_std_bps,
-            "observed_as_ratio": result.observed_as_ratio,
-            "n_simulations": result.n_simulations,
-            "cycles_per_month": result.cycles_per_month,
-            "pnl_mean_jpy": result.pnl_mean_jpy,
-            "pnl_std_jpy": result.pnl_std_jpy,
-            "pnl_percentiles_jpy": result.pnl_percentiles_jpy,
-            "pnl_mean_bps": result.pnl_mean_bps,
-            "var_95_jpy": result.var_95_jpy,
-            "cvar_95_jpy": result.cvar_95_jpy,
-            "prob_loss": result.prob_loss,
-            "prob_profit": result.prob_profit,
-            "g11_fill_rate": result.g11_fill_rate,
-            "g11_cancel_ratio": result.g11_cancel_ratio,
-            "g11_queue_wait_median": result.g11_queue_wait_median,
-            "g11_pnl_mean_bps": result.g11_pnl_mean_bps,
-            "g11_as_ratio": result.g11_as_ratio,
-            "g11_pass": result.g11_pass,
-            "breakeven_fill_rate": result.breakeven_fill_rate,
-        }
-        return d
+    # 027# 旧 to_dict(self, result) は MonteCarloResult.to_dict() に統合済み。削除。

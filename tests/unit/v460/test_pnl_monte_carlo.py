@@ -466,7 +466,7 @@ class TestReportAndSerialization:
         sim = PnLMonteCarloSimulator(recs, cfg)
         result = sim.run()
 
-        d = sim.to_dict(result)
+        d = result.to_dict()
         # Must be JSON serializable
         s = json.dumps(d)
         assert isinstance(s, str)
@@ -484,7 +484,7 @@ class TestReportAndSerialization:
         sim = PnLMonteCarloSimulator(recs, cfg)
         result = sim.run()
 
-        d = sim.to_dict(result)
+        d = result.to_dict()
         assert d["n_records"] == result.n_records
         assert d["n_filled"] == result.n_filled
         assert d["g11_pass"] == result.g11_pass
@@ -517,7 +517,7 @@ class TestEndToEnd:
         assert len(report) > 100
 
         # Serialize
-        d = sim.to_dict(result)
+        d = result.to_dict()
         out = tmp_path / "mc_result.json"
         out.write_text(json.dumps(d, indent=2), encoding="utf-8")
         reloaded = json.loads(out.read_text(encoding="utf-8"))
