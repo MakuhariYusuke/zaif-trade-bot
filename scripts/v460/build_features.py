@@ -2,27 +2,36 @@
 """
 v460 特徴量 Parquet 生成スクリプト.
 
-OHLCV → マイクロストラクチャ proxy 特徴量を生成し、
-data/v460/features/btc_jpy_1m_v460_features.parquet に保存する。
+2 モード対応:
+  proxy: OHLCV → マイクロストラクチャ proxy 特徴量を生成 (G0-data 用)
+  real:  raw orderbook/trades JSONL.gz → 1分集約 → real 特徴量を生成 (G1 再検証用)
 
 Phase 0 G0-data の前提データを構築する。
 リアル板/約定データが収集できた段階で proxy → real への差替が可能な設計。
 
 §2.2 特徴量候補 10 種:
-  1. bid_ask_spread      — OHLCV proxy: (high-low)/mid
-  2. depth_imbalance      — OHLCV proxy: CLV ベース
-  3. trade_flow_imbalance — OHLCV proxy: signed volume
+  1. bid_ask_spread      — real: (best_ask-best_bid)/mid / proxy: (high-low)/mid
+  2. depth_imbalance      — real: (bid_vol_5-ask_vol_5) / proxy: CLV ベース
+  3. trade_flow_imbalance — real: (buy_vol-sell_vol) / proxy: signed volume
   4. vwap_deviation       — 近似 VWAP vs close
   5. trade_intensity      — volume / rolling mean volume
   6. order_flow_toxicity  — VPIN 近似 (|buy-sell|/total)
   7. price_impact         — |Δclose| / volume
   8. micro_return_vol     — log return rolling std
-  9. bid_depth_slope      — vol proxied via (volume * CLV+) / range
-  10. ask_depth_slope     — vol proxied via (volume * CLV-) / range
+  9. bid_depth_slope      — real: bid_vol_5/bid_range / proxy: (volume*CLV+)/range
+  10. ask_depth_slope     — real: ask_vol_5/ask_range / proxy: (volume*CLV-)/range
 
 Usage:
+  # proxy モード (デフォルト — 従来互換)
   python scripts/v460/build_features.py
-  python scripts/v460/build_features.py --source data/btc_jpy_1m_v451_optimized_features.parquet
+  python scripts/v460/build_features.py --mode proxy --source data/btc_jpy_1m_v451_optimized_features.parquet
+
+  # real モード — raw data から生成
+  python scripts/v460/build_features.py --mode real
+  python scripts/v460/build_features.py --mode real --raw-dir data/v460/raw --date 20260213
+
+  # real モード — 全日付一括
+  python scripts/v460/build_features.py --mode real --all-dates
 """
 
 from __future__ import annotations
@@ -42,9 +51,14 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+from ztb.data.market_data_collector import MarketDataCollector
+from ztb.features.microstructure import add_microstructure_features, MICROSTRUCTURE_FEATURES
+
 # Default paths
 DEFAULT_SOURCE = "data/btc_jpy_1m_v451_optimized_features.parquet"
 DEFAULT_OUTPUT = "data/v460/features/btc_jpy_1m_v460_features.parquet"
+DEFAULT_RAW_DIR = "data/v460/raw"
+DEFAULT_REAL_OUTPUT = "data/v460/features/btc_jpy_1m_v460_real_features.parquet"
 
 # v460 10 microstructure feature names
 V460_FEATURES = [
@@ -161,6 +175,140 @@ def compute_sha256(path: Path) -> str:
     return sha.hexdigest()
 
 
+# ---------------------------------------------------------------------------
+# Real data pipeline: raw JSONL.gz → 1min agg → microstructure features
+# ---------------------------------------------------------------------------
+
+def _discover_dates(raw_dir: Path) -> list[str]:
+    """raw_dir 内の日付ファイルを検出して日付文字列リストを返す."""
+    ob_dir = raw_dir / "orderbook"
+    dates: set[str] = set()
+    if ob_dir.is_dir():
+        for f in ob_dir.glob("*.jsonl.gz"):
+            # stem of "20260213.jsonl.gz" is "20260213.jsonl" → strip .jsonl
+            date_str = f.name.replace(".jsonl.gz", "")
+            dates.add(date_str)
+    tr_dir = raw_dir / "trades"
+    if tr_dir.is_dir():
+        for f in tr_dir.glob("*.jsonl.gz"):
+            date_str = f.name.replace(".jsonl.gz", "")
+            dates.add(date_str)
+    return sorted(dates)
+
+
+def build_real_features(
+    raw_dir: str | Path,
+    output_path: str | Path,
+    dates: list[str] | None = None,
+    window: int = 20,
+) -> dict:
+    """raw JSONL.gz → aggregate_to_1min → microstructure features → Parquet.
+
+    Args:
+        raw_dir: raw data ディレクトリ (orderbook/, trades/ サブディレクトリ含む)
+        output_path: 出力 Parquet パス
+        dates: 処理対象の日付リスト (None = 全日付)
+        window: 特徴量の rolling window
+
+    Returns:
+        メタデータ dict
+    """
+    raw = Path(raw_dir)
+    if not raw.is_absolute():
+        raw = _PROJECT_ROOT / raw
+    out = Path(output_path)
+    if not out.is_absolute():
+        out = _PROJECT_ROOT / out
+
+    # Discover dates
+    all_dates = _discover_dates(raw)
+    if not all_dates:
+        raise FileNotFoundError(f"No raw data found in {raw}")
+
+    target_dates = dates if dates else all_dates
+    logger.info(f"Target dates: {target_dates} (available: {all_dates})")
+
+    # Aggregate each date
+    import tempfile
+    dfs: list[pd.DataFrame] = []
+    for d in target_dates:
+        ob_path = raw / "orderbook" / f"{d}.jsonl.gz"
+        tr_path = raw / "trades" / f"{d}.jsonl.gz"
+
+        if not ob_path.exists() and not tr_path.exists():
+            logger.warning(f"No data for date {d}, skipping")
+            continue
+
+        # aggregate_to_1min needs output path — use temp
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+
+        try:
+            agg_df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, tmp_path)
+            if not agg_df.empty:
+                dfs.append(agg_df)
+                logger.info(f"  {d}: {len(agg_df)} rows aggregated")
+            else:
+                logger.warning(f"  {d}: empty aggregation result")
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    if not dfs:
+        raise ValueError("No data aggregated from any date")
+
+    # Merge all dates
+    merged = pd.concat(dfs, axis=0).sort_index()
+    merged = merged[~merged.index.duplicated(keep="last")]
+    logger.info(f"Merged 1-min data: {len(merged)} rows, cols: {list(merged.columns)}")
+
+    # Generate close from mid_price if not present (real data doesn't have OHLCV close)
+    if "close" not in merged.columns:
+        if "mid_price" in merged.columns:
+            merged["close"] = merged["mid_price"]
+            logger.info("Using mid_price as close surrogate")
+        else:
+            raise KeyError("Neither 'close' nor 'mid_price' found in aggregated data")
+
+    # Apply microstructure features
+    logger.info(f"Adding microstructure features (window={window})...")
+    result = add_microstructure_features(merged, window=window)
+    logger.info(f"Result shape: {result.shape}")
+
+    # Validate: all 10 features present
+    missing_feats = [f for f in MICROSTRUCTURE_FEATURES if f not in result.columns]
+    if missing_feats:
+        logger.warning(f"Missing features (will be filled with 0): {missing_feats}")
+
+    # NaN check
+    feat_cols = [f for f in MICROSTRUCTURE_FEATURES if f in result.columns]
+    nan_count = int(result[feat_cols].isna().sum().sum())
+    total_cells = len(result) * len(feat_cols)
+    nan_ratio = nan_count / max(total_cells, 1)
+    logger.info(f"NaN count: {nan_count}/{total_cells} ({nan_ratio:.6f})")
+
+    # Save
+    out.parent.mkdir(parents=True, exist_ok=True)
+    result.to_parquet(out, engine="pyarrow")
+    logger.info(f"Saved: {out} ({out.stat().st_size / 1024:.1f} KB)")
+
+    data_hash = compute_sha256(out)
+    logger.info(f"SHA-256: {data_hash[:16]}...")
+
+    return {
+        "mode": "real",
+        "raw_dir": str(raw),
+        "output_path": str(out),
+        "dates": target_dates,
+        "rows": len(result),
+        "columns": list(result.columns),
+        "features": feat_cols,
+        "n_features": len(feat_cols),
+        "nan_ratio": round(nan_ratio, 8),
+        "sha256": data_hash,
+        "window": window,
+    }
+
+
 def build_and_save(
     source_path: str | Path,
     output_path: str | Path,
@@ -223,27 +371,72 @@ def build_and_save(
 def main() -> None:
     parser = argparse.ArgumentParser(description="v460 Feature Builder")
     parser.add_argument(
+        "--mode", choices=["proxy", "real"], default="proxy",
+        help="proxy: OHLCV proxy features / real: raw orderbook+trades features",
+    )
+    # Proxy mode options
+    parser.add_argument(
         "--source", default=DEFAULT_SOURCE,
-        help=f"Source OHLCV parquet (default: {DEFAULT_SOURCE})",
+        help=f"Source OHLCV parquet for proxy mode (default: {DEFAULT_SOURCE})",
     )
     parser.add_argument(
-        "--output", default=DEFAULT_OUTPUT,
-        help=f"Output path (default: {DEFAULT_OUTPUT})",
+        "--output", default=None,
+        help="Output path (auto-determined by mode if omitted)",
+    )
+    # Real mode options
+    parser.add_argument(
+        "--raw-dir", default=DEFAULT_RAW_DIR,
+        help=f"Raw data directory for real mode (default: {DEFAULT_RAW_DIR})",
+    )
+    parser.add_argument(
+        "--date", type=str, default=None,
+        help="Specific date to process in real mode (e.g. 20260213)",
+    )
+    parser.add_argument(
+        "--all-dates", action="store_true",
+        help="Process all available dates in real mode",
     )
     parser.add_argument("--window", type=int, default=20, help="Rolling window")
     args = parser.parse_args()
 
-    meta = build_and_save(args.source, args.output, args.window)
+    if args.mode == "real":
+        output = args.output or DEFAULT_REAL_OUTPUT
+        dates = None
+        if args.date:
+            dates = [args.date]
+        elif not args.all_dates:
+            dates = None  # default: all dates
 
-    print("\n" + "=" * 60)
-    print("  v460 Feature Build Complete")
-    print("=" * 60)
-    print(f"  Rows:       {meta['rows']:,}")
-    print(f"  Features:   {meta['n_features']}")
-    print(f"  NaN ratio:  {meta['nan_ratio']}")
-    print(f"  SHA-256:    {meta['sha256'][:16]}...")
-    print(f"  Output:     {meta['output_path']}")
-    print("=" * 60)
+        meta = build_real_features(
+            raw_dir=args.raw_dir,
+            output_path=output,
+            dates=dates,
+            window=args.window,
+        )
+        print("\n" + "=" * 60)
+        print("  v460 Real Feature Build Complete")
+        print("=" * 60)
+        print(f"  Mode:       real")
+        print(f"  Dates:      {meta['dates']}")
+        print(f"  Rows:       {meta['rows']:,}")
+        print(f"  Features:   {meta['n_features']}")
+        print(f"  NaN ratio:  {meta['nan_ratio']}")
+        print(f"  SHA-256:    {meta['sha256'][:16]}...")
+        print(f"  Output:     {meta['output_path']}")
+        print("=" * 60)
+    else:
+        output = args.output or DEFAULT_OUTPUT
+        meta = build_and_save(args.source, output, args.window)
+        print("\n" + "=" * 60)
+        print("  v460 Feature Build Complete")
+        print("=" * 60)
+        print(f"  Mode:       proxy")
+        print(f"  Rows:       {meta['rows']:,}")
+        print(f"  Features:   {meta['n_features']}")
+        print(f"  NaN ratio:  {meta['nan_ratio']}")
+        print(f"  SHA-256:    {meta['sha256'][:16]}...")
+        print(f"  Output:     {meta['output_path']}")
+        print("=" * 60)
 
 
 if __name__ == "__main__":

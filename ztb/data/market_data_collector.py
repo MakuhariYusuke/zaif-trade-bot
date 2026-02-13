@@ -65,9 +65,10 @@ class MarketDataCollector:
         (self.raw_dir / "trades").mkdir(parents=True, exist_ok=True)
         self.agg_dir.mkdir(parents=True, exist_ok=True)
 
-        # In-memory buffer for current day
+        # In-memory buffer for current day (cap でメモリ保護)
         self._ob_buffer: list[dict[str, Any]] = []
         self._tr_buffer: list[dict[str, Any]] = []
+        self._buffer_cap: int = 50_000  # 自動 flush 閾値
         self._last_trade_id: Optional[tuple[float, float, float, str]] = None
         self._running = False
 
@@ -240,13 +241,19 @@ class MarketDataCollector:
             buy_mask = tr_df["side"].str.lower() == "buy"
             tr_df["buy_vol"] = tr_df["amount"].where(buy_mask, 0)
             tr_df["sell_vol"] = tr_df["amount"].where(~buy_mask, 0)
+            # price × amount for VWAP calculation
+            tr_df["_pv"] = tr_df["price"] * tr_df["amount"]
 
             tr_1m = tr_df.resample("1min").agg(
                 buy_volume=("buy_vol", "sum"),
                 sell_volume=("sell_vol", "sum"),
                 trade_count=("price", "count"),
-                vwap=("price", lambda x: np.average(x, weights=tr_df.loc[x.index, "amount"]) if len(x) > 0 else np.nan),
+                _sum_pv=("_pv", "sum"),
+                _sum_amount=("amount", "sum"),
             )
+            # VWAP = sum(price * amount) / sum(amount)
+            tr_1m["vwap"] = tr_1m["_sum_pv"] / tr_1m["_sum_amount"].replace(0, np.nan)
+            tr_1m = tr_1m.drop(columns=["_sum_pv", "_sum_amount"])
             tr_1m["trade_flow_imbalance"] = (
                 (tr_1m["buy_volume"] - tr_1m["sell_volume"])
                 / (tr_1m["buy_volume"] + tr_1m["sell_volume"]).replace(0, np.nan)
@@ -270,6 +277,28 @@ class MarketDataCollector:
             logger.info(f"Aggregated {len(merged)} 1-min rows → {output_path}")
 
         return merged
+
+    def _flush_and_aggregate(self, auto_aggregate: bool) -> None:
+        """バッファ flush + オプション集約. DRY ヘルパー."""
+        ob_path, tr_path = self.flush_raw()
+        if auto_aggregate:
+            try:
+                day = self._today_str()
+                agg_out = self.agg_dir / f"{day}.parquet"
+                self.aggregate_to_1min(ob_path, tr_path, agg_out)
+            except Exception as e:
+                logger.warning(f"Auto-aggregate failed: {e}")
+
+    def _check_buffer_cap(self) -> bool:
+        """バッファが上限超過時に緊急 flush. メモリ保護."""
+        if len(self._ob_buffer) + len(self._tr_buffer) > self._buffer_cap:
+            logger.warning(
+                f"Buffer cap ({self._buffer_cap}) exceeded: "
+                f"ob={len(self._ob_buffer)}, tr={len(self._tr_buffer)} — emergency flush"
+            )
+            self.flush_raw()
+            return True
+        return False
 
     # ------------------------------------------------------------------
     # Continuous collection loop
@@ -307,30 +336,14 @@ class MarketDataCollector:
 
                 # Periodic flush
                 if time.time() - last_flush > flush_interval:
-                    ob_path, tr_path = self.flush_raw()
-                    if auto_aggregate:
-                        try:
-                            # 007# F3: pass correct paths to static method
-                            day = self._today_str()
-                            agg_out = self.agg_dir / f"{day}.parquet"
-                            self.aggregate_to_1min(ob_path, tr_path, agg_out)
-                        except Exception as e:
-                            logger.warning(f"Auto-aggregate failed: {e}")
+                    self._flush_and_aggregate(auto_aggregate)
                     last_flush = time.time()
 
                 await asyncio.sleep(self.poll_interval_sec)
         except asyncio.CancelledError:
             logger.info("Collection cancelled")
         finally:
-            ob_path, tr_path = self.flush_raw()
-            if auto_aggregate:
-                try:
-                    # 007# F3: pass correct paths to static method
-                    day = self._today_str()
-                    agg_out = self.agg_dir / f"{day}.parquet"
-                    self.aggregate_to_1min(ob_path, tr_path, agg_out)
-                except Exception as e:
-                    logger.warning(f"Final auto-aggregate failed: {e}")
+            self._flush_and_aggregate(auto_aggregate)
             logger.info(f"Collection finished. Total ticks: {ticks_collected}")
 
     # ------------------------------------------------------------------
@@ -364,11 +377,13 @@ class MarketDataCollector:
             nonlocal ticks_collected
             self._append_raw_trades(trades)
             ticks_collected += len(trades)
+            self._check_buffer_cap()
 
         async def _on_orderbook(ob: "OrderBookSnapshot") -> None:
             nonlocal ticks_collected
             self._append_raw_ob(ob)
             ticks_collected += 1
+            self._check_buffer_cap()
 
         ws = CoincheckPublicWS()
         ws.on_trade = _on_trade
@@ -387,14 +402,7 @@ class MarketDataCollector:
 
                 # Periodic flush
                 if time.time() - last_flush > flush_interval:
-                    ob_path, tr_path = self.flush_raw()
-                    if auto_aggregate:
-                        try:
-                            day = self._today_str()
-                            agg_out = self.agg_dir / f"{day}.parquet"
-                            self.aggregate_to_1min(ob_path, tr_path, agg_out)
-                        except Exception as e:
-                            logger.warning(f"Auto-aggregate failed: {e}")
+                    self._flush_and_aggregate(auto_aggregate)
                     last_flush = time.time()
                     logger.info(
                         f"WS collection: {ticks_collected} items, "
@@ -404,14 +412,7 @@ class MarketDataCollector:
             logger.info("WS collection cancelled")
         finally:
             await ws.stop()
-            ob_path, tr_path = self.flush_raw()
-            if auto_aggregate:
-                try:
-                    day = self._today_str()
-                    agg_out = self.agg_dir / f"{day}.parquet"
-                    self.aggregate_to_1min(ob_path, tr_path, agg_out)
-                except Exception as e:
-                    logger.warning(f"Final auto-aggregate failed: {e}")
+            self._flush_and_aggregate(auto_aggregate)
             logger.info(
                 f"WS collection finished. Total items: {ticks_collected}"
             )
