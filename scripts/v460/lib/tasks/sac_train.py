@@ -54,7 +54,7 @@ def task_sac_train(cfg: dict) -> dict:
 
     # ── SAC Training (Guard: SB3 must be available) ──
     try:
-        from stable_baselines3 import SAC
+        from stable_baselines3 import SAC  # noqa: F401
     except ImportError as e:
         raise ImportError(
             "stable_baselines3 is required for sac_train task. "
@@ -66,32 +66,56 @@ def task_sac_train(cfg: dict) -> dict:
     df = load_parquet(data_path)
     logger.info(f"Loaded {len(df)} rows from {data_path}")
 
-    # ── Environment setup ──
-    env, env_info = _create_training_env(df, cfg)
-    logger.info(f"Environment created: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
+    # ── H4: Replay buffer を total_timesteps に合わせて動的調整 ──
+    # デフォルト 1M は 50K 訓練で 20 倍過剰 → obs_dim × buffer_size でメモリ浪費
+    raw_buffer = sac_cfg.get("buffer_size", 1_000_000)
+    sac_cfg = dict(sac_cfg)  # 元 cfg を汚さないようコピー
+    sac_cfg["buffer_size"] = min(raw_buffer, max(total_timesteps * 2, 10_000))
+    if sac_cfg["buffer_size"] != raw_buffer:
+        logger.info(
+            f"Replay buffer adjusted: {raw_buffer:,} → {sac_cfg['buffer_size']:,} "
+            f"(aligned to 2× timesteps)"
+        )
 
-    # ── Model creation ──
-    model = _create_sac_model(env, sac_cfg, seed)
-    logger.info("SAC model created")
+    env: Any = None
+    try:
+        # ── Environment setup ──
+        env, env_info = _create_training_env(df, cfg)
+        logger.info(f"Environment created: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
 
-    # ── Training ──
-    start_time = time.time()
-    checkpoint_metrics = _train_with_checkpoints(model, total_timesteps, cfg)
-    elapsed = time.time() - start_time
-    logger.info(f"Training completed in {elapsed:.1f}s")
+        # ── Model creation ──
+        model = _create_sac_model(env, sac_cfg, seed)
+        logger.info("SAC model created")
 
-    # ── Evaluation ──
-    eval_metrics = _evaluate_trained_model(model, env, cfg)
+        # ── Training ──
+        start_time = time.time()
+        checkpoint_metrics = _train_with_checkpoints(model, total_timesteps, cfg)
+        elapsed = time.time() - start_time
+        logger.info(f"Training completed in {elapsed:.1f}s")
 
-    # ── Save model ──
-    model_dir = Path(cfg.get("output", {}).get("model_dir", "models/v460"))
-    model_dir.mkdir(parents=True, exist_ok=True)
-    model_path = model_dir / f"sac_v460_seed{seed}.zip"
-    model.save(str(model_path))
-    logger.info(f"Model saved: {model_path}")
+        # ── Evaluation ──
+        eval_metrics = _evaluate_trained_model(model, env, cfg)
 
-    # ── Save schema metadata alongside model ──
-    _save_model_schema(model, env, env_info, cfg, seed)
+        # ── Save model ──
+        model_dir = Path(cfg.get("output", {}).get("model_dir", "models/v460"))
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model_path = model_dir / f"sac_v460_seed{seed}.zip"
+        model.save(str(model_path))
+        logger.info(f"Model saved: {model_path}")
+
+        # ── Save schema metadata alongside model ──
+        _save_model_schema(model, env, env_info, cfg, seed)
+
+    finally:
+        # C2: 環境を確実にクローズしてメモリ解放
+        if env is not None:
+            try:
+                env.close()
+                logger.debug("Environment closed")
+            except Exception as e:
+                logger.warning(f"Failed to close environment: {e}")
+        # DataFrame 参照を明示的に解放
+        del df
 
     # ── Results ──
     results: Dict[str, Any] = {

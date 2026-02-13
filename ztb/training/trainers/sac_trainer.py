@@ -103,8 +103,6 @@ class SACMetricsCallback(BaseCallback):
         self.log_interval = log_interval
         self.training_logger = training_logger
         self.csv_path = csv_path
-        self.episode_rewards: list[float] = []
-        self.episode_lengths: list[int] = []
         self.csv_writer: Optional[Any] = None
         self.csv_file: Optional[Any] = None
 
@@ -432,6 +430,14 @@ class SACMetricsCallback(BaseCallback):
                 logger.info("✅ Metrics CSV saved: %s", self.csv_path)
             except Exception as e:
                 logger.warning("Failed to close CSV file: %s", e)
+
+    def __del__(self) -> None:
+        """C4: 例外時やGC時にCSVファイルハンドルを確実にクローズ."""
+        if getattr(self, "csv_file", None) is not None:
+            try:
+                self.csv_file.close()
+            except Exception:
+                pass
 
 
 class SACAlgorithmTrainer(EnsembleMixin):

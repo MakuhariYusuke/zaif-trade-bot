@@ -125,6 +125,7 @@ class HeavyTradingEnv(
     # Class constants for better maintainability
     DEFAULT_MEMORY_LOG_INTERVAL = 2000
     DEFAULT_GC_STEP_INTERVAL = 50000  # 112# Perf: 1000→50000。毎ステップGCは、2-5xの速度低下を引き起こす
+    _REGIME_STATS_MAXLEN = 1000  # C1: regime_rewards/actions の deque 上限
     DEFAULT_MAX_HISTORY_LENGTH = 512
     DEFAULT_MAX_ACTION_HISTORY = 256
     DEFAULT_INVENTORY_WINDOW = 64
@@ -1283,6 +1284,7 @@ class HeavyTradingEnv(
             self.logger.exception("Failed to update TrendDetector")
 
         # Reward calculation uses discrete action
+        # H1: current_obs を再利用 (\u540c\u4e00 current_step \u3067\u306e\u91cd\u8907 _get_observation() \u524a\u9664)
         reward = self.reward_calculator.calculate_reward(
             action=effective_action,
             continuous_action_value=continuous_action_value,
@@ -1295,9 +1297,9 @@ class HeavyTradingEnv(
             pnl=step_pnl,  # Use per-step PnL instead of cumulative total
             old_position=old_position,
             step=self.current_step,
-            observation=self._get_observation(),
-            reward_history=list(self.reward_history),
-            portfolio_value_history=list(self.portfolio_value_history),
+            observation=current_obs,
+            reward_history=self.reward_history,
+            portfolio_value_history=self.portfolio_value_history,
             trade_pnl=trade_pnl,
         )
 
@@ -1324,11 +1326,11 @@ class HeavyTradingEnv(
                     elif reward < 0:
                         reward *= penalty_multiplier
 
-                    # Update regime statistics
+                    # Update regime statistics (C1: deque で上限制限 — OOM 防止)
                     if current_regime not in self.regime_stats["regime_counts"]:
                         self.regime_stats["regime_counts"][current_regime] = 0
-                        self.regime_stats["regime_rewards"][current_regime] = []
-                        self.regime_stats["regime_actions"][current_regime] = []
+                        self.regime_stats["regime_rewards"][current_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
+                        self.regime_stats["regime_actions"][current_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
 
                     self.regime_stats["regime_counts"][current_regime] += 1
                     self.regime_stats["regime_rewards"][current_regime].append(reward)
@@ -1336,7 +1338,7 @@ class HeavyTradingEnv(
                         actual_action
                     )
 
-                    # Track regime transitions
+                    # Track regime transitions (最新 500 件のみ保持)
                     if self.regime_stats["current_regime"] != current_regime:
                         self.regime_stats["regime_transitions"].append(
                             {
@@ -1659,13 +1661,13 @@ class HeavyTradingEnv(
             self.regime_adaptation_config = adaptation_config
             logger.info("Market regime adaptation config updated")
 
-        # Initialize regime statistics tracking
+        # Initialize regime statistics tracking (C1: deque で上限制限 — OOM 防止)
         self.regime_stats: Dict[str, Any] = {
             "regime_counts": {},
             "regime_rewards": {},
             "regime_actions": {},
             "current_regime": None,
-            "regime_transitions": [],
+            "regime_transitions": deque(maxlen=500),
         }
 
         # Alias for backward compatibility
@@ -1774,13 +1776,13 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
             # Set adaptation enabled flag
             self.market_regime_adaptation_enabled = True
 
-            # Initialize regime statistics tracking
+            # Initialize regime statistics tracking (C1: deque で上限制限)
             self.regime_stats = {
                 "regime_counts": {},
                 "regime_rewards": {},
                 "regime_actions": {},
                 "current_regime": None,
-                "regime_transitions": [],
+                "regime_transitions": deque(maxlen=500),
             }
             logger.debug(f"Regime_stats set: {hasattr(self, 'regime_stats')}")
 

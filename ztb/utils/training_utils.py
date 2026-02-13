@@ -409,33 +409,3 @@ def display_training_complete(
                     print(f"  {key}: {value}")
     else:
         print("\n❌ Training failed")
-
-
-def load_model(model_path: str, algorithm: str = "SAC"):
-    """
-    Load model based on algorithm.
-
-    Args:
-        model_path: Path to model file
-        algorithm: Algorithm name (SAC, PPO, etc.)
-
-    Returns:
-        Loaded model
-
-    Raises:
-        ValueError: If algorithm is unsupported
-    """
-    if algorithm == "SAC":
-        from stable_baselines3 import SAC
-
-        return SAC.load(model_path)
-    elif algorithm == "PPO":
-        from stable_baselines3 import PPO
-
-        return PPO.load(model_path)
-    elif algorithm == "MaskablePPO":
-        from sb3_contrib import MaskablePPO
-
-        return MaskablePPO.load(model_path)
-    else:
-        raise ValueError(f"Unsupported algorithm: {algorithm}")

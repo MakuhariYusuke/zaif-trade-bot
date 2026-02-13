@@ -10,7 +10,7 @@ Refactored to follow SOLID principles with component-based architecture.
 import dataclasses
 import inspect
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -830,8 +830,8 @@ class RewardCalculator:
         old_position: float,
         step: int,
         observation: Optional[np.ndarray],
-        reward_history: List[float],
-        portfolio_value_history: List[float],
+        reward_history: Sequence[float],
+        portfolio_value_history: Sequence[float],
         continuous_action_value: Optional[float] = None,
         trade_pnl: float = 0.0,
     ) -> float:
@@ -849,9 +849,9 @@ class RewardCalculator:
             pnl: Profit/Loss from action
             old_position: Position before action
             step: Current step number
-        continuous_action_value: Optional[float] = None,
-            reward_history: History of rewards
-            portfolio_value_history: History of portfolio values
+            continuous_action_value: Optional[float] = None,
+            reward_history: History of rewards (deque or list)
+            portfolio_value_history: History of portfolio values (deque or list)
             trade_pnl: Realized PnL from executed trades at this step (0.0 if no trade).
 
         Returns:
