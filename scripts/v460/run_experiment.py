@@ -40,6 +40,7 @@ from scripts.v460.lib.evaluator import (
 )
 from scripts.v460.lib.manifest import ManifestWriter
 from scripts.v460.lib.tasks.feature_info import task_feature_info
+from scripts.v460.lib.tasks.sac_train import task_sac_train
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ MODEL_FACTORIES = {
 
 TASK_DISPATCH = {
     "feature_info": task_feature_info,
-    # "sac_train": task_sac_train,    # P3-1 で追加
+    "sac_train": task_sac_train,      # 001# P3-1 / 017# P0
     # "backtest": task_backtest,      # P4-1 で追加
 }
 

@@ -37,6 +37,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+@dataclass
 class FeatureSchema:
     """特徴量スキーマのデータクラス"""
 

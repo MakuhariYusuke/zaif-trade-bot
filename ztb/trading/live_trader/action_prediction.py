@@ -11,6 +11,27 @@ if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
 
+def _resolve_expected_obs_dim(live_trader: "LiveTrader") -> int:
+    """モデルの観測空間から期待次元数を解決する.
+
+    優先順位:
+      1. model.observation_space.shape[0]  (SB3 モデルから直接取得)
+      2. live_trader.expected_features      (FeatureSchemaManager 経由)
+      3. フォールバック無し — 呼出元で features をそのまま使う
+    """
+    model = getattr(live_trader, "model", None)
+    if model is not None:
+        obs_space = getattr(model, "observation_space", None)
+        if obs_space is not None and hasattr(obs_space, "shape") and obs_space.shape:
+            return int(obs_space.shape[0])
+
+    expected = getattr(live_trader, "expected_features", None)
+    if expected is not None and isinstance(expected, int) and expected > 0:
+        return expected
+
+    return 0  # 0 = 不明 → フォールバック (features をそのまま使う)
+
+
 class ActionPrediction:
     """Handles action prediction using the trained model."""
 
@@ -18,36 +39,50 @@ class ActionPrediction:
         """Initialize action prediction with reference to live trader."""
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
+        self._expected_dim: int | None = None
+
+    @property
+    def expected_dim(self) -> int:
+        """期待される観測次元数 (遅延解決・キャッシュ)."""
+        if self._expected_dim is None:
+            self._expected_dim = _resolve_expected_obs_dim(self.live_trader)
+        return self._expected_dim
+
+    def _prepare_observation(self, features: np.ndarray) -> np.ndarray:
+        """モデルの期待次元に合わせて観測ベクトルを整形する.
+
+        - expected_dim > 0: features を切り詰め or ゼロパディング
+        - expected_dim == 0: features をそのまま使用 (次元不明時のフォールバック)
+        """
+        dim = self.expected_dim
+        if dim <= 0:
+            # 観測空間が不明 — そのまま使う (dry-run 等)
+            return features
+
+        n = len(features)
+        if n == dim:
+            return features
+        elif n > dim:
+            self.logger.debug(
+                f"Truncating features {n} → {dim} to match model observation space"
+            )
+            return features[:dim]
+        else:
+            self.logger.debug(
+                f"Padding features {n} → {dim} to match model observation space"
+            )
+            return np.pad(features, (0, dim - n), "constant")
 
     def predict_action(self, features: np.ndarray[Any]) -> int:
         """Predict trading action using the model."""
         logger = self.logger
         try:
-            # Handle different observation spaces for different algorithms
-            if (
-                hasattr(self.live_trader, "algorithm")
-                and self.live_trader.algorithm == "sac"
-            ):
-                # SAC expects 5 features, take first 5 or pad if needed
-                if len(features) >= 5:
-                    obs_features = features[:5]
-                else:
-                    obs_features = np.pad(features, (0, 5 - len(features)), "constant")
-                logger.debug(f"Using first 5 features for SAC: {obs_features}")
-            else:
-                # PPO uses all features, but in dry-run mode use first 5 to match model expectations
-                if self.live_trader.dry_run:
-                    if len(features) >= 5:
-                        obs_features = features[:5]
-                    else:
-                        obs_features = np.pad(
-                            features, (0, 5 - len(features)), "constant"
-                        )
-                    logger.debug(
-                        f"Dry-run mode: using first 5 features for PPO: {obs_features}"
-                    )
-                else:
-                    obs_features = features
+            # モデルの observation_space / schema に基づいて次元を整合
+            obs_features = self._prepare_observation(features)
+            logger.debug(
+                f"Observation prepared: input={len(features)} → output={len(obs_features)} "
+                f"(expected_dim={self.expected_dim})"
+            )
 
             # Reshape for model input
             obs = obs_features.reshape(1, -1)
