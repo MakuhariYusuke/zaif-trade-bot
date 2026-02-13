@@ -193,11 +193,20 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
 # G1.1-exec (009# P2-3)
 # ======================================================================
 
-def run_g1_1(results_dir: str, thresholds: dict | None = None) -> dict:
+def run_g1_1(
+    results_dir: str,
+    thresholds: dict | None = None,
+    with_mc: bool = False,
+) -> dict:
     """G1.1-exec Gate チェック.
 
     000# §3.3 / 009# §2.1 準拠.
     fill_records JSONL からメトリクスを算出し、閾値照合を行う.
+
+    Args:
+        results_dir: fill_records JSONL ディレクトリ.
+        thresholds: Gate 閾値 (None → gate_thresholds.yaml).
+        with_mc: True → PnL モンテカルロシミュレーション結果を付加.
     """
     from ztb.metrics.fill_quality import (
         compute_fill_metrics,
@@ -219,6 +228,45 @@ def run_g1_1(results_dir: str, thresholds: dict | None = None) -> dict:
 
     metrics = compute_fill_metrics(records)
     judgment = g1_1_judgment(metrics, thresholds)
+
+    # Monte Carlo PnL シミュレーション (014# T5 統合)
+    if with_mc:
+        try:
+            from ztb.risk.pnl_monte_carlo import (
+                FillRecord as MCFillRecord,
+                MonteCarloConfig,
+                PnLMonteCarloSimulator,
+            )
+
+            mc_records = [
+                MCFillRecord(
+                    cycle_id=r.cycle_id,
+                    timestamp=r.timestamp,
+                    side=r.side,
+                    order_price=r.order_price,
+                    order_quantity=r.order_quantity,
+                    fill_price=r.fill_price,
+                    filled=r.filled,
+                    cancelled=r.cancelled,
+                    queue_wait_sec=r.queue_wait_sec,
+                    mid_at_fill=r.mid_at_fill,
+                    mid_30s_after=r.mid_30s_after,
+                    post_fill_30s_pnl=r.post_fill_30s_pnl,
+                    adverse_selected=r.adverse_selected,
+                )
+                for r in records
+            ]
+            sim = PnLMonteCarloSimulator(MonteCarloConfig())
+            mc_result = sim.run(mc_records)
+            judgment["monte_carlo"] = mc_result.to_dict()
+            logger.info(
+                f"MC: monthly PnL mean={mc_result.pnl_mean_jpy:+,.0f} JPY, "
+                f"P(loss)={mc_result.prob_loss:.1%}"
+            )
+        except Exception as e:
+            logger.warning(f"Monte Carlo simulation failed: {e}")
+            judgment["monte_carlo"] = {"error": str(e)}
+
     return judgment
 
 
@@ -240,6 +288,8 @@ def main() -> None:
                         help="Path to fill_records directory (G1.1)")
     parser.add_argument("--output", default=None,
                         help="Output JSON path")
+    parser.add_argument("--with-mc", action="store_true", default=False,
+                        help="Run Monte Carlo PnL simulation (G1.1 only)")
     args = parser.parse_args()
 
     if args.gate == "G0":
@@ -252,7 +302,7 @@ def main() -> None:
         result = run_g1_judgment(args.results_path)
     elif args.gate == "G1.1":
         results_dir = args.results_dir or "results/v460/fill_test"
-        result = run_g1_1(results_dir)
+        result = run_g1_1(results_dir, with_mc=args.with_mc)
     else:
         parser.error(f"Unknown gate: {args.gate}")
         return
