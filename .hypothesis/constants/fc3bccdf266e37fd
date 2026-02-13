@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\end_to_end_validator.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.5, 1.0, 'ComponentTest', 'ComponentValidator', 'HealthCheck', 'IntegrationTest', 'IntegrationValidator', 'PerformanceTest', 'PerformanceValidator', 'PipelineResult', 'ValidationMetrics', 'ValidationPipeline', 'ValidationReport', 'ValidationStage', 'ValidationStatus', 'component_validation', 'current_pipeline', 'default', 'failed', 'health_validation', 'is_running', 'passed', 'pipeline_progress']

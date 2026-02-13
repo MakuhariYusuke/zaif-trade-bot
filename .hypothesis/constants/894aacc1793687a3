@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\utils\training_stats.py
-# hypothesis_version: 6.148.6
-
-['best_episode', 'best_reward', 'elapsed_time', 'episodes', 'mean_length', 'mean_reward', 'recent_best_reward', 'recent_mean_length', 'recent_mean_reward', 'recent_std_reward', 'std_reward', 'steps_per_second', 'total_steps']

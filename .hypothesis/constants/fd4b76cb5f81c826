@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\core\feature_schema_manager.py
-# hypothesis_version: 6.140.3
-
-[',', '=', 'FeatureSchema', 'No schemas found', 'columns', 'config', 'feature_filter_mode', 'features', 'features_schema.json', 'mean', 'metadata.json', 'models', 'scaler.npz', 'scaler_data', 'schemas', 'std']

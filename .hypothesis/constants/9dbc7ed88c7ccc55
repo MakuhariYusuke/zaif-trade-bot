@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\action_executor.py
-# hypothesis_version: 6.148.6
-
-['action_type', 'continuous', 'continuous_value', 'discrete', 'discrete_action', 'raw_action', 'threshold_used']

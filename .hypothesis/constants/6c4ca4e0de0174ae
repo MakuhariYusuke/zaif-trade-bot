@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\types.py
-# hypothesis_version: 6.140.3
-
-['InfoDict', 'OHLCData', 'PriceData', 'T', 'U', 'buy', 'close', 'episode', 'high', 'low', 'open', 'os.PathLike[str]', 'portfolio_value', 'position', 'reward', 'step', 'volume']

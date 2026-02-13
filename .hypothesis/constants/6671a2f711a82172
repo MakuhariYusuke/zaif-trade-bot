@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\distillation\distiller.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.1, 0.3, 0.5, 0.999, 2.0, 128, 156, 1000, 'alpha', 'attention', 'attention_weight', 'batchmean', 'compression_ratio', 'compression_stats', 'distillation', 'distillation_loss', 'distillation_losses', 'distillation_steps', 'epochs', 'error', 'feature_weight', 'final_accuracy', 'intermediate', 'layer', 'learning_rate', 'output', 'parameter_reduction', 'recommendations', 'student_loss', 'student_losses', 'student_model', 'student_parameters', 'success', 'teacher_loss', 'teacher_losses', 'teacher_parameters', 'teacher_temp_decay', 'temperature', 'training_results', 'warmup_steps']

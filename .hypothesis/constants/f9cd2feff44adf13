@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\registry\broker_registry.py
-# hypothesis_version: 6.148.6
-
-[0.0, 100000.0, 'BTC', 'JPY', 'bitflyer', 'cancelled', 'coincheck', 'coincheck_skeleton', 'filled', 'id', 'not_found', 'open', 'price', 'quantity', 'side', 'sim', 'status', 'symbol']

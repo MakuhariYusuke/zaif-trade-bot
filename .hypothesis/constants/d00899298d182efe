@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\core\modern_callback_system.py
-# hypothesis_version: 6.140.3
-
-[0.0, 100, 1000, './checkpoints', 'INFO', 'callback', 'checkpoint', 'checkpoint_save', 'epoch_end', 'epoch_start', 'error_count', 'error_occurred', 'error_rate', 'evaluation_end', 'evaluation_start', 'execution_count', 'failed_callbacks', 'logging', 'metrics', 'metrics_update', 'progress', 'step_end', 'step_start', 'successful_callbacks', 'total_callbacks', 'total_execution_time', 'training_end', 'training_start']

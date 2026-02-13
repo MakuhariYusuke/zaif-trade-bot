@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\mtf_optimizer.py
-# hypothesis_version: 6.148.6
-
-[-0.1, 0.0, 0.1, 0.4, 0.6, 1.0, 2000, '--candidates', '--config', '--configs', '--dry-run', '--seeds', '--timesteps', '__main__', '_candidate_id', 'feature_weights', 'mean_sharpe', 'mean_total_return', 'model_name', 'mtf_candidate', 'multi_timeframe', 'random', 'report_count', 'run_artifacts', 'set_weights', 'store_true', 'training', 'utf-8']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\dynamic_position_sizer.py
-# hypothesis_version: 6.140.3
-
-[0.01, 0.1, 0.2, 0.6, 0.8, 1.0, 1.2, 1.4, 2.0, 5.0, 10.0, '_sizing_step_count', 'close', 'drawdown_control', 'drawdown_window', 'high_volatility', 'low_volatility', 'max_drawdown_limit', 'position_size_max', 'position_size_min', 'ranging', 'trending', 'volatility_window']

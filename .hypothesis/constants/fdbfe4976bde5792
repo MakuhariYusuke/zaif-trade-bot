@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\__init__.py
-# hypothesis_version: 6.148.6
-
-['TrainingConfig', 'UnifiedTrainer', 'ZaifTradeBotConfig', 'get_training_config', 'load_config']

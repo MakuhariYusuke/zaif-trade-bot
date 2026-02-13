@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\path_utils.py
-# hypothesis_version: 6.140.3
-
-['.', '.git', 'cache', 'config', 'data', 'logs', 'models', 'package.json', 'pyproject.toml', 'requirements.txt', 'setup.py', 'tensorboard']

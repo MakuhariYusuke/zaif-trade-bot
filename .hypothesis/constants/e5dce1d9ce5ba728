@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\evaluation\walk_forward_adapter.py
-# hypothesis_version: 6.140.3
-
-[-1e-06, 0.0, 1e-06, 0.9, 1.0, 1.1, 1.4, 'avg_max_drawdown', 'avg_test_roi', 'avg_val_roi', 'avg_win_rate', 'consistency_score', 'inf', 'max_drawdown', 'mild', 'model_count', 'models', 'moderate', 'none', 'overfitting_ratios', 'overfitting_severity', 'rankings', 'robustness_score', 'roi_in_sample', 'roi_out_of_sample', 'scripts', 'severe', 'sharpe_ratio', 'stability_index', 'std_sharpe_ratio', 'std_test_roi', 'std_val_roi', 'total_trades', 'v457', 'walk_forward', 'walk_forward_model', 'win_rate', 'window_count', 'winning_trades']

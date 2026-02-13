@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\cli_common.py
-# hypothesis_version: 6.148.6
-
-['--artifacts-dir', '--correlation-id', '--dry-run', '--output-dir', '--timeout', '--venue', '--verbose', '-v', 'Artifacts directory', 'Output directory', 'Timeout in seconds', 'Trading venue', 'artifacts', 'binance', 'bitflyer', 'coincheck', 'positive', 'results', 'store_true', 'timeout']

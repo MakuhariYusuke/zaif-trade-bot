@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\broker_interfaces.py
-# hypothesis_version: 6.140.3
-
-['Balance', 'IBroker', 'Order', 'Position', 'ZaifAdapter']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\common\models.py
-# hypothesis_version: 6.140.3
-
-[0.0, 'MarketData', 'TradeRecord', '_pnl', 'close', 'high', 'low', 'open']

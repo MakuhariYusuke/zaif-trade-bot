@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\advanced_callbacks.py
-# hypothesis_version: 6.140.3
-
-[0.0001, 0.05, 1000, 5000, '=', 'best_model', 'critic_loss', 'logger', 'max', 'min']

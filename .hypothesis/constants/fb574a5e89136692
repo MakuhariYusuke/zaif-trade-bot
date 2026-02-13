@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\data\streaming_pipeline.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 30.0, 60.0, 100, 500, 512, 800, 1024, 2000, 50000, 100000, 1000000, '1m', 'Health check failed', '_default_validator()', 'buffer_capacity', 'buffer_rows', 'coerce', 'connection-monitor', 'consecutive_failures', 'cpu_usage_percent', 'degraded', 'error', 'feature_names', 'gzip', 'health', 'last_error', 'last_error_at', 'last_success_at', 'lookback_rows', 'market_cap', 'memory_usage_mb', 'ok', 'pipeline_closed', 'price', 'reconnecting', 'rows', 'rows_added', 'status', 'stream_batch', 'stream_buffer_rows', 'stream_failure', 'stream_failures', 'stream_features', 'stream_rows_total', 'streaming-background', 'timestamp', 'total_rows_streamed', 'volume']

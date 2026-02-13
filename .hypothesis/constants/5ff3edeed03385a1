@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\experiments\v450\run_short_training_v450.py
-# hypothesis_version: 6.140.3
-
-[0.0003, 0.001, 0.002, 0.005, 0.01, 0.05, 0.08, 0.5, 3.0, 50.0, 500.0, 200000.0, 100, 256, 1000, 5000, 6000, 10000, '__main__', 'action_discovery', 'algorithm', 'auto', 'batch_size', 'buffer_size', 'curriculum_stage', 'data_config', 'data_path', 'domain_randomization', 'enabled', 'ent_coef', 'environment', 'intensity', 'latency_range', 'learning_rate', 'learning_starts', 'log_interval', 'mad', 'maker_fee_range', 'max_action_threshold', 'min_action_threshold', 'percentile_threshold', 'reference_window', 'reward_settings', 'sac', 'sac_hyperparameters', 'scale', 'slippage_range', 'taker_fee_range', 'total_timesteps', 'training', 'use_relative', 'use_smart_incentive', 'z_score', 'z_score_method', 'z_score_threshold', 'z_score_window']

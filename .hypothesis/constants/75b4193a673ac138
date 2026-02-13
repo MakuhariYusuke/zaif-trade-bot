@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\supertrend.py
-# hypothesis_version: 6.148.6
-
-[3.0, 'Supertrend', 'Supertrend_Direction', 'close', 'high', 'low', 'multiplier', 'period', 'supertrend', 'supertrend_direction']

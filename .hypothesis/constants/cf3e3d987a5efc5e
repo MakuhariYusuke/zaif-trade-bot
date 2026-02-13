@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\attention_trainer.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.0001, 0.1, 0.2, 0.5, 100, 10000, 'batch_size', 'best_val_loss', 'epoch', 'error', 'final_metrics', 'hidden_dim', 'high_volatility', 'inf', 'learning_rate', 'loss', 'low_volatility', 'max_epochs', 'model_save_path', 'model_state_dict', 'n_batches', 'n_features', 'optimizer_state_dict', 'patience', 'ranging', 'success', 'training_history', 'trending', 'val_loss']

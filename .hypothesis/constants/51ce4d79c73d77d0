@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\federated_learning.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-06, 1e-05, 0.01, 1.0, 'avg_param_variance', 'convergence_metrics', 'final_global_loss', 'inf', 'loss_std', 'num_clients', 'rounds_completed', 'total_privacy_spent']

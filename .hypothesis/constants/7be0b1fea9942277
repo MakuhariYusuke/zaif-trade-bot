@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\archived\scripts\preflight_schema_scaler_check.py
-# hypothesis_version: 6.148.6
-
-[1.0, '--model-dir', '--no-strict', '--strict', '--test-data', '--verbose', '-v', '=', 'Action required:', 'Config Fingerprint', 'Feature Schema', 'Normalization Stats', '__main__', 'episode_id', 'exchange', 'features_schema.json', 'pair', 'scaler.npz', 'side', 'source', 'store_false', 'store_true', 'strict', 'timestamp', 'ts']

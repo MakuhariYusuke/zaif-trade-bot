@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\tools\data\validate_dataset.py
-# hypothesis_version: 6.148.6
-
-[100, 300, '*', '--input', '--path', '--resample-to', '--targets', '__main__', 'close', 'high', 'low', 'open', 'python', 'timestamp', 'volume']

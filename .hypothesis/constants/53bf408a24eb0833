@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\experiments\v450\run_ab_test_threshold_v450.py
-# hypothesis_version: 6.140.3
-
-[0.0003, 0.002, 0.08, 2.0, 3.0, 200000.0, 100, 256, 2000, 10000, 'Mode %s failed: %s', 'Result: %s', 'Running mode: %s', '__main__', 'action_discovery', 'algorithm', 'batch_size', 'buffer_size', 'curriculum_stage', 'data_config', 'data_path', 'environment', 'error', 'fixed', 'initial_balance', 'learning_rate', 'learning_starts', 'mad', 'max_action_threshold', 'min_action_threshold', 'mode', 'model_name', 'sac', 'sac_hyperparameters', 'success', 'total_timesteps', 'training', 'volatility', 'z_score', 'z_score_method', 'z_score_threshold', 'z_score_window']

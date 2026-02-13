@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\safety\fallback_manager.py
-# hypothesis_version: 6.148.6
-
-[0.1, 0.5, 0.8, 1.0, 5.0, 3600, 'Manual deactivation', 'activated_at', 'active', 'active_actions_count', 'circuit_breaker', 'conservative', 'duration_minutes', 'emergency_shutdown', 'emergency_startup', 'gradual_degradation', 'limit_leverage', 'limit_position_size', 'max_leverage', 'max_size', 'max_trades_per_hour', 'mode', 'reason', 'recovery_attempts', 'reduce_capacity', 'reduction_factor', 'restore_capacity', 'restore_leverage', 'resume_trading', 'severity', 'step', 'stop_trading', 'total_steps']

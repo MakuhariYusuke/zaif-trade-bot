@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\components\live_trading_components.py
-# hypothesis_version: 6.140.3
-
-[100, 'Model not loaded', 'Trading loop started', 'algorithm', 'error_count', 'error_rate', 'feature_count', 'flatten', 'has_features', 'has_policy', 'is_running', 'last_execution_time', 'loop_count', 'model_loaded', 'model_path', 'policy', 'ppo', 'price', 'price_history_size', 'sac']

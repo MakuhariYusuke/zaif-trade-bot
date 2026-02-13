@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\config.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1.0, 2.0, 16.0, 512, '1', 'CRITICAL', 'DEBUG', 'ERROR', 'INFO', 'T', 'TypedConfig', 'ValidatedConfig', 'WARNING', 'ZTB_CACHE_SIZE', 'ZTB_CUDA_WARN_GB', 'ZTB_ENABLE_PROFILING', 'ZTB_ENV', 'ZTB_FLOAT_TOLERANCE', 'ZTB_LOG_LEVEL', 'ZTB_MAX_MEMORY_GB', 'ZTB_MEM_PROFILE', 'ZTB_MODEL_DIR', 'ZTB_TEST_ISOLATION', '_', 'additionalProperties', 'batch_size', 'boolean', 'cache_size', 'debug', 'default_feature_set', 'default_model_path', 'default_model_weight', 'development', 'enable_profiling', 'enum', 'feature_set', 'full', 'gamma', 'integer', 'learning_rate', 'log_level', 'max_memory_gb', 'maximum', 'minimum', 'model_dir', 'models', 'number', 'object', 'on', 'path', 'production', 'properties', 'r', 'strict_validation', 'string', 'test_isolation', 'testing', 'total_timesteps', 'true', 'type', 'weight', 'yes']

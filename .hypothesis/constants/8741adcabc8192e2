@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\adx.py
-# hypothesis_version: 6.148.6
-
-['ADX', 'ADX_D1', 'ADX_H1', 'ADX_H4', 'ADX_M1', 'ADX_M15', 'ADX_M5', 'MinusDI', 'MinusDI_D1', 'MinusDI_H1', 'MinusDI_H4', 'MinusDI_M1', 'MinusDI_M15', 'MinusDI_M5', 'PlusDI', 'PlusDI_D1', 'PlusDI_H1', 'PlusDI_H4', 'PlusDI_M1', 'PlusDI_M15', 'PlusDI_M5', 'close', 'high', 'low', 'medium_period']

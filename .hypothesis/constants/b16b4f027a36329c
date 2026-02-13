@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\__init__.py
-# hypothesis_version: 6.148.6
-
-['FeatureRegistry', 'core', 'generators', 'get_feature_manager', 'models', 'processors', 'time', 'utils']

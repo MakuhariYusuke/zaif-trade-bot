@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\common\metrics.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.2, 0.5, 0.8, 1.0, 2.0, 50.0, 100.0, 'accuracy', 'atr', 'bear_strength', 'bull_strength', 'close', 'directional_accuracy', 'directional_signals', 'high', 'long_momentum', 'low', 'momentum', 'momentum_divergence', 'profitability', 'r_squared', 'resistance_level', 'resistance_strength', 'short_momentum', 'signal_sharpe_ratio', 'sr_position', 'support_level', 'support_strength', 'total_signals', 'trend_consistency', 'trend_direction', 'trend_slope', 'trend_strength', 'volatility', 'volatility_regime', 'volatility_trend', 'volume', 'volume_intensity', 'volume_ma_ratio', 'volume_price_trend', 'volume_trend']

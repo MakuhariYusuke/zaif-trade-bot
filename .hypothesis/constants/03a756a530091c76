@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\components\order_manager.py
-# hypothesis_version: 6.148.6
-
-['LiveTrader', 'amount', 'buy', 'demo_mode', 'entry_price', 'error', 'info', 'position', 'sell', 'total_pnl', 'trades_count', 'warning', '📈 Live Trade Info']

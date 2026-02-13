@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\core\base_trainer.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.5, 50000, 'Manual stop', 'Training started', 'consecutive_failures', 'count', 'current_step', 'gate_results', 'halt_reason', 'is_training', 'last_gate_check_step', 'mean', 'mean_reward', 'memory_rss', 'no_dup_steps', 'reason', 'reward', 'reward_stats', 'reward_std', 'reward_trend_300k', 'rewards_history', 'status', 'std', 'step', 'steps_history', 'training_progress', 'value', 'variance']

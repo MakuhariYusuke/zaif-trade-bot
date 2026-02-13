@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\gradient_accumulation.py
-# hypothesis_version: 6.148.6
-
-[0.0, 1.0, 'accumulated_loss', 'accumulation_steps', 'actual_batch_size', 'cpu', 'cuda', 'effective_batch_size', 'loss', 'memory_efficiency', 'parameters_updated', 'params', 'should_update', 'step', 'step_count', 'step_loss', 'to', 'training_notes']

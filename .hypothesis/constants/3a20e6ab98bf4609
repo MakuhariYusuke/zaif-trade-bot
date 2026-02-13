@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\types\alert_types.py
-# hypothesis_version: 6.148.6
-
-['acknowledged', 'active', 'critical', 'emergency', 'expired', 'info', 'resolved', 'warning']

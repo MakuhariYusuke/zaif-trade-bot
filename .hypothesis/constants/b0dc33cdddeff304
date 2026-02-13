@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\cache_coordination.py
-# hypothesis_version: 6.140.3
-
-[0.0, 100, 1000, 1024, 3600, 'Cache cleared', 'evictions', 'hit_rate', 'hits', 'items', 'max_items', 'misses', 'size_bytes', 'size_mb', 'total_requests', 'ttl_seconds', 'unknown']

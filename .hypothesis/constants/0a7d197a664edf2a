@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\drift_detection.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.01, 0.2, 100, 'drift', 'drift_detected', 'eval_mean', 'eval_std', 'feature_name', 'ks_drift', 'ks_p_value', 'ks_statistic', 'no-drift', 'psi', 'psi_drift', 'train_mean', 'train_std', 'utf-8']

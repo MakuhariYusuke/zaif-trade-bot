@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\health_monitor.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.05, 0.1, 5.0, 30.0, 90.0, 95.0, 100, 1000, 2000, '/', 'Critical', 'Memory usage normal', 'apis_checked', 'average_mb', 'checks', 'circuit_breakers', 'circuit_state', 'connection_time_ms', 'cpu_percent', 'current_mb', 'degraded', 'details', 'disk_usage_percent', 'duration', 'error', 'exception', 'exchange_api', 'external_api_health', 'healthy', 'increasing', 'issues', 'market_data_api', 'memory_health', 'memory_mb', 'memory_percent', 'memory_stats', 'message', 'network_connections', 'open', 'overall_status', 'peak_mb', 'response_time_ms', 'samples', 'status', 'system_health', 'system_metrics', 'timestamp', 'trend', 'unhealthy', 'unknown']

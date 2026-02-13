@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\data\coin_gecko_stream.py
-# hypothesis_version: 6.140.3
-
-[0.01, 0.1, 0.5, 10.0, 30.0, 60.0, 200, 400, 429, 500, '1m', 'CoinGeckoStream', 'Retry-After', 'bitcoin', 'coerce', 'coin_id', 'end', 'float32', 'from', 'granularity', 'left', 'market_cap', 'market_caps', 'ms', 'page_size', 'price', 'prices', 'start', 'timestamp', 'to', 'total_volumes', 'usd', 'volume', 'vs_currency']

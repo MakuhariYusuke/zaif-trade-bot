@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\meta_learning.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.01, 0.2, -100, 100, 256, 1000, '-inf', 'actions', 'adaptation_losses', 'algorithm', 'best_performance', 'config', 'dones', 'final_params', 'initial_params', 'maml', 'market_names', 'meta_losses', 'meta_performance', 'model_state_dict', 'next_states', 'num_markets', 'param_updates', 'reptile', 'rewards', 'states', 'task_losses']

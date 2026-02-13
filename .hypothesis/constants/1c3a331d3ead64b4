@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\trend_convergence_calculator.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.2, 0.25, 0.3, 0.33, 0.4, 0.5, 1.0, 33.3, 50.0, 100.0, 100, 200, 'alignment', 'alignment_score', 'confidence_level', 'divergence', 'divergence_penalty', 'insufficient_data', 'metrics', 'moderate_convergence', 'momentum_harmony', 'overall_score', 'recommendation', 'risk_adjusted_score', 'strength_consistency', 'strong_convergence', 'trend_strength', 'weak_convergence']

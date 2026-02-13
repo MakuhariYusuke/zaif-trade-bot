@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\macd.py
-# hypothesis_version: 6.140.3
-
-[-1.0, -0.8, -0.6, 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.1, 1.2, 1.5, 'bearish_divergence', 'bullish_convergence', 'close', 'cross_strength', 'fast_period', 'general', 'histogram_change', 'histogram_threshold', 'histogram_value', 'low', 'medium', 'momentum_factor', 'mtf_confidence', 'mtf_weight', 'pattern_type', 'regime_adjusted', 'regime_aware', 'regime_cluster', 'signal_period', 'slow_period', 'timeframe_alignment', 'trend_strength', 'volatility_ratio']

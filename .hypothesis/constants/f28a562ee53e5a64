@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\explainability\types.py
-# hypothesis_version: 6.148.6
-
-[0.0, 'DecisionExplanation', 'ExplanationCache', 'ExplanationReport', 'ExplanationResult', 'VisualizationResult', 'confidence', 'counterfactual', 'decision_explanation', 'decision_reason', 'description', 'explanation_id', 'explanation_type', 'explanation_types', 'feature_category', 'feature_importance', 'feature_name', 'format', 'generated_at', 'importance_score', 'metadata', 'model_version', 'period_end', 'period_start', 'plots', 'recommendations', 'report_id', 'target_prediction', 'timestamp', 'top_features', 'total_explanations']

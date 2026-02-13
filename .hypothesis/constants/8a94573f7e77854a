@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\comprehensive_backtester.py
-# hypothesis_version: 6.148.6
-
-['BacktestEngine', 'BacktestResult', 'MarketData', 'PerformanceAnalyzer', 'RiskManager', 'RiskMetrics', 'StrategyEvaluator', 'TradeRecord']

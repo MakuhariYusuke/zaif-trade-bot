@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\unified_backtester.py
-# hypothesis_version: 6.140.3
-
-[-0.05, 0.0, 0.0005, 0.001, 1.0, 100000.0, 100, 252, 1000, 10000, 'ConfigManager', 'M', 'SAC', 'adaptation', 'algorithm', 'backtest', 'backtest_config', 'best_month', 'best_month_return', 'config', 'config_path', 'config_summary', 'data_path', 'data_points', 'date_range', 'description', 'drawdown_analysis', 'environment', 'error', 'execution_time', 'feature_data', 'feature_importance', 'freq', 'generate_signal', 'max_drawdown', 'max_recovery_time', 'model_path', 'monthly_volatility', 'price_data', 'records', 'recovery_analysis', 'regime', 'risk_detailed', 'seasonal_analysis', 'sharpe_ratio', 'signal_performance', 'strategy_params', 'temporal', 'total_drawdowns', 'total_return', 'total_trades', 'trade_history', 'training', 'version', 'volatility', 'walkforward', 'worst_month', 'worst_month_return']

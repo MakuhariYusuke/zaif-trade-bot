@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\enhanced_risk_manager.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.2, 0.3, 0.33, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 'adjusted_position', 'agreement', 'analyzer_available', 'basic_risk_status', 'control_active', 'convergence_score', 'convergence_weight', 'current_convergence', 'dominant_trend', 'enabled', 'error', 'reasons', 'risk_level', 'risk_weights', 'score', 'timeframe_agreement', 'timeframe_weights']

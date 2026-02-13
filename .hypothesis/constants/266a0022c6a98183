@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_time_theory.py
-# hypothesis_version: 6.148.6
-
-[0.2, 0.4, 'IchimokuTimeTheory', 'Ichimoku_Time_Theory', 'close', 'high', 'ichimoku_kijun', 'ichimoku_tenkan', 'ichimoku_time_theory', 'low']

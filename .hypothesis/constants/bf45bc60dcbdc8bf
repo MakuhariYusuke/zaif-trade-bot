@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\operations\types.py
-# hypothesis_version: 6.148.6
-
-['AlertSummary', 'IntegrationStatus', 'OperationalMetrics', 'RecoveryAction', 'SystemStatus', 'active', 'auto_scale', 'cpu', 'cpu_based', 'critical', 'degraded', 'disk', 'down', 'failed', 'failure', 'gpu', 'healthy', 'inactive', 'manual_scale', 'memory', 'memory_based', 'network', 'none', 'predictive', 'request_based', 'scale_down', 'scale_up', 'scheduled', 'unknown', 'up', 'warning']

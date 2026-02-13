@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\unified_feature.py
-# hypothesis_version: 6.148.6
-
-[-0.05, -0.01, -0.005, 0.0, 0.2, 1.5, 'Bearish_Engulfing', 'Bearish_Volume_Surge', 'Bearish_Volume_Trend', 'Hammer_Bearish', 'MACD', 'RSI', 'RSI_Overbought_Sell', 'Shooting_Star', 'Stochastic', 'Williams_R', '_global', 'close', 'correlation', 'curated', 'financial_sentiment', 'full', 'generic', 'high', 'low', 'minimal', 'news_data', 'news_sentiment_score', 'open', 'order_flow_imbalance', 'realized_volatility', 'returns', 'rv_window', 'sac', 'sentiment_intensity', 'tick_volume_ratio', 'tv_window', 'v437', 'volume']

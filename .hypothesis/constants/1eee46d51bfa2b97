@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\grouping\causal_grouped_scaler.py
-# hypothesis_version: 6.140.3
-
-[1e-08, 1e-07, 0.99, 2.0, 3.0, 'Train data is empty', 'fit_end_idx', 'fitted', 'mean_range', 'scale_indices', 'std_floor', 'std_range']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\common\plot_utils.py
-# hypothesis_version: 6.140.3
-
-[100, 300, 'axes.labelsize', 'axes.titlesize', 'default', 'figure.dpi', 'figure.figsize', 'font.size', 'legend.fontsize', 'tight', 'xtick.labelsize', 'ytick.labelsize']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\live_trading\trading_api.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.001, 0.1, 0.5, 100.5, 50000.0, 99950.0, 100000.0, 100050.0, 5000000.0, '12345', 'BTC', 'BTC/JPY', 'JPY', 'amount', 'apiKey', 'ask', 'balance', 'bid', 'btc', 'buy', 'filled', 'free', 'jpy', 'last', 'limit', 'open', 'order', 'order_id', 'order_type', 'price', 'secret', 'side', 'status', 'symbol', 'ticker', 'volume']

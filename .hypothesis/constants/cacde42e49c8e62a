@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\oscillator\stochastic.py
-# hypothesis_version: 6.148.6
-
-[100, 'Stochastic', 'close', 'd_period', 'high', 'k_period', 'low', 'stoch_d', 'stoch_k']

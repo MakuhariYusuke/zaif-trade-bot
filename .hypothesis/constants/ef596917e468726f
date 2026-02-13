@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\components\config_manager.py
-# hypothesis_version: 6.140.3
-
-['adaptation_frequency', 'advanced', 'algorithm', 'basic', 'batch_size', 'breakdown_setup', 'breakout_setup', 'consolidation', 'data_config', 'data_path', 'detection_window', 'detector_type', 'enabled', 'environment', 'extreme_volatility', 'features', 'learning_rate', 'model_name', 'moderate_bear_trend', 'moderate_bull_trend', 'ppo', 'ppo_hyperparameters', 'sac', 'sac_hyperparameters', 'strong_bear_trend', 'strong_bull_trend', 'total_timesteps', 'training', 'weak_bear_trend', 'weak_bull_trend']

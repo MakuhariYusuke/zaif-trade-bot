@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\reporting\display_manager.py
-# hypothesis_version: 6.140.3
-
-[0.3, 0.5, 0.6, 0.7, 1.0, 1.5, 2.0, 100, 300, '\n🎯 Key Metrics:', '%1.1f%%', '-', '.1f', 'Backtest Results', 'Date', 'Drawdown (%)', 'Duration (steps)', 'Frequency', 'Losses', 'Monthly Return (%)', 'Portfolio Value', 'RdYlGn', 'Return (%)', 'Time Steps', 'Trade Number', 'Win/Loss Ratio', 'Wins', '_', 'analysis_results', 'avg_trade_return_pct', 'b-', 'blue', 'bottom', 'center', 'cumulative_returns', 'default', 'durations', 'green', 'husl', 'label', 'loss_count', 'max_drawdown_pct', 'monthly_returns', 'pct', 'portfolio_history', 'r-', 'ratio', 'red', 'return', 'returns', 'right', 'sharpe_ratio', 'tight', 'timestamps', 'total_return_pct', 'total_trades', 'trade_analysis', 'win_count', 'win_rate', 'x']

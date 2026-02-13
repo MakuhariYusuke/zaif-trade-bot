@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\run_manifest.py
-# hypothesis_version: 6.140.3
-
-[8192, '--porcelain', '.csv', '.pickle', '.pkl', '1.0', 'HEAD', "Missing 'git' field", 'Scaler hash mismatch', 'Schema hash mismatch', '_', 'additional', 'config', 'config_fingerprint', 'dataset', 'dirty', 'feature_names', 'feature_schema.json', 'git', 'hashes', 'inference', 'missing_ratio', 'n_features', 'not_available', 'r', 'rb', 'rev-parse', 'rows', 'scaler', 'schema', 'sha', 'sha256', 'status', 'time_range', 'timestamp', 'timezone', 'training', 'tz', 'unknown', 'version', 'w', 'warmup']

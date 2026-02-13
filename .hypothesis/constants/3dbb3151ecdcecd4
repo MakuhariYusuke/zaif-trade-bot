@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\memory\dtypes.py
-# hypothesis_version: 6.148.6
-
-[0.0, 1e-06, 0.0001, 0.5, 100, 512, 5000, 'Int64', 'after_bytes', 'before_bytes', 'bool', 'category', 'columns', 'float32', 'float64', 'int32', 'int64', 'integer', 'memory_optimization', 'saved_bytes']

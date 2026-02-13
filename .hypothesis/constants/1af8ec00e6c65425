@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\ab_test\selector.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 5.0, 100.0, 100, 1000, 5000, 10000, 'A', 'B', 'Force rolled back', 'Manual rollback', 'action', 'confidence_level', 'deploy', 'deployed_variant', 'duration_minutes', 'error_rate', 'high', 'hold', 'low', 'medium', 'metric', 'overall_risk', 'percentage', 'performance_risk', 'reason', 'reasoning', 'regression_risk', 'risk_assessment', 'rollback_time', 'sample_size_risk', 'scheduled_time', 'selected_variant', 'statistical_risk', 'step', 'test_id', 'threshold', 'unknown']

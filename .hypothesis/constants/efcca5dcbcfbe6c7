@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\market_regime_types.py
-# hypothesis_version: 6.140.3
-
-['breakdown_setup', 'breakout_setup', 'consolidation', 'extreme_volatility', 'moderate_bear_trend', 'moderate_bull_trend', 'strong_bear_trend', 'strong_bull_trend', 'weak_bear_trend', 'weak_bull_trend']

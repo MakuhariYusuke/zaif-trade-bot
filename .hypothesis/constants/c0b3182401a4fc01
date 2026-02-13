@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\drawdown_controller.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.05, 0.08, 0.1, 0.15, 0.3, 0.8, 1.0, 5.0, 'current_drawdown', 'drawdown_window', 'emergency_stop', 'max_drawdown', 'max_drawdown_limit', 'peak_value', 'recovery_progress', 'recovery_threshold', 'reduction_threshold', 'reduction_triggered', 'risk_level', 'warning_threshold', 'warning_triggered']

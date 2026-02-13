@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\core\callback_implementations.py
-# hypothesis_version: 6.140.3
-
-[0.0, -100, 100, 1000, ' | ', ', ', '-inf', './checkpoints', './tensorboard', 'INFO', 'best', 'checkpoint', 'checkpoint_path', 'episode_length', 'episode_reward', 'error', 'final', 'inf', 'logging', 'loss', 'metrics', 'progress', 'reward', 'start_time', 'step', 'timestamp', '✅ Training completed', '🚀 Training started']

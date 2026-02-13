@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\models\advanced_networks.py
-# hypothesis_version: 6.140.3
-
-[0.1, 0.5, 10000.0, 128, 256, 512, 5000, 'attention_method', 'bias', 'd_ff', 'd_model', 'dropout', 'forward', 'linformer', 'lstm_hidden_size', 'lstm_layers', 'n_heads', 'n_layers', 'pe', 'performer', 'sequence_length', 'use_depthwise_conv', 'use_dynamic_network', 'weight']

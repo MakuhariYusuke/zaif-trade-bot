@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\optimization\early_stopping.py
-# hypothesis_version: 6.148.6
-
-[0.0, 'get_weights', 'max', 'min', 'set_weights', 'val_loss']

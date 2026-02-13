@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\data_utils.py
-# hypothesis_version: 6.140.3
-
-[0.5, 'ZTB_SIGINT_POLICY', 'category', 'coerce', 'default', 'feather', 'float', 'float64', 'inner', 'int64', 'integer', 'left', 'nrows', 'object', 'outer', 'parquet', 'right', 'timestamp']

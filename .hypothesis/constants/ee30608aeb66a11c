@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\safety\recovery_manager.py
-# hypothesis_version: 6.140.3
-
-[0.1, 10.0, -100, 100, 300, 600, 1800, 3600, 'High CPU usage', 'High error rate', 'High memory usage', 'actions_taken', 'affected_components', 'assessment', 'attempt_id', 'backup_', 'backups/recovery', 'can_recover', 'completion', 'cpu_usage', 'duration_seconds', 'error', 'error_message', 'error_rate', 'execution', 'failed', 'failure_rate', 'issues', 'memory_usage', 'message', 'metrics', 'period_hours', 'phase', 'phase_changed', 'preparation', 'r', 'recoveries_per_hour', 'recovery_completed', 'recovery_failed', 'recovery_started', 'status', 'strategy', 'success', 'success_rate', 'system_state', 'timestamp', 'total_recoveries', 'triggered_by', 'verification', 'w']

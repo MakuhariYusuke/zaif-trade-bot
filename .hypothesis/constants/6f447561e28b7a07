@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\evaluation\walk_forward\evaluator.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-12, 1e-06, 0.005, 0.99, 256, 10000, '\n[Training]', 'DataFrame is empty', 'MlpPolicy', 'avg_loss', 'avg_sharpe', 'avg_test_roi', 'avg_val_roi', 'avg_win', 'close_reason', 'entry_price', 'episode_reward', 'exit_price', 'expectancy', 'failed_windows', 'fee_paid', 'final_balance', 'max_drawdown', 'max_steps', 'position', 'prev_entry_price', 'profit_factor', 'roi', 'scripts', 'sharpe', 'slippage_paid', 'start_step', 'std_sharpe', 'std_test_roi', 'std_val_roi', 'successful_windows', 'total_pnl', 'total_trades', 'total_windows', 'trade_pnl', 'trades', 'v456', 'v457', 'win_rate', 'winning_trades']

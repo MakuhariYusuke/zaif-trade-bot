@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\reporting\generators\monitoring.py
-# hypothesis_version: 6.140.3
-
-[1e-06, 'by_level', 'by_metric', 'count', 'declining', 'decreasing', 'improving', 'increasing', 'insufficient_data', 'max', 'max_drawdown', 'mean', 'median', 'min', 'most_frequent_alerts', 'pnl_trend', 'profitable', 'stable', 'std', 'total_alerts', 'total_pnl', 'unprofitable', 'win_rate', 'win_rate_trend']

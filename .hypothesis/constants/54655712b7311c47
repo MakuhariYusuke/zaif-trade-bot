@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volume\chaikin_ad.py
-# hypothesis_version: 6.140.3
-
-['ChaikinAD', 'Chaikin_AD', 'chaikin_ad', 'close', 'high', 'low', 'volume']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\v4xx_config_converter.py
-# hypothesis_version: 6.140.3
-
-[-2.0, 0.0, 1e-05, 0.0003, 0.005, 0.01, 0.1, 0.2, 0.99, 1.0, 200000.0, 256, 1000, 10000, 50000, 1000000, '4.2.7', '4.4.0', '4.4.4', 'action_bonuses', 'algorithm', 'auto', 'auto_1.0', 'batch_size', 'buffer_size', 'checkpoint_dir', 'config', 'config_version', 'curriculum_learning', 'curriculum_stage', 'data_config', 'data_path', 'ent_coef', 'environment', 'gamma', 'initial_balance', 'learning_rate', 'learning_starts', 'max_position_size', 'model_name', 'r', 'random_start', 'regime_adaptation', 'reward_function', 'reward_settings', 'sac', 'sac_hyperparameters', 'sac_v427_converted', 'sac_v440_converted', 'sac_v444_converted', 'target_entropy', 'tau', 'test_split', 'total_timesteps', 'training', 'transaction_cost', 'unknown', 'utf-8', 'v427', 'v435', 'v440', 'v444', 'validation_split', 'version', 'w']

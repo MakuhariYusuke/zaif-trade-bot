@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\monitoring\real_time_monitor.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.8, 1.0, 5.0, 90.0, 1000, 5000, 8080, 8765, 'active', 'active_alerts', 'alert', 'alert-monitor', 'alert_name', 'alerts', 'alerts_triggered', 'cache_hits', 'cache_misses', 'cache_stats', 'critical', 'current', 'current_metrics', 'data', 'definition', 'enabled', 'error', 'errors', 'healthy', 'high_cpu_usage', 'high_memory_usage', 'hit_rate', 'initial', 'issues', 'last_triggered', 'last_update', 'latest', 'latest_metrics', 'latest_timestamp', 'localhost', 'max_size', 'memory_cleanups', 'memory_pressure', 'memory_stats', 'message', 'metrics', 'monitoring_data', 'name', 'overall', 'performance_stats', 'realtime-monitor', 'severity', 'size', 'system.cpu.percent', 'system_status', 'timestamp', 'training', 'training_stuck', 'trigger_count', 'type', 'updates_sent', 'warning', 'websocket-server']

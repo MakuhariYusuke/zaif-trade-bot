@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward\balance_curriculum.py
-# hypothesis_version: 6.148.6
-
-[-2.0, 0.0, 0.15, 0.2, 0.25, 0.35, 0.5, 0.8, 2.0, 5.0, 100, 200, 500, 'auto_progression', 'avg_reward', 'avg_reward_threshold', 'balance_threshold', 'balanced_transition', 'changed', 'current_stage', 'curriculum_stage', 'duration', 'emergency', 'emergency_count', 'enabled', 'end_step', 'forced_balance', 'max_drawdown', 'min_steps', 'min_success_episodes', 'new_stage', 'pnl_focused', 'previous_stage', 'profit_optimized', 'recent_avg_reward', 'sharpe_threshold', 'stage', 'stage_history', 'start_step', 'step', 'steps_in_stage', 'success_rate', 'total_steps', 'trading_focused']

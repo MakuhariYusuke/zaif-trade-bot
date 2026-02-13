@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\core\health_monitor.py
-# hypothesis_version: 6.148.6
-
-[100, 1024, '/', 'Current PnL', 'Current price', 'Price fetch duration', 'Total price fetches', 'action', 'cpu_percent', 'degraded', 'disk_free_gb', 'disk_percent', 'error', 'healthy', 'memory_percent', 'memory_rss_mb', 'memory_total_gb', 'memory_used_gb', 'memory_vms_mb', 'pnl_current', 'position_size', 'price_current', 'price_fetch_duration', 'price_fetches', 'price_fetches_total', 'process', 'status', 'success', 'system', 'threads', 'timestamp', 'trades_executed', 'uptime']

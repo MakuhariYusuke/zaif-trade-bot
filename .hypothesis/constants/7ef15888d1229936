@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\core\service_runner.py
-# hypothesis_version: 6.148.6
-
-[0.0, 300, '--config', '--log-level', '--max-restarts', '--restart-delay', 'CRITICAL', 'Cleanup completed', 'DEBUG', 'ERROR', 'Health check failed', 'INFO', 'Logging level', 'WARNING', '__main__', 'a', 'checks', 'healthy', 'status', 'trading_service', 'trading_service.log']

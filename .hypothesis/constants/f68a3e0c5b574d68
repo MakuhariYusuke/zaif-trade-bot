@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\normalization.py
-# hypothesis_version: 6.148.6
-
-[1e-06, 10.0, '1.0', 'StandardScaler', 'VecNormalize', 'clip_obs', 'clip_reward', 'count', 'feature_names', 'hash', 'mean', 'mean_', 'metadata', 'n_samples', 'n_samples_seen_', 'norm_obs', 'norm_reward', 'normalization_type', 'normalize_obs', 'normalize_reward', 'obs_rms', 'scale_', 'scaler.npz', 'std', 'version', 'with_mean', 'with_std']

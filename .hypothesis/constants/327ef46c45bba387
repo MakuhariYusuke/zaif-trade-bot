@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\__init__.py
-# hypothesis_version: 6.148.6
-
-['4.2.0', 'BTCBiasDetector', 'BTCDataAugmentor', 'ConfigManager', 'GlobalConfig', 'MakuhariYusuke', '__author__', '__description__', '__version__', 'ztb.data']

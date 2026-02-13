@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\tools\run_ab_searches.py
-# hypothesis_version: 6.140.3
-
-[0.5, 5000, '\nSummary:', '+', '--fast-mode', '--grid', '--grids', '--jobs', '--objective', '--out', '--output-dir', '--seeds', '--template', '--timesteps', 'BUY', 'Enable fast mode', 'Number of seeds', 'Output directory', 'Parallel jobs', 'SELL', 'Template config path', 'Timesteps per run', '__main__', 'ab_grid_*.json', 'action_bonus', 'action_distribution', 'balance', 'balance_penalty', 'balance_shaping', 'best_balance_score', 'best_balanced_config', 'component_stats', 'config', 'config/ab', 'configuration', 'count', 'error', 'inf', 'max', 'mean', 'min', 'min_sell', 'r', 'report', 'reports', 'reports/ab_searches', 'reward_components', 'skew_penalty', 'store_true', 'success', 'total_reports', 'training_stats', 'utf-8', 'w']

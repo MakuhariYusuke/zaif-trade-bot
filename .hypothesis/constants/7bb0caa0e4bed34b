@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\action_validator.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.02, 0.9, 10000.0, 'EnvironmentConfig', 'adj_close', 'close', 'coincheck', 'exchange', 'ignore', 'iloc', 'min_holding_period', 'open', 'price']

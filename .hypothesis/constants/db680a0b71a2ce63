@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\live_trading\live_trader.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.01, 0.5, 'Live trading stopped', 'Trading loop ended', 'Trading loop started', 'active_orders', 'buy', 'canceled', 'filled', 'hold', 'is_running', 'limit', 'positions', 'rejected', 'sell', 'successful_trades', 'total_pnl', 'total_trades', 'win_rate']

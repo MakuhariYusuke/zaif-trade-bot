@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\optimization\adv_norm.py
-# hypothesis_version: 6.148.6
-
-[-0.3, -0.2, 1e-08, 0.5, 0.6, 0.8, 1.0, 1.1, 1.2, 'BUY', 'HOLD', 'SELL', '__main__', 'action_counts', 'action_means', 'action_stds', 'total_samples']

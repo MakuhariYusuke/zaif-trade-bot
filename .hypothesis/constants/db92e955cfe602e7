@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\signal_performance\backtest_integration.py
-# hypothesis_version: 6.148.6
-
-[10000, 'active', 'error', 'integration_status', 'performance_analysis', 'report_timestamp', 'signal_quality_score', 'signal_tracking', 'status']

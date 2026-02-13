@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\pretraining\contrastive_learning.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2, 100, 128, 156, 512, '-inf', 'cpu', 'cuda', 'loss', 'model_state_dict', 'optimizer_state_dict', 'val_loss', 'z1_norm', 'z2_norm']

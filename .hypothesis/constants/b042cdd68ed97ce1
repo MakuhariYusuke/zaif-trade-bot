@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\multimodal\__init__.py
-# hypothesis_version: 6.140.3
-
-[156, 768, '1.0.0', 'AI Assistant', 'author', 'components', 'core.attention', 'core.encoders', 'core.fusion', 'data.collectors', 'data.preprocessors', 'data_manager', 'description', 'evaluation.metrics', 'features.numeric', 'features.text', 'models.agents', 'preprocessor', 'pretraining', 'training.trainers', 'version']

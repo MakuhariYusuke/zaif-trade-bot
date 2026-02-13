@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\heavy_env\components\validation_manager.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.5, 1.1, 'HeavyTradingEnv', 'Negative portfolio', 'Position', 'data_valid', 'is_valid', 'issues', 'not initialized', 'portfolio_valid', 'position_valid', 'reward_clip_value']

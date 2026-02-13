@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\model_manager.py
-# hypothesis_version: 6.140.3
-
-['Model loaded as SAC', 'expected_features', 'feature_names', 'is_maskable_ppo', 'is_sac', 'model_schema_hash', 'schema_available']

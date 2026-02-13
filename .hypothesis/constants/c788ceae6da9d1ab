@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\risk\backtest_risk_manager.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.6, 0.98, 1.0, 2.0, 4.0, 180, 'atr', 'circuit_breaker', 'consecutive_losses', 'current_drawdown', 'long', 'max_drawdown', 'max_drawdown_limit', 'max_position_size', 'pnl', 'short', 'stop_loss', 'take_profit', 'test_mode', 'type']

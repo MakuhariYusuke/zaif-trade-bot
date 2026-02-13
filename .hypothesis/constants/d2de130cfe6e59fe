@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\trend_analyzer.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.5, 1.0, 2.0, 10.0, 20.0, 100, 'adx_config', 'analysis_phase', 'close', 'complex_correction', 'confidence', 'current_price', 'direction', 'dow_theory_config', 'enable_wave_analysis', 'error', 'hierarchical', 'hierarchical_trend', 'high', 'impulse_wave', 'index', 'insufficient_data', 'low', 'ma_long', 'ma_short', 'medium', 'pattern', 'period', 'pivots', 'price', 'primary_trend', 'reason', 'strength', 'trend_bearish', 'trend_bullish', 'trend_error', 'trend_neutral', 'trend_sideways', 'trend_strength', 'type', 'wave_analysis', 'wave_config', 'wave_structure', 'トレンド不明', '横ばい相場']

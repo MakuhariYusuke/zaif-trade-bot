@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\common\analysis_interfaces.py
-# hypothesis_version: 6.140.3
-
-['%Y-%m-%d %H:%M:%S', 'Analysis Results', 'Backtest Results', 'BaseAnalyzer', 'T', 'U']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\config.py
-# hypothesis_version: 6.148.6
-
-[80.0, 85.0, 90.0, 300, 'INFO', 'cpu_percent', 'gpu_percent', 'hybrid', 'memory_percent', 'offline', 'online']

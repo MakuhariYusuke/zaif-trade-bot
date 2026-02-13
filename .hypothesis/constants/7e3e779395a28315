@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volume\chaikin_ad_oscillator.py
-# hypothesis_version: 6.148.6
-
-['ChaikinADOscillator', 'close', 'fast_period', 'high', 'low', 'slow_period', 'volume']

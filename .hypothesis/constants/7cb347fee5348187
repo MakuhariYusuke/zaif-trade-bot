@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\rewards\fast_intraday.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-08, 1.0, 'fee_paid', 'pnl', 'reward_raw', 'slippage_paid', 'total_cost', 'total_penalty']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\market_aware_hyperparameter_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.01, 0.02, 0.03, 0.05, 0.1, 0.15, 0.25, 0.3, 0.8, 0.9, 1.0, 1.1, 1.2, 5.0, 1000.0, -1000, -100, 100, 300, 600, 1000, 1440, 'average_performance', 'bear', 'best_performance', 'bull', 'close', 'confidence', 'feature_importance', 'feature_importances_', 'liquidity_score', 'market_condition', 'market_regime', 'neutral', 'optimal_value', 'predictions', 'regime', 'regime_bear', 'regime_bull', 'regime_sideways', 'regime_volatile', 'sentiment_score', 'sideways', 'strategy_performance', 'timestamp', 'total_adaptations', 'trend_strength', 'volatile', 'volatility', 'volume', 'volume_profile', 'worst_performance']

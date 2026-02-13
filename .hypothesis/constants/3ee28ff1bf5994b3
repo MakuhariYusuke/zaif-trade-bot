@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\torch_utils.py
-# hypothesis_version: 6.148.6
-
-['0.0-stub', 'CUDA_VISIBLE_DEVICES', 'PATH', '__version__', '_zaif_torch_stub', 'add_dll_directory', 'added_to_dll_dir', 'added_to_path', 'candidates', 'cpu', 'cuda', 'device', 'dll_dir_errors', 'getsitepackages', 'getusersitepackages', 'lib', 'missing', 'nn', 'non-windows', 'nt', 'ok', 'optim', 'path_errors', 'site-packages', 'status', 'torch']

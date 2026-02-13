@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\heikin_ashi.py
-# hypothesis_version: 6.148.6
-
-[-1.0, -0.7, 0.0, 0.001, 0.1, 0.4, 0.5, 0.6, 0.7, 0.9, 1.0, 100, 'HA_Body', 'HA_Close', 'HA_High', 'HA_Low', 'HA_Open', 'confidence', 'description', 'direction', 'ha_close', 'ha_high', 'ha_low', 'ha_open', 'heikin_ashi', 'period', 'strength', 'trend_threshold', 'volume_weighted']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\rewards\ultra_profit.py
-# hypothesis_version: 6.140.3
-
-[-1.0, 0.0, 0.005, 0.1, 0.15, 0.2, 0.4, 0.5, 1.0, 2.0, 'get', 'reward_clip_max', 'reward_clip_min', 'ultra_profit']

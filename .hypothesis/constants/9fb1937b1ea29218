@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\statistical_validator.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.03, 0.05, 1.0, 'BUY', 'max_drawdown', 'mean_return', 'p_value', 'pnl', 'position_size', 'sharpe_ratio', 'significant', 't_statistic', 'volatility']

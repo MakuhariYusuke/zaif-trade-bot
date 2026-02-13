@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\position_sizing.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.0001, 0.1, 0.5, '0.00000001', 'allocation', 'circuit_breaker_veto', 'decimal_rounded', 'equal_weight', 'final_quantity', 'kelly', 'kelly_criterion', 'kelly_fraction', 'quantity', 'raw_size', 'risk_adjusted_kelly', 'skip_reason', 'validated', 'vol_target', 'vol_targeting']

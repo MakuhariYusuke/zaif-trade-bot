@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\signal_evaluator.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.0005, 0.001, 0.1, 0.5, 100000.0, 'Avg Strength', 'BTC/JPY', 'Benchmark Alpha', 'Correlation', 'End Date', 'Num Trades', 'Signal', 'SignalEvaluator', 'Start Date', 'Strategy', 'Total Return', 'Win Rate', 'close', 'entry_price', 'entry_time', 'entry_times', 'exit_price', 'exit_time', 'exit_times', 'pnl', 'position', 'profitable', 'return_pct', 'returns', 'signal', 'signals']

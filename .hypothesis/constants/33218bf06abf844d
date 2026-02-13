@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\atr.py
-# hypothesis_version: 6.140.3
-
-[-1.0, -0.05, 0.0, 0.005, 0.01, 0.05, 0.1, 0.3, 0.4, 0.5, 0.6, 0.65, 0.75, 0.8, 0.9, 1.0, 1.1, 1.2, 1.25, 1.3, 1.5, 'ATR_bearish_breakout', 'ATR_bullish_breakout', 'ATR_high_volatility', 'ATR_weakening_trend', 'atr', 'atr_period', 'atr_trend', 'avg_atr', 'close', 'general', 'low', 'medium', 'mtf_confidence', 'mtf_weight', 'price_change', 'price_trend', 'regime_adjusted', 'regime_aware', 'regime_cluster', 'timeframe_alignment', 'volatility_ratio', 'volatility_threshold']

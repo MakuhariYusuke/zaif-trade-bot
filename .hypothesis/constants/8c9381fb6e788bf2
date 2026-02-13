@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\checkpoint\checkpoint_manager.py
-# hypothesis_version: 6.140.3
-
-[10000, '.pkl', '_manager', '_pickle', 'actual', 'async', 'buffer_bytes', 'buffer_kind', 'checkpoint_apply', 'checkpoint_load', 'checkpoint_save', 'checkpoint_step', 'checksum', 'clip_obs', 'clip_reward', 'correlation_id', 'epsilon', 'error', 'errors', 'expected', 'extra', 'gamma', 'load_replay_buffer', 'lz4', 'metadata', 'metrics', 'model_state', 'norm_obs', 'norm_reward', 'numpy', 'obs_rms', 'optimizer', 'optimizer_state', 'payload', 'payload_size_bytes', 'policy', 'policy_state', 'python', 'replay_buffer', 'replay_buffer_file', 'replay_buffer_pickle', 'ret_rms', 'rng_state', 'rollout_buffer', 'save_replay_buffer', 'schema_version', 'shutdown', 'state_dict', 'step', 'stream_state', 'timestamp', 'torch', 'torch_cuda', 'valid', 'vec_normalize_stats', 'warnings']

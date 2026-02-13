@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\action_mask_provider.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1000, 'BUY', 'HOLD', 'SELL', 'current_step', 'enable_forced_close', 'forced_close', 'forced_close_reason', 'mask', 'mask_human', 'max_position_age', 'min_holding_period', 'position', 'position_age']

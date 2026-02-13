@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\heavy_env\components\state_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-06, 'HeavyTradingEnv', 'action_counts', 'consecutive_trades', 'current_step', 'entry_price', 'portfolio_value', 'position', 'realized_pnl', 'total_pnl', 'trades_count']

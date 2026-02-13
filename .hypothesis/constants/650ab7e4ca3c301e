@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\evaluation\walk_forward\checkpoint.py
-# hypothesis_version: 6.140.3
-
-[0.0, 100.0, '.zip', 'Collect run IDs', 'avg_sharpe', 'avg_test_roi', 'avg_val_roi', 'checkpoints', 'completed', 'completed_windows', 'compress_method', 'config', 'empty', 'errors', 'failed_windows', 'in_progress', 'max_drawdown', 'metadata_error', 'model', 'models', 'models_count', 'no_metadata', 'progress_pct', 'rb', 'restore_errors', 'restored_windows', 'results', 'run_id', 'run_metadata.json', 'runtime_data.pkl', 'saved_windows', 'sharpe_ratio', 'status', 'std_sharpe', 'std_test_roi', 'test_final_balance', 'test_roi', 'timestamp', 'total_windows', 'total_windows_failed', 'trades', 'unknown', 'val_final_balance', 'val_roi', 'wb', 'win_rate', 'window_*', 'window_id', 'window_results.json', 'zlib']

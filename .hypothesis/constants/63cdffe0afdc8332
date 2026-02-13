@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\adaptive_selection.py
-# hypothesis_version: 6.140.3
-
-[1e-10, 0.3, 0.4, 0.5, 0.7, 1.0, 25.0, 70.0, -100, 100, 1000, 10000, '1H', '2024-01-01', 'ADX', 'ATR', 'BB_LOWER', 'BB_MIDDLE', 'BB_UPPER', 'BB_WIDTH', 'CCI', 'DM_minus', 'DM_plus', 'EMA_10', 'EMA_20', 'EMA_5', 'EMA_50', 'KC_WIDTH', 'MACD', 'MACD_HIST', 'MACD_SIGNAL', 'MFI', 'MICRO_TREND', 'MOMENTUM', 'NATR', 'OSCILLATOR_STRENGTH', 'PRECISION_SIGNALS', 'PRICE_CHANGE', 'ROC', 'RSI', 'SMA_20', 'SMA_50', 'STOCH_D', 'STOCH_K', 'TR', 'TRANGE', 'TREND_STRENGTH', 'VOLATILITY_RATIO', 'VOLUME_RATIO', 'WILLR', '__main__', 'adaptive', 'causal', 'causal_config', 'causal_effects', 'causal_enabled', 'close', 'enabled', 'error', 'hidden_dim', 'high', 'high_volatility', 'low', 'low_volatility', 'n_selected', 'ranging', 'reward', 'selected_features', 'selection_method', 'success', 'trending', 'ts', 'volume', 'weights']

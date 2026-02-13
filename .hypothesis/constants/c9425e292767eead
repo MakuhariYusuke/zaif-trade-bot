@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\backtest\unified_backtest\action_signal_guide_strategy.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.5, 0.6, 'ActionSignalGuide', 'BUY', 'BacktestConfig', 'HOLD', 'No signals generated', 'SELL', 'SignalFilter', 'action', 'asg_signal', 'avg_confidence', 'buy', 'buy_signals', 'candlestick', 'close', 'confidence', 'config_path', 'error', 'fibonacci', 'has_signal_filter', 'hold', 'message', 'no_signal', 'not_initialized', 'pattern_distribution', 'pattern_type', 'pattern_types', 'price', 'raw_signal', 'reason', 'records', 'sell', 'sell_signals', 'signal', 'signal_filter', 'signals', 'timeframe', 'timestamp', 'total_signals', 'update_config', 'wave']

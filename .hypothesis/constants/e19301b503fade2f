@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\heikin_ashi.py
-# hypothesis_version: 6.148.6
-
-[2.0, 4.0, 'HeikinAshi', 'HeikinAshi_Color', 'HeikinAshi_Color_D1', 'HeikinAshi_Color_H1', 'HeikinAshi_Color_H4', 'HeikinAshi_Color_M1', 'HeikinAshi_Color_M15', 'HeikinAshi_Color_M5', 'close', 'ha_close', 'ha_high', 'ha_low', 'ha_open', 'high', 'low', 'open']

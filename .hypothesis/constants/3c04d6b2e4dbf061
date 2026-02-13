@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volume\obv.py
-# hypothesis_version: 6.148.6
-
-['OBV', 'close', 'volume']

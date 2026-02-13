@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\memory_utils.py
-# hypothesis_version: 6.148.6
-
-[-1000000.0, 0.0, 1000.0, 1000000.0, 800, 1000, 10000, 'Cleared data cache', 'T', 'cache_data_entries', 'cache_model_entries', 'cache_total_entries', 'cleanup', 'clear', 'clear_cache', 'close', 'data_cache_size', 'feature_cache_size', 'model_cache_size', 'percent', 'rss', 'total_cache_entries', 'vms']

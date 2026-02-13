@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\utils\distributed_training.py
-# hypothesis_version: 6.148.6
-
-['12345', 'LOCAL_RANK', 'MASTER_ADDR', 'MASTER_PORT', 'RANK', 'WORLD_SIZE', 'env://', 'is_distributed', 'local_rank', 'localhost', 'master_addr', 'master_port', 'nccl', 'rank', 'world_size']

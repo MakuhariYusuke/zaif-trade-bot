@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live_trader\health_monitoring.py
-# hypothesis_version: 6.148.6
-
-[300, 'LiveTrader', 'Model not loaded', '_last_price_time', 'adapter_available', 'api_status', 'connected', 'critical', 'error', 'healthy', 'issues', 'last_price', 'memory_percent', 'model_loaded', 'position', 'price_age_seconds', 'status', 'timestamp', 'total_pnl', 'trades_count', 'unknown', 'warning']

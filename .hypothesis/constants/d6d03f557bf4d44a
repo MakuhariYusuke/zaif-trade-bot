@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\exchanges\coincheck\adapter.py
-# hypothesis_version: 6.148.6
-
-[-0.005, -0.001, 0.0, 0.001, 0.005, 0.01, 0.1, 0.5, 5.0, 10.0, 100000.0, 5000000.0, 1000000, ',', ':', 'ACCESS-KEY', 'ACCESS-NONCE', 'ACCESS-SIGNATURE', 'BTC', 'Content-Type', 'DELETE', 'GET', 'JPY', 'POST', 'Unknown API error', 'User-Agent', 'ZaifTradeBot/1.0', '_', 'already cancelled', 'amount', 'balance', 'btc_jpy', 'buy', 'cancelled', 'error', 'filled', 'id', 'insufficient', 'last', 'limit', 'market', 'minimum', 'not found', 'order_type', 'pair', 'pending', 'rate', 'sell', 'size', 'success', 'symbol', 'timeout', 'url', 'utf-8']

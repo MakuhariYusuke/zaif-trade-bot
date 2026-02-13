@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\reward_stages.py
-# hypothesis_version: 6.140.3
-
-[-100.0, -10.0, 0.0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.425, 0.475, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0, 20.0, 50.0, 'balance_penalty', 'hold_penalty_rate', 'profit_multiplier', 'trading_bonus']

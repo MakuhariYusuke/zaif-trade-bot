@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\core\reconciliation.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 300, 'balances', 'difference', 'discrepancies', 'external', 'local', 'match_rate', 'matching_balances', 'matching_orders', 'matching_positions', 'missing externally', 'missing locally', 'orders', 'positions', 'status mismatch', 'total_balances', 'total_orders', 'total_positions']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_wave_theory.py
-# hypothesis_version: 6.140.3
-
-[-0.5, -0.2, 0.2, 0.5, 'IchimokuWaveTheory', 'Ichimoku_Wave_Theory', 'close', 'high', 'ichimoku_senkou_a', 'ichimoku_senkou_b', 'ichimoku_wave_theory', 'low']

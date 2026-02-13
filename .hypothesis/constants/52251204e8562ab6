@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\cache\sqlite_cache.py
-# hypothesis_version: 6.148.6
-
-[300, 600, 1800, 3600, 50000, '__main__', 'cache/cache.db', 'data', 'default', 'expire_key', 'expires soon', 're_evaluation', 'test_key', 'testing', 'training', 'value']

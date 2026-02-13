@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\core\base.py
-# hypothesis_version: 6.140.3
-
-['T', 'abs_return', 'close', 'coerce', 'high', 'low', 'price', 'return', 'volume']

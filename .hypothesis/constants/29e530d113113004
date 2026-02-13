@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\timeframe.py
-# hypothesis_version: 6.148.6
-
-[100, 120, 150, 200, 300, 600, 1200, '15min', '1day', '1hour', '1min', '4hour', '5min', 'long_period', 'medium_period', 'short_period']

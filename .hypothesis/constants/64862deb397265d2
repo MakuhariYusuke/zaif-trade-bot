@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\fibonacci_patterns.py
-# hypothesis_version: 6.148.6
-
-[-1.0, 0.0, 0.0001, 0.02, 0.03, 0.06, 0.1, 0.15, 0.2, 0.236, 0.3, 0.382, 0.4, 0.5, 0.6, 0.618, 0.7, 0.786, 0.8, 0.85, 0.9, 1.0, 1.236, 1.382, 1.618, 2.0, 2.618, 'actual_ratio', 'candle_size', 'close', 'confidence', 'current_price', 'deviation_score', 'direction_factor', 'end_idx', 'fib_extension_target', 'fibonacci_extension', 'fibonacci_projection', 'high', 'level', 'low', 'max_lookback', 'max_swing_length', 'min_swing_length', 'pattern', 'pattern_completeness', 'price_movement', 'projected_price', 'start_idx', 'strength', 'swing_high', 'swing_length', 'swing_low', 'target_price', 'trend_strength']

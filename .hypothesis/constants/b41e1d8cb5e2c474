@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\momentum\rsi.py
-# hypothesis_version: 6.148.6
-
-['RSI', 'RSI_D1', 'RSI_H1', 'RSI_H4', 'RSI_M1', 'RSI_M15', 'RSI_M5', 'close', 'short_period']

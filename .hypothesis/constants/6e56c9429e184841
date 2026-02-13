@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\optimization\lagrange_constraint.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.05, 0.15, 0.2, 0.25, 0.3, 0.5, 0.7, 1.0, 100, 200, 5000, '\nFinal statistics:', 'BUY', 'HOLD', 'SELL', '__main__', 'constraint_active', 'constraint_violation', 'deviation', 'lambda_dual', 'penalty', 'penalty_mean', 'r_target', 'total_legal_steps']

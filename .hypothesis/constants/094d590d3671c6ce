@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\scalping.py
-# hypothesis_version: 6.148.6
-
-[0.0, 1e-06, 1.0, 2.0, 'close', 'high', 'liquidity_surge', 'low', 'micro_trend', 'micro_volatility', 'momentum_burst', 'momentum_divergence', 'order_flow_imbalance', 'price_acceleration', 'price_velocity', 'realized_volatility', 'spread_pressure', 'tick_volume_ratio', 'volume', 'volume_surge']

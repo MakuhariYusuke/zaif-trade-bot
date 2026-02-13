@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\regime\basic_regime_detector.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.005, 0.02, 100, 'bear', 'bull', 'sideways', 'volatile']

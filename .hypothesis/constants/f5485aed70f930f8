@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_cloud_expansion.py
-# hypothesis_version: 6.148.6
-
-[0.001, 0.02, 0.1, 0.2, 0.3, 'close', 'high', 'ichimoku_senkou_a', 'ichimoku_senkou_b', 'low']

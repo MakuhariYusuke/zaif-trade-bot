@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\data\outlier_detection.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-08, 0.1, 0.25, 0.6745, 0.75, 1.5, 3.0, 'iqr', 'isolation_forest', 'mad', 'omit', 'std', 'zscore']

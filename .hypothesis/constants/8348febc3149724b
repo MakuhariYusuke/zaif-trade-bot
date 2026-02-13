@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\data_processor.py
-# hypothesis_version: 6.140.3
-
-[0.0, 'StreamingPipeline', 'bool', 'episode_id', 'exchange', 'feature_dtype', 'float16', 'float32', 'ignore', 'int32', 'name', 'pair', 'precision_columns', 'preprocess', 'side', 'source', 'timestamp', 'ts']

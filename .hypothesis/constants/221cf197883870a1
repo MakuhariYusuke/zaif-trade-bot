@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\core\config_builder.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.0003, 0.001, 0.005, 0.2, 0.5, 0.95, 0.99, 1.0, 256, 1000, 1024, 50000, 1000000, 'algorithm', 'auto', 'batch_size', 'buffer_size', 'clip_range', 'clip_range_vf', 'curated', 'custom_features', 'data_rows_limit', 'device', 'ent_coef', 'environment', 'feature_config_path', 'feature_set', 'gae_lambda', 'gamma', 'gradient_steps', 'initial_balance', 'learning_rate', 'learning_starts', 'max_features', 'max_grad_norm', 'max_position_size', 'model_name', 'n_epochs', 'n_steps', 'normalize_advantage', 'policy_kwargs', 'ppo', 'ppo_hyperparameters', 'reward_scaling', 'sac', 'sac_hyperparameters', 'sac_params', 'sde_sample_freq', 'target_entropy', 'target_kl', 'tau', 'train_freq', 'transaction_cost', 'unknown', 'unnamed', 'use_sde', 'use_sde_at_warmup', 'verbose', 'vf_coef']

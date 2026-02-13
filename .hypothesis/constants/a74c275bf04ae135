@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\core\model\sac_analyzer.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.1, 0.2, 0.4, 0.5, 0.6, 1.0, 3.0, 10000, 1000000, 5000000, '  %s', '  %s: %.4f', '  %s: %s', '  BUY:  %.3f', '  HOLD: %.3f', '  SELL: %.3f', '  • %s', '%s', '--config', '--model', '--output', '--samples', '=', 'Model not loaded', 'SAC Analysis Suite', 'SACAnalyzer', '__getitem__', '__main__', 'action_distribution', 'analysis_completed', 'analysis_type', 'bias_analysis', 'bias_severity', 'buy_bias', 'buy_ratio', 'excessive_holding', 'hold_ratio', 'model_loaded', 'observation_space', 'performance_metrics', 'r', 'recommendations', 'sac_model_analysis', 'samples', 'samples_analyzed', 'samples_used', 'sell_bias', 'sell_bias_detected', 'sell_ratio', 'shape', 'total_samples', 'utf-8', 'w', '⚖️  Bias Analysis:', '✅ Analysis complete!', '🎯 BIAS ANALYSIS:', '💡 RECOMMENDATIONS:', '💡 Recommendations:']

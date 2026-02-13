@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volatility\atr.py
-# hypothesis_version: 6.148.6
-
-['ATR', 'ATR_D1', 'ATR_H1', 'ATR_H4', 'ATR_M1', 'ATR_M15', 'ATR_M5', 'ATR_simplified', 'ATR_simplified_D1', 'ATR_simplified_H1', 'ATR_simplified_H4', 'ATR_simplified_M1', 'ATR_simplified_M15', 'ATR_simplified_M5', 'close', 'high', 'low', 'pd.Series', 'short_period']

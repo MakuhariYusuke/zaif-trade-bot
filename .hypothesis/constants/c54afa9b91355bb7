@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\trend\ichimoku\ichimoku_value_measurement.py
-# hypothesis_version: 6.140.3
-
-[-0.1, 0.001, 0.1, 0.3, 0.4, 'close', 'high', 'ichimoku_kijun', 'ichimoku_senkou_a', 'ichimoku_senkou_b', 'ichimoku_tenkan', 'low']

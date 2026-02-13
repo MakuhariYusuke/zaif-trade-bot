@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\circuit_breaker.py
-# hypothesis_version: 6.148.6
-
-[10.0, 60.0, 'closed', 'half_open', 'open']

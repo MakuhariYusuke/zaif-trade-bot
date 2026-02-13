@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\notify\discord.py
-# hypothesis_version: 6.140.3
-
-[1.0, 10.0, 39423, 65280, 16711680, 16776960, 'Confidence', 'Content-Type', 'DISCORD_WEBHOOK_URL', 'Signal', 'Symbol', 'application/json', 'buy', 'color', 'critical', 'description', 'embeds', 'error', 'fields', 'high', 'info', 'inline', 'low', 'medium', 'name', 'normal', 'sell', 'success', 'timestamp', 'title', 'value', 'warning', '✅ Success', '❌ Failed']

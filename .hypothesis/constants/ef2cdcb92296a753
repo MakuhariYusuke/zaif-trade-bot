@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\timeframe\minute_data_pipeline.py
-# hypothesis_version: 6.148.6
-
-[0.0, 0.001, 0.002, 0.005, 0.1, 5.0, 100.0, 100, 200, 300, 1000, 1200, 1440, 5000000, '15m', '1d', '1h', '1m', '5m', 'binance', 'bitflyer', 'bybit', 'cache_size', 'close', 'coerce', 'data_sources', 'empty_data', 'error', 'fallback', 'high', 'issues', 'low', 'max_data_age', 'max_workers', 'missing_data_ratio', 'open', 'price_anomalies', 'primary', 'quality_score', 'rate_limits', 'request_timeout', 'requests_per_minute', 'retry_attempts', 'supplemental', 'time_gaps', 'timestamp', 'total_bars', 'volume', 'volume_anomalies', 'zaif_api']

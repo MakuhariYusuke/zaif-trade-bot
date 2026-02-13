@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\core\precision_policy.py
-# hypothesis_version: 6.148.6
-
-['0.0001', '0.001', '0.01', '0.1', '1', '10.0', '100.0', '1000.0', '10000.0', 'BTC_JPY', 'ETH_JPY', 'MONA_JPY', 'coincheck', 'default', 'zaif']

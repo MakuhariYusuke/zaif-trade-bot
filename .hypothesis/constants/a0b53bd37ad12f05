@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volatility\normalized_atr.py
-# hypothesis_version: 6.148.6
-
-[0.0, 'NormalizedATR', 'Normalized_ATR', 'close', 'high', 'low', 'normalized_atr', 'period']

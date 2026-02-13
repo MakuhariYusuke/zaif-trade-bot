@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\reward_function_optimizer\components\evaluation_engine.py
-# hypothesis_version: 6.148.6
-
-[0.05, 'best_config', 'best_vs_second_best', 'condition', 'condition_index', 'config', 'config_index', 'cv_max_score', 'cv_mean_score', 'cv_min_score', 'cv_results', 'cv_score_variance', 'cv_std_score', 'error', 'fold', 'fold_results', 'individual_results', 'max_drawdown', 'max_score', 'mean_score', 'median_score', 'min_score', 'n_conditions', 'n_configs', 'n_folds', 'n_results', 'n_scores', 'n_valid_scores', 'p_value', 'profit', 'ranked_configs', 'results', 'scipy not available', 'score', 'scores', 'sharpe_ratio', 'statistical_analysis', 'std_score', 't-test', 't_statistic', 'test_type', 'timestamp', 'win_rate']

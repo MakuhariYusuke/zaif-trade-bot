@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\monitoring\__init__.py
-# hypothesis_version: 6.148.6
-
-['MetricDefinition', 'MetricValue', 'MetricsCollector', 'MonitorAlert', 'MonitorConfig', 'RealTimeMonitor', 'get_global_monitor']

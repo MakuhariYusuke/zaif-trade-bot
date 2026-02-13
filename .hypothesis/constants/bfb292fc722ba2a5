@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\rate_limiter.py
-# hypothesis_version: 6.148.6
-
-[0.01, 1.0, 2.0, 60.0, 'sliding_window', 'token_bucket']

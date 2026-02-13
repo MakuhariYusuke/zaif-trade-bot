@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\type_validation.py
-# hypothesis_version: 6.148.6
-
-[0.0, 1.0, '__args__', '__origin__', 'array', 'batch_size', 'features', 'initial_balance', 'learning_rate', 'max_position_size', 'name', 'pair', 'policy', 'return', 'return value', 'reward_scaling', 'timeframe', 'total_timesteps', 'training', 'transaction_cost', 'type', 'value']

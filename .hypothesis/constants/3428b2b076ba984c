@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\position_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.001, 0.5, 0.9, 1.0, 200000.0, 'Long', 'PositionManager', 'Short', 'UNKNOWN', 'action_permission', 'adjusted_position', 'allow', 'allow_reverse', 'allowed_actions', 'buy', 'confidence', 'control_active', 'danger_zone_max', 'danger_zone_min', 'deny', 'enabled', 'entry_price', 'exchange_profile', 'excluded_hours', 'excluded_regimes', 'force_exit', 'hard', 'hold', 'max_position_size', 'min_trade_size', 'mode', 'position', 'position_multiplier', 'primary_regime', 'realized_pnl', 'regime_constraints', 'regime_filter', 'restricted', 'risk_management', 'sell', 'slippage', 'soft', 'time_filter', 'total_pnl', 'trades_count', 'unrealized_pnl', 'volatility_filter']

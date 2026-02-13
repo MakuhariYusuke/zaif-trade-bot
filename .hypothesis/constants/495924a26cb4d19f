@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\archive\ppo_trainer_old.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.0003, 0.2, 0.5, 0.95, 0.99, 1.0, 2048, 10000, 50000, 100000, 'Manual stop', 'MlpPolicy', 'PPOTrainer', 'Training started', '_init_setup_model', 'auto', 'batch_size', 'clip_range', 'clip_range_vf', 'consecutive_failures', 'cosine_decay', 'count', 'current_step', 'device', 'done', 'ent_coef', 'ent_coef_final', 'ent_coef_schedule', 'gae_lambda', 'gamma', 'gate_results', 'halt_reason', 'is_training', 'last_gate_check_step', 'learning_rate', 'max_grad_norm', 'mean', 'memory_rss', 'n_epochs', 'n_steps', 'no_dup_steps', 'normalize_advantage', 'policy', 'policy_kwargs', 'reason', 'reward_stats', 'reward_trend_300k', 'rewards', 'rewards_history', 'sde_sample_freq', 'seed', 'status', 'std', 'steps_history', 'target_kl', 'tensorboard_log', 'total_timesteps', 'use_sde', 'value', 'variance', 'verbose', 'vf_coef', 'w']

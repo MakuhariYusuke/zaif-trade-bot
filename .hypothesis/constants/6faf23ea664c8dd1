@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\multi_timeframe_analyzer.py
-# hypothesis_version: 6.140.3
-
-[-100.0, -30.0, -20.0, -10.0, 0.0, 10.0, 12.5, 20.0, 30.0, 50.0, 100.0, 100, '15m', '1m', '5m', 'bearish', 'bollinger_position', 'bullish', 'convergence', 'data_points', 'direction', 'dominant_trend', 'lower', 'macd_signal', 'medium_term_bias', 'middle', 'momentum', 'neutral', 'rsi', 'score', 'short_term_bias', 'strength', 'strong_bearish', 'strong_bullish', 'timeframe_agreement', 'timeframe_analyses', 'upper']

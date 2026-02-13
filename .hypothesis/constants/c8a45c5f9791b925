@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\trainers\ensemble_trainer.py
-# hypothesis_version: 6.148.6
-
-['created_at', 'dry_run', 'ensemble_config.json', 'ensemble_models', 'ensemble_session', 'model_configs', 'model_dir', 'models', 'session_id', 'w']

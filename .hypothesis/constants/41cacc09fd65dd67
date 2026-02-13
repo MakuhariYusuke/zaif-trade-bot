@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\algorithms\self_supervised_trainer.py
-# hypothesis_version: 6.148.6
-
-[100, 156, '.pth', 'Failed to load model', 'SSPTrainer', 'SelfSupervised', 'algorithm', 'batch_size', 'checkpoint_dir', 'completed', 'cpu', 'creation', 'cuda', 'data', 'data_config', 'data_path', 'device', 'dynamic_lr', 'epochs', 'error', 'execution', 'input_dim', 'learning_rate', 'loaded', 'loading', 'model', 'model_name', 'model_path', 'num_epochs', 'optimizer', 'path', 'rows', 'scheduler', 'setup', 'ssp_hyperparameters', 'ssp_model', 'total_steps', 'training', 'type', 'validation_success']

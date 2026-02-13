@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\cache\memory_cache.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.1, 0.15, 0.8, 0.95, 1.0, 1.2, 100.0, 500.0, 800.0, -1000, 100, 300, 500, 1000, 1800, 2000, 10000, '__main__', '_custom_ttl_caches', 'buffer_size', 'cache', 'cache_size', 'cpu_percent', 'data', 'data_cache_size', 'feature_cache_size', 'memory', 'model_cache_size', 'rss_mb', 'test_key', 'timestamp', 'total_cache_entries', 'vms_mb']

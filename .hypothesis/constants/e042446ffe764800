@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\system_utils.py
-# hypothesis_version: 6.148.6
-
-['1', 'CUDA_LAUNCH_BLOCKING', 'CUDA_VISIBLE_DEVICES', 'Data manipulation', 'MKL_NUM_THREADS', 'Machine learning', 'Numerical computing', 'OMP_NUM_THREADS', 'Plotting', 'Progress bars', 'System monitoring', 'TORCH_USE_CUDA_DSA', 'cuda_available', 'matplotlib', 'memory_optimized', 'numpy', 'optuna', 'pandas', 'psutil', 'scipy', 'seaborn', 'sklearn', 'tqdm']

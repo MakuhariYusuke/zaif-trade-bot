@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\analysis\regime\advanced_regime_detector.py
-# hypothesis_version: 6.140.3
-
-[-0.02, -0.01, -0.005, -0.001, 0.0, 0.001, 0.005, 0.01, 0.02, 0.4, 0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 25.0, 50.0, 100.0, -100, 100, 'adx', 'average_confidence', 'detection_time', 'insufficient_data', 'macd', 'macd_histogram', 'macd_signal', 'momentum', 'most_common_regime', 'reason', 'regime_counts', 'rsi', 'total_detections', 'volatility']

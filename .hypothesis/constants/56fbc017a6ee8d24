@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\statistics_calculator.py
-# hypothesis_version: 6.148.6
-
-[0.0, 100, 1000, 'action_distribution', 'buy', 'buy_actions', 'hold', 'hold_actions', 'max_portfolio_value', 'max_position', 'max_reward', 'mean_position', 'mean_reward', 'min_portfolio_value', 'min_reward', 'portfolio_return', 'portfolio_volatility', 'position_changes', 'recent_mean_reward', 'recent_std_reward', 'recent_total_reward', 'recent_win_rate', 'reward_count', 'sell', 'sell_actions', 'sharpe_ratio', 'std_reward', 'total_actions', 'total_reward', 'win_rate', 'window_size']

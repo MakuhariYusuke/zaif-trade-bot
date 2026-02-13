@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\signal_reward_integrator.py
-# hypothesis_version: 6.140.3
-
-[-0.6, -0.5, -0.4, -0.2, -0.15, -0.1, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 'BUY', 'HOLD', 'SELL', 'adx', 'adx_recognizers', 'adx_signals_used', 'alignment', 'alignment_score', 'atr', 'atr_signals_used', 'avg_alignment', 'avg_strength', 'bollinger', 'bonus_rate', 'cci', 'cci_signals_used', 'chaikin_ad', 'description', 'direction', 'dow_theory', 'granville', 'heikin_ashi', 'ichimoku', 'macd', 'macd_signals_used', 'metadata', 'mfi', 'mfi_signals_used', 'oscillator', 'pattern_type', 'pattern_weights', 'penalty_rate', 'rsi', 'rsi_signals_used', 'signal_bonus_weight', 'signal_guide_mode', 'signal_type', 'signals', 'stochastic', 'strength', 'supporting_signals', 'total_signals', 'total_steps', 'volume', 'volume_recognizers', 'weighted_strength', 'williams_r']

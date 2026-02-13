@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\utils\config.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.8, 1.0, 200000.0, 512, '0', '1', '1m', 'EnvironmentConfig', 'RewardSettings', 'allow_reverse', 'close', 'coincheck', 'curated', 'false', 'feature_names', 'feature_set', 'float16', 'forced_balance', 'full', 'high', 'low', 'max_position_size', 'min_holding_period', 'n', 'no', 'off', 'on', 'open', 'random_start', 'reward_clip_value', 'reward_scaling', 'risk_free_rate', 'stop_loss_threshold', 'target_feature_count', 'transaction_cost', 'true', 'volume', 'y', 'yes']

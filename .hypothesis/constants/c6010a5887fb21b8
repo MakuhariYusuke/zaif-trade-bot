@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\callbacks\monitoring\metrics_collector.py
-# hypothesis_version: 6.148.6
-
-[0.0, 5.0, 100, 500, 1024, 2000, 10000, '/', 'aggregations', 'avg', 'cache_hits', 'cache_misses', 'cache_stats', 'count', 'csv', 'current', 'definition', 'description', 'export_time', 'gauge', 'history_count', 'hit_rate', 'json', 'latest', 'latest_metrics', 'latest_timestamp', 'max', 'max_pool_size', 'max_size', 'metadata', 'metric_name', 'metrics', 'metrics-collector', 'metrics_state.json', 'min', 'name', 'objects_created', 'objects_pooled', 'pool_size', 'pool_stats', 'r', 'rate_per_second', 'registered_objects', 'registry_stats', 'retention_hours', 'size', 'sum', 'system.cpu.count', 'system.cpu.percent', 'system.disk.free_gb', 'system.disk.percent', 'system.disk.used_gb', 'tags', 'timestamp', 'type', 'unit', 'utf-8', 'value', 'values', 'w']

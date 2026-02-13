@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\unified_trainer\base\base_trainer.py
-# hypothesis_version: 6.148.6
-
-[1e-06, 0.001, 0.5, 4.0, 1000, 100000, '.zip', 'Training started...', '_logger', 'algorithm', 'batch_size', 'callback', 'completed', 'completion', 'epochs', 'error', 'event_type', 'finalization', 'info', 'initialization', 'interruption', 'lr_factor', 'lr_patience', 'max_memory_gb', 'memory_batch_size', 'message', 'min_lr', 'model_path', 'models', 'optimization', 'phase', 'pipeline', 'progress', 'reason', 'save', 'save_checkpoint', 'start', 'start_time', 'statistics', 'status', 'structured_data', 'success', 'timestamp', 'total_timesteps', 'training', 'training_time', 'unexpected', 'use_dynamic_lr', 'use_early_stopping', 'user_interrupt']

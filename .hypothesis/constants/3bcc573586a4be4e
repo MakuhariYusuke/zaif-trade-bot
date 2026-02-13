@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\online_learning\types.py
-# hypothesis_version: 6.148.6
-
-[1.0, 'adagrad', 'adam', 'importance_sampling', 'incremental', 'mini_batch', 'online', 'reservoir', 'rms_prop', 'sgd', 'sliding_window', 'streaming', 'time_decay']

@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\risk_management\confidence_scoring_engine.py
-# hypothesis_version: 6.148.6
-
-[-0.1, 0.0, 0.01, 0.02, 0.03, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 1000, 'action', 'average_confidence', 'base_score', 'buy', 'close', 'confidence', 'confidence_std', 'excellent', 'fair', 'good', 'high_quality_signals', 'hold', 'market_alignment', 'median_confidence', 'poor', 'quality_distribution', 'sell', 'strength', 'timestamp', 'total_signals', 'volatility', 'volume', 'volume_confirmation', 'シグナルは基準を満たしています']

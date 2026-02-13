@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\market_adaptation_manager.py
-# hypothesis_version: 6.148.6
-
-[-0.02, 0.0, 1e-08, 0.005, 0.01, 0.02, 0.1, 0.15, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 2.0, 100, 'adaptation_factors', 'bear', 'bull', 'close', 'current_regime', 'description', 'market_regime', 'momentum', 'momentum_adaptation', 'regime_stability', 'regime_window', 'sideways', 'trend', 'trend_adaptation', 'trend_threshold', 'volatile', 'volatility', 'volatility_max', 'volatility_min', '弱気トレンド', '強気トレンド', '横ばい', '高ボラティリティ']

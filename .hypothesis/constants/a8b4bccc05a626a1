@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\risk_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.02, 0.05, 0.2, 0.3, 0.5, 0.6, 0.7, 1.0, 2.0, 4.0, 'adaptation_factors', 'adaptation_info', 'adaptation_metrics', 'adjusted_position', 'atr', 'atr_value', 'control_active', 'current_drawdown', 'current_price', 'default_atr_pct', 'drawdown_info', 'drawdown_metrics', 'emergency_stop', 'enabled', 'long', 'market_regime', 'max_drawdown', 'min_signal_strength', 'overall_risk_level', 'pnl', 'ranging', 'reasons', 'regime_stability', 'risk_level', 'short', 'stop_loss', 'take_profit', 'test_mode', 'type']

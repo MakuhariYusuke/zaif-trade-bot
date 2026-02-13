@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\live\exchanges\bitflyer\adapter.py
-# hypothesis_version: 6.148.6
-
-[2.0, 5000000.0, 1000, '&', '/v1/me/getbalance', '/v1/me/getpositions', 'ACCESS-KEY', 'ACCESS-SIGN', 'ACCESS-TIMESTAMP', 'ACTIVE', 'BTC_JPY', 'CANCELED', 'COMPLETED', 'Content-Type', 'EXPIRED', 'GET', 'POST', 'REJECTED', 'already cancelled', 'amount', 'application/json', 'available', 'cancelled', 'child_order_state', 'child_order_type', 'currency_code', 'filled', 'insufficient funds', 'limit', 'ltp', 'market', 'minimum', 'not found', 'pending', 'pnl', 'price', 'product_code', 'side', 'size', 'utf-8']

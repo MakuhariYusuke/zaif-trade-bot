@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\schema_env_factory.py
-# hypothesis_version: 6.148.6
-
-['environment', 'feature_names', 'initial_balance', 'mean', 'model_name', 'models', 'num_features', 'random_start', 'scaler_mean', 'scaler_std', 'schema_hash', 'schemas', 'std']

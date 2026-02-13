@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\calibration.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1.0, 'BUY', 'HOLD', 'SELL', 'bin_counts', 'bin_edges', 'bin_observed_freq', 'bin_predicted_prob', 'brier_score', 'n_actions', 'n_samples', 'overall', 'overall_brier', 'overall_brier_stats', 'per_action', 'per_action_brier', 'reliability_curves']

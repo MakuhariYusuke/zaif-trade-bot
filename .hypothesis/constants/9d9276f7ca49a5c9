@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\generators\technical\volatility\bollinger.py
-# hypothesis_version: 6.148.6
-
-[0.0, 2.0, 'BB_Lower', 'BB_Middle', 'BB_Position', 'BB_Upper', 'BB_Width', 'close']

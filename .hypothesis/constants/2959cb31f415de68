@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\risk\checks.py
-# hypothesis_version: 6.140.3
-
-['balanced', 'cooldown_period', 'current_status', 'daily_loss', 'daily_loss_limit', 'daily_loss_limit_pct', 'limits', 'max_drawdown_pct', 'max_single_trade_pct', 'max_trades_per_hour', 'max_volatility_pct', 'portfolio_value', 'portfolio_volatility', 'profile', 'reason', 'stop_loss_pct', 'take_profit', 'take_profit_pct', 'trades_this_hour', 'trailing_stop', 'trailing_stop_level', 'triggered']

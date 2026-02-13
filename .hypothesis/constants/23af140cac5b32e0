@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\signal\quality\indicators\macd.py
-# hypothesis_version: 6.148.6
-
-[0.0, 100.0, 100, 'bearish_crossover', 'bullish_crossover', 'close', 'ema', 'fast_ema', 'fast_period', 'histogram', 'macd_histogram', 'macd_line', 'macd_momentum', 'macd_signal', 'method', 'sideways', 'signal_line', 'signal_period', 'signal_strength', 'slow_ema', 'slow_period', 'trend_direction']

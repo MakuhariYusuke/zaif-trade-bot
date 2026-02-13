@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\fast_intraday_env.py
-# hypothesis_version: 6.140.3
-
-[-1.0, 0.0, 1e-06, 0.001, 0.01, 0.1, 0.2, 1.0, 100.0, 1000000.0, 100, 1000, 'atr', 'balance', 'buy', 'close', 'drawdown', 'generic', 'human', 'impact_proxy', 'position', 'render_modes', 'sell', 'step_cost', 'ttl']

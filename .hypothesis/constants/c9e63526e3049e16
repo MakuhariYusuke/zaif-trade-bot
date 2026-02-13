@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\core\preprocessing\data_preprocessing.py
-# hypothesis_version: 6.148.6
-
-['AnomalyDetector', 'NoiseFilter', 'anomaly_method', 'apply_noise_filter', 'generate_synthetic', 'preprocess_data', 'statistical', 'synthetic_periods']

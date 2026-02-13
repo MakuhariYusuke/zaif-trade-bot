@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\feature_schema.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.1, ',', '1.0', 'WARNING: %s', 'columns', 'columns_added', 'columns_removed', 'created_at', 'dtype_changes', 'dtypes', 'episode_id', 'exchange', 'features_schema.json', 'float', 'int', 'max', 'mean', 'min', 'new', 'np.', 'numpy.', 'old', 'order_changed', 'order_hash', 'pair', 'r', 'schema_hash', 'side', 'source', 'statistics', 'std', 'timestamp', 'ts', 'utf-8', 'version']

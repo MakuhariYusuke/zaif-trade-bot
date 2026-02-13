@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\strategies\action_signal_guide\pattern_recognition\volume_patterns.py
-# hypothesis_version: 6.148.6
-
-[-1.0, 0.0, 0.1, 0.8, 1.0, 'accumulation', 'ad_trend', 'bearish', 'bullish', 'chaikin_ad', 'chaikin_ad_error', 'chaikin_ad_neutral', 'close', 'confirmation_period', 'distribution', 'divergence', 'divergence_threshold', 'error', 'low', 'medium', 'neutral', 'pattern', 'price_trend']

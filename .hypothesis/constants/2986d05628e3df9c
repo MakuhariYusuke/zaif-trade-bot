@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\config\unified_config.py
-# hypothesis_version: 6.140.3
-
-['-', '.json', '.yaml', '.yml', 'UnifiedConfig', '_', '_metadata', 'action_bonuses', 'algorithm', 'auto', 'base_action_penalty', 'batch_size', 'buffer_size', 'checkpoint', 'ddpg', 'description', 'ensemble_system', 'environment', 'evaluation', 'features', 'json', 'learning_rate', 'logging', 'market_regimes', 'model', 'model_name', 'ppo', 'r', 'reward_settings', 'sac', 'td3', 'training', 'unknown', 'utf-8', 'validation', 'version', 'w', 'yaml']

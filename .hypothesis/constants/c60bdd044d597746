@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\adaptation\monitoring\evaluation_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 3.0, 5.0, 10.0, 300, '/', 'accuracy', 'active', 'active_anomalies', 'anomaly_count', 'average_score', 'drift', 'drift_detected', 'drift_detections', 'drift_rate', 'drift_severity', 'drift_types', 'error', 'f1_score', 'feature', 'gradient_norm', 'input', 'is_active', 'latest_score', 'learning_rate', 'loss_history', 'max_drawdown', 'message', 'online_learning', 'overall_safety_level', 'performance', 'period_hours', 'precision', 'recall', 'recent_checks', 'safety', 'safety_score', 'score_std', 'severity', 'sharpe_ratio', 'total_evaluations', 'total_return', 'total_samples', 'volatility', 'win_rate', 'システムは正常に動作しています', 'モデルの再学習を検討してください', 'リターンの安定化を検討してください', '異常検知された問題の調査を推奨します', '評価中にエラーが発生しました']
