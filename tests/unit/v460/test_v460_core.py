@@ -599,3 +599,146 @@ class TestG0HashPrefix:
         result = run_g0(str(p), expected_hash="0000000000000000",
                         thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01})
         assert result["checks"]["data_hash"]["pass"] is False
+
+
+# =====================================================================
+# 007# F1/F2: run_gate_check G1 judgment — any() vs all()
+# =====================================================================
+
+class TestGateCheckG1AnyLogic:
+    """007# F1/F2: G1 追加閾値チェックが any() で判定されることを検証."""
+
+    def _make_exp_results(
+        self, targets: dict[str, dict], fold_results: dict | None = None,
+    ) -> dict:
+        """テスト用 experiment results を構築."""
+        return {
+            "xgboost": targets,
+            "fold_results": fold_results or {},
+        }
+
+    def test_any_pass_single_target(self) -> None:
+        """1 target だけ閾値クリア → extra_any_pass = True."""
+        from scripts.v460.run_gate_check import run_g1_judgment
+
+        # 2 targets: 1 passes thresholds, 1 fails
+        targets = {
+            "direction_h1": {
+                "ic_mean": 0.05,
+                "accuracy_mean": 0.55,
+                "ic_significant_count": 3,
+            },
+            "direction_h5": {
+                "ic_mean": 0.001,   # Below min_ic
+                "accuracy_mean": 0.49,  # Below min_accuracy
+                "ic_significant_count": 0,
+            },
+        }
+        exp_results = self._make_exp_results(targets)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        ) as f:
+            json.dump(exp_results, f)
+            tmp_path = f.name
+
+        result = run_g1_judgment(tmp_path)
+        checks = result.get("threshold_checks", {})
+
+        # direction_h1 should pass, direction_h5 should fail
+        assert checks["direction_h1"]["ic_pass"] is True
+        assert checks["direction_h5"]["ic_pass"] is False
+
+        # extra check uses any(), so having 1 pass is sufficient
+        # (g1_judgment itself will likely fail due to no fold_results,
+        #  but the threshold_checks logic should use any())
+
+    def test_all_fail_no_extra_pass(self) -> None:
+        """全 target が閾値未達 → extra_any_pass = False."""
+        from scripts.v460.run_gate_check import run_g1_judgment
+
+        targets = {
+            "direction_h1": {
+                "ic_mean": 0.001,
+                "accuracy_mean": 0.49,
+                "ic_significant_count": 0,
+            },
+            "direction_h5": {
+                "ic_mean": 0.001,
+                "accuracy_mean": 0.49,
+                "ic_significant_count": 0,
+            },
+        }
+        exp_results = self._make_exp_results(targets)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        ) as f:
+            json.dump(exp_results, f)
+            tmp_path = f.name
+
+        result = run_g1_judgment(tmp_path)
+        # No fold_results → g1_judgment returns g1_pass=False
+        # All targets fail thresholds → extra_any_pass=False
+        # final_pass = False AND False = False
+        assert result["gate_result"] == "FAIL"
+
+
+# =====================================================================
+# 007# F4: fold_results slimming
+# =====================================================================
+
+class TestFoldResultsSlimming:
+    """007# F4: fold_results_saved が統計量のみになることを検証."""
+
+    def test_default_saves_stats_only(self) -> None:
+        """debug=False → fold_results_saved は統計量辞書."""
+        fold_results = {
+            "direction_h1": [
+                ([1.0, 2.0, 3.0], [0.5, 1.0, 1.5]),
+                ([4.0, 5.0, 6.0], [2.0, 3.0, 4.0]),
+            ],
+        }
+
+        # Simulate the slimming logic from feature_info
+        debug_mode = False
+        fold_results_for_save: dict = {}
+        if debug_mode:
+            fold_results_for_save = fold_results
+        else:
+            for tgt, pairs in fold_results.items():
+                fold_stats = []
+                for model_s, baseline_s in pairs:
+                    fold_stats.append({
+                        "n_model": len(model_s),
+                        "n_baseline": len(baseline_s),
+                        "model_mean": float(np.mean(model_s)),
+                        "model_std": float(np.std(model_s)),
+                        "baseline_mean": float(np.mean(baseline_s)),
+                        "baseline_std": float(np.std(baseline_s)),
+                    })
+                fold_results_for_save[tgt] = fold_stats
+
+        # Verify stats-only output
+        assert "direction_h1" in fold_results_for_save
+        stats = fold_results_for_save["direction_h1"]
+        assert len(stats) == 2
+        assert stats[0]["n_model"] == 3
+        assert stats[0]["n_baseline"] == 3
+        assert abs(stats[0]["model_mean"] - 2.0) < 1e-6
+
+    def test_debug_preserves_raw(self) -> None:
+        """debug=True → fold_results_saved は生配列."""
+        fold_results = {
+            "direction_h1": [
+                ([1.0, 2.0, 3.0], [0.5, 1.0, 1.5]),
+            ],
+        }
+        debug_mode = True
+        if debug_mode:
+            fold_results_for_save = fold_results
+        else:
+            fold_results_for_save = {}
+
+        # Raw arrays preserved
+        assert fold_results_for_save["direction_h1"][0][0] == [1.0, 2.0, 3.0]

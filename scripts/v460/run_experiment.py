@@ -98,6 +98,17 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
         results = task_fn(cfg)
 
         # Save results
+        # 007# F4: fold_results 生配列を保存用に差し替え (JSON 肥大化回避)
+        results_to_save = dict(results)
+        if "fold_results_saved" in results_to_save:
+            results_to_save["fold_results"] = results_to_save.pop("fold_results_saved")
+        elif "fold_results" in results_to_save:
+            # Legacy: fold_results_saved がない場合はキーだけ残す
+            results_to_save["fold_results"] = {
+                k: f"{len(v)} folds (raw arrays omitted)"
+                for k, v in results_to_save["fold_results"].items()
+            }
+
         results_dir = Path(cfg.get("output", {}).get("results_dir", "results/v460"))
         if not results_dir.is_absolute():
             results_dir = _PROJECT_ROOT / results_dir
@@ -105,7 +116,7 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
 
         out_path = results_dir / f"{entry.run_id}.json"
         with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+            json.dump(results_to_save, f, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved: {out_path}")
 
         # Determine gate result using thresholds from config

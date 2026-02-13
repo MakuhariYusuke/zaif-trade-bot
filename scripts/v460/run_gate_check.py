@@ -126,7 +126,8 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
         min_effect=thresholds.get("min_cliff_d", 0.33),
     )
 
-    # 003# #6: Additional threshold checks from gate_thresholds.yaml
+    # 003# #6, 007# F1/F2: Threshold checks per target — any() per 000# §3.2
+    # "1 組合せでも PASS すれば G1 通過" → ∃ target, not ∀ target
     min_ic = thresholds.get("min_ic", 0.02)
     min_accuracy = thresholds.get("min_accuracy", 0.51)
     min_sig_folds = thresholds.get("min_significant_folds", 2)
@@ -150,12 +151,13 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
             "sig_folds_threshold": min_sig_folds,
         }
 
-    extra_all_pass = all(
+    # 007# F1: any() — 1 target でも閾値クリアすれば PASS (000# §3.2 準拠)
+    extra_any_pass = any(
         c["ic_pass"] and c["accuracy_pass"] and c["sig_folds_pass"]
         for c in extra_checks.values()
     ) if extra_checks else False
 
-    final_pass = judgment["g1_pass"] and extra_all_pass
+    final_pass = judgment["g1_pass"] and extra_any_pass
 
     return {
         "gate": "G1-info",

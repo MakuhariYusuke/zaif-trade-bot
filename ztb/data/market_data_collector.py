@@ -302,10 +302,13 @@ class MarketDataCollector:
 
                 # Periodic flush
                 if time.time() - last_flush > flush_interval:
-                    self.flush_raw()
+                    ob_path, tr_path = self.flush_raw()
                     if auto_aggregate:
                         try:
-                            self.aggregate_to_1min()
+                            # 007# F3: pass correct paths to static method
+                            day = self._today_str()
+                            agg_out = self.agg_dir / f"{day}.parquet"
+                            self.aggregate_to_1min(ob_path, tr_path, agg_out)
                         except Exception as e:
                             logger.warning(f"Auto-aggregate failed: {e}")
                     last_flush = time.time()
@@ -314,10 +317,13 @@ class MarketDataCollector:
         except asyncio.CancelledError:
             logger.info("Collection cancelled")
         finally:
-            self.flush_raw()
+            ob_path, tr_path = self.flush_raw()
             if auto_aggregate:
                 try:
-                    self.aggregate_to_1min()
+                    # 007# F3: pass correct paths to static method
+                    day = self._today_str()
+                    agg_out = self.agg_dir / f"{day}.parquet"
+                    self.aggregate_to_1min(ob_path, tr_path, agg_out)
                 except Exception as e:
                     logger.warning(f"Final auto-aggregate failed: {e}")
             logger.info(f"Collection finished. Total ticks: {ticks_collected}")

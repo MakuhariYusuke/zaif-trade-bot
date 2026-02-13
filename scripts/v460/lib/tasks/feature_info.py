@@ -32,6 +32,9 @@ def task_feature_info(cfg: dict) -> dict:
 
     003# #2: direction → classifier, magnitude/volatility → regressor.
 
+    007# F4: fold_results の保存を統計量のみに変更。
+    debug=True 時のみ生配列を保存する。
+
     Returns:
         results dict with fold_results for g1_judgment.
     """
@@ -111,11 +114,33 @@ def task_feature_info(cfg: dict) -> dict:
 
         fold_results[target_name] = fold_pairs
 
+    # 007# F4: fold_results 統計量サマリ (生配列保存を回避 → ~142MB → ~数KB)
+    debug_mode = cfg.get("debug", False)
+    fold_results_for_save: dict[str, Any] = {}
+    if debug_mode:
+        # Debug: 生配列をそのまま保存 (Gate 判定再現用)
+        fold_results_for_save = fold_results
+    else:
+        # Default: 統計量のみ保存 (n_samples, mean, std per fold)
+        for tgt, pairs in fold_results.items():
+            fold_stats = []
+            for model_s, baseline_s in pairs:
+                fold_stats.append({
+                    "n_model": len(model_s),
+                    "n_baseline": len(baseline_s),
+                    "model_mean": float(np.mean(model_s)) if model_s else 0.0,
+                    "model_std": float(np.std(model_s)) if model_s else 0.0,
+                    "baseline_mean": float(np.mean(baseline_s)) if baseline_s else 0.0,
+                    "baseline_std": float(np.std(baseline_s)) if baseline_s else 0.0,
+                })
+            fold_results_for_save[tgt] = fold_stats
+
     # Summary metrics
     summary: dict = {
         "xgboost": {k: v.to_dict() for k, v in multi_results.items()},
         "logistic": {k: v.to_dict() for k, v in baseline_results.items()},
-        "fold_results": fold_results,
+        "fold_results": fold_results,  # Full data for g1_judgment (in-memory only)
+        "fold_results_saved": fold_results_for_save,  # Slimmed for JSON serialization
     }
 
     return summary
