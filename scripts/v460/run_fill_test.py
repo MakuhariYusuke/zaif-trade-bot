@@ -414,6 +414,43 @@ class FillTestRunner:
             logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
         return False
 
+    async def _cancel_stale_orders(self) -> int:
+        """042# 起動時の滞留注文自動クリア.
+
+        前回プロセスが異常終了した際に残った未約定注文をキャンセルする。
+        これにより、303s のポーリング浪費を回避。
+
+        Returns:
+            キャンセルした注文数。
+        """
+        cancelled_count = 0
+        try:
+            open_orders = await self.adapter.get_open_orders(self.config.symbol)
+            if not open_orders:
+                logger.info("[startup] No stale orders found.")
+                return 0
+            for order in open_orders:
+                try:
+                    await self.adapter.cancel_order(order.order_id)
+                    cancelled_count += 1
+                    logger.warning(
+                        f"[startup] Cancelled stale order: "
+                        f"id={order.order_id}, side={order.side}, "
+                        f"price={order.price}, qty={order.quantity}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"[startup] Failed to cancel stale order "
+                        f"{order.order_id}: {e}"
+                    )
+            logger.info(
+                f"[startup] Stale order cleanup complete: "
+                f"{cancelled_count}/{len(open_orders)} cancelled."
+            )
+        except Exception as e:
+            logger.warning(f"[startup] Stale order check failed (non-fatal): {e}")
+        return cancelled_count
+
     async def run_single_cycle(self) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -472,7 +509,13 @@ class FillTestRunner:
                 err_lower = last_error.lower()
                 if "post_only" in err_lower or "taker" in err_lower:
                     cancel_reason = "post_only_reject"
-                elif "insufficient" in err_lower or "balance" in err_lower:
+                elif (
+                    "insufficient" in err_lower
+                    or "balance" in err_lower
+                    # 042# Coincheck の日本語エラーメッセージ対応
+                    or "所持金額" in last_error
+                    or "足りません" in last_error
+                ):
                     cancel_reason = "insufficient_funds"
                 elif "minimum" in err_lower or "size" in err_lower:
                     cancel_reason = "minimum_size"
@@ -690,6 +733,9 @@ class FillTestRunner:
         # 041# 動的 loss_cap: API 残高から算出
         if self.config.loss_cap_auto:
             await self._update_dynamic_loss_cap()
+
+        # 042# 起動時の滞留注文クリア (前回プロセスの残注文防止)
+        await self._cancel_stale_orders()
 
         # レジューム: 既存レコードから状態復元
         existing_records = self.resume_from_existing()

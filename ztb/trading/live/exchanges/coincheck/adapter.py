@@ -233,7 +233,8 @@ class CoincheckAdapter(IBroker):
             if e.response is not None:
                 body = e.response.text[:500]
             logger.error(f"Coincheck API request failed: {e} | body={body}")
-            raise NetworkError(f"Coincheck API error: {e}")
+            # 042# body を例外メッセージに含め、呼び出し元でエラー分類可能にする
+            raise NetworkError(f"Coincheck API error: {e} | body={body}")
         except requests.exceptions.RequestException as e:
             logger.error(f"Coincheck API request failed: {e}")
             raise NetworkError(f"Coincheck API error: {e}")

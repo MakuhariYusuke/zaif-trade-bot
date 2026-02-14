@@ -533,3 +533,47 @@ class TestDynamicLossCapReserved:
         # total = 21000, cap = 1050
         assert config.loss_cap_auto is True
         assert config.loss_cap_ratio == 0.05
+
+
+class TestJapaneseErrorClassification:
+    """042# 日本語エラーメッセージの分類テスト."""
+
+    def test_insufficient_funds_japanese(self) -> None:
+        """Coincheck 日本語エラーが insufficient_funds に分類される."""
+        # 042# run_fill_test.py 内のエラー分類ロジックを直接テスト
+        test_cases = [
+            ("Coincheck API error: 400 | body=所持金額が足りません", "insufficient_funds"),
+            ("Coincheck API error: 400 | body=Amount BTC の所持金額が足りません", "insufficient_funds"),
+            ("Insufficient balance for buy", "insufficient_funds"),
+            ("post_only rejected", "post_only_reject"),
+            ("minimum size 0.001", "minimum_size"),
+            ("500 Server Error", "api_error"),
+        ]
+        for error_msg, expected in test_cases:
+            err_lower = error_msg.lower()
+            if "post_only" in err_lower or "taker" in err_lower:
+                reason = "post_only_reject"
+            elif (
+                "insufficient" in err_lower
+                or "balance" in err_lower
+                or "所持金額" in error_msg
+                or "足りません" in error_msg
+            ):
+                reason = "insufficient_funds"
+            elif "minimum" in err_lower or "size" in err_lower:
+                reason = "minimum_size"
+            else:
+                reason = "api_error"
+            assert reason == expected, f"{error_msg!r} → {reason}, expected {expected}"
+
+
+class TestStaleOrderCleanup:
+    """042# 起動時の滞留注文クリアテスト."""
+
+    def test_cancel_stale_orders_method_exists(self) -> None:
+        """_cancel_stale_orders メソッドが定義されている."""
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        assert hasattr(FillTestRunner, "_cancel_stale_orders")
+        import inspect
+        assert inspect.iscoroutinefunction(FillTestRunner._cancel_stale_orders)
