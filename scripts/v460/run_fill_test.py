@@ -98,6 +98,13 @@ class FillTestConfig:
     max_lot: float = 0.005
     lot_adapt_interval_cycles: int = 50
     recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
+    # レジーム検知 (035# §4)
+    enable_regime: bool = True
+    regime_window: int = 20
+    regime_trend_threshold_pct: float = 0.5
+    regime_high_vol_multiplier: float = 2.0
+    regime_hysteresis_count: int = 3
+    regime_min_confidence: float = 0.4
     # 安全設計 (000# §3.9)
     loss_cap_jpy: float = 10_000.0
     loss_cap_warning_ratio: float = 0.7
@@ -144,6 +151,21 @@ class FillTestConfig:
             kwargs["max_lot"] = lot["max_lot"]
         if "recent_pnl_window" in lot:
             kwargs["recent_pnl_window"] = lot["recent_pnl_window"]
+
+        # regime セクション → レジーム検知 (035# §4)
+        regime = yaml_cfg.get("regime", {})
+        if regime.get("enabled") is not None:
+            kwargs["enable_regime"] = regime["enabled"]
+        regime_map = {
+            "window": "regime_window",
+            "trend_threshold_pct": "regime_trend_threshold_pct",
+            "high_vol_multiplier": "regime_high_vol_multiplier",
+            "hysteresis_count": "regime_hysteresis_count",
+            "min_confidence": "regime_min_confidence",
+        }
+        for yaml_key, config_key in regime_map.items():
+            if yaml_key in regime:
+                kwargs[config_key] = regime[yaml_key]
 
         # safety セクション → 損失キャップ
         safety = yaml_cfg.get("safety", {})
@@ -192,6 +214,27 @@ class FillTestRunner:
 
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
         self._current_lot: float = config.order_quantity
+
+        # 037# レジーム検知 (035# §4)
+        self._regime_detector: Optional["FillTestRegimeDetector"] = None
+        if config.enable_regime:
+            from scripts.v460.lib.regime_detector import (
+                FillTestRegimeDetector,
+                RegimeConfig,
+            )
+
+            regime_cfg = RegimeConfig(
+                window=config.regime_window,
+                trend_threshold_pct=config.regime_trend_threshold_pct,
+                high_vol_multiplier=config.regime_high_vol_multiplier,
+                hysteresis_count=config.regime_hysteresis_count,
+                min_confidence=config.regime_min_confidence,
+            )
+            self._regime_detector = FillTestRegimeDetector(regime_cfg)
+            logger.info(
+                f"[Regime] detector enabled: window={regime_cfg.window}, "
+                f"hysteresis={regime_cfg.hysteresis_count}"
+            )
 
         # 024# R1: 保存失敗トラッキング
         self._unsaved_batch: list[FillRecord] = []
@@ -511,6 +554,18 @@ class FillTestRunner:
                     # CM-3: AS デッドゾーン
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
 
+        # 037# レジーム検知更新 (035# §7 Week 1)
+        regime_str: Optional[str] = None
+        regime_conf: Optional[float] = None
+        regime_stab: Optional[int] = None
+        if self._regime_detector is not None:
+            # mid_at_fill または order_price をレジーム検知の入力に使用
+            regime_price = mid_at_fill if mid_at_fill is not None else order_price
+            regime_result = self._regime_detector.update(t_submit, regime_price)
+            regime_str = regime_result.regime.value
+            regime_conf = regime_result.confidence
+            regime_stab = regime_result.stability
+
         record = FillRecord(
             cycle_id=cycle_id,
             timestamp=t_submit,
@@ -536,6 +591,10 @@ class FillTestRunner:
             # 031# 追加フィールド
             spread_at_order=spread_at_order,
             spread_offset_ratio=self.config.spread_offset_ratio,
+            # 037# レジーム情報
+            regime=regime_str,
+            regime_confidence=regime_conf,
+            regime_stability=regime_stab,
         )
 
         logger.info(
@@ -622,12 +681,17 @@ class FillTestRunner:
 
             # 進捗ログ
             if self._cycle_count % self.config.progress_log_interval == 0:
+                regime_tag = (
+                    self._regime_detector.current_regime.value
+                    if self._regime_detector else "n/a"
+                )
                 logger.info(
                     f"Progress: {self._cycle_count} cycles, "
                     f"fill rate={filled_count}/{total_count} "
                     f"({filled_count/total_count*100:.1f}%), "
                     f"cumPnL={cumulative_pnl_jpy:.1f}JPY, "
                     f"lot={self._current_lot:.4f}BTC, "
+                    f"regime={regime_tag}, "
                     f"unsaved_batch={len(batch)}"
                 )
 
@@ -822,9 +886,13 @@ class FillTestRunner:
             if result.changed:
                 old = self.config.spread_offset_ratio
                 self.config.spread_offset_ratio = result.new_offset
+                regime_tag = (
+                    self._regime_detector.current_regime.value
+                    if self._regime_detector else "n/a"
+                )
                 logger.info(
                     f"[方策A] offset adapted: {old:.4f} → {result.new_offset:.4f} "
-                    f"({result.action}: {result.reason})"
+                    f"({result.action}: {result.reason}) [regime={regime_tag}]"
                 )
             else:
                 logger.debug(
@@ -875,9 +943,13 @@ class FillTestRunner:
             if result.changed:
                 old = self._current_lot
                 self._current_lot = result.new_lot
+                regime_tag = (
+                    self._regime_detector.current_regime.value
+                    if self._regime_detector else "n/a"
+                )
                 logger.info(
                     f"[方策B] lot adapted: {old:.4f} → {result.new_lot:.4f} BTC "
-                    f"({result.action}: {result.reason})"
+                    f"({result.action}: {result.reason}) [regime={regime_tag}]"
                 )
             else:
                 logger.debug(
@@ -1054,7 +1126,8 @@ def main() -> None:
     logger.info(
         f"Config loaded: YAML={args.config or 'default'}, "
         f"offset={config.spread_offset_ratio}, lot={config.order_quantity}, "
-        f"adapt={config.enable_auto_adapt}, dynamic_lot={config.enable_dynamic_lot}"
+        f"adapt={config.enable_auto_adapt}, dynamic_lot={config.enable_dynamic_lot}, "
+        f"regime={config.enable_regime}"
     )
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)

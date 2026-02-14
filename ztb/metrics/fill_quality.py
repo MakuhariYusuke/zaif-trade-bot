@@ -58,6 +58,10 @@ class FillRecord:
     spread_at_order: Optional[float] = None  # 発注時スプレッド (JPY)
     error_message: Optional[str] = None  # エラー詳細メッセージ
     spread_offset_ratio: Optional[float] = None  # 使用した spread_offset_ratio
+    # 037# レジーム情報 (035# §7 Week 1)
+    regime: Optional[str] = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
+    regime_confidence: Optional[float] = None  # 0.0–1.0
+    regime_stability: Optional[int] = None  # 連続同一レジーム数
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

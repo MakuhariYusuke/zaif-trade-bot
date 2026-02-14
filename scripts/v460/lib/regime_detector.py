@@ -1,0 +1,259 @@
+"""
+軽量レジーム検知 — fill_test 実測サイクルの mid_price 系列からマーケット状態を分類.
+
+035# §4 準拠.
+
+設計原則:
+  - 4 状態: trending / ranging / high_vol / unknown (035# §4.2 #1)
+  - ヒステリシス: 連続 N サイクル一致で状態確定 (035# §4.2 #2)
+  - 信頼度ゲート: confidence 低時は unknown で適応停止 (035# §4.2 #3)
+  - レジーム別評価を必須化 (035# §4.2 #4)
+
+既存資産再利用:
+  - ztb/metrics/metrics.py::classify_market_regime の分類ロジックを軽量化
+  - fill_test サイクル ≈120 秒で得られる mid_price のみを入力とする
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+
+class FillTestRegime(str, Enum):
+    """fill_test 用の軽量レジーム分類.
+
+    035# §4.2: 4 状態から開始.
+    """
+
+    TRENDING = "trending"
+    RANGING = "ranging"
+    HIGH_VOL = "high_vol"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class RegimeConfig:
+    """レジーム検知の設定."""
+
+    # 検知ウィンドウ (直近 N 観測)
+    window: int = 20
+
+    # トレンド閾値: window 区間の価格変化率 (%) 以上でトレンド判定
+    trend_threshold_pct: float = 0.5
+
+    # 高ボラ判定: 現在のボラティリティが baseline の X 倍以上
+    high_vol_multiplier: float = 2.0
+
+    # ヒステリシス: 状態確定までに必要な連続一致数 (035# §4.2 #2)
+    hysteresis_count: int = 3
+
+    # 信頼度ゲート: この値未満は unknown 扱い (035# §4.2 #3)
+    min_confidence: float = 0.4
+
+
+@dataclass
+class RegimeResult:
+    """レジーム検知の結果."""
+
+    regime: FillTestRegime
+    confidence: float  # 0.0–1.0
+    stability: int  # 連続同一レジーム数
+    trend_pct: float  # window 区間の価格変化率 (%)
+    volatility_ratio: float  # 現在 vol / baseline vol
+
+    def to_dict(self) -> dict[str, object]:
+        """JSON serializable dict."""
+        return {
+            "regime": self.regime.value,
+            "confidence": round(self.confidence, 4),
+            "stability": self.stability,
+            "trend_pct": round(self.trend_pct, 4),
+            "volatility_ratio": round(self.volatility_ratio, 4),
+        }
+
+
+class FillTestRegimeDetector:
+    """fill_test サイクルの mid_price からレジームを軽量判定.
+
+    使い方:
+        detector = FillTestRegimeDetector(config)
+        result = detector.update(timestamp, mid_price)
+        if result.regime == FillTestRegime.UNKNOWN:
+            # 適応停止
+    """
+
+    def __init__(self, config: Optional[RegimeConfig] = None) -> None:
+        self.config = config or RegimeConfig()
+        self._prices: list[tuple[float, float]] = []  # (timestamp, mid_price)
+        self._raw_history: list[FillTestRegime] = []  # ヒステリシス用
+        self._confirmed_regime: FillTestRegime = FillTestRegime.UNKNOWN
+        self._stability_count: int = 0
+
+    @property
+    def current_regime(self) -> FillTestRegime:
+        """現在確定中のレジーム."""
+        return self._confirmed_regime
+
+    @property
+    def observation_count(self) -> int:
+        """蓄積済み観測数."""
+        return len(self._prices)
+
+    def update(self, timestamp: float, mid_price: float) -> RegimeResult:
+        """新しい mid_price を投入し、レジーム判定を更新.
+
+        Args:
+            timestamp: エポック秒.
+            mid_price: 板の mid price.
+
+        Returns:
+            RegimeResult with current regime assessment.
+        """
+        self._prices.append((timestamp, mid_price))
+
+        # バッファ上限: window の 3 倍まで保持 (baseline 算出用)
+        max_buffer = self.config.window * 3
+        if len(self._prices) > max_buffer:
+            self._prices = self._prices[-max_buffer:]
+
+        # データ不足 → unknown (confidence=0)
+        if len(self._prices) < self.config.window:
+            return RegimeResult(
+                regime=FillTestRegime.UNKNOWN,
+                confidence=0.0,
+                stability=0,
+                trend_pct=0.0,
+                volatility_ratio=0.0,
+            )
+
+        # 指標算出
+        trend_pct, vol_ratio = self._compute_indicators()
+
+        # 分類
+        raw_regime, confidence = self._classify(trend_pct, vol_ratio)
+
+        # 信頼度ゲート (035# §4.2 #3)
+        if confidence < self.config.min_confidence:
+            raw_regime = FillTestRegime.UNKNOWN
+
+        # ヒステリシス適用 (035# §4.2 #2)
+        confirmed = self._apply_hysteresis(raw_regime)
+
+        return RegimeResult(
+            regime=confirmed,
+            confidence=confidence,
+            stability=self._stability_count,
+            trend_pct=trend_pct,
+            volatility_ratio=vol_ratio,
+        )
+
+    def _compute_indicators(self) -> tuple[float, float]:
+        """直近 window の trend% と volatility ratio を算出.
+
+        Returns:
+            (trend_pct, volatility_ratio)
+        """
+        recent = self._prices[-self.config.window :]
+        prices = np.array([p[1] for p in recent])
+
+        # trend: window 区間の価格変化率 (%)
+        if prices[0] > 0:
+            trend_pct = (prices[-1] - prices[0]) / prices[0] * 100
+        else:
+            trend_pct = 0.0
+
+        # returns (隣接比)
+        returns = np.diff(prices) / prices[:-1]
+        current_vol = float(np.std(returns)) if len(returns) > 1 else 0.0
+
+        # baseline: 全バッファの returns の std
+        all_prices = np.array([p[1] for p in self._prices])
+        all_returns = np.diff(all_prices) / all_prices[:-1]
+        baseline_vol = float(np.std(all_returns)) if len(all_returns) > 1 else current_vol
+
+        vol_ratio = current_vol / baseline_vol if baseline_vol > 1e-12 else 1.0
+
+        return trend_pct, vol_ratio
+
+    def _classify(
+        self, trend_pct: float, vol_ratio: float
+    ) -> tuple[FillTestRegime, float]:
+        """指標からレジームと信頼度を算出.
+
+        Returns:
+            (regime, confidence)
+        """
+        abs_trend = abs(trend_pct)
+        threshold = self.config.trend_threshold_pct
+
+        # 高ボラ判定が最優先
+        if vol_ratio >= self.config.high_vol_multiplier:
+            # 信頼度: multiplier をどれだけ超えたか (最大 1.0)
+            excess = (vol_ratio - self.config.high_vol_multiplier) / self.config.high_vol_multiplier
+            confidence = min(1.0, 0.6 + excess * 0.4)
+            return FillTestRegime.HIGH_VOL, confidence
+
+        # トレンド判定
+        if abs_trend >= threshold:
+            # 信頼度: threshold をどれだけ超えたか
+            excess = (abs_trend - threshold) / threshold
+            confidence = min(1.0, 0.5 + excess * 0.3)
+            return FillTestRegime.TRENDING, confidence
+
+        # レンジ: トレンドも高ボラもない
+        # 信頼度: threshold からの距離 (0 に近いほど確信が高い)
+        proximity = 1.0 - (abs_trend / threshold) if threshold > 0 else 1.0
+        confidence = min(1.0, 0.4 + proximity * 0.4)
+        return FillTestRegime.RANGING, confidence
+
+    def _apply_hysteresis(self, raw_regime: FillTestRegime) -> FillTestRegime:
+        """ヒステリシス: raw 判定が N 回連続で一致して初めて状態遷移.
+
+        035# §4.2 #2: 連続 N サイクル一致で状態確定.
+        """
+        self._raw_history.append(raw_regime)
+        # raw_history もバウンド
+        if len(self._raw_history) > self.config.hysteresis_count * 3:
+            self._raw_history = self._raw_history[-self.config.hysteresis_count * 3 :]
+
+        # 直近 N 回の連続一致をカウント
+        consecutive = 0
+        for r in reversed(self._raw_history):
+            if r == raw_regime:
+                consecutive += 1
+            else:
+                break
+
+        if raw_regime == self._confirmed_regime:
+            # 既確定レジームが継続
+            self._stability_count = consecutive
+            return self._confirmed_regime
+
+        if consecutive >= self.config.hysteresis_count:
+            # 新レジームが十分な連続一致 → 遷移
+            old = self._confirmed_regime
+            self._confirmed_regime = raw_regime
+            self._stability_count = consecutive
+            logger.info(
+                f"[Regime] transition: {old.value} → {raw_regime.value} "
+                f"(consecutive={consecutive})"
+            )
+            return raw_regime
+
+        # 遷移未確定 → 旧レジーム維持
+        self._stability_count += 1  # 旧が暫定的に続く
+        return self._confirmed_regime
+
+    def reset(self) -> None:
+        """内部状態をリセット."""
+        self._prices.clear()
+        self._raw_history.clear()
+        self._confirmed_regime = FillTestRegime.UNKNOWN
+        self._stability_count = 0

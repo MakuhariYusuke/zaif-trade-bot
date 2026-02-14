@@ -64,6 +64,15 @@ lot_sizing:
   min_samples: 50             # 判定の最小サンプル数
   recent_pnl_window: 50       # 直近 PnL 計算ウィンドウ (件数)
 
+# ---- レジーム検知 (035# §4) ----
+regime:
+  enabled: true               # レジーム判定の有効化
+  window: 20                   # 判定ウィンドウ (直近 N 観測)
+  trend_threshold_pct: 0.5     # トレンド判定の価格変化率閾値 (%)
+  high_vol_multiplier: 2.0     # 高ボラ判定倍率 (baseline 比)
+  hysteresis_count: 3          # 状態確定までの連続一致数
+  min_confidence: 0.4          # この値未満は unknown 扱い
+
 # ---- 安全設計 (000# §3.9) ----
 safety:
   loss_cap_jpy: 10000.0       # 累積実損上限 (JPY)
