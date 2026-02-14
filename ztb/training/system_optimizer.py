@@ -13,7 +13,7 @@ import logging
 import threading
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List
+from typing import Callable, Dict, List
 
 import numpy as np
 import psutil
@@ -89,24 +89,28 @@ class SystemOptimizer:
         Args:
             step_name: Name of the training step for profiling
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         # Memory tracking
         memory_ctx = self.memory_tracker if self.memory_tracker else None
+        tracker_entered = False
         if memory_ctx:
-            memory_ctx.__enter__()
+            try:
+                memory_ctx.__enter__()
+                tracker_entered = True
+            except Exception as e:
+                logger.warning("Memory tracker initialization skipped: %s", e)
 
         # Performance profiling
         perf_enabled = self.performance_profiler is not None
-        if perf_enabled:
-            perf_start = time.time()
+        perf_start = time.perf_counter() if perf_enabled else 0.0
 
         try:
             yield
         finally:
             # Performance profiling cleanup
             if perf_enabled:
-                perf_time = time.time() - perf_start
+                perf_time = time.perf_counter() - perf_start
                 # Record performance data manually since PerformanceProfiler doesn't have context manager
                 perf_stats = {
                     "step_time": perf_time,
@@ -118,13 +122,16 @@ class SystemOptimizer:
                     self.performance_history.append(perf_stats)
 
             # Memory tracking cleanup
-            if memory_ctx:
-                memory_ctx.__exit__(None, None, None)
+            if memory_ctx and tracker_entered:
+                try:
+                    memory_ctx.__exit__(None, None, None)
+                except Exception as e:
+                    logger.warning("Memory tracker cleanup failed: %s", e)
 
             # Record metrics
             with self._lock:
                 self.step_counter += 1
-                step_time = time.time() - start_time
+                step_time = time.perf_counter() - start_time
 
                 # Memory metrics
                 if self.memory_tracker:
@@ -136,16 +143,6 @@ class SystemOptimizer:
                             f"High memory usage in {step_name}: {current_memory:.1f}MB "
                             f"(threshold: {self.memory_threshold_mb}MB)"
                         )
-
-                # Performance metrics
-                if self.performance_profiler:
-                    perf_stats = {
-                        "step_time": step_time,
-                        "cpu_percent": psutil.cpu_percent(interval=None),
-                        "step_name": step_name,
-                        "timestamp": time.time(),
-                    }
-                    self.performance_history.append(perf_stats)
 
                 # Periodic garbage collection
                 if self.step_counter % self.gc_interval_steps == 0:
@@ -182,7 +179,7 @@ class SystemOptimizer:
         logger.info("Applied model memory optimizations")
         return model
 
-    def optimize_dataloader(self, dataloader: Any) -> Any:
+    def optimize_dataloader(self, dataloader: object) -> object:
         """
         Optimize dataloader for memory efficiency and performance.
 
@@ -202,7 +199,9 @@ class SystemOptimizer:
         logger.info("Applied dataloader optimizations")
         return dataloader
 
-    def cache_io_operation(self, key: str, operation: callable, *args, **kwargs) -> Any:
+    def cache_io_operation(
+        self, key: str, operation: Callable[..., object], *args: object, **kwargs: object
+    ) -> object:
         """
         Cache I/O operation results using TTL cache.
 
@@ -219,18 +218,19 @@ class SystemOptimizer:
             return operation(*args, **kwargs)
 
         with self._lock:
-            if self.io_cache.get(key) is not None:
+            cached_value = self.io_cache.get(key)
+            if cached_value is not None:
                 self.cache_hits += 1
                 logger.debug(f"Cache hit for key: {key}")
-                return self.io_cache.get(key)
-            else:
-                self.cache_misses += 1
-                result = operation(*args, **kwargs)
-                self.io_cache.set(key, result)
-                logger.debug(f"Cache miss for key: {key}, stored result")
-                return result
+                return cached_value
 
-    def get_system_stats(self) -> Dict[str, Any]:
+            self.cache_misses += 1
+            result = operation(*args, **kwargs)
+            self.io_cache.set(key, result)
+            logger.debug(f"Cache miss for key: {key}, stored result")
+            return result
+
+    def get_system_stats(self) -> Dict[str, object]:
         """
         Get comprehensive system statistics.
 

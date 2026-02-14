@@ -8,7 +8,8 @@ import copy
 import os
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Dict, List, Optional, cast
 
 import pandas as pd
 
@@ -193,9 +194,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # Algorithm trainer (created during run)
         self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
         # Exposed model handle (if algorithm produces one during training)
-        self._model: Optional[Any] = None
+        self._model: Optional[object] = None
         # Optional explicit env override (if set externally)
-        self._env: Optional[Any] = None
+        self._env: Optional[object] = None
 
         # Anomaly Detection components
         self.anomaly_detector: Optional[AnomalyDetectorProtocol] = None
@@ -232,7 +233,6 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             except Exception as e:
                 self.logger.warning(f"Failed to initialize GradScaler: {e}")
                 self.grad_scaler = None
-                self.grad_scaler = None
 
         # Initialize optimization utilities
         self.memory_tracker = OperationMemoryTracker()
@@ -262,7 +262,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # Training results
         self.training_success: bool = False
         self.training_stats: TrainingStats = {}
-        self.training_report: Dict[str, Any] = {}
+        self.training_report: Dict[str, object] = {}
+        self._feature_consistency_checked = False
+        self._feature_consistency_ok = True
 
         # Store initialization parameters
         self.force = force
@@ -281,7 +283,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         self.enable_v433_adaptive = False
 
     @property
-    def model(self) -> Optional[Any]:
+    def model(self) -> Optional[object]:
         """Return the underlying model from the algorithm trainer when available."""
         alg_trainer = self.algorithm_trainer
         if alg_trainer is not None and hasattr(alg_trainer, "model"):
@@ -291,7 +293,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         return self._model
 
     @model.setter
-    def model(self, value: Optional[Any]) -> None:
+    def model(self, value: Optional[object]) -> None:
         """Set the model and propagate to the algorithm trainer if present."""
         self._model = value
         alg_trainer = self.algorithm_trainer
@@ -303,7 +305,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 pass
 
     @property
-    def env(self) -> Optional[Any]:
+    def env(self) -> Optional[object]:
         """Return the training environment if available."""
         if self._env is not None:
             return self._env
@@ -327,7 +329,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         return None
 
     @env.setter
-    def env(self, value: Optional[Any]) -> None:
+    def env(self, value: Optional[object]) -> None:
         """Set the training environment and propagate when possible."""
         self._env = value
         alg_trainer = self.algorithm_trainer
@@ -344,7 +346,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             except Exception:
                 pass
 
-    def get_environment_metrics(self) -> Dict[str, Any]:
+    def get_environment_metrics(self) -> Dict[str, object]:
         """Extract environment metrics such as balance and trade count."""
         from ztb.training.utils.env_metrics import extract_trainer_env_metrics
 
@@ -406,12 +408,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 ],
             )
 
-    def get_ensemble_stats(self) -> Dict[str, Any]:
+    def get_ensemble_stats(self) -> Dict[str, object]:
         """Get current ensemble statistics for monitoring."""
         if self.ensemble_system is None:
             return {"error": "ensemble_not_initialized"}
         # ensemble_system may return a non-typed mapping; cast to expected return type
-        return cast(Dict[str, Any], self.ensemble_system.get_ensemble_stats())
+        return cast(Dict[str, object], self.ensemble_system.get_ensemble_stats())
 
     def adapt_ensemble_to_market(self, market_conditions: ConfigDict) -> None:
         """Adapt ensemble system to current market conditions."""
@@ -568,7 +570,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 self.ui.print_success("Configuration validation passed")
 
                 # Additional feature consistency validation
-                if not self._validate_feature_consistency():
+                self._feature_consistency_ok = self._validate_feature_consistency()
+                self._feature_consistency_checked = True
+                if not self._feature_consistency_ok:
                     return False
 
                 return True
@@ -589,6 +593,13 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         Uses the centralized memory cleanup utility.
         """
+        feature_cache = getattr(self, "feature_cache", None)
+        if feature_cache is not None and hasattr(feature_cache, "clear"):
+            try:
+                feature_cache.clear()
+            except Exception as e:
+                self.logger.debug("Feature cache cleanup skipped due to error: %s", e)
+
         cleanup_training_memory(
             env=getattr(self, "env", None),
             model=getattr(self, "model", None),
@@ -603,6 +614,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             step: Current training step
             total_steps: Total training steps
         """
+        if total_steps <= 0:
+            return
+
         # Monitor memory every 10% of training progress or every 10000 steps
         progress_percent = (step / total_steps) * 100
         should_monitor = (
@@ -616,39 +630,49 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             )
 
             # Check for memory warnings
-            if memory_stats.get("memory_percent", 0) > 90:
-                self.logger.warning(
-                    f"High memory usage detected: {memory_stats.get('memory_percent', 0):.1f}%"
-                )
-            elif memory_stats.get("memory_percent", 0) > 95:
+            memory_percent = float(memory_stats.get("memory_percent", 0))
+            if memory_percent > 95:
                 self.logger.error(
-                    f"Critical memory usage: {memory_stats.get('memory_percent', 0):.1f}%"
+                    f"Critical memory usage: {memory_percent:.1f}%"
+                )
+            elif memory_percent > 90:
+                self.logger.warning(
+                    f"High memory usage detected: {memory_percent:.1f}%"
                 )
 
     def _start_memory_monitoring(self) -> None:
         """Start background memory monitoring thread."""
-        if self.memory_monitor_thread is not None:
+        if (
+            self.memory_monitor_thread is not None
+            and self.memory_monitor_thread.is_alive()
+        ):
             return
+        self.memory_monitor_thread = None
 
         self.memory_monitor_stop_event.clear()
 
+        raw_interval = self.config.get("memory_monitor_interval_seconds", 60)
+        try:
+            monitor_interval = max(5, int(raw_interval))
+        except (TypeError, ValueError):
+            monitor_interval = 60
+
         def memory_monitor_worker():
             """Background worker for memory monitoring."""
-            monitor_interval = 60  # Monitor every 60 seconds
             while not self.memory_monitor_stop_event.is_set():
                 try:
                     memory_stats = self.memory_profiler.get_memory_stats()
-                    self.logger.info(f"Background memory check: {memory_stats}")
+                    self.logger.debug(f"Background memory check: {memory_stats}")
 
                     # Alert on high memory usage
-                    memory_percent = memory_stats.get("memory_percent", 0)
-                    if memory_percent > 90:
-                        self.logger.warning(
-                            f"High memory usage in background monitor: {memory_percent:.1f}%"
-                        )
-                    elif memory_percent > 95:
+                    memory_percent = float(memory_stats.get("memory_percent", 0))
+                    if memory_percent > 95:
                         self.logger.error(
                             f"Critical memory usage in background monitor: {memory_percent:.1f}%"
+                        )
+                    elif memory_percent > 90:
+                        self.logger.warning(
+                            f"High memory usage in background monitor: {memory_percent:.1f}%"
                         )
 
                 except Exception as e:
@@ -669,13 +693,36 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             return
 
         self.memory_monitor_stop_event.set()
-        self.memory_monitor_thread.join(timeout=5.0)
         if self.memory_monitor_thread.is_alive():
-            self.logger.warning("Memory monitoring thread did not stop gracefully")
-        else:
-            self.logger.info("Stopped background memory monitoring")
+            self.memory_monitor_thread.join(timeout=5.0)
+            if self.memory_monitor_thread.is_alive():
+                self.logger.warning("Memory monitoring thread did not stop gracefully")
+            else:
+                self.logger.info("Stopped background memory monitoring")
 
         self.memory_monitor_thread = None
+
+    @contextmanager
+    def _safe_memory_tracking(self):
+        """Ensure memory tracker enter/exit symmetry even on exceptions."""
+        tracker_entered = False
+        try:
+            self.memory_tracker.__enter__()
+            tracker_entered = True
+        except Exception as e:
+            self.logger.warning(
+                "Memory tracker initialization failed; continuing without tracker: %s",
+                e,
+            )
+
+        try:
+            yield
+        finally:
+            if tracker_entered:
+                try:
+                    self.memory_tracker.__exit__(None, None, None)
+                except Exception as e:
+                    self.logger.warning("Memory tracker cleanup failed: %s", e)
 
     def _validate_feature_consistency(self) -> bool:
         """
@@ -690,7 +737,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         try:
             # Get data path from config
             data_config = self.config.get("training", {}).get("data_config", {})
-            data_path = data_config.get("data_path")
+            data_path = data_config.get("data_path") or self.config.get("data_path")
 
             if not data_path:
                 self.logger.warning(
@@ -698,10 +745,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 )
                 return True
 
-            # Import pandas for data reading
             from pathlib import Path
-
-            import pandas as pd
 
             data_file = Path(data_path)
             if not data_file.exists():
@@ -711,21 +755,33 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Read data file to get actual feature count
             try:
-                # Read only header to get column count efficiently
-                df_header = DataLoader.load_csv(data_file, nrows=0)
-                actual_feature_count = (
-                    len(df_header.columns) - 1
-                )  # Exclude timestamp/index column
+                cache_key = (
+                    f"feature_header_columns:{data_file}:{data_file.stat().st_mtime_ns}"
+                )
+                cached_columns = self.feature_cache.get(cache_key)
+                if isinstance(cached_columns, list):
+                    header_columns = [str(col) for col in cached_columns]
+                else:
+                    # Read only header to get column count efficiently
+                    df_header = DataLoader.load_csv(data_file, nrows=0)
+                    header_columns = [str(col) for col in df_header.columns]
+                    self.feature_cache.set(cache_key, header_columns)
+                actual_features = header_columns[1:] if len(header_columns) > 1 else []
+                actual_feature_count = len(actual_features)  # Exclude timestamp/index
             except Exception as e:
                 self.logger.error(f"Failed to read data file header: {e}")
                 self.ui.print_error(f"Failed to read data file: {e}")
                 return False
 
             # Get configured feature count from config
-            configured_feature_count = (
+            configured_feature_count_raw = (
                 self.config.get("max_features", actual_feature_count)
                 or actual_feature_count
             )
+            try:
+                configured_feature_count = int(configured_feature_count_raw)
+            except (TypeError, ValueError):
+                configured_feature_count = actual_feature_count
 
             # Compare feature counts
             if configured_feature_count == actual_feature_count:
@@ -751,15 +807,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     "Attempting to update config features to match data file"
                 )
 
-                # Read full data to get feature names
                 try:
-                    df_sample = DataLoader.load_csv_strict(
-                        data_file, nrows=5
-                    )  # Read sample for feature names
-                    actual_features = df_sample.columns[
-                        1:
-                    ].tolist()  # Exclude timestamp
-
                     # Update config with actual features (simplified mapping)
                     updated_features = {
                         "basic_features": actual_features[:7]
@@ -839,7 +887,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         try:
             # 特徴量不一致チェック - トレーニング開始前にデータ特徴量数を検証
-            if not self._validate_feature_consistency():
+            if not self._feature_consistency_checked:
+                self._feature_consistency_ok = self._validate_feature_consistency()
+                self._feature_consistency_checked = True
+            if not self._feature_consistency_ok:
                 self.logger.warning(
                     "Feature consistency validation failed - proceeding with caution"
                 )
@@ -1002,18 +1053,16 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Initialize optimization tracking
             self.logger.info("Initializing performance optimization tracking...")
-            self.memory_tracker.__enter__()
-            start_time = time.time()
-
-            # Execute training (federated, V433 adaptive, or regular)
-            self.logger.info(f"Starting {algorithm.upper()} training...")
-            if self.config.get("enable_federated", False):
-                success = self._execute_federated_training()
-            elif self.enable_v433_adaptive:
-                success = self._execute_v433_adaptive_training()
-            else:
-                success = False
-                if self.algorithm_trainer is not None:
+            start_time = time.perf_counter()
+            success = False
+            with self._safe_memory_tracking():
+                # Execute training (federated, V433 adaptive, or regular)
+                self.logger.info(f"Starting {algorithm.upper()} training...")
+                if self.config.get("enable_federated", False):
+                    success = self._execute_federated_training()
+                elif self.enable_v433_adaptive:
+                    success = self._execute_v433_adaptive_training()
+                elif self.algorithm_trainer is not None:
                     # Get total_timesteps from config
                     total_timesteps = self.config.get("training", {}).get(
                         "total_timesteps", 100000
@@ -1024,18 +1073,14 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                         total_timesteps=total_timesteps
                     )
 
-            # Check for memory leaks after training
-            final_memory = self.memory_profiler.get_memory_stats()
-            self.logger.info(f"Final memory stats: {final_memory}")
+                # Check for memory leaks after training
+                final_memory = self.memory_profiler.get_memory_stats()
+                self.logger.info(f"Final memory stats: {final_memory}")
 
             # Stop optimization tracking and collect metrics
-            training_time = time.time() - start_time
-            self.memory_tracker.__exit__(None, None, None)
+            training_time = time.perf_counter() - start_time
             memory_stats = f"Training completed in {training_time:.2f} seconds"
             perf_report = f"Total training time: {training_time:.2f}s"
-
-            # Stop background memory monitoring
-            self._stop_memory_monitoring()
 
             # Log optimization metrics
             self.logger.info("Training performance metrics:")
@@ -1092,7 +1137,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                             raise TrainingError("Ensemble system unexpectedly missing")
 
                         ensemble_stats = cast(
-                            Dict[str, Any], ensemble.get_ensemble_stats()
+                            Dict[str, object], ensemble.get_ensemble_stats()
                         )
                         decision_log = getattr(ensemble, "decision_log", None)
 
@@ -1142,12 +1187,14 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self.ui.print_error(f"Training execution failed: {e}")
             self.logger.error(f"Training execution failed: {e}", exc_info=True)
             return False
+        finally:
+            self._stop_memory_monitoring()
 
     def get_training_stats(self) -> TrainingStats:
         """Get training statistics."""
         return self.training_stats.copy()
 
-    def get_training_report(self) -> Dict[str, Any]:
+    def get_training_report(self) -> Dict[str, object]:
         """Get complete training report."""
         return self.training_report.copy()
 
@@ -1335,8 +1382,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             return False
 
     def _federated_average(
-        self, client_updates: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, client_updates: List[Dict[str, object]]
+    ) -> Dict[str, object]:
         """
         Perform federated averaging of client model updates.
 
@@ -2179,7 +2226,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         else:
             self.logger.info(f"✅  v454 features validation passed for {data_path}")
 
-    def _create_v433_training_environment(self) -> Optional[Any]:
+    def _create_v433_training_environment(self) -> Optional[object]:
         """V433トレーニング環境を作成"""
         try:
             # Lazy import to avoid heavy runtime dependency and mypy import-untyped noise
@@ -2311,7 +2358,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         window_sizes: Optional[List[int]] = None,
         overlap_ratio: float = 0.5,
         output_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Run multi-period backtest analysis for SAC v445.3 model.
 
@@ -2443,7 +2490,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _identify_market_periods(
         self, df, window_size_hours: int = 24, overlap_ratio: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """Identify different market periods (uptrend, downtrend, sideways)."""
         periods = []
 
@@ -2492,7 +2539,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _test_period_with_model(
         self, model, env, df, start_idx: int, end_idx: int, period_name: str
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Test the model on a specific period."""
         # Reset environment and advance to start_idx
         obs, _ = env.reset()
@@ -2572,8 +2619,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         }
 
     def _analyze_results_by_trend(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, results: List[Dict[str, object]]
+    ) -> Dict[str, object]:
         """Analyze results by trend type."""
         trend_groups = {}
         for result in results:
@@ -2614,10 +2661,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def run_multi_period_backtest(
         self,
-        periods: List[Dict[str, Any]],
+        periods: List[Dict[str, object]],
         model_path: Optional[str] = None,
         config_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Run multi-period backtest analysis.
 
@@ -2725,8 +2772,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             return None
 
     def _run_single_period_backtest(
-        self, model, env, df, period: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, model, env, df, period: Dict[str, object]
+    ) -> Dict[str, object]:
         """Run backtest for a single period."""
         try:
             start_date = period.get("start_date")
@@ -2762,8 +2809,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             }
 
     def _calculate_overall_backtest_metrics(
-        self, period_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, period_results: List[Dict[str, object]]
+    ) -> Dict[str, object]:
         """Calculate overall metrics from period results."""
         if not period_results:
             return {}
@@ -2784,8 +2831,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         }
 
     def _analyze_backtest_regime_performance(
-        self, period_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, period_results: List[Dict[str, object]]
+    ) -> Dict[str, object]:
         """Analyze performance by market regime."""
         # Placeholder - would integrate with regime detection
         return {
@@ -2794,7 +2841,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             "sideways_performance": {"average_return": 0.0, "win_rate": 0.0},
         }
 
-    def _generate_backtest_recommendations(self, results: Dict[str, Any]) -> List[str]:
+    def _generate_backtest_recommendations(self, results: Dict[str, object]) -> List[str]:
         """Generate recommendations based on backtest results."""
         recommendations = []
         overall = results.get("overall_metrics", {})
