@@ -2,13 +2,17 @@
 """
 Supervised Learning Callbacks.
 
-This module provides callbacks optimized for supervised learning
-tasks including classification and regression.
+Callbacks optimized for supervised learning tasks (classification/regression)
+with shared monitored-callback and metrics-callback abstractions.
 """
 
+from __future__ import annotations
+
+import abc
+import copy
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Callable, Optional
 
 import numpy as np
 from sklearn.metrics import (
@@ -20,16 +24,62 @@ from sklearn.metrics import (
 
 from ztb.training.callbacks.shared.base.learning_callback import (
     LearningContext,
-    MemoryOptimizedCallback,
+    NoOpMemoryOptimizedCallback,
 )
+from ztb.types.common import ObjectMap
 
 
-class EarlyStoppingCallback(MemoryOptimizedCallback):
+_HISTORY_LIMIT = 10_000
+
+
+def _as_float(value: object) -> Optional[float]:
+    """Best-effort conversion for numeric scalar values."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return float(value)
+    return None
+
+
+def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
+    """Append to history while keeping bounded memory usage."""
+    history.append(value)
+    overflow = len(history) - max_len
+    if overflow > 0:
+        del history[:overflow]
+
+
+class _MonitoredCallback(NoOpMemoryOptimizedCallback):
+    """Shared monitor/mode comparison logic for supervised callbacks."""
+
+    def __init__(self, monitor: str = "val_loss", mode: str = "auto") -> None:
+        super().__init__()
+        self.monitor = monitor
+
+        normalized_mode = mode.lower()
+        if normalized_mode == "auto":
+            normalized_mode = "min" if "loss" in monitor else "max"
+        if normalized_mode not in {"min", "max"}:
+            raise ValueError(f"Unknown mode: {mode}")
+
+        self.mode = normalized_mode
+        self.best_value = float("inf") if self.mode == "min" else float("-inf")
+
+    def _reset_best_value(self) -> None:
+        self.best_value = float("inf") if self.mode == "min" else float("-inf")
+
+    def _is_improved(self, current_value: float, min_delta: float = 0.0) -> bool:
+        if self.mode == "min":
+            return current_value < (self.best_value - min_delta)
+        return current_value > (self.best_value + min_delta)
+
+
+class EarlyStoppingCallback(_MonitoredCallback):
     """
     Early stopping callback for supervised learning.
 
-    Monitors validation metrics and stops training when performance
-    stops improving to prevent overfitting.
+    Monitors validation metrics and marks training to stop when
+    performance stops improving.
     """
 
     def __init__(
@@ -40,102 +90,84 @@ class EarlyStoppingCallback(MemoryOptimizedCallback):
         mode: str = "auto",
         restore_best_weights: bool = False,
     ):
-        super().__init__()
-        self.monitor = monitor
+        super().__init__(monitor=monitor, mode=mode)
         self.min_delta = min_delta
         self.patience = patience
         self.restore_best_weights = restore_best_weights
 
-        if mode == "auto":
-            mode = "min" if "loss" in monitor else "max"
-        self.mode = mode
-
-        # State tracking
-        self.best_value = float("inf") if mode == "min" else float("-inf")
         self.wait_count = 0
         self.stopped_epoch = 0
-        self.best_weights = None
+        self.best_weights: Optional[object] = None
         self.best_epoch = 0
-
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Initialize early stopping state."""
-        self.best_value = float("inf") if self.mode == "min" else float("-inf")
+        self._reset_best_value()
         self.wait_count = 0
         self.stopped_epoch = 0
         self.best_weights = None
         self.best_epoch = 0
         self.logger.info(
-            f"Early stopping initialized: monitor={self.monitor}, patience={self.patience}"
+            "Early stopping initialized: monitor=%s, patience=%s",
+            self.monitor,
+            self.patience,
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Check if training should stop."""
         if logs is None:
             return
 
-        current_value = logs.get(self.monitor)
-        if current_value is None:
+        metric_value = _as_float(logs.get(self.monitor))
+        if metric_value is None:
             return
 
-        # Check if current value is better
-        if self.mode == "min":
-            is_better = current_value < (self.best_value - self.min_delta)
-        else:
-            is_better = current_value > (self.best_value + self.min_delta)
-
-        if is_better:
-            self.best_value = current_value
+        if self._is_improved(metric_value, self.min_delta):
+            self.best_value = metric_value
             self.wait_count = 0
             self.best_epoch = context.epoch
 
-            # Save best weights if requested
             if self.restore_best_weights and "weights" in logs:
-                self.best_weights = logs["weights"].copy()
+                try:
+                    self.best_weights = copy.deepcopy(logs["weights"])
+                except Exception:
+                    self.best_weights = logs["weights"]
 
             self.logger.debug(
-                f"New best {self.monitor}: {self.best_value:.4f} at epoch {context.epoch}"
+                "New best %s=%.6f at epoch %s",
+                self.monitor,
+                self.best_value,
+                context.epoch,
             )
-        else:
-            self.wait_count += 1
+            return
 
-        # Check if patience exceeded
-        if self.wait_count >= self.patience:
+        self.wait_count += 1
+        if self.wait_count >= self.patience and self.stopped_epoch == 0:
             self.stopped_epoch = context.epoch
             self.logger.info(
-                f"Early stopping triggered at epoch {context.epoch}. "
-                f"Best {self.monitor}: {self.best_value:.4f} at epoch {self.best_epoch}"
+                "Early stopping triggered at epoch %s (best %s=%.6f at epoch %s)",
+                context.epoch,
+                self.monitor,
+                self.best_value,
+                self.best_epoch,
             )
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Restore best weights if requested."""
         if self.restore_best_weights and self.best_weights is not None:
-            # In a real implementation, this would restore model weights
-            self.logger.info(f"Restoring best weights from epoch {self.best_epoch}")
-
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        pass
-        pass
+            self.logger.info("Restoring best weights from epoch %s", self.best_epoch)
 
     def should_stop_training(self) -> bool:
-        """Check if training should be stopped."""
         return self.stopped_epoch > 0
 
-    def get_early_stopping_stats(self) -> Dict[str, Any]:
-        """Get early stopping statistics."""
+    def get_early_stopping_stats(self) -> ObjectMap:
         return {
             "best_epoch": self.best_epoch,
+            "best_value": self.best_value,
             "wait_count": self.wait_count,
             "stopped_epoch": self.stopped_epoch,
             "patience": self.patience,
@@ -143,106 +175,114 @@ class EarlyStoppingCallback(MemoryOptimizedCallback):
         }
 
 
-class LearningRateSchedulerCallback(MemoryOptimizedCallback):
-    """
-    Learning rate scheduler for supervised learning.
-
-    Provides various learning rate scheduling strategies including
-    step decay, exponential decay, cosine annealing, and plateau detection.
-    """
+class LearningRateSchedulerCallback(NoOpMemoryOptimizedCallback):
+    """Learning rate scheduler callback with multiple scheduling strategies."""
 
     def __init__(self, schedule_type: str = "step", **schedule_params):
         super().__init__()
         self.schedule_type = schedule_type
-        self.schedule_params = schedule_params
+        self.schedule_params: ObjectMap = dict(schedule_params)
 
-        # Initialize scheduler based on type
-        if schedule_type == "step":
-            self.scheduler = self._step_decay
-        elif schedule_type == "exponential":
-            self.scheduler = self._exponential_decay
-        elif schedule_type == "cosine":
-            self.scheduler = self._cosine_annealing
-        elif schedule_type == "plateau":
-            self.scheduler = self._plateau_decay
-        else:
-            raise ValueError(f"Unknown schedule type: {schedule_type}")
+        self._schedulers: dict[str, Callable[[int, ObjectMap], float]] = {
+            "step": self._step_decay,
+            "exponential": self._exponential_decay,
+            "cosine": self._cosine_annealing,
+            "plateau": self._plateau_decay,
+        }
+        if self.schedule_type not in self._schedulers:
+            raise ValueError(f"Unknown schedule type: {self.schedule_type}")
 
-        # State tracking
-        self.initial_lr = schedule_params.get("initial_lr", 0.001)
+        self.scheduler = self._schedulers[self.schedule_type]
+        self.initial_lr = self._get_float_param("initial_lr", 0.001)
         self.current_lr = self.initial_lr
-        self.lr_history: List[float] = []
-
+        self.lr_history: list[float] = []
+        self.val_loss_history: list[float] = []
         self.logger = logging.getLogger(__name__)
 
+    def _get_float_param(self, key: str, default: float) -> float:
+        value = _as_float(self.schedule_params.get(key, default))
+        return default if value is None else value
+
+    def _get_int_param(self, key: str, default: int) -> int:
+        raw = self.schedule_params.get(key, default)
+        if isinstance(raw, bool):
+            return default
+        if isinstance(raw, int):
+            return raw
+        value = _as_float(raw)
+        return default if value is None else int(value)
+
     def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Initialize learning rate scheduling."""
         self.current_lr = self.initial_lr
         self.lr_history = [self.current_lr]
+        self.val_loss_history = []
         self.logger.info(
-            f"Learning rate scheduler initialized: {self.schedule_type}, initial_lr={self.initial_lr}"
+            "Learning rate scheduler initialized: type=%s, initial_lr=%.6f",
+            self.schedule_type,
+            self.initial_lr,
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Update learning rate according to schedule."""
-        new_lr = self.scheduler(context.epoch, logs or {})
-        if new_lr != self.current_lr:
-            self.current_lr = new_lr
-            self.lr_history.append(self.current_lr)
-            self.logger.debug(f"Learning rate updated to: {self.current_lr:.6f}")
+        log_data = logs or {}
+        new_lr = self.scheduler(context.epoch, log_data)
+        if not np.isfinite(new_lr) or new_lr <= 0.0:
+            self.logger.warning(
+                "Ignoring invalid learning rate %.6f at epoch %s", new_lr, context.epoch
+            )
+            return
 
-        # Always set current learning rate in logs
+        if not np.isclose(new_lr, self.current_lr):
+            self.current_lr = float(new_lr)
+            _append_bounded(self.lr_history, self.current_lr)
+            self.logger.debug("Learning rate updated to %.6f", self.current_lr)
+
         if logs is not None:
             logs["learning_rate"] = self.current_lr
 
-    def _step_decay(self, epoch: int, logs: Dict[str, Any]) -> float:
-        """Step decay schedule."""
-        step_size = self.schedule_params.get("step_size", 10)
-        gamma = self.schedule_params.get("gamma", 0.1)
-        return self.initial_lr * (gamma ** (epoch // step_size))
+    def _step_decay(self, epoch: int, logs: ObjectMap) -> float:
+        step_size = max(1, self._get_int_param("step_size", 10))
+        gamma = self._get_float_param("gamma", 0.1)
+        return float(self.initial_lr * (gamma ** (epoch // step_size)))
 
-    def _exponential_decay(self, epoch: int, logs: Dict[str, Any]) -> float:
-        """Exponential decay schedule."""
-        decay_rate = self.schedule_params.get("decay_rate", 0.95)
-        decay_steps = self.schedule_params.get("decay_steps", 1)
-        return self.initial_lr * (decay_rate ** (epoch // decay_steps))
+    def _exponential_decay(self, epoch: int, logs: ObjectMap) -> float:
+        decay_rate = self._get_float_param("decay_rate", 0.95)
+        decay_steps = max(1, self._get_int_param("decay_steps", 1))
+        return float(self.initial_lr * (decay_rate ** (epoch // decay_steps)))
 
-    def _cosine_annealing(self, epoch: int, logs: Dict[str, Any]) -> float:
-        """Cosine annealing schedule."""
-        max_epochs = self.schedule_params.get("max_epochs", 100)
-        min_lr = self.schedule_params.get("min_lr", 1e-6)
+    def _cosine_annealing(self, epoch: int, logs: ObjectMap) -> float:
+        max_epochs = max(1, self._get_int_param("max_epochs", 100))
+        min_lr = self._get_float_param("min_lr", 1e-6)
 
-        cosine_decay = 0.5 * (1 + np.cos(np.pi * epoch / max_epochs))
-        return min_lr + (self.initial_lr - min_lr) * cosine_decay
+        cosine_decay = 0.5 * (1.0 + np.cos(np.pi * epoch / max_epochs))
+        return float(min_lr + (self.initial_lr - min_lr) * cosine_decay)
 
-    def _plateau_decay(self, epoch: int, logs: Dict[str, Any]) -> float:
-        """Plateau-based decay."""
-        patience = self.schedule_params.get("patience", 5)
-        factor = self.schedule_params.get("factor", 0.5)
-        min_lr = self.schedule_params.get("min_lr", 1e-6)
+    def _plateau_decay(self, epoch: int, logs: ObjectMap) -> float:
+        patience = max(1, self._get_int_param("patience", 5))
+        factor = self._get_float_param("factor", 0.5)
+        min_lr = self._get_float_param("min_lr", 1e-6)
+        plateau_epsilon = self._get_float_param("plateau_epsilon", 1e-4)
 
-        # Simple plateau detection based on recent validation loss
-        if "val_loss" in logs and len(self.lr_history) > patience:
-            recent_losses = [logs.get("val_loss", float("inf"))]  # Would need history
-            if len(recent_losses) >= patience:
-                # Check if loss has plateaued
-                loss_trend = np.polyfit(range(len(recent_losses)), recent_losses, 1)[0]
-                if abs(loss_trend) < 0.001:  # Very small trend
-                    new_lr = max(self.current_lr * factor, min_lr)
-                    return new_lr
+        current_val_loss = _as_float(logs.get("val_loss"))
+        if current_val_loss is not None:
+            _append_bounded(self.val_loss_history, current_val_loss)
+
+        if len(self.val_loss_history) < patience:
+            return self.current_lr
+
+        recent_losses = self.val_loss_history[-patience:]
+        if max(recent_losses) - min(recent_losses) <= plateau_epsilon:
+            return float(max(self.current_lr * factor, min_lr))
 
         return self.current_lr
 
     def get_current_lr(self) -> float:
-        """Get current learning rate."""
         return self.current_lr
 
-    def get_lr_schedule_info(self) -> Dict[str, Any]:
-        """Get learning rate schedule information."""
+    def get_lr_schedule_info(self) -> ObjectMap:
         return {
             "schedule_type": self.schedule_type,
             "initial_lr": self.initial_lr,
@@ -252,27 +292,8 @@ class LearningRateSchedulerCallback(MemoryOptimizedCallback):
         }
 
 
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        """Called at the end of each batch."""
-        pass
-
-
-class ModelCheckpointCallback(MemoryOptimizedCallback):
-    """
-    Model checkpoint callback for supervised learning.
-
-    Saves model checkpoints based on performance metrics,
-    with options for best model saving and periodic checkpoints.
-    """
+class ModelCheckpointCallback(_MonitoredCallback):
+    """Checkpoint callback with monitor-driven best-model saving."""
 
     def __init__(
         self,
@@ -283,180 +304,185 @@ class ModelCheckpointCallback(MemoryOptimizedCallback):
         mode: str = "auto",
         period: int = 1,
     ):
-        super().__init__()
+        super().__init__(monitor=monitor, mode=mode)
         self.filepath = filepath
-        self.monitor = monitor
         self.save_best_only = save_best_only
         self.save_weights_only = save_weights_only
-        self.period = period
-        # State tracking
-        self.best_value = float("inf") if mode == "min" else float("-inf")
-        self.best_filepath = None
-
+        self.period = max(1, period)
+        self.best_filepath: Optional[str] = None
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Save checkpoint if conditions are met."""
-        if logs is None:
+        if logs is None or context.epoch % self.period != 0:
             return
 
-        # Check if this epoch should be saved
-        if context.epoch % self.period != 0:
-            return
+        metric_value = _as_float(logs.get(self.monitor))
 
-        current_value = logs.get(self.monitor)
-        if current_value is None:
-            return
-
-        should_save = False
         if self.save_best_only:
-            # Check if current value is better
-            if self.mode == "min":
-                is_better = current_value < self.best_value
-            else:
-                is_better = current_value > self.best_value
+            if metric_value is None:
+                return
+            if not self._is_improved(metric_value):
+                return
+            self.best_value = metric_value
 
-            if is_better:
-                self.best_value = current_value
-                should_save = True
-        else:
-            should_save = True
+        self._save_checkpoint(context, logs, metric_value)
 
-        if should_save:
-            self._save_checkpoint(context, logs)
-
-    def _save_checkpoint(self, context: LearningContext, logs: Dict[str, Any]) -> None:
-        """Save model checkpoint."""
+    def _save_checkpoint(
+        self,
+        context: LearningContext,
+        logs: ObjectMap,
+        metric_value: Optional[float],
+    ) -> None:
         try:
-            # Create filename with epoch and metric
-            metric_value = logs.get(self.monitor, 0)
-            filename = self.filepath.format(
-                epoch=context.epoch, **{self.monitor: metric_value}
-            )
+            format_vars: ObjectMap = dict(logs)
+            format_vars.setdefault(self.monitor, metric_value if metric_value is not None else 0.0)
+            try:
+                filename = self.filepath.format(epoch=context.epoch, **format_vars)
+            except Exception:
+                filename = f"{self.filepath}_epoch_{context.epoch}"
 
-            # In a real implementation, this would save the actual model
-            {
-                "epoch": context.epoch,
-                "model_config": context.model_config,
-                "metrics": logs,
-                "timestamp": datetime.now().isoformat(),
+            # Keep cached metadata compact to avoid storing large tensors/arrays.
+            filtered_metrics: ObjectMap = {
+                k: v
+                for k, v in logs.items()
+                if k not in {"predictions", "targets", "weights", "model"}
             }
 
-            # Simulate saving
-            self.logger.info(f"Saving checkpoint to: {filename}")
+            checkpoint_metadata: ObjectMap = {
+                "epoch": context.epoch,
+                "model_config": context.model_config,
+                "metrics": filtered_metrics,
+                "timestamp": datetime.now().isoformat(),
+                "save_weights_only": self.save_weights_only,
+            }
+            self.cache_metrics(f"checkpoint_epoch_{context.epoch}", checkpoint_metadata)
+
             self.best_filepath = filename
+            self.logger.info("Saving checkpoint to: %s", filename)
+        except Exception as exc:
+            self.logger.error("Failed to save checkpoint: %s", exc)
 
-        except Exception as e:
-            self.logger.error(f"Failed to save checkpoint: {e}")
-
-    def get_checkpoint_info(self) -> Dict[str, Any]:
-        """Get checkpoint information."""
+    def get_checkpoint_info(self) -> ObjectMap:
         return {
             "filepath": self.filepath,
             "monitor": self.monitor,
+            "mode": self.mode,
             "best_value": self.best_value,
             "best_filepath": self.best_filepath,
             "save_best_only": self.save_best_only,
+            "save_weights_only": self.save_weights_only,
             "period": self.period,
         }
 
 
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
-        pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of each batch."""
-        pass
-
-
-class ClassificationMetricsCallback(MemoryOptimizedCallback):
-    """
-    Classification metrics callback.
-
-    Computes and tracks classification metrics including accuracy,
-    precision, recall, and F1-score during training.
-    """
+class _BaseSupervisedMetricsCallback(NoOpMemoryOptimizedCallback, abc.ABC):
+    """Shared extraction and scheduling logic for supervised metrics callbacks."""
 
     def __init__(self, compute_frequency: int = 1):
         super().__init__(cache_size=1000)
-        self.compute_frequency = compute_frequency
-
-        # Metrics history
-        self.accuracy_history: List[float] = []
-        self.precision_history: List[float] = []
-        self.recall_history: List[float] = []
-        self.f1_history: List[float] = []
-
-        self.logger = logging.getLogger(__name__)
+        self.compute_frequency = max(1, compute_frequency)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
-        """Compute classification metrics."""
         if context.epoch % self.compute_frequency != 0:
             return
-
-        if logs is None or "predictions" not in logs or "targets" not in logs:
+        if logs is None:
             return
 
-        predictions = logs["predictions"]
-        targets = logs["targets"]
+        payload = self._extract_predictions_targets(logs)
+        if payload is None:
+            return
 
-        # Convert predictions to class labels if needed
-        if len(predictions.shape) > 1 and predictions.shape[1] > 1:
+        predictions, targets = payload
+        try:
+            self._compute_metrics(context, predictions, targets)
+        except Exception as exc:
+            self.logger.error("Failed to compute metrics: %s", exc)
+
+    def _extract_predictions_targets(
+        self, logs: ObjectMap
+    ) -> Optional[tuple[np.ndarray, np.ndarray]]:
+        predictions_obj = logs.get("predictions")
+        targets_obj = logs.get("targets")
+        if predictions_obj is None or targets_obj is None:
+            return None
+
+        predictions = np.asarray(predictions_obj)
+        targets = np.asarray(targets_obj)
+        if predictions.size == 0 or targets.size == 0:
+            return None
+        return predictions, targets
+
+    @abc.abstractmethod
+    def _compute_metrics(
+        self,
+        context: LearningContext,
+        predictions: np.ndarray,
+        targets: np.ndarray,
+    ) -> None:
+        """Compute and store callback-specific metrics."""
+
+
+class ClassificationMetricsCallback(_BaseSupervisedMetricsCallback):
+    """Compute and track classification metrics during training."""
+
+    def __init__(self, compute_frequency: int = 1):
+        super().__init__(compute_frequency=compute_frequency)
+        self.accuracy_history: list[float] = []
+        self.precision_history: list[float] = []
+        self.recall_history: list[float] = []
+        self.f1_history: list[float] = []
+        self.logger = logging.getLogger(__name__)
+
+    def _compute_metrics(
+        self,
+        context: LearningContext,
+        predictions: np.ndarray,
+        targets: np.ndarray,
+    ) -> None:
+        if predictions.ndim > 1 and predictions.shape[1] > 1:
             predictions = np.argmax(predictions, axis=1)
 
-        try:
-            # Compute metrics
-            accuracy = accuracy_score(targets, predictions)
-            precision, recall, f1, _ = precision_recall_fscore_support(
-                targets, predictions, average="weighted", zero_division=0
-            )
+        accuracy = float(accuracy_score(targets, predictions))
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            targets,
+            predictions,
+            average="weighted",
+            zero_division=0,
+        )
 
-            # Store in history
-            self.accuracy_history.append(accuracy)
-            self.precision_history.append(precision)
-            self.recall_history.append(recall)
-            self.f1_history.append(f1)
+        precision_f = float(precision)
+        recall_f = float(recall)
+        f1_f = float(f1)
 
-            metrics_key = f"classification_epoch_{context.epoch}"
-            self.cache_metrics(
-                metrics_key,
-                {
-                    "accuracy": accuracy,
-                    "precision": precision,
-                    "recall": recall,
-                    "f1": f1,
-                    "epoch": context.epoch,
-                },
-            )
+        _append_bounded(self.accuracy_history, accuracy)
+        _append_bounded(self.precision_history, precision_f)
+        _append_bounded(self.recall_history, recall_f)
+        _append_bounded(self.f1_history, f1_f)
 
-            self.logger.debug(
-                f"Classification metrics - Acc: {accuracy:.4f}, "
-                f"F1: {f1:.4f} at epoch {context.epoch}"
-            )
+        self.cache_metrics(
+            f"classification_epoch_{context.epoch}",
+            {
+                "accuracy": accuracy,
+                "precision": precision_f,
+                "recall": recall_f,
+                "f1": f1_f,
+                "epoch": context.epoch,
+            },
+        )
 
-        except Exception as e:
-            self.logger.error(f"Failed to compute classification metrics: {e}")
+        self.logger.debug(
+            "Classification metrics at epoch %s: acc=%.4f, f1=%.4f",
+            context.epoch,
+            accuracy,
+            f1_f,
+        )
 
-    def get_classification_stats(self) -> Dict[str, Any]:
-        """Get classification metrics statistics."""
-        stats = {"epochs_computed": len(self.accuracy_history)}
-
+    def get_classification_stats(self) -> ObjectMap:
+        stats: ObjectMap = {"epochs_computed": len(self.accuracy_history)}
         if self.accuracy_history:
             stats.update(
                 {
@@ -468,106 +494,59 @@ class ClassificationMetricsCallback(MemoryOptimizedCallback):
                     "f1_mean": float(np.mean(self.f1_history)),
                 }
             )
-
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
-        pass
 
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of each batch."""
-        pass
-
-
-class RegressionMetricsCallback(MemoryOptimizedCallback):
-    """
-    Regression metrics callback.
-
-    Computes and tracks regression metrics including MSE, RMSE,
-    MAE, and R^2 score during training.
-    """
+class RegressionMetricsCallback(_BaseSupervisedMetricsCallback):
+    """Compute and track regression metrics during training."""
 
     def __init__(self, compute_frequency: int = 1):
-        super().__init__(cache_size=1000)
-        self.compute_frequency = compute_frequency
-
-        # Metrics history
-        self.mse_history: List[float] = []
-        self.rmse_history: List[float] = []
-        self.mae_history: List[float] = []
-        self.r2_history: List[float] = []
-
+        super().__init__(compute_frequency=compute_frequency)
+        self.mse_history: list[float] = []
+        self.rmse_history: list[float] = []
+        self.mae_history: list[float] = []
+        self.r2_history: list[float] = []
         self.logger = logging.getLogger(__name__)
 
-    def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+    def _compute_metrics(
+        self,
+        context: LearningContext,
+        predictions: np.ndarray,
+        targets: np.ndarray,
     ) -> None:
-        """Compute regression metrics."""
-        if context.epoch % self.compute_frequency != 0:
-            return
+        pred_flat = predictions.reshape(-1)
+        targ_flat = targets.reshape(-1)
 
-        if logs is None or "predictions" not in logs or "targets" not in logs:
-            return
+        mse = float(mean_squared_error(targ_flat, pred_flat))
+        rmse = float(np.sqrt(mse))
+        mae = float(np.mean(np.abs(pred_flat - targ_flat)))
+        r2 = float(r2_score(targ_flat, pred_flat))
 
-        predictions = logs["predictions"]
-        targets = logs["targets"]
+        _append_bounded(self.mse_history, mse)
+        _append_bounded(self.rmse_history, rmse)
+        _append_bounded(self.mae_history, mae)
+        _append_bounded(self.r2_history, r2)
 
-        try:
-            # Compute metrics
-            mse = mean_squared_error(targets, predictions)
-            rmse = np.sqrt(mse)
-            mae = np.mean(np.abs(predictions - targets))
-            r2 = r2_score(targets, predictions)
+        self.cache_metrics(
+            f"regression_epoch_{context.epoch}",
+            {
+                "mse": mse,
+                "rmse": rmse,
+                "mae": mae,
+                "r2": r2,
+                "epoch": context.epoch,
+            },
+        )
 
-            # Store in history
-            self.mse_history.append(mse)
-            self.rmse_history.append(rmse)
-            self.mae_history.append(mae)
-            self.r2_history.append(r2)
+        self.logger.debug(
+            "Regression metrics at epoch %s: mse=%.4f, r2=%.4f",
+            context.epoch,
+            mse,
+            r2,
+        )
 
-            # Cache metrics
-            metrics_key = f"regression_epoch_{context.epoch}"
-            self.cache_metrics(
-                metrics_key,
-                {
-                    "mse": mse,
-                    "rmse": rmse,
-                    "mae": mae,
-                    "r2": r2,
-                    "epoch": context.epoch,
-                },
-            )
-
-            self.logger.debug(
-                f"Regression metrics - MSE: {mse:.4f}, "
-                f"R²: {r2:.4f} at epoch {context.epoch}"
-            )
-
-        except Exception as e:
-            self.logger.error(f"Failed to compute regression metrics: {e}")
-
-    def get_regression_stats(self) -> Dict[str, Any]:
-        """Get regression metrics statistics."""
-        stats = {"epochs_computed": len(self.mse_history)}
-
+    def get_regression_stats(self) -> ObjectMap:
+        stats: ObjectMap = {"epochs_computed": len(self.mse_history)}
         if self.mse_history:
             stats.update(
                 {
@@ -578,43 +557,27 @@ class RegressionMetricsCallback(MemoryOptimizedCallback):
                     "r2_latest": self.r2_history[-1],
                 }
             )
-
         return stats
-
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
-
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of each batch."""
-        pass
 
 
 # Factory functions for easy instantiation
+
 def create_early_stopping(**kwargs) -> EarlyStoppingCallback:
     """Create early stopping callback with default settings."""
-    defaults = {"monitor": "val_loss", "patience": 10, "restore_best_weights": True}
+    defaults: ObjectMap = {
+        "monitor": "val_loss",
+        "patience": 10,
+        "restore_best_weights": True,
+    }
     defaults.update(kwargs)
-def create_learning_rate_scheduler(schedule_type: str = "step", **kwargs) -> LearningRateSchedulerCallback:
+    return EarlyStoppingCallback(**defaults)
+
+
+def create_learning_rate_scheduler(
+    schedule_type: str = "step", **kwargs
+) -> LearningRateSchedulerCallback:
     """Create learning rate scheduler with default settings."""
-    defaults = {"initial_lr": 0.001}
+    defaults: ObjectMap = {"initial_lr": 0.001}
     if schedule_type == "step":
         defaults.update({"step_size": 10, "gamma": 0.1})
     elif schedule_type == "cosine":
@@ -626,7 +589,7 @@ def create_learning_rate_scheduler(schedule_type: str = "step", **kwargs) -> Lea
 
 def create_model_checkpoint(**kwargs) -> ModelCheckpointCallback:
     """Create model checkpoint callback with default settings."""
-    defaults = {
+    defaults: ObjectMap = {
         "filepath": "checkpoint_epoch_{epoch:02d}_{val_loss:.2f}.h5",
         "monitor": "val_loss",
         "save_best_only": True,
@@ -637,13 +600,27 @@ def create_model_checkpoint(**kwargs) -> ModelCheckpointCallback:
 
 def create_classification_metrics(**kwargs) -> ClassificationMetricsCallback:
     """Create classification metrics callback with default settings."""
-    defaults = {"compute_frequency": 1}
+    defaults: ObjectMap = {"compute_frequency": 1}
     defaults.update(kwargs)
     return ClassificationMetricsCallback(**defaults)
 
 
 def create_regression_metrics(**kwargs) -> RegressionMetricsCallback:
     """Create regression metrics callback with default settings."""
-    defaults = {"compute_frequency": 1}
+    defaults: ObjectMap = {"compute_frequency": 1}
     defaults.update(kwargs)
     return RegressionMetricsCallback(**defaults)
+
+
+__all__ = [
+    "EarlyStoppingCallback",
+    "LearningRateSchedulerCallback",
+    "ModelCheckpointCallback",
+    "ClassificationMetricsCallback",
+    "RegressionMetricsCallback",
+    "create_early_stopping",
+    "create_learning_rate_scheduler",
+    "create_model_checkpoint",
+    "create_classification_metrics",
+    "create_regression_metrics",
+]

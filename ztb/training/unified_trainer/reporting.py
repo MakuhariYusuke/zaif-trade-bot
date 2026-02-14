@@ -4,9 +4,9 @@ Training reporting and logging utilities.
 """
 
 import logging
-from pathlib import Path
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -15,7 +15,7 @@ from ztb.reporting.services.training_reports import (
     save_ensemble_report,
     save_training_report,
 )
-from ztb.types.common import ConfigDict
+from ztb.types.common import ConfigDict, ObjectMap, ObjectRecords
 from ztb.utils.logging_utils import get_logger
 
 # Magic number constants for reporting
@@ -34,8 +34,8 @@ class TrainingReporter:
         self.events = self._event_logger.events
 
     def generate_report(
-        self, config: ConfigDict, stats: Dict[str, Any], success: bool
-    ) -> Dict[str, Any]:
+        self, config: ConfigDict, stats: ObjectMap, success: bool
+    ) -> ObjectMap:
         """Generate a comprehensive training report."""
         report = {
             "metadata": {
@@ -61,7 +61,7 @@ class TrainingReporter:
 
         return report
 
-    def save_report(self, report: Dict[str, Any], output_dir: str = "reports") -> str:
+    def save_report(self, report: ObjectMap, output_dir: str = "reports") -> str:
         """Save training report to file."""
         try:
             filepath = save_training_report(report, output_dir=output_dir)
@@ -71,14 +71,53 @@ class TrainingReporter:
             self.logger.error(f"Failed to save training report: {e}")
             return ""
 
-    def print_summary(self, report: Dict[str, Any]) -> None:
+    def print_summary(self, report: ObjectMap) -> None:
         """Print a human-readable summary of the training report."""
-        meta = report["metadata"]
-        stats = report["training_stats"]
-        perf = report["performance_metrics"]
+        meta = report.get("metadata", {})
+        if not isinstance(meta, dict):
+            meta = {}
+        stats = report.get("training_stats", {})
+        if not isinstance(stats, dict):
+            stats = {}
+        perf = report.get("performance_metrics", {})
+        if not isinstance(perf, dict):
+            perf = {}
 
         self.logger.info("\n" + "=" * 60)
         self.logger.info("TRAINING REPORT SUMMARY")
+        self.logger.info("=" * 60)
+        self.logger.info(f"Algorithm: {str(meta.get('algorithm', 'unknown')).upper()}")
+        self.logger.info(f"Model: {meta.get('model_name', 'unknown')}")
+        self.logger.info(
+            f"Status: {'SUCCESS' if bool(meta.get('success', False)) else 'FAILED'}"
+        )
+        self.logger.info(f"Timestamp: {meta.get('timestamp', 'n/a')}")
+
+        if stats:
+            self.logger.info("TRAINING STATISTICS")
+            self.logger.info("-" * 30)
+            for key, value in stats.items():
+                if isinstance(value, float):
+                    if "time" in str(key).lower():
+                        self.logger.info(f"{key}: {value:.2f}s")
+                    elif "rate" in str(key).lower() or "ratio" in str(key).lower():
+                        self.logger.info(f"{key}: {value:.4f}")
+                    else:
+                        self.logger.info(f"{key}: {value:.2f}")
+                elif isinstance(value, int):
+                    self.logger.info(f"{key}: {value:,}")
+                else:
+                    self.logger.info(f"{key}: {value}")
+
+        if perf:
+            self.logger.info("PERFORMANCE METRICS")
+            self.logger.info("-" * 30)
+            for key, value in perf.items():
+                if isinstance(value, float):
+                    self.logger.info(f"{key}: {value:.4f}")
+                else:
+                    self.logger.info(f"{key}: {value}")
+
         self.logger.info("=" * 60)
 
     def log_training_start(self, algorithm: str, config: ConfigDict) -> None:
@@ -86,12 +125,12 @@ class TrainingReporter:
         self._event_logger.log_training_start(algorithm, config)
 
     def log_training_progress(
-        self, step: int, total_steps: int, stats: Dict[str, Any]
+        self, step: int, total_steps: int, stats: ObjectMap
     ) -> None:
         """Log training progress (delegated to TrainingEventLogger)."""
         self._event_logger.log_training_progress(step, total_steps, stats)
 
-    def log_training_complete(self, success: bool, stats: Dict[str, Any]) -> None:
+    def log_training_complete(self, success: bool, stats: ObjectMap) -> None:
         """Log training completion (delegated to TrainingEventLogger)."""
         self._event_logger.log_training_complete(success, stats)
 
@@ -108,55 +147,21 @@ class TrainingReporter:
         self._event_logger.save_events(filepath)
 
     def generate_ensemble_report(
-        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Generate ensemble analysis report (delegated to TrainingEventLogger)."""
         return self._event_logger.generate_ensemble_report(ensemble_stats, decision_log)
 
     def save_ensemble_report(
-        self, report: Dict[str, Any], output_dir: str = "reports"
+        self, report: ObjectMap, output_dir: str = "reports"
     ) -> str:
         """Save ensemble report (delegated to TrainingEventLogger)."""
         return self._event_logger.save_ensemble_report(report, output_dir=output_dir)
 
-        self.logger.info(f"Algorithm: {meta['algorithm'].upper()}")
-        self.logger.info(f"Model: {meta['model_name']}")
-        self.logger.info(f"Status: {'✅ SUCCESS' if meta['success'] else '❌ FAILED'}")
-        self.logger.info(f"Timestamp: {meta['timestamp']}")
-
-        if stats:
-            self.logger.info("\n📊 TRAINING STATISTICS:")
-            self.logger.info("-" * 30)
-
-            for key, value in stats.items():
-                if isinstance(value, float):
-                    if "time" in key.lower():
-                        self.logger.info(f"{key}: {value:.2f}s")
-                    elif "rate" in key.lower() or "ratio" in key.lower():
-                        self.logger.info(f"{key}: {value:.4f}")
-                    else:
-                        self.logger.info(f"{key}: {value:.2f}")
-                elif isinstance(value, int):
-                    self.logger.info(f"{key}: {value:,}")
-                else:
-                    self.logger.info(f"{key}: {value}")
-
-        if perf:
-            self.logger.info("\n📈 PERFORMANCE METRICS:")
-            self.logger.info("-" * 30)
-
-            for key, value in perf.items():
-                if isinstance(value, float):
-                    self.logger.info(f"{key}: {value:.4f}")
-                else:
-                    self.logger.info(f"{key}: {value}")
-
-        self.logger.info("=" * 60)
-
-    def _calculate_performance_metrics(self, stats: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_performance_metrics(self, stats: ObjectMap) -> ObjectMap:
         """Calculate additional performance metrics from training stats."""
         # metrics can contain floats and occasional strings (e.g. dominant_action)
-        metrics: Dict[str, Any] = {}
+        metrics: ObjectMap = {}
 
         if not stats:
             return metrics
@@ -187,7 +192,7 @@ class TrainingReporter:
 
         return metrics
 
-    def _get_system_info(self) -> Dict[str, Any]:
+    def _get_system_info(self) -> ObjectMap:
         """Get basic system information."""
         try:
             import platform
@@ -212,10 +217,10 @@ class TrainingEventLogger:
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         self.logger: logging.Logger = logger or get_logger(__name__)
-        self.events: List[Dict[str, Any]] = []
+        self.events: ObjectRecords = []
 
     def log_event(
-        self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None
+        self, event_type: str, message: str, data: Optional[ObjectMap] = None
     ) -> None:
         """Log a training event."""
         event = {
@@ -230,20 +235,27 @@ class TrainingEventLogger:
 
     def log_training_start(self, algorithm: str, config: ConfigDict) -> None:
         """Log training start."""
+        total_timesteps = None
+        if isinstance(config, dict):
+            training_cfg = config.get("training", {})
+            if isinstance(training_cfg, dict):
+                total_timesteps = training_cfg.get("total_timesteps")
         self.log_event(
             "training_start",
             f"Starting {algorithm} training",
             {
                 "algorithm": algorithm,
                 "config_summary": {
-                    "total_timesteps": config["training"]["total_timesteps"],
-                    "model_name": config.get("model_name"),
+                    "total_timesteps": total_timesteps,
+                    "model_name": config.get("model_name")
+                    if isinstance(config, dict)
+                    else None,
                 },
             },
         )
 
     def log_training_progress(
-        self, step: int, total_steps: int, stats: Dict[str, Any]
+        self, step: int, total_steps: int, stats: ObjectMap
     ) -> None:
         """Log training progress."""
         progress = step / total_steps if total_steps > 0 else 0
@@ -251,7 +263,7 @@ class TrainingEventLogger:
             "training_progress", f"Step {step}/{total_steps} ({progress:.1%})", stats
         )
 
-    def log_training_complete(self, success: bool, stats: Dict[str, Any]) -> None:
+    def log_training_complete(self, success: bool, stats: ObjectMap) -> None:
         """Log training completion."""
         status = "success" if success else "failure"
         self.log_event("training_complete", f"Training {status}", stats)
@@ -281,8 +293,8 @@ class TrainingEventLogger:
             self.logger.error(f"Failed to save training events: {e}")
 
     def generate_ensemble_report(
-        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Generate comprehensive ensemble analysis report."""
         report = {
             "ensemble_analysis": {
@@ -305,8 +317,8 @@ class TrainingEventLogger:
         return report
 
     def _analyze_ensemble_performance(
-        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Analyze overall ensemble performance."""
         if not decision_log:
             return {"error": "no_decision_data"}
@@ -346,8 +358,8 @@ class TrainingEventLogger:
         }
 
     def _analyze_member_performance(
-        self, ensemble_stats: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap
+    ) -> ObjectMap:
         """Analyze individual member performance."""
         member_stats = ensemble_stats.get("member_stats", {})
 
@@ -355,7 +367,7 @@ class TrainingEventLogger:
             return {"error": "no_member_data"}
 
         specialization_performance: Dict[str, List[float]] = {}
-        member_details: Dict[str, Dict[str, Any]] = {}
+        member_details: Dict[str, ObjectMap] = {}
 
         for member_id, stats in member_stats.items():
             spec = stats.get("specialization", "unknown")
@@ -401,8 +413,8 @@ class TrainingEventLogger:
         }
 
     def _analyze_decision_patterns(
-        self, decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Analyze decision patterns and voting behavior."""
         if not decision_log:
             return {"error": "no_decision_data"}
@@ -468,8 +480,8 @@ class TrainingEventLogger:
         }
 
     def _analyze_ensemble_diversity(
-        self, ensemble_stats: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap
+    ) -> ObjectMap:
         """Analyze ensemble diversity."""
         member_stats = ensemble_stats.get("member_stats", {})
 
@@ -512,15 +524,15 @@ class TrainingEventLogger:
         }
 
     def _analyze_ensemble_stability(
-        self, decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Analyze ensemble stability over time."""
         if not decision_log:
             return {"error": "no_decision_data"}
 
         # 時間経過による安定性分析
         stability_windows = STABILITY_WINDOWS
-        stability_analysis: Dict[str, Dict[str, Any]] = {}
+        stability_analysis: Dict[str, ObjectMap] = {}
 
         for window_size in stability_windows:
             if len(decision_log) < window_size:
@@ -563,15 +575,15 @@ class TrainingEventLogger:
         return stability_analysis
 
     def _analyze_market_adaptation(
-        self, decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Analyze how well the ensemble adapts to market conditions."""
         if not decision_log:
             return {"error": "no_decision_data"}
 
         # 市場条件ごとのパフォーマンス分析
-        market_conditions: Dict[str, Dict[str, Any]] = {}
-        adaptation_trends: List[Dict[str, Any]] = []
+        market_conditions: Dict[str, ObjectMap] = {}
+        adaptation_trends: ObjectRecords = []
 
         for decision in decision_log:
             market_state = decision.get("market_state", {})
@@ -638,8 +650,8 @@ class TrainingEventLogger:
         }
 
     def _analyze_ensemble_risk(
-        self, decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Analyze ensemble risk metrics."""
         if not decision_log:
             return {"error": "no_decision_data"}
@@ -715,8 +727,8 @@ class TrainingEventLogger:
         }
 
     def _generate_performance_forecast(
-        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: ObjectMap, decision_log: ObjectRecords
+    ) -> ObjectMap:
         """Generate performance forecast based on current trends."""
         if not decision_log:
             return {"error": "insufficient_data"}
@@ -773,7 +785,7 @@ class TrainingEventLogger:
             ),
         }
 
-    def _calculate_adaptation_score(self, condition_data: Dict[str, Any]) -> float:
+    def _calculate_adaptation_score(self, condition_data: ObjectMap) -> float:
         """Calculate adaptation score for a market condition."""
         decisions = condition_data["decisions"]
         avg_conf = (
@@ -791,7 +803,7 @@ class TrainingEventLogger:
         adaptation_score = decisions * avg_conf * (1 - min(conf_std, 0.5))
         return float(adaptation_score)
 
-    def _calculate_overall_adaptation(self, condition_summary: Dict[str, Any]) -> float:
+    def _calculate_overall_adaptation(self, condition_summary: ObjectMap) -> float:
         """Calculate overall adaptation score across all conditions."""
         if not condition_summary:
             return 0.0
@@ -824,7 +836,7 @@ class TrainingEventLogger:
         return (conf_stability + perf_stability) / 2
 
     def _generate_adaptation_recommendations(
-        self, condition_summary: Dict[str, Any]
+        self, condition_summary: ObjectMap
     ) -> List[str]:
         """Generate adaptation improvement recommendations."""
         recommendations = []
@@ -918,7 +930,7 @@ class TrainingEventLogger:
         return recommendations
 
     def save_ensemble_report(
-        self, report: Dict[str, Any], output_dir: str = "reports"
+        self, report: ObjectMap, output_dir: str = "reports"
     ) -> str:
         """Save ensemble report to file."""
         try:

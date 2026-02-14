@@ -15,10 +15,11 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from ztb.training.callbacks.monitoring.metrics_collector import MetricsCollector
 from ztb.training.callbacks.performance.memory_optimizer import LRUCache
+from ztb.types.common import ObjectMap, ObjectRecords
 
 
 class ErrorSeverity(Enum):
@@ -57,7 +58,7 @@ class LearningContext:
 
     # Model information
     model_name: str = ""
-    model_config: Dict[str, Any] = field(default_factory=dict)
+    model_config: ObjectMap = field(default_factory=dict)
 
     # Data information
     dataset_size: int = 0
@@ -74,10 +75,10 @@ class LearningContext:
     algorithm_name: str = "unknown"  # sac, ppo, svm, etc.
 
     # Performance metrics
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: ObjectMap = field(default_factory=dict)
 
     # Custom data
-    custom_data: Dict[str, Any] = field(default_factory=dict)
+    custom_data: ObjectMap = field(default_factory=dict)
 
     def __post_init__(self):
         # Backwards compatibility: allow `global_step` to set `step`
@@ -103,7 +104,7 @@ class ErrorContext:
     strategy: ErrorHandlingStrategy = ErrorHandlingStrategy.CONTINUE
 
 
-def safe_callback_execution(error_config: Optional[Dict[str, Any]] = None):
+def safe_callback_execution(error_config: Optional[ObjectMap] = None):
     """
     Decorator for applying safe error handling to callback methods.
 
@@ -141,7 +142,7 @@ class ErrorHandlingMixin:
     - Error recovery patterns
     """
 
-    def __init__(self, error_handling_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, error_handling_config: Optional[ObjectMap] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self._error_config = error_handling_config or {
             "max_retries": 3,
@@ -158,7 +159,7 @@ class ErrorHandlingMixin:
         self._error_lock = threading.RLock()
         self._is_recovering = False
 
-    def safe_execute(self, func: Callable, *args, **kwargs) -> Any:
+    def safe_execute(self, func: Callable, *args, **kwargs) -> object:
         """
         Execute a function with comprehensive error handling.
 
@@ -203,7 +204,7 @@ class ErrorHandlingMixin:
         func: Callable,
         *args,
         **kwargs,
-    ) -> Any:
+    ) -> object:
         """Handle an error with appropriate strategy."""
         with self._error_lock:
             self._consecutive_errors += 1
@@ -287,7 +288,7 @@ class ErrorHandlingMixin:
 
     def _execute_error_strategy(
         self, error_context: ErrorContext, func: Callable, *args, **kwargs
-    ) -> Any:
+    ) -> object:
         """Execute the determined error handling strategy."""
         strategy = error_context.strategy
 
@@ -325,7 +326,7 @@ class ErrorHandlingMixin:
 
     def _retry_operation(
         self, error_context: ErrorContext, func: Callable, *args, **kwargs
-    ) -> Any:
+    ) -> object:
         """Retry an operation with exponential backoff and circuit breaker pattern."""
         max_retries = error_context.max_retries
         base_delay = self._error_config["retry_delay"]
@@ -423,7 +424,7 @@ class ErrorHandlingMixin:
 
     def _fallback_operation(
         self, error_context: ErrorContext, func: Callable, *args, **kwargs
-    ) -> Any:
+    ) -> object:
         """Execute fallback operation when retries are exhausted."""
         self.logger.warning(
             f"Executing fallback for {error_context.callback_name}.{error_context.method_name}"
@@ -663,7 +664,7 @@ class ErrorHandlingMixin:
         threshold = self._error_config.get("error_threshold_before_disable", 5)
         return self._consecutive_errors >= threshold
 
-    def get_error_stats(self) -> Dict[str, Any]:
+    def get_error_stats(self) -> ObjectMap:
         """Get error statistics."""
         with self._error_lock:
             return {
@@ -717,62 +718,72 @@ class LearningCallback(abc.ABC):
         self.priority = 0  # Callbacks with higher priority are called first
 
     @abc.abstractmethod
+    def on_training_start(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        """Called at the start of training."""
+        pass
+
     @abc.abstractmethod
     def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the end of training."""
         pass
+
+    @abc.abstractmethod
+    def on_epoch_start(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
         """Called at the start of each epoch."""
         pass
 
     @abc.abstractmethod
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the end of each epoch."""
         pass
 
     @abc.abstractmethod
     def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the start of each batch."""
         pass
 
     @abc.abstractmethod
     def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the end of each batch."""
         pass
 
     def on_validation_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the start of validation (optional)."""
         pass
 
     def on_validation_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the end of validation (optional)."""
         pass
-        pass
 
     def on_test_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the start of testing (optional)."""
         pass
 
     def on_test_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Called at the end of testing (optional)."""
         pass
 
-    def get_callback_info(self) -> Dict[str, Any]:
+    def get_callback_info(self) -> ObjectMap:
         """Get information about this callback."""
         return {
             "name": self.__class__.__name__,
@@ -794,7 +805,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
     def __init__(
         self,
         cache_size: int = 1000,
-        error_handling_config: Optional[Dict[str, Any]] = None,
+        error_handling_config: Optional[ObjectMap] = None,
     ):
         LearningCallback.__init__(self)
         ErrorHandlingMixin.__init__(self, error_handling_config)
@@ -813,7 +824,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
         }
         self._error_config.update(self._cache_error_config)
 
-    def cache_data(self, key: str, data: Any) -> None:
+    def cache_data(self, key: str, data: object) -> None:
         """Cache data with automatic memory management and error handling."""
 
         def _cache_operation():
@@ -821,7 +832,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
 
         self.safe_execute(_cache_operation)
 
-    def get_cached_data(self, key: str) -> Optional[Any]:
+    def get_cached_data(self, key: str) -> Optional[object]:
         """Retrieve cached data with error handling."""
 
         def _get_operation():
@@ -829,7 +840,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
 
         return self.safe_execute(_get_operation)
 
-    def cache_metrics(self, key: str, metrics: Dict[str, Any]) -> None:
+    def cache_metrics(self, key: str, metrics: ObjectMap) -> None:
         """Cache metrics data with error handling."""
 
         def _cache_metrics_operation():
@@ -837,13 +848,52 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
 
         self.safe_execute(_cache_metrics_operation)
 
-    def get_cached_metrics(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_cached_metrics(self, key: str) -> Optional[ObjectMap]:
         """Retrieve cached metrics with error handling."""
 
         def _get_metrics_operation():
             return self.metrics_cache.get(key)
 
         return self.safe_execute(_get_metrics_operation)
+
+
+class NoOpMemoryOptimizedCallback(MemoryOptimizedCallback):
+    """
+    Memory-optimized callback with no-op lifecycle methods.
+
+    Useful as a lightweight base when a callback only needs to override
+    a subset of training events.
+    """
+
+    def on_training_start(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
+
+    def on_training_end(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
+
+    def on_epoch_start(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
+
+    def on_epoch_end(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
+
+    def on_batch_start(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
+
+    def on_batch_end(
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> None:
+        return None
 
 
 class MetricsCallback(LearningCallback):
@@ -862,13 +912,13 @@ class MetricsCallback(LearningCallback):
         name: str,
         value: Union[int, float],
         tags: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[ObjectMap] = None,
     ) -> None:
         """Record a metric value."""
         if self.metrics_collector:
             self.metrics_collector.add_metric_value(name, value, tags, metadata)
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> ObjectMap:
         """Get summary of collected metrics."""
         if self.metrics_collector:
             return self.metrics_collector.get_latest_metrics()
@@ -886,15 +936,15 @@ class AdaptiveCallback(LearningCallback):
     def __init__(self, adaptation_frequency: int = 10):
         super().__init__()
         self.adaptation_frequency = adaptation_frequency
-        self.adaptation_history: List[Dict[str, Any]] = []
+        self.adaptation_history: ObjectRecords = []
 
     def should_adapt(self, context: LearningContext) -> bool:
         """Determine if adaptation should occur."""
         return context.epoch % self.adaptation_frequency == 0
 
     def adapt(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
+    ) -> ObjectMap:
         """Perform adaptation and return adaptation details."""
         adaptation_info = {
             "epoch": context.epoch,
@@ -911,7 +961,7 @@ class AdaptiveCallback(LearningCallback):
 
         return adaptation_info
 
-    def get_adaptation_history(self) -> List[Dict[str, Any]]:
+    def get_adaptation_history(self) -> ObjectRecords:
         """Get history of adaptations."""
         return self.adaptation_history.copy()
 
@@ -920,12 +970,12 @@ class CallbackManager:
     """Minimal callback manager so tests can import and register callbacks."""
 
     def __init__(self):
-        self.callbacks: List[Any] = []
+        self.callbacks: List[object] = []
 
-    def register(self, cb: Any) -> None:
+    def register(self, cb: object) -> None:
         self.callbacks.append(cb)
 
-    def add_callback(self, callback: Any) -> None:
+    def add_callback(self, callback: object) -> None:
         """Backward-compatible alias for registering a callback."""
         self.register(callback)
 
@@ -941,21 +991,21 @@ class CallbackManager:
 
     # Convenience event dispatchers used in tests/docs
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         self.notify("on_epoch_end", context, logs)
 
     def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         self.notify("on_epoch_start", context, logs)
 
     def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         self.notify("on_batch_start", context, logs)
 
     def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         self.notify("on_batch_end", context, logs)

@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable, TypedDict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -26,6 +26,10 @@ from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,
     compute_fill_metrics,
+    compute_hourly_metrics,
+    compute_regime_metrics,
+    compute_round_trip_metrics,
+    filter_clean_records,
     g1_1_judgment,
     load_fill_records_glob,
 )
@@ -36,6 +40,34 @@ from ztb.metrics.fill_quality import (
 # ======================================================================
 
 StopCheckFn = Callable[[FillMetrics, list[FillRecord]], bool]
+
+
+StopRuleResult = TypedDict(
+    "StopRuleResult",
+    {
+        "rule": str,
+        "status": str,
+        "triggered": bool,
+        "reason": str,
+        "min_n": int,
+    },
+)
+
+
+GateCheckDetail = TypedDict(
+    "GateCheckDetail",
+    {
+        "pass": bool,
+        "value": float,
+        "threshold": float,
+    },
+    total=False,
+)
+
+
+class GateResult(TypedDict, total=False):
+    checks: dict[str, GateCheckDetail]
+    gate_result: str
 
 
 @dataclass(frozen=True)
@@ -106,9 +138,9 @@ def _check_cumulative_loss(records: list[FillRecord]) -> bool:
 def evaluate_stop_rules(
     metrics: FillMetrics,
     records: list[FillRecord],
-) -> list[dict[str, Any]]:
+) -> list[StopRuleResult]:
     """§3.9 全ルールを評価して結果を返す."""
-    results: list[dict[str, Any]] = []
+    results: list[StopRuleResult] = []
     n = metrics.total_orders
     for rule_id, rule in STOP_RULES.items():
         if n < rule.min_n:
@@ -149,8 +181,11 @@ def _status_icon(status: str) -> str:
 def print_report(
     metrics: FillMetrics,
     records: list[FillRecord],
-    gate_result: dict[str, Any],
-    stop_results: list[dict[str, Any]],
+    gate_result: GateResult,
+    stop_results: list[StopRuleResult],
+    *,
+    clean_count: int | None = None,
+    quarantine_count: int | None = None,
 ) -> None:
     """コンソールにモニタリングレポートを出力."""
     n = metrics.total_orders
@@ -251,6 +286,66 @@ def print_report(
                     eta_h = remaining / rate_per_h
                     print(f"  n={target}到達推定: {eta_h:.0f}h ({eta_h/24:.1f}日)")
 
+    # 051# データ品質 (clean_rate)
+    if clean_count is not None and quarantine_count is not None:
+        total_all = clean_count + quarantine_count
+        if total_all > 0:
+            clean_rate = clean_count / total_all
+            print(f"\n🧹 データ品質:")
+            print("-" * 50)
+            print(f"  clean:      {clean_count} ({clean_rate:.1%})")
+            print(f"  quarantine: {quarantine_count} ({1 - clean_rate:.1%})")
+            print(f"  合計:       {total_all}")
+
+    # 051# P2-2: Round-trip 評価
+    if records:
+        filled_recs_rt = [r for r in records if r.filled]
+        if len(filled_recs_rt) >= 2:
+            rt_metrics, _trips = compute_round_trip_metrics(records)
+            if rt_metrics.total_pairs > 0:
+                print(f"\n🔄 Round-trip 評価 (buy→sell FIFO ペアリング):")
+                print("-" * 50)
+                print(f"  ペア数:     {rt_metrics.total_pairs}")
+                print(f"  PnL mean:   {_fmt_bps(rt_metrics.pnl_mean_bps)}")
+                print(f"  PnL median: {_fmt_bps(rt_metrics.pnl_median_bps)}")
+                print(f"  PnL std:    {rt_metrics.pnl_std_bps:.3f} bps")
+                print(f"  累積PnL:    {rt_metrics.pnl_total_jpy:+.1f} JPY")
+                print(f"  勝率:       {_fmt_pct(rt_metrics.win_rate)}")
+                print(f"  保持中央値: {rt_metrics.hold_sec_median:.0f}s")
+                if rt_metrics.unpaired_buys > 0:
+                    print(f"  未ペア buy:  {rt_metrics.unpaired_buys}")
+
+    # 051# P2-4: レジーム別メトリクス
+    if records:
+        regime_list = compute_regime_metrics(records)
+        # unknown のみの場合はスキップ
+        if regime_list and not (len(regime_list) == 1 and regime_list[0].regime == "unknown"):
+            print(f"\n🌊 レジーム別メトリクス:")
+            print("-" * 50)
+            print(f"  {'regime':<12} {'n':>5} {'fill%':>7} {'PnL':>10} {'AS%':>7} {'wait':>6}")
+            for rm in regime_list:
+                print(
+                    f"  {rm.regime:<12} {rm.count:>5} "
+                    f"{rm.fill_rate:>6.1%} "
+                    f"{_fmt_bps(rm.pnl_mean_bps):>10} "
+                    f"{rm.as_ratio:>6.1%} "
+                    f"{rm.queue_wait_median_sec:>5.0f}s"
+                )
+
+    # 051# UTC 時間帯別分析
+    if records:
+        hourly_list = compute_hourly_metrics(records)
+        if len(hourly_list) >= 3:
+            print(f"\n🕐 UTC 時間帯別分析:")
+            print("-" * 50)
+            print(f"  {'UTC':>4} {'n':>5} {'fill':>5} {'PnL':>10} {'AS%':>7}")
+            for hm in hourly_list:
+                flag = " ⚠" if hm.as_ratio > 0.45 else ""
+                print(
+                    f"  {hm.utc_hour:>4} {hm.count:>5} {hm.filled:>5} "
+                    f"{_fmt_bps(hm.pnl_mean_bps):>10} "
+                    f"{hm.as_ratio:>6.1%}{flag}"
+                )
     print("=" * 70)
 
 
@@ -260,8 +355,8 @@ def print_report(
 
 def save_snapshot(
     metrics: FillMetrics,
-    gate_result: dict[str, Any],
-    stop_results: list[dict[str, Any]],
+    gate_result: GateResult,
+    stop_results: list[StopRuleResult],
     output_dir: Path,
 ) -> Path:
     """モニタリング結果をJSONファイルとして保存."""
@@ -283,12 +378,17 @@ def save_snapshot(
 # Main
 # ======================================================================
 
-def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, Any]:
+def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
     """メインモニタリングロジック. watch モードからも呼び出し可能."""
     records = load_fill_records_glob(results_dir)
     if not records:
         print(f"⚠️  {results_dir} にレコードが見つかりません")
         return {}
+
+    # 051# clean/quarantine 分離
+    clean_records, quarantine_records = filter_clean_records(records)
+    clean_count = len(clean_records)
+    quarantine_count = len(quarantine_records)
 
     # G1.1 閾値読み込み
     thresholds_path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
@@ -300,11 +400,16 @@ def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, Any]:
     else:
         thresholds = {}
 
-    metrics = compute_fill_metrics(records)
+    # clean レコードのみでメトリクス算出
+    metrics = compute_fill_metrics(clean_records)
     gate_result = g1_1_judgment(metrics, thresholds)
-    stop_results = evaluate_stop_rules(metrics, records)
+    stop_results = evaluate_stop_rules(metrics, clean_records)
 
-    print_report(metrics, records, gate_result, stop_results)
+    print_report(
+        metrics, clean_records, gate_result, stop_results,
+        clean_count=clean_count,
+        quarantine_count=quarantine_count,
+    )
 
     if save_json:
         snapshot_path = save_snapshot(metrics, gate_result, stop_results, results_dir)

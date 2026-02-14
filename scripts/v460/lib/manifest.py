@@ -16,7 +16,9 @@ import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional, cast
+
+from ztb.types.common import ConfigSection, JSONDict
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -66,7 +68,7 @@ def compute_file_hash(path: Path) -> str:
     return sha.hexdigest()
 
 
-def compute_config_hash(config: dict[str, Any]) -> str:
+def compute_config_hash(config: ConfigSection) -> str:
     """SHA-256 of sorted JSON config."""
     s = json.dumps(config, sort_keys=True, default=str)
     return hashlib.sha256(s.encode()).hexdigest()[:16]
@@ -89,12 +91,12 @@ class ManifestEntry:
     started_at: str
     finished_at: Optional[str] = None
     status: str = "running"
-    metrics: dict[str, Any] = field(default_factory=dict)
+    metrics: JSONDict = field(default_factory=dict)
     gate_result: Optional[str] = None
     artifacts: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    def to_dict(self) -> JSONDict:
+        return cast(JSONDict, asdict(self))
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, default=str)
@@ -110,7 +112,7 @@ class ManifestWriter:
     def start_run(
         self,
         config_path: str,
-        config: dict[str, Any],
+        config: ConfigSection,
         data_path: str,
         gate: str,
         seed: int,
@@ -141,7 +143,7 @@ class ManifestWriter:
     def finish_run(
         self,
         entry: ManifestEntry,
-        metrics: dict[str, Any],
+        metrics: JSONDict,
         gate_result: str,
         artifacts: Optional[list[str]] = None,
         status: str = "completed",
@@ -165,14 +167,16 @@ class ManifestWriter:
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(entry.to_json() + "\n")
 
-    def read_all(self) -> list[dict[str, Any]]:
+    def read_all(self) -> list[JSONDict]:
         """Read all manifest entries."""
         if not self.path.exists():
             return []
-        entries: list[dict[str, Any]] = []
+        entries: list[JSONDict] = []
         with open(self.path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    entries.append(json.loads(line))
+                    loaded = json.loads(line)
+                    if isinstance(loaded, dict):
+                        entries.append(cast(JSONDict, loaded))
         return entries

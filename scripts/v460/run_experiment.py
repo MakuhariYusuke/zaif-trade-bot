@@ -29,7 +29,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from scripts.v460.lib.config_loader import load_config
+from scripts.v460.lib.config_loader import load_config, load_gate_thresholds
 from scripts.v460.lib.evaluator import (
     WalkForwardResult,
     make_logistic,
@@ -153,11 +153,8 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
         fold_results = results.get("fold_results", {})
         if fold_results:
             # Load gate thresholds from standalone YAML (not experiment config)
-            thresholds_path = _PROJECT_ROOT / "configs/v460/gate_thresholds.yaml"
             try:
-                import yaml
-                with open(thresholds_path, "r", encoding="utf-8") as f:
-                    gate_cfg = yaml.safe_load(f) or {}
+                gate_cfg = load_gate_thresholds()
                 g1_cfg = gate_cfg.get("g1_info", {})
                 alpha = g1_cfg.get("p_alpha", 0.05)
                 min_effect = g1_cfg.get("min_cliff_d", 0.33)

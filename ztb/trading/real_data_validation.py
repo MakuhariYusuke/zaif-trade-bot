@@ -9,7 +9,7 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -53,7 +53,7 @@ class LiveTradeRecord:
     commission: float = 0.0
     slippage: float = 0.0
     confidence: float = 0.0
-    market_conditions: Dict[str, Any] = field(default_factory=dict)
+    market_conditions: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -110,7 +110,7 @@ class PaperTradingEngine:
 
         # 取引状態
         self.balance = config.paper_trading_balance
-        self.positions: Dict[str, Dict[str, Any]] = {}
+        self.positions: Dict[str, dict[str, object]] = {}
         self.trade_history: List[LiveTradeRecord] = []
         self.equity_curve: List[Tuple[datetime, float]] = [
             (datetime.now(), config.paper_trading_balance)
@@ -129,7 +129,7 @@ class PaperTradingEngine:
         )
 
     def execute_paper_trade(
-        self, signal: Dict[str, Any], market_data: Dict[str, Any]
+        self, signal: dict[str, object], market_data: dict[str, object]
     ) -> Optional[LiveTradeRecord]:
         """ペーパートレード実行"""
         try:
@@ -170,7 +170,7 @@ class PaperTradingEngine:
             return None
 
     def _open_position(
-        self, signal: Dict[str, Any], market_data: Dict[str, Any], position_size: float
+        self, signal: dict[str, object], market_data: dict[str, object], position_size: float
     ) -> LiveTradeRecord:
         """ポジションオープン"""
         symbol = signal["symbol"]
@@ -230,7 +230,7 @@ class PaperTradingEngine:
         return trade_record
 
     def _close_position(
-        self, signal: Dict[str, Any], market_data: Dict[str, Any]
+        self, signal: dict[str, object], market_data: dict[str, object]
     ) -> LiveTradeRecord:
         """ポジションクローズ"""
         symbol = signal["symbol"]
@@ -293,7 +293,7 @@ class PaperTradingEngine:
         return trade_record
 
     def _calculate_position_size(
-        self, signal: Dict[str, Any], market_data: Dict[str, Any]
+        self, signal: dict[str, object], market_data: dict[str, object]
     ) -> float:
         """ポジションサイズ計算"""
         # リスクベースのポジションサイジング
@@ -320,7 +320,7 @@ class PaperTradingEngine:
 
         return max(0, quantity)
 
-    def _capture_market_conditions(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _capture_market_conditions(self, market_data: dict[str, object]) -> dict[str, object]:
         """市場状況のキャプチャ"""
         return {
             "price": market_data.get("price", 0),
@@ -428,7 +428,7 @@ class MarketConditionAnalyzer:
         self.logger = get_logger(__name__)
         self.market_history: List[MarketCondition] = []
 
-    def analyze_market_conditions(self, market_data: Dict[str, Any]) -> MarketCondition:
+    def analyze_market_conditions(self, market_data: dict[str, object]) -> MarketCondition:
         """市場状況の分析"""
         timestamp = datetime.now()
 
@@ -468,7 +468,7 @@ class MarketConditionAnalyzer:
 
         return condition
 
-    def _calculate_volatility(self, market_data: Dict[str, Any]) -> float:
+    def _calculate_volatility(self, market_data: dict[str, object]) -> float:
         """ボラティリティ計算"""
         # 価格変動の標準偏差 (use centralized helper)
         prices = market_data.get("price_history", [])
@@ -484,7 +484,7 @@ class MarketConditionAnalyzer:
             returns = np.diff(prices) / prices[:-1]
             return float(np.std(returns)) if len(returns) > 0 else 0.0
 
-    def _calculate_trend_strength(self, market_data: Dict[str, Any]) -> float:
+    def _calculate_trend_strength(self, market_data: dict[str, object]) -> float:
         """トレンド強度計算"""
         # ADXのようなトレンド強度指標
         prices = market_data.get("price_history", [])
@@ -498,7 +498,7 @@ class MarketConditionAnalyzer:
 
         return min(trend_strength, 1.0)  # 0-1に正規化
 
-    def _analyze_volume_profile(self, market_data: Dict[str, Any]) -> str:
+    def _analyze_volume_profile(self, market_data: dict[str, object]) -> str:
         """出来高プロファイル分析"""
         volume = market_data.get("volume", 0)
         avg_volume = market_data.get("avg_volume", 1)
@@ -510,7 +510,7 @@ class MarketConditionAnalyzer:
         else:
             return "normal"
 
-    def _calculate_liquidity_score(self, market_data: Dict[str, Any]) -> float:
+    def _calculate_liquidity_score(self, market_data: dict[str, object]) -> float:
         """流動性スコア計算"""
         # スプレッドと出来高に基づく流動性
         spread = market_data.get("spread", 0.001)  # デフォルト0.1%
@@ -534,7 +534,7 @@ class MarketConditionAnalyzer:
         else:
             return "ranging"
 
-    def _calculate_sentiment_score(self, market_data: Dict[str, Any]) -> float:
+    def _calculate_sentiment_score(self, market_data: dict[str, object]) -> float:
         """センチメントスコア計算"""
         # 簡易的なセンチメント（価格モメンタム）
         momentum = market_data.get("momentum", 0)
@@ -550,9 +550,9 @@ class StabilityTester:
 
         # 安定性指標
         self.performance_stability: List[float] = []
-        self.adaptation_metrics: Dict[str, Any] = {}
+        self.adaptation_metrics: dict[str, object] = {}
 
-    def run_stability_tests(self) -> Dict[str, Any]:
+    def run_stability_tests(self) -> dict[str, object]:
         """安定性テスト実行"""
         self.logger.info("Running stability tests...")
 
@@ -580,7 +580,7 @@ class StabilityTester:
 
         return stability_results
 
-    def _test_performance_stability(self) -> Dict[str, Any]:
+    def _test_performance_stability(self) -> dict[str, object]:
         """パフォーマンス安定性テスト"""
         if len(self.paper_trading_engine.equity_curve) < 10:
             return {"stability_score": 0.0, "volatility": 0.0}
@@ -600,7 +600,7 @@ class StabilityTester:
             "max_drawdown": self.paper_trading_engine.metrics.max_drawdown,
         }
 
-    def _test_market_adaptation(self) -> Dict[str, Any]:
+    def _test_market_adaptation(self) -> dict[str, object]:
         """市場適応性テスト"""
         # 市場状況ごとのパフォーマンス分析
         market_performance = {}
@@ -640,7 +640,7 @@ class StabilityTester:
             "overall_adaptation_score": overall_adaptation,
         }
 
-    def _test_stress_resilience(self) -> Dict[str, Any]:
+    def _test_stress_resilience(self) -> dict[str, object]:
         """ストレス耐性テスト"""
         # ドローダウン中のパフォーマンス分析
         equity_values = [e[1] for e in self.paper_trading_engine.equity_curve]
@@ -674,7 +674,7 @@ class StabilityTester:
             "stress_win_rate": stress_win_rate if "stress_win_rate" in locals() else 0,
         }
 
-    def _test_recovery_capability(self) -> Dict[str, Any]:
+    def _test_recovery_capability(self) -> dict[str, object]:
         """回復力テスト"""
         equity_values = [e[1] for e in self.paper_trading_engine.equity_curve]
 
@@ -710,7 +710,7 @@ class StabilityTester:
             "max_drawdown": self.paper_trading_engine.metrics.max_drawdown,
         }
 
-    def _analyze_consistency(self) -> Dict[str, Any]:
+    def _analyze_consistency(self) -> dict[str, object]:
         """一貫性分析"""
         if len(self.paper_trading_engine.trade_history) < 10:
             return {"consistency_score": 0.0}
@@ -758,7 +758,7 @@ class StabilityTester:
         }
 
     def _calculate_overall_stability_score(
-        self, stability_results: Dict[str, Any]
+        self, stability_results: dict[str, object]
     ) -> float:
         """総合安定性スコア計算"""
         weights = {
@@ -801,7 +801,7 @@ class RealDataValidationSystem:
     """
 
     def __init__(
-        self, integration_manager: V433IntegrationManager, config: Optional[Any] = None
+        self, integration_manager: V433IntegrationManager, config: Optional[object] = None
     ):
         self.integration_manager = integration_manager
         self.logger = get_logger(__name__)
@@ -839,30 +839,30 @@ class RealDataValidationSystem:
         except Exception:
             # Fallback lightweight stubs for tests or environments where components are unavailable
             class _DataIntegrityChecker:
-                def __init__(self, config: Any = None):
+                def __init__(self, config: object = None):
                     self.config = config
 
-                def validate(self, data: Any) -> Dict[str, Any]:
+                def validate(self, data: object) -> dict[str, object]:
                     return {"valid": True, "issues": []}
 
             class _StatisticalValidator:
                 def __init__(self):
                     pass
 
-                def validate(self, data: Any) -> Dict[str, Any]:
+                def validate(self, data: object) -> dict[str, object]:
                     return {"valid": True}
 
             class _AnomalyDetector:
                 def __init__(self):
                     pass
 
-                def detect(self, data: Any) -> Dict[str, Any]:
+                def detect(self, data: object) -> dict[str, object]:
                     return {"anomalies": []}
 
             class _CrossValidator:
                 def cross_validate(
-                    self, model: Any, data: Any, folds: int = 5
-                ) -> Dict[str, Any]:
+                    self, model: object, data: object, folds: int = 5
+                ) -> dict[str, object]:
                     return {"mean_score": 0.0, "std_score": 0.0}
 
         # Instantiate components. Some upstream implementations expect no-arg init.
@@ -1054,8 +1054,8 @@ class RealDataValidationSystem:
 
         # 結果保存
         # Tests expect a list here; keep as list for backward compatibility
-        self.validation_results: List[Dict[str, Any]] = []
-        self.performance_history: List[Dict[str, Any]] = []
+        self.validation_results: List[dict[str, object]] = []
+        self.performance_history: List[dict[str, object]] = []
 
     def start_live_validation(self, config: LiveValidationConfig) -> bool:
         """ライブ検証開始"""
@@ -1095,7 +1095,7 @@ class RealDataValidationSystem:
             self.is_validating = False
             return False
 
-    def stop_live_validation(self) -> Dict[str, Any]:
+    def stop_live_validation(self) -> dict[str, object]:
         """ライブ検証停止"""
         if not self.is_validating:
             return {"error": "No active validation"}
@@ -1169,7 +1169,7 @@ class RealDataValidationSystem:
         except Exception as e:
             self.logger.error(f"Signal check/execution error: {e}")
 
-    def _generate_validation_signal(self) -> Optional[Dict[str, Any]]:
+    def _generate_validation_signal(self) -> Optional[dict[str, object]]:
         """検証用シグナル生成"""
         # 実際の実装ではV433システムのシグナルを使用
         # ここでは簡易的なランダムシグナルを生成（検証目的）
@@ -1186,7 +1186,7 @@ class RealDataValidationSystem:
 
         return None
 
-    def _get_current_market_data(self) -> Optional[Dict[str, Any]]:
+    def _get_current_market_data(self) -> Optional[dict[str, object]]:
         """現在の市場データ取得"""
         try:
             # V433システムから市場データ取得
@@ -1249,7 +1249,7 @@ class RealDataValidationSystem:
             if market_data:
                 self.paper_trading_engine._close_position(signal, market_data)
 
-    def generate_validation_report(self) -> Dict[str, Any]:
+    def generate_validation_report(self) -> dict[str, object]:
         """検証レポート生成"""
         if not self.paper_trading_engine:
             return {"error": "No validation data available"}
@@ -1324,7 +1324,7 @@ class RealDataValidationSystem:
 
     def run_comprehensive_validation(
         self, data: pd.DataFrame, data_sources: List[DataSource]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """Run a suite of comprehensive validators over the provided data.
 
         This aggregates results from the configured validators and returns a
@@ -1407,7 +1407,7 @@ class RealDataValidationSystem:
 
     def validate_data_sources(
         self, data_sources: List[DataSource], data: pd.DataFrame
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict[str, object]]:
         """Validate multiple data sources and return the aggregated results per source."""
         results = []
         for ds in data_sources:
@@ -1416,7 +1416,7 @@ class RealDataValidationSystem:
 
         return results
 
-    def get_validation_report(self) -> Dict[str, Any]:
+    def get_validation_report(self) -> dict[str, object]:
         """Generate a summary report from stored validation results."""
         total = len(self.validation_results)
         passed = sum(1 for r in self.validation_results if getattr(r, "passed", False))
@@ -1498,7 +1498,7 @@ class RealDataValidationSystem:
             self.is_validating = False
             return False
 
-    def validate_real_time_data(self, recent_data: pd.DataFrame) -> Dict[str, Any]:
+    def validate_real_time_data(self, recent_data: pd.DataFrame) -> dict[str, object]:
         """Validate a single row (real-time) of data using integrity and anomaly checks."""
         try:
             integrity_res = self.integrity_checker.check_real_time_integrity(
@@ -1522,7 +1522,7 @@ class RealDataValidationSystem:
             "anomaly_check": anomaly_res,
         }
 
-    def _analyze_validation_performance(self) -> Dict[str, Any]:
+    def _analyze_validation_performance(self) -> dict[str, object]:
         """検証パフォーマンス分析"""
         if not self.performance_history:
             return {}
@@ -1545,7 +1545,7 @@ class RealDataValidationSystem:
             else 0,
         }
 
-    def _analyze_market_adaptation(self) -> Dict[str, Any]:
+    def _analyze_market_adaptation(self) -> dict[str, object]:
         """市場適応分析"""
         # 市場状況ごとのパフォーマンス
         market_performance = {}
@@ -1568,7 +1568,7 @@ class RealDataValidationSystem:
 
         return adaptation_analysis
 
-    def _analyze_validation_risks(self) -> Dict[str, Any]:
+    def _analyze_validation_risks(self) -> dict[str, object]:
         """検証リスク分析"""
         metrics = self.paper_trading_engine.metrics
 
@@ -1592,9 +1592,9 @@ class RealDataValidationSystem:
 
     def _generate_validation_recommendations(
         self,
-        performance: Dict[str, Any],
-        stability: Dict[str, Any],
-        risk: Dict[str, Any],
+        performance: dict[str, object],
+        stability: dict[str, object],
+        risk: dict[str, object],
     ) -> List[str]:
         """検証推奨事項生成"""
         recommendations = []
@@ -1629,7 +1629,7 @@ class RealDataValidationSystem:
 
         return recommendations
 
-    def get_live_status(self) -> Dict[str, Any]:
+    def get_live_status(self) -> dict[str, object]:
         """ライブ検証ステータス取得"""
         if not self.is_validating or not self.paper_trading_engine:
             return {"status": "inactive"}

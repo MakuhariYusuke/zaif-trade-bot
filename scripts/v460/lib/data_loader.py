@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -144,7 +144,18 @@ def compute_data_hash(path: str | Path) -> str:
     return sha.hexdigest()
 
 
-def check_nan_ratio(df: pd.DataFrame, max_ratio: float = 0.01) -> dict[str, Any]:
+NaNRatioCheck = TypedDict(
+    "NaNRatioCheck",
+    {
+        "total_cells": int,
+        "nan_cells": int,
+        "ratio": float,
+        "pass": bool,
+    },
+)
+
+
+def check_nan_ratio(df: pd.DataFrame, max_ratio: float = 0.01) -> NaNRatioCheck:
     """Check NaN ratio of DataFrame.
 
     Returns:

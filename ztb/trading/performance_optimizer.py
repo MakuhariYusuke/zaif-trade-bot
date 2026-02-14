@@ -15,7 +15,7 @@ import time
 import weakref
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import psutil
@@ -75,7 +75,7 @@ class OptimizationResult:
     after_metrics: SystemPerformanceMetrics
     improvement_percent: float
     success: bool
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: Dict[str, object] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
     @property
@@ -87,26 +87,39 @@ class OptimizationResult:
             return f"Degraded by {abs(self.improvement_percent):.1f}%"
 
 
-class LatencyOptimizer:
-    """レイテンシー最適化器"""
+OptimizationStep = Tuple[str, Callable[[], bool]]
+
+
+class OptimizationComponentBase:
+    """最適化コンポーネント共通基底."""
 
     def __init__(self, integration_manager: V433IntegrationManager):
         self.integration_manager = integration_manager
-        # Logger for the system
         self.logger = get_logger(__name__)
-        # Logger for the system component
-        self.logger = get_logger(__name__)
-        # Logger for the system component
-        self.logger = get_logger(__name__)
-        self.logger = get_logger(__name__)
+
+    def _collect_applied_steps(self, steps: Sequence[OptimizationStep]) -> List[str]:
+        """成功した最適化ステップ名のみを収集する."""
+        return [step_name for step_name, operation in steps if operation()]
+
+    def _safe_optimize(self, operation: Callable[[], bool], operation_name: str) -> bool:
+        """`safe_execute` を利用して最適化処理を安全実行する."""
+        result = safe_execute(operation, operation_name, False)
+        return bool(result)
+
+
+class LatencyOptimizer(OptimizationComponentBase):
+    """レイテンシー最適化器"""
+
+    def __init__(self, integration_manager: V433IntegrationManager):
+        super().__init__(integration_manager)
 
         # レイテンシープロファイリング
         self.profiler = cProfile.Profile()
         self.latency_measurements: List[float] = []
 
     def measure_operation_latency(
-        self, operation: callable, *args, **kwargs
-    ) -> Tuple[float, Any]:
+        self, operation: Callable[..., object], *args: object, **kwargs: object
+    ) -> Tuple[float, object]:
         """操作のレイテンシーを測定"""
         start_time = time.perf_counter()
         result = operation(*args, **kwargs)
@@ -117,7 +130,7 @@ class LatencyOptimizer:
 
         return latency_ms, result
 
-    def profile_critical_path(self) -> Dict[str, Any]:
+    def profile_critical_path(self) -> Dict[str, object]:
         """クリティカルパスのプロファイリング"""
         self.logger.info("Profiling critical execution paths...")
 
@@ -161,23 +174,14 @@ class LatencyOptimizer:
         before_metrics = self._measure_data_processing_performance()
 
         # 最適化実行
-        optimizations_applied = []
-
-        # 1. 非同期処理の最適化
-        if self._optimize_async_processing():
-            optimizations_applied.append("async_processing")
-
-        # 2. データ構造の最適化
-        if self._optimize_data_structures():
-            optimizations_applied.append("data_structures")
-
-        # 3. メモリプールの最適化
-        if self._optimize_memory_pool():
-            optimizations_applied.append("memory_pool")
-
-        # 4. キャッシュの最適化
-        if self._optimize_caching():
-            optimizations_applied.append("caching")
+        optimizations_applied = self._collect_applied_steps(
+            [
+                ("async_processing", self._optimize_async_processing),
+                ("data_structures", self._optimize_data_structures),
+                ("memory_pool", self._optimize_memory_pool),
+                ("caching", self._optimize_caching),
+            ]
+        )
 
         # 最適化後の測定
         after_metrics = self._measure_data_processing_performance()
@@ -200,20 +204,13 @@ class LatencyOptimizer:
 
         before_metrics = self._measure_signal_processing_performance()
 
-        # 最適化実行
-        optimizations_applied = []
-
-        # 1. 並列処理の最適化
-        if self._optimize_parallel_processing():
-            optimizations_applied.append("parallel_processing")
-
-        # 2. アルゴリズムの最適化
-        if self._optimize_algorithms():
-            optimizations_applied.append("algorithms")
-
-        # 3. I/Oの最適化
-        if self._optimize_io_operations():
-            optimizations_applied.append("io_operations")
+        optimizations_applied = self._collect_applied_steps(
+            [
+                ("parallel_processing", self._optimize_parallel_processing),
+                ("algorithms", self._optimize_algorithms),
+                ("io_operations", self._optimize_io_operations),
+            ]
+        )
 
         after_metrics = self._measure_signal_processing_performance()
         improvement = self._calculate_improvement(before_metrics, after_metrics)
@@ -233,24 +230,14 @@ class LatencyOptimizer:
 
         before_metrics = self._measure_memory_performance()
 
-        # メモリ最適化実行
-        optimizations_applied = []
-
-        # 1. ガベージコレクションの最適化
-        if self._optimize_garbage_collection():
-            optimizations_applied.append("garbage_collection")
-
-        # 2. メモリリークの修正
-        if self._fix_memory_leaks():
-            optimizations_applied.append("memory_leaks")
-
-        # 3. データ構造のメモリ効率化
-        if self._optimize_memory_structures():
-            optimizations_applied.append("memory_structures")
-
-        # 4. キャッシュサイズの最適化
-        if self._optimize_cache_sizes():
-            optimizations_applied.append("cache_sizes")
+        optimizations_applied = self._collect_applied_steps(
+            [
+                ("garbage_collection", self._optimize_garbage_collection),
+                ("memory_leaks", self._fix_memory_leaks),
+                ("memory_structures", self._optimize_memory_structures),
+                ("cache_sizes", self._optimize_cache_sizes),
+            ]
+        )
 
         after_metrics = self._measure_memory_performance()
         improvement = self._calculate_memory_improvement(before_metrics, after_metrics)
@@ -288,29 +275,40 @@ class LatencyOptimizer:
             # Signal submission would go here
             pass
 
-    def _analyze_bottlenecks(self, profile_output: str) -> List[Dict[str, Any]]:
+    def _analyze_bottlenecks(self, profile_output: str) -> List[Dict[str, object]]:
         """ボトルネックの分析"""
-        bottlenecks = []
+        bottlenecks: List[Dict[str, object]] = []
 
-        lines = profile_output.split("\n")
-        for line in lines:
-            if line.strip() and not line.startswith(" "):
-                parts = line.split()
-                if len(parts) >= 6:
-                    def parse_line():
-                        cum_time = float(parts[3])
-                        if cum_time > 0.01:  # 10ms以上の関数
-                            bottlenecks.append(
-                                {
-                                    "function": parts[5]
-                                    if len(parts) > 5
-                                    else "unknown",
-                                    "cumulative_time": cum_time,
-                                    "calls": parts[0] if parts[0].isdigit() else 0,
-                                }
-                            )
-                    
-                    safe_execute(parse_line, error_msg="Error parsing profile line")
+        for line in profile_output.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith(("Ordered by", "List reduced", "ncalls", "function calls")):
+                continue
+
+            parts = stripped.split(maxsplit=5)
+            if len(parts) < 6:
+                continue
+
+            calls_token = parts[0].split("/", maxsplit=1)[0]
+            if not calls_token.isdigit():
+                continue
+
+            try:
+                cumulative_time = float(parts[3])
+            except (TypeError, ValueError):
+                continue
+
+            if cumulative_time <= 0.01:  # 10ms以上の関数
+                continue
+
+            bottlenecks.append(
+                {
+                    "function": parts[5],
+                    "cumulative_time": cumulative_time,
+                    "calls": int(calls_token),
+                }
+            )
 
         return sorted(bottlenecks, key=lambda x: x["cumulative_time"], reverse=True)[
             :10
@@ -318,94 +316,58 @@ class LatencyOptimizer:
 
     def _optimize_async_processing(self) -> bool:
         """非同期処理の最適化"""
-        def optimize_async():
-            # asyncioの設定最適化
-            # 実際の実装ではイベントループの設定を調整
-            return True
-        
-        return safe_execute(optimize_async, error_msg="Async processing optimization failed", default_return=False)
+        return self._safe_optimize(
+            lambda: True, "async_processing_optimization"
+        )
 
     def _optimize_data_structures(self) -> bool:
         """データ構造の最適化"""
-        def optimize_data_struct():
-            # numpy arrayの使用、リストからdequeへの変更など
-            # 実際の実装ではデータ構造を効率的なものに置き換え
-            return True
-        
-        return safe_execute(optimize_data_struct, error_msg="Data structure optimization failed", default_return=False)
+        return self._safe_optimize(
+            lambda: True, "data_structure_optimization"
+        )
 
     def _optimize_memory_pool(self) -> bool:
         """メモリプールの最適化"""
-        def optimize_memory():
-            # メモリプールの事前割り当て
-            return True
-        
-        return safe_execute(optimize_memory, error_msg="Memory pool optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "memory_pool_optimization")
 
     def _optimize_caching(self) -> bool:
         """キャッシュの最適化"""
-        def optimize_cache():
-            # LRUキャッシュのサイズ調整、キャッシュ戦略の改善
-            return True
-        
-        return safe_execute(optimize_cache, error_msg="Caching optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "cache_optimization")
 
     def _optimize_parallel_processing(self) -> bool:
         """並列処理の最適化"""
-        def optimize_parallel():
-            # スレッドプールサイズの調整、プロセスプールの使用
-            return True
-        
-        return safe_execute(optimize_parallel, error_msg="Parallel processing optimization failed", default_return=False)
+        return self._safe_optimize(
+            lambda: True, "parallel_processing_optimization"
+        )
 
     def _optimize_algorithms(self) -> bool:
         """アルゴリズムの最適化"""
-        def optimize_algo():
-            # 計算量の多いアルゴリズムの最適化
-            return True
-        
-        return safe_execute(optimize_algo, error_msg="Algorithm optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "algorithm_optimization")
 
     def _optimize_io_operations(self) -> bool:
         """I/O操作の最適化"""
-        def optimize_io():
-            # 非同期I/O、バッチ処理など
-            return True
-        
-        return safe_execute(optimize_io, error_msg="I/O optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "io_optimization")
 
     def _optimize_garbage_collection(self) -> bool:
         """ガベージコレクションの最適化"""
-        def optimize_gc():
+        def optimize_gc() -> bool:
             gc.collect()  # 強制ガベージコレクション
             gc.set_threshold(700, 10, 10)  # GC閾値の調整
             return True
-        
-        return safe_execute(optimize_gc, error_msg="Garbage collection optimization failed", default_return=False)
+
+        return self._safe_optimize(optimize_gc, "garbage_collection_optimization")
 
     def _fix_memory_leaks(self) -> bool:
         """メモリリークの修正"""
-        def fix_leaks():
-            # 循環参照の解除、weakrefの使用など
-            return True
-        
-        return safe_execute(fix_leaks, error_msg="Memory leak fix failed", default_return=False)
+        return self._safe_optimize(lambda: True, "memory_leak_fix")
 
     def _optimize_memory_structures(self) -> bool:
         """メモリ構造の最適化"""
-        def optimize_mem_struct():
-            # __slots__の使用、__dict__の最適化など
-            return True
-        
-        return safe_execute(optimize_mem_struct, error_msg="Memory structure optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "memory_structure_optimization")
 
     def _optimize_cache_sizes(self) -> bool:
         """キャッシュサイズの最適化"""
-        def optimize_cache_size():
-            # キャッシュサイズの動的調整
-            return True
-        
-        return safe_execute(optimize_cache_size, error_msg="Cache size optimization failed", default_return=False)
+        return self._safe_optimize(lambda: True, "cache_size_optimization")
 
     def _measure_data_processing_performance(self) -> SystemPerformanceMetrics:
         """データ処理パフォーマンスの測定"""
@@ -499,18 +461,19 @@ class LatencyOptimizer:
         return round(memory_improvement, 2)
 
 
-class MemoryOptimizer:
+class MemoryOptimizer(OptimizationComponentBase):
     """メモリ最適化器"""
 
     def __init__(self, integration_manager: V433IntegrationManager):
-        self.integration_manager = integration_manager
-        self.logger = get_logger(__name__)
+        super().__init__(integration_manager)
 
         # メモリ監視
-        self.memory_snapshots: List[Dict[str, Any]] = []
+        self.memory_snapshots: List[Dict[str, object]] = []
         self.object_refs = weakref.WeakSet()
+        self._monitoring_thread: Optional[threading.Thread] = None
+        self._monitoring_stop_event = threading.Event()
 
-    def analyze_memory_usage(self) -> Dict[str, Any]:
+    def analyze_memory_usage(self) -> Dict[str, object]:
         """メモリ使用量の分析"""
         self.logger.info("Analyzing memory usage...")
 
@@ -521,7 +484,7 @@ class MemoryOptimizer:
             process = None
 
         # Use safe length retrieval to be tolerant of mocks in tests
-        def _safe_len(maybe_seq):
+        def _safe_len(maybe_seq: object) -> int:
             try:
                 return len(maybe_seq)
             except Exception:
@@ -530,10 +493,8 @@ class MemoryOptimizer:
                 except Exception:
                     return 0
 
-        open_files_obj = None
-        connections_obj = None
-        open_files_obj = []
-        connections_obj = []
+        open_files_obj: object = []
+        connections_obj: object = []
         rss_gb = 0.0
         vms_gb = 0.0
         cpu_percent = 0.0
@@ -593,27 +554,18 @@ class MemoryOptimizer:
             "snapshots_count": len(self.memory_snapshots),
         }
 
-    def optimize_memory_allocation(self) -> Dict[str, Any]:
+    def optimize_memory_allocation(self) -> Dict[str, object]:
         """メモリ割り当ての最適化"""
         self.logger.info("Optimizing memory allocation...")
 
-        optimizations = []
-
-        # 1. オブジェクトプールの最適化
-        if self._optimize_object_pools():
-            optimizations.append("object_pools")
-
-        # 2. メモリ断片化の削減
-        if self._reduce_memory_fragmentation():
-            optimizations.append("fragmentation")
-
-        # 3. キャッシュのメモリ効率化
-        if self._optimize_cache_memory():
-            optimizations.append("cache_memory")
-
-        # 4. データ構造のメモリ効率化
-        if self._optimize_data_structure_memory():
-            optimizations.append("data_structures")
+        optimizations = self._collect_applied_steps(
+            [
+                ("object_pools", self._optimize_object_pools),
+                ("fragmentation", self._reduce_memory_fragmentation),
+                ("cache_memory", self._optimize_cache_memory),
+                ("data_structures", self._optimize_data_structure_memory),
+            ]
+        )
 
         return {
             "optimizations_applied": optimizations,
@@ -623,20 +575,25 @@ class MemoryOptimizer:
     def implement_memory_monitoring(self) -> bool:
         """メモリ監視の実装"""
         try:
+            if self._monitoring_thread and self._monitoring_thread.is_alive():
+                return True
+
+            self._monitoring_stop_event.clear()
+
             # 定期的なメモリ監視
-            def memory_monitoring_loop():
-                while True:
+            def memory_monitoring_loop() -> None:
+                while not self._monitoring_stop_event.is_set():
                     try:
                         self.analyze_memory_usage()
-                        time.sleep(60)  # 1分間隔
+                        self._monitoring_stop_event.wait(60)  # 1分間隔
                     except Exception as e:
                         self.logger.error(f"Memory monitoring error: {e}")
-                        time.sleep(300)  # エラー時は5分待機
+                        self._monitoring_stop_event.wait(300)  # エラー時は5分待機
 
-            monitoring_thread = threading.Thread(
+            self._monitoring_thread = threading.Thread(
                 target=memory_monitoring_loop, daemon=True
             )
-            monitoring_thread.start()
+            self._monitoring_thread.start()
 
             self.logger.info("Memory monitoring implemented")
             return True
@@ -645,9 +602,20 @@ class MemoryOptimizer:
             self.logger.error(f"Memory monitoring implementation failed: {e}")
             return False
 
-    def _detect_memory_leaks(self) -> List[Dict[str, Any]]:
+    def stop_memory_monitoring(self) -> bool:
+        """メモリ監視スレッドを停止する."""
+        try:
+            self._monitoring_stop_event.set()
+            if self._monitoring_thread and self._monitoring_thread.is_alive():
+                self._monitoring_thread.join(timeout=5)
+            return True
+        except Exception as e:
+            self.logger.error(f"Memory monitoring stop failed: {e}")
+            return False
+
+    def _detect_memory_leaks(self) -> List[Dict[str, object]]:
         """メモリリークの検出"""
-        leaks = []
+        leaks: List[Dict[str, object]] = []
 
         if len(self.memory_snapshots) < 2:
             return leaks
@@ -674,22 +642,12 @@ class MemoryOptimizer:
 
         return leaks
 
-    def _analyze_memory_efficiency(self) -> Dict[str, Any]:
+    def _analyze_memory_efficiency(self) -> Dict[str, object]:
         """メモリ効率の分析"""
         if not self.memory_snapshots:
             return {}
 
         recent = self.memory_snapshots[-1]
-
-        # メモリ効率指標の計算
-        def _safe_len(maybe_seq):
-            try:
-                return len(maybe_seq)
-            except Exception:
-                try:
-                    return sum(1 for _ in maybe_seq)
-                except Exception:
-                    return 0
 
         efficiency = {
             "memory_per_thread_gb": recent["rss_gb"] / max(recent["thread_count"], 1),
@@ -736,17 +694,16 @@ class MemoryOptimizer:
             return False
 
 
-class CPUOptimizer:
+class CPUOptimizer(OptimizationComponentBase):
     """CPU最適化器"""
 
     def __init__(self, integration_manager: V433IntegrationManager):
-        self.integration_manager = integration_manager
-        self.logger = get_logger(__name__)
+        super().__init__(integration_manager)
 
         # CPU監視
         self.cpu_measurements: List[float] = []
 
-    def analyze_cpu_usage(self) -> Dict[str, Any]:
+    def analyze_cpu_usage(self) -> Dict[str, object]:
         """CPU使用量の分析"""
         self.logger.info("Analyzing CPU usage...")
 
@@ -808,34 +765,25 @@ class CPUOptimizer:
             else 0,
         }
 
-    def optimize_cpu_utilization(self) -> Dict[str, Any]:
+    def optimize_cpu_utilization(self) -> Dict[str, object]:
         """CPU使用率の最適化"""
         self.logger.info("Optimizing CPU utilization...")
 
-        optimizations = []
-
-        # 1. スレッドプールの最適化
-        if self._optimize_thread_pools():
-            optimizations.append("thread_pools")
-
-        # 2. 計算の並列化
-        if self._parallelize_computations():
-            optimizations.append("parallelization")
-
-        # 3. CPUアフィニティの最適化
-        if self._optimize_cpu_affinity():
-            optimizations.append("cpu_affinity")
-
-        # 4. アイドル時のCPU使用削減
-        if self._reduce_idle_cpu():
-            optimizations.append("idle_reduction")
+        optimizations = self._collect_applied_steps(
+            [
+                ("thread_pools", self._optimize_thread_pools),
+                ("parallelization", self._parallelize_computations),
+                ("cpu_affinity", self._optimize_cpu_affinity),
+                ("idle_reduction", self._reduce_idle_cpu),
+            ]
+        )
 
         return {
             "optimizations_applied": optimizations,
             "success": len(optimizations) > 0,
         }
 
-    def _analyze_cpu_pattern(self) -> Dict[str, Any]:
+    def _analyze_cpu_pattern(self) -> Dict[str, object]:
         """CPU使用パターンの分析"""
         if len(self.cpu_measurements) < 10:
             return {"pattern": "insufficient_data"}
@@ -876,8 +824,8 @@ class CPUOptimizer:
     def _parallelize_computations(self) -> bool:
         """計算の並列化"""
         try:
-            # CPUコア数の取得
-            cpu_count = mp.cpu_count()
+            # CPUコア数の取得（未使用でも取得失敗を監視）
+            _ = mp.cpu_count()
 
             # 計算負荷の高い処理の並列化
             return True
@@ -892,7 +840,8 @@ class CPUOptimizer:
             process = psutil.Process()
             if hasattr(process, "cpu_affinity"):
                 # 利用可能なCPUコアにバインド
-                available_cpus = list(range(psutil.cpu_count()))
+                cpu_count = psutil.cpu_count() or 1
+                available_cpus = list(range(cpu_count))
                 process.cpu_affinity(available_cpus)
                 return True
             return False
@@ -919,7 +868,7 @@ class PerformanceOptimizationSystem(BaseComponent):
     def __init__(
         self,
         integration_manager: V433IntegrationManager,
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[Dict[str, object]] = None,
     ):
         super().__init__(name="PerformanceOptimizationSystem", config=config)
         # Logger instance for the component
@@ -938,10 +887,10 @@ class PerformanceOptimizationSystem(BaseComponent):
         self.optimization_results: List[OptimizationResult] = []
 
         # モニタリング
-        self.monitoring_thread = None
+        self.monitoring_thread: Optional[threading.Thread] = None
         self.is_monitoring = False
 
-    def run_comprehensive_optimization(self) -> Dict[str, Any]:
+    def run_comprehensive_optimization(self) -> Dict[str, object]:
         """包括的パフォーマンス最適化を実行"""
         self.logger.info("Running comprehensive performance optimization...")
 
@@ -1020,13 +969,14 @@ class PerformanceOptimizationSystem(BaseComponent):
             self.is_monitoring = False
             return False
 
-    def stop_performance_monitoring(self):
+    def stop_performance_monitoring(self) -> bool:
         """パフォーマンス監視を停止"""
         self.is_monitoring = False
 
         try:
             if self.monitoring_thread and self.monitoring_thread.is_alive():
                 self.monitoring_thread.join(timeout=5)
+            self.memory_optimizer.stop_memory_monitoring()
 
             self.logger.info("Performance monitoring stopped")
             return True
@@ -1034,7 +984,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             self.logger.error(f"Error stopping performance monitoring: {e}")
             return False
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> Dict[str, object]:
         """パフォーマンスレポートを取得"""
         # 現在のシステム指標
         current_memory = self.memory_optimizer.analyze_memory_usage()
@@ -1046,12 +996,9 @@ class PerformanceOptimizationSystem(BaseComponent):
         )
         total_optimizations = len(self.optimization_results)
 
-        avg_improvement = np.mean(
-            [
-                r.improvement_percent
-                for r in self.optimization_results
-                if hasattr(r, "improvement_percent")
-            ]
+        improvement_values = [r.improvement_percent for r in self.optimization_results]
+        avg_improvement = (
+            float(np.mean(improvement_values)) if improvement_values else 0.0
         )
 
         return {
@@ -1062,9 +1009,7 @@ class PerformanceOptimizationSystem(BaseComponent):
                 "success_rate": successful_optimizations / total_optimizations
                 if total_optimizations > 0
                 else 0,
-                "avg_improvement_percent": avg_improvement
-                if not np.isnan(avg_improvement)
-                else 0,
+                "avg_improvement_percent": avg_improvement,
             },
             "targets": {
                 "latency_ms": self.targets.latency_ms,
@@ -1083,7 +1028,9 @@ class PerformanceOptimizationSystem(BaseComponent):
             ],
         }
 
-    def _generate_optimization_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_optimization_summary(
+        self, results: Dict[str, object]
+    ) -> Dict[str, object]:
         """最適化サマリーを生成"""
         summary = {
             "total_optimizations": len(results),
@@ -1127,7 +1074,7 @@ class PerformanceOptimizationSystem(BaseComponent):
 
         return summary
 
-    def benchmark_system_performance(self) -> Dict[str, Any]:
+    def benchmark_system_performance(self) -> Dict[str, object]:
         """システムパフォーマンスのベンチマーク"""
         self.logger.info("Running system performance benchmark...")
 
@@ -1153,7 +1100,7 @@ class PerformanceOptimizationSystem(BaseComponent):
         self.logger.info("System performance benchmark completed")
         return benchmark_results
 
-    def _benchmark_latency(self) -> Dict[str, Any]:
+    def _benchmark_latency(self) -> Dict[str, object]:
         """レイテンシーベンチマーク"""
         latencies = []
 
@@ -1175,7 +1122,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             "within_target": bool(np.mean(latencies) < self.targets.latency_ms),
         }
 
-    def _benchmark_throughput(self) -> Dict[str, Any]:
+    def _benchmark_throughput(self) -> Dict[str, object]:
         """スループットベンチマーク"""
         # 1秒あたりの操作数
         start_time = time.time()
@@ -1198,7 +1145,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             "within_target": bool(throughput >= self.targets.throughput_ops),
         }
 
-    def _benchmark_memory(self) -> Dict[str, Any]:
+    def _benchmark_memory(self) -> Dict[str, object]:
         """メモリベンチマーク"""
         memory_info = self.memory_optimizer.analyze_memory_usage()
 
@@ -1210,7 +1157,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             ),
         }
 
-    def _benchmark_cpu(self) -> Dict[str, Any]:
+    def _benchmark_cpu(self) -> Dict[str, object]:
         """CPUベンチマーク"""
         cpu_info = self.cpu_optimizer.analyze_cpu_usage()
 
@@ -1223,16 +1170,22 @@ class PerformanceOptimizationSystem(BaseComponent):
         }
 
     def _evaluate_target_achievement(
-        self, benchmark_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, benchmark_results: Dict[str, object]
+    ) -> Dict[str, object]:
         """目標達成度の評価"""
-        achievements = {}
+        achievements: Dict[str, bool] = {}
 
         for benchmark_type, result in benchmark_results.items():
-            if benchmark_type != "target_achievement":
-                achievements[benchmark_type] = result.get("within_target", False)
+            if benchmark_type == "target_achievement":
+                continue
+            if isinstance(result, dict):
+                achievements[benchmark_type] = bool(result.get("within_target", False))
+            else:
+                achievements[benchmark_type] = False
 
-        overall_achievement = sum(achievements.values()) / len(achievements)
+        overall_achievement = (
+            sum(achievements.values()) / len(achievements) if achievements else 0.0
+        )
 
         return {
             "individual_achievements": achievements,

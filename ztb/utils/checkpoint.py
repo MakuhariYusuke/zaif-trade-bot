@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypedDict, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, cast
 
 import numpy as np
 
@@ -29,7 +29,7 @@ from ztb.types.common import ConfigDict
 if TYPE_CHECKING:
     from stable_baselines3.common.base_class import BaseAlgorithm
 else:
-    BaseAlgorithm = Any  # type: ignore
+    BaseAlgorithm = object  # type: ignore
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.errors import safe_operation
@@ -82,7 +82,7 @@ class TrainingContextTypedDict(TypedDict, total=False):
 class CheckpointData(TypedDict):
     """Checkpoint data structure"""
 
-    obj: Any
+    obj: object
     step: int
     metadata: MetadataTypedDict
     timestamp: float
@@ -93,9 +93,9 @@ class TrainingStateCheckpointData(TypedDict):
     """Extended checkpoint data structure for complete training state"""
 
     # Model and training state
-    model_state: Dict[str, Any]
-    optimizer_state: Dict[str, Any]
-    replay_buffer_state: Optional[Dict[str, Any]]
+    model_state: dict[str, object]
+    optimizer_state: dict[str, object]
+    replay_buffer_state: Optional[dict[str, object]]
 
     # Training progress
     total_timesteps: int
@@ -104,7 +104,7 @@ class TrainingStateCheckpointData(TypedDict):
     episode_lengths: List[int]
 
     # Random state for reproducibility
-    random_state: Tuple[Any, Any, Any]  # (random, numpy, torch) states
+    random_state: tuple[object, object, object]  # (random, numpy, torch) states
 
     # Training configuration
     config: ConfigDict
@@ -140,7 +140,7 @@ class CheckpointManager:
         self.last_checkpoint_path: Optional[str] = None
 
         # Async saving queue
-        self.save_queue: Queue[Optional[Dict[str, Any]]] = Queue(maxsize=max_queue_size)
+        self.save_queue: Queue[Optional[dict[str, object]]] = Queue(maxsize=max_queue_size)
         self.worker_thread = threading.Thread(target=self._save_worker, daemon=True)
         self.worker_thread.start()
 
@@ -154,7 +154,7 @@ class CheckpointManager:
 
     def save_async(
         self,
-        obj: Any,
+        obj: object,
         step: int,
         metadata: Optional[MetadataTypedDict] = None,
         training_context: Optional[TrainingContextTypedDict] = None,
@@ -176,7 +176,7 @@ class CheckpointManager:
 
     def save_sync(
         self,
-        obj: Any,
+        obj: object,
         step: int,
         metadata: Optional[MetadataTypedDict] = None,
         training_context: Optional[TrainingContextTypedDict] = None,
@@ -184,7 +184,7 @@ class CheckpointManager:
         """Save checkpoint synchronously (blocking)"""
         return self._save_checkpoint(obj, step, metadata or {}, training_context or {})
 
-    def load_latest(self) -> Tuple[CheckpointData, int, Dict[str, Any]]:
+    def load_latest(self) -> Tuple[CheckpointData, int, dict[str, object]]:
         """Load the latest checkpoint with differential support"""
         checkpoints = list(self.save_dir.glob("checkpoint*.pkl*"))
         if not checkpoints:
@@ -324,10 +324,10 @@ class CheckpointManager:
 
     def _save_checkpoint(
         self,
-        obj: Any,
+        obj: object,
         step: int,
-        metadata: Dict[str, Any],
-        training_context: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, object],
+        training_context: Optional[dict[str, object]] = None,
     ) -> str:
         """Internal save method with differential support"""
         checkpoint_data: CheckpointData = {
@@ -379,7 +379,7 @@ class CheckpointManager:
 
         return str(path)
 
-    def _load_checkpoint(self, path: str) -> Tuple[CheckpointData, int, Dict[str, Any]]:
+    def _load_checkpoint(self, path: str) -> Tuple[CheckpointData, int, dict[str, object]]:
         """Internal load method with differential support"""
         try:
             with open(path, "rb") as f:
@@ -482,7 +482,7 @@ class CheckpointManager:
             step_str = step_str.split(".")[0]
         return int(step_str)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, object]:
         """Get checkpoint statistics"""
         return self.stats.copy()
 
@@ -493,9 +493,9 @@ class CheckpointManager:
 
     def _compute_diff(
         self, old_data: CheckpointData, new_data: CheckpointData
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """Compute differential checkpoint data"""
-        diff: Dict[str, Any] = {
+        diff: dict[str, object] = {
             "step": new_data["step"],
             "timestamp": new_data["timestamp"],
         }
@@ -518,8 +518,8 @@ class CheckpointManager:
         return diff
 
     def _dict_diff(
-        self, old_dict: Dict[str, Any], new_dict: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, old_dict: dict[str, object], new_dict: dict[str, object]
+    ) -> dict[str, object]:
         """Compute diff between two dictionaries (recursive)"""
         diff = {}
 
@@ -543,7 +543,7 @@ class CheckpointManager:
         return diff
 
     def _apply_diff(
-        self, base_data: CheckpointData, diff: Dict[str, Any]
+        self, base_data: CheckpointData, diff: dict[str, object]
     ) -> CheckpointData:
         """Apply differential data to base checkpoint"""
         result = base_data.copy()
@@ -563,8 +563,8 @@ class CheckpointManager:
         return result
 
     def _apply_dict_diff(
-        self, base_dict: Dict[str, Any], diff: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, base_dict: dict[str, object], diff: dict[str, object]
+    ) -> dict[str, object]:
         """Apply dictionary diff to base dict (recursive)"""
         result = base_dict.copy()
 
@@ -650,9 +650,9 @@ class HierarchicalCheckpointManager:
     def save_checkpoint(
         self,
         step: int,
-        model_state: Dict[str, Any],
-        optimizer_state: Optional[Dict[str, Any]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
+        model_state: dict[str, object],
+        optimizer_state: Optional[dict[str, object]] = None,
+        metrics: Optional[dict[str, object]] = None,
         checkpoint_type: str = "auto",
     ) -> None:
         """
@@ -689,9 +689,9 @@ class HierarchicalCheckpointManager:
     def _save_checkpoint_sync(
         self,
         step: int,
-        model_state: Dict[str, Any],
-        optimizer_state: Optional[Dict[str, Any]],
-        metrics: Optional[Dict[str, Any]],
+        model_state: dict[str, object],
+        optimizer_state: Optional[dict[str, object]],
+        metrics: Optional[dict[str, object]],
         checkpoint_type: str,
     ) -> None:
         """Synchronous checkpoint saving"""
@@ -810,7 +810,7 @@ class HierarchicalCheckpointManager:
 
     def load_checkpoint(
         self, checkpoint_path: Optional[Path] = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, object]]:
         """
         Load checkpoint from file.
 
@@ -852,7 +852,7 @@ class HierarchicalCheckpointManager:
             context=f"Loading checkpoint from {checkpoint_path}",
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, object]:
         """Get checkpoint statistics"""
         light_count = len(list(self.save_dir.glob("checkpoint_light_*.pkl*")))
         full_count = len(list(self.save_dir.glob("checkpoint_full_*.pkl*")))
@@ -1071,7 +1071,7 @@ class TrainingStateManager:
 
         return pickle.loads(data)
 
-    def list_training_states(self) -> List[Dict[str, Any]]:
+    def list_training_states(self) -> List[dict[str, object]]:
         """List all saved training states with metadata"""
         states = []
         for filepath in self.save_dir.glob("training_state_*.pkl*"):
@@ -1105,9 +1105,9 @@ class TrainingStateManager:
     def validate_resume_compatibility(
         self,
         training_state: TrainingStateCheckpointData,
-        current_config: Dict[str, Any],
+        current_config: dict[str, object],
         data_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """Validate compatibility between saved training state and current setup"""
 
         validation_results = {"compatible": True, "warnings": [], "errors": []}
@@ -1186,7 +1186,7 @@ class TrainingStateManager:
 
         return validation_results
 
-    def _get_nested_value(self, config: ConfigDict, path: str) -> Any:
+    def _get_nested_value(self, config: ConfigDict, path: str) -> object:
         """Get nested value from config using dot notation"""
         keys = path.split(".")
         value = config

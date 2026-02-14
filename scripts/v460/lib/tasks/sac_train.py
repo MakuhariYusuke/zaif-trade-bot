@@ -18,12 +18,42 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Protocol, cast
+
+import pandas as pd
+
+from scripts.v460.lib.config_access import as_int, section
+from ztb.types.common import ConfigSection
 
 logger = logging.getLogger(__name__)
 
 
-def task_sac_train(cfg: dict) -> dict:
+class TrainingEnvProtocol(Protocol):
+    observation_space: object
+    action_space: object
+
+    def reset(self) -> tuple[object, object]:
+        ...
+
+    def step(self, action: object) -> tuple[object, float, bool, bool, object]:
+        ...
+
+    def close(self) -> None:
+        ...
+
+
+class SACTrainModelProtocol(Protocol):
+    def learn(self, total_timesteps: int, reset_num_timesteps: bool = False) -> object:
+        ...
+
+    def predict(self, observation: object, deterministic: bool = True) -> tuple[object, object]:
+        ...
+
+    def save(self, path: str) -> None:
+        ...
+
+
+def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     """G2 SAC training task.
 
     000# §3.4 Go条件:
@@ -37,16 +67,19 @@ def task_sac_train(cfg: dict) -> dict:
     Returns:
         results dict with training metrics for G2 gate judgment.
     """
-    seed = cfg.get("seed", 42)
-    training_cfg = cfg.get("training", {})
-    sac_cfg = cfg.get("sac_hyperparameters", {})
-    data_cfg = cfg["data"]
-    total_timesteps = training_cfg.get("total_timesteps", 50_000)
+    training_cfg = section(cfg, "training")
+    sac_cfg = section(cfg, "sac_hyperparameters")
+    data_cfg = section(cfg, "data")
+    total_timesteps_raw = training_cfg.get("total_timesteps", 50_000)
+    total_timesteps = as_int(total_timesteps_raw, 50_000)
+    seed_raw = cfg.get("seed", 42)
+    seed = as_int(seed_raw, 42)
 
     logger.info(f"SAC Training | seed={seed} | timesteps={total_timesteps}")
 
     # ── Data loading ──
-    data_path = data_cfg.get("v460_features_path") or data_cfg.get("ohlcv_path")
+    data_path_raw = data_cfg.get("v460_features_path") or data_cfg.get("ohlcv_path")
+    data_path = str(data_path_raw) if data_path_raw else ""
     if not data_path:
         raise ValueError("data.v460_features_path or data.ohlcv_path is required")
 
@@ -68,16 +101,17 @@ def task_sac_train(cfg: dict) -> dict:
 
     # ── H4: Replay buffer を total_timesteps に合わせて動的調整 ──
     # デフォルト 1M は 50K 訓練で 20 倍過剰 → obs_dim × buffer_size でメモリ浪費
-    raw_buffer = sac_cfg.get("buffer_size", 1_000_000)
+    raw_buffer_value = sac_cfg.get("buffer_size", 1_000_000)
+    raw_buffer = as_int(raw_buffer_value, 1_000_000)
     sac_cfg = dict(sac_cfg)  # 元 cfg を汚さないようコピー
     sac_cfg["buffer_size"] = min(raw_buffer, max(total_timesteps * 2, 10_000))
-    if sac_cfg["buffer_size"] != raw_buffer:
+    if cast(int, sac_cfg["buffer_size"]) != raw_buffer:
         logger.info(
             f"Replay buffer adjusted: {raw_buffer:,} → {sac_cfg['buffer_size']:,} "
             f"(aligned to 2× timesteps)"
         )
 
-    env: Any = None
+    env: TrainingEnvProtocol | None = None
     try:
         # ── Environment setup ──
         env, env_info = _create_training_env(df, cfg)
@@ -97,7 +131,9 @@ def task_sac_train(cfg: dict) -> dict:
         eval_metrics = _evaluate_trained_model(model, env, cfg)
 
         # ── Save model ──
-        model_dir = Path(cfg.get("output", {}).get("model_dir", "models/v460"))
+        output_cfg = section(cfg, "output")
+        model_dir_raw = output_cfg.get("model_dir", "models/v460")
+        model_dir = Path(str(model_dir_raw))
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = model_dir / f"sac_v460_seed{seed}.zip"
         model.save(str(model_path))
@@ -118,7 +154,7 @@ def task_sac_train(cfg: dict) -> dict:
         del df
 
     # ── Results ──
-    results: Dict[str, Any] = {
+    results: dict[str, object] = {
         "algorithm": "sac",
         "seed": seed,
         "total_timesteps": total_timesteps,
@@ -138,8 +174,8 @@ def task_sac_train(cfg: dict) -> dict:
 
 
 def _create_training_env(
-    df: "Any", cfg: dict
-) -> tuple["Any", Dict[str, Any]]:
+    df: pd.DataFrame, cfg: ConfigSection
+) -> tuple[TrainingEnvProtocol, dict[str, int | str]]:
     """訓練環境を作成.
 
     現時点では HeavyTradingEnv を使用 (016# F2: 環境切替は別チケット).
@@ -148,8 +184,10 @@ def _create_training_env(
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
     from ztb.trading.environment.utils.config import EnvironmentConfig
 
-    env_cfg = cfg.get("environment", {})
-    feature_columns = cfg.get("features", {}).get("selected", [])
+    env_cfg = section(cfg, "environment")
+    feature_cfg = section(cfg, "features")
+    selected_raw = feature_cfg.get("selected", [])
+    feature_columns = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
 
     # Construct EnvironmentConfig
     env_config = EnvironmentConfig(**env_cfg) if env_cfg else EnvironmentConfig()
@@ -173,14 +211,14 @@ def _create_training_env(
         "feature_columns_count": len(feature_columns),
     }
 
-    return env, env_info
+    return cast(TrainingEnvProtocol, env), env_info
 
 
 def _create_sac_model(
-    env: "Any",
-    sac_cfg: dict,
+    env: TrainingEnvProtocol,
+    sac_cfg: ConfigSection,
     seed: int,
-) -> "Any":
+) -> SACTrainModelProtocol:
     """SB3 SAC モデルを作成."""
     from stable_baselines3 import SAC
 
@@ -201,20 +239,22 @@ def _create_sac_model(
         seed=seed,
     )
 
-    return model
+    return cast(SACTrainModelProtocol, model)
 
 
 def _train_with_checkpoints(
-    model: "Any",
+    model: SACTrainModelProtocol,
     total_timesteps: int,
-    cfg: dict,
-) -> list[Dict[str, Any]]:
+    cfg: ConfigSection,
+) -> list[dict[str, int]]:
     """チェックポイント毎に指標を収集しながら訓練.
 
     000# §3.4: 「30K 以降で ROI 変動 ≤ 5%」の判定に必要.
     """
-    checkpoint_interval = cfg.get("training", {}).get("checkpoint_interval", 10_000)
-    checkpoint_metrics: list[Dict[str, Any]] = []
+    training_cfg = section(cfg, "training")
+    checkpoint_interval_raw = training_cfg.get("checkpoint_interval", 10_000)
+    checkpoint_interval = as_int(checkpoint_interval_raw, 10_000)
+    checkpoint_metrics: list[dict[str, int]] = []
 
     remaining = total_timesteps
     trained = 0
@@ -226,7 +266,7 @@ def _train_with_checkpoints(
         remaining -= steps
 
         # Collect checkpoint metrics (placeholder — env metrics are env-dependent)
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, int] = {
             "timesteps": trained,
         }
         checkpoint_metrics.append(metrics)
@@ -236,10 +276,10 @@ def _train_with_checkpoints(
 
 
 def _evaluate_trained_model(
-    model: "Any",
-    env: "Any",
-    cfg: dict,
-) -> Dict[str, Any]:
+    model: SACTrainModelProtocol,
+    env: TrainingEnvProtocol,
+    cfg: ConfigSection,
+) -> dict[str, object]:
     """訓練済みモデルを評価 (in-sample).
 
     G2 判定に必要な指標を収集:
@@ -247,44 +287,48 @@ def _evaluate_trained_model(
       - roi
       - trade_count
     """
-    n_eval_episodes = cfg.get("evaluation", {}).get("n_episodes", 1)
+    eval_cfg = section(cfg, "evaluation")
+    n_eval_episodes_raw = eval_cfg.get("n_episodes", 1)
+    n_eval_episodes = as_int(n_eval_episodes_raw, 1)
 
     total_reward = 0.0
     total_steps = 0
 
     for ep in range(n_eval_episodes):
-        obs, info = env.reset()
+        obs, _ = env.reset()
         done = False
         ep_reward = 0.0
 
         while not done:
             action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs, reward, terminated, truncated, _ = env.step(action)
             ep_reward += reward
             total_steps += 1
             done = terminated or truncated
 
         total_reward += ep_reward
 
-    eval_metrics: Dict[str, Any] = {
+    eval_metrics: dict[str, object] = {
         "mean_reward": total_reward / max(n_eval_episodes, 1),
         "total_steps": total_steps,
         "n_episodes": n_eval_episodes,
     }
 
     # Extract environment-specific metrics if available
-    env_metrics = getattr(env, "get_metrics", lambda: {})()
-    if isinstance(env_metrics, dict):
-        eval_metrics.update(env_metrics)
+    get_metrics_fn = getattr(env, "get_metrics", None)
+    if callable(get_metrics_fn):
+        env_metrics = get_metrics_fn()
+        if isinstance(env_metrics, dict):
+            eval_metrics.update({str(k): v for k, v in env_metrics.items()})
 
     return eval_metrics
 
 
 def _save_model_schema(
-    model: "Any",
-    env: "Any",
-    env_info: Dict[str, Any],
-    cfg: dict,
+    model: SACTrainModelProtocol,
+    env: TrainingEnvProtocol,
+    env_info: dict[str, int | str],
+    cfg: ConfigSection,
     seed: int,
 ) -> None:
     """モデルのスキーマメタデータを保存 (017# F4/F9 対応).
@@ -298,19 +342,23 @@ def _save_model_schema(
         model_name = f"sac_v460_seed{seed}"
         manager = FeatureSchemaManager(model_name=model_name)
 
-        feature_names = cfg.get("features", {}).get("selected", [])
+        feature_cfg = section(cfg, "features")
+        selected_raw = feature_cfg.get("selected", [])
+        feature_names = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
         if not feature_names:
             logger.warning("No feature names in config — schema will be minimal")
             feature_names = [f"feature_{i}" for i in range(env_info["obs_dim"])]
 
-        training_config = {
+        sac_hyperparameters = section(cfg, "sac_hyperparameters")
+
+        training_config: dict[str, object] = {
             "algorithm": "sac",
             "version": "v460",
             "env_type": env_info["env_type"],
             "obs_dim": env_info["obs_dim"],
             "action_dim": env_info["action_dim"],
             "seed": seed,
-            "sac_hyperparameters": cfg.get("sac_hyperparameters", {}),
+            "sac_hyperparameters": sac_hyperparameters,
         }
 
         manager.save_schema(

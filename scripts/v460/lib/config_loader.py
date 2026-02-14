@@ -14,21 +14,30 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional, cast
 
 from ztb.io.yaml_io import read_yaml
+from ztb.types.common import ConfigSection, is_config_dict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+def _coerce_config_section(raw: object) -> ConfigSection:
+    """Best-effort coercion for YAML payloads."""
+    if isinstance(raw, dict):
+        return cast(ConfigSection, raw)
+    return {}
+
+
+def _deep_merge(base: ConfigSection, override: ConfigSection) -> ConfigSection:
     """Recursively merge override into base (base is not mutated)."""
-    merged = copy.deepcopy(base)
+    merged: ConfigSection = copy.deepcopy(base)
     for key, val in override.items():
         if key.startswith("_"):
             continue  # skip meta keys (_base, _gate, etc.)
-        if isinstance(val, dict) and isinstance(merged.get(key), dict):
-            merged[key] = _deep_merge(merged[key], val)
+        existing = merged.get(key)
+        if is_config_dict(val) and isinstance(existing, dict):
+            merged[key] = _deep_merge(cast(ConfigSection, existing), val)
         else:
             merged[key] = copy.deepcopy(val)
     return merged
@@ -37,7 +46,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 def load_config(
     experiment_path: str | Path,
     base_path: Optional[str | Path] = None,
-) -> dict[str, Any]:
+) -> ConfigSection:
     """Load experiment config with base.yaml merge.
 
     Args:
@@ -54,18 +63,19 @@ def load_config(
     if not exp_path.is_absolute():
         exp_path = _PROJECT_ROOT / exp_path
 
-    exp_raw = read_yaml(exp_path) or {}
+    exp_raw = _coerce_config_section(read_yaml(exp_path))
 
     # Resolve base
     if base_path is None:
-        base_ref = exp_raw.get("_base", "configs/v460/base.yaml")
+        base_ref_value = exp_raw.get("_base")
+        base_ref = base_ref_value if isinstance(base_ref_value, str) else "configs/v460/base.yaml"
         base_path = _PROJECT_ROOT / base_ref
     else:
         base_path = Path(base_path)
         if not base_path.is_absolute():
             base_path = _PROJECT_ROOT / base_path
 
-    base_raw = read_yaml(base_path) or {}
+    base_raw = _coerce_config_section(read_yaml(base_path))
 
     merged = _deep_merge(base_raw, exp_raw)
 
@@ -74,9 +84,11 @@ def load_config(
         merged["_base"] = str(base_path.relative_to(_PROJECT_ROOT))
     except ValueError:
         merged["_base"] = str(base_path)
-    merged["_gate"] = exp_raw.get("_gate", "unknown")
+    gate_value = exp_raw.get("_gate")
+    merged["_gate"] = gate_value if isinstance(gate_value, str) else "unknown"
     # 007# F7: _task も明示復元 (_deep_merge がスキップするため)
-    merged["_task"] = exp_raw.get("_task", "feature_info")
+    task_value = exp_raw.get("_task")
+    merged["_task"] = task_value if isinstance(task_value, str) else "feature_info"
     try:
         merged["_experiment"] = str(exp_path.relative_to(_PROJECT_ROOT))
     except ValueError:
@@ -88,15 +100,25 @@ def load_config(
     return merged
 
 
-def _validate(cfg: dict[str, Any]) -> None:
+def _validate(cfg: ConfigSection) -> None:
     """Validate required fields are non-null."""
     errors: list[str] = []
 
-    features_selected = cfg.get("features", {}).get("selected")
+    features_value = cfg.get("features")
+    features_selected = (
+        features_value.get("selected")
+        if is_config_dict(features_value)
+        else None
+    )
     if features_selected is None:
         errors.append("features.selected is null — must be specified in experiment YAML")
 
-    train_end = cfg.get("data", {}).get("train_end_index")
+    data_value = cfg.get("data")
+    train_end = (
+        data_value.get("train_end_index")
+        if is_config_dict(data_value)
+        else None
+    )
     if train_end is None:
         errors.append("data.train_end_index is null — must be specified in experiment YAML")
 
@@ -106,7 +128,7 @@ def _validate(cfg: dict[str, Any]) -> None:
 
 def load_gate_thresholds(
     path: Optional[str | Path] = None,
-) -> dict[str, Any]:
+) -> ConfigSection:
     """Load gate_thresholds.yaml."""
     if path is None:
         path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
@@ -115,12 +137,12 @@ def load_gate_thresholds(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    return read_yaml(path) or {}
+    return _coerce_config_section(read_yaml(path))
 
 
 def load_fill_test_config(
     path: Optional[str | Path] = None,
-) -> dict[str, Any]:
+) -> ConfigSection:
     """Load fill_test.yaml — fill test の全設定を YAML から読込.
 
     v459 反省: 設定がコード内 dict で形骸化 → YAML 一元管理.
@@ -139,4 +161,4 @@ def load_fill_test_config(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    return read_yaml(path) or {}
+    return _coerce_config_section(read_yaml(path))

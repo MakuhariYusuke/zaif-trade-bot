@@ -18,13 +18,14 @@ from __future__ import annotations
 import logging
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Callable, Optional, Protocol, cast
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 from sklearn.preprocessing import StandardScaler
+from ztb.types.common import JSONDict
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -34,18 +35,44 @@ _RESERVED_XGB_KEYS = frozenset({
     "eval_metric", "n_jobs", "verbosity", "random_state", "seed",
 })
 
+
+Array = np.ndarray
+
+
+class FitPredictModel(Protocol):
+    """Minimal protocol for sklearn-like estimators used in evaluator."""
+
+    def fit(self, X: Array, y: Array) -> object:
+        ...
+
+    def predict(self, X: Array) -> Array:
+        ...
+
+
+class ProbabilisticModel(FitPredictModel, Protocol):
+    """Classifier protocol with probability output."""
+
+    def predict_proba(self, X: Array) -> Array:
+        ...
+
+
+ModelFactory = Callable[[], FitPredictModel]
+
+
 # ---------------------------------------------------------------
 # Model factories
 # ---------------------------------------------------------------
 
 def make_xgboost_classifier(
     seed: int = 42,
-    **kwargs: Any,
-) -> Any:
+    **kwargs: object,
+) -> FitPredictModel:
     """XGBoost classifier factory (direction targets)."""
     from xgboost import XGBClassifier
     # Filter out reserved keys to avoid TypeError from double specification
-    filtered = {k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS}
+    filtered: dict[str, object] = {
+        k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS
+    }
     return XGBClassifier(
         n_estimators=filtered.pop("n_estimators", 200),
         max_depth=filtered.pop("max_depth", 6),
@@ -62,11 +89,13 @@ def make_xgboost_classifier(
 
 def make_xgboost_regressor(
     seed: int = 42,
-    **kwargs: Any,
-) -> Any:
+    **kwargs: object,
+) -> FitPredictModel:
     """XGBoost regressor factory (magnitude/volatility targets)."""
     from xgboost import XGBRegressor
-    filtered = {k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS}
+    filtered: dict[str, object] = {
+        k: v for k, v in kwargs.items() if k not in _RESERVED_XGB_KEYS
+    }
     return XGBRegressor(
         n_estimators=filtered.pop("n_estimators", 200),
         max_depth=filtered.pop("max_depth", 6),
@@ -82,18 +111,18 @@ def make_xgboost_regressor(
 
 
 # Backward compat alias
-def make_xgboost(seed: int = 42, **kwargs: Any) -> Any:
+def make_xgboost(seed: int = 42, **kwargs: object) -> FitPredictModel:
     """Alias for make_xgboost_classifier (backward compat)."""
     return make_xgboost_classifier(seed=seed, **kwargs)
 
 
-def make_logistic(seed: int = 42) -> Any:
+def make_logistic(seed: int = 42) -> FitPredictModel:
     """Logistic regression factory (baseline for classification)."""
     from sklearn.linear_model import LogisticRegression
     return LogisticRegression(max_iter=500, C=1.0, solver="lbfgs", random_state=seed)
 
 
-def make_ridge(seed: int = 42) -> Any:
+def make_ridge(seed: int = 42) -> FitPredictModel:
     """Ridge regression factory (baseline for regression)."""
     from sklearn.linear_model import Ridge
     return Ridge(alpha=1.0, random_state=seed)
@@ -142,7 +171,7 @@ class WalkForwardResult:
     ic_std: float = 0.0
     ic_significant_count: int = 0
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JSONDict:
         return {
             "model_name": self.model_name,
             "target_name": self.target_name,
@@ -171,7 +200,7 @@ def walk_forward_eval(
     df: pd.DataFrame,
     feature_cols: list[str],
     target_col: str,
-    model_factory: Callable[[], Any],
+    model_factory: ModelFactory,
     model_name: str = "XGBoost",
     n_folds: int = 5,
     train_ratio: float = 0.80,
@@ -226,15 +255,16 @@ def walk_forward_eval(
         model.fit(X_train_s, y_train)
 
         # Predict
-        y_pred = model.predict(X_test_s)
+        y_pred = np.asarray(model.predict(X_test_s))
 
         # Signal for IC calculation
         if is_classification and hasattr(model, "predict_proba"):
-            y_prob = model.predict_proba(X_test_s)[:, 1]
+            proba_model = cast(ProbabilisticModel, model)
+            y_prob = np.asarray(proba_model.predict_proba(X_test_s))[:, 1]
             signal = y_prob * 2 - 1  # [0,1] → [-1,1]
         else:
             # Regression: predictions are the signal directly
-            signal = y_pred.astype(float)
+            signal = np.asarray(y_pred, dtype=float)
 
         # Metrics
         if is_classification:
@@ -315,11 +345,11 @@ def evaluate_multi_target(
     feature_cols: list[str],
     horizons: list[int],
     target_types: list[str],
-    model_factory: Callable[[], Any],
+    model_factory: ModelFactory,
     model_name: str = "XGBoost",
     n_folds: int = 5,
     train_ratio: float = 0.80,
-    regression_factory: Optional[Callable[[], Any]] = None,
+    regression_factory: Optional[ModelFactory] = None,
 ) -> dict[str, WalkForwardResult]:
     """Run walk-forward for all horizon × target combinations.
 

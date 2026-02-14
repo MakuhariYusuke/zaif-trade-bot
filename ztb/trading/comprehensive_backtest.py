@@ -9,14 +9,14 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-from ztb.adaptation.monitoring.types import TradingPerformanceMetrics
+from ztb.adaptation.monitoring.types import RiskMetrics, TradingPerformanceMetrics
 from ztb.io.data_loader import DataLoader
 from ztb.metrics.metrics import coefficient_of_variation
 from ztb.trading.v433_integration_manager import V433IntegrationManager
@@ -89,9 +89,9 @@ class BacktestResult:
     beta: float = 0.0
     information_ratio: float = 0.0
     equity_curve: List[float] = field(default_factory=list)
-    trade_log: List[Dict[str, Any]] = field(default_factory=list)
+    trade_log: List[dict[str, object]] = field(default_factory=list)
     monthly_returns: Dict[str, float] = field(default_factory=dict)
-    drawdown_periods: List[Dict[str, Any]] = field(default_factory=list)
+    drawdown_periods: List[dict[str, object]] = field(default_factory=list)
     # BTC関連フィールド
     initial_btc: float = 0.0
     final_btc: float = 0.0
@@ -100,9 +100,9 @@ class BacktestResult:
     net_btc_gained: float = 0.0
     execution_time: float = 0.0
     # Backwards-compatible fields
-    trades: Optional[List[Dict[str, Any]]] = None
+    trades: Optional[List[dict[str, object]]] = None
     performance_metrics: Optional[TradingPerformanceMetrics] = None
-    risk_metrics: Optional[Any] = None
+    risk_metrics: Optional[object] = None
     success: bool = False
 
     def __post_init__(self):
@@ -128,7 +128,7 @@ class BacktestResult:
                 self.risk_metrics = None
 
     @property
-    def result_summary(self) -> Dict[str, Any]:
+    def result_summary(self) -> dict[str, object]:
         """Provide a concise summary of key backtest results."""
         # Prefer performance_metrics.total_return if provided
         total_return_val = 0.0
@@ -177,8 +177,8 @@ class CrossValidationResult:
     """交差検証結果"""
 
     fold_results: List[BacktestResult] = field(default_factory=list)
-    average_performance: Dict[str, Any] = field(default_factory=dict)
-    performance_variance: Dict[str, Any] = field(default_factory=dict)
+    average_performance: dict[str, object] = field(default_factory=dict)
+    performance_variance: dict[str, object] = field(default_factory=dict)
     confidence_intervals: Dict[str, Tuple[float, float]] = field(default_factory=dict)
 
 
@@ -354,7 +354,7 @@ class BacktestEngine:
     def __init__(
         self,
         integration_manager: V433IntegrationManager,
-        data_manager_or_config: Any = None,
+        data_manager_or_config: object = None,
     ):
         self.integration_manager = integration_manager
         # Accept either DataManager, MarketData, or BacktestConfig for compatibility
@@ -374,8 +374,8 @@ class BacktestEngine:
         # バックテスト状態
         if not hasattr(self, "current_balance"):
             self.current_balance = 0.0
-        self.current_positions: Dict[str, Dict[str, Any]] = {}
-        self.trade_log: List[Dict[str, Any]] = []
+        self.current_positions: Dict[str, dict[str, object]] = {}
+        self.trade_log: List[dict[str, object]] = []
         self.equity_curve: List[float] = []
 
     def run_backtest(self, config: BacktestConfig) -> BacktestResult:
@@ -474,8 +474,8 @@ class BacktestEngine:
         )
 
     def _execute_trading_strategy(
-        self, market_data: Any, config: Optional[BacktestConfiguration] = None
-    ) -> List[Any]:
+        self, market_data: object, config: Optional[BacktestConfiguration] = None
+    ) -> list[object]:
         # Existing loop logic moved into a callable helper
         # if MarketData object, extract df
         if hasattr(market_data, "data") and isinstance(market_data.data, pd.DataFrame):
@@ -524,7 +524,7 @@ class BacktestEngine:
 
     def _generate_signals(
         self, timestamp: pd.Timestamp, bar: pd.Series, config: BacktestConfig
-    ) -> Optional[List[Dict[str, Any]]]:
+    ) -> Optional[List[dict[str, object]]]:
         # Returns a list of signals; for now single signal or None
         signal = self._generate_trading_signal(timestamp, bar, config)
         return [signal] if signal else []
@@ -551,7 +551,7 @@ class BacktestEngine:
             return getattr(t, key, default)
 
         # Pair-wise PnL calculation for buy/sell pairs (simple LIFO pairing)
-        open_positions: List[Dict[str, Any]] = []
+        open_positions: List[dict[str, object]] = []
         for t in self.trade_log:
             side = _get(t, "side", "").lower()
             price = _get(t, "price", 0.0)
@@ -589,11 +589,11 @@ class BacktestEngine:
         return metrics
 
     @property
-    def trades(self) -> List[Dict[str, Any]]:
+    def trades(self) -> List[dict[str, object]]:
         return self.trade_log
 
     @trades.setter
-    def trades(self, value: List[Dict[str, Any]]):
+    def trades(self, value: List[dict[str, object]]):
         self.trade_log = value
 
     def _process_bar(
@@ -644,7 +644,7 @@ class BacktestEngine:
 
     def _generate_trading_signal(
         self, timestamp: pd.Timestamp, bar: pd.Series, config: BacktestConfig
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, object]]:
         """取引シグナルの生成"""
         try:
             # V433システムからのシグナル取得
@@ -686,7 +686,7 @@ class BacktestEngine:
 
     def _execute_signal(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, object],
         bar: pd.Series,
         timestamp: pd.Timestamp,
         config: BacktestConfig,
@@ -703,7 +703,7 @@ class BacktestEngine:
 
     def _open_long_position(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, object],
         bar: pd.Series,
         timestamp: pd.Timestamp,
         config: BacktestConfig,
@@ -743,7 +743,7 @@ class BacktestEngine:
 
     def _close_position(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, object],
         bar: pd.Series,
         timestamp: pd.Timestamp,
         config: BacktestConfig,
@@ -1100,7 +1100,7 @@ class WalkForwardAnalyzer:
 
     def _calculate_overall_performance(
         self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """全体パフォーマンスの計算"""
         in_sample_returns = [r.total_return for r in in_sample]
         out_sample_returns = [r.total_return for r in out_sample]
@@ -1120,7 +1120,7 @@ class WalkForwardAnalyzer:
 
     def _evaluate_parameter_stability(
         self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """パラメータ安定性の評価"""
         # シグナル品質の安定性
         in_sample_win_rates = [r.win_rate for r in in_sample]
@@ -1140,7 +1140,7 @@ class WalkForwardAnalyzer:
 
     def _calculate_overfitting_metrics(
         self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """オーバーフィッティング指標の計算"""
         in_sample_sharpe = [r.sharpe_ratio for r in in_sample]
         out_sample_sharpe = [r.sharpe_ratio for r in out_sample]
@@ -1210,7 +1210,7 @@ class CrossValidationAnalyzer:
 
     def _calculate_average_performance(
         self, fold_results: List[BacktestResult]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """平均パフォーマンスの計算"""
         returns = [r.total_return for r in fold_results]
         sharpe_ratios = [r.sharpe_ratio for r in fold_results]
@@ -1227,7 +1227,7 @@ class CrossValidationAnalyzer:
 
     def _calculate_performance_variance(
         self, fold_results: List[BacktestResult]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """パフォーマンス分散の計算"""
         returns = [r.total_return for r in fold_results]
         sharpe_ratios = [r.sharpe_ratio for r in fold_results]
@@ -1280,7 +1280,7 @@ class ComprehensiveBacktestSystem:
         self.walk_forward_results: List[WalkForwardResult] = []
         self.cross_validation_results: List[CrossValidationResult] = []
 
-    def run_comprehensive_backtest(self, config: BacktestConfig) -> Dict[str, Any]:
+    def run_comprehensive_backtest(self, config: BacktestConfig) -> dict[str, object]:
         """包括的バックテスト実行"""
         self.logger.info("Running comprehensive backtest analysis...")
 
@@ -1312,8 +1312,8 @@ class ComprehensiveBacktestSystem:
         return results
 
     def run_parameter_optimization(
-        self, base_config: BacktestConfig, parameter_ranges: Dict[str, List[Any]]
-    ) -> Dict[str, Any]:
+        self, base_config: BacktestConfig, parameter_ranges: Dict[str, list[object]]
+    ) -> dict[str, object]:
         """パラメータ最適化実行"""
         self.logger.info("Running parameter optimization...")
 
@@ -1341,7 +1341,7 @@ class ComprehensiveBacktestSystem:
             "sensitivity_analysis": sensitivity_analysis,
         }
 
-    def run_stress_testing(self, config: BacktestConfig) -> Dict[str, Any]:
+    def run_stress_testing(self, config: BacktestConfig) -> dict[str, object]:
         """ストレステスト実行"""
         self.logger.info("Running stress testing...")
 
@@ -1369,7 +1369,7 @@ class ComprehensiveBacktestSystem:
             "stress_resilience": stress_resilience,
         }
 
-    def generate_backtest_report(self) -> Dict[str, Any]:
+    def generate_backtest_report(self) -> dict[str, object]:
         """バックテストレポート生成"""
         self.logger.info("Generating comprehensive backtest report...")
 
@@ -1403,8 +1403,8 @@ class ComprehensiveBacktestSystem:
         }
 
     def _generate_parameter_grid(
-        self, parameter_ranges: Dict[str, List[Any]]
-    ) -> List[Dict[str, Any]]:
+        self, parameter_ranges: Dict[str, list[object]]
+    ) -> List[dict[str, object]]:
         """パラメータグリッド生成"""
         import itertools
 
@@ -1415,8 +1415,8 @@ class ComprehensiveBacktestSystem:
         return [dict(zip(keys, combo)) for combo in combinations]
 
     def _analyze_parameter_sensitivity(
-        self, optimization_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, optimization_results: List[dict[str, object]]
+    ) -> dict[str, object]:
         """パラメータ感度分析"""
         # 各パラメータの影響度を分析
         sensitivity = {}
@@ -1436,7 +1436,7 @@ class ComprehensiveBacktestSystem:
         return sensitivity
 
     def _run_stress_scenario(
-        self, config: BacktestConfig, scenario: Dict[str, Any]
+        self, config: BacktestConfig, scenario: dict[str, object]
     ) -> BacktestResult:
         """ストレスシナリオ実行"""
         # ストレスシナリオに基づくデータ修正
@@ -1447,8 +1447,8 @@ class ComprehensiveBacktestSystem:
         return self.backtest_engine.run_backtest(stressed_config)
 
     def _evaluate_stress_resilience(
-        self, stress_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, stress_results: List[dict[str, object]]
+    ) -> dict[str, object]:
         """ストレス耐性評価"""
         base_result = self.backtest_results[0] if self.backtest_results else None
 
@@ -1475,7 +1475,7 @@ class ComprehensiveBacktestSystem:
             "resilience_stability": np.std(resilience_scores),
         }
 
-    def _generate_overall_assessment(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_overall_assessment(self, results: dict[str, object]) -> dict[str, object]:
         """総合評価生成"""
         assessment = {
             "overall_score": 0.0,
@@ -1541,7 +1541,7 @@ class ComprehensiveBacktestSystem:
 
         return assessment
 
-    def _calculate_basic_statistics(self) -> Dict[str, Any]:
+    def _calculate_basic_statistics(self) -> dict[str, object]:
         """基本統計計算"""
         if not self.backtest_results:
             return {}
@@ -1560,7 +1560,7 @@ class ComprehensiveBacktestSystem:
             "success_rate": sum(1 for r in returns if r > 0) / len(returns),
         }
 
-    def _analyze_performance_metrics(self) -> Dict[str, Any]:
+    def _analyze_performance_metrics(self) -> dict[str, object]:
         """パフォーマンス指標分析"""
         if not self.backtest_results:
             return {}
@@ -1576,7 +1576,7 @@ class ComprehensiveBacktestSystem:
             "worst_sharpe_ratio": min([r.sharpe_ratio for r in results]),
         }
 
-    def _analyze_risk_metrics(self) -> Dict[str, Any]:
+    def _analyze_risk_metrics(self) -> dict[str, object]:
         """リスク指標分析"""
         if not self.backtest_results:
             return {}
@@ -1591,7 +1591,7 @@ class ComprehensiveBacktestSystem:
             "risk_adjusted_return_avg": np.mean([r.sharpe_ratio for r in results]),
         }
 
-    def _analyze_trade_metrics(self) -> Dict[str, Any]:
+    def _analyze_trade_metrics(self) -> dict[str, object]:
         """取引指標分析"""
         if not self.backtest_results:
             return {}
@@ -1611,9 +1611,9 @@ class ComprehensiveBacktestSystem:
 
     def _generate_recommendations(
         self,
-        basic_stats: Dict[str, Any],
-        performance: Dict[str, Any],
-        risk: Dict[str, Any],
+        basic_stats: dict[str, object],
+        performance: dict[str, object],
+        risk: dict[str, object],
     ) -> List[str]:
         """推奨事項生成"""
         recommendations = []

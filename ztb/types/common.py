@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
-    Any,
     Dict,
     List,
     Optional,
@@ -32,16 +31,16 @@ if TYPE_CHECKING:
     from stable_baselines3.common.logger import Logger  # type: ignore
     from torch.utils.data import DataLoader  # type: ignore
 else:
-    Logger = Any
-    spaces = Any
-    DataLoader = Any
+    Logger = object
+    spaces = object
+    DataLoader = object
 
 # Action type for trading environments
 Action = Union[int, float, np.ndarray]
 
 # Data types for analysis and training
-AnalysisData = Union[pd.DataFrame, np.ndarray, Dict[str, Any], List[Dict[str, Any]]]
-TrainingData = Union[pd.DataFrame, np.ndarray, Dict[str, Any], List[Dict[str, Any]]]
+AnalysisData = Union[pd.DataFrame, np.ndarray, dict[str, object], List[dict[str, object]]]
+TrainingData = Union[pd.DataFrame, np.ndarray, dict[str, object], List[dict[str, object]]]
 
 
 class SB3ModelProtocol(Protocol):
@@ -49,7 +48,7 @@ class SB3ModelProtocol(Protocol):
 
     def predict(
         self, obs: np.ndarray, deterministic: bool = True
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Any]]:
+    ) -> Union[np.ndarray, Tuple[np.ndarray, object]]:
         """Predict action from observation."""
         ...
 
@@ -59,7 +58,7 @@ class SB3ModelProtocol(Protocol):
 
     @classmethod
     def load(
-        cls, path: Union[str, Path], env: Optional[Any] = None
+        cls, path: Union[str, Path], env: Optional[object] = None
     ) -> "SB3ModelProtocol":
         """Load model from path."""
         ...
@@ -73,7 +72,7 @@ class SB3ModelProtocol(Protocol):
 try:
     from ztb.types.alert_types import AlertLevel  # type: ignore
 except Exception:
-    AlertLevel = Any  # type: ignore
+    AlertLevel = object  # type: ignore
 
 
 JSONSerializable = Union[
@@ -175,6 +174,19 @@ ConfigDict = Union[
 OptConfigDict = Optional[ConfigDict]
 PathLike = Union[str, Path]
 
+# Transitional aliases for staged `Any` reduction.
+# Prefer these aliases over ad-hoc `dict[str, object]` in new code.
+ConfigSection = Dict[str, ConfigValue]
+JSONDict = Dict[str, JSONSerializable]
+JSONList = List[JSONSerializable]
+MetricsDict = Dict[str, float]
+CountDict = Dict[str, int]
+StringMap = Dict[str, str]
+BoolMap = Dict[str, bool]
+ObjectMap = Dict[str, object]
+ObjectList = List[object]
+ObjectRecords = List[ObjectMap]
+
 
 # More specific types
 class TrainingStats(TypedDict, total=False):
@@ -199,11 +211,11 @@ class TrainingStats(TypedDict, total=False):
     stages_completed: int
     status: str
     # Extended fields for advanced training features
-    optimization: Dict[str, Any]
-    anomaly_detection: Dict[str, Any]
-    meta_learning: Dict[str, Any]
-    federated_learning: Dict[str, Any]
-    continual_learning: Dict[str, Any]
+    optimization: dict[str, object]
+    anomaly_detection: dict[str, object]
+    meta_learning: dict[str, object]
+    federated_learning: dict[str, object]
+    continual_learning: dict[str, object]
 
 
 class ActionDistribution(TypedDict):
@@ -219,7 +231,7 @@ class ModelResult(TypedDict):
 
     model_path: str
     metrics: Dict[str, float]
-    predictions: Optional[List[Any]]
+    predictions: Optional[list[object]]
     confidence: Optional[float]
 
 
@@ -228,10 +240,10 @@ TrainingConfig = ConfigDict  # Keep for backward compatibility
 
 
 class EnsemblePredictor(Protocol):
-    def get_ensemble_stats(self) -> Dict[str, Any]:
+    def get_ensemble_stats(self) -> dict[str, object]:
         ...
 
-    def adapt_ensemble(self, market_conditions: Dict[str, Any]) -> None:
+    def adapt_ensemble(self, market_conditions: dict[str, object]) -> None:
         ...
 
 
@@ -243,37 +255,37 @@ class AnomalyDetectorProtocol(Protocol):
 
     def detect_anomalies(
         self, data: "np.ndarray", feature_names: Optional[List[str]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> Tuple[bool, dict[str, object]]:
         ...
 
 
 class MetaLearnerProtocol(Protocol):
-    meta_learner: Any
+    meta_learner: object
 
-    def train_on_markets(self, num_epochs: int) -> Dict[str, Any]:
+    def train_on_markets(self, num_epochs: int) -> dict[str, object]:
         ...
 
 
 class FederatedLearnerProtocol(Protocol):
-    def train_all_markets(self, loss_fn: Any) -> Dict[str, Any]:
+    def train_all_markets(self, loss_fn: object) -> dict[str, object]:
         ...
 
-    def get_federated_stats(self) -> Dict[str, Any]:
+    def get_federated_stats(self) -> dict[str, object]:
         ...
 
 
 class ContinualLearnerProtocol(Protocol):
-    def learn_task(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def learn_task(self, *args: object, **kwargs: object) -> dict[str, object]:
         ...
 
 
 class TrainingReporterProtocol(Protocol):
     def generate_ensemble_report(
-        self, ensemble_stats: Dict[str, Any], decision_log: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, ensemble_stats: dict[str, object], decision_log: List[dict[str, object]]
+    ) -> dict[str, object]:
         ...
 
-    def save_ensemble_report(self, report: Dict[str, Any]) -> str:
+    def save_ensemble_report(self, report: dict[str, object]) -> str:
         ...
 
 
@@ -320,7 +332,7 @@ class SACLikeModelProtocol(Protocol):
     # Runtime prediction API (may return action or (action, state))
     def predict(
         self, obs: np.ndarray, deterministic: bool = True
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Any]]:  # pragma: no cover - runtime
+    ) -> Union[np.ndarray, Tuple[np.ndarray, object]]:  # pragma: no cover - runtime
         ...
 
     # Optional logger used by SB3 models
@@ -330,7 +342,7 @@ class SACLikeModelProtocol(Protocol):
     device: str
 
     # Replay buffer used by SAC implementations (if available)
-    replay_buffer: Optional[Any]  # Keep as Any for now - complex buffer types
+    replay_buffer: Optional[object]  # Keep as Any for now - complex buffer types
 
     # Observation space (has .shape)
     observation_space: spaces.Space
@@ -347,7 +359,7 @@ class BaseComponent:
     """
 
     def __init__(
-        self, name: str = "", config: Optional[Dict[str, Any]] = None, **kwargs
+        self, name: str = "", config: Optional[dict[str, object]] = None, **kwargs
     ):
         self.name = name or self.__class__.__name__
         self.config = config or {}
@@ -361,11 +373,11 @@ class BaseComponent:
         """Get component name."""
         return self.name
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: dict[str, object]) -> bool:
         """Validate component configuration."""
         return True
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, object]:
         """Get component status."""
         return {"name": self.name, "status": "active"}
 

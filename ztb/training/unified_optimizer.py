@@ -11,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -87,11 +87,11 @@ class OptimizationConfig:
 class OptimizationResult:
     """最適化結果"""
 
-    best_params: Dict[str, Any]
+    best_params: dict[str, object]
     best_score: float
-    optimization_history: List[Dict[str, Any]]
+    optimization_history: List[dict[str, object]]
     execution_time: float
-    convergence_info: Dict[str, Any]
+    convergence_info: dict[str, object]
     recommendations: List[str]
 
 
@@ -104,13 +104,13 @@ class BaseOptimizer(ABC):
 
     @abstractmethod
     def optimize(
-        self, objective_function: Callable, search_space: Dict[str, Any]
+        self, objective_function: Callable, search_space: dict[str, object]
     ) -> OptimizationResult:
         """最適化を実行"""
         pass
 
     @abstractmethod
-    def get_optimizer_info(self) -> Dict[str, Any]:
+    def get_optimizer_info(self) -> dict[str, object]:
         """最適化器の情報を取得"""
         pass
 
@@ -124,7 +124,7 @@ class BayesianOptimizer(BaseOptimizer):
             raise ImportError("Optuna is required for Bayesian optimization")
 
     def optimize(
-        self, objective_function: Callable, search_space: Dict[str, Any]
+        self, objective_function: Callable, search_space: dict[str, object]
     ) -> OptimizationResult:
         """ベイズ最適化を実行"""
         start_time = time.time()
@@ -212,7 +212,7 @@ class BayesianOptimizer(BaseOptimizer):
         return convergence_score
 
     def _generate_recommendations(
-        self, study, search_space: Dict[str, Any]
+        self, study, search_space: dict[str, object]
     ) -> List[str]:
         """最適化結果に基づく推奨事項を生成"""
         recommendations = []
@@ -259,7 +259,7 @@ class BayesianOptimizer(BaseOptimizer):
 
         return recommendations
 
-    def get_optimizer_info(self) -> Dict[str, Any]:
+    def get_optimizer_info(self) -> dict[str, object]:
         return {
             "name": "Bayesian Optimizer",
             "method": "TPE (Tree-structured Parzen Estimator)",
@@ -272,7 +272,7 @@ class GridOptimizer(BaseOptimizer):
     """グリッド検索最適化器"""
 
     def optimize(
-        self, objective_function: Callable, search_space: Dict[str, Any]
+        self, objective_function: Callable, search_space: dict[str, object]
     ) -> OptimizationResult:
         """グリッド検索を実行"""
         start_time = time.time()
@@ -369,7 +369,7 @@ class GridOptimizer(BaseOptimizer):
             recommendations=recommendations,
         )
 
-    def get_optimizer_info(self) -> Dict[str, Any]:
+    def get_optimizer_info(self) -> dict[str, object]:
         return {
             "name": "Grid Search Optimizer",
             "method": "Exhaustive Grid Search",
@@ -386,8 +386,8 @@ class RewardFunctionOptimizer:
         self.logger = get_logger(__name__)
 
     def optimize_reward_structure(
-        self, evaluation_function: Callable, current_reward_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, evaluation_function: Callable, current_reward_config: dict[str, object]
+    ) -> dict[str, object]:
         """報酬関数構造の最適化"""
         self.logger.info("Starting reward function optimization")
 
@@ -482,7 +482,7 @@ class UnifiedOptimizer:
     def optimize_hyperparameters(
         self,
         objective_function: Callable,
-        search_space: Dict[str, Any],
+        search_space: dict[str, object],
         method: str = "bayesian",
     ) -> OptimizationResult:
         """ハイパーパラメータの最適化"""
@@ -520,7 +520,7 @@ class UnifiedOptimizer:
 
         return result
 
-    def optimize_system(self) -> Dict[str, Any]:
+    def optimize_system(self) -> dict[str, object]:
         """システム最適化を実行"""
         if not self.config.enable_system_optimization:
             return {"status": "disabled"}
@@ -545,8 +545,8 @@ class UnifiedOptimizer:
         return result
 
     def optimize_reward_function(
-        self, evaluation_function: Callable, current_reward_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, evaluation_function: Callable, current_reward_config: dict[str, object]
+    ) -> dict[str, object]:
         """報酬関数の最適化"""
         if not self.config.enable_reward_optimization:
             return {"status": "disabled"}
@@ -567,8 +567,8 @@ class UnifiedOptimizer:
         return result
 
     def adaptive_optimize(
-        self, current_performance: Dict[str, Any], market_regime: str = "neutral"
-    ) -> Dict[str, Any]:
+        self, current_performance: dict[str, object], market_regime: str = "neutral"
+    ) -> dict[str, object]:
         """適応的最適化（市場状況に応じた動的調整）"""
         if not self.config.enable_adaptive_optimization:
             return {"status": "disabled"}
@@ -653,7 +653,7 @@ class UnifiedOptimizer:
 
         return recommendations
 
-    def get_optimization_summary(self) -> Dict[str, Any]:
+    def get_optimization_summary(self) -> dict[str, object]:
         """最適化のサマリーを取得"""
         summary = {
             "total_optimizations": len(self.optimization_history),
@@ -703,15 +703,15 @@ class UnifiedOptimizer:
 
     def save_result_to_version_control(
         self,
-        result: Dict[str, Any],
+        result: dict[str, object],
         result_type: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, object]] = None,
         tags: Optional[List[str]] = None
     ) -> str:
         """結果をバージョン管理システムに保存"""
         return self.persistence.save_optimization_result(result, result_type, metadata, tags)
 
-    def load_result_from_version_control(self, version_id: str) -> Optional[Dict[str, Any]]:
+    def load_result_from_version_control(self, version_id: str) -> Optional[dict[str, object]]:
         """バージョン管理システムから結果を読み込み"""
         return self.persistence.load_optimization_result(version_id)
 
@@ -723,7 +723,7 @@ class UnifiedOptimizer:
         date_to: Optional[str] = None,
         min_score: Optional[float] = None,
         max_p_value: Optional[float] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict[str, object]]:
         """最適化結果を検索"""
         return self.persistence.search_results(
             result_type, tags, date_from, date_to, min_score, max_p_value
@@ -733,11 +733,11 @@ class UnifiedOptimizer:
         self,
         version_ids: List[str],
         metrics: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """最適化結果を比較"""
         return self.persistence.get_result_comparison(version_ids, metrics)
 
-    def get_persistence_stats(self) -> Dict[str, Any]:
+    def get_persistence_stats(self) -> dict[str, object]:
         """持続化統計を取得"""
         return self.persistence.get_persistence_stats()
 
@@ -758,7 +758,7 @@ class UnifiedOptimizer:
     def optimize_multi_timeframe(
         self,
         objective_functions: Dict[str, Callable],
-        search_spaces: Dict[str, Dict[str, Any]],
+        search_spaces: Dict[str, dict[str, object]],
         correlation_matrix: Optional[np.ndarray] = None
     ) -> Dict[str, OptimizationResult]:
         """マルチタイムフレーム最適化を実行"""
@@ -790,8 +790,8 @@ class UnifiedOptimizer:
     def create_ab_test(
         self,
         test_name: str,
-        control_params: Dict[str, Any],
-        variant_params: Dict[str, Any],
+        control_params: dict[str, object],
+        variant_params: dict[str, object],
         evaluation_function: Callable,
         sample_size_per_group: int = 100,
         test_duration_days: int = 7
@@ -802,7 +802,7 @@ class UnifiedOptimizer:
             evaluation_function, sample_size_per_group, test_duration_days
         )
 
-    def run_ab_test(self, test_id: str, num_iterations: int = 10) -> Dict[str, Any]:
+    def run_ab_test(self, test_id: str, num_iterations: int = 10) -> dict[str, object]:
         """A/Bテストを実行"""
         self.logger.info(f"Running A/B test via UnifiedOptimizer: {test_id}")
         result = self.ab_testing_framework.run_ab_test(test_id, num_iterations)
@@ -817,26 +817,26 @@ class UnifiedOptimizer:
 
         return result
 
-    def get_ab_test_results(self, test_id: str) -> Optional[Dict[str, Any]]:
+    def get_ab_test_results(self, test_id: str) -> Optional[dict[str, object]]:
         """A/Bテスト結果を取得"""
         return self.ab_testing_framework.get_test_results(test_id)
 
-    def get_multi_timeframe_analysis(self) -> Dict[str, Any]:
+    def get_multi_timeframe_analysis(self) -> dict[str, object]:
         """マルチタイムフレーム分析結果を取得"""
         return self.multi_timeframe_optimizer.get_multi_timeframe_analysis()
 
-    def get_ab_testing_summary(self) -> Dict[str, Any]:
+    def get_ab_testing_summary(self) -> dict[str, object]:
         """A/Bテストサマリーを取得"""
         return self.ab_testing_framework.get_ab_testing_summary()
 
     def run_automatic_pipeline(
         self,
-        base_params: Dict[str, Any],
+        base_params: dict[str, object],
         objective_function: Callable,
-        search_space: Dict[str, Any],
+        search_space: dict[str, object],
         multi_timeframe_functions: Optional[Dict[str, Callable]] = None,
         validation_function: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """自動最適化パイプラインを実行"""
         self.logger.info("Running automatic optimization pipeline via UnifiedOptimizer")
         result = self.automatic_pipeline.run_full_pipeline(
@@ -857,19 +857,19 @@ class UnifiedOptimizer:
 
         return result
 
-    def get_pipeline_history(self) -> List[Dict[str, Any]]:
+    def get_pipeline_history(self) -> List[dict[str, object]]:
         """パイプライン実行履歴を取得"""
         return self.automatic_pipeline.get_pipeline_history()
 
-    def get_pipeline_status(self) -> Dict[str, Any]:
+    def get_pipeline_status(self) -> dict[str, object]:
         """パイプラインの現在の状態を取得"""
         return self.automatic_pipeline.get_pipeline_status()
 
     def run_parallel_optimization(
         self,
-        optimization_tasks: List[Dict[str, Any]],
+        optimization_tasks: List[dict[str, object]],
         progress_callback: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """並列最適化を実行"""
         self.logger.info("Running parallel optimization via UnifiedOptimizer")
         result = self.parallel_optimizer.run_parallel_optimization(optimization_tasks, progress_callback)
@@ -886,9 +886,9 @@ class UnifiedOptimizer:
     def run_parameter_sweep(
         self,
         objective_function: Callable,
-        parameter_combinations: List[Dict[str, Any]],
+        parameter_combinations: List[dict[str, object]],
         progress_callback: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """パラメータスイープを実行"""
         self.logger.info("Running parameter sweep via UnifiedOptimizer")
         result = self.parallel_optimizer.run_parameter_sweep(
@@ -905,7 +905,7 @@ class UnifiedOptimizer:
 
         return result
 
-    def get_parallel_status(self) -> Dict[str, Any]:
+    def get_parallel_status(self) -> dict[str, object]:
         """並列実行の状態を取得"""
         return self.parallel_optimizer.get_active_task_status()
 
@@ -939,7 +939,7 @@ class MultiTimeframeOptimizer:
     def optimize_multi_timeframe(
         self,
         objective_functions: Dict[str, Callable],
-        search_spaces: Dict[str, Dict[str, Any]],
+        search_spaces: Dict[str, dict[str, object]],
         correlation_matrix: Optional[np.ndarray] = None
     ) -> Dict[str, OptimizationResult]:
         """
@@ -1080,7 +1080,7 @@ class MultiTimeframeOptimizer:
 
         self.cross_timeframe_results["pattern_recommendations"] = recommendations
 
-    def _generate_integrated_parameters(self, results: Dict[str, OptimizationResult]) -> Dict[str, Any]:
+    def _generate_integrated_parameters(self, results: Dict[str, OptimizationResult]) -> dict[str, object]:
         """統合パラメータを生成"""
         integrated_params = {}
 
@@ -1123,7 +1123,7 @@ class MultiTimeframeOptimizer:
 
         return total_weighted_score / total_weight if total_weight > 0 else 0
 
-    def _get_integrated_convergence_info(self, results: Dict[str, OptimizationResult]) -> Dict[str, Any]:
+    def _get_integrated_convergence_info(self, results: Dict[str, OptimizationResult]) -> dict[str, object]:
         """統合収束情報を取得"""
         convergence_scores = []
         total_trials = 0
@@ -1172,7 +1172,7 @@ class MultiTimeframeOptimizer:
 
         return recommendations
 
-    def get_multi_timeframe_analysis(self) -> Dict[str, Any]:
+    def get_multi_timeframe_analysis(self) -> dict[str, object]:
         """マルチタイムフレーム分析結果を取得"""
         return {
             "timeframes": self.timeframes,
@@ -1222,8 +1222,8 @@ class ABTestingFramework:
     def create_ab_test(
         self,
         test_name: str,
-        control_params: Dict[str, Any],
-        variant_params: Dict[str, Any],
+        control_params: dict[str, object],
+        variant_params: dict[str, object],
         evaluation_function: Callable,
         sample_size_per_group: int = 100,
         test_duration_days: int = 7
@@ -1264,7 +1264,7 @@ class ABTestingFramework:
 
         return test_id
 
-    def run_ab_test(self, test_id: str, num_iterations: int = 10) -> Dict[str, Any]:
+    def run_ab_test(self, test_id: str, num_iterations: int = 10) -> dict[str, object]:
         """
         A/Bテストを実行
 
@@ -1330,7 +1330,7 @@ class ABTestingFramework:
 
         return result
 
-    def _perform_significance_test(self, test_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _perform_significance_test(self, test_config: dict[str, object]) -> dict[str, object]:
         """統計的有意差検定を実行（既存ResultComparator活用、コード重複なし）
         
         Note:
@@ -1416,7 +1416,7 @@ class ABTestingFramework:
         control_scores: List[float],
         variant_scores: List[float],
         n_splits: int = 4
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """p平均法による統合判定（既存p_mean_method活用、コード重複なし）
         
         richmanbtc氏のオリジナル手法:
@@ -1475,10 +1475,10 @@ class ABTestingFramework:
     
     def _make_combined_decision(
         self,
-        t_test_result: Dict[str, Any],
-        mann_whitney_result: Dict[str, Any],
-        p_mean_result: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        t_test_result: dict[str, object],
+        mann_whitney_result: dict[str, object],
+        p_mean_result: dict[str, object]
+    ) -> dict[str, object]:
         """三位一体検定の統合判定（新規実装、軽量ロジック）
         
         判定ロジック:
@@ -1523,7 +1523,7 @@ class ABTestingFramework:
             }
         }
     
-    def _determine_test_status(self, test_config: Dict[str, Any]) -> str:
+    def _determine_test_status(self, test_config: dict[str, object]) -> str:
         """テスト状態を判定"""
         significance_tests = test_config.get("significance_tests", [])
         if not significance_tests:
@@ -1548,7 +1548,7 @@ class ABTestingFramework:
                 return "running"
 
     def _generate_test_recommendations(
-        self, test_config: Dict[str, Any], significance_result: Dict[str, Any]
+        self, test_config: dict[str, object], significance_result: dict[str, object]
     ) -> List[str]:
         """テスト結果に基づく推奨事項を生成"""
         recommendations = []
@@ -1587,7 +1587,7 @@ class ABTestingFramework:
 
         return recommendations
 
-    def get_test_results(self, test_id: str) -> Optional[Dict[str, Any]]:
+    def get_test_results(self, test_id: str) -> Optional[dict[str, object]]:
         """テスト結果を取得"""
         return self.test_results.get(test_id)
     
@@ -1596,7 +1596,7 @@ class ABTestingFramework:
         conditions: List[str],
         metric_results: Dict[str, List[float]],
         alpha: float = 0.05
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """複数条件の統計的比較（既存StatisticalValidator活用、コード重複なし）
         
         Args:
@@ -1675,11 +1675,11 @@ class ABTestingFramework:
             "significant_pairs": len(rejections)
         }
 
-    def get_active_tests(self) -> Dict[str, Dict[str, Any]]:
+    def get_active_tests(self) -> Dict[str, dict[str, object]]:
         """アクティブなテストを取得"""
         return self.active_tests
 
-    def get_ab_testing_summary(self) -> Dict[str, Any]:
+    def get_ab_testing_summary(self) -> dict[str, object]:
         """A/Bテストのサマリーを取得"""
         summary = {
             "total_tests": len(self.test_results),
@@ -1715,12 +1715,12 @@ class AutomaticOptimizationPipeline:
 
     def run_full_pipeline(
         self,
-        base_params: Dict[str, Any],
+        base_params: dict[str, object],
         objective_function: Callable,
-        search_space: Dict[str, Any],
+        search_space: dict[str, object],
         multi_timeframe_functions: Optional[Dict[str, Callable]] = None,
         validation_function: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         完全自動最適化パイプラインを実行
 
@@ -1794,7 +1794,7 @@ class AutomaticOptimizationPipeline:
         return integrated_result
 
     def _optimize_hyperparameters_stage(
-        self, base_params: Dict[str, Any], objective_function: Callable, search_space: Dict[str, Any]
+        self, base_params: dict[str, object], objective_function: Callable, search_space: dict[str, object]
     ) -> OptimizationResult:
         """ハイパーパラメータ最適化ステージ"""
         self.logger.info("Starting hyperparameter optimization")
@@ -1816,7 +1816,7 @@ class AutomaticOptimizationPipeline:
 
         return result
 
-    def _optimize_system_stage(self) -> Dict[str, Any]:
+    def _optimize_system_stage(self) -> dict[str, object]:
         """システム最適化ステージ"""
         self.logger.info("Starting system optimization")
 
@@ -1827,8 +1827,8 @@ class AutomaticOptimizationPipeline:
         return result
 
     def _optimize_reward_stage(
-        self, evaluation_function: Callable, base_params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, evaluation_function: Callable, base_params: dict[str, object]
+    ) -> dict[str, object]:
         """報酬関数最適化ステージ"""
         self.logger.info("Starting reward function optimization")
 
@@ -1860,7 +1860,7 @@ class AutomaticOptimizationPipeline:
         return result
 
     def _optimize_multi_timeframe_stage(
-        self, multi_timeframe_functions: Dict[str, Callable], search_space: Dict[str, Any]
+        self, multi_timeframe_functions: Dict[str, Callable], search_space: dict[str, object]
     ) -> Dict[str, OptimizationResult]:
         """マルチタイムフレーム最適化ステージ"""
         self.logger.info("Starting multi-timeframe optimization")
@@ -1902,8 +1902,8 @@ class AutomaticOptimizationPipeline:
         return results
 
     def _validate_pipeline(
-        self, base_params: Dict[str, Any], validation_function: Callable
-    ) -> Dict[str, Any]:
+        self, base_params: dict[str, object], validation_function: Callable
+    ) -> dict[str, object]:
         """パイプライン検証ステージ"""
         self.logger.info("Starting pipeline validation")
 
@@ -1930,7 +1930,7 @@ class AutomaticOptimizationPipeline:
 
         return result
 
-    def _generate_integrated_result(self, stage_results: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_integrated_result(self, stage_results: dict[str, object]) -> dict[str, object]:
         """統合結果を生成"""
         integrated_result = {
             "success": True,
@@ -1990,9 +1990,9 @@ class ParallelOptimizer:
 
     def run_parallel_optimization(
         self,
-        optimization_tasks: List[Dict[str, Any]],
+        optimization_tasks: List[dict[str, object]],
         progress_callback: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         並列最適化を実行
 
@@ -2052,7 +2052,7 @@ class ParallelOptimizer:
         self.logger.info(f"Parallel optimization completed: {completed_count}/{len(optimization_tasks)} tasks successful")
         return parallel_result
 
-    def _execute_optimization_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_optimization_task(self, task: dict[str, object]) -> dict[str, object]:
         """単一の最適化タスクを実行"""
         try:
             optimizer = task["optimizer"]
@@ -2086,9 +2086,9 @@ class ParallelOptimizer:
 
     def _run_sequential_fallback(
         self,
-        optimization_tasks: List[Dict[str, Any]],
+        optimization_tasks: List[dict[str, object]],
         progress_callback: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """順次実行フォールバック"""
         self.logger.info("Running sequential optimization (parallel execution not available)")
 
@@ -2116,7 +2116,7 @@ class ParallelOptimizer:
             "execution_mode": "sequential"
         }
 
-    def _generate_parallel_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_parallel_summary(self, results: dict[str, object]) -> dict[str, object]:
         """並列実行のサマリーを生成"""
         summary = {
             "best_overall_score": float("-inf"),
@@ -2160,9 +2160,9 @@ class ParallelOptimizer:
         self,
         base_optimizer: BaseOptimizer,
         objective_function: Callable,
-        parameter_combinations: List[Dict[str, Any]],
+        parameter_combinations: List[dict[str, object]],
         progress_callback: Optional[Callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         パラメータスイープを実行
 
@@ -2204,9 +2204,9 @@ class ParallelOptimizer:
 
     def _generate_sweep_summary(
         self,
-        sweep_result: Dict[str, Any],
-        parameter_combinations: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        sweep_result: dict[str, object],
+        parameter_combinations: List[dict[str, object]]
+    ) -> dict[str, object]:
         """パラメータスイープのサマリーを生成"""
         summary = {
             "total_combinations": len(parameter_combinations),
@@ -2250,8 +2250,8 @@ class ParallelOptimizer:
 
     def _analyze_parameter_importance(
         self,
-        parameter_combinations: List[Dict[str, Any]],
-        results: Dict[str, Any]
+        parameter_combinations: List[dict[str, object]],
+        results: dict[str, object]
     ) -> Dict[str, float]:
         """パラメータ重要度を分析"""
         importance = {}
@@ -2287,7 +2287,7 @@ class ParallelOptimizer:
 
         return importance
 
-    def get_active_task_status(self) -> Dict[str, Any]:
+    def get_active_task_status(self) -> dict[str, object]:
         """アクティブなタスクの状態を取得"""
         status = {
             "active_tasks": len(self.active_tasks),
@@ -2350,9 +2350,9 @@ class OptimizationResultPersistence:
 
     def save_optimization_result(
         self,
-        result: Dict[str, Any],
+        result: dict[str, object],
         result_type: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, object]] = None,
         tags: Optional[List[str]] = None
     ) -> str:
         """
@@ -2398,7 +2398,7 @@ class OptimizationResultPersistence:
         self.logger.info(f"Saved optimization result: {version_id} ({result_type})")
         return version_id
 
-    def _extract_performance_metrics(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_performance_metrics(self, result: dict[str, object]) -> dict[str, object]:
         """結果からパフォーマンスメトリクスを抽出"""
         metrics = {}
 
@@ -2422,7 +2422,7 @@ class OptimizationResultPersistence:
 
         return metrics
 
-    def _update_index(self, version_id: str, result_data: Dict[str, Any]):
+    def _update_index(self, version_id: str, result_data: dict[str, object]):
         """検索インデックスを更新"""
         index_file = self.base_dir / "index.json"
 
@@ -2447,7 +2447,7 @@ class OptimizationResultPersistence:
         # インデックス保存
         safe_json_dump(index, index_file, indent=2, ensure_ascii=False)
 
-    def load_optimization_result(self, version_id: str) -> Optional[Dict[str, Any]]:
+    def load_optimization_result(self, version_id: str) -> Optional[dict[str, object]]:
         """最適化結果を読み込み"""
         index = self._load_index()
         if version_id not in index:
@@ -2467,7 +2467,7 @@ class OptimizationResultPersistence:
             self.logger.error(f"Failed to load result {version_id}: {e}")
             return None
 
-    def _load_index(self) -> Dict[str, Any]:
+    def _load_index(self) -> dict[str, object]:
         """インデックスを読み込み"""
         index_file = self.base_dir / "index.json"
         if not index_file.exists():
@@ -2488,7 +2488,7 @@ class OptimizationResultPersistence:
         date_to: Optional[str] = None,
         min_score: Optional[float] = None,
         max_p_value: Optional[float] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[dict[str, object]]:
         """
         結果を検索
 
@@ -2543,7 +2543,7 @@ class OptimizationResultPersistence:
         self,
         version_ids: List[str],
         metrics: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         複数バージョンの結果を比較
 
@@ -2585,9 +2585,9 @@ class OptimizationResultPersistence:
 
     def _analyze_comparison(
         self,
-        results: Dict[str, Dict[str, Any]],
+        results: Dict[str, dict[str, object]],
         metrics: List[str]
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """比較分析を実行"""
         analysis = {}
 
@@ -2646,7 +2646,7 @@ class OptimizationResultPersistence:
 
         self.logger.info(f"Cleaned up {len(to_delete)} old versions")
 
-    def get_persistence_stats(self) -> Dict[str, Any]:
+    def get_persistence_stats(self) -> dict[str, object]:
         """持続化統計を取得"""
         index = self._load_index()
         stats = {

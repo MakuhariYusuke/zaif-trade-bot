@@ -1,7 +1,34 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Protocol, Sequence, TypedDict
+
+
+class PipelineLike(Protocol):
+    pipeline_id: str
+
+
+class StageExecutionResult(TypedDict):
+    passed: bool
+    duration: float
+    metrics: Dict[str, object]
+
+
+class ValidationStatusPayload(TypedDict):
+    current_pipeline: Optional[str]
+    is_running: bool
+    pipeline_progress: float
+
+
+class ValidationHistoryPayload(TypedDict):
+    total_validations: int
+    successful_validations: int
+    failed_validations: int
+    average_duration: float
+
+
+def _as_object_map(value: object) -> Dict[str, object]:
+    return dict(value) if isinstance(value, dict) else {}
 
 
 class ValidationStatus(Enum):
@@ -12,7 +39,7 @@ class ValidationStatus(Enum):
     PASSED = "passed"
     FAILED = "failed"
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if not isinstance(other, ValidationStatus):
             return NotImplemented
         order_list = ["pending", "running", "skipped", "timeout", "failed", "passed"]
@@ -25,7 +52,7 @@ class ValidationMetrics:
     tests_passed: int = 0
     tests_failed: int = 0
     avg_duration_seconds: float = 0.0
-    details: Dict[str, Any] = None
+    details: Dict[str, object] = field(default_factory=dict)
 
     @property
     def success_rate(self) -> float:
@@ -58,17 +85,15 @@ class ValidationReport:
     recommendations: List[str]
     generated_at: datetime
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # If overall_status is PENDING, compute final status from stage results
-        try:
-            if self.overall_status == ValidationStatus.PENDING:
-                if any(r.status == ValidationStatus.FAILED for r in self.stage_results):
-                    self.overall_status = ValidationStatus.FAILED
-                else:
-                    self.overall_status = ValidationStatus.PASSED
-        except Exception:
-            # Do not fail on post-init calculation
-            pass
+        if self.overall_status != ValidationStatus.PENDING:
+            return
+        self.overall_status = (
+            ValidationStatus.FAILED
+            if any(r.status == ValidationStatus.FAILED for r in self.stage_results)
+            else ValidationStatus.PASSED
+        )
 
 
 @dataclass
@@ -109,7 +134,7 @@ class ComponentTest:
     component_name: str
     test_type: str
     description: str
-    expected_result: Any
+    expected_result: object
     timeout_seconds: int
 
 
@@ -138,13 +163,50 @@ class HealthCheck:
     check_id: str
     description: str
     check_type: str
-    expected_result: Any
+    expected_result: object
     timeout_seconds: int
 
 
-class ComponentValidator:
-    def __init__(self, integration_manager: Any):
+class StageValidatorBase:
+    stage_id: str
+
+    def __init__(self, integration_manager: object):
         self.integration_manager = integration_manager
+
+    def _build_pipeline_result(
+        self, execution_results: Sequence[StageExecutionResult]
+    ) -> PipelineResult:
+        tests_run = len(execution_results)
+        tests_passed = sum(1 for result in execution_results if result["passed"])
+        tests_failed = tests_run - tests_passed
+        total_duration = sum(result["duration"] for result in execution_results)
+        avg_duration = total_duration / tests_run if tests_run > 0 else 0.0
+
+        metrics = ValidationMetrics(
+            tests_run=tests_run,
+            tests_passed=tests_passed,
+            tests_failed=tests_failed,
+            avg_duration_seconds=avg_duration,
+            details={
+                "test_metrics": [result["metrics"] for result in execution_results],
+            },
+        )
+
+        return PipelineResult(
+            stage_id=self.stage_id,
+            status=ValidationStatus.PASSED if tests_failed == 0 else ValidationStatus.FAILED,
+            duration_seconds=total_duration,
+            metrics=metrics,
+            issues=[],
+            recommendations=[],
+        )
+
+
+class ComponentValidator(StageValidatorBase):
+    stage_id = "component_validation"
+
+    def __init__(self, integration_manager: object):
+        super().__init__(integration_manager)
         self.component_tests: List[ComponentTest] = []
 
     def validate_components(
@@ -153,69 +215,64 @@ class ComponentValidator:
         if tests is not None:
             self.component_tests = tests
 
-        # Run all component tests
-        total_duration = 0.0
-        all_passed = True
-        for test in self.component_tests:
-            result = self._run_component_test(test)
-            total_duration += result.get("duration", 0.0)
-            if not result.get("passed", False):
-                all_passed = False
+        execution_results = [
+            self._run_component_test(test) for test in self.component_tests
+        ]
+        return self._build_pipeline_result(execution_results)
 
-        status = ValidationStatus.PASSED if all_passed else ValidationStatus.FAILED
-        return PipelineResult(
-            stage_id="component_validation",
-            status=status,
-            duration_seconds=total_duration,
-            metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-        )
-
-    def _run_component_test(self, test: ComponentTest) -> Dict[str, Any]:
-        """Run a single component test"""
-        # Delegate to executable test implementation
+    def _run_component_test(self, test: ComponentTest) -> StageExecutionResult:
+        """Run a single component test."""
         result = self._execute_component_test(test)
+        metrics = _as_object_map(result.get("metrics", {}))
         return {
-            "passed": result.get("passed", True),
-            "duration": result.get("duration", 1.0),
-            "metrics": result.get("metrics", {}),
+            "passed": bool(result.get("passed", True)),
+            "duration": float(result.get("duration", 1.0)),
+            "metrics": metrics,
         }
 
-    def _execute_component_test(self, test: ComponentTest) -> Dict[str, Any]:
+    def _execute_component_test(self, test: ComponentTest) -> Dict[str, object]:
         """Actual execution of a component test (placeholder for real implementations)."""
-        # Example: ask integration_manager for component status or run a unit test
+        _ = test
         return {"passed": True, "duration": 1.0, "metrics": {}}
 
     def validate_component_health(self, component_name: str) -> bool:
-        """Validate health of a component"""
+        """Validate health of a component."""
         status = self.integration_manager.component_manager.get_component_status(
             component_name
         )
-        # Determine health by looking for 'healthy' or expected metrics
         if not status:
             return False
-        s = status.get("status") if isinstance(status, dict) else None
-        return s == "healthy" or s is None
 
-    def _validate_component_health(self, component_name: str) -> Dict[str, Any]:
-        """Private method used by tests to inspect component health details"""
+        if isinstance(status, dict):
+            raw_status = status.get("status")
+            return raw_status == "healthy" or raw_status is None
+        return status == "healthy"
+
+    def _validate_component_health(self, component_name: str) -> Dict[str, object]:
+        """Private method used by tests to inspect component health details."""
         status = self.integration_manager.component_manager.get_component_status(
             component_name
         )
+
         if isinstance(status, dict):
-            is_healthy = status.get("status") == "healthy"
+            status_value = status.get("status")
             return {
-                "status": status.get("status"),
-                "metrics": status.get("metrics", {}),
-                "is_healthy": is_healthy,
+                "status": status_value,
+                "metrics": _as_object_map(status.get("metrics", {})),
+                "is_healthy": status_value == "healthy",
             }
-        return {"status": status, "is_healthy": status == "healthy"}
+
+        return {
+            "status": status,
+            "is_healthy": status == "healthy",
+        }
 
 
-class IntegrationValidator:
-    def __init__(self, integration_manager: Any):
-        self.integration_manager = integration_manager
+class IntegrationValidator(StageValidatorBase):
+    stage_id = "integration_validation"
+
+    def __init__(self, integration_manager: object):
+        super().__init__(integration_manager)
         self.integration_tests: List[IntegrationTest] = []
 
     def validate_integrations(
@@ -224,105 +281,80 @@ class IntegrationValidator:
         if tests is not None:
             self.integration_tests = tests
 
-        # Run all integration tests
-        total_duration = 0.0
-        all_passed = True
-        for test in self.integration_tests:
-            result = self._run_integration_test(test)
-            total_duration += result.get("duration", 0.0)
-            if not result.get("passed", False):
-                all_passed = False
+        execution_results = [
+            self._run_integration_test(test) for test in self.integration_tests
+        ]
+        return self._build_pipeline_result(execution_results)
 
-        status = ValidationStatus.PASSED if all_passed else ValidationStatus.FAILED
-        return PipelineResult(
-            stage_id="integration_validation",
-            status=status,
-            duration_seconds=total_duration,
-            metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-        )
-
-    def _run_integration_test(self, test: IntegrationTest) -> Dict[str, Any]:
-        """Run a single integration test"""
+    def _run_integration_test(self, test: IntegrationTest) -> StageExecutionResult:
+        """Run a single integration test."""
         result = self._execute_integration_test(test)
+        metrics = _as_object_map(result.get("metrics", {}))
         return {
-            "passed": result.get("passed", True),
-            "duration": 1.0,
-            "metrics": result.get("metrics", {}),
+            "passed": bool(result.get("passed", True)),
+            "duration": float(result.get("duration", 1.0)),
+            "metrics": metrics,
         }
 
-    def _execute_integration_test(self, test: IntegrationTest) -> Dict[str, Any]:
-        """Execute integration test"""
-        # Placeholder implementation
-        return {"passed": True, "metrics": {}}
+    def _execute_integration_test(self, test: IntegrationTest) -> Dict[str, object]:
+        """Execute integration test."""
+        _ = test
+        return {"passed": True, "duration": 1.0, "metrics": {}}
 
-    def _validate_data_flow(self, source: str, target: str) -> Dict[str, Any]:
-        """Validate data flow between components"""
-        # Query metrics from a component (expected to be patched in tests)
-        metrics = {}
+    def _validate_data_flow(self, source: str, target: str) -> Dict[str, object]:
+        """Validate data flow between components."""
+        metrics: Dict[str, object] = {}
         try:
-            metrics = self.integration_manager.component_manager.v433_system.get_data_flow_metrics(
-                source, target
+            raw_metrics = (
+                self.integration_manager.component_manager.v433_system.get_data_flow_metrics(
+                    source, target
+                )
             )
+            metrics = _as_object_map(raw_metrics)
         except Exception:
-            # fallback/mocked path
             try:
-                metrics = (
+                raw_metrics = (
                     self.integration_manager.component_manager.get_data_flow_metrics(
                         source, target
                     )
                 )
+                metrics = _as_object_map(raw_metrics)
             except Exception:
                 metrics = {}
 
-        data_processed = metrics.get("data_processed", 0)
-        data_lost = metrics.get("data_lost", 0)
-        avg_latency = metrics.get("avg_latency", 0.0)
-
-        data_integrity = data_lost == 0
-        latency_acceptable = avg_latency <= 100.0
-        flow_stable = data_processed > 0 and (data_lost / max(1, data_processed)) < 0.01
+        data_processed = float(metrics.get("data_processed", 0))
+        data_lost = float(metrics.get("data_lost", 0))
+        avg_latency = float(metrics.get("avg_latency", 0.0))
 
         return {
-            "data_integrity": data_integrity,
+            "data_integrity": data_lost == 0,
             "latency": avg_latency,
-            "latency_acceptable": latency_acceptable,
-            "flow_stable": flow_stable,
+            "latency_acceptable": avg_latency <= 100.0,
+            "flow_stable": data_processed > 0
+            and (data_lost / max(1.0, data_processed)) < 0.01,
         }
 
 
-class PerformanceValidator:
-    def __init__(self, integration_manager: Any):
-        self.integration_manager = integration_manager
+class PerformanceValidator(StageValidatorBase):
+    stage_id = "performance_validation"
+
+    def __init__(self, integration_manager: object):
+        super().__init__(integration_manager)
         self.performance_tests: List[PerformanceTest] = []
 
-    def validate_performance(self, pipeline: Optional[Any] = None) -> PipelineResult:
-        # Run all performance tests
-        total_duration = 0.0
-        all_passed = True
-        for test in self.performance_tests:
-            result = self._run_performance_test(test)
-            total_duration += result.get("duration", 0.0)
-            if not result.get("passed", False):
-                all_passed = False
+    def validate_performance(
+        self, pipeline: Optional[PipelineLike] = None
+    ) -> PipelineResult:
+        _ = pipeline
+        execution_results = [
+            self._run_performance_test(test) for test in self.performance_tests
+        ]
+        return self._build_pipeline_result(execution_results)
 
-        status = ValidationStatus.PASSED if all_passed else ValidationStatus.FAILED
-        return PipelineResult(
-            stage_id="performance_validation",
-            status=status,
-            duration_seconds=total_duration,
-            metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-        )
-
-    def _run_performance_test(self, test: PerformanceTest) -> Dict[str, Any]:
-        """Run a single performance test"""
+    def _run_performance_test(self, test: PerformanceTest) -> StageExecutionResult:
+        """Run a single performance test."""
         metric_value = self._measure_performance_metric(test.metric_name)
 
-        # Check if test passed based on operator
-        passed = False
         if test.operator == "<=":
             passed = metric_value <= test.target_value
         elif test.operator == ">=":
@@ -339,20 +371,20 @@ class PerformanceValidator:
         }
 
     def _measure_performance_metric(self, metric_name: str) -> float:
-        """Measure a performance metric"""
-        # Try to retrieve performance metrics from the integration manager's component manager
+        """Measure a performance metric."""
         try:
-            metrics = (
-                self.integration_manager.component_manager.get_performance_metrics()
-            )
-            return metrics.get(metric_name, 0.0)
+            metrics = self.integration_manager.component_manager.get_performance_metrics()
+            metrics_map = _as_object_map(metrics)
+            return float(metrics_map.get(metric_name, 0.0))
         except Exception:
             return 0.0
 
 
-class SystemHealthValidator:
-    def __init__(self, integration_manager: Any):
-        self.integration_manager = integration_manager
+class SystemHealthValidator(StageValidatorBase):
+    stage_id = "health_validation"
+
+    def __init__(self, integration_manager: object):
+        super().__init__(integration_manager)
         self.health_checks: List[HealthCheck] = []
 
     def validate_system_health(
@@ -361,145 +393,160 @@ class SystemHealthValidator:
         if checks is not None:
             self.health_checks = checks
 
-        total_duration = 0.0
-        all_passed = True
-        for c in self.health_checks:
-            result = self._run_health_check(c)
-            total_duration += result.get("duration", 0.0)
-            if not result.get("passed", False):
-                all_passed = False
+        execution_results = [self._run_health_check(check) for check in self.health_checks]
+        return self._build_pipeline_result(execution_results)
 
-        status = ValidationStatus.PASSED if all_passed else ValidationStatus.FAILED
-        return PipelineResult(
-            stage_id="health_validation",
-            status=status,
-            duration_seconds=total_duration,
-            metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-        )
-
-    def _run_health_check(self, check: HealthCheck) -> Dict[str, Any]:
+    def _run_health_check(self, check: HealthCheck) -> StageExecutionResult:
         result = self._execute_health_check(check)
         return {
             "passed": result.get("status", "healthy") == "healthy",
-            "duration": result.get("duration", 1.0),
+            "duration": float(result.get("duration", 1.0)),
             "metrics": result,
         }
 
-    def _execute_health_check(self, check: HealthCheck) -> Dict[str, Any]:
-        # Placeholder: implement various types of checks
+    def _execute_health_check(self, check: HealthCheck) -> Dict[str, object]:
         if check.check_type == "resource":
             return self._check_system_resources()
         return {"status": "healthy", "duration": 1.0}
 
-    def _check_system_resources(self) -> Dict[str, Any]:
+    def _check_system_resources(self) -> Dict[str, object]:
         import psutil
 
-        cpu = psutil.cpu_percent()
-        mem = psutil.virtual_memory().percent
-        disk = psutil.disk_usage("/").percent if hasattr(psutil, "disk_usage") else 0
+        cpu = float(psutil.cpu_percent())
+        mem = float(psutil.virtual_memory().percent)
+        disk = (
+            float(psutil.disk_usage("/").percent)
+            if hasattr(psutil, "disk_usage")
+            else 0.0
+        )
         return {
             "cpu_percent": cpu,
             "memory_percent": mem,
             "disk_percent": disk,
             "status": "healthy",
+            "duration": 1.0,
         }
-
-    def validate_system_health(self) -> PipelineResult:
-        return PipelineResult(
-            stage_id="health_validation",
-            status=ValidationStatus.PASSED,
-            duration_seconds=0.5,
-            metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-        )
 
 
 class EndToEndValidationSystem:
-    def __init__(self, integration_manager: Any, pipeline: Optional[Any] = None):
+    def __init__(
+        self,
+        integration_manager: object,
+        pipeline: Optional[PipelineLike] = None,
+    ):
         self.integration_manager = integration_manager
         self.component_validator = ComponentValidator(integration_manager)
         self.integration_validator = IntegrationValidator(integration_manager)
         self.performance_validator = PerformanceValidator(integration_manager)
         self.health_validator = SystemHealthValidator(integration_manager)
-        self.validation_pipelines: List[Any] = []
+        self.validation_pipelines: List[PipelineLike] = []
         self.validation_history: List[ValidationReport] = []
         self.is_running = False
-        self.current_pipeline = pipeline
+        self.current_pipeline: Optional[PipelineLike] = pipeline
         if pipeline is not None:
             self.validation_pipelines.append(pipeline)
 
-    def run_end_to_end_validation(self, pipeline: Any) -> ValidationReport:
-        component_result = self.component_validator.validate_components([])
-        integration_result = self.integration_validator.validate_integrations([])
-        performance_result = self.performance_validator.validate_performance(pipeline)
-        health_result = self.health_validator.validate_system_health()
+    def run_end_to_end_validation(
+        self, pipeline: Optional[PipelineLike]
+    ) -> ValidationReport:
+        active_pipeline = pipeline if pipeline is not None else self.current_pipeline
+        self.is_running = True
 
-        stage_results = [
-            component_result,
-            integration_result,
-            performance_result,
-            health_result,
-        ]
-        # Overall status is PASS if all stages PASSED
-        overall_status = ValidationStatus.PASSED
-        for r in stage_results:
-            if r.status != ValidationStatus.PASSED:
-                overall_status = ValidationStatus.FAILED
-                break
+        try:
+            component_result = self.component_validator.validate_components()
+            integration_result = self.integration_validator.validate_integrations()
+            performance_result = self.performance_validator.validate_performance(
+                active_pipeline
+            )
+            health_result = self.health_validator.validate_system_health()
 
-        total_duration = sum(r.duration_seconds for r in stage_results)
-        report = ValidationReport(
-            pipeline_id=(pipeline.pipeline_id if pipeline else "default"),
-            overall_status=overall_status,
-            stage_results=stage_results,
-            total_duration=total_duration,
-            validation_metrics=ValidationMetrics({}),
-            issues=[],
-            recommendations=[],
-            generated_at=datetime.now(),
-        )
-        self.current_pipeline = pipeline
-        self.validation_pipelines.append(pipeline)
-        self.validation_history.append(report)
-        return report
+            stage_results = [
+                component_result,
+                integration_result,
+                performance_result,
+                health_result,
+            ]
+
+            overall_status = (
+                ValidationStatus.PASSED
+                if all(r.status == ValidationStatus.PASSED for r in stage_results)
+                else ValidationStatus.FAILED
+            )
+
+            total_duration = sum(r.duration_seconds for r in stage_results)
+            total_tests = sum(r.metrics.tests_run for r in stage_results)
+            total_passed = sum(r.metrics.tests_passed for r in stage_results)
+            total_failed = sum(r.metrics.tests_failed for r in stage_results)
+            avg_stage_duration = (
+                sum(r.metrics.avg_duration_seconds for r in stage_results)
+                / len(stage_results)
+                if stage_results
+                else 0.0
+            )
+
+            report = ValidationReport(
+                pipeline_id=(active_pipeline.pipeline_id if active_pipeline else "default"),
+                overall_status=overall_status,
+                stage_results=stage_results,
+                total_duration=total_duration,
+                validation_metrics=ValidationMetrics(
+                    tests_run=total_tests,
+                    tests_passed=total_passed,
+                    tests_failed=total_failed,
+                    avg_duration_seconds=avg_stage_duration,
+                ),
+                issues=[],
+                recommendations=[],
+                generated_at=datetime.now(),
+            )
+
+            if active_pipeline is not None:
+                self.current_pipeline = active_pipeline
+                if not any(
+                    p.pipeline_id == active_pipeline.pipeline_id
+                    for p in self.validation_pipelines
+                ):
+                    self.validation_pipelines.append(active_pipeline)
+
+            self.validation_history.append(report)
+            return report
+
+        finally:
+            self.is_running = False
 
     def run_validation_pipeline(self, pipeline_id: str) -> ValidationReport:
-        # Find pipeline by ID
-        pipeline = None
-        for p in self.validation_pipelines:
-            if hasattr(p, "pipeline_id") and p.pipeline_id == pipeline_id:
-                pipeline = p
+        pipeline: Optional[PipelineLike] = None
+        for candidate in self.validation_pipelines:
+            if candidate.pipeline_id == pipeline_id:
+                pipeline = candidate
                 break
 
-        # If not found, use current pipeline
         if pipeline is None:
             pipeline = self.current_pipeline
 
-        # Call run_end_to_end_validation regardless (allows mocking)
         return self.run_end_to_end_validation(pipeline)
 
-    def get_validation_status(self) -> Dict[str, Any]:
+    def get_validation_status(self) -> ValidationStatusPayload:
+        current_pipeline_id = (
+            self.current_pipeline.pipeline_id if self.current_pipeline else None
+        )
         return {
-            "current_pipeline": self.current_pipeline.pipeline_id
-            if self.current_pipeline
-            else None,
+            "current_pipeline": current_pipeline_id,
             "is_running": self.is_running,
             "pipeline_progress": 0.0,
         }
 
-    def get_validation_history(self) -> Dict[str, Any]:
+    def get_validation_history(self) -> ValidationHistoryPayload:
         total_validations = len(self.validation_history)
         successful_validations = sum(
             1
-            for r in self.validation_history
-            if r.overall_status == ValidationStatus.PASSED
+            for report in self.validation_history
+            if report.overall_status == ValidationStatus.PASSED
         )
         failed_validations = total_validations - successful_validations
         average_duration = (
-            sum(r.total_duration for r in self.validation_history) / total_validations
+            sum(report.total_duration for report in self.validation_history)
+            / total_validations
             if total_validations > 0
             else 0.0
         )
