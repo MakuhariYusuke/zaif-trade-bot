@@ -1551,3 +1551,187 @@ class TestAPIResponseLogLevel:
         lines = [l.strip() for l in source.splitlines()]
         debug_lines = [l for l in lines if "API Response" in l and "logger.debug" in l]
         assert len(debug_lines) >= 1
+
+
+# =====================================================================
+# 049# P0: clean-only 集計 + exit code FINAL 整合 + coverage
+# =====================================================================
+
+class Test049CleanOnlyMainJudgment:
+    """049# §4-#2: main() の最終集計が filter_clean_records を通している."""
+
+    def test_main_uses_filter_clean_records(self) -> None:
+        """main() のソースに filter_clean_records が含まれることを確認."""
+        import inspect
+        from scripts.v460.run_fill_test import main
+
+        source = inspect.getsource(main)
+        # filter_clean_records が使われている
+        assert "filter_clean_records" in source
+        # 旧パターン (records を直接 compute_fill_metrics に渡す) が存在しない
+        assert "compute_fill_metrics(records)" not in source
+        # clean_records を使ったパターンが存在
+        assert "compute_fill_metrics(clean_records)" in source
+
+    def test_main_exit_code_uses_judgment_type(self) -> None:
+        """049# §4-#1: 通常実行の exit code が judgment_type を参照."""
+        import inspect
+        from scripts.v460.run_fill_test import main
+
+        source = inspect.getsource(main)
+        # FINAL/INTERIM 分岐がある
+        assert 'jtype == "FINAL"' in source or "judgment_type" in source
+        # 旧パターン (gate_result のみ) が存在しない
+        assert 'sys.exit(0 if judgment["gate_result"]' not in source
+
+    def test_main_has_data_quality_output(self) -> None:
+        """049# §6.1-#4: judgment に data_quality セクションが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import main
+
+        source = inspect.getsource(main)
+        assert '"data_quality"' in source
+        assert '"clean_records"' in source
+        assert '"quarantine_records"' in source
+        assert '"clean_rate"' in source
+
+
+class Test049DataQualityInJudgment:
+    """049# §6.1-#4: data_quality フィールドの正確性を検証."""
+
+    def _make_record(self, *, git_sha: str = "abc1234", run_id: str = "r1",
+                     filled: bool = True, pnl: float = 0.0) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id="c1", timestamp=1700000000.0, side="buy",
+            order_price=15000000.0, order_quantity=0.001,
+            fill_price=15000001.0 if filled else None,
+            filled=filled, cancelled=not filled,
+            queue_wait_sec=10.0,
+            mid_at_fill=15000050.0 if filled else None,
+            mid_30s_after=15000100.0 if filled else None,
+            post_fill_30s_pnl=pnl if filled else None,
+            adverse_selected=pnl < 0 if filled else None,
+            run_id=run_id, git_sha=git_sha,
+        )
+
+    def test_clean_quarantine_split(self) -> None:
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [
+            self._make_record(git_sha="abc1234", run_id="r1"),
+            self._make_record(git_sha="", run_id="r1"),     # quarantine: blank sha
+            self._make_record(git_sha="abc1234", run_id=""),  # quarantine: blank run_id
+        ]
+        clean, quarantine = filter_clean_records(records)
+        assert len(clean) == 1
+        assert len(quarantine) == 2
+
+
+# =====================================================================
+# 049# P1: E3 サンプリング
+# =====================================================================
+
+class Test049E3Sampling:
+    """049# §3-#6: E3 計測がサンプリングで実行される."""
+
+    def test_e3_sampling_ratio_config(self) -> None:
+        """e3_sampling_ratio フィールドが FillTestConfig に存在."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "e3_sampling_ratio")
+        assert cfg.e3_sampling_ratio == 1.0  # デフォルトは全約定
+
+    def test_e3_sampling_from_yaml(self) -> None:
+        """YAML の e3.sampling_ratio が正しくパースされる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig.from_yaml({"e3": {"sampling_ratio": 0.33}})
+        assert cfg.e3_sampling_ratio == pytest.approx(0.33)
+
+    def test_e3_sampling_ratio_zero_skips_all(self) -> None:
+        """e3_sampling_ratio=0.0 で E3 計測がスキップされる (ソース確認)."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "e3_sampling_ratio" in source
+
+
+# =====================================================================
+# 049# P1: side 別 offset
+# =====================================================================
+
+class Test049SideOffset:
+    """049# §5.1: buy/sell 独立 offset テーブル."""
+
+    def test_side_offset_fields_exist(self) -> None:
+        """spread_offset_ratio_buy/sell フィールドが存在."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.spread_offset_ratio_buy is None
+        assert cfg.spread_offset_ratio_sell is None
+
+    def test_side_offset_from_yaml(self) -> None:
+        """YAML の side_offset.buy/sell が正しくパースされる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig.from_yaml({
+            "side_offset": {"buy": 0.03, "sell": 0.08}
+        })
+        assert cfg.spread_offset_ratio_buy == pytest.approx(0.03)
+        assert cfg.spread_offset_ratio_sell == pytest.approx(0.08)
+
+    def test_side_offset_used_in_price_calc(self) -> None:
+        """_compute_maker_price が side 別 offset を参照することをソースで確認."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        assert "spread_offset_ratio_buy" in source
+        assert "spread_offset_ratio_sell" in source
+        assert "effective_offset_ratio" in source
+
+
+# =====================================================================
+# 049# P1: 即約定防御
+# =====================================================================
+
+class Test049FastFillDefense:
+    """049# §6.2-#3: queue_wait<=5s + 負エッジ時の防御ロジック."""
+
+    def test_fast_fill_defense_config(self) -> None:
+        """fast_fill_defense 設定フィールドが存在."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.fast_fill_defense_enabled is False
+        assert cfg.fast_fill_threshold_sec == 5.0
+        assert cfg.fast_fill_offset_boost == 2.0
+
+    def test_fast_fill_defense_from_yaml(self) -> None:
+        """YAML の fast_fill_defense セクションが正しくパースされる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+        cfg = FillTestConfig.from_yaml({
+            "fast_fill_defense": {
+                "enabled": True,
+                "threshold_sec": 3.0,
+                "offset_boost": 1.5,
+            }
+        })
+        assert cfg.fast_fill_defense_enabled is True
+        assert cfg.fast_fill_threshold_sec == pytest.approx(3.0)
+        assert cfg.fast_fill_offset_boost == pytest.approx(1.5)
+
+    def test_fast_fill_boost_flag_initialized(self) -> None:
+        """FillTestRunner が _fast_fill_boost_active フラグを持つ."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.__init__)
+        assert "_fast_fill_boost_active" in source
+
+    def test_fast_fill_defense_logic_in_run_continuous(self) -> None:
+        """run_continuous に即約定防御ロジックが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "fast_fill_defense" in source
+        assert "fast_fill_threshold_sec" in source

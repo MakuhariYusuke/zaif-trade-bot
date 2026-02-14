@@ -78,6 +78,21 @@ time_filter:
   enabled: true               # 041#: 高 AS 時間帯のスキップ
   skip_utc_hours: [8, 9, 14, 16, 17, 18, 19]  # JST 17-04 の高 AS 時間帯を回避
 
+# ---- 049# E3 サンプリング ----
+e3:
+  sampling_ratio: 0.33         # 1/3 の約定のみ 60s/120s 計測 (サイクル効率回復)
+
+# ---- 049# side 別 offset ----
+# side_offset:
+#   buy: 0.05                  # buy 側 offset (共通値を上書き)
+#   sell: 0.07                 # sell 側 offset (SELL AS が高いため保守化)
+
+# ---- 049# 即約定防御 ----
+fast_fill_defense:
+  enabled: true                # queue_wait<=5s + 負エッジ時に次サイクル保守化
+  threshold_sec: 5.0           # この秒数以下で「速い約定」と判定
+  offset_boost: 2.0            # 防御時の offset 倍率
+
 # ---- 安全設計 (000# §3.9) ----
 safety:
   loss_cap_auto: true          # 041#: API残高から動的算出

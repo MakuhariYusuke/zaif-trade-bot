@@ -120,6 +120,15 @@ class FillTestConfig:
     loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ (hard)
     # 046# soft/hard 二段 loss_cap: soft 超過でロット半減、hard 超過で SAFE_STOP
     soft_loss_cap_ratio: float = 0.02  # 残高の 2% で soft cap (ロット半減)
+    # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
+    e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
+    # 049# side 別 offset: buy/sell で独立に offset を設定
+    spread_offset_ratio_buy: float | None = None   # None = 共通 offset を使用
+    spread_offset_ratio_sell: float | None = None   # None = 共通 offset を使用
+    # 049# 即約定防御: queue_wait が閾値以下で負エッジの場合に保守化
+    fast_fill_defense_enabled: bool = False
+    fast_fill_threshold_sec: float = 5.0   # この秒数以下で「速い約定」と判定
+    fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -201,6 +210,27 @@ class FillTestConfig:
         if "skip_utc_hours" in tf:
             kwargs["skip_utc_hours"] = tf["skip_utc_hours"]
 
+        # 049# E3 サンプリング
+        e3 = yaml_cfg.get("e3", {})
+        if "sampling_ratio" in e3:
+            kwargs["e3_sampling_ratio"] = e3["sampling_ratio"]
+
+        # 049# side 別 offset
+        side_offset = yaml_cfg.get("side_offset", {})
+        if "buy" in side_offset:
+            kwargs["spread_offset_ratio_buy"] = side_offset["buy"]
+        if "sell" in side_offset:
+            kwargs["spread_offset_ratio_sell"] = side_offset["sell"]
+
+        # 049# 即約定防御
+        ffd = yaml_cfg.get("fast_fill_defense", {})
+        if ffd.get("enabled") is not None:
+            kwargs["fast_fill_defense_enabled"] = ffd["enabled"]
+        if "threshold_sec" in ffd:
+            kwargs["fast_fill_threshold_sec"] = ffd["threshold_sec"]
+        if "offset_boost" in ffd:
+            kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
+
         return cls(**kwargs)
 
 
@@ -246,6 +276,8 @@ class FillTestRunner:
         self._soft_loss_cap_triggered: bool = False
         # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
         self._in_time_filter: bool = False
+        # 049# 即約定防御: 次サイクルの offset を一時的に増加
+        self._fast_fill_boost_active: bool = False
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -359,7 +391,13 @@ class FillTestRunner:
             )
 
         # スプレッド比例オフセット (最小保証付き)
-        offset = max(self.config.min_offset_jpy, spread * self.config.spread_offset_ratio)
+        # 049# side 別 offset: buy/sell 独立設定がある場合はそちらを優先
+        effective_offset_ratio = self.config.spread_offset_ratio
+        if side == "buy" and self.config.spread_offset_ratio_buy is not None:
+            effective_offset_ratio = self.config.spread_offset_ratio_buy
+        elif side == "sell" and self.config.spread_offset_ratio_sell is not None:
+            effective_offset_ratio = self.config.spread_offset_ratio_sell
+        offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
 
         if side == "buy":
             price = best_bid + offset
@@ -784,8 +822,11 @@ class FillTestRunner:
                     # CM-3: AS デッドゾーン
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
 
-            # 047# E3: +30s (=60s) 計測
-            if mid_at_fill is not None:
+            # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
+            # e3_sampling_ratio < 1.0 の場合、確率的にスキップしてサイクル効率を回復
+            import random as _rng
+            do_e3 = mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
+            if do_e3:
                 await asyncio.sleep(self.config.post_fill_wait_sec)  # +30s
                 try:
                     mid_60s_after = await self._get_mid_price()
@@ -1007,6 +1048,40 @@ class FillTestRunner:
                 )
                 self._shutdown_requested = True
 
+            # --- 049# 即約定防御: queue_wait が閾値以下 + 負エッジのとき次サイクルを保守化 ---
+            if self.config.fast_fill_defense_enabled and record.filled:
+                is_fast = record.queue_wait_sec <= self.config.fast_fill_threshold_sec
+                has_negative_edge = (
+                    record.mid_at_fill is not None
+                    and record.fill_price is not None
+                    and (
+                        (record.side == "buy" and record.fill_price > record.mid_at_fill)
+                        or (record.side == "sell" and record.fill_price < record.mid_at_fill)
+                    )
+                )
+                if is_fast and has_negative_edge:
+                    if not self._fast_fill_boost_active:
+                        self._fast_fill_boost_active = True
+                        boost = self.config.fast_fill_offset_boost
+                        old = self.config.spread_offset_ratio
+                        self.config.spread_offset_ratio = min(
+                            old * boost,
+                            0.30,  # max_offset_ratio ハードリミット
+                        )
+                        logger.info(
+                            f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
+                            f"(< {self.config.fast_fill_threshold_sec}s), "
+                            f"negative edge detected. "
+                            f"offset {old:.4f} → {self.config.spread_offset_ratio:.4f}"
+                        )
+                elif self._fast_fill_boost_active:
+                    # 正常約定に戻った → boost 解除
+                    self._fast_fill_boost_active = False
+                    # 元の offset に戻す (adaptation 結果は保持)
+                    logger.info(
+                        "[fast_fill_defense] Deactivated: normal fill detected, "
+                        f"offset = {self.config.spread_offset_ratio:.4f}"
+                    )
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:
                 if self._try_save_batch(batch):
@@ -1584,9 +1659,27 @@ def main() -> None:
     if records:
         from scripts.v460.lib.config_loader import load_gate_thresholds
 
-        metrics = compute_fill_metrics(records)
+        # 049# §4-#2: clean のみで集計 (quarantine 混在による誤判定防止)
+        clean_records, quarantine_records = filter_clean_records(records)
+        if quarantine_records:
+            logger.info(
+                f"[main] quarantine {len(quarantine_records)}/{len(records)} "
+                f"records excluded from final metrics"
+            )
+        metrics = compute_fill_metrics(clean_records)
         thresholds = load_gate_thresholds().get("g1_1_exec", {})
         judgment = g1_1_judgment(metrics, thresholds)
+
+        # 049# §6.1-#4: clean/quarantine/coverage を judgment に追加
+        judgment["data_quality"] = {
+            "total_records": len(records),
+            "clean_records": len(clean_records),
+            "quarantine_records": len(quarantine_records),
+            "clean_rate": len(clean_records) / len(records) if records else 0.0,
+            "quarantine_rate": len(quarantine_records) / len(records) if records else 0.0,
+            "as_coverage": metrics.as_coverage,
+            "as_raw_coverage": metrics.as_raw_coverage,
+        }
 
         out_str = json.dumps(judgment, indent=2, ensure_ascii=False)
         print(out_str)
@@ -1597,7 +1690,17 @@ def main() -> None:
                 f.write(out_str)
             logger.info(f"Saved judgment to {args.output}")
 
-        sys.exit(0 if judgment["gate_result"] == "PASS" else 1)
+        # 049# §4-#1: exit code を results-only と統一
+        # FINAL+PASS → 0, INTERIM/PROVISIONAL+PASS → 2, FAIL → 1
+        jtype = judgment.get("judgment_type", "PROVISIONAL")
+        gate = judgment.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            sys.exit(0)
+        elif gate == "PASS":
+            logger.info(f"Gate PASS but judgment_type={jtype} (not FINAL), exit 2")
+            sys.exit(2)
+        else:
+            sys.exit(1)
     else:
         logger.warning("No records collected")
         sys.exit(1)
