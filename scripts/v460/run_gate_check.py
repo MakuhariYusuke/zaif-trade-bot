@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-v460 Gate Check Runner — G0/G1/G1.1 閾値照合ユーティリティ.
+v460 Gate Check Runner — G0/G1/G1.1/G2/G3/G4 閾値照合ユーティリティ.
 
 001# §4.1 / 000# §3 準拠.
 009# P2-3: G1.1-exec 追加.
+031# F7: G2/G3/G4 スタブ追加.
 
 Usage:
   python scripts/v460/run_gate_check.py --gate G0 --data-path data/v460/features/btc_jpy_1m_v460_features.parquet
   python scripts/v460/run_gate_check.py --gate G1 --results-path results/v460/g1_results.json
   python scripts/v460/run_gate_check.py --gate G1.1 --results-dir results/v460/fill_test
+  python scripts/v460/run_gate_check.py --gate G2 --results-path results/v460/g2_train_results.json
+  python scripts/v460/run_gate_check.py --gate G3 --results-path results/v460/g3_pnl_results.json
+  python scripts/v460/run_gate_check.py --gate G4 --results-path results/v460/g4_live_results.json
 """
 
 from __future__ import annotations
@@ -253,12 +257,245 @@ def run_g1_1(
 
 
 # ======================================================================
+# G2-train (031# F7)
+# ======================================================================
+
+def run_g2_judgment(results_path: str, thresholds: dict | None = None) -> dict:
+    """G2-train Gate チェック.
+
+    000# §3.4: SAC 学習安定性検証.
+
+    Expects results JSON with:
+      - seed_results: [{seed, gross_roi, ic_mean}, ...]
+      - convergence: {roi_variance_pct_after_30k}
+    """
+    import statistics as _stats
+
+    if thresholds is None:
+        thresholds = load_gate_thresholds().get("g2_train", {})
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        exp_results = json.load(f)
+
+    seed_results = exp_results.get("seed_results", [])
+    if not seed_results:
+        return {"gate": "G2-train", "gate_result": "NO_DATA", "error": "No seed results"}
+
+    checks: dict[str, dict] = {}
+
+    # E1: gross > 0 の seed 比率 >= 75%
+    min_ratio = thresholds.get("min_positive_seed_ratio", 0.75)
+    positive_seeds = sum(1 for s in seed_results if s.get("gross_roi", 0) > 0)
+    ratio = positive_seeds / len(seed_results)
+    checks["positive_seed_ratio"] = {
+        "value": ratio,
+        "threshold": min_ratio,
+        "detail": f"{positive_seeds}/{len(seed_results)}",
+        "pass": ratio >= min_ratio,
+    }
+
+    # E2: IC の seed 間標準偏差 <= 0.03
+    max_ic_std = thresholds.get("max_ic_seed_std", 0.03)
+    ic_values = [s.get("ic_mean", 0) for s in seed_results]
+    ic_std = _stats.stdev(ic_values) if len(ic_values) >= 2 else 0.0
+    checks["ic_seed_std"] = {
+        "value": ic_std,
+        "threshold": max_ic_std,
+        "pass": ic_std <= max_ic_std,
+    }
+
+    # E3: 30K以降の ROI 変動 <= 5%
+    max_roi_var = thresholds.get("max_roi_variance_pct", 5.0)
+    convergence = exp_results.get("convergence", {})
+    roi_var = convergence.get("roi_variance_pct_after_30k", 0.0)
+    checks["convergence"] = {
+        "value": roi_var,
+        "threshold": max_roi_var,
+        "pass": roi_var <= max_roi_var,
+    }
+
+    # E4: worst-seed ROI > -2%
+    worst_min = thresholds.get("worst_seed_min_roi", -0.02)
+    worst_roi = min(s.get("gross_roi", 0) for s in seed_results)
+    checks["worst_seed_roi"] = {
+        "value": worst_roi,
+        "threshold": worst_min,
+        "pass": worst_roi > worst_min,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+    return {
+        "gate": "G2-train",
+        "gate_result": "PASS" if all_pass else "FAIL",
+        "checks": checks,
+        "n_seeds": len(seed_results),
+    }
+
+
+# ======================================================================
+# G3-pnl (031# F7)
+# ======================================================================
+
+def run_g3_judgment(results_path: str, thresholds: dict | None = None) -> dict:
+    """G3-pnl Gate チェック.
+
+    000# §3.5: コスト込みの収益性検証.
+
+    Expects results JSON with:
+      - seed_metrics: [{pf, sharpe_annual, max_drawdown, avg_gross_per_trade, avg_fee_per_trade}, ...]
+    """
+    import statistics as _stats
+
+    if thresholds is None:
+        thresholds = load_gate_thresholds().get("g3_pnl", {})
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        exp_results = json.load(f)
+
+    seed_metrics = exp_results.get("seed_metrics", [])
+    if not seed_metrics:
+        return {"gate": "G3-pnl", "gate_result": "NO_DATA", "error": "No seed metrics"}
+
+    checks: dict[str, dict] = {}
+
+    # E1: PF median > 1.05
+    min_pf_median = thresholds.get("min_pf_median", 1.05)
+    pfs = sorted(s.get("pf", 0) for s in seed_metrics)
+    pf_median = _stats.median(pfs)
+    checks["pf_median"] = {
+        "value": pf_median,
+        "threshold": min_pf_median,
+        "pass": pf_median > min_pf_median,
+    }
+
+    # E2: PF worst > 0.95
+    min_pf_worst = thresholds.get("min_pf_worst", 0.95)
+    pf_worst = min(pfs)
+    checks["pf_worst"] = {
+        "value": pf_worst,
+        "threshold": min_pf_worst,
+        "pass": pf_worst > min_pf_worst,
+    }
+
+    # E3: gross > fee
+    gross_gt_fee_required = thresholds.get("gross_gt_fee", True)
+    total_gross = sum(s.get("avg_gross_per_trade", 0) for s in seed_metrics)
+    total_fee = sum(s.get("avg_fee_per_trade", 0) for s in seed_metrics)
+    gross_gt_fee = total_gross > total_fee
+    checks["gross_gt_fee"] = {
+        "value": gross_gt_fee,
+        "threshold": gross_gt_fee_required,
+        "pass": gross_gt_fee if gross_gt_fee_required else True,
+    }
+
+    # E4: Max DD < 15%
+    max_dd_threshold = thresholds.get("max_drawdown", 0.15)
+    worst_dd = max(s.get("max_drawdown", 0) for s in seed_metrics)
+    checks["max_drawdown"] = {
+        "value": worst_dd,
+        "threshold": max_dd_threshold,
+        "pass": worst_dd < max_dd_threshold,
+    }
+
+    # E5: Sharpe annual median > 0.8
+    min_sharpe = thresholds.get("min_sharpe_annual", 0.8)
+    sharpes = [s.get("sharpe_annual", 0) for s in seed_metrics]
+    sharpe_median = _stats.median(sharpes)
+    checks["sharpe_annual"] = {
+        "value": sharpe_median,
+        "threshold": min_sharpe,
+        "pass": sharpe_median > min_sharpe,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+    return {
+        "gate": "G3-pnl",
+        "gate_result": "PASS" if all_pass else "FAIL",
+        "checks": checks,
+        "n_seeds": len(seed_metrics),
+    }
+
+
+# ======================================================================
+# G4-live (031# F7)
+# ======================================================================
+
+def run_g4_judgment(results_path: str, thresholds: dict | None = None) -> dict:
+    """G4-live Gate チェック.
+
+    000# §3.6: Paper trading 運用検証.
+
+    Expects results JSON with:
+      - uptime_days, downtime_ratio, circuit_breaker_tested,
+        g3_maintained, emergency_stop_response_sec
+    """
+    if thresholds is None:
+        thresholds = load_gate_thresholds().get("g4_live", {})
+
+    with open(results_path, "r", encoding="utf-8") as f:
+        exp_results = json.load(f)
+
+    checks: dict[str, dict] = {}
+
+    # E1: 連続稼働 >= 7日
+    min_days = thresholds.get("min_paper_days", 7)
+    uptime_days = exp_results.get("uptime_days", 0)
+    checks["uptime_days"] = {
+        "value": uptime_days,
+        "threshold": min_days,
+        "pass": uptime_days >= min_days,
+    }
+
+    # E2: ダウンタイム < 1%
+    max_downtime = thresholds.get("max_downtime_ratio", 0.01)
+    downtime = exp_results.get("downtime_ratio", 1.0)
+    checks["downtime_ratio"] = {
+        "value": downtime,
+        "threshold": max_downtime,
+        "pass": downtime < max_downtime,
+    }
+
+    # E3: Circuit Breaker 発動確認
+    cb_tested = exp_results.get("circuit_breaker_tested", False)
+    checks["circuit_breaker"] = {
+        "value": cb_tested,
+        "threshold": True,
+        "pass": cb_tested is True,
+    }
+
+    # E4: G3 指標維持
+    g3_maintained = exp_results.get("g3_maintained", False)
+    checks["g3_maintained"] = {
+        "value": g3_maintained,
+        "threshold": True,
+        "pass": g3_maintained is True,
+    }
+
+    # E5: 緊急停止応答 < 1秒
+    max_response = thresholds.get("max_emergency_stop_sec", 1.0)
+    response_sec = exp_results.get("emergency_stop_response_sec", float("inf"))
+    checks["emergency_stop"] = {
+        "value": response_sec,
+        "threshold": max_response,
+        "pass": response_sec < max_response,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+    return {
+        "gate": "G4-live",
+        "gate_result": "PASS" if all_pass else "FAIL",
+        "checks": checks,
+    }
+
+
+# ======================================================================
 # CLI
 # ======================================================================
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="v460 Gate Check")
-    parser.add_argument("--gate", required=True, choices=["G0", "G1", "G1.1"],
+    parser.add_argument("--gate", required=True,
+                        choices=["G0", "G1", "G1.1", "G2", "G3", "G4"],
                         help="Gate to check")
     parser.add_argument("--data-path", default=None,
                         help="Path to data file (G0)")
@@ -285,6 +522,18 @@ def main() -> None:
     elif args.gate == "G1.1":
         results_dir = args.results_dir or "results/v460/fill_test"
         result = run_g1_1(results_dir, with_mc=args.with_mc)
+    elif args.gate == "G2":
+        if not args.results_path:
+            parser.error("--results-path required for G2")
+        result = run_g2_judgment(args.results_path)
+    elif args.gate == "G3":
+        if not args.results_path:
+            parser.error("--results-path required for G3")
+        result = run_g3_judgment(args.results_path)
+    elif args.gate == "G4":
+        if not args.results_path:
+            parser.error("--results-path required for G4")
+        result = run_g4_judgment(args.results_path)
     else:
         parser.error(f"Unknown gate: {args.gate}")
         return

@@ -1,7 +1,8 @@
 """
 v460 Gate Check Runner 単体テスト.
 
-run_gate_check.py の run_g0 / run_g1_judgment / run_g1_1 を検証する。
+run_gate_check.py の run_g0 / run_g1_judgment / run_g1_1 / run_g2_judgment
+/ run_g3_judgment / run_g4_judgment を検証する。
 外部ファイル依存はすべて mock で遮断。
 """
 
@@ -513,7 +514,363 @@ class TestRunG1_1:
 
 
 # =====================================================================
-# CLI テスト
+# G2-train テスト (031# F7)
+# =====================================================================
+
+
+def _make_g2_results(
+    n_seeds: int = 5,
+    gross_roi_mean: float = 0.03,
+    ic_mean: float = 0.05,
+    ic_std: float = 0.01,
+    roi_var_pct: float = 2.0,
+) -> dict:
+    """G2 テスト用の results JSON を生成."""
+    rng = np.random.RandomState(42)
+    seed_results = []
+    for i in range(n_seeds):
+        seed_results.append({
+            "seed": i,
+            "gross_roi": rng.normal(gross_roi_mean, 0.01),
+            "ic_mean": rng.normal(ic_mean, ic_std),
+        })
+    return {
+        "seed_results": seed_results,
+        "convergence": {"roi_variance_pct_after_30k": roi_var_pct},
+    }
+
+
+def _default_thresholds_g2() -> dict:
+    return {
+        "min_positive_seed_ratio": 0.75,
+        "max_ic_seed_std": 0.03,
+        "max_roi_variance_pct": 5.0,
+        "worst_seed_min_roi": -0.02,
+    }
+
+
+def _make_g3_results(
+    n_seeds: int = 5,
+    pf_mean: float = 1.3,
+    sharpe_mean: float = 1.5,
+    max_dd: float = 0.08,
+    gross: float = 0.005,
+    fee: float = 0.002,
+) -> dict:
+    """G3 テスト用の results JSON を生成."""
+    rng = np.random.RandomState(42)
+    seed_metrics = []
+    for i in range(n_seeds):
+        seed_metrics.append({
+            "seed": i,
+            "pf": rng.normal(pf_mean, 0.1),
+            "sharpe_annual": rng.normal(sharpe_mean, 0.2),
+            "max_drawdown": rng.uniform(max_dd * 0.5, max_dd),
+            "avg_gross_per_trade": gross,
+            "avg_fee_per_trade": fee,
+        })
+    return {"seed_metrics": seed_metrics}
+
+
+def _default_thresholds_g3() -> dict:
+    return {
+        "min_pf_median": 1.05,
+        "min_pf_worst": 0.95,
+        "gross_gt_fee": True,
+        "max_drawdown": 0.15,
+        "min_sharpe_annual": 0.8,
+    }
+
+
+def _make_g4_results(
+    uptime_days: float = 10.0,
+    downtime_ratio: float = 0.003,
+    circuit_breaker_tested: bool = True,
+    g3_maintained: bool = True,
+    emergency_stop_sec: float = 0.3,
+) -> dict:
+    """G4 テスト用の results JSON を生成."""
+    return {
+        "uptime_days": uptime_days,
+        "downtime_ratio": downtime_ratio,
+        "circuit_breaker_tested": circuit_breaker_tested,
+        "g3_maintained": g3_maintained,
+        "emergency_stop_response_sec": emergency_stop_sec,
+    }
+
+
+def _default_thresholds_g4() -> dict:
+    return {
+        "min_paper_days": 7,
+        "max_downtime_ratio": 0.01,
+        "max_emergency_stop_sec": 1.0,
+    }
+
+
+class TestG2Train:
+    """run_g2_judgment のテスト."""
+
+    def _write_results(self, data: dict, tmp_dir: Path) -> str:
+        path = tmp_dir / "g2_results.json"
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return str(path)
+
+    def test_g2_pass(self) -> None:
+        """全 seed 良好 → PASS."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05, ic_std=0.005, roi_var_pct=2.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["gate"] == "G2-train"
+        assert result["gate_result"] == "PASS"
+        assert all(c["pass"] for c in result["checks"].values())
+
+    def test_g2_no_data(self) -> None:
+        """seed_results 空 → NO_DATA."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        data = {"seed_results": [], "convergence": {}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["gate_result"] == "NO_DATA"
+
+    def test_g2_low_positive_ratio(self) -> None:
+        """positive seed 比率不足 → FAIL."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        data = _make_g2_results(n_seeds=5, gross_roi_mean=-0.03)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["checks"]["positive_seed_ratio"]["pass"] is False
+
+    def test_g2_high_ic_std(self) -> None:
+        """IC seed 間標準偏差が大きい → FAIL."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        data = _make_g2_results(n_seeds=5, ic_std=0.10)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["checks"]["ic_seed_std"]["pass"] is False
+
+    def test_g2_poor_convergence(self) -> None:
+        """ROI variance 高い → FAIL."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        data = _make_g2_results(n_seeds=5, roi_var_pct=15.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["checks"]["convergence"]["pass"] is False
+
+    def test_g2_worst_seed_bad(self) -> None:
+        """worst seed の ROI が閾値以下 → FAIL."""
+        from scripts.v460.run_gate_check import run_g2_judgment
+
+        # 手動で1つの seed を -5% にする
+        data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05)
+        data["seed_results"][0]["gross_roi"] = -0.05
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+
+        assert result["checks"]["worst_seed_roi"]["pass"] is False
+
+
+class TestG3Pnl:
+    """run_g3_judgment のテスト."""
+
+    def _write_results(self, data: dict, tmp_dir: Path) -> str:
+        path = tmp_dir / "g3_results.json"
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return str(path)
+
+    def test_g3_pass(self) -> None:
+        """全指標良好 → PASS."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(pf_mean=1.4, sharpe_mean=1.5, max_dd=0.08)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["gate"] == "G3-pnl"
+        assert result["gate_result"] == "PASS"
+        assert all(c["pass"] for c in result["checks"].values())
+
+    def test_g3_no_data(self) -> None:
+        """seed_metrics 空 → NO_DATA."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = {"seed_metrics": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["gate_result"] == "NO_DATA"
+
+    def test_g3_low_pf_median(self) -> None:
+        """PF 中央値低い → FAIL."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(pf_mean=0.8)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["checks"]["pf_median"]["pass"] is False
+
+    def test_g3_low_pf_worst(self) -> None:
+        """PF worst が閾値以下 → FAIL."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(pf_mean=1.2)
+        data["seed_metrics"][0]["pf"] = 0.5  # worst = 0.5 < 0.95
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["checks"]["pf_worst"]["pass"] is False
+
+    def test_g3_fee_exceeds_gross(self) -> None:
+        """gross < fee → FAIL."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(gross=0.001, fee=0.005)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["checks"]["gross_gt_fee"]["pass"] is False
+
+    def test_g3_high_drawdown(self) -> None:
+        """Max DD > 15% → FAIL."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(max_dd=0.25)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["checks"]["max_drawdown"]["pass"] is False
+
+    def test_g3_low_sharpe(self) -> None:
+        """Sharpe annual 低い → FAIL."""
+        from scripts.v460.run_gate_check import run_g3_judgment
+
+        data = _make_g3_results(sharpe_mean=0.3)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+
+        assert result["checks"]["sharpe_annual"]["pass"] is False
+
+
+class TestG4Live:
+    """run_g4_judgment のテスト."""
+
+    def _write_results(self, data: dict, tmp_dir: Path) -> str:
+        path = tmp_dir / "g4_results.json"
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return str(path)
+
+    def test_g4_pass(self) -> None:
+        """全指標良好 → PASS."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["gate"] == "G4-live"
+        assert result["gate_result"] == "PASS"
+        assert all(c["pass"] for c in result["checks"].values())
+
+    def test_g4_low_uptime(self) -> None:
+        """稼働日数不足 → FAIL."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(uptime_days=3.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["checks"]["uptime_days"]["pass"] is False
+
+    def test_g4_high_downtime(self) -> None:
+        """ダウンタイム比率超過 → FAIL."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(downtime_ratio=0.05)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["checks"]["downtime_ratio"]["pass"] is False
+
+    def test_g4_no_circuit_breaker(self) -> None:
+        """Circuit Breaker 未テスト → FAIL."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(circuit_breaker_tested=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["checks"]["circuit_breaker"]["pass"] is False
+
+    def test_g4_g3_not_maintained(self) -> None:
+        """G3 指標未維持 → FAIL."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(g3_maintained=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["checks"]["g3_maintained"]["pass"] is False
+
+    def test_g4_slow_emergency_stop(self) -> None:
+        """緊急停止応答遅延 → FAIL."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(emergency_stop_sec=5.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["checks"]["emergency_stop"]["pass"] is False
+
+    def test_g4_multiple_failures(self) -> None:
+        """複数指標 FAIL → FAIL + 全チェック記録."""
+        from scripts.v460.run_gate_check import run_g4_judgment
+
+        data = _make_g4_results(
+            uptime_days=2.0,
+            downtime_ratio=0.05,
+            circuit_breaker_tested=False,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write_results(data, Path(tmp))
+            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+
+        assert result["gate_result"] == "FAIL"
+        failed = [k for k, v in result["checks"].items() if not v["pass"]]
+        assert len(failed) >= 3
+
+
+# =====================================================================
+# CLI テスト (G2/G3/G4 追加)
 # =====================================================================
 
 
@@ -586,3 +943,45 @@ class TestCLI:
             assert out_path.exists()
             loaded = json.loads(out_path.read_text(encoding="utf-8"))
             assert loaded["gate_result"] == "PASS"
+
+    @patch("scripts.v460.run_gate_check.run_g2_judgment")
+    def test_cli_g2(self, mock_run_g2) -> None:
+        """--gate G2 で run_g2_judgment が呼ばれる."""
+        from scripts.v460.run_gate_check import main
+
+        mock_run_g2.return_value = {"gate": "G2-train", "gate_result": "PASS", "checks": {}}
+
+        with patch("sys.argv", ["prog", "--gate", "G2", "--results-path", "g2.json"]):
+            with patch("scripts.v460.run_gate_check.sys.exit") as mock_exit:
+                main()
+                mock_exit.assert_called_once_with(0)
+
+        mock_run_g2.assert_called_once()
+
+    @patch("scripts.v460.run_gate_check.run_g3_judgment")
+    def test_cli_g3(self, mock_run_g3) -> None:
+        """--gate G3 で run_g3_judgment が呼ばれる."""
+        from scripts.v460.run_gate_check import main
+
+        mock_run_g3.return_value = {"gate": "G3-pnl", "gate_result": "FAIL", "checks": {}}
+
+        with patch("sys.argv", ["prog", "--gate", "G3", "--results-path", "g3.json"]):
+            with patch("scripts.v460.run_gate_check.sys.exit") as mock_exit:
+                main()
+                mock_exit.assert_called_once_with(1)  # FAIL → exit 1
+
+        mock_run_g3.assert_called_once()
+
+    @patch("scripts.v460.run_gate_check.run_g4_judgment")
+    def test_cli_g4(self, mock_run_g4) -> None:
+        """--gate G4 で run_g4_judgment が呼ばれる."""
+        from scripts.v460.run_gate_check import main
+
+        mock_run_g4.return_value = {"gate": "G4-live", "gate_result": "PASS", "checks": {}}
+
+        with patch("sys.argv", ["prog", "--gate", "G4", "--results-path", "g4.json"]):
+            with patch("scripts.v460.run_gate_check.sys.exit") as mock_exit:
+                main()
+                mock_exit.assert_called_once_with(0)
+
+        mock_run_g4.assert_called_once()
