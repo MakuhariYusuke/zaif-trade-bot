@@ -365,37 +365,65 @@ class FillTestRunner:
                 )
             return price, spread
 
+    def _is_time_filtered(self) -> bool:
+        """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
+
+        Returns True の場合、呼び出し元は FillRecord を生成せずスリープする。
+        レコード不生成により fill_rate メトリクスの汚染を防止。
+        """
+        if not self.config.enable_time_filter or not self.config.skip_utc_hours:
+            return False
+        from datetime import datetime, timezone
+
+        current_utc_hour = datetime.now(timezone.utc).hour
+        return current_utc_hour in self.config.skip_utc_hours
+
+    async def _check_balance_for_side(self, side: str) -> bool:
+        """041# 残高 pre-flight check: 発注前に残高が十分か確認.
+
+        不足時は True を返す (スキップすべき)。
+        _last_side を反転させないことで、次サイクルで反対サイドを試行する。
+        """
+        try:
+            if side == "sell":
+                # sell には BTC 残高が必要
+                btc_balances = await self.adapter.get_balance("BTC")
+                btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
+                if btc_free < self._current_lot:
+                    logger.warning(
+                        f"[balance] Insufficient BTC for sell: "
+                        f"{btc_free:.6f} < {self._current_lot:.4f}. "
+                        f"Skipping sell → will retry buy next."
+                    )
+                    return True
+            else:
+                # buy には JPY 残高が必要
+                price = await self.adapter.get_current_price(self.config.symbol)
+                if price:
+                    jpy_needed = self._current_lot * price * 1.01  # 1% margin
+                    jpy_balances = await self.adapter.get_balance("JPY")
+                    jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
+                    if jpy_free < jpy_needed:
+                        logger.warning(
+                            f"[balance] Insufficient JPY for buy: "
+                            f"{jpy_free:.0f} < {jpy_needed:.0f}. "
+                            f"Skipping buy → will retry sell next."
+                        )
+                        return True
+        except Exception as e:
+            logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
+        return False
+
     async def run_single_cycle(self) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
         009# §4.2 の流れに準拠.
-        041# 時間帯フィルター追加.
+        041# 時間帯フィルター・残高チェック追加.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         side = self._next_side()
         self._last_side = side
-
-        # 041# 時間帯フィルター: 高 AS 時間帯はスキップ
-        if self.config.enable_time_filter and self.config.skip_utc_hours:
-            from datetime import datetime, timezone
-
-            current_utc_hour = datetime.now(timezone.utc).hour
-            if current_utc_hour in self.config.skip_utc_hours:
-                logger.info(
-                    f"=== Cycle {self._cycle_count} ({side}) SKIPPED "
-                    f"(UTC {current_utc_hour:02d} in skip_utc_hours) ==="
-                )
-                return FillRecord(
-                    cycle_id=cycle_id,
-                    timestamp=time.time(),
-                    side=side,
-                    order_price=0.0,
-                    order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="time_filter",
-                    spread_offset_ratio=self.config.spread_offset_ratio,
-                )
 
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
@@ -685,6 +713,23 @@ class FillTestRunner:
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._shutdown_requested:
+            # 041# 時間帯フィルター: レコード不生成でスリープ (メトリクス汚染防止)
+            if self._is_time_filtered():
+                logger.info(
+                    f"[time_filter] High-AS hour — sleeping "
+                    f"{self.config.cycle_interval_sec}s"
+                )
+                await asyncio.sleep(self.config.cycle_interval_sec)
+                continue
+
+            # 041# 残高 pre-flight check: 不足サイドはスキップ
+            next_side = self._next_side()
+            if await self._check_balance_for_side(next_side):
+                # 反対サイドを試す: _last_side を反転して次は反対サイド
+                self._last_side = next_side  # → 次の _next_side() が反対を返す
+                await asyncio.sleep(self.config.cycle_interval_sec)
+                continue
+
             # --- サイクル実行 ---
             try:
                 record = await self.run_single_cycle()
@@ -913,9 +958,11 @@ class FillTestRunner:
             balances = await self.adapter.get_balance()
             total_jpy = 0.0
             for b in balances:
-                if b.currency == "JPY":
+                currency = b.currency.upper()
+                # 041# reserved (ロック) 残高も含める: JPY_RESERVED, BTC_RESERVED
+                if currency == "JPY" or currency == "JPY_RESERVED":
                     total_jpy += b.total
-                elif b.currency == "BTC":
+                elif currency == "BTC" or currency == "BTC_RESERVED":
                     total_jpy += b.total * btc_price
 
             if total_jpy <= 0:

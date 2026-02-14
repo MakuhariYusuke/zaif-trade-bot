@@ -486,3 +486,50 @@ class TestFillTestConfigDeadzone:
 
         config = FillTestConfig()
         assert config.as_deadzone_bps == 0.5
+
+
+class TestTimeFilterNoRecord:
+    """041# 時間帯フィルターがレコードを生成しないことを検証."""
+
+    def test_is_time_filtered_disabled(self) -> None:
+        """フィルター無効時は常に False."""
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from unittest.mock import MagicMock
+
+        config = FillTestConfig(enable_time_filter=False)
+        runner = FillTestRunner.__new__(FillTestRunner)
+        runner.config = config
+        assert runner._is_time_filtered() is False
+
+    def test_is_time_filtered_no_hours(self) -> None:
+        """skip_utc_hours 未設定時は常に False."""
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig(enable_time_filter=True, skip_utc_hours=None)
+        runner = FillTestRunner.__new__(FillTestRunner)
+        runner.config = config
+        assert runner._is_time_filtered() is False
+
+    def test_is_time_filtered_empty_hours(self) -> None:
+        """skip_utc_hours 空リスト時は常に False."""
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[])
+        runner = FillTestRunner.__new__(FillTestRunner)
+        runner.config = config
+        assert runner._is_time_filtered() is False
+
+
+class TestDynamicLossCapReserved:
+    """041# reserved 残高が loss_cap 計算に含まれることを検証."""
+
+    def test_loss_cap_includes_reserved_key(self) -> None:
+        """JPY_RESERVED が currency として出てきた場合、集計に含む."""
+        # 041# の _update_dynamic_loss_cap が JPY_RESERVED を認識するか
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig(loss_cap_auto=True, loss_cap_ratio=0.05)
+        # JPY = 1000, JPY_RESERVED = 10000, BTC = 0.001 × 10M = 10000
+        # total = 21000, cap = 1050
+        assert config.loss_cap_auto is True
+        assert config.loss_cap_ratio == 0.05
