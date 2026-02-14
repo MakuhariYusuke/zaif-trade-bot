@@ -85,6 +85,10 @@ class FillTestConfig:
     # 032# P0: 方策 A パラメータ適応
     enable_auto_adapt: bool = False  # 自動適応の有効化
     adapt_interval_cycles: int = 50  # 適応判定の間隔 (サイクル数)
+    # 033# 方策 B: 動的ロットサイジング
+    enable_dynamic_lot: bool = False  # 動的ロット有効化
+    max_lot: float = 0.005  # ロット上限 (BTC)
+    lot_adapt_interval_cycles: int = 50  # ロット適応判定の間隔
 
 
 # ======================================================================
@@ -119,6 +123,9 @@ class FillTestRunner:
         # 020# O4: データバージョン管理
         self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         self._git_sha = self._get_git_sha()
+
+        # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
+        self._current_lot: float = config.order_quantity
 
         # 024# R1: 保存失敗トラッキング
         self._unsaved_batch: list[FillRecord] = []
@@ -254,7 +261,7 @@ class FillTestRunner:
                 timestamp=time.time(),
                 side=side,
                 order_price=0.0,
-                order_quantity=self.config.order_quantity,
+                order_quantity=self._current_lot,
                 cancelled=True,
                 cancel_reason="orderbook_error",
                 error_message=str(e),
@@ -271,14 +278,14 @@ class FillTestRunner:
                 order = await self.adapter.place_order(
                     symbol=self.config.symbol,
                     side=side,
-                    quantity=self.config.order_quantity,
+                    quantity=self._current_lot,
                     price=order_price,
                     order_type="limit",
                 )
                 self._pending_order_id = order.order_id
                 logger.info(
                     f"Placed {side} limit @ {order_price:.0f} JPY, "
-                    f"qty={self.config.order_quantity}, id={order.order_id}"
+                    f"qty={self._current_lot}, id={order.order_id}"
                     + (f" (retry {attempt})" if attempt > 0 else "")
                 )
                 break
@@ -318,7 +325,7 @@ class FillTestRunner:
                 timestamp=t_submit,
                 side=side,
                 order_price=order_price,
-                order_quantity=self.config.order_quantity,
+                order_quantity=self._current_lot,
                 cancelled=True,
                 cancel_reason=cancel_reason,
                 error_message=last_error,  # 031# エラー詳細を記録
@@ -443,7 +450,7 @@ class FillTestRunner:
             timestamp=t_submit,
             side=side,
             order_price=order_price,
-            order_quantity=self.config.order_quantity,
+            order_quantity=self._current_lot,
             fill_price=fill_price,
             filled=filled,
             cancelled=not filled,
@@ -482,6 +489,8 @@ class FillTestRunner:
 
         024# R1-R4: 保存失敗耐性・例外分離・メモリ制御を強化.
         032# P0: 方策 A パラメータ適応統合.
+        033# 方策 B: 動的ロットサイジング統合.
+        033# F4: 累積 PnL 安全キャップ (000# §3.9).
         """
         end_time = time.time() + hours * 3600
 
@@ -490,6 +499,14 @@ class FillTestRunner:
         # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
         total_count = len(existing_records)
         filled_count = sum(1 for r in existing_records if r.filled)
+
+        # 033# F4: レジューム時の累積 PnL 計算
+        cumulative_pnl_jpy = 0.0
+        for r in existing_records:
+            if r.filled and r.post_fill_30s_pnl is not None and r.fill_price:
+                cumulative_pnl_jpy += (
+                    r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
+                )
         del existing_records  # メモリ解放
 
         batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
@@ -515,7 +532,22 @@ class FillTestRunner:
             total_count += 1
             if record.filled:
                 filled_count += 1
+                # 033# F4: 累積 PnL インクリメンタル追跡
+                if record.post_fill_30s_pnl is not None and record.fill_price:
+                    cumulative_pnl_jpy += (
+                        record.post_fill_30s_pnl * 1e-4
+                        * record.fill_price * record.order_quantity
+                    )
             batch.append(record)
+
+            # --- 033# F4: 累積 PnL 安全キャップ (000# §3.9) ---
+            loss_cap_jpy = 10_000.0
+            if cumulative_pnl_jpy <= -loss_cap_jpy:
+                logger.error(
+                    f"LOSS CAP REACHED: cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
+                    f"(cap = -{loss_cap_jpy:.0f} JPY). Stopping fill test."
+                )
+                self._shutdown_requested = True
 
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:
@@ -529,6 +561,8 @@ class FillTestRunner:
                     f"Progress: {self._cycle_count} cycles, "
                     f"fill rate={filled_count}/{total_count} "
                     f"({filled_count/total_count*100:.1f}%), "
+                    f"cumPnL={cumulative_pnl_jpy:.1f}JPY, "
+                    f"lot={self._current_lot:.4f}BTC, "
                     f"unsaved_batch={len(batch)}"
                 )
 
@@ -539,6 +573,14 @@ class FillTestRunner:
                 and total_count >= 50
             ):
                 self._try_auto_adapt(total_count, filled_count)
+
+            # --- 033# 方策 B: 動的ロットサイジング ---
+            if (
+                self.config.enable_dynamic_lot
+                and self._cycle_count % self.config.lot_adapt_interval_cycles == 0
+                and total_count >= 50
+            ):
+                self._try_auto_lot_size()
 
             # 次サイクルまで待機
             if time.time() < end_time and not self._shutdown_requested:
@@ -685,6 +727,56 @@ class FillTestRunner:
         except Exception as e:
             logger.warning(f"[方策A] Auto-adapt failed (non-fatal): {e}")
 
+    def _try_auto_lot_size(self) -> None:
+        """033# 方策 B — fill メトリクスに基づくロットサイズ自動適応.
+
+        run_continuous のサイクルループ内から呼ばれ、
+        fill_rate / AS_ratio / PnL に応じてロットサイズを段階調整する。
+        """
+        try:
+            from scripts.v460.lib.lot_sizer import (
+                LotSizingConfig,
+                compute_cumulative_pnl_jpy,
+                compute_lot_size,
+                compute_recent_pnl_bps,
+            )
+
+            records = load_fill_records_glob(str(self._results_dir))
+            if len(records) < 50:
+                return
+
+            metrics = compute_fill_metrics(records)
+            cum_pnl = compute_cumulative_pnl_jpy(records)
+            recent_pnl = compute_recent_pnl_bps(records, window=50)
+            del records  # メモリ解放
+
+            lot_config = LotSizingConfig(
+                current_lot=self._current_lot,
+                max_lot=self.config.max_lot,
+            )
+            result = compute_lot_size(
+                fill_rate=metrics.fill_rate_p90,
+                as_ratio=metrics.adverse_selection_ratio,
+                recent_pnl_bps=recent_pnl,
+                cumulative_pnl_jpy=cum_pnl,
+                sample_count=metrics.total_orders,
+                config=lot_config,
+            )
+
+            if result.changed:
+                old = self._current_lot
+                self._current_lot = result.new_lot
+                logger.info(
+                    f"[方策B] lot adapted: {old:.4f} → {result.new_lot:.4f} BTC "
+                    f"({result.action}: {result.reason})"
+                )
+            else:
+                logger.debug(
+                    f"[方策B] lot unchanged: {result.reason}"
+                )
+        except Exception as e:
+            logger.warning(f"[方策B] Auto lot-size failed (non-fatal): {e}")
+
     def _cleanup_sync(self) -> None:
         """atexit: 残存注文キャンセル + 未保存データ退避 (同期 wrapper).
 
@@ -777,6 +869,10 @@ def main() -> None:
                         help="最小スプレッドフィルター (JPY). 0=フィルタなし")
     parser.add_argument("--enable-auto-adapt", action="store_true", default=False,
                         help="032# 方策A: 自動パラメータ適応を有効化")
+    parser.add_argument("--enable-dynamic-lot", action="store_true", default=False,
+                        help="033# 方策B: 動的ロットサイジングを有効化")
+    parser.add_argument("--max-lot", type=float, default=0.005,
+                        help="033# 方策B: ロット上限 (BTC). デフォルト: 0.005")
     args = parser.parse_args()
 
     if args.results_only:
@@ -826,6 +922,8 @@ def main() -> None:
         spread_offset_ratio=args.spread_offset_ratio,
         min_spread_jpy=args.min_spread_jpy,
         enable_auto_adapt=args.enable_auto_adapt,
+        enable_dynamic_lot=args.enable_dynamic_lot,
+        max_lot=args.max_lot,
     )
 
     runner = FillTestRunner(adapter, config)
