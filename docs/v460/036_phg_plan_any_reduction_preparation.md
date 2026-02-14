@@ -247,6 +247,19 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 9. performance history の二重 append を解消し、統計の過大計上を防止。  
 10. `cache_io_operation()` の cache hit 時二重 `get` を削減し、ホットパスの冗長処理を解消。  
 
+### Step26: `ensemble_system` の型固定 + 実行安定化（不具合修正/メモリ管理）
+
+1. `ztb/training/unified_trainer/ensemble_system.py` の `Any` を全撤去し、`ConsensusRequirementConfig` / `StabilityVotingConfig` / `AdaptationConfig` / `PredictionInfo` (`TypedDict`) で payload 契約を明示。  
+2. `members` 設定値が初期化時に実質無視される問題を修正し、`config.members` 件数を基準に member 生成（specialization は循環割当）するよう変更。  
+3. 不正な `specialization` 文字列で初期化が失敗するリスクを修正し、未知値は `sideways` へフォールバック。  
+4. `weighted_confidence` の `total_weight=0` 時に `normalized_weights` で 0除算となる不具合を修正し、多数決 fallback を導入。  
+5. 不正な `voting_mechanism` 文字列で `VotingMechanism(...)` が `ValueError` を投げる経路を修正し、多数決 fallback を導入。  
+6. `decision_log` / `performance_history` の append を共通化し、上限超過時に head を削除する bounded 管理へ統一。  
+7. `update_member_performance()` で performance 履歴を記録するようにし、`performance_history_size` が常時 0 になりやすい観測性不足を改善。  
+8. `save_ensemble_state()` の config 直列化を `asdict()` 化し、dataclass 状態の保存整合性を改善。  
+9. `load_ensemble_state()` を堅牢化し、破損/不正形式 JSON・不正 member payload・未知 specialization を安全に吸収しつつ復元できるよう修正。  
+10. 当該ファイルの `any_type_debt_tokens=0` を達成。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -276,6 +289,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step23時点 | repo全体 | 3,422 |
 | Step24時点 | repo全体 | 3,395 |
 | Step25時点 | repo全体 | 3,370 |
+| Step26時点 | repo全体 | 3,350 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -305,6 +319,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step24時点 | `ztb/training/unified_trainer/trainer.py` | **0** |
 | Step25時点 | `ztb/training/unified_trainer/algorithms/sac_trainer.py` | **0** |
 | Step25時点 | `ztb/training/system_optimizer.py` | **0** |
+| Step26時点 | `ztb/training/unified_trainer/ensemble_system.py` | **0** |
 
 ---
 
@@ -316,8 +331,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 環境状態 payload と feature 計算戻り値の `Any` を段階的に TypedDict/alias 化。  
 3. `ztb/utils/env_metrics.py`  
    - metrics 集計 payload を `TypedDict` へ寄せ、動的 key 依存と `Any` を段階削減。  
-4. `ztb/training/unified_trainer/ensemble_system.py`  
-   - `dict[str, object]` から `TypedDict` への段階移行と、ensemble stats payload のキー契約固定を実施。  
+4. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
+   - 返却 payload と中間解析データの `Any` を `TypedDict` / `ObjectMap` ベースへ寄せ、判定ロジックのキー契約を固定。  
 
 ---
 
