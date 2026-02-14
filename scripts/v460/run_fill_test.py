@@ -79,6 +79,12 @@ class FillTestConfig:
     as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
     # 031# 追加: スプレッドフィルター (狭スプレッド時はスキップ)
     min_spread_jpy: float = 0.0  # 0 = フィルタなし
+    # 032# #18: ハードコード値の設定化
+    batch_size: int = 10  # バッチ保存のサイクル数
+    max_save_retries: int = 3  # 保存リトライ上限
+    # 032# P0: 方策 A パラメータ適応
+    enable_auto_adapt: bool = False  # 自動適応の有効化
+    adapt_interval_cycles: int = 50  # 適応判定の間隔 (サイクル数)
 
 
 # ======================================================================
@@ -117,7 +123,7 @@ class FillTestRunner:
         # 024# R1: 保存失敗トラッキング
         self._unsaved_batch: list[FillRecord] = []
         self._save_fail_count: int = 0
-        self._max_save_retries: int = 3
+        self._max_save_retries: int = config.max_save_retries
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避
         atexit.register(self._cleanup_sync)
@@ -259,6 +265,7 @@ class FillTestRunner:
         t_submit = time.time()
         order = None
         last_error: Optional[str] = None
+        cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 order = await self.adapter.place_order(
@@ -313,7 +320,7 @@ class FillTestRunner:
                 order_price=order_price,
                 order_quantity=self.config.order_quantity,
                 cancelled=True,
-                cancel_reason=cancel_reason,  # type: ignore[possibly-undefined]
+                cancel_reason=cancel_reason,
                 error_message=last_error,  # 031# エラー詳細を記録
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=self.config.spread_offset_ratio,
@@ -474,6 +481,7 @@ class FillTestRunner:
         中断→再開時は既存 fill_records を自動復元 (レジューム対応).
 
         024# R1-R4: 保存失敗耐性・例外分離・メモリ制御を強化.
+        032# P0: 方策 A パラメータ適応統合.
         """
         end_time = time.time() + hours * 3600
 
@@ -486,7 +494,7 @@ class FillTestRunner:
 
         batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
         self._unsaved_batch = []
-        batch_size = 10  # 10 サイクルごとに保存
+        batch_size = self.config.batch_size  # 032# #18: 設定化
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
@@ -523,6 +531,14 @@ class FillTestRunner:
                     f"({filled_count/total_count*100:.1f}%), "
                     f"unsaved_batch={len(batch)}"
                 )
+
+            # --- 032# P0: 方策 A パラメータ適応 ---
+            if (
+                self.config.enable_auto_adapt
+                and self._cycle_count % self.config.adapt_interval_cycles == 0
+                and total_count >= 50
+            ):
+                self._try_auto_adapt(total_count, filled_count)
 
             # 次サイクルまで待機
             if time.time() < end_time and not self._shutdown_requested:
@@ -625,6 +641,50 @@ class FillTestRunner:
             )
             traceback.print_exc(file=sys.stderr)
 
+    def _try_auto_adapt(self, total_count: int, filled_count: int) -> None:
+        """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
+
+        run_continuous のサイクルループ内から呼ばれ、
+        fill_rate / AS_ratio に応じて offset を段階調整する。
+        """
+        try:
+            from scripts.v460.lib.param_adapter import (
+                AdaptationConfig,
+                compute_adaptation,
+            )
+
+            # 直近のレコードからメトリクスを算出
+            records = load_fill_records_glob(str(self._results_dir))
+            if len(records) < 50:
+                return
+
+            metrics = compute_fill_metrics(records)
+            del records  # メモリ解放
+
+            adapt_config = AdaptationConfig(
+                current_offset_ratio=self.config.spread_offset_ratio,
+            )
+            result = compute_adaptation(
+                fill_rate=metrics.fill_rate_p90,
+                as_ratio=metrics.adverse_selection_ratio,
+                sample_count=metrics.total_orders,
+                config=adapt_config,
+            )
+
+            if result.changed:
+                old = self.config.spread_offset_ratio
+                self.config.spread_offset_ratio = result.new_offset
+                logger.info(
+                    f"[方策A] offset adapted: {old:.4f} → {result.new_offset:.4f} "
+                    f"({result.action}: {result.reason})"
+                )
+            else:
+                logger.debug(
+                    f"[方策A] offset unchanged: {result.reason}"
+                )
+        except Exception as e:
+            logger.warning(f"[方策A] Auto-adapt failed (non-fatal): {e}")
+
     def _cleanup_sync(self) -> None:
         """atexit: 残存注文キャンセル + 未保存データ退避 (同期 wrapper).
 
@@ -696,8 +756,11 @@ def main() -> None:
                         help="実測時間 (時間). デフォルト: 24h")
     parser.add_argument("--dry-run", action="store_true",
                         help="Dry-run モード (実際に発注しない)")
-    parser.add_argument("--api-key", default=None, help="Coincheck API key")
-    parser.add_argument("--api-secret", default=None, help="Coincheck API secret")
+    # 032# #2: CLI 認証情報は .env からのみ推奨 (後方互換のため残すが非推奨警告)
+    parser.add_argument("--api-key", default=None,
+                        help="[DEPRECATED] .env から読込を推奨")
+    parser.add_argument("--api-secret", default=None,
+                        help="[DEPRECATED] .env から読込を推奨")
     parser.add_argument("--results-dir", default="results/v460/fill_test",
                         help="結果保存ディレクトリ")
     parser.add_argument("--results-only", action="store_true",
@@ -712,6 +775,8 @@ def main() -> None:
                         help="スプレッド比例オフセット率 (031#: 0.05=保守的, 0.2=攻撃的)")
     parser.add_argument("--min-spread-jpy", type=float, default=0.0,
                         help="最小スプレッドフィルター (JPY). 0=フィルタなし")
+    parser.add_argument("--enable-auto-adapt", action="store_true", default=False,
+                        help="032# 方策A: 自動パラメータ適応を有効化")
     args = parser.parse_args()
 
     if args.results_only:
@@ -729,13 +794,22 @@ def main() -> None:
     from dotenv import load_dotenv
 
     load_dotenv(_PROJECT_ROOT / ".env")
-    api_key = args.api_key or os.environ.get("COINCHECK_API_KEY")
-    api_secret = args.api_secret or os.environ.get("COINCHECK_API_SECRET")
+    api_key = os.environ.get("COINCHECK_API_KEY")
+    api_secret = os.environ.get("COINCHECK_API_SECRET")
+
+    # 032# #2: CLI引数からの認証情報は非推奨警告付きで後方互換維持
+    if args.api_key or args.api_secret:
+        logger.warning(
+            "WARNING: --api-key/--api-secret はプロセスリストや履歴に平文で残ります。"
+            ".env ファイルからの読込を推奨します。"
+        )
+        api_key = args.api_key or api_key
+        api_secret = args.api_secret or api_secret
 
     if not args.dry_run and not (api_key and api_secret):
         logger.error(
             "API credentials required for live mode. "
-            "Set COINCHECK_API_KEY/COINCHECK_API_SECRET in .env or use --api-key/--api-secret"
+            "Set COINCHECK_API_KEY/COINCHECK_API_SECRET in .env"
         )
         sys.exit(1)
 
@@ -751,6 +825,7 @@ def main() -> None:
         start_side=args.start_side,
         spread_offset_ratio=args.spread_offset_ratio,
         min_spread_jpy=args.min_spread_jpy,
+        enable_auto_adapt=args.enable_auto_adapt,
     )
 
     runner = FillTestRunner(adapter, config)

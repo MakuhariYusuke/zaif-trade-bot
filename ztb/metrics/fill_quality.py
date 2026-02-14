@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -66,7 +66,11 @@ class FillRecord:
     @classmethod
     def from_dict(cls, d: dict) -> FillRecord:
         """Reconstruct from dict."""
-        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+        known_keys = set(cls.__dataclass_fields__.keys())
+        unknown = set(d.keys()) - known_keys
+        if unknown:
+            logger.debug(f"FillRecord.from_dict: unknown fields ignored: {unknown}")
+        return cls(**{k: v for k, v in d.items() if k in known_keys})
 
 
 @dataclass
@@ -120,7 +124,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     # --- E1: fill_rate P90 (日別) ---
     daily_groups: dict[str, list[FillRecord]] = {}
     for r in records:
-        day_key = datetime.utcfromtimestamp(r.timestamp).strftime("%Y-%m-%d")
+        day_key = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
         daily_groups.setdefault(day_key, []).append(r)
 
     daily_fill_rates: list[float] = []
@@ -308,16 +312,29 @@ def save_fill_records(records: list[FillRecord], path: str | Path) -> None:
 
 
 def load_fill_records(path: str | Path) -> list[FillRecord]:
-    """JSONL ファイルから FillRecord を読み込み."""
+    """JSONL ファイルから FillRecord を読み込み.
+
+    032# #19: 破損行はスキップしてログ出力。
+    """
     p = Path(path)
     if not p.exists():
         return []
     records: list[FillRecord] = []
+    skipped = 0
     with open(p, "r", encoding="utf-8") as f:
-        for line in f:
+        for line_no, line in enumerate(f, 1):
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            try:
                 records.append(FillRecord.from_dict(json.loads(line)))
+            except (json.JSONDecodeError, TypeError, KeyError) as e:
+                skipped += 1
+                logger.warning(
+                    f"Skipped corrupt line {line_no} in {p.name}: {e}"
+                )
+    if skipped:
+        logger.warning(f"Total {skipped} corrupt lines skipped in {p.name}")
     logger.info(f"Loaded {len(records)} fill records from {p}")
     return records
 

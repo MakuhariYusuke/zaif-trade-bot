@@ -661,6 +661,45 @@ class TestFillRecordIO:
             all_records = load_fill_records_glob(tmpdir)
             assert len(all_records) == 6
 
+    def test_load_corrupt_lines_skipped(self) -> None:
+        """032# #19: 破損行はスキップして残りを正常読込."""
+        from ztb.metrics.fill_quality import FillRecord, load_fill_records
+
+        valid_record = FillRecord(
+            cycle_id="valid_0",
+            timestamp=1700000000.0,
+            side="buy",
+            order_price=15000000.0,
+            order_quantity=0.001,
+            filled=True,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test_corrupt.jsonl"
+            with open(path, "w", encoding="utf-8") as f:
+                # 正常行
+                f.write(json.dumps(valid_record.to_dict(), ensure_ascii=False) + "\n")
+                # 破損行 (不完全 JSON)
+                f.write('{"cycle_id": "broken_1", "timestamp": 170000\n')
+                # 空行
+                f.write("\n")
+                # もう1つの正常行
+                valid_record2 = FillRecord(
+                    cycle_id="valid_1",
+                    timestamp=1700000120.0,
+                    side="sell",
+                    order_price=15000000.0,
+                    order_quantity=0.001,
+                    filled=False,
+                    cancelled=True,
+                )
+                f.write(json.dumps(valid_record2.to_dict(), ensure_ascii=False) + "\n")
+
+            loaded = load_fill_records(path)
+            assert len(loaded) == 2
+            assert loaded[0].cycle_id == "valid_0"
+            assert loaded[1].cycle_id == "valid_1"
+
 
 # =====================================================================
 # run_gate_check.py G1.1 integration

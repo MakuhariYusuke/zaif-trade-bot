@@ -181,14 +181,16 @@ def _start_health_server(
 
     import threading
 
+    # 032# #1: セキュリティ — 0.0.0.0 → 127.0.0.1 (ローカル限定)
+    bind_host = os.environ.get("ZTB_HEALTH_BIND_HOST", "127.0.0.1")
     thread = threading.Thread(
         target=lambda: health_app.run(
-            host="0.0.0.0", port=options.health_port, debug=False
+            host=bind_host, port=options.health_port, debug=False
         ),
         daemon=True,
     )
     thread.start()
-    logger.info("Health check endpoint started on port %s", options.health_port)
+    logger.info("Health check endpoint started on %s:%s", bind_host, options.health_port)
     return HealthServerHandle(port=options.health_port, thread=thread)
 
 
