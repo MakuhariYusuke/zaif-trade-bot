@@ -105,9 +105,15 @@ class FillTestConfig:
     regime_high_vol_multiplier: float = 2.0
     regime_hysteresis_count: int = 3
     regime_min_confidence: float = 0.4
+    # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
+    enable_time_filter: bool = False
+    skip_utc_hours: list[int] | None = None
     # 安全設計 (000# §3.9)
     loss_cap_jpy: float = 10_000.0
     loss_cap_warning_ratio: float = 0.7
+    # 041# 動的 loss_cap: API 残高から算出
+    loss_cap_auto: bool = False
+    loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -173,6 +179,18 @@ class FillTestConfig:
             kwargs["loss_cap_jpy"] = safety["loss_cap_jpy"]
         if "loss_cap_warning_ratio" in safety:
             kwargs["loss_cap_warning_ratio"] = safety["loss_cap_warning_ratio"]
+        # 041# 動的 loss_cap
+        if safety.get("loss_cap_auto") is not None:
+            kwargs["loss_cap_auto"] = safety["loss_cap_auto"]
+        if "loss_cap_ratio" in safety:
+            kwargs["loss_cap_ratio"] = safety["loss_cap_ratio"]
+
+        # 041# 時間帯フィルター
+        tf = yaml_cfg.get("time_filter", {})
+        if tf.get("enabled") is not None:
+            kwargs["enable_time_filter"] = tf["enabled"]
+        if "skip_utc_hours" in tf:
+            kwargs["skip_utc_hours"] = tf["skip_utc_hours"]
 
         return cls(**kwargs)
 
@@ -351,11 +369,33 @@ class FillTestRunner:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
         009# §4.2 の流れに準拠.
+        041# 時間帯フィルター追加.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         side = self._next_side()
         self._last_side = side
+
+        # 041# 時間帯フィルター: 高 AS 時間帯はスキップ
+        if self.config.enable_time_filter and self.config.skip_utc_hours:
+            from datetime import datetime, timezone
+
+            current_utc_hour = datetime.now(timezone.utc).hour
+            if current_utc_hour in self.config.skip_utc_hours:
+                logger.info(
+                    f"=== Cycle {self._cycle_count} ({side}) SKIPPED "
+                    f"(UTC {current_utc_hour:02d} in skip_utc_hours) ==="
+                )
+                return FillRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.time(),
+                    side=side,
+                    order_price=0.0,
+                    order_quantity=self._current_lot,
+                    cancelled=True,
+                    cancel_reason="time_filter",
+                    spread_offset_ratio=self.config.spread_offset_ratio,
+                )
 
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
@@ -619,6 +659,10 @@ class FillTestRunner:
         """
         end_time = time.time() + hours * 3600
 
+        # 041# 動的 loss_cap: API 残高から算出
+        if self.config.loss_cap_auto:
+            await self._update_dynamic_loss_cap()
+
         # レジューム: 既存レコードから状態復元
         existing_records = self.resume_from_existing()
         # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
@@ -851,6 +895,51 @@ class FillTestRunner:
         if "loss_cap_warning_ratio" in safety_yaml:
             kwargs["loss_cap_warning_ratio"] = safety_yaml["loss_cap_warning_ratio"]
         return kwargs
+
+    async def _update_dynamic_loss_cap(self) -> None:
+        """041# 動的 loss_cap: API から口座残高を取得し、残高×比率でキャップを算出.
+
+        失敗時はフォールバック値 (YAML/デフォルト) を維持.
+        """
+        try:
+            btc_price = await self.adapter.get_current_price(self.config.symbol)
+            if btc_price is None:
+                logger.warning(
+                    "[loss_cap] BTC価格取得失敗 — フォールバック値を維持: "
+                    f"{self.config.loss_cap_jpy:.0f} JPY"
+                )
+                return
+
+            balances = await self.adapter.get_balance()
+            total_jpy = 0.0
+            for b in balances:
+                if b.currency == "JPY":
+                    total_jpy += b.total
+                elif b.currency == "BTC":
+                    total_jpy += b.total * btc_price
+
+            if total_jpy <= 0:
+                logger.warning(
+                    "[loss_cap] 残高ゼロまたは取得不可 — フォールバック値を維持: "
+                    f"{self.config.loss_cap_jpy:.0f} JPY"
+                )
+                return
+
+            new_cap = total_jpy * self.config.loss_cap_ratio
+            # 最低50円は保証 (極端に小さいキャップは運用不能)
+            new_cap = max(50.0, new_cap)
+            old_cap = self.config.loss_cap_jpy
+            self.config.loss_cap_jpy = new_cap
+            logger.info(
+                f"[loss_cap] 動的キャップ算出: 残高={total_jpy:.0f} JPY "
+                f"× {self.config.loss_cap_ratio:.0%} = {new_cap:.0f} JPY "
+                f"(旧: {old_cap:.0f} JPY)"
+            )
+        except Exception as e:
+            logger.warning(
+                f"[loss_cap] 残高取得失敗 — フォールバック値を維持: "
+                f"{self.config.loss_cap_jpy:.0f} JPY. error={e}"
+            )
 
     def _try_auto_adapt(self, total_count: int, filled_count: int) -> None:
         """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
@@ -1127,7 +1216,9 @@ def main() -> None:
         f"Config loaded: YAML={args.config or 'default'}, "
         f"offset={config.spread_offset_ratio}, lot={config.order_quantity}, "
         f"adapt={config.enable_auto_adapt}, dynamic_lot={config.enable_dynamic_lot}, "
-        f"regime={config.enable_regime}"
+        f"regime={config.enable_regime}, "
+        f"time_filter={config.enable_time_filter}, "
+        f"loss_cap_auto={config.loss_cap_auto}"
     )
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)

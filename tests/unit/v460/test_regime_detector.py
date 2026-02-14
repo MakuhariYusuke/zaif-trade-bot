@@ -380,3 +380,109 @@ class TestFillTestConfigRegime:
         assert config.regime_high_vol_multiplier == 3.0
         assert config.regime_hysteresis_count == 5
         assert config.regime_min_confidence == 0.6
+
+
+# ======================================================================
+# Tests: 041# 新機能 (時間帯フィルター, 動的 loss_cap, deadzone)
+# ======================================================================
+
+
+class TestFillTestConfigTimeFilter:
+    """041# 時間帯フィルター設定テスト."""
+
+    def test_time_filter_defaults(self) -> None:
+        """時間帯フィルターのデフォルトは無効."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert config.enable_time_filter is False
+        assert config.skip_utc_hours is None
+
+    def test_time_filter_from_yaml(self) -> None:
+        """YAML の time_filter セクションが正しくパースされる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {
+            "time_filter": {
+                "enabled": True,
+                "skip_utc_hours": [8, 9, 14, 16, 17, 18, 19],
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.enable_time_filter is True
+        assert config.skip_utc_hours == [8, 9, 14, 16, 17, 18, 19]
+
+    def test_time_filter_empty_hours(self) -> None:
+        """skip_utc_hours 空リストでも有効化可能."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {
+            "time_filter": {
+                "enabled": True,
+                "skip_utc_hours": [],
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.enable_time_filter is True
+        assert config.skip_utc_hours == []
+
+
+class TestFillTestConfigDynamicLossCap:
+    """041# 動的 loss_cap 設定テスト."""
+
+    def test_loss_cap_auto_defaults(self) -> None:
+        """動的 loss_cap のデフォルトは無効."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert config.loss_cap_auto is False
+        assert config.loss_cap_ratio == 0.05
+
+    def test_loss_cap_auto_from_yaml(self) -> None:
+        """YAML の safety セクションから動的 loss_cap が正しくパースされる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {
+            "safety": {
+                "loss_cap_auto": True,
+                "loss_cap_ratio": 0.03,
+                "loss_cap_jpy": 5000.0,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.loss_cap_auto is True
+        assert config.loss_cap_ratio == 0.03
+        assert config.loss_cap_jpy == 5000.0
+
+    def test_loss_cap_auto_false_preserves_fixed(self) -> None:
+        """loss_cap_auto=False 時は loss_cap_jpy がそのまま使われる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {
+            "safety": {
+                "loss_cap_auto": False,
+                "loss_cap_jpy": 7500.0,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.loss_cap_auto is False
+        assert config.loss_cap_jpy == 7500.0
+
+
+class TestFillTestConfigDeadzone:
+    """041# AS deadzone 変更のテスト."""
+
+    def test_deadzone_from_yaml(self) -> None:
+        """as_deadzone_bps が YAML から読み取れる."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {"as_deadzone_bps": 2.0}
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.as_deadzone_bps == 2.0
+
+    def test_deadzone_default(self) -> None:
+        """as_deadzone_bps のデフォルトは 0.5."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert config.as_deadzone_bps == 0.5

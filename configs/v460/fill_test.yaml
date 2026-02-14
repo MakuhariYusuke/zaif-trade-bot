@@ -24,11 +24,11 @@ min_offset_jpy: 1.0           # 最小オフセット (JPY)
 min_spread_jpy: 0.0           # 最小スプレッドフィルター (0=なし)
 
 # ---- リトライ (CM-2) ----
-max_order_retries: 1
+max_order_retries: 2              # 041# 1→2: api_error 削減のため
 retry_delay_sec: 2.0
 
 # ---- AS 判定 (CM-3) ----
-as_deadzone_bps: 0.5          # ±0.5 bps 以内は AS と判定しない
+as_deadzone_bps: 2.0          # 041# ±2.0 bps 以内は AS と判定しない (0.5→2.0: BTC/JPY spread ~14bps 対し 0.5 はノイズ域)
 
 # ---- 保存 ----
 batch_size: 10                # バッチ保存サイクル数
@@ -42,7 +42,7 @@ log_backup_count: 5           # ログバックアップ世代数
 
 # ---- 方策 A: パラメータ適応 (032# P0) ----
 adaptation:
-  enabled: false              # 自動適応の有効化
+  enabled: true               # 041# false→true: 335件のデータから自動適応を開始
   interval_cycles: 50         # 適応判定の間隔
   min_fill_rate: 0.80         # fill_rate 下限 (下回ると offset 増)
   max_as_ratio: 0.15          # AS_ratio 上限 (上回ると offset 減)
@@ -73,7 +73,14 @@ regime:
   hysteresis_count: 3          # 状態確定までの連続一致数
   min_confidence: 0.4          # この値未満は unknown 扱い
 
+# ---- 時間帯フィルター (041#) ----
+time_filter:
+  enabled: true               # 041#: 高 AS 時間帯のスキップ
+  skip_utc_hours: [8, 9, 14, 16, 17, 18, 19]  # JST 17-04 の高 AS 時間帯を回避
+
 # ---- 安全設計 (000# §3.9) ----
 safety:
-  loss_cap_jpy: 10000.0       # 累積実損上限 (JPY)
-  loss_cap_warning_ratio: 0.7 # 上限の 70% で警告・ロット縮小
+  loss_cap_auto: true          # 041#: API残高から動的算出
+  loss_cap_ratio: 0.05         # 041#: 残高の 5% をキャップ
+  loss_cap_jpy: 10000.0        # フォールバック値 (API 取得失敗時)
+  loss_cap_warning_ratio: 0.7  # 上限の 70% で警告・ロット縮小
