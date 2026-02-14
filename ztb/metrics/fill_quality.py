@@ -350,3 +350,39 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     for p in sorted(d.glob("fill_records_*.jsonl")):
         records.extend(load_fill_records(p))
     return records
+
+
+def filter_clean_records(
+    records: list[FillRecord],
+    *,
+    require_git_sha: bool = True,
+) -> tuple[list[FillRecord], list[FillRecord]]:
+    """046# clean/quarantine 分離: git_sha の有無でレコードを分割.
+
+    ゾンビプロセス由来 (git_sha=None/blank) のレコードは quarantine へ。
+    メトリクス算出時はクリーンレコードのみを使用する。
+
+    Args:
+        records: 全 FillRecord リスト.
+        require_git_sha: True の場合 git_sha が blank/None のレコードを quarantine.
+
+    Returns:
+        (clean, quarantine) のタプル.
+    """
+    if not require_git_sha:
+        return records, []
+
+    clean: list[FillRecord] = []
+    quarantine: list[FillRecord] = []
+    for r in records:
+        if r.git_sha and r.git_sha.strip():
+            clean.append(r)
+        else:
+            quarantine.append(r)
+
+    if quarantine:
+        logger.info(
+            f"[quarantine] {len(quarantine)}/{len(records)} records quarantined "
+            f"(blank git_sha). clean={len(clean)}"
+        )
+    return clean, quarantine

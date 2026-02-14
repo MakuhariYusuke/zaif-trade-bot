@@ -16,7 +16,7 @@ poll_interval_sec: 5.0        # ポーリング間隔 (秒)
 post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
 results_dir: results/v460/fill_test
 start_side: buy               # 開始サイド (buy / sell)
-max_consecutive_same_side: 2  # 片側蓄積上限
+max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
 
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
@@ -81,6 +81,7 @@ time_filter:
 # ---- 安全設計 (000# §3.9) ----
 safety:
   loss_cap_auto: true          # 041#: API残高から動的算出
-  loss_cap_ratio: 0.05         # 041#: 残高の 5% をキャップ
+  loss_cap_ratio: 0.05         # 041#: 残高の 5% をハードキャップ
+  soft_loss_cap_ratio: 0.02    # 046#: 残高の 2% でソフトキャップ (ロット半減)
   loss_cap_jpy: 10000.0        # フォールバック値 (API 取得失敗時)
   loss_cap_warning_ratio: 0.7  # 上限の 70% で警告・ロット縮小

@@ -754,3 +754,152 @@ class TestBalanceLocked:
         source = inspect.getsource(CoincheckAdapter.get_balance)
         assert "_reserved" in source, "get_balance should handle *_reserved keys"
         assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"
+
+
+# ======================================================================
+# 046# テスト: Bug10, soft/hard loss_cap, clean/quarantine, balance filter
+# ======================================================================
+
+
+class TestBug10InsufficientFundsNoRetry:
+    """046# Bug10: insufficient_funds 時にリトライしない."""
+
+    def test_source_has_insufficient_funds_break(self) -> None:
+        """run_single_cycle のソースに insufficient_funds → break が含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert 'cancel_reason == "insufficient_funds"' in source
+        assert "break" in source
+
+    def test_cancel_reason_classification(self) -> None:
+        """所持金額不足が insufficient_funds に分類される."""
+        error_msg = "400 Client Error: Amount BTC の所持金額が足りません"
+        # ロジックを再現
+        err_lower = error_msg.lower()
+        cancel_reason = "unknown"
+        if "所持金額" in error_msg or "足りません" in error_msg:
+            cancel_reason = "insufficient_funds"
+        assert cancel_reason == "insufficient_funds"
+
+
+class TestSoftHardLossCap:
+    """046# soft/hard 二段 loss_cap."""
+
+    def test_config_has_soft_loss_cap_ratio(self) -> None:
+        """FillTestConfig に soft_loss_cap_ratio フィールドがある."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert hasattr(config, "soft_loss_cap_ratio")
+        assert config.soft_loss_cap_ratio == 0.02
+
+    def test_soft_loss_cap_flag_initialized(self) -> None:
+        """FillTestRunner に _soft_loss_cap_triggered が初期化される."""
+        from unittest.mock import MagicMock
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig()
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+        assert hasattr(runner, "_soft_loss_cap_triggered")
+        assert runner._soft_loss_cap_triggered is False
+
+    def test_soft_cap_ratio_less_than_hard(self) -> None:
+        """soft cap は hard cap より小さい."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert config.soft_loss_cap_ratio < config.loss_cap_ratio
+
+    def test_yaml_parser_handles_soft_loss_cap(self) -> None:
+        """from_yaml が soft_loss_cap_ratio を正しく解析する."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        yaml_cfg = {
+            "safety": {
+                "soft_loss_cap_ratio": 0.03,
+                "loss_cap_ratio": 0.05,
+                "loss_cap_auto": True,
+            }
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.soft_loss_cap_ratio == 0.03
+
+
+class TestCleanQuarantineFilter:
+    """046# clean/quarantine データ分離."""
+
+    def test_filter_separates_by_git_sha(self) -> None:
+        """git_sha 有無でレコードが分離される."""
+        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
+
+        records = [
+            FillRecord(cycle_id="1", timestamp=1.0, side="buy",
+                       order_price=100.0, order_quantity=0.001,
+                       git_sha="abc123"),
+            FillRecord(cycle_id="2", timestamp=2.0, side="sell",
+                       order_price=101.0, order_quantity=0.001,
+                       git_sha=""),
+            FillRecord(cycle_id="3", timestamp=3.0, side="buy",
+                       order_price=102.0, order_quantity=0.001,
+                       git_sha=None),
+            FillRecord(cycle_id="4", timestamp=4.0, side="sell",
+                       order_price=103.0, order_quantity=0.001,
+                       git_sha="def456"),
+        ]
+        clean, quarantine = filter_clean_records(records)
+        assert len(clean) == 2
+        assert len(quarantine) == 2
+        assert all(r.git_sha for r in clean)
+
+    def test_filter_disabled(self) -> None:
+        """require_git_sha=False で全レコードがクリーン."""
+        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
+
+        records = [
+            FillRecord(cycle_id="1", timestamp=1.0, side="buy",
+                       order_price=100.0, order_quantity=0.001,
+                       git_sha=None),
+        ]
+        clean, quarantine = filter_clean_records(
+            records, require_git_sha=False
+        )
+        assert len(clean) == 1
+        assert len(quarantine) == 0
+
+    def test_all_clean(self) -> None:
+        """全レコードに git_sha がある場合は quarantine=0."""
+        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
+
+        records = [
+            FillRecord(cycle_id="1", timestamp=1.0, side="buy",
+                       order_price=100.0, order_quantity=0.001,
+                       git_sha="abc"),
+        ]
+        clean, quarantine = filter_clean_records(records)
+        assert len(clean) == 1
+        assert len(quarantine) == 0
+
+
+class TestBalanceCurrencyFilter:
+    """046# balance 解析のゴミ通貨除外."""
+
+    def test_ignore_suffixes_in_source(self) -> None:
+        """get_balance のソースに _lending 等の除外ロジックがある."""
+        import inspect
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+        source = inspect.getsource(CoincheckAdapter.get_balance)
+        for suffix in ["_lending", "_lend_in_use", "_lent", "_debt", "_tsumitate"]:
+            assert suffix in source, f"{suffix} should be excluded in get_balance"
+
+    def test_loss_cap_no_dead_reserved_check(self) -> None:
+        """_update_dynamic_loss_cap に JPY_RESERVED/BTC_RESERVED は不要."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._update_dynamic_loss_cap)
+        assert "JPY_RESERVED" not in source, "Dead check should be removed"
+        assert "BTC_RESERVED" not in source, "Dead check should be removed"

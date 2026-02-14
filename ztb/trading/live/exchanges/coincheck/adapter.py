@@ -659,10 +659,17 @@ class CoincheckAdapter(IBroker):
                 # 044# E-4: Coincheck の *_reserved キーを locked として解析
                 # Coincheck API は {"btc": "0.1", "btc_reserved": "0.05", ...} を返す
                 reserved_suffix = "_reserved"
-                # 先に通貨一覧を抽出 (非 reserved のみ)
+                # 046# Coincheck は _lending, _lend_in_use, _lent, _debt,
+                # _tsumitate なども返すがトレード残高には不要
+                _ignore_suffixes = (
+                    "_reserved", "_lending", "_lend_in_use",
+                    "_lent", "_debt", "_tsumitate",
+                )
+                # 先に通貨一覧を抽出 (ベース通貨のみ)
                 currency_keys = [
                     k for k in result.keys()
-                    if k not in ["success", "error"] and not k.endswith(reserved_suffix)
+                    if k not in ("success", "error")
+                    and not any(k.endswith(s) for s in _ignore_suffixes)
                 ]
                 for currency_code in currency_keys:
                     try:

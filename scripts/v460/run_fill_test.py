@@ -114,7 +114,9 @@ class FillTestConfig:
     loss_cap_warning_ratio: float = 0.7
     # 041# 動的 loss_cap: API 残高から算出
     loss_cap_auto: bool = False
-    loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ
+    loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ (hard)
+    # 046# soft/hard 二段 loss_cap: soft 超過でロット半減、hard 超過で SAFE_STOP
+    soft_loss_cap_ratio: float = 0.02  # 残高の 2% で soft cap (ロット半減)
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -185,6 +187,9 @@ class FillTestConfig:
             kwargs["loss_cap_auto"] = safety["loss_cap_auto"]
         if "loss_cap_ratio" in safety:
             kwargs["loss_cap_ratio"] = safety["loss_cap_ratio"]
+        # 046# soft/hard 二段 loss_cap
+        if "soft_loss_cap_ratio" in safety:
+            kwargs["soft_loss_cap_ratio"] = safety["soft_loss_cap_ratio"]
 
         # 041# 時間帯フィルター
         tf = yaml_cfg.get("time_filter", {})
@@ -234,6 +239,8 @@ class FillTestRunner:
 
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
         self._current_lot: float = config.order_quantity
+        # 046# soft loss_cap 発動済みフラグ (重複半減を防止)
+        self._soft_loss_cap_triggered: bool = False
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -584,6 +591,13 @@ class FillTestRunner:
                     f"Order attempt {attempt + 1} failed ({cancel_reason}): {e}"
                 )
 
+                # 046# Bug10: 残高不足はリトライ不要 (2s 待っても残高は回復しない)
+                if cancel_reason == "insufficient_funds":
+                    logger.info(
+                        f"[Bug10] Skipping retry — {cancel_reason} is not retriable"
+                    )
+                    break
+
                 if attempt < self.config.max_order_retries:
                     # リトライ: 板を再取得してより保守的な価格で再発注
                     await asyncio.sleep(self.config.retry_delay_sec)
@@ -800,18 +814,26 @@ class FillTestRunner:
 
         # レジューム: 既存レコードから状態復元
         existing_records = self.resume_from_existing()
+        # 046# clean/quarantine 分離: ゾンビプロセス由来レコードを除外して集計
+        from ztb.metrics.fill_quality import filter_clean_records
+        clean_records, quarantine_records = filter_clean_records(existing_records)
+        if quarantine_records:
+            logger.warning(
+                f"[quarantine] {len(quarantine_records)} records excluded from "
+                f"PnL computation (blank git_sha)"
+            )
         # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
-        total_count = len(existing_records)
+        total_count = len(existing_records)  # 全件カウント (quarantine 含む)
         filled_count = sum(1 for r in existing_records if r.filled)
 
-        # 033# F4: レジューム時の累積 PnL 計算
+        # 033# F4: レジューム時の累積 PnL 計算 (クリーンレコードのみ)
         cumulative_pnl_jpy = 0.0
-        for r in existing_records:
+        for r in clean_records:
             if r.filled and r.post_fill_30s_pnl is not None and r.fill_price:
                 cumulative_pnl_jpy += (
                     r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
                 )
-        del existing_records  # メモリ解放
+        del existing_records, clean_records, quarantine_records  # メモリ解放
 
         batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
         self._unsaved_batch = []
@@ -874,10 +896,32 @@ class FillTestRunner:
                     )
             batch.append(record)
 
-            # --- 033# F4: 累積 PnL 安全キャップ (000# §3.9) ---
+            # --- 046# soft/hard 二段 loss_cap ---
+            # soft cap: ロット半減 (一度だけ)
+            if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
+                soft_cap_jpy = (
+                    self.config.loss_cap_jpy
+                    * self.config.soft_loss_cap_ratio
+                    / self.config.loss_cap_ratio
+                )
+                if cumulative_pnl_jpy <= -soft_cap_jpy:
+                    old_lot = self._current_lot
+                    self._current_lot = max(
+                        self.config.order_quantity,  # 最小ロットは下回らない
+                        self._current_lot / 2,
+                    )
+                    self._soft_loss_cap_triggered = True
+                    logger.warning(
+                        f"[loss_cap] SOFT CAP: cumPnL={cumulative_pnl_jpy:.0f} JPY "
+                        f"<= -{soft_cap_jpy:.0f} JPY "
+                        f"({self.config.soft_loss_cap_ratio:.0%}). "
+                        f"ロット半減: {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                    )
+
+            # hard cap: SAFE_STOP (既存 033# F4)
             if cumulative_pnl_jpy <= -self.config.loss_cap_jpy:
                 logger.error(
-                    f"LOSS CAP REACHED: cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
+                    f"LOSS CAP REACHED (HARD): cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
                     f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
                 )
                 self._shutdown_requested = True
@@ -1087,10 +1131,11 @@ class FillTestRunner:
             total_jpy = 0.0
             for b in balances:
                 currency = b.currency.upper()
-                # 041# reserved (ロック) 残高も含める: JPY_RESERVED, BTC_RESERVED
-                if currency == "JPY" or currency == "JPY_RESERVED":
+                # 046# E-4 修正後: free+locked=total が正しく解析されるため
+                # reserved は total に含まれている (個別チェック不要)
+                if currency == "JPY":
                     total_jpy += b.total
-                elif currency == "BTC" or currency == "BTC_RESERVED":
+                elif currency == "BTC":
                     total_jpy += b.total * btc_price
 
             if total_jpy <= 0:
