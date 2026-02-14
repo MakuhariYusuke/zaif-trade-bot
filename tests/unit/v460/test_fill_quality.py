@@ -1815,3 +1815,277 @@ class Test050EffectiveOffsetRecord:
 
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         assert "effective_offset_ratio" in source
+
+
+# ======================================================================
+# 051# P2-2: Round-trip 評価テスト
+# ======================================================================
+
+
+class Test051RoundTripMetrics:
+    """051# P2-2: compute_round_trip_metrics のテスト."""
+
+    def _make_filled_record(
+        self, side: str, fill_price: float, timestamp: float, qty: float = 0.001
+    ) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id=f"test_{timestamp}",
+            timestamp=timestamp,
+            side=side,
+            order_price=fill_price,
+            order_quantity=qty,
+            fill_price=fill_price,
+            filled=True,
+        )
+
+    def test_basic_round_trip(self) -> None:
+        """buy→sell のシンプルなペアリング."""
+        from ztb.metrics.fill_quality import compute_round_trip_metrics
+
+        records = [
+            self._make_filled_record("buy", 14_500_000, 1000.0),
+            self._make_filled_record("sell", 14_501_000, 1200.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        assert len(trips) == 1
+        # PnL = (14501000 - 14500000) / 14500000 * 10000 ≈ 0.69 bps
+        assert trips[0].pnl_bps > 0
+        assert trips[0].pnl_jpy == 1000.0 * 0.001  # 1.0 JPY
+        assert trips[0].hold_sec == 200.0
+        assert metrics.win_rate == 1.0
+
+    def test_multiple_round_trips(self) -> None:
+        """複数ペアの FIFO マッチング."""
+        from ztb.metrics.fill_quality import compute_round_trip_metrics
+
+        records = [
+            self._make_filled_record("buy", 14_500_000, 1000.0),
+            self._make_filled_record("sell", 14_501_000, 1200.0),
+            self._make_filled_record("buy", 14_502_000, 1400.0),
+            self._make_filled_record("sell", 14_500_000, 1600.0),  # 損失ペア
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 2
+        assert trips[0].pnl_jpy > 0  # 1st: 利益
+        assert trips[1].pnl_jpy < 0  # 2nd: 損失
+        assert metrics.win_rate == 0.5
+
+    def test_unpaired_buys(self) -> None:
+        """sell が不足する場合の未ペア buy."""
+        from ztb.metrics.fill_quality import compute_round_trip_metrics
+
+        records = [
+            self._make_filled_record("buy", 14_500_000, 1000.0),
+            self._make_filled_record("buy", 14_501_000, 1200.0),
+            self._make_filled_record("sell", 14_502_000, 1400.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        assert metrics.unpaired_buys == 1
+
+    def test_empty_records(self) -> None:
+        """空リスト."""
+        from ztb.metrics.fill_quality import compute_round_trip_metrics
+
+        metrics, trips = compute_round_trip_metrics([])
+        assert metrics.total_pairs == 0
+        assert len(trips) == 0
+
+    def test_sell_without_buy_ignored(self) -> None:
+        """buy なしの sell はペアリングされない."""
+        from ztb.metrics.fill_quality import compute_round_trip_metrics
+
+        records = [
+            self._make_filled_record("sell", 14_500_000, 1000.0),
+            self._make_filled_record("buy", 14_501_000, 1200.0),
+            self._make_filled_record("sell", 14_502_000, 1400.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        # ペアは buy@1200 → sell@1400
+        assert trips[0].buy_record.timestamp == 1200.0
+
+
+# ======================================================================
+# 051# P2-4: レジーム別メトリクステスト
+# ======================================================================
+
+
+class Test051RegimeMetrics:
+    """051# P2-4: compute_regime_metrics のテスト."""
+
+    def _make_record(
+        self,
+        regime: str,
+        filled: bool = True,
+        pnl: float | None = -0.5,
+        adverse: bool | None = False,
+    ) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id="test",
+            timestamp=1000.0,
+            side="buy",
+            order_price=14_500_000,
+            order_quantity=0.001,
+            fill_price=14_500_000 if filled else None,
+            filled=filled,
+            post_fill_30s_pnl=pnl if filled else None,
+            adverse_selected=adverse if filled else None,
+            regime=regime,
+        )
+
+    def test_basic_regime_grouping(self) -> None:
+        """レジーム別に正しくグループされる."""
+        from ztb.metrics.fill_quality import compute_regime_metrics
+
+        records = [
+            self._make_record("trending", pnl=1.0, adverse=False),
+            self._make_record("trending", pnl=-0.5, adverse=True),
+            self._make_record("ranging", pnl=0.3, adverse=False),
+        ]
+        result = compute_regime_metrics(records)
+        assert len(result) == 2
+        # ソート済み: ranging → trending
+        assert result[0].regime == "ranging"
+        assert result[0].count == 1
+        assert result[1].regime == "trending"
+        assert result[1].count == 2
+        assert result[1].as_ratio == 0.5  # 1/2
+
+    def test_unknown_regime(self) -> None:
+        """regime=None は 'unknown' にマッピング."""
+        from ztb.metrics.fill_quality import compute_regime_metrics
+
+        records = [self._make_record("unknown")]
+        result = compute_regime_metrics(records)
+        assert len(result) == 1
+        assert result[0].regime == "unknown"
+
+    def test_empty_records(self) -> None:
+        """空リスト."""
+        from ztb.metrics.fill_quality import compute_regime_metrics
+
+        result = compute_regime_metrics([])
+        assert result == []
+
+
+# ======================================================================
+# 051# UTC 時間帯別分析テスト
+# ======================================================================
+
+
+class Test051HourlyMetrics:
+    """051# compute_hourly_metrics のテスト."""
+
+    def test_basic_hourly(self) -> None:
+        """UTC hour 別にグループされる."""
+        from ztb.metrics.fill_quality import FillRecord, compute_hourly_metrics
+        from datetime import datetime, timezone
+
+        # UTC 10:00 と 13:00 のレコード
+        t_10 = datetime(2025, 2, 15, 10, 0, tzinfo=timezone.utc).timestamp()
+        t_13 = datetime(2025, 2, 15, 13, 0, tzinfo=timezone.utc).timestamp()
+
+        records = [
+            FillRecord(
+                cycle_id="a", timestamp=t_10, side="buy",
+                order_price=14_500_000, order_quantity=0.001,
+                filled=True, fill_price=14_500_000,
+                post_fill_30s_pnl=1.0, adverse_selected=False,
+            ),
+            FillRecord(
+                cycle_id="b", timestamp=t_13, side="sell",
+                order_price=14_500_000, order_quantity=0.001,
+                filled=True, fill_price=14_500_000,
+                post_fill_30s_pnl=-2.0, adverse_selected=True,
+            ),
+        ]
+        result = compute_hourly_metrics(records)
+        assert len(result) == 2
+        h10 = next(h for h in result if h.utc_hour == 10)
+        h13 = next(h for h in result if h.utc_hour == 13)
+        assert h10.count == 1
+        assert h10.as_ratio == 0.0
+        assert h13.count == 1
+        assert h13.as_ratio == 1.0
+        assert h13.pnl_mean_bps == -2.0
+
+
+# ======================================================================
+# 051# P2-3: Balance auto-shrink テスト
+# ======================================================================
+
+
+class Test051BalanceAutoShrink:
+    """051# P2-3: 残高不足時のロット一時縮小."""
+
+    def test_balance_shrink_fields_exist(self) -> None:
+        """FillTestRunner に balance_shrink 関連フィールドがある."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.__init__)
+        assert "_balance_shrink_active" in source
+        assert "_pre_shrink_lot" in source
+
+    def test_balance_shrink_logic_in_run_continuous(self) -> None:
+        """run_continuous に balance_shrink ロジックが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "balance_shrink" in source
+        # 復元ロジックもある
+        assert "_pre_shrink_lot" in source
+
+    def test_shrink_threshold_is_3(self) -> None:
+        """連続 3 回で shrink 発動."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "preflight_skip_count >= 3" in source
+
+
+# ======================================================================
+# 051# Monitor 拡張テスト
+# ======================================================================
+
+
+class Test051MonitorExtensions:
+    """051# monitor_fill_test 拡張のテスト."""
+
+    def test_print_report_accepts_clean_quarantine(self) -> None:
+        """print_report が clean_count/quarantine_count を受け付ける."""
+        import inspect
+        from scripts.v460.monitor_fill_test import print_report
+
+        sig = inspect.signature(print_report)
+        params = list(sig.parameters.keys())
+        assert "clean_count" in params
+        assert "quarantine_count" in params
+
+    def test_run_monitor_uses_clean_records(self) -> None:
+        """run_monitor が filter_clean_records を使用."""
+        import inspect
+        from scripts.v460.monitor_fill_test import run_monitor
+
+        source = inspect.getsource(run_monitor)
+        assert "filter_clean_records" in source
+        assert "clean_records" in source
+        assert "quarantine_records" in source
+
+    def test_monitor_imports_new_functions(self) -> None:
+        """monitor が新しい分析関数をインポート."""
+        from scripts.v460.monitor_fill_test import (
+            print_report,  # noqa: F401
+        )
+        # インポートテスト (NameError にならないことを確認)
+        from ztb.metrics.fill_quality import (
+            compute_hourly_metrics,  # noqa: F401
+            compute_regime_metrics,  # noqa: F401
+            compute_round_trip_metrics,  # noqa: F401
+        )

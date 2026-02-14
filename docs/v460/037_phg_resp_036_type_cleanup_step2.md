@@ -1,4 +1,3 @@
-# 037# 統合済み通知（036へ集約）
-
-この文書の内容は `docs/v460/036_phg_plan_any_reduction_preparation.md` に統合済みです。  
-以降、Any削減の計画・進捗・次アクションは 036 を単一の正本として更新します。  
+version https://git-lfs.github.com/spec/v1
+oid sha256:a8981bfaf6203daf4f85fca2477fc514f7642604bf1bf5f954b0ca7ef19e0e8a
+size 264

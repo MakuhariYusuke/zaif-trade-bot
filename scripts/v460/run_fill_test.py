@@ -281,6 +281,9 @@ class FillTestRunner:
         # 050# Bug#1 fix: boost 発動前の offset を保存 (解除時に復元)
         self._pre_boost_offset: float | None = None
         self._pre_boost_offset_sell: float | None = None
+        # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
+        self._balance_shrink_active: bool = False
+        self._pre_shrink_lot: float = config.order_quantity
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -983,6 +986,28 @@ class FillTestRunner:
                 # 反対サイドを試す: _last_side を反転して次は反対サイド
                 self._last_side = next_side  # → 次の _next_side() が反対を返す
                 self._preflight_skip_count += 1
+
+                # 051# P2-3: Balance auto-shrink — 連続3回失敗でロット半減を試行
+                if (
+                    self._preflight_skip_count >= 3
+                    and not self._balance_shrink_active
+                    and self._current_lot > self.config.order_quantity
+                ):
+                    old_lot = self._current_lot
+                    self._current_lot = max(
+                        self.config.order_quantity,
+                        self._current_lot / 2,
+                    )
+                    self._balance_shrink_active = True
+                    logger.warning(
+                        f"[balance_shrink] 連続 preflight 失敗 {self._preflight_skip_count} 回. "
+                        f"ロット縮小: {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                    )
+                    # カウンタリセットして縮小ロットで再試行
+                    self._preflight_skip_count = 0
+                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    continue
+
                 # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
                 if self._preflight_skip_count >= self.config.max_preflight_skip:
                     logger.error(
@@ -997,6 +1022,14 @@ class FillTestRunner:
 
             # preflight 成功 → カウンタリセット
             self._preflight_skip_count = 0
+            # 051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元
+            if self._balance_shrink_active:
+                old_lot = self._current_lot
+                self._current_lot = self._pre_shrink_lot
+                self._balance_shrink_active = False
+                logger.info(
+                    f"[balance_shrink] 解除: ロット復元 {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                )
 
             # --- サイクル実行 ---
             try:
@@ -1037,6 +1070,8 @@ class FillTestRunner:
                         self._current_lot / 2,
                     )
                     self._soft_loss_cap_triggered = True
+                    # 051# P2-3: shrink 復元先も更新
+                    self._pre_shrink_lot = self._current_lot
                     logger.warning(
                         f"[loss_cap] SOFT CAP: cumPnL={cumulative_pnl_jpy:.0f} JPY "
                         f"<= -{soft_cap_jpy:.0f} JPY "

@@ -426,3 +426,207 @@ def _quarantine_reason(r: FillRecord) -> str | None:
     if not r.order_quantity or r.order_quantity <= 0:
         return "invalid_order_quantity"
     return None
+
+
+# ======================================================================
+# 051# P2-2: Round-trip 評価 (buy→sell ペアリング)
+# ======================================================================
+
+
+@dataclass
+class RoundTripRecord:
+    """買い→売りの往復取引記録."""
+
+    buy_record: FillRecord
+    sell_record: FillRecord
+    pnl_bps: float  # (sell_fill - buy_fill) / buy_fill × 10000
+    pnl_jpy: float  # 実損益 (JPY)
+    hold_sec: float  # buy_fill → sell_fill の保持時間 (秒)
+
+
+@dataclass
+class RoundTripMetrics:
+    """Round-trip 集計指標."""
+
+    total_pairs: int = 0
+    pnl_mean_bps: float = 0.0
+    pnl_median_bps: float = 0.0
+    pnl_std_bps: float = 0.0
+    pnl_total_jpy: float = 0.0
+    win_rate: float = 0.0  # pnl > 0 の割合
+    hold_sec_median: float = 0.0
+    unpaired_buys: int = 0  # ペアリング未完了の buy 件数
+
+
+def compute_round_trip_metrics(
+    records: list[FillRecord],
+) -> tuple[RoundTripMetrics, list[RoundTripRecord]]:
+    """051# P2-2: 約定済み buy→sell の時系列ペアリングで往復損益を算出.
+
+    FIFO 方式: 時系列順に buy を蓄え、次の sell が来たらペアリング.
+    同一ロットサイズ前提 (fill_test は交互発注のため).
+
+    Args:
+        records: FillRecord リスト (時系列ソート済み想定).
+
+    Returns:
+        (RoundTripMetrics, list[RoundTripRecord]) タプル.
+    """
+    filled = [r for r in records if r.filled and r.fill_price is not None]
+    filled.sort(key=lambda r: r.timestamp)
+
+    pending_buys: list[FillRecord] = []
+    trips: list[RoundTripRecord] = []
+
+    for r in filled:
+        if r.side == "buy":
+            pending_buys.append(r)
+        elif r.side == "sell" and pending_buys:
+            buy = pending_buys.pop(0)  # FIFO
+            pnl_bps = (r.fill_price - buy.fill_price) / buy.fill_price * 10_000  # type: ignore[operator]
+            qty = min(r.order_quantity, buy.order_quantity)
+            pnl_jpy = (r.fill_price - buy.fill_price) * qty  # type: ignore[operator]
+            hold_sec = r.timestamp - buy.timestamp
+            trips.append(RoundTripRecord(
+                buy_record=buy,
+                sell_record=r,
+                pnl_bps=pnl_bps,
+                pnl_jpy=pnl_jpy,
+                hold_sec=hold_sec,
+            ))
+
+    if not trips:
+        return RoundTripMetrics(unpaired_buys=len(pending_buys)), []
+
+    pnl_arr = [t.pnl_bps for t in trips]
+    hold_arr = [t.hold_sec for t in trips]
+
+    return RoundTripMetrics(
+        total_pairs=len(trips),
+        pnl_mean_bps=float(np.mean(pnl_arr)),
+        pnl_median_bps=float(np.median(pnl_arr)),
+        pnl_std_bps=float(np.std(pnl_arr)),
+        pnl_total_jpy=sum(t.pnl_jpy for t in trips),
+        win_rate=sum(1 for p in pnl_arr if p > 0) / len(pnl_arr),
+        hold_sec_median=float(np.median(hold_arr)),
+        unpaired_buys=len(pending_buys),
+    ), trips
+
+
+# ======================================================================
+# 051# P2-4: レジーム別メトリクス
+# ======================================================================
+
+
+@dataclass
+class RegimeMetrics:
+    """レジーム別の集計指標."""
+
+    regime: str
+    count: int = 0
+    filled: int = 0
+    fill_rate: float = 0.0
+    pnl_mean_bps: float = 0.0
+    as_ratio: float = 0.0
+    queue_wait_median_sec: float = 0.0
+
+
+def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
+    """051# P2-4: レジーム別にメトリクスを算出.
+
+    Args:
+        records: FillRecord リスト.
+
+    Returns:
+        RegimeMetrics のリスト (レジーム名でソート).
+    """
+    from collections import defaultdict
+
+    groups: dict[str, list[FillRecord]] = defaultdict(list)
+    for r in records:
+        regime = r.regime or "unknown"
+        groups[regime].append(r)
+
+    result: list[RegimeMetrics] = []
+    for regime_name in sorted(groups.keys()):
+        recs = groups[regime_name]
+        filled_recs = [r for r in recs if r.filled]
+        pnls = [
+            r.post_fill_30s_pnl for r in filled_recs
+            if r.post_fill_30s_pnl is not None
+        ]
+        as_recs = [r for r in filled_recs if r.adverse_selected is not None]
+        waits = [r.queue_wait_sec for r in filled_recs if r.queue_wait_sec > 0]
+
+        result.append(RegimeMetrics(
+            regime=regime_name,
+            count=len(recs),
+            filled=len(filled_recs),
+            fill_rate=len(filled_recs) / len(recs) if recs else 0.0,
+            pnl_mean_bps=float(np.mean(pnls)) if pnls else 0.0,
+            as_ratio=(
+                sum(1 for r in as_recs if r.adverse_selected) / len(as_recs)
+                if as_recs else 0.0
+            ),
+            queue_wait_median_sec=float(np.median(waits)) if waits else 0.0,
+        ))
+    return result
+
+
+# ======================================================================
+# 051# UTC 時間帯別分析
+# ======================================================================
+
+
+@dataclass
+class HourlyMetrics:
+    """UTC 時間帯別の集計指標."""
+
+    utc_hour: int
+    count: int = 0
+    filled: int = 0
+    pnl_mean_bps: float = 0.0
+    as_ratio: float = 0.0
+
+
+def compute_hourly_metrics(records: list[FillRecord]) -> list[HourlyMetrics]:
+    """051# UTC 時間帯別にメトリクスを算出.
+
+    time_filter 検証用: 各 UTC hour の AS/PnL を可視化.
+
+    Args:
+        records: FillRecord リスト.
+
+    Returns:
+        HourlyMetrics のリスト (utc_hour 昇順).
+    """
+    from collections import defaultdict
+
+    groups: dict[int, list[FillRecord]] = defaultdict(list)
+    for r in records:
+        utc_hour = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).hour
+        groups[utc_hour].append(r)
+
+    result: list[HourlyMetrics] = []
+    for hour in range(24):
+        if hour not in groups:
+            continue
+        recs = groups[hour]
+        filled_recs = [r for r in recs if r.filled]
+        pnls = [
+            r.post_fill_30s_pnl for r in filled_recs
+            if r.post_fill_30s_pnl is not None
+        ]
+        as_recs = [r for r in filled_recs if r.adverse_selected is not None]
+
+        result.append(HourlyMetrics(
+            utc_hour=hour,
+            count=len(recs),
+            filled=len(filled_recs),
+            pnl_mean_bps=float(np.mean(pnls)) if pnls else 0.0,
+            as_ratio=(
+                sum(1 for r in as_recs if r.adverse_selected) / len(as_recs)
+                if as_recs else 0.0
+            ),
+        ))
+    return result
