@@ -641,7 +641,16 @@ class CoincheckAdapter(IBroker):
                 result = await asyncio.to_thread(
                     self._make_api_request, "GET", url, None,
                 )
-                logger.info(f"Retrieved balance: {result}")
+                logger.debug(f"Retrieved balance (raw): {result}")
+                # 047# Refactor: 非ゼロ通貨のみサマリログ (全キーダンプは 5KB+ でログ汚染)
+                nonzero = {
+                    k: v for k, v in result.items()
+                    if k not in ("success", "error")
+                    and isinstance(v, str)
+                    and v != "0.0"
+                }
+                if nonzero:
+                    logger.info(f"Non-zero balances: {nonzero}")
 
                 # Check if result is a dict
                 if not isinstance(result, dict):

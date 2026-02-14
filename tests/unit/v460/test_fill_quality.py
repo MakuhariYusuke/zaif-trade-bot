@@ -342,14 +342,14 @@ class TestComputeFillMetrics:
         assert m.adverse_selection_ratio_raw == pytest.approx(0.4)
 
     def test_sample_sufficient_true(self) -> None:
-        """020# O1: n>=200 & 3暦日 → sample_sufficient=True."""
+        """047# Finding3: n>=200 & 7暦日 → sample_sufficient=True (FINAL)."""
         from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
 
         records = []
         # UTC midnight-aligned timestamp to avoid date-boundary issues
         base_ts = 1700006400.0  # 2023-11-15 00:00:00 UTC
-        for day in range(3):
-            for i in range(70):
+        for day in range(7):
+            for i in range(30):
                 records.append(FillRecord(
                     cycle_id=f"ss_d{day}_{i}",
                     timestamp=base_ts + day * 86400 + i * 120,
@@ -363,7 +363,7 @@ class TestComputeFillMetrics:
                 ))
         m = compute_fill_metrics(records)
         assert m.total_orders == 210
-        assert m.measurement_days >= 3
+        assert m.measurement_days >= 7
         assert m.sample_sufficient is True
 
     def test_sample_sufficient_false_n(self) -> None:
@@ -1035,3 +1035,215 @@ class TestUnknownFillHandling:
         assert record.filled is True
         assert record.fill_price == 15000200.0
         assert record.cancel_reason is None
+
+
+# ======================================================================
+# 047# Bug11: cancel 失敗後の fill 再確認テスト
+# ======================================================================
+
+class TestBug11CancelRaceCondition:
+    """047# Bug11: cancel_order 失敗時に get_order_status で fill を再確認."""
+
+    def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
+        from unittest.mock import AsyncMock, MagicMock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+
+        adapter = AsyncMock()
+        ob_mock = MagicMock()
+        ob_mock.bids = [(15000000.0, 0.1)]
+        ob_mock.asks = [(15001000.0, 0.1)]
+        adapter.get_orderbook.return_value = ob_mock
+        order_mock = MagicMock()
+        order_mock.order_id = "test_order_bug11"
+        adapter.place_order.return_value = order_mock
+
+        config = FillTestConfig(
+            results_dir=str(tmp_path / "results"),
+            order_timeout_sec=10.0,
+            poll_interval_sec=0.01,
+            post_fill_wait_sec=0.01,
+        )
+        return FillTestRunner(adapter, config)
+
+    @pytest.mark.asyncio
+    async def test_cancel_fail_detects_fill(self, tmp_path: Path) -> None:
+        """cancel_order が "Failed to cancel" で失敗 → recheck で filled 検出."""
+        from unittest.mock import MagicMock
+
+        runner = self._make_runner(tmp_path)
+        # cancel_order fails with "Failed to cancel"
+        runner.adapter.cancel_order.side_effect = Exception(
+            'Coincheck API error: 400 | body={"success":false,"error":"Failed to cancel the order."}'
+        )
+
+        # First 2 calls return None (polling), then filled on recheck
+        filled_order = MagicMock()
+        filled_order.status = "filled"
+        filled_order.price = 15000500.0
+        call_count = 0
+
+        async def side_effect_status(order_id: str) -> object:
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return None
+            return filled_order
+
+        runner.adapter.get_order_status = side_effect_status  # type: ignore[assignment]
+
+        record = await runner.run_single_cycle()
+        assert record.filled is True
+        assert record.fill_price == 15000500.0
+
+    @pytest.mark.asyncio
+    async def test_cancel_fail_no_fill(self, tmp_path: Path) -> None:
+        """cancel 失敗かつ recheck でも None → unfilled のまま."""
+        runner = self._make_runner(tmp_path)
+        runner.adapter.get_order_status.return_value = None
+        runner.adapter.cancel_order.side_effect = Exception(
+            'body={"success":false,"error":"Failed to cancel the order."}'
+        )
+
+        record = await runner.run_single_cycle()
+        assert record.filled is False
+        assert record.cancelled is True
+
+
+# ======================================================================
+# 047# Finding3: INTERIM judgment type テスト
+# ======================================================================
+
+class TestInterimJudgment:
+    """047# Finding3: 3日<=days<7 で INTERIM, 7日以上で FINAL."""
+
+    def test_interim_3_days_200_samples(self) -> None:
+        """n>=200 & 3日 → INTERIM (not FINAL)."""
+        from ztb.metrics.fill_quality import (
+            FillRecord, compute_fill_metrics, g1_1_judgment,
+        )
+
+        records = []
+        base_ts = 1700006400.0
+        for day in range(3):
+            for i in range(70):
+                records.append(FillRecord(
+                    cycle_id=f"interim_d{day}_{i}",
+                    timestamp=base_ts + day * 86400 + i * 120,
+                    side="buy",
+                    order_price=100.0,
+                    order_quantity=0.001,
+                    filled=True,
+                    queue_wait_sec=10.0,
+                    post_fill_30s_pnl=0.5,
+                    adverse_selected=False,
+                ))
+        metrics = compute_fill_metrics(records)
+        assert metrics.sample_sufficient is False  # 7日未満
+        judgment = g1_1_judgment(metrics, {})
+        assert judgment["judgment_type"] == "INTERIM"
+
+    def test_final_7_days(self) -> None:
+        """n>=200 & 7日 → FINAL."""
+        from ztb.metrics.fill_quality import (
+            FillRecord, compute_fill_metrics, g1_1_judgment,
+        )
+
+        records = []
+        base_ts = 1700006400.0
+        for day in range(7):
+            for i in range(30):
+                records.append(FillRecord(
+                    cycle_id=f"final_d{day}_{i}",
+                    timestamp=base_ts + day * 86400 + i * 120,
+                    side="buy",
+                    order_price=100.0,
+                    order_quantity=0.001,
+                    filled=True,
+                    queue_wait_sec=10.0,
+                    post_fill_30s_pnl=0.5,
+                    adverse_selected=False,
+                ))
+        metrics = compute_fill_metrics(records)
+        assert metrics.sample_sufficient is True
+        judgment = g1_1_judgment(metrics, {})
+        assert judgment["judgment_type"] == "FINAL"
+
+    def test_provisional_insufficient(self) -> None:
+        """n<200 or days<3 → PROVISIONAL."""
+        from ztb.metrics.fill_quality import (
+            FillRecord, compute_fill_metrics, g1_1_judgment,
+        )
+
+        records = [
+            FillRecord(
+                cycle_id=f"prov_{i}",
+                timestamp=1700006400.0 + i * 120,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                filled=True,
+                queue_wait_sec=10.0,
+            )
+            for i in range(50)
+        ]
+        metrics = compute_fill_metrics(records)
+        judgment = g1_1_judgment(metrics, {})
+        assert judgment["judgment_type"] == "PROVISIONAL"
+
+
+# ======================================================================
+# 047# Finding4: AS coverage フィールドテスト
+# ======================================================================
+
+class TestASCoverage:
+    """047# Finding4: FillMetrics に as_coverage / as_raw_coverage が含まれる."""
+
+    def test_coverage_fields_present(self) -> None:
+        """coverage フィールドが正しく算出される."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+
+        records = []
+        for i in range(10):
+            records.append(FillRecord(
+                cycle_id=f"cov_{i}",
+                timestamp=1700006400.0 + i * 120,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                filled=True,
+                queue_wait_sec=10.0,
+                adverse_selected=i % 3 == 0,
+                adverse_selected_raw=i % 2 == 0 if i < 6 else None,
+            ))
+        m = compute_fill_metrics(records)
+        assert m.as_coverage == 10
+        assert m.as_raw_coverage == 6
+
+    def test_coverage_in_dict(self) -> None:
+        """to_dict() に coverage が含まれる."""
+        from ztb.metrics.fill_quality import FillMetrics
+
+        m = FillMetrics(as_coverage=5, as_raw_coverage=3)
+        d = m.to_dict()
+        assert "as_coverage" in d
+        assert "as_raw_coverage" in d
+        assert d["as_coverage"] == 5
+        assert d["as_raw_coverage"] == 3
+
+
+# ======================================================================
+# 047# Issue12: time_filter ログ throttle テスト
+# ======================================================================
+
+class TestTimeFilterLogThrottle:
+    """047# Issue12: High-AS time filter のログが突入/離脱のみに制限される."""
+
+    def test_in_time_filter_flag_init(self) -> None:
+        """_in_time_filter が False で初期化される."""
+        from unittest.mock import AsyncMock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+
+        adapter = AsyncMock()
+        config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[0, 1])
+        runner = FillTestRunner(adapter, config)
+        assert runner._in_time_filter is False

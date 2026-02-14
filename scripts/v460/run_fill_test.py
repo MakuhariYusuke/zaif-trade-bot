@@ -25,8 +25,10 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -241,6 +243,8 @@ class FillTestRunner:
         self._current_lot: float = config.order_quantity
         # 046# soft loss_cap 発動済みフラグ (重複半減を防止)
         self._soft_loss_cap_triggered: bool = False
+        # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
+        self._in_time_filter: bool = False
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -385,8 +389,6 @@ class FillTestRunner:
         """
         if not self.config.enable_time_filter or not self.config.skip_utc_hours:
             return False
-        from datetime import datetime, timezone
-
         current_utc_hour = datetime.now(timezone.utc).hour
         return current_utc_hour in self.config.skip_utc_hours
 
@@ -694,6 +696,29 @@ class FillTestRunner:
                 logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
             except Exception as e:
                 logger.warning(f"Cancel failed: {e}")
+                # 047# Bug11: cancel 失敗 = 既に約定済みの可能性
+                # "Failed to cancel" は Coincheck がキャンセル不可を返す場合
+                # → get_order_status で再確認し、約定済みなら filled に修正
+                if "Failed to cancel" in str(e) or "not found" in str(e).lower():
+                    try:
+                        recheck = await self.adapter.get_order_status(order.order_id)
+                        if recheck is not None and recheck.status == "filled":
+                            filled = True
+                            fill_price = (
+                                recheck.price if recheck.price else order_price
+                            )
+                            t_fill = time.time()
+                            cancel_reason_poll = None  # status_unknown を取り消し
+                            logger.info(
+                                f"[Bug11] Order was actually filled @ "
+                                f"{fill_price:.0f} JPY (detected on cancel failure)"
+                            )
+                        else:
+                            logger.info(
+                                f"[Bug11] Recheck: order not found in transactions either"
+                            )
+                    except Exception as recheck_err:
+                        logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
 
         self._pending_order_id = None
         queue_wait = elapsed
@@ -844,12 +869,20 @@ class FillTestRunner:
         while time.time() < end_time and not self._shutdown_requested:
             # 041# 時間帯フィルター: レコード不生成でスリープ (メトリクス汚染防止)
             if self._is_time_filtered():
-                logger.info(
-                    f"[time_filter] High-AS hour — sleeping "
-                    f"{self.config.cycle_interval_sec}s"
-                )
+                # 047# Issue12: 突入時のみログ出力 (2分毎のノイズ防止)
+                if not self._in_time_filter:
+                    self._in_time_filter = True
+                    utc_h = datetime.now(timezone.utc).hour
+                    logger.info(
+                        f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
+                        f"— suppressing cycle logs until exit"
+                    )
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
+            # 047# Issue12: 離脱時のみログ出力
+            if self._in_time_filter:
+                self._in_time_filter = False
+                logger.info("[time_filter] Exiting High-AS zone — resuming cycles")
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
             next_side = self._next_side()
@@ -998,8 +1031,6 @@ class FillTestRunner:
         Returns:
             True if save succeeded, False otherwise.
         """
-        from datetime import datetime, timezone
-
         last_error: Optional[Exception] = None
         for attempt in range(self._max_save_retries):
             try:
@@ -1034,8 +1065,6 @@ class FillTestRunner:
 
     def _save_batch_by_date(self, batch: list[FillRecord]) -> None:
         """024# R4: record.timestamp 由来の日付でファイル分割保存."""
-        from datetime import datetime, timezone
-
         # レコードを UTC 日付ごとにグルーピング
         by_date: dict[str, list[FillRecord]] = {}
         for record in batch:
@@ -1050,9 +1079,6 @@ class FillTestRunner:
 
     def _emergency_dump(self, batch: list[FillRecord], reason: str) -> None:
         """024# R1: 緊急ダンプ — 通常保存が不可能な場合のフォールバック."""
-        import traceback
-        from datetime import datetime, timezone
-
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         dump_dir = self._results_dir / "emergency"
         dump_dir.mkdir(parents=True, exist_ok=True)

@@ -99,6 +99,9 @@ class FillMetrics:
     daily_fill_rates: list[float] = field(default_factory=list)
     measurement_days: int = 0
     sample_sufficient: bool = False  # 020# O1: n>=200 & 3暦日 達成フラグ
+    # 047# Finding4: AS coverage (分母透明化)
+    as_coverage: int = 0       # adverse_selected != None の件数
+    as_raw_coverage: int = 0   # adverse_selected_raw != None の件数
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
@@ -186,7 +189,8 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     adverse_ratio_raw = n_adverse_raw / len(adverse_raw_records) if adverse_raw_records else adverse_ratio
 
     # --- 020# O1: サンプル充足判定 ---
-    sample_sufficient = total >= 200 and len(daily_fill_rates) >= 3
+    # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
+    sample_sufficient = total >= 200 and len(daily_fill_rates) >= 7
 
     return FillMetrics(
         total_orders=total,
@@ -202,6 +206,9 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         daily_fill_rates=daily_fill_rates,
         measurement_days=len(daily_fill_rates),
         sample_sufficient=sample_sufficient,
+        # 047# Finding4: AS coverage
+        as_coverage=len(adverse_records),
+        as_raw_coverage=len(adverse_raw_records),
     )
 
 
@@ -287,13 +294,21 @@ def g1_1_judgment(
     gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}
     all_pass = all(c["pass"] for c in gate_checks.values())
 
-    # 020# O1: サンプル要件不足の場合は暫定判定
-    judgment_type = "FINAL" if metrics.sample_sufficient else "PROVISIONAL"
+    # 047# Finding3: PROVISIONAL/INTERIM/FINAL の 3 段階判定
+    # - PROVISIONAL: n<200 or days<3
+    # - INTERIM: n>=200 & 3<=days<7 (暗定判定)
+    # - FINAL: n>=200 & days>=7 (000# §3.3 準拠)
+    if metrics.sample_sufficient:
+        judgment_type = "FINAL"  # n>=200 & days>=7
+    elif metrics.total_orders >= 200 and metrics.measurement_days >= 3:
+        judgment_type = "INTERIM"  # 十分なサンプルだが 7 日未満
+    else:
+        judgment_type = "PROVISIONAL"
 
     return {
         "gate": "G1.1-exec",
         "gate_result": "PASS" if all_pass else "FAIL",
-        "judgment_type": judgment_type,  # 020# O1
+        "judgment_type": judgment_type,  # 020# O1 / 047# Finding3
         "sample_sufficient": metrics.sample_sufficient,
         "checks": checks,
         "metrics_summary": metrics.to_dict(),
