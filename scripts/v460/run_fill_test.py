@@ -278,6 +278,9 @@ class FillTestRunner:
         self._in_time_filter: bool = False
         # 049# 即約定防御: 次サイクルの offset を一時的に増加
         self._fast_fill_boost_active: bool = False
+        # 050# Bug#1 fix: boost 発動前の offset を保存 (解除時に復元)
+        self._pre_boost_offset: float | None = None
+        self._pre_boost_offset_sell: float | None = None
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -368,14 +371,14 @@ class FillTestRunner:
         best_ask = ob.asks[0][0]
         return (best_bid + best_ask) / 2.0
 
-    async def _compute_maker_price(self, side: str) -> tuple[float, float]:
+    async def _compute_maker_price(self, side: str) -> tuple[float, float, float]:
         """maker limit 価格を算出: スプレッド比例オフセット + post_only 安全策.
 
         009# §4.2: スプレッド内側に配置して maker 約定を狙う.
         CM-1: 固定 1 JPY → スプレッド比例 + post_only リジェクト防止.
 
         Returns:
-            (price, spread_at_order) タプル.
+            (price, spread_at_order, effective_offset_ratio) タプル.
         """
         ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
         if not ob.bids or not ob.asks:
@@ -408,7 +411,7 @@ class FillTestRunner:
                     f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
                     f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
                 )
-            return price, spread
+            return price, spread, effective_offset_ratio
         else:
             price = best_ask - offset
             # CM-1: post_only ガード — best_bid 以下にならないよう保護
@@ -418,7 +421,7 @@ class FillTestRunner:
                     f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
                     f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
                 )
-            return price, spread
+            return price, spread, effective_offset_ratio
 
     def _is_time_filtered(self) -> bool:
         """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
@@ -589,8 +592,9 @@ class FillTestRunner:
 
         # 1. maker limit 価格算出
         spread_at_order: Optional[float] = None
+        effective_offset_ratio: float = self.config.spread_offset_ratio
         try:
-            order_price, spread_at_order = await self._compute_maker_price(side)
+            order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
         except Exception as e:
             logger.error(f"Failed to compute maker price: {e}")
             return FillRecord(
@@ -888,7 +892,7 @@ class FillTestRunner:
             git_sha=self._git_sha,
             # 031# 追加フィールド
             spread_at_order=spread_at_order,
-            spread_offset_ratio=self.config.spread_offset_ratio,
+            spread_offset_ratio=effective_offset_ratio,  # 050# Bug#3 fix: 実効値を記録
             # 037# レジーム情報
             regime=regime_str,
             regime_confidence=regime_conf,
@@ -1063,24 +1067,49 @@ class FillTestRunner:
                     if not self._fast_fill_boost_active:
                         self._fast_fill_boost_active = True
                         boost = self.config.fast_fill_offset_boost
-                        old = self.config.spread_offset_ratio
+                        # 050# Bug#1 fix: boost 前の値を保存
+                        self._pre_boost_offset = self.config.spread_offset_ratio
+                        self._pre_boost_offset_sell = self.config.spread_offset_ratio_sell
+                        old_common = self.config.spread_offset_ratio
                         self.config.spread_offset_ratio = min(
-                            old * boost,
+                            old_common * boost,
                             0.30,  # max_offset_ratio ハードリミット
                         )
-                        logger.info(
-                            f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
-                            f"(< {self.config.fast_fill_threshold_sec}s), "
-                            f"negative edge detected. "
-                            f"offset {old:.4f} → {self.config.spread_offset_ratio:.4f}"
-                        )
+                        # 050# Bug#2 fix: side-specific offset も boost
+                        if self.config.spread_offset_ratio_sell is not None:
+                            old_sell = self.config.spread_offset_ratio_sell
+                            self.config.spread_offset_ratio_sell = min(
+                                old_sell * boost, 0.30,
+                            )
+                            logger.info(
+                                f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
+                                f"(< {self.config.fast_fill_threshold_sec}s), "
+                                f"negative edge detected. "
+                                f"common {old_common:.4f}→{self.config.spread_offset_ratio:.4f}, "
+                                f"sell {old_sell:.4f}→{self.config.spread_offset_ratio_sell:.4f}"
+                            )
+                        else:
+                            logger.info(
+                                f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
+                                f"(< {self.config.fast_fill_threshold_sec}s), "
+                                f"negative edge detected. "
+                                f"offset {old_common:.4f}→{self.config.spread_offset_ratio:.4f}"
+                            )
                 elif self._fast_fill_boost_active:
-                    # 正常約定に戻った → boost 解除
+                    # 正常約定に戻った → boost 解除 + offset 復元
+                    old_val = self.config.spread_offset_ratio
+                    self.config.spread_offset_ratio = (
+                        self._pre_boost_offset
+                        if self._pre_boost_offset is not None
+                        else self.config.spread_offset_ratio
+                    )
+                    self.config.spread_offset_ratio_sell = self._pre_boost_offset_sell
                     self._fast_fill_boost_active = False
-                    # 元の offset に戻す (adaptation 結果は保持)
+                    self._pre_boost_offset = None
+                    self._pre_boost_offset_sell = None
                     logger.info(
                         "[fast_fill_defense] Deactivated: normal fill detected, "
-                        f"offset = {self.config.spread_offset_ratio:.4f}"
+                        f"offset {old_val:.4f}→{self.config.spread_offset_ratio:.4f}"
                     )
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:

@@ -1735,3 +1735,83 @@ class Test049FastFillDefense:
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "fast_fill_defense" in source
         assert "fast_fill_threshold_sec" in source
+
+
+# =====================================================================
+# 050# Bug fixes: offset復元, side-specific defense, 実効offset記録
+# =====================================================================
+
+
+class Test050SideOffsetSellOnly:
+    """050# Bug#7: sell のみ設定時の YAML パース."""
+
+    def test_sell_only_offset_from_yaml(self) -> None:
+        """side_offset に sell のみ指定 → buy は None のまま."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig.from_yaml({"side_offset": {"sell": 0.07}})
+        assert cfg.spread_offset_ratio_buy is None
+        assert cfg.spread_offset_ratio_sell == pytest.approx(0.07)
+
+    def test_buy_only_offset_from_yaml(self) -> None:
+        """side_offset に buy のみ指定 → sell は None のまま."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig.from_yaml({"side_offset": {"buy": 0.04}})
+        assert cfg.spread_offset_ratio_buy == pytest.approx(0.04)
+        assert cfg.spread_offset_ratio_sell is None
+
+    def test_empty_side_offset_from_yaml(self) -> None:
+        """side_offset が空 dict → 両方 None."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig.from_yaml({"side_offset": {}})
+        assert cfg.spread_offset_ratio_buy is None
+        assert cfg.spread_offset_ratio_sell is None
+
+
+class Test050FastFillDefenseRestore:
+    """050# Bug#1-2: fast_fill_defense offset 復元 + side-specific 対応."""
+
+    def test_pre_boost_offset_field_exists(self) -> None:
+        """FillTestRunner に _pre_boost_offset フィールドが存在."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.__init__)
+        assert "_pre_boost_offset" in source
+        assert "_pre_boost_offset_sell" in source
+
+    def test_offset_restore_logic_in_run_continuous(self) -> None:
+        """run_continuous に offset 復元ロジックが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        # Bug#1 fix: 復元ロジック
+        assert "_pre_boost_offset" in source
+        assert "Deactivated" in source
+        # Bug#2 fix: side-specific offset の boost
+        assert "spread_offset_ratio_sell" in source
+
+
+class Test050EffectiveOffsetRecord:
+    """050# Bug#3: FillRecord に実効 offset を記録."""
+
+    def test_compute_maker_price_returns_3_values(self) -> None:
+        """_compute_maker_price の戻り値が 3 タプルであることをソースで確認."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        assert "effective_offset_ratio" in source
+        # 戻り値が 3 要素: price, spread, effective_offset_ratio
+        assert "return price, spread, effective_offset_ratio" in source
+
+    def test_run_single_cycle_unpacks_3_values(self) -> None:
+        """run_single_cycle が 3 値展開を行う."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "effective_offset_ratio" in source

@@ -173,7 +173,7 @@ class SystemOptimizer:
         if torch.cuda.is_available():
             for param in model.parameters():
                 param.data = (
-                    param.data.pin_memory() if param.data.is_cuda else param.data
+                    param.data.pin_memory() if not param.data.is_cuda else param.data
                 )
 
         logger.info("Applied model memory optimizations")
@@ -379,13 +379,13 @@ class PerformanceOptimizer:
         # Set optimal thread count for NumPy
         import os
 
-        os.environ["OMP_NUM_THREADS"] = str(max(1, psutil.cpu_count() // 2))
-        os.environ["MKL_NUM_THREADS"] = str(max(1, psutil.cpu_count() // 2))
+        os.environ["OMP_NUM_THREADS"] = str(max(1, (psutil.cpu_count() or 1) // 2))
+        os.environ["MKL_NUM_THREADS"] = str(max(1, (psutil.cpu_count() or 1) // 2))
 
     @staticmethod
     def enable_torch_optimizations() -> None:
         """Enable PyTorch performance optimizations."""
-        torch.set_num_threads(max(1, psutil.cpu_count() // 2))
+        torch.set_num_threads(max(1, (psutil.cpu_count() or 1) // 2))
 
         if torch.cuda.is_available():
             # Enable CUDA optimizations

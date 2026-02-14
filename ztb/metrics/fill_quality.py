@@ -387,12 +387,13 @@ def filter_clean_records(
     Args:
         records: 全 FillRecord リスト.
         require_git_sha: True の場合 git_sha が blank/None のレコードを quarantine.
+            False の場合は全チェックをバイパスして全件 clean を返す.
 
     Returns:
         (clean, quarantine) のタプル.
     """
     if not require_git_sha:
-        return records, []
+        return records, []  # テスト用: 全件 clean (本番は常に True)
 
     clean: list[FillRecord] = []
     quarantine: list[FillRecord] = []
