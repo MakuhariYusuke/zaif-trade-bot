@@ -58,6 +58,11 @@ class FillRecord:
     spread_at_order: Optional[float] = None  # 発注時スプレッド (JPY)
     error_message: Optional[str] = None  # エラー詳細メッセージ
     spread_offset_ratio: Optional[float] = None  # 使用した spread_offset_ratio
+    # 047# E3: multi-timeframe PnL 計測 (exit timing 最適化のデータ基盤)
+    mid_60s_after: Optional[float] = None   # 約定 60 秒後の mid price
+    mid_120s_after: Optional[float] = None  # 約定 120 秒後の mid price
+    post_fill_60s_pnl: Optional[float] = None   # 60 秒後 PnL (bps)
+    post_fill_120s_pnl: Optional[float] = None  # 120 秒後 PnL (bps)
     # 037# レジーム情報 (035# §7 Week 1)
     regime: Optional[str] = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
     regime_confidence: Optional[float] = None  # 0.0–1.0

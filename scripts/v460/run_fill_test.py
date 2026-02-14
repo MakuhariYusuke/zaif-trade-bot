@@ -741,10 +741,14 @@ class FillTestRunner:
         self._pending_order_id = None
         queue_wait = elapsed
 
-        # 5. 約定後 30 秒の mid price 計測
+        # 5. 約定後 mid price 計測 (047# E3: 30/60/120s multi-timeframe)
         mid_at_fill: Optional[float] = None
         mid_30s_after: Optional[float] = None
+        mid_60s_after: Optional[float] = None
+        mid_120s_after: Optional[float] = None
         post_fill_pnl: Optional[float] = None
+        post_fill_60s_pnl: Optional[float] = None
+        post_fill_120s_pnl: Optional[float] = None
         adverse_selected: Optional[bool] = None
         adverse_selected_raw: Optional[bool] = None
 
@@ -780,6 +784,29 @@ class FillTestRunner:
                     # CM-3: AS デッドゾーン
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
 
+            # 047# E3: +30s (=60s) 計測
+            if mid_at_fill is not None:
+                await asyncio.sleep(self.config.post_fill_wait_sec)  # +30s
+                try:
+                    mid_60s_after = await self._get_mid_price()
+                    if side == "buy":
+                        post_fill_60s_pnl = (mid_60s_after - mid_at_fill) / mid_at_fill * 10000
+                    else:
+                        post_fill_60s_pnl = (mid_at_fill - mid_60s_after) / mid_at_fill * 10000
+                except Exception:
+                    pass
+
+                # 047# E3: +60s (=120s) 計測
+                await asyncio.sleep(self.config.post_fill_wait_sec * 2)  # +60s
+                try:
+                    mid_120s_after = await self._get_mid_price()
+                    if side == "buy":
+                        post_fill_120s_pnl = (mid_120s_after - mid_at_fill) / mid_at_fill * 10000
+                    else:
+                        post_fill_120s_pnl = (mid_at_fill - mid_120s_after) / mid_at_fill * 10000
+                except Exception:
+                    pass
+
         # 037# レジーム検知更新 (035# §7 Week 1)
         regime_str: Optional[str] = None
         regime_conf: Optional[float] = None
@@ -804,7 +831,11 @@ class FillTestRunner:
             queue_wait_sec=queue_wait,
             mid_at_fill=mid_at_fill,
             mid_30s_after=mid_30s_after,
+            mid_60s_after=mid_60s_after,
+            mid_120s_after=mid_120s_after,
             post_fill_30s_pnl=post_fill_pnl,
+            post_fill_60s_pnl=post_fill_60s_pnl,
+            post_fill_120s_pnl=post_fill_120s_pnl,
             adverse_selected=adverse_selected,
             adverse_selected_raw=adverse_selected_raw,
             cancel_reason=(
