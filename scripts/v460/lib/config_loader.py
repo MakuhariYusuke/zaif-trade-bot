@@ -119,3 +119,28 @@ def load_gate_thresholds(
 
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
+
+
+def load_fill_test_config(
+    path: Optional[str | Path] = None,
+) -> dict[str, Any]:
+    """Load fill_test.yaml — fill test の全設定を YAML から読込.
+
+    v459 反省: 設定がコード内 dict で形骸化 → YAML 一元管理.
+
+    Args:
+        path: YAML パス. None なら configs/v460/fill_test.yaml.
+
+    Returns:
+        設定 dict. FillTestConfig / AdaptationConfig / LotSizingConfig に
+        分配して使用する.
+    """
+    if path is None:
+        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+    else:
+        path = Path(path)
+        if not path.is_absolute():
+            path = _PROJECT_ROOT / path
+
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}

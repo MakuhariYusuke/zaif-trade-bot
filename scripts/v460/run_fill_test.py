@@ -55,10 +55,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FillTestConfig:
-    """Fill test runner の設定."""
+    """Fill test runner の設定.
+
+    優先順位: CLI引数 > YAML > dataclass defaults.
+    """
 
     symbol: str = "btc_jpy"
-    order_quantity: float = 0.001  # 最小ロット (Coincheck BTC)
+    order_quantity: float = 0.001  # 初期ロット (Coincheck BTC 最小)
     cycle_interval_sec: float = 120.0  # サイクル間隔
     order_timeout_sec: float = 300.0  # 注文タイムアウト
     poll_interval_sec: float = 5.0  # ポーリング間隔
@@ -75,20 +78,70 @@ class FillTestConfig:
     max_order_retries: int = 1  # 失敗時のリトライ回数
     retry_delay_sec: float = 2.0  # リトライ間隔
     # CM-3: AS 判定デッドゾーン (bps)
-    # 30秒のランダムウォーク・ノイズを除外するための最小閾値
     as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
-    # 031# 追加: スプレッドフィルター (狭スプレッド時はスキップ)
+    # 031# スプレッドフィルター
     min_spread_jpy: float = 0.0  # 0 = フィルタなし
-    # 032# #18: ハードコード値の設定化
+    # 保存
     batch_size: int = 10  # バッチ保存のサイクル数
     max_save_retries: int = 3  # 保存リトライ上限
-    # 032# P0: 方策 A パラメータ適応
-    enable_auto_adapt: bool = False  # 自動適応の有効化
-    adapt_interval_cycles: int = 50  # 適応判定の間隔 (サイクル数)
-    # 033# 方策 B: 動的ロットサイジング
-    enable_dynamic_lot: bool = False  # 動的ロット有効化
-    max_lot: float = 0.005  # ロット上限 (BTC)
-    lot_adapt_interval_cycles: int = 50  # ロット適応判定の間隔
+    # 方策 A: パラメータ適応
+    enable_auto_adapt: bool = False
+    adapt_interval_cycles: int = 50
+    # 方策 B: 動的ロットサイジング
+    enable_dynamic_lot: bool = False
+    max_lot: float = 0.005
+    lot_adapt_interval_cycles: int = 50
+    # 安全設計 (000# §3.9)
+    loss_cap_jpy: float = 10_000.0
+    loss_cap_warning_ratio: float = 0.7
+
+    @classmethod
+    def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
+        """YAML dict から FillTestConfig を構築.
+
+        YAML のフラットキー + ネスト (adaptation / lot_sizing / safety) を
+        dataclass フィールドにマッピングする.
+        """
+        kwargs: dict = {}
+
+        # フラットキー (YAML キー == dataclass フィールド名)
+        flat_keys = {
+            "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
+            "poll_interval_sec", "post_fill_wait_sec", "results_dir",
+            "max_consecutive_same_side", "start_side",
+            "spread_offset_ratio", "min_offset_jpy",
+            "max_order_retries", "retry_delay_sec",
+            "as_deadzone_bps", "min_spread_jpy",
+            "batch_size", "max_save_retries",
+        }
+        for key in flat_keys:
+            if key in yaml_cfg:
+                kwargs[key] = yaml_cfg[key]
+
+        # adaptation セクション → 方策 A
+        adapt = yaml_cfg.get("adaptation", {})
+        if adapt.get("enabled") is not None:
+            kwargs["enable_auto_adapt"] = adapt["enabled"]
+        if "interval_cycles" in adapt:
+            kwargs["adapt_interval_cycles"] = adapt["interval_cycles"]
+
+        # lot_sizing セクション → 方策 B
+        lot = yaml_cfg.get("lot_sizing", {})
+        if lot.get("enabled") is not None:
+            kwargs["enable_dynamic_lot"] = lot["enabled"]
+        if "interval_cycles" in lot:
+            kwargs["lot_adapt_interval_cycles"] = lot["interval_cycles"]
+        if "max_lot" in lot:
+            kwargs["max_lot"] = lot["max_lot"]
+
+        # safety セクション → 損失キャップ
+        safety = yaml_cfg.get("safety", {})
+        if "loss_cap_jpy" in safety:
+            kwargs["loss_cap_jpy"] = safety["loss_cap_jpy"]
+        if "loss_cap_warning_ratio" in safety:
+            kwargs["loss_cap_warning_ratio"] = safety["loss_cap_warning_ratio"]
+
+        return cls(**kwargs)
 
 
 # ======================================================================
@@ -105,9 +158,11 @@ class FillTestRunner:
         self,
         adapter: CoincheckAdapter,
         config: FillTestConfig,
+        yaml_cfg: Optional[dict] = None,
     ) -> None:
         self.adapter = adapter
         self.config = config
+        self._yaml_cfg = yaml_cfg or {}  # YAML 生の設定 (サブモジュールに渡す用)
         self._results_dir = Path(config.results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
         self._cycle_count = 0
@@ -541,11 +596,10 @@ class FillTestRunner:
             batch.append(record)
 
             # --- 033# F4: 累積 PnL 安全キャップ (000# §3.9) ---
-            loss_cap_jpy = 10_000.0
-            if cumulative_pnl_jpy <= -loss_cap_jpy:
+            if cumulative_pnl_jpy <= -self.config.loss_cap_jpy:
                 logger.error(
                     f"LOSS CAP REACHED: cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
-                    f"(cap = -{loss_cap_jpy:.0f} JPY). Stopping fill test."
+                    f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
                 )
                 self._shutdown_requested = True
 
@@ -683,6 +737,46 @@ class FillTestRunner:
             )
             traceback.print_exc(file=sys.stderr)
 
+    def _build_adapt_kwargs(self) -> dict:
+        """YAML adaptation セクションから AdaptationConfig 用 kwargs を構築."""
+        adapt_yaml = self._yaml_cfg.get("adaptation", {})
+        kwargs: dict = {}
+        key_map = {
+            "min_fill_rate": "min_fill_rate",
+            "max_as_ratio": "max_as_ratio",
+            "step_ratio": "step_ratio",
+            "min_offset_ratio": "min_offset_ratio",
+            "max_offset_ratio": "max_offset_ratio",
+            "min_samples": "min_samples",
+        }
+        for yaml_key, config_key in key_map.items():
+            if yaml_key in adapt_yaml:
+                kwargs[config_key] = adapt_yaml[yaml_key]
+        return kwargs
+
+    def _build_lot_kwargs(self) -> dict:
+        """YAML lot_sizing セクションから LotSizingConfig 用 kwargs を構築."""
+        lot_yaml = self._yaml_cfg.get("lot_sizing", {})
+        safety_yaml = self._yaml_cfg.get("safety", {})
+        kwargs: dict = {}
+        key_map = {
+            "min_lot": "min_lot",
+            "lot_step": "lot_step",
+            "min_fill_rate": "min_fill_rate",
+            "max_as_ratio": "max_as_ratio",
+            "min_recent_pnl_bps": "min_recent_pnl_bps",
+            "min_samples": "min_samples",
+        }
+        for yaml_key, config_key in key_map.items():
+            if yaml_key in lot_yaml:
+                kwargs[config_key] = lot_yaml[yaml_key]
+        # safety セクションから損失キャップ
+        if "loss_cap_jpy" in safety_yaml:
+            kwargs["loss_cap_jpy"] = safety_yaml["loss_cap_jpy"]
+        if "loss_cap_warning_ratio" in safety_yaml:
+            kwargs["loss_cap_warning_ratio"] = safety_yaml["loss_cap_warning_ratio"]
+        return kwargs
+
     def _try_auto_adapt(self, total_count: int, filled_count: int) -> None:
         """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
 
@@ -705,6 +799,7 @@ class FillTestRunner:
 
             adapt_config = AdaptationConfig(
                 current_offset_ratio=self.config.spread_offset_ratio,
+                **self._build_adapt_kwargs(),
             )
             result = compute_adaptation(
                 fill_rate=metrics.fill_rate_p90,
@@ -753,6 +848,7 @@ class FillTestRunner:
             lot_config = LotSizingConfig(
                 current_lot=self._current_lot,
                 max_lot=self.config.max_lot,
+                **self._build_lot_kwargs(),
             )
             result = compute_lot_size(
                 fill_rate=metrics.fill_rate_p90,
@@ -848,35 +944,38 @@ def main() -> None:
                         help="実測時間 (時間). デフォルト: 24h")
     parser.add_argument("--dry-run", action="store_true",
                         help="Dry-run モード (実際に発注しない)")
+    parser.add_argument("--config", default=None,
+                        help="設定 YAML パス (デフォルト: configs/v460/fill_test.yaml)")
     # 032# #2: CLI 認証情報は .env からのみ推奨 (後方互換のため残すが非推奨警告)
     parser.add_argument("--api-key", default=None,
                         help="[DEPRECATED] .env から読込を推奨")
     parser.add_argument("--api-secret", default=None,
                         help="[DEPRECATED] .env から読込を推奨")
-    parser.add_argument("--results-dir", default="results/v460/fill_test",
-                        help="結果保存ディレクトリ")
+    parser.add_argument("--results-dir", default=None,
+                        help="結果保存ディレクトリ (CLI > YAML)")
     parser.add_argument("--results-only", action="store_true",
                         help="既存データからメトリクスのみ算出")
-    parser.add_argument("--cycle-interval", type=float, default=120.0,
-                        help="サイクル間隔 (秒)")
+    parser.add_argument("--cycle-interval", type=float, default=None,
+                        help="サイクル間隔 (秒) (CLI > YAML)")
     parser.add_argument("--output", default=None,
                         help="判定結果の JSON 出力先")
-    parser.add_argument("--start-side", choices=["buy", "sell"], default="buy",
-                        help="開始サイド (JPY残高不足時は sell 推奨)")
-    parser.add_argument("--spread-offset-ratio", type=float, default=0.05,
-                        help="スプレッド比例オフセット率 (031#: 0.05=保守的, 0.2=攻撃的)")
-    parser.add_argument("--min-spread-jpy", type=float, default=0.0,
-                        help="最小スプレッドフィルター (JPY). 0=フィルタなし")
+    parser.add_argument("--start-side", choices=["buy", "sell"], default=None,
+                        help="開始サイド (CLI > YAML)")
+    parser.add_argument("--spread-offset-ratio", type=float, default=None,
+                        help="スプレッド比例オフセット率 (CLI > YAML)")
+    parser.add_argument("--min-spread-jpy", type=float, default=None,
+                        help="最小スプレッドフィルター (JPY) (CLI > YAML)")
     parser.add_argument("--enable-auto-adapt", action="store_true", default=False,
-                        help="032# 方策A: 自動パラメータ適応を有効化")
+                        help="方策A: 自動パラメータ適応を有効化 (CLI > YAML)")
     parser.add_argument("--enable-dynamic-lot", action="store_true", default=False,
-                        help="033# 方策B: 動的ロットサイジングを有効化")
-    parser.add_argument("--max-lot", type=float, default=0.005,
-                        help="033# 方策B: ロット上限 (BTC). デフォルト: 0.005")
+                        help="方策B: 動的ロットサイジングを有効化 (CLI > YAML)")
+    parser.add_argument("--max-lot", type=float, default=None,
+                        help="方策B: ロット上限 (BTC) (CLI > YAML)")
     args = parser.parse_args()
 
     if args.results_only:
-        result = run_results_only(args.results_dir)
+        rd = args.results_dir or "results/v460/fill_test"
+        result = run_results_only(rd)
         if args.output:
             Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             with open(args.output, "w", encoding="utf-8") as f:
@@ -915,18 +1014,37 @@ def main() -> None:
         dry_run=args.dry_run,
     )
 
-    config = FillTestConfig(
-        cycle_interval_sec=args.cycle_interval,
-        results_dir=args.results_dir,
-        start_side=args.start_side,
-        spread_offset_ratio=args.spread_offset_ratio,
-        min_spread_jpy=args.min_spread_jpy,
-        enable_auto_adapt=args.enable_auto_adapt,
-        enable_dynamic_lot=args.enable_dynamic_lot,
-        max_lot=args.max_lot,
+    # --- 設定構築: YAML → CLI override ---
+    from scripts.v460.lib.config_loader import load_fill_test_config
+
+    yaml_cfg = load_fill_test_config(args.config)
+    config = FillTestConfig.from_yaml(yaml_cfg)
+
+    # CLI 引数が明示指定された場合のみ上書き (None / False はスキップ)
+    if args.cycle_interval is not None:
+        config.cycle_interval_sec = args.cycle_interval
+    if args.results_dir is not None:
+        config.results_dir = args.results_dir
+    if args.start_side is not None:
+        config.start_side = args.start_side
+    if args.spread_offset_ratio is not None:
+        config.spread_offset_ratio = args.spread_offset_ratio
+    if args.min_spread_jpy is not None:
+        config.min_spread_jpy = args.min_spread_jpy
+    if args.enable_auto_adapt:
+        config.enable_auto_adapt = True
+    if args.enable_dynamic_lot:
+        config.enable_dynamic_lot = True
+    if args.max_lot is not None:
+        config.max_lot = args.max_lot
+
+    logger.info(
+        f"Config loaded: YAML={args.config or 'default'}, "
+        f"offset={config.spread_offset_ratio}, lot={config.order_quantity}, "
+        f"adapt={config.enable_auto_adapt}, dynamic_lot={config.enable_dynamic_lot}"
     )
 
-    runner = FillTestRunner(adapter, config)
+    runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
     # 024# O3: ログファイル出力 (ローテーション付き)
     log_dir = Path(args.results_dir) / "logs"

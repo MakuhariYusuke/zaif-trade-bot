@@ -1,0 +1,63 @@
+# fill_test 設定 — G1.1-exec fill quality 実測
+# FillTestConfig / AdaptationConfig / LotSizingConfig の全パラメータを外部化
+#
+# 使い方:
+#   python scripts/v460/run_fill_test.py --config configs/v460/fill_test.yaml --hours 168
+#   (CLI 引数は YAML より優先される)
+#
+# v459 反省: 設定がコード内 dict で形骸化していた → YAML に一元化
+
+# ---- 基本設定 ----
+symbol: btc_jpy
+order_quantity: 0.001         # 初期ロット (BTC) — Coincheck 最小
+cycle_interval_sec: 120.0     # サイクル間隔 (秒)
+order_timeout_sec: 300.0      # 注文タイムアウト (秒)
+poll_interval_sec: 5.0        # ポーリング間隔 (秒)
+post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
+results_dir: results/v460/fill_test
+start_side: buy               # 開始サイド (buy / sell)
+max_consecutive_same_side: 2  # 片側蓄積上限
+
+# ---- スプレッド比例オフセット (CM-1) ----
+spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
+min_offset_jpy: 1.0           # 最小オフセット (JPY)
+min_spread_jpy: 0.0           # 最小スプレッドフィルター (0=なし)
+
+# ---- リトライ (CM-2) ----
+max_order_retries: 1
+retry_delay_sec: 2.0
+
+# ---- AS 判定 (CM-3) ----
+as_deadzone_bps: 0.5          # ±0.5 bps 以内は AS と判定しない
+
+# ---- 保存 ----
+batch_size: 10                # バッチ保存サイクル数
+max_save_retries: 3           # 保存リトライ上限
+
+# ---- 方策 A: パラメータ適応 (032# P0) ----
+adaptation:
+  enabled: false              # 自動適応の有効化
+  interval_cycles: 50         # 適応判定の間隔
+  min_fill_rate: 0.80         # fill_rate 下限 (下回ると offset 増)
+  max_as_ratio: 0.15          # AS_ratio 上限 (上回ると offset 減)
+  step_ratio: 0.01            # 1 回の offset 調整量
+  min_offset_ratio: 0.01      # offset 下限
+  max_offset_ratio: 0.30      # offset 上限
+  min_samples: 50             # 適応判定の最小サンプル数
+
+# ---- 方策 B: 動的ロットサイジング (033#) ----
+lot_sizing:
+  enabled: false              # 動的ロット有効化
+  interval_cycles: 50         # ロット適応判定の間隔
+  min_lot: 0.001              # ロット下限 (BTC)
+  max_lot: 0.005              # ロット上限 (BTC)
+  lot_step: 0.001             # 1 段階の増減量 (BTC)
+  min_fill_rate: 0.70         # 増量に必要な約定率
+  max_as_ratio: 0.30          # 増量に必要な AS 上限
+  min_recent_pnl_bps: 0.0     # 増量に必要な直近平均 PnL (bps)
+  min_samples: 50             # 判定の最小サンプル数
+
+# ---- 安全設計 (000# §3.9) ----
+safety:
+  loss_cap_jpy: 10000.0       # 累積実損上限 (JPY)
+  loss_cap_warning_ratio: 0.7 # 上限の 70% で警告・ロット縮小
