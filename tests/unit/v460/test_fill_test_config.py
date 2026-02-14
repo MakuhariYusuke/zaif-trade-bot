@@ -39,9 +39,15 @@ class TestLoadFillTestConfig:
         assert "cycle_interval_sec" in cfg
         assert "order_timeout_sec" in cfg
         assert "as_deadzone_bps" in cfg
+        # 035# 新フラットキー
+        assert "save_fail_threshold" in cfg
+        assert "progress_log_interval" in cfg
+        assert "log_max_bytes" in cfg
+        assert "log_backup_count" in cfg
         # ネストセクション
         assert cfg["adaptation"]["enabled"] is False
         assert cfg["lot_sizing"]["enabled"] is False
+        assert cfg["lot_sizing"]["recent_pnl_window"] == 50
         assert cfg["safety"]["loss_cap_jpy"] == 10000.0
 
 
@@ -68,6 +74,11 @@ class TestFillTestConfigFromYaml:
             "cycle_interval_sec": 60.0,
             "spread_offset_ratio": 0.10,
             "as_deadzone_bps": 1.0,
+            "save_fail_threshold": 5,
+            "progress_log_interval": 100,
+            "log_max_bytes": 5242880,
+            "log_backup_count": 3,
+            "min_adapt_samples": 30,
             "adaptation": {
                 "enabled": True,
                 "interval_cycles": 30,
@@ -76,6 +87,7 @@ class TestFillTestConfigFromYaml:
                 "enabled": True,
                 "interval_cycles": 25,
                 "max_lot": 0.010,
+                "recent_pnl_window": 30,
             },
             "safety": {
                 "loss_cap_jpy": 5000.0,
@@ -94,6 +106,13 @@ class TestFillTestConfigFromYaml:
         assert config.max_lot == 0.010
         assert config.loss_cap_jpy == 5000.0
         assert config.loss_cap_warning_ratio == 0.5
+        # 035# 新フィールド
+        assert config.save_fail_threshold == 5
+        assert config.progress_log_interval == 100
+        assert config.log_max_bytes == 5242880
+        assert config.log_backup_count == 3
+        assert config.min_adapt_samples == 30
+        assert config.recent_pnl_window == 30
 
     def test_from_yaml_partial(self) -> None:
         """部分的な YAML でもデフォルトが効く."""
@@ -111,6 +130,13 @@ class TestFillTestConfigFromYaml:
         config = FillTestConfig.from_yaml({})
         assert config.order_quantity == 0.001
         assert config.enable_auto_adapt is False
+        # 035# 新フィールドもデフォルト
+        assert config.save_fail_threshold == 3
+        assert config.progress_log_interval == 50
+        assert config.log_max_bytes == 10 * 1024 * 1024
+        assert config.log_backup_count == 5
+        assert config.min_adapt_samples == 50
+        assert config.recent_pnl_window == 50
 
     def test_from_yaml_missing_sections(self) -> None:
         """adaptation / lot_sizing / safety セクションなし → デフォルト."""

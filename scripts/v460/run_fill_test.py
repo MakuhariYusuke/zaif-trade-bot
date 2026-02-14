@@ -84,13 +84,20 @@ class FillTestConfig:
     # 保存
     batch_size: int = 10  # バッチ保存のサイクル数
     max_save_retries: int = 3  # 保存リトライ上限
+    save_fail_threshold: int = 3  # 緊急ダンプ発動の連続失敗回数
+    # ログ
+    progress_log_interval: int = 50  # 進捗ログの出力間隔 (サイクル数)
+    log_max_bytes: int = 10 * 1024 * 1024  # ログファイル上限 (10 MB)
+    log_backup_count: int = 5  # ログバックアップ世代数
     # 方策 A: パラメータ適応
     enable_auto_adapt: bool = False
     adapt_interval_cycles: int = 50
+    min_adapt_samples: int = 50  # 方策 A/B 発動の最小サンプル数
     # 方策 B: 動的ロットサイジング
     enable_dynamic_lot: bool = False
     max_lot: float = 0.005
     lot_adapt_interval_cycles: int = 50
+    recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
     # 安全設計 (000# §3.9)
     loss_cap_jpy: float = 10_000.0
     loss_cap_warning_ratio: float = 0.7
@@ -112,7 +119,9 @@ class FillTestConfig:
             "spread_offset_ratio", "min_offset_jpy",
             "max_order_retries", "retry_delay_sec",
             "as_deadzone_bps", "min_spread_jpy",
-            "batch_size", "max_save_retries",
+            "batch_size", "max_save_retries", "save_fail_threshold",
+            "progress_log_interval", "log_max_bytes", "log_backup_count",
+            "min_adapt_samples",
         }
         for key in flat_keys:
             if key in yaml_cfg:
@@ -133,6 +142,8 @@ class FillTestConfig:
             kwargs["lot_adapt_interval_cycles"] = lot["interval_cycles"]
         if "max_lot" in lot:
             kwargs["max_lot"] = lot["max_lot"]
+        if "recent_pnl_window" in lot:
+            kwargs["recent_pnl_window"] = lot["recent_pnl_window"]
 
         # safety セクション → 損失キャップ
         safety = yaml_cfg.get("safety", {})
@@ -610,7 +621,7 @@ class FillTestRunner:
                 # 失敗時: batch は保持 → 次回再試行
 
             # 進捗ログ
-            if self._cycle_count % 50 == 0:
+            if self._cycle_count % self.config.progress_log_interval == 0:
                 logger.info(
                     f"Progress: {self._cycle_count} cycles, "
                     f"fill rate={filled_count}/{total_count} "
@@ -624,7 +635,7 @@ class FillTestRunner:
             if (
                 self.config.enable_auto_adapt
                 and self._cycle_count % self.config.adapt_interval_cycles == 0
-                and total_count >= 50
+                and total_count >= self.config.min_adapt_samples
             ):
                 self._try_auto_adapt(total_count, filled_count)
 
@@ -632,7 +643,7 @@ class FillTestRunner:
             if (
                 self.config.enable_dynamic_lot
                 and self._cycle_count % self.config.lot_adapt_interval_cycles == 0
-                and total_count >= 50
+                and total_count >= self.config.min_adapt_samples
             ):
                 self._try_auto_lot_size()
 
@@ -687,7 +698,7 @@ class FillTestRunner:
         )
 
         # 024# R1: 連続失敗時は緊急ダンプ
-        if self._save_fail_count >= 3:
+        if self._save_fail_count >= self.config.save_fail_threshold:
             self._emergency_dump(batch, "save_fail")
             self._save_fail_count = 0
             return True  # ダンプ成功ならバッチクリア
@@ -791,7 +802,7 @@ class FillTestRunner:
 
             # 直近のレコードからメトリクスを算出
             records = load_fill_records_glob(str(self._results_dir))
-            if len(records) < 50:
+            if len(records) < self.config.min_adapt_samples:
                 return
 
             metrics = compute_fill_metrics(records)
@@ -837,12 +848,14 @@ class FillTestRunner:
             )
 
             records = load_fill_records_glob(str(self._results_dir))
-            if len(records) < 50:
+            if len(records) < self.config.min_adapt_samples:
                 return
 
             metrics = compute_fill_metrics(records)
             cum_pnl = compute_cumulative_pnl_jpy(records)
-            recent_pnl = compute_recent_pnl_bps(records, window=50)
+            recent_pnl = compute_recent_pnl_bps(
+                records, window=self.config.recent_pnl_window
+            )
             del records  # メモリ解放
 
             lot_config = LotSizingConfig(
@@ -1047,12 +1060,12 @@ def main() -> None:
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
     # 024# O3: ログファイル出力 (ローテーション付き)
-    log_dir = Path(args.results_dir) / "logs"
+    log_dir = Path(config.results_dir) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     file_handler = logging.handlers.RotatingFileHandler(
         log_dir / "fill_test.log",
-        maxBytes=10 * 1024 * 1024,  # 10 MB
-        backupCount=5,
+        maxBytes=config.log_max_bytes,
+        backupCount=config.log_backup_count,
         encoding="utf-8",
     )
     file_handler.setLevel(logging.DEBUG)

@@ -16,7 +16,7 @@ import copy
 from pathlib import Path
 from typing import Any, Optional
 
-import yaml
+from ztb.io.yaml_io import read_yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -54,8 +54,7 @@ def load_config(
     if not exp_path.is_absolute():
         exp_path = _PROJECT_ROOT / exp_path
 
-    with open(exp_path, "r", encoding="utf-8") as f:
-        exp_raw = yaml.safe_load(f) or {}
+    exp_raw = read_yaml(exp_path) or {}
 
     # Resolve base
     if base_path is None:
@@ -66,8 +65,7 @@ def load_config(
         if not base_path.is_absolute():
             base_path = _PROJECT_ROOT / base_path
 
-    with open(base_path, "r", encoding="utf-8") as f:
-        base_raw = yaml.safe_load(f) or {}
+    base_raw = read_yaml(base_path) or {}
 
     merged = _deep_merge(base_raw, exp_raw)
 
@@ -117,8 +115,7 @@ def load_gate_thresholds(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return read_yaml(path) or {}
 
 
 def load_fill_test_config(
@@ -142,5 +139,4 @@ def load_fill_test_config(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return read_yaml(path) or {}
