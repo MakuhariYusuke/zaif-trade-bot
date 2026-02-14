@@ -577,3 +577,180 @@ class TestStaleOrderCleanup:
         assert hasattr(FillTestRunner, "_cancel_stale_orders")
         import inspect
         assert inspect.iscoroutinefunction(FillTestRunner._cancel_stale_orders)
+
+
+# ======================================================================
+# 044# Fix Tests
+# ======================================================================
+
+
+class TestSingleInstanceLock:
+    """044# Bug7: 単一起動ロック (lockfile + PID + stale回収)."""
+
+    def test_acquire_release_lock_methods_exist(self) -> None:
+        """_acquire_lock / _release_lock メソッドが定義されている."""
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        assert hasattr(FillTestRunner, "_acquire_lock")
+        assert hasattr(FillTestRunner, "_release_lock")
+
+    def test_lockfile_created_and_removed(self, tmp_path: "Path") -> None:
+        """ロックファイルの生成・解放が正しく動作する."""
+        from pathlib import Path
+        from unittest.mock import MagicMock
+
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig(results_dir=str(tmp_path))
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+
+        runner._acquire_lock()
+        lock_path = tmp_path / "fill_test.lock"
+        assert lock_path.exists()
+        content = lock_path.read_text(encoding="utf-8")
+        import os
+        assert content.startswith(f"{os.getpid()}|")
+
+        runner._release_lock()
+        assert not lock_path.exists()
+
+    def test_stale_lockfile_reclaimed(self, tmp_path: "Path") -> None:
+        """無効な PID のロックファイルは回収される."""
+        from pathlib import Path
+        from unittest.mock import MagicMock
+
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        lock_path = tmp_path / "fill_test.lock"
+        # 存在しない PID を書き込む
+        lock_path.write_text("99999999|1234567890|fake_run_id", encoding="utf-8")
+
+        config = FillTestConfig(results_dir=str(tmp_path))
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+        # stale lock は回収されて新しいロックが取得される
+        runner._acquire_lock()
+        assert lock_path.exists()
+        import os
+        content = lock_path.read_text(encoding="utf-8")
+        assert content.startswith(f"{os.getpid()}|")
+        runner._release_lock()
+
+
+class TestPreflightSkipLimit:
+    """044# F8: 連続 preflight 失敗上限."""
+
+    def test_config_has_max_preflight_skip(self) -> None:
+        """max_preflight_skip 設定が存在し、デフォルト値が適切."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert hasattr(config, "max_preflight_skip")
+        assert config.max_preflight_skip == 10
+
+    def test_preflight_skip_count_initialized(self) -> None:
+        """_preflight_skip_count が初期化されている."""
+        from unittest.mock import MagicMock
+
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig()
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+        assert runner._preflight_skip_count == 0
+
+    def test_max_consecutive_same_side_removed(self) -> None:
+        """044# F7: 未使用の max_consecutive_same_side が削除されている."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        config = FillTestConfig()
+        assert not hasattr(config, "max_consecutive_same_side")
+
+
+class TestCleanupSyncImproved:
+    """044# A-4: _cleanup_sync の改善テスト."""
+
+    def test_cleanup_releases_lock(self, tmp_path: "Path") -> None:
+        """_cleanup_sync がロックファイルを解放する."""
+        from pathlib import Path
+        from unittest.mock import MagicMock
+
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig(results_dir=str(tmp_path))
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+        runner._acquire_lock()
+
+        lock_path = tmp_path / "fill_test.lock"
+        assert lock_path.exists()
+
+        runner._cleanup_sync()
+        assert not lock_path.exists()
+
+
+class TestLossCapPeriodicUpdate:
+    """044# A-7: loss_cap 定期更新."""
+
+    def test_loss_cap_update_interval_exists(self) -> None:
+        """_loss_cap_update_interval が初期化されている."""
+        from unittest.mock import MagicMock
+
+        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+
+        config = FillTestConfig()
+        adapter = MagicMock()
+        runner = FillTestRunner(adapter, config)
+        assert hasattr(runner, "_loss_cap_update_interval")
+        assert runner._loss_cap_update_interval == 50
+
+
+class TestWindowsSignalHandler:
+    """044# A-1: Windows SIGTERM 修正."""
+
+    def test_platform_import(self) -> None:
+        """platform モジュールが run_fill_test でインポートされている."""
+        import importlib
+        mod = importlib.import_module("scripts.v460.run_fill_test")
+        # platform が import されていることを確認
+        assert hasattr(mod, "platform")
+
+
+class TestRateLimitDoubleCheck:
+    """044# E-1: get_order_status の二重 rate limit チェック."""
+
+    def test_rate_limit_called_before_transactions(self) -> None:
+        """get_order_status のソースに2回の _check_rate_limit がある."""
+        import inspect
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+        source = inspect.getsource(CoincheckAdapter.get_order_status)
+        count = source.count("_check_rate_limit")
+        assert count >= 2, f"Expected ≥2 rate limit checks, found {count}"
+
+
+class TestPriceRounding:
+    """044# E-3: price int()→round() 修正."""
+
+    def test_price_uses_round_not_int(self) -> None:
+        """place_order のソースに round(price) が使われている."""
+        import inspect
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+        source = inspect.getsource(CoincheckAdapter.place_order)
+        assert "round(price)" in source, "price should use round() not int()"
+        assert "int(price)" not in source, "int(price) should be replaced by round(price)"
+
+
+class TestBalanceLocked:
+    """044# E-4: get_balance が reserved を locked として解析."""
+
+    def test_balance_source_has_reserved_handling(self) -> None:
+        """get_balance のソースに _reserved の処理が含まれる."""
+        import inspect
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+        source = inspect.getsource(CoincheckAdapter.get_balance)
+        assert "_reserved" in source, "get_balance should handle *_reserved keys"
+        assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"

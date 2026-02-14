@@ -282,7 +282,8 @@ class CoincheckAdapter(IBroker):
             if order_type == "limit" and price is not None:
                 # 指値注文: order_type = "buy" or "sell"
                 order_data["order_type"] = side  # "buy" or "sell"
-                order_data["rate"] = str(int(price))
+                # 044# E-3: int() 切り捨て → round() で sell 側の体系的偏りを解消
+                order_data["rate"] = str(round(price))
                 order_data["amount"] = str(quantity)
                 # 013# D-3: maker-only 戦略の保証 — post_only で taker 約定を防止
                 order_data["time_in_force"] = "post_only"
@@ -312,7 +313,7 @@ class CoincheckAdapter(IBroker):
                 order_data["order_type"] = side
                 order_data["amount"] = str(quantity)
                 if price is not None:
-                    order_data["rate"] = str(int(price))
+                    order_data["rate"] = str(round(price))
 
             try:
                 # 013# C-4 FIX: asyncio.to_thread で同期 requests を非同期化
@@ -526,6 +527,8 @@ class CoincheckAdapter(IBroker):
                 logger.warning(f"Failed to check open orders for {order_id}: {e}")
 
             # 2) Check transactions (filled orders)
+            # 044# E-1: 2つ目の API 呼び出し前に rate limit チェック
+            await self._check_rate_limit()
             url_txns = f"{self.api_base_url}/api/exchange/orders/transactions"
             try:
                 result = await asyncio.to_thread(
@@ -653,25 +656,32 @@ class CoincheckAdapter(IBroker):
 
                 # Convert API response to Balance objects
                 balances = []
-                for currency_code, balance_str in result.items():
-                    if currency_code not in [
-                        "success",
-                        "error",
-                    ]:  # Skip metadata fields
-                        try:
-                            balance_value = float(balance_str)
-                            balances.append(
-                                Balance(
-                                    currency=currency_code.upper(),
-                                    free=balance_value,
-                                    locked=0.0,  # Coincheck doesn't separate free/locked in balance
-                                    total=balance_value,
-                                )
+                # 044# E-4: Coincheck の *_reserved キーを locked として解析
+                # Coincheck API は {"btc": "0.1", "btc_reserved": "0.05", ...} を返す
+                reserved_suffix = "_reserved"
+                # 先に通貨一覧を抽出 (非 reserved のみ)
+                currency_keys = [
+                    k for k in result.keys()
+                    if k not in ["success", "error"] and not k.endswith(reserved_suffix)
+                ]
+                for currency_code in currency_keys:
+                    try:
+                        free_val = float(result.get(currency_code, 0))
+                        locked_val = float(result.get(f"{currency_code}{reserved_suffix}", 0))
+                        total_val = free_val + locked_val
+                        balances.append(
+                            Balance(
+                                currency=currency_code.upper(),
+                                free=free_val,
+                                locked=locked_val,
+                                total=total_val,
                             )
-                        except (ValueError, TypeError) as e:
-                            logger.warning(
-                                f"Failed to parse balance for {currency_code}: {balance_str}, error: {e}"
-                            )
+                        )
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            f"Failed to parse balance for {currency_code}: "
+                            f"{result.get(currency_code)}, error: {e}"
+                        )
 
                 # Filter by currency if specified
                 if currency:

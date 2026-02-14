@@ -20,6 +20,7 @@ import json
 import logging
 import logging.handlers
 import os
+import platform
 import signal
 import subprocess
 import sys
@@ -67,8 +68,8 @@ class FillTestConfig:
     poll_interval_sec: float = 5.0  # ポーリング間隔
     post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
     results_dir: str = "results/v460/fill_test"
-    # 安全設計: 片側蓄積禁止 — buy/sell 交互
-    max_consecutive_same_side: int = 2
+    # 044# 連続 preflight 失敗上限 (buy/sell 両方不足で無限スキップ防止)
+    max_preflight_skip: int = 10
     # 開始サイド: JPY 残高不足時は "sell" で開始すると自己資金循環できる
     start_side: str = "buy"
     # CM-1: スプレッド比例オフセット (post_only リジェクト防止)
@@ -128,7 +129,7 @@ class FillTestConfig:
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
             "poll_interval_sec", "post_fill_wait_sec", "results_dir",
-            "max_consecutive_same_side", "start_side",
+            "max_preflight_skip", "start_side",
             "spread_offset_ratio", "min_offset_jpy",
             "max_order_retries", "retry_delay_sec",
             "as_deadzone_bps", "min_spread_jpy",
@@ -222,9 +223,10 @@ class FillTestRunner:
             self._last_side = "buy"  # → _next_side() が "sell" を返す
         else:
             self._last_side = None  # → _next_side() が "buy" を返す
-        self._same_side_count = 0
+        self._preflight_skip_count = 0  # 044# 連続 preflight スキップ計
         self._shutdown_requested = False
         self._pending_order_id: Optional[str] = None
+        self._lockfile_path: Optional[Path] = None  # 044# 単一起動ロック
 
         # 020# O4: データバージョン管理
         self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
@@ -259,8 +261,11 @@ class FillTestRunner:
         self._save_fail_count: int = 0
         self._max_save_retries: int = config.max_save_retries
 
-        # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避
+        # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
+
+        # 044# A-7: loss_cap 更新カウンタ (50サイクル毎に残高再取得)
+        self._loss_cap_update_interval = 50  # サイクル数
 
     @staticmethod
     def _get_git_sha() -> Optional[str]:
@@ -413,6 +418,59 @@ class FillTestRunner:
         except Exception as e:
             logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
         return False
+
+    def _acquire_lock(self) -> None:
+        """044# Bug7: 単一起動ロック (lockfile + PID + stale 回収).
+
+        同一 results_dir に対して複数プロセスが並行動作することを防止。
+        ロックファイルに PID を記録し、起動時に既存ロックの生死を検証する。
+        """
+        lock_path = self._results_dir / "fill_test.lock"
+        self._lockfile_path = lock_path
+
+        if lock_path.exists():
+            try:
+                content = lock_path.read_text(encoding="utf-8").strip()
+                parts = content.split("|")
+                existing_pid = int(parts[0])
+                # PID 生存チェック
+                import psutil  # type: ignore[import-untyped]
+                if psutil.pid_exists(existing_pid):
+                    try:
+                        proc = psutil.Process(existing_pid)
+                        cmdline = " ".join(proc.cmdline())
+                        if "fill_test" in cmdline or "run_fill_test" in cmdline:
+                            raise RuntimeError(
+                                f"別の fill_test プロセスが実行中です "
+                                f"(PID={existing_pid}). "
+                                f"強制起動するにはロックファイルを削除: {lock_path}"
+                            )
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass  # プロセスが消えた → stale lock
+            except (ValueError, ImportError):
+                pass  # parse 失敗 or psutil 未インストール → stale lock
+            logger.warning(
+                f"[lock] Stale lockfile detected, reclaiming: {lock_path}"
+            )
+
+        # ロック取得: PID|timestamp|run_id
+        lock_path.write_text(
+            f"{os.getpid()}|{int(time.time())}|{self._run_id}",
+            encoding="utf-8",
+        )
+        logger.info(f"[lock] Acquired lockfile: PID={os.getpid()}, run_id={self._run_id}")
+
+    def _release_lock(self) -> None:
+        """044# ロックファイル解放."""
+        if self._lockfile_path and self._lockfile_path.exists():
+            try:
+                # 自プロセスのロックのみ解放
+                content = self._lockfile_path.read_text(encoding="utf-8").strip()
+                if content.startswith(f"{os.getpid()}|"):
+                    self._lockfile_path.unlink()
+                    logger.info("[lock] Released lockfile")
+            except Exception as e:
+                logger.warning(f"[lock] Failed to release lockfile: {e}")
 
     async def _cancel_stale_orders(self) -> int:
         """042# 起動時の滞留注文自動クリア.
@@ -730,6 +788,9 @@ class FillTestRunner:
         """
         end_time = time.time() + hours * 3600
 
+        # 044# 単一起動ロック取得
+        self._acquire_lock()
+
         # 041# 動的 loss_cap: API 残高から算出
         if self.config.loss_cap_auto:
             await self._update_dynamic_loss_cap()
@@ -773,8 +834,21 @@ class FillTestRunner:
             if await self._check_balance_for_side(next_side):
                 # 反対サイドを試す: _last_side を反転して次は反対サイド
                 self._last_side = next_side  # → 次の _next_side() が反対を返す
+                self._preflight_skip_count += 1
+                # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
+                if self._preflight_skip_count >= self.config.max_preflight_skip:
+                    logger.error(
+                        f"SAFE_STOP: 連続 preflight スキップ {self._preflight_skip_count} 回 "
+                        f"(上限 {self.config.max_preflight_skip}). "
+                        f"buy/sell 両方で残高不足の可能性. 停止します."
+                    )
+                    self._shutdown_requested = True
+                    break
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
+
+            # preflight 成功 → カウンタリセット
+            self._preflight_skip_count = 0
 
             # --- サイクル実行 ---
             try:
@@ -829,6 +903,14 @@ class FillTestRunner:
                     f"regime={regime_tag}, "
                     f"unsaved_batch={len(batch)}"
                 )
+
+            # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
+            if (
+                self.config.loss_cap_auto
+                and self._cycle_count % self._loss_cap_update_interval == 0
+                and self._cycle_count > 0
+            ):
+                await self._update_dynamic_loss_cap()
 
             # --- 032# P0: 方策 A パラメータ適応 ---
             if (
@@ -1141,9 +1223,11 @@ class FillTestRunner:
             logger.warning(f"[方策B] Auto lot-size failed (non-fatal): {e}")
 
     def _cleanup_sync(self) -> None:
-        """atexit: 残存注文キャンセル + 未保存データ退避 (同期 wrapper).
+        """atexit: 残存注文キャンセル + 未保存データ退避 + ロック解放 (同期 wrapper).
 
         024# R1: 未保存バッチを緊急ダンプに退避.
+        044# A-4: 残存注文キャンセルを確実に実行.
+        044# Bug7: ロックファイルを解放.
         """
         # 未保存バッチの退避
         if self._unsaved_batch:
@@ -1153,25 +1237,24 @@ class FillTestRunner:
             self._emergency_dump(self._unsaved_batch, "atexit")
             self._unsaved_batch = []
 
-        # 残存注文のキャンセル
+        # 044# A-4: 残存注文のキャンセル (確実に await する)
         if self._pending_order_id:
             logger.warning(f"Cleaning up pending order: {self._pending_order_id}")
             try:
+                # 新しいイベントループで確実に実行
+                loop = asyncio.new_event_loop()
                 try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = None
-
-                if loop and loop.is_running():
-                    loop.create_task(
+                    loop.run_until_complete(
                         self.adapter.cancel_order(self._pending_order_id)
                     )
-                else:
-                    asyncio.run(
-                        self.adapter.cancel_order(self._pending_order_id)
-                    )
+                    logger.info(f"Cancelled pending order: {self._pending_order_id}")
+                finally:
+                    loop.close()
             except Exception as e:
                 logger.error(f"Cleanup failed: {e}")
+
+        # 044# Bug7: ロックファイル解放
+        self._release_lock()
 
 
 # ======================================================================
@@ -1338,7 +1421,14 @@ def main() -> None:
         runner._shutdown_requested = True
 
     signal.signal(signal.SIGINT, _signal_handler)
-    signal.signal(signal.SIGTERM, _signal_handler)
+    # 044# A-1: Windows では SIGTERM が未サポート → SIGBREAK を使用
+    if platform.system() == "Windows":
+        try:
+            signal.signal(signal.SIGBREAK, _signal_handler)  # type: ignore[attr-defined]
+        except (AttributeError, OSError):
+            logger.debug("SIGBREAK not available on this platform")
+    else:
+        signal.signal(signal.SIGTERM, _signal_handler)
 
     # Run
     records = asyncio.run(runner.run_continuous(args.hours))
