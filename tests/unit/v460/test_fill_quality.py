@@ -150,6 +150,65 @@ class TestFillRecord:
         assert r.run_id is None
         assert r.git_sha is None
 
+    def test_new_fields_031(self) -> None:
+        """031# spread_at_order, error_message, spread_offset_ratio フィールド."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="o31",
+            timestamp=0.0,
+            side="buy",
+            order_price=15000000.0,
+            order_quantity=0.001,
+            spread_at_order=200.0,
+            error_message="test error",
+            spread_offset_ratio=0.05,
+        )
+        assert r.spread_at_order == 200.0
+        assert r.error_message == "test error"
+        assert r.spread_offset_ratio == 0.05
+        # round-trip
+        d = r.to_dict()
+        assert d["spread_at_order"] == 200.0
+        assert d["error_message"] == "test error"
+        assert d["spread_offset_ratio"] == 0.05
+        r2 = FillRecord.from_dict(d)
+        assert r2.spread_at_order == 200.0
+        assert r2.error_message == "test error"
+        assert r2.spread_offset_ratio == 0.05
+
+    def test_new_fields_031_defaults_none(self) -> None:
+        """031# フィールドはデフォルト None."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="d031",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+        )
+        assert r.spread_at_order is None
+        assert r.error_message is None
+        assert r.spread_offset_ratio is None
+
+    def test_new_fields_031_backward_compat(self) -> None:
+        """031# 旧データ (フィールドなし) からの読み込み互換性."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        old_data = {
+            "cycle_id": "old",
+            "timestamp": 0.0,
+            "side": "buy",
+            "order_price": 1.0,
+            "order_quantity": 0.001,
+            "filled": True,
+        }
+        r = FillRecord.from_dict(old_data)
+        assert r.spread_at_order is None
+        assert r.error_message is None
+        assert r.spread_offset_ratio is None
+
 
 # =====================================================================
 # compute_fill_metrics

@@ -54,6 +54,10 @@ class FillRecord:
     cancel_reason: Optional[str] = None  # CM-2: キャンセル理由 (api_error / timeout / post_only_reject)
     run_id: Optional[str] = None  # 020# O4: 実験ラン識別子
     git_sha: Optional[str] = None  # 020# O4: コミットハッシュ
+    # 031# 追加フィールド
+    spread_at_order: Optional[float] = None  # 発注時スプレッド (JPY)
+    error_message: Optional[str] = None  # エラー詳細メッセージ
+    spread_offset_ratio: Optional[float] = None  # 使用した spread_offset_ratio
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

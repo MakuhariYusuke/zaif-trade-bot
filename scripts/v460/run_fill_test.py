@@ -69,7 +69,7 @@ class FillTestConfig:
     # 開始サイド: JPY 残高不足時は "sell" で開始すると自己資金循環できる
     start_side: str = "buy"
     # CM-1: スプレッド比例オフセット (post_only リジェクト防止)
-    spread_offset_ratio: float = 0.2  # スプレッドの 20% を内側にオフセット
+    spread_offset_ratio: float = 0.05  # 031# 0.2→0.05: AS低減のため保守化
     min_offset_jpy: float = 1.0  # 最小オフセット (JPY)
     # CM-2: 注文失敗リトライ
     max_order_retries: int = 1  # 失敗時のリトライ回数
@@ -77,6 +77,8 @@ class FillTestConfig:
     # CM-3: AS 判定デッドゾーン (bps)
     # 30秒のランダムウォーク・ノイズを除外するための最小閾値
     as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
+    # 031# 追加: スプレッドフィルター (狭スプレッド時はスキップ)
+    min_spread_jpy: float = 0.0  # 0 = フィルタなし
 
 
 # ======================================================================
@@ -177,11 +179,14 @@ class FillTestRunner:
         best_ask = ob.asks[0][0]
         return (best_bid + best_ask) / 2.0
 
-    async def _compute_maker_price(self, side: str) -> float:
+    async def _compute_maker_price(self, side: str) -> tuple[float, float]:
         """maker limit 価格を算出: スプレッド比例オフセット + post_only 安全策.
 
         009# §4.2: スプレッド内側に配置して maker 約定を狙う.
         CM-1: 固定 1 JPY → スプレッド比例 + post_only リジェクト防止.
+
+        Returns:
+            (price, spread_at_order) タプル.
         """
         ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
         if not ob.bids or not ob.asks:
@@ -189,6 +194,12 @@ class FillTestRunner:
         best_bid = ob.bids[0][0]
         best_ask = ob.asks[0][0]
         spread = best_ask - best_bid
+
+        # 031# スプレッドフィルター: 狭すぎる場合はスキップ
+        if spread < self.config.min_spread_jpy:
+            raise ValueError(
+                f"Spread too narrow: {spread:.0f} JPY < min {self.config.min_spread_jpy:.0f}"
+            )
 
         # スプレッド比例オフセット (最小保証付き)
         offset = max(self.config.min_offset_jpy, spread * self.config.spread_offset_ratio)
@@ -202,7 +213,7 @@ class FillTestRunner:
                     f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
                     f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
                 )
-            return price
+            return price, spread
         else:
             price = best_ask - offset
             # CM-1: post_only ガード — best_bid 以下にならないよう保護
@@ -212,7 +223,7 @@ class FillTestRunner:
                     f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
                     f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
                 )
-            return price
+            return price, spread
 
     async def run_single_cycle(self) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
@@ -227,8 +238,9 @@ class FillTestRunner:
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
         # 1. maker limit 価格算出
+        spread_at_order: Optional[float] = None
         try:
-            order_price = await self._compute_maker_price(side)
+            order_price, spread_at_order = await self._compute_maker_price(side)
         except Exception as e:
             logger.error(f"Failed to compute maker price: {e}")
             return FillRecord(
@@ -239,6 +251,8 @@ class FillTestRunner:
                 order_quantity=self.config.order_quantity,
                 cancelled=True,
                 cancel_reason="orderbook_error",
+                error_message=str(e),
+                spread_offset_ratio=self.config.spread_offset_ratio,
             )
 
         # 2. 発注 (CM-2: リトライ付き)
@@ -300,6 +314,9 @@ class FillTestRunner:
                 order_quantity=self.config.order_quantity,
                 cancelled=True,
                 cancel_reason=cancel_reason,  # type: ignore[possibly-undefined]
+                error_message=last_error,  # 031# エラー詳細を記録
+                spread_at_order=spread_at_order,
+                spread_offset_ratio=self.config.spread_offset_ratio,
             )
 
         # 3. ポーリング監視
@@ -357,6 +374,8 @@ class FillTestRunner:
                     )
                     break
                 elif status_order.status in ("cancelled", "rejected"):
+                    # 031# 取引所キャンセル/リジェクトの理由を明示的に記録
+                    cancel_reason_poll = f"exchange_{status_order.status}"
                     logger.info(f"Order {status_order.status}: {order.order_id}")
                     break
             except Exception as e:
@@ -434,6 +453,9 @@ class FillTestRunner:
             ),
             run_id=self._run_id,
             git_sha=self._git_sha,
+            # 031# 追加フィールド
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=self.config.spread_offset_ratio,
         )
 
         logger.info(
@@ -686,6 +708,10 @@ def main() -> None:
                         help="判定結果の JSON 出力先")
     parser.add_argument("--start-side", choices=["buy", "sell"], default="buy",
                         help="開始サイド (JPY残高不足時は sell 推奨)")
+    parser.add_argument("--spread-offset-ratio", type=float, default=0.05,
+                        help="スプレッド比例オフセット率 (031#: 0.05=保守的, 0.2=攻撃的)")
+    parser.add_argument("--min-spread-jpy", type=float, default=0.0,
+                        help="最小スプレッドフィルター (JPY). 0=フィルタなし")
     args = parser.parse_args()
 
     if args.results_only:
@@ -723,6 +749,8 @@ def main() -> None:
         cycle_interval_sec=args.cycle_interval,
         results_dir=args.results_dir,
         start_side=args.start_side,
+        spread_offset_ratio=args.spread_offset_ratio,
+        min_spread_jpy=args.min_spread_jpy,
     )
 
     runner = FillTestRunner(adapter, config)
