@@ -838,16 +838,16 @@ class TestCleanQuarantineFilter:
         records = [
             FillRecord(cycle_id="1", timestamp=1.0, side="buy",
                        order_price=100.0, order_quantity=0.001,
-                       git_sha="abc123"),
+                       git_sha="abc123", run_id="r1"),
             FillRecord(cycle_id="2", timestamp=2.0, side="sell",
                        order_price=101.0, order_quantity=0.001,
-                       git_sha=""),
+                       git_sha="", run_id="r1"),
             FillRecord(cycle_id="3", timestamp=3.0, side="buy",
                        order_price=102.0, order_quantity=0.001,
-                       git_sha=None),
+                       git_sha=None, run_id="r1"),
             FillRecord(cycle_id="4", timestamp=4.0, side="sell",
                        order_price=103.0, order_quantity=0.001,
-                       git_sha="def456"),
+                       git_sha="def456", run_id="r1"),
         ]
         clean, quarantine = filter_clean_records(records)
         assert len(clean) == 2
@@ -876,7 +876,7 @@ class TestCleanQuarantineFilter:
         records = [
             FillRecord(cycle_id="1", timestamp=1.0, side="buy",
                        order_price=100.0, order_quantity=0.001,
-                       git_sha="abc"),
+                       git_sha="abc", run_id="r1"),
         ]
         clean, quarantine = filter_clean_records(records)
         assert len(clean) == 1

@@ -372,10 +372,12 @@ def filter_clean_records(
     *,
     require_git_sha: bool = True,
 ) -> tuple[list[FillRecord], list[FillRecord]]:
-    """046# clean/quarantine 分離: git_sha の有無でレコードを分割.
+    """046# clean/quarantine 分離 + 047# A5 拡張基準.
 
-    ゾンビプロセス由来 (git_sha=None/blank) のレコードは quarantine へ。
-    メトリクス算出時はクリーンレコードのみを使用する。
+    以下のいずれかに該当するレコードを quarantine へ分類:
+    - git_sha が blank/None (ゾンビプロセス由来)
+    - run_id が blank/None (020# O4 以前の旧形式レコード)
+    - 必須フィールド (side, order_price, order_quantity) が不正
 
     Args:
         records: 全 FillRecord リスト.
@@ -390,14 +392,31 @@ def filter_clean_records(
     clean: list[FillRecord] = []
     quarantine: list[FillRecord] = []
     for r in records:
-        if r.git_sha and r.git_sha.strip():
-            clean.append(r)
-        else:
+        # 047# A5: 複合チェック — git_sha + run_id + 必須フィールド
+        reason = _quarantine_reason(r)
+        if reason:
             quarantine.append(r)
+        else:
+            clean.append(r)
 
     if quarantine:
         logger.info(
-            f"[quarantine] {len(quarantine)}/{len(records)} records quarantined "
-            f"(blank git_sha). clean={len(clean)}"
+            f"[quarantine] {len(quarantine)}/{len(records)} records quarantined. "
+            f"clean={len(clean)}"
         )
     return clean, quarantine
+
+
+def _quarantine_reason(r: FillRecord) -> str | None:
+    """047# A5: レコードの quarantine 理由を返す (None=clean)."""
+    if not (r.git_sha and r.git_sha.strip()):
+        return "blank_git_sha"
+    if not (r.run_id and r.run_id.strip()):
+        return "blank_run_id"
+    if r.side not in ("buy", "sell"):
+        return f"invalid_side={r.side}"
+    if not r.order_price or r.order_price <= 0:
+        return "invalid_order_price"
+    if not r.order_quantity or r.order_quantity <= 0:
+        return "invalid_order_quantity"
+    return None

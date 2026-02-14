@@ -39,6 +39,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from ztb.metrics.fill_quality import (
     FillRecord,
     compute_fill_metrics,
+    filter_clean_records,
     g1_1_judgment,
     load_fill_records_glob,
     save_fill_records,
@@ -431,18 +432,20 @@ class FillTestRunner:
     def _acquire_lock(self) -> None:
         """044# Bug7: 単一起動ロック (lockfile + PID + stale 回収).
 
+        047# A4: TOCTOU race 対策 — open(path, 'x') で排他的作成。
         同一 results_dir に対して複数プロセスが並行動作することを防止。
         ロックファイルに PID を記録し、起動時に既存ロックの生死を検証する。
         """
         lock_path = self._results_dir / "fill_test.lock"
         self._lockfile_path = lock_path
+        lock_content = f"{os.getpid()}|{int(time.time())}|{self._run_id}"
 
-        if lock_path.exists():
+        def _check_stale_and_reclaim() -> bool:
+            """既存ロックが stale なら削除して True を返す."""
             try:
                 content = lock_path.read_text(encoding="utf-8").strip()
                 parts = content.split("|")
                 existing_pid = int(parts[0])
-                # PID 生存チェック
                 import psutil  # type: ignore[import-untyped]
                 if psutil.pid_exists(existing_pid):
                     try:
@@ -455,19 +458,34 @@ class FillTestRunner:
                                 f"強制起動するにはロックファイルを削除: {lock_path}"
                             )
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass  # プロセスが消えた → stale lock
-            except (ValueError, ImportError):
-                pass  # parse 失敗 or psutil 未インストール → stale lock
-            logger.warning(
-                f"[lock] Stale lockfile detected, reclaiming: {lock_path}"
-            )
+                        pass
+            except (ValueError, ImportError, OSError):
+                pass
+            # stale lock — 削除して再取得を試みる
+            logger.warning(f"[lock] Stale lockfile detected, reclaiming: {lock_path}")
+            try:
+                lock_path.unlink()
+            except OSError:
+                pass
+            return True
 
-        # ロック取得: PID|timestamp|run_id
-        lock_path.write_text(
-            f"{os.getpid()}|{int(time.time())}|{self._run_id}",
-            encoding="utf-8",
-        )
-        logger.info(f"[lock] Acquired lockfile: PID={os.getpid()}, run_id={self._run_id}")
+        # 047# A4: open(path, 'x') で排他的にファイル作成 (atomic)
+        # FileExistsError なら既存ロックを検証 → stale ならリトライ
+        for _attempt in range(2):
+            try:
+                fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                try:
+                    os.write(fd, lock_content.encode("utf-8"))
+                finally:
+                    os.close(fd)
+                logger.info(
+                    f"[lock] Acquired lockfile: PID={os.getpid()}, run_id={self._run_id}"
+                )
+                return
+            except FileExistsError:
+                _check_stale_and_reclaim()
+        # 2 回リトライ後もダメな場合
+        raise RuntimeError(f"ロックファイルの取得に失敗しました: {lock_path}")
 
     def _release_lock(self) -> None:
         """044# ロックファイル解放."""
@@ -840,7 +858,6 @@ class FillTestRunner:
         # レジューム: 既存レコードから状態復元
         existing_records = self.resume_from_existing()
         # 046# clean/quarantine 分離: ゾンビプロセス由来レコードを除外して集計
-        from ztb.metrics.fill_quality import filter_clean_records
         clean_records, quarantine_records = filter_clean_records(existing_records)
         if quarantine_records:
             logger.warning(
@@ -1200,7 +1217,10 @@ class FillTestRunner:
             )
 
             # 直近のレコードからメトリクスを算出
-            records = load_fill_records_glob(str(self._results_dir))
+            # 047# A1: quarantine レコードを除外し clean のみで適応判断
+            all_records = load_fill_records_glob(str(self._results_dir))
+            records, _q = filter_clean_records(all_records)
+            del all_records
             if len(records) < self.config.min_adapt_samples:
                 return
 
@@ -1250,7 +1270,10 @@ class FillTestRunner:
                 compute_recent_pnl_bps,
             )
 
-            records = load_fill_records_glob(str(self._results_dir))
+            # 047# A1: quarantine レコードを除外し clean のみでロット判断
+            all_records = load_fill_records_glob(str(self._results_dir))
+            records, _q = filter_clean_records(all_records)
+            del all_records
             if len(records) < self.config.min_adapt_samples:
                 return
 
@@ -1336,10 +1359,22 @@ def run_results_only(results_dir: str, thresholds_path: str | None = None) -> di
     """既存の fill_records JSONL から G1.1 判定を実施."""
     from scripts.v460.lib.config_loader import load_gate_thresholds
 
-    records = load_fill_records_glob(results_dir)
-    if not records:
+    all_records = load_fill_records_glob(results_dir)
+    if not all_records:
         logger.error(f"No fill records found in {results_dir}")
         return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "No records found"}
+
+    # 047# A2: quarantine レコードを除外し clean のみで Gate 判定
+    records, quarantine = filter_clean_records(all_records)
+    if quarantine:
+        logger.warning(
+            f"[results-only] {len(quarantine)} records quarantined, "
+            f"using {len(records)} clean records for judgment"
+        )
+    del all_records
+    if not records:
+        logger.error("All records are quarantined")
+        return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "All records quarantined"}
 
     metrics = compute_fill_metrics(records)
     thresholds = load_gate_thresholds().get("g1_1_exec", {})
@@ -1403,7 +1438,17 @@ def main() -> None:
                 json.dump(result, f, indent=2, ensure_ascii=False)
             logger.info(f"Saved judgment to {args.output}")
         print(json.dumps(result, indent=2, ensure_ascii=False))
-        sys.exit(0 if result.get("gate_result") == "PASS" else 1)
+        # 047# A3: FINAL PASS のみ exit 0。INTERIM/PROVISIONAL PASS は exit 2。
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            sys.exit(0)
+        elif gate == "PASS":
+            # INTERIM / PROVISIONAL PASS — まだ確定判定ではない
+            logger.info(f"Gate PASS but judgment_type={jtype} (not FINAL), exit 2")
+            sys.exit(2)
+        else:
+            sys.exit(1)
 
     # Adapter setup
     # .env ファイルから API 認証情報を自動読込 (CLI 引数が未指定の場合)

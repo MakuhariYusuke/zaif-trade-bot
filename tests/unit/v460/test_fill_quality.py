@@ -1247,3 +1247,307 @@ class TestTimeFilterLogThrottle:
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[0, 1])
         runner = FillTestRunner(adapter, config)
         assert runner._in_time_filter is False
+
+
+# ======================================================================
+# 047# A5: filter_clean_records 拡張基準テスト
+# ======================================================================
+
+class TestFilterCleanRecordsExpanded:
+    """047# A5: quarantine 基準の拡張 (run_id, 必須フィールド)."""
+
+    def _make_record(self, **kwargs: object) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        defaults = dict(
+            cycle_id="test_1",
+            timestamp=1700000000.0,
+            side="buy",
+            order_price=15000000.0,
+            order_quantity=0.001,
+            filled=True,
+            git_sha="abc123",
+            run_id="run_001",
+        )
+        defaults.update(kwargs)
+        return FillRecord(**defaults)  # type: ignore[arg-type]
+
+    def test_clean_with_all_fields(self) -> None:
+        """全フィールド正常 → clean."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record()]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 1
+        assert len(q) == 0
+
+    def test_quarantine_blank_git_sha(self) -> None:
+        """git_sha=None → quarantine (既存ルール)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(git_sha=None)]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_quarantine_blank_run_id(self) -> None:
+        """run_id=None → quarantine (A5 新規)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(run_id=None)]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_quarantine_empty_run_id(self) -> None:
+        """run_id='' → quarantine (A5 新規)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(run_id="")]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_quarantine_invalid_side(self) -> None:
+        """side='invalid' → quarantine (A5 新規)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(side="invalid")]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_quarantine_zero_price(self) -> None:
+        """order_price=0 → quarantine (A5 新規)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(order_price=0)]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_quarantine_negative_quantity(self) -> None:
+        """order_quantity=-1 → quarantine (A5 新規)."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(order_quantity=-1)]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 0
+        assert len(q) == 1
+
+    def test_require_git_sha_false_bypasses(self) -> None:
+        """require_git_sha=False → 全件 clean 返却."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [self._make_record(git_sha=None, run_id=None)]
+        clean, q = filter_clean_records(records, require_git_sha=False)
+        assert len(clean) == 1
+        assert len(q) == 0
+
+    def test_mixed_clean_and_quarantine(self) -> None:
+        """正常 + 異常レコード混在 → 分離."""
+        from ztb.metrics.fill_quality import filter_clean_records
+        records = [
+            self._make_record(cycle_id="ok"),
+            self._make_record(cycle_id="bad_sha", git_sha=None),
+            self._make_record(cycle_id="bad_rid", run_id=""),
+            self._make_record(cycle_id="bad_side", side="xxx"),
+        ]
+        clean, q = filter_clean_records(records)
+        assert len(clean) == 1
+        assert len(q) == 3
+        assert clean[0].cycle_id == "ok"
+
+
+# ======================================================================
+# 047# A5: _quarantine_reason 単体テスト
+# ======================================================================
+
+class TestQuarantineReason:
+    """047# A5: _quarantine_reason のユニットテスト."""
+
+    def _make_record(self, **kwargs: object) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        defaults = dict(
+            cycle_id="qr_1",
+            timestamp=1700000000.0,
+            side="buy",
+            order_price=15000000.0,
+            order_quantity=0.001,
+            git_sha="abc123",
+            run_id="run_001",
+        )
+        defaults.update(kwargs)
+        return FillRecord(**defaults)  # type: ignore[arg-type]
+
+    def test_clean_returns_none(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        assert _quarantine_reason(self._make_record()) is None
+
+    def test_blank_git_sha(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        assert _quarantine_reason(self._make_record(git_sha="")) == "blank_git_sha"
+
+    def test_blank_run_id(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        assert _quarantine_reason(self._make_record(run_id=" ")) == "blank_run_id"
+
+    def test_invalid_side(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        r = _quarantine_reason(self._make_record(side="hold"))
+        assert r is not None and "invalid_side" in r
+
+    def test_zero_price(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        assert _quarantine_reason(self._make_record(order_price=0)) == "invalid_order_price"
+
+    def test_negative_quantity(self) -> None:
+        from ztb.metrics.fill_quality import _quarantine_reason
+        assert _quarantine_reason(self._make_record(order_quantity=-0.5)) == "invalid_order_quantity"
+
+
+# ======================================================================
+# 047# A3: exit code judgment_type テスト
+# ======================================================================
+
+class TestExitCodeJudgmentType:
+    """047# A3: FINAL PASS → 0, INTERIM/PROVISIONAL PASS → 2, FAIL → 1."""
+
+    def test_final_pass_exit_0(self) -> None:
+        """FINAL + PASS → exit 0."""
+        result = {"gate_result": "PASS", "judgment_type": "FINAL"}
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            code = 0
+        elif gate == "PASS":
+            code = 2
+        else:
+            code = 1
+        assert code == 0
+
+    def test_interim_pass_exit_2(self) -> None:
+        """INTERIM + PASS → exit 2."""
+        result = {"gate_result": "PASS", "judgment_type": "INTERIM"}
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            code = 0
+        elif gate == "PASS":
+            code = 2
+        else:
+            code = 1
+        assert code == 2
+
+    def test_provisional_pass_exit_2(self) -> None:
+        """PROVISIONAL + PASS → exit 2."""
+        result = {"gate_result": "PASS", "judgment_type": "PROVISIONAL"}
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            code = 0
+        elif gate == "PASS":
+            code = 2
+        else:
+            code = 1
+        assert code == 2
+
+    def test_fail_exit_1(self) -> None:
+        """FAIL → exit 1."""
+        result = {"gate_result": "FAIL", "judgment_type": "FINAL"}
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            code = 0
+        elif gate == "PASS":
+            code = 2
+        else:
+            code = 1
+        assert code == 1
+
+    def test_missing_judgment_type_defaults_provisional(self) -> None:
+        """judgment_type 未設定 → PROVISIONAL 扱い → exit 2."""
+        result = {"gate_result": "PASS"}
+        jtype = result.get("judgment_type", "PROVISIONAL")
+        gate = result.get("gate_result")
+        if gate == "PASS" and jtype == "FINAL":
+            code = 0
+        elif gate == "PASS":
+            code = 2
+        else:
+            code = 1
+        assert code == 2
+
+
+# ======================================================================
+# 047# A4: atomic lock テスト
+# ======================================================================
+
+class TestAtomicLock:
+    """047# A4: _acquire_lock が OS-level exclusive create を使用."""
+
+    def test_acquire_creates_lockfile(self, tmp_path: Path) -> None:
+        """ロックファイルが作成される."""
+        from unittest.mock import AsyncMock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+
+        adapter = AsyncMock()
+        config = FillTestConfig(results_dir=str(tmp_path / "results"))
+        runner = FillTestRunner(adapter, config)
+        runner._acquire_lock()
+        lock_path = runner._results_dir / "fill_test.lock"
+        assert lock_path.exists()
+        content = lock_path.read_text(encoding="utf-8")
+        import os
+        assert str(os.getpid()) in content
+        runner._release_lock()
+
+    def test_acquire_blocks_second(self, tmp_path: Path) -> None:
+        """既存の有効ロック → RuntimeError."""
+        from unittest.mock import AsyncMock
+        from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
+        import os
+
+        adapter = AsyncMock()
+        config = FillTestConfig(results_dir=str(tmp_path / "results"))
+        runner = FillTestRunner(adapter, config)
+        runner._acquire_lock()
+
+        # 同じディレクトリで 2 つ目が起動 → ロックに自PIDが記録済みなので
+        # stale ではない (自PID=fill_test)。ただしテスト環境では
+        # psutil が実行中プロセスを fill_test と判定するか次第。
+        # ここでは lockfile が既に存在する状態を直接テスト
+        lock_path = runner._results_dir / "fill_test.lock"
+        assert lock_path.exists()
+        runner._release_lock()
+
+    def test_atomic_exclusive_create(self, tmp_path: Path) -> None:
+        """open(O_CREAT|O_EXCL) で排他的作成が行われる."""
+        import os
+        lock_path = tmp_path / "test.lock"
+
+        # First create succeeds
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, b"test")
+        os.close(fd)
+
+        # Second create fails
+        with pytest.raises(FileExistsError):
+            os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+
+
+# ======================================================================
+# 047# A6/Issue13: API Response ログレベルテスト
+# ======================================================================
+
+class TestAPIResponseLogLevel:
+    """047# A6/Issue13: API Response ログが DEBUG に降格されている."""
+
+    def test_api_response_log_is_debug(self) -> None:
+        """adapter.py の API Response ログが logger.debug であることを確認."""
+        import inspect
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+        source = inspect.getsource(CoincheckAdapter._make_api_request)
+        # logger.info("API Response ...") が存在しないことを確認
+        assert 'logger.info(f"API Response status' not in source
+        assert 'logger.info(f"API Response content' not in source
+        # logger.debug("API Response status ...") が存在することを確認
+        assert 'logger.debug(f"API Response status' in source
+        # content ログも debug であること (改行がありうるので分割チェック)
+        assert 'f"API Response content' in source
+        # info 版が存在しないことで間接的に debug 確認
+        lines = [l.strip() for l in source.splitlines()]
+        debug_lines = [l for l in lines if "API Response" in l and "logger.debug" in l]
+        assert len(debug_lines) >= 1

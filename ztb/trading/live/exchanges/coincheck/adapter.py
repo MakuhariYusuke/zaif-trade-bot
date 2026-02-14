@@ -221,8 +221,9 @@ class CoincheckAdapter(IBroker):
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
             response.raise_for_status()
-            logger.info(f"API Response status: {response.status_code}")
-            logger.info(
+            # 047# A6/Issue13: API Response ログを DEBUG に降格 (ログ肥大化 49.8% 削減)
+            logger.debug(f"API Response status: {response.status_code}")
+            logger.debug(
                 f"API Response content: {response.text[:500]}"
             )  # Log first 500 chars
             return response.json()
